@@ -1,0 +1,22 @@
+#File that configures what classes will be deployed in Genezio Infrastructure. 
+#Add the paths to classes that you want to deploy in "classPaths".
+
+#Example:
+
+#name: hello-world
+#sdk:
+#  language: js
+#  runtime: node
+#  path: ./sdk/
+#classPaths:
+#  - "./hello-world/index.js"
+
+name: todo-list
+sdk:
+  language: js
+  runtime: browser
+  path: ./../src/backend-sdk
+classPaths:
+  - "./user.js"
+  - "./task.js"
+
