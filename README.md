@@ -63,6 +63,22 @@ import { HelloWorldClass } from "./sdk/hello.sdk.js"
 
 Check out the `./examples/` folder for more examples.
 
+### Test your code locally
+
+You can test your code locally by running the `genezio local` command. This will spawn a local server that can be used for testing. To change the environment in the SDK you can set the `Remote.env` property.
+
+```
+import { HelloWorldClass } from "./sdk/hello.sdk.js"
+import { Remote, Env } from "./sdk/remote.js"
+
+(async () => {
+    Remote.env = Env.Local
+    console.log(await HelloWorldClass.helloWorld())
+    console.log(await HelloWorldClass.hello("George", "Tenerife"))
+})();
+
+```
+
 ## Knwown issues
 
 * Genezio currently support only Javascript. We plan to add support for more languages soon.
