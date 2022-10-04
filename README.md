@@ -2,9 +2,18 @@
 
 Genezio is a platform for developers that want to write a backend in a very simple way. Just write a simple class using your preferred programming language then call `genezio deploy`. An SDK will be generated for you that you can use to call the methods of the class in a very natural way.
 
+## Install `genezio`
+
+To install `genezio` locally run:
+```bash
+npm run install-locally
+```
+
+For more details about the `genezio` CLI command, run `genezio help`.
+
 ## Getting started
 
-1. Run `genezio init` and ask the following questions:
+1. Run `genezio init` and answer the following questions:
 
 ```
 What is the name of the project: hello-world
@@ -17,7 +26,7 @@ A configuration file `genezio.yaml` will be generated.
 
 2. Create a file `hello.js` and write the following class.
 
-```
+```javascript
 export class HelloWorldClass {
     helloWorld() {
         return "Hello world!";
@@ -29,9 +38,9 @@ export class HelloWorldClass {
 }
 ```
 
-3. Add the file in genezio.yaml configuration file in `classPaths`.
+3. Add `hello.js` path in the `genezio.yaml` configuration file in `classPaths`.
 
-```
+```yaml
 name: hello-world
 sdk:
   language: js
@@ -41,9 +50,9 @@ classPaths:
   - "./hello.js"
 ```
 
-4. Run `genezio deploy`. An SDK is generated for you in the ./sdk/ path. You can now call your hello world methods remotely.
+4. Run `genezio deploy`. An SDK is generated for you in the `./sdk/` path. You can now call your hello world methods remotely.
 
-```
+```javascript
 import { HelloWorldClass } from "./sdk/hello.sdk.js"
 
 (async () => {
@@ -52,7 +61,7 @@ import { HelloWorldClass } from "./sdk/hello.sdk.js"
 })();
 ```
 
-See the examples folder for more examples.
+Check out the `./examples/` folder for more examples.
 
 ## Knwown issues
 
@@ -61,4 +70,4 @@ See the examples folder for more examples.
 
 ## How does it work?
 
-Genezio is using JSON RPC 2.0 to facilitate the communication between SDK and your class. Your functions are deployed in Genezio infrastructe.
+Genezio is using JSON RPC 2.0 to facilitate the communication between SDK and your class. Your functions are deployed in Genezio infrastructure.
