@@ -56,4 +56,7 @@ See the examples folder for more examples.
 
 ## Knwown issues
 
+* Genezio currently support only Javascript. We plan to add support for more languages soon.
+* You can use other node dependencies. However, we currently have a problem with the binary dependecies. If you encounter any issues, contact us.
+
 ## How does it work?
