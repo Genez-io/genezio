@@ -69,7 +69,6 @@ function deployCode(bundledCode, filePath, extension, runtime) {
                     if ((_b = (_a = response.data) === null || _a === void 0 ? void 0 : _a.error) === null || _b === void 0 ? void 0 : _b.message) {
                         throw new Error(response.data.error.message);
                     }
-                    console.log(response.data);
                     return [2 /*return*/, response.data.functionUrl];
             }
         });
