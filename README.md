@@ -60,3 +60,5 @@ See the examples folder for more examples.
 * You can use other node dependencies. However, we currently have a problem with the binary dependecies. If you encounter any issues, contact us.
 
 ## How does it work?
+
+Genezio is using JSON RPC 2.0 to facilitate the communication between SDK and your class. Your functions are deployed in Genezio infrastructe.
