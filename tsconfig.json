@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "target": "es5",
+        "module": "commonjs",
+        "lib": [
+            "es6"
+        ],
+        "outDir": "build",
+        "rootDir": "src",
+        "strict": true,
+        "noImplicitAny": true,
+        "esModuleInterop": true,
+        "resolveJsonModule": true
+    },
+    "include": ["src/**/*"],
+    "exclude": [
+        "test.js"
+    ]
+}

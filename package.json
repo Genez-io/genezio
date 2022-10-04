@@ -1,0 +1,28 @@
+{
+  "name": "genezio",
+  "version": "0.1.0",
+  "description": "Command line utility to interact with Genezio infrastructure.",
+  "main": "index.js",
+  "scripts": {
+    "start": "npx tsc && node build/index.js",
+    "install-locally": "npx tsc && npm i -g"
+  },
+  "author": "Genezio",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.27.2",
+    "command-line-args": "^5.2.1",
+    "commander": "^9.4.0",
+    "form-data": "^4.0.0",
+    "webpack": "^5.74.0",
+    "yaml": "^2.1.1"
+  },
+  "bin": {
+    "genezio": "./build/index.js"
+  },
+  "devDependencies": {
+    "@types/node": "^18.7.18",
+    "typescript": "^4.8.3",
+    "webpack-node-externals": "^3.0.0"
+  }
+}
