@@ -11,10 +11,10 @@
 #classPaths:
 #  - "./hello-world/index.js"
 
-name: qweqeqw
+name: hello-world
 sdk:
   language: js
   runtime: node
   path: ./sdk/
 classPaths:
-  - "./module.js"
+  - "./hello.js"

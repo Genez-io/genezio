@@ -1,7 +1,6 @@
-import { Remote, Env } from "./sdk/remote.js"
-import { MyClass } from "./sdk/module.sdk.js"
+import { HelloWorldClass } from "./sdk/hello.sdk.js"
 
 (async () => {
-    Remote.env = Env.Production
-    console.log(await MyClass.testWithArgs("One arg!"))
+    console.log(await HelloWorldClass.helloWorld())
+    console.log(await HelloWorldClass.hello("George", "Tenerife"))
 })();
