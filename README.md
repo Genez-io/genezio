@@ -83,8 +83,8 @@ import { Remote, Env } from "./sdk/remote.js"
 
 * Genezio currently support only Javascript. We plan to add support for more languages soon.
 * You can use other node dependencies. However, we currently have a problem with the binary dependecies. If you encounter any issues, contact us.
-* The execution time of the functions cannot exceed 3 seconds. This limitation will go away soon
+* The execution time of the functions cannot exceed 3 seconds. This limitation will go away soon.
 
 ## How does it work?
 
-Genezio is using JSON RPC 2.0 to facilitate the communication between SDK and your class. Your functions are deployed in Genezio infrastructure.
+Genezio is using JSON RPC 2.0 to facilitate the communication between SDK and your class. Your functions are deployed in Genezio infrastructure. The functions are not executed on a long lasting Virtual Machine. Instead our system uses a serverless approach. Whenever a request is received, your code is loaded and executed. This is more cost and energy efficient. However, the developer needs to take this into account. The values of the global variables are not persisted between runs.
