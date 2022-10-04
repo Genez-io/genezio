@@ -4,9 +4,9 @@ Genezio is a platform for developers that want to write a backend in a very simp
 
 ## Install `genezio`
 
-To install `genezio` locally run:
+To install `genezio` run:
 ```bash
-npm run install-locally
+npm install genezio
 ```
 
 For more details about the `genezio` CLI command, run `genezio help`.
