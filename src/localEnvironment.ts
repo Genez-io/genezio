@@ -36,6 +36,7 @@ export default class Server {
                 response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
                 response.setHeader('Access-Control-Allow-Methods', 'POST');
                 response.end();
+                return;
             }
 
             request.on('data', function (data) {
