@@ -87,4 +87,4 @@ import { Remote, Env } from "./sdk/remote.js"
 
 ## How does it work?
 
-Genezio is using JSON RPC 2.0 to facilitate the communication between SDK and your class. Your functions are deployed in Genezio infrastructure.
+Genezio is using JSON RPC 2.0 to facilitate the communication between SDK and your class. Your functions are deployed in Genezio infrastructure. The functions are not executed on a long lasting Virtual Machine. Instead our system uses a serverless approach. Whenever a request is received, your code is loaded and executed. This is more cost and energy efficient. However, the developer needs to take this into account. The values of the global variables are not persisted between runs.
