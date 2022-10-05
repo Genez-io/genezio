@@ -11,5 +11,5 @@ async function reqAuth(token) {
 
 module.exports = {
   reqAuth: reqAuth,
-  MONGO_DB_URI: "mongodb+srv://admincluster:pBOmjY56WaN4pSer@cluster0.l5yageu.mongodb.net/?retryWrites=true&w=majority"
+  MONGO_DB_URI: "mongodb+srv://<username>:<password>@cluster0.l5yageu.mongodb.net/?retryWrites=true&w=majority"
 };
