@@ -50,7 +50,7 @@ classPaths:
   - "./hello.js"
 ```
 
-4. Run `genezio deploy`. An SDK is generated for you in the `./sdk/` path. You can now call your hello world methods remotely.
+4. Run `genezio login <code>` with the code for the early testing phase. If you don't have a code and you want to participate in the early testing phase contact us at contact@genez.io. After that, you can run `genezio deploy` to deploy your code. An SDK is generated for you in the `./sdk/` path. You can now call your hello world methods remotely.
 
 ```javascript
 import { HelloWorldClass } from "./sdk/hello.sdk.js"
