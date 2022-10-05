@@ -1,18 +1,20 @@
-# Genezio example Todo App
+# Todo App example
 
-  
+This is an example of a todo application with users, auth and tasks that uses React for the frontend application and Genezio for deploying and developing the backend.
 
-This is a basic example of todo applications with users, auth and tasks that used React and Genezio. backend.
+## Initialization
 
-  
+1. Run `npm install` in the `backend/` folder to install the dependencies.
+2. Run `npm install` in the `frontend/` folder to install the dependencies.
+2. Change in the `helper.js` file the variable `MONGO_DB_URI` to point to your MongoDB. We recommend the free tier from MongoDB Atlas (https://www.mongodb.com/atlas/database).
 
-## Getting started
+## Run the example locally
 
-  
+1. Run `genezio generateSdk local` in the project's root folder that contains also the `genezio.yaml` file. This will create an SDK that can be used to call the methods locally.
+2. Now you have to run the server locally. Run `genezio local` in the same folder to start the local server.
+3. Start the React app by going to the `frontend/` folder and run `npm start`.
 
-1. Run `npm install` in rthe `backend` folder
-2. In `helper.js` file change your `MONGO_DB_URI`
-3. Run `genezio generateSdk` in the `backend` folder
-4. Run `genezio local` for local testing or Run `genezio deploy` for deployment
-5. Run `npm install in the root folder`
-6. Run `npm start` to run your React App 
+## Deploy the example in the Genezio infrastructure
+
+1. Run `genezio deploy` in the project's root folder that contains also the `genezio.yaml` file. This will deploy your code in the Genezio infrastructure and it will also create an SDK that can be used to call the methods remotely.
+2. Start the React app by going to the `frontend/` folder and run `npm start`.
