@@ -11,20 +11,20 @@ export class Task {
         return Task.remote.call("Task.connect")  
     }
     
-    static async getAllByUser(userId) {
-        return Task.remote.call("Task.getAllByUser", userId)  
+    static async getAllByUser(token, userId) {
+        return Task.remote.call("Task.getAllByUser", token, userId)  
     }
 
-    static async create(title, ownerId) {
-        return Task.remote.call("Task.create", title, ownerId)  
+    static async createTask(token, title, ownerId) {
+        return Task.remote.call("Task.createTask", token, title, ownerId)  
     }
 
-    static async update(id, title, solved) {
-        return Task.remote.call("Task.update", id, title, solved)  
+    static async updateTask(token, id, title, solved) {
+        return Task.remote.call("Task.updateTask", token, id, title, solved)  
     }
 
-    static async delete(id) {
-        return Task.remote.call("Task.delete", id)  
+    static async deleteTask(token, id) {
+        return Task.remote.call("Task.deleteTask", token, id)  
     }
 
     

@@ -23,6 +23,10 @@ export class User {
         return User.remote.call("User.register", name, email, password)  
     }
 
+    static async checkSession(token) {
+        return User.remote.call("User.checkSession", token)  
+    }
+
     
 }
 

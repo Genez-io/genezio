@@ -2,12 +2,16 @@ import { Button, Card, Container, Row, Col, Input } from "reactstrap";
 import React, { useState, useEffect, useRef } from "react";
 import { User } from "../backend-sdk/user.sdk.js";
 import { Env, Remote } from "../backend-sdk/remote.js"
+import { useNavigate } from 'react-router-dom';
+
 Remote.env = Env.Local
 
 const re =
   /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 
 export default (props) => {
+  const navigate = useNavigate();
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,13 +36,13 @@ export default (props) => {
     setError("");
 
     const res = await User.register(name, email, password);
-    setError("trecut de res");
+    setError("res", res);
 
     if (!res.success) {
       setError(res.msg);
       return;
     } else {
-      props.history.push("/login");
+      navigate("/login");
     }
   }
 

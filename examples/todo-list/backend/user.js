@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const UserModel = require("./models/user");
 const ActiveSession = require("./models/activeSession");
+require("dotenv").config();
 
 export class User {
   constructor() {
@@ -11,7 +12,7 @@ export class User {
 
   // connect mongoose to mongodb
   connect() {
-    mongoose.connect("mongodb://localhost:27017/genezio-todo-app");
+    mongoose.connect(process.env.MONGO_DB_URI);
   }
 
   // create a new user
@@ -41,35 +42,48 @@ export class User {
 
   // login
   async login(email, password) {
-    return {success: true, token: "token"};
-    // const user = await UserModel.findOne({ email: email });
+    const user = await UserModel.findOne({ email: email });
 
-    // if (!user) {
-    //   return { success: false, msg: "User not found" };
-    // }
+    if (!user) {
+      return { success: false, msg: "User not found" };
+    }
 
-    // const promise = new Promise((resolve, reject) => {
-    //   bcrypt.compare(password, user.password, async function (err, res) {
-    //     console.log(res);
-    //     if (res) {
-    //       user.password = null;
-    //       const token = jwt.sign(user.toJSON(), "secret", {
-    //         expiresIn: 86400 // 1 week
-    //       });
+    const promise = new Promise((resolve, reject) => {
+      bcrypt.compare(password, user.password, async function (err, res) {
+        if (res) {
+          user.password = null;
+          const token = jwt.sign(user.toJSON(), "secret", {
+            expiresIn: 86400 // 1 week
+          });
 
-    //       await ActiveSession.create({ token: token, userId: user._id });
-    //       resolve({ success: true, user: user, token: token });
-    //     } else {
-    //       resolve({ success: false, msg: "Incorrect user or password" });
-    //     }
-    //   });
-    // });
+          await ActiveSession.create({ token: token, userId: user._id });
+          resolve({ success: true, user: user, token: token });
+        } else {
+          resolve({ success: false, msg: "Incorrect user or password" });
+        }
+      });
+    });
 
-    // return promise;
+    return promise;
   }
 
   // register a new user
   register(name, email, password) {
     return this.create(name, email, password);
+  }
+
+  // check if a session is valid
+  async checkSession(token) {
+    const activeSession = await ActiveSession.findOne({ token: token });
+    if (!activeSession) {
+      return { success: false };
+    }
+
+    const user = await UserModel.findById(activeSession.userId);
+    if (!user) {
+      return { success: false };
+    }
+
+    return { success: true };
   }
 }
