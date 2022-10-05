@@ -1,9 +1,20 @@
 # Hello World example
 
-In this example, we have a class with two functions that returns a welcome message.
+In this example, we have a class with two functions that return a welcome message.
 
 The class is implemented in the `hello.js` file.
 
 To deploy and test it run `genezio deploy`. Once the command was successfully executed you can run `node test-hello-sdk.js`.
 
-To test the code locally open two terminals: in one run the `genezio local` command and in the other run `node test-hello-sdk.js`. Make sure you change the environment to `local`: `Remote.env = Env.Local`.
+## Run the example locally
+
+1. Run `genezio generateSdk local`. This will create the SDK that makes the requests locally.
+2. Run `genezio local`. This will start a local web server that listens for requests.
+3. Open a new terminal and run `node test-hello-sdk.js`. This script will use the SDK to call the methods that you have deployed locally in the previous step.
+4. You should see the greeting messages.
+
+## Deploy the example in the Genezio infrastructure
+
+1. Run `genezio deploy`. This will deploy the code to Genezio infrastructure and it will create the SDK.
+2. Run `node test-hello-sdk.js`. Now the script will use the SDK to call the methods that you have previously deployed in the Genezio infrastructure.
+3. You should see the greeting messages.

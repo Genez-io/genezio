@@ -1,6 +1,6 @@
 # Genezio
 
-Genezio is a platform for developers that want to write a backend in a very simple way. Just write a simple class using your preferred programming language then call `genezio deploy`. An SDK will be generated for you that you can use to call the methods of the class in a very natural way.
+Genezio is a platform for developers that want to write a backend in a very simple way. Just write a simple class using your preferred programming language then call `genezio deploy`. The code will be deployed in a scalable and production-ready infrastructure. An SDK is generated for you and you can use it to remotely call the methods of your class in a very natural way.
 
 ## Install `genezio`
 
@@ -65,19 +65,8 @@ Check out the `./examples/` folder for more examples.
 
 ### Test your code locally
 
-You can test your code locally by running the `genezio local` command. This will spawn a local server that can be used for testing. To change the environment in the SDK you can set the `Remote.env` property.
+You can also test your code locally by running the `genezio local` command. This will spawn a local server that can be used for testing. To change the environment that your SDK is pointing to just run `genezio generateSdk local`. You can switch back to production environment by running `genezio generateSdk production` or `genezio deploy`.
 
-```
-import { HelloWorldClass } from "./sdk/hello.sdk.js"
-import { Remote, Env } from "./sdk/remote.js"
-
-(async () => {
-    Remote.env = Env.Local
-    console.log(await HelloWorldClass.helloWorld())
-    console.log(await HelloWorldClass.hello("George", "Tenerife"))
-})();
-
-```
 
 ## Troubleshooting
 
@@ -85,10 +74,10 @@ import { Remote, Env } from "./sdk/remote.js"
 
 ## Knwown issues
 
-* Genezio currently support only Javascript. We plan to add support for more languages soon.
-* You can use other node dependencies. However, we currently have a problem with the binary dependecies. If you encounter any issues, contact us.
-* The execution time of the functions cannot exceed 3 seconds. This limitation will go away soon.
+* Genezio currently support only Javascript. We will offer support for Typescript, Swift, Kotlin and many others.
+* You can use external npm dependencies. However, we currently have a problem with the binary dependecies. If you encounter any issues, contact us.
+* The execution time of the functions cannot exceed 10 seconds. This limitation will go away soon.
 
-## How does it work?
+## How does Genezio work?
 
 Genezio is using JSON RPC 2.0 to facilitate the communication between SDK and your class. Your functions are deployed in Genezio infrastructure. The functions are not executed on a long lasting Virtual Machine. Instead our system uses a serverless approach. Whenever a request is received, your code is loaded and executed. This is more cost and energy efficient. However, the developer needs to take this into account. The values of the global variables are not persisted between runs.
