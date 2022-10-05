@@ -11,9 +11,12 @@
   "license": "GPL-3",
   "dependencies": {
     "axios": "^0.27.2",
+    "chokidar": "^3.5.3",
     "command-line-args": "^5.2.1",
     "commander": "^9.4.0",
     "form-data": "^4.0.0",
+    "keytar": "^7.9.0",
+    "path": "^0.12.7",
     "webpack": "^5.74.0",
     "yaml": "^2.1.1"
   },

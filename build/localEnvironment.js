@@ -44,6 +44,8 @@ var http_1 = __importDefault(require("http"));
 var handler_1 = __importDefault(require("./models/handler"));
 var file_1 = require("./utils/file");
 var yaml_1 = require("yaml");
+var chokidar_1 = __importDefault(require("chokidar"));
+var path_1 = __importDefault(require("path"));
 var Server = /** @class */ (function () {
     function Server() {
     }
@@ -54,23 +56,23 @@ var Server = /** @class */ (function () {
                 switch (_b.label) {
                     case 0:
                         handlers = [];
-                        return [4 /*yield*/, (0, file_1.readUTF8File)('./genezio.yaml')];
+                        return [4 /*yield*/, (0, file_1.readUTF8File)("./genezio.yaml")];
                     case 1:
                         configurationFileContentUTF8 = _b.sent();
                         return [4 /*yield*/, (0, yaml_1.parse)(configurationFileContentUTF8)];
                     case 2:
                         configurationFileContent = _b.sent();
                         _loop_1 = function (file) {
-                            var _c, path, className, functionNames, module_1, object;
+                            var _c, path_2, className, functionNames, module_1, object;
                             return __generator(this, function (_d) {
                                 switch (_d.label) {
                                     case 0: return [4 /*yield*/, (0, commands_1.bundleJavascriptCode)(file)];
                                     case 1:
-                                        _c = _d.sent(), path = _c.path, className = _c.className, functionNames = _c.functionNames;
-                                        module_1 = require(path);
+                                        _c = _d.sent(), path_2 = _c.path, className = _c.className, functionNames = _c.functionNames;
+                                        module_1 = require(path_2);
                                         object = new module_1.genezio[className]();
                                         functionNames.forEach(function (functionName) {
-                                            handlers.push(new handler_1.default(path, object, className, functionName));
+                                            handlers.push(new handler_1.default(path_2, object, className, functionName));
                                         });
                                         return [2 /*return*/];
                                 }
@@ -95,7 +97,7 @@ var Server = /** @class */ (function () {
     };
     Server.prototype.start = function (handlers) {
         return __awaiter(this, void 0, void 0, function () {
-            var requestListener, server;
+            var requestListener, server, cwd, watchPaths, ignoredPaths, startWatching;
             return __generator(this, function (_a) {
                 if (handlers.length === 0) {
                     console.log("No class registered. Make sure that you have set the classes that you want to deploy in the genezio.yaml configuration file.");
@@ -105,18 +107,18 @@ var Server = /** @class */ (function () {
                     return __awaiter(this, void 0, void 0, function () {
                         var body;
                         return __generator(this, function (_a) {
-                            body = '';
+                            body = "";
                             if (request.method === "OPTIONS") {
-                                response.setHeader('Access-Control-Allow-Origin', '*');
-                                response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-                                response.setHeader('Access-Control-Allow-Methods', 'POST');
+                                response.setHeader("Access-Control-Allow-Origin", "*");
+                                response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+                                response.setHeader("Access-Control-Allow-Methods", "POST");
                                 response.end();
                                 return [2 /*return*/];
                             }
-                            request.on('data', function (data) {
+                            request.on("data", function (data) {
                                 body += data;
                             });
-                            request.on('end', function () {
+                            request.on("end", function () {
                                 return __awaiter(this, void 0, void 0, function () {
                                     var jsonRpcRequest, components, responseData_1, className, method, handler, responseData_2, functionName, responseData, functionResponse, error_1;
                                     var _a;
@@ -127,19 +129,26 @@ var Server = /** @class */ (function () {
                                                 components = jsonRpcRequest.method.split(".");
                                                 if (components.length !== 2) {
                                                     response.writeHead(404);
-                                                    responseData_1 = { "jsonrpc": "2.0", "error": { "code": -32601, "message": "Wrong method format" }, "id": jsonRpcRequest.id };
+                                                    responseData_1 = {
+                                                        jsonrpc: "2.0",
+                                                        error: { code: -32601, message: "Wrong method format" },
+                                                        id: jsonRpcRequest.id
+                                                    };
                                                     response.end(responseData_1);
                                                     return [2 /*return*/];
                                                 }
                                                 className = components[0], method = components[1];
                                                 console.log("Receive call on function ".concat(jsonRpcRequest.method));
                                                 handler = handlers.find(function (handler) {
-                                                    return handler.className === className &&
-                                                        handler.functionName === method;
+                                                    return handler.className === className && handler.functionName === method;
                                                 });
                                                 if (!handler) {
                                                     response.writeHead(404);
-                                                    responseData_2 = { "jsonrpc": "2.0", "error": { "code": -32601, "message": "Method not found" }, "id": jsonRpcRequest.id };
+                                                    responseData_2 = {
+                                                        jsonrpc: "2.0",
+                                                        error: { code: -32601, message: "Method not found" },
+                                                        id: jsonRpcRequest.id
+                                                    };
                                                     response.end(responseData_2);
                                                     return [2 /*return*/];
                                                 }
@@ -151,17 +160,26 @@ var Server = /** @class */ (function () {
                                                 return [4 /*yield*/, (_a = handler.object)[functionName].apply(_a, jsonRpcRequest.params)];
                                             case 2:
                                                 functionResponse = _b.sent();
-                                                responseData = { "jsonrpc": "2.0", "result": functionResponse, "error": null, "id": jsonRpcRequest.id };
+                                                responseData = {
+                                                    jsonrpc: "2.0",
+                                                    result: functionResponse,
+                                                    error: null,
+                                                    id: jsonRpcRequest.id
+                                                };
                                                 return [3 /*break*/, 4];
                                             case 3:
                                                 error_1 = _b.sent();
                                                 console.error("An error occured:", error_1.toString());
-                                                responseData = { "jsonrpc": "2.0", "error": { "code": -1, "message": error_1.toString() }, "id": jsonRpcRequest.id };
+                                                responseData = {
+                                                    jsonrpc: "2.0",
+                                                    error: { code: -1, message: error_1.toString() },
+                                                    id: jsonRpcRequest.id
+                                                };
                                                 return [3 /*break*/, 4];
                                             case 4:
-                                                response.setHeader('Access-Control-Allow-Origin', '*');
-                                                response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-                                                response.setHeader('Access-Control-Allow-Methods', 'POST');
+                                                response.setHeader("Access-Control-Allow-Origin", "*");
+                                                response.setHeader("Access-Control-Allow-Headers", "Content-Type");
+                                                response.setHeader("Access-Control-Allow-Methods", "POST");
                                                 response.writeHead(200);
                                                 response.end(JSON.stringify(responseData));
                                                 return [2 /*return*/];
@@ -174,13 +192,30 @@ var Server = /** @class */ (function () {
                     });
                 };
                 server = http_1.default.createServer(requestListener);
-                console.log('Functions registered:');
+                console.log("Functions registered:");
                 handlers.forEach(function (handler) {
                     console.log("  - ".concat(handler.className, ".").concat(handler.functionName));
                 });
-                console.log('');
-                console.log('Listening for requests...');
+                console.log("");
+                console.log("Listening for requests...");
                 server.listen(8083);
+                console.log("Server started");
+                cwd = process.cwd();
+                console.log("Watching for changes in", cwd);
+                watchPaths = [path_1.default.join(cwd, "/**/*.js")];
+                ignoredPaths = "**/node_modules/*";
+                console.log("watchPaths", watchPaths);
+                startWatching = function () {
+                    chokidar_1.default
+                        .watch(watchPaths, {
+                        ignored: ignoredPaths,
+                        ignoreInitial: true
+                    })
+                        .on("all", function (event, path) {
+                        console.log("Change detected in", path);
+                    });
+                };
+                startWatching();
                 return [2 /*return*/];
             });
         });
