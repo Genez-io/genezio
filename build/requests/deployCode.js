@@ -74,6 +74,9 @@ function deployCode(bundledCode, filePath, extension, runtime) {
                         })];
                 case 2:
                     response = _c.sent();
+                    if (response.data.status === "error") {
+                        throw new Error(response.data.message);
+                    }
                     if ((_b = (_a = response.data) === null || _a === void 0 ? void 0 : _a.error) === null || _b === void 0 ? void 0 : _b.message) {
                         throw new Error(response.data.error.message);
                     }

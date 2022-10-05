@@ -30,6 +30,10 @@ export default async function deployCode(bundledCode: BundledCode, filePath: str
         throw error
     });
 
+    if (response.data.status === "error") {
+        throw new Error(response.data.message)
+    }
+
     if (response.data?.error?.message) {
         throw new Error(response.data.error.message)
     }
