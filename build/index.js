@@ -41,6 +41,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var commander_1 = require("commander");
+var keytar_1 = __importDefault(require("keytar"));
 var commands_1 = require("./commands");
 var localEnvironment_1 = __importDefault(require("./localEnvironment"));
 var program = new commander_1.Command();
@@ -60,6 +61,19 @@ program.command('init')
         }
     });
 }); });
+program.command('login')
+    .argument('<code>', 'The authentication code.')
+    .description('Authenticate with Genezio platform to deploy your code.')
+    .action(function (code) { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, keytar_1.default.setPassword("genezio", "genezio", code)];
+            case 1:
+                _a.sent();
+                return [2 /*return*/];
+        }
+    });
+}); });
 program.command('deploy')
     .description('Deploy the functions mentioned in the genezio.yaml file to Genezio infrastructure.')
     .action(function () { return __awaiter(void 0, void 0, void 0, function () {
@@ -67,7 +81,7 @@ program.command('deploy')
         switch (_a.label) {
             case 0: return [4 /*yield*/, (0, commands_1.deployFunctions)()
                     .catch(function (error) {
-                    console.error(error);
+                    console.error(error.message);
                 })];
             case 1:
                 _a.sent();

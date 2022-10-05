@@ -42,15 +42,23 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var path_1 = __importDefault(require("path"));
 var form_data_1 = __importDefault(require("form-data"));
 var fs_1 = __importDefault(require("fs"));
+var keytar_1 = __importDefault(require("keytar"));
 var axios_1 = __importDefault(require("axios"));
 function deployCode(bundledCode, filePath, extension, runtime) {
     var _a, _b;
     return __awaiter(this, void 0, void 0, function () {
-        var form, response;
+        var form, token, response;
         return __generator(this, function (_c) {
             switch (_c.label) {
                 case 0:
                     form = new form_data_1.default();
+                    return [4 /*yield*/, keytar_1.default.getPassword("genezio", "genezio")];
+                case 1:
+                    token = _c.sent();
+                    if (!token) {
+                        throw new Error("We are currently in the early access phase of our project. Run 'genezio login <code>' before you deploy your function. If you don't have a code, contact us at contact@genez.io.");
+                    }
+                    form.append("token", token);
                     form.append('bundledFile', fs_1.default.createReadStream(bundledCode.path));
                     form.append('file', fs_1.default.createReadStream(filePath));
                     form.append('filename', path_1.default.parse(filePath).name);
@@ -64,7 +72,7 @@ function deployCode(bundledCode, filePath, extension, runtime) {
                         }).catch(function (error) {
                             throw error;
                         })];
-                case 1:
+                case 2:
                     response = _c.sent();
                     if ((_b = (_a = response.data) === null || _a === void 0 ? void 0 : _a.error) === null || _b === void 0 ? void 0 : _b.message) {
                         throw new Error(response.data.error.message);

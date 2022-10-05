@@ -1,6 +1,7 @@
 #! /usr/bin/env node
 
 import { Command } from 'commander'
+import keytar from 'keytar'
 import { deployFunctions, generateSdks, init } from './commands'
 import Server from './localEnvironment'
 
@@ -17,12 +18,19 @@ program.command('init')
     await init()
   });
 
+program.command('login')
+  .argument('<code>', 'The authentication code.')
+  .description('Authenticate with Genezio platform to deploy your code.')
+  .action(async (code) => {
+    await keytar.setPassword("genezio", "genezio", code);
+  });
+
 program.command('deploy')
   .description('Deploy the functions mentioned in the genezio.yaml file to Genezio infrastructure.')
   .action(async () => {
     await deployFunctions()
       .catch((error: Error) => {
-        console.error(error);
+        console.error(error.message);
       });
   });
 

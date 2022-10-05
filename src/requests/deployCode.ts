@@ -1,12 +1,20 @@
 import path from 'path'
 import FormData from 'form-data'
 import fs from 'fs'
+import keytar from 'keytar'
 import axios from 'axios'
 import BundledCode from '../models/bundledCode';
 
 
 export default async function deployCode(bundledCode: BundledCode, filePath: string, extension: string, runtime: string) {
     var form = new FormData()
+    const token = await keytar.getPassword("genezio", "genezio")
+
+    if (!token) {
+        throw new Error("We are currently in the early access phase of our project. Run 'genezio login <code>' before you deploy your function. If you don't have a code, contact us at contact@genez.io.")
+    }
+
+    form.append("token", token)
     form.append('bundledFile', fs.createReadStream(bundledCode.path))
     form.append('file', fs.createReadStream(filePath))
     form.append('filename', path.parse(filePath).name)
