@@ -3,8 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const UserModel = require("./models/user");
 const ActiveSession = require("./models/activeSession");
-require("dotenv").config();
-
+const MONGO_DB_URI = require("./helper").MONGO_DB_URI;
 export class User {
   constructor() {
     this.connect();
@@ -12,7 +11,7 @@ export class User {
 
   // connect mongoose to mongodb
   connect() {
-    mongoose.connect(process.env.MONGO_DB_URI);
+    mongoose.connect(MONGO_DB_URI);
   }
 
   // create a new user
@@ -22,7 +21,7 @@ export class User {
         if (user) {
           resolve({ success: false, msg: "User already exists" });
         } else {
-          bcrypt.genSalt(10, function (err, salt) {
+          bcrypt.genSalt(2, function (err, salt) {
             bcrypt.hash(password, salt, async function (err, hash) {
               await UserModel.create({
                 name: name,

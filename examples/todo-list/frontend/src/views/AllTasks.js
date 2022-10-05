@@ -16,7 +16,6 @@ import { Task } from "../backend-sdk/task.sdk.js";
 import { Env, Remote } from "../backend-sdk/remote.js";
 import { useNavigate } from "react-router-dom";
 
-Remote.env = Env.Local;
 
 export default (props) => {
   const navigate = useNavigate();

@@ -1,4 +1,4 @@
-ActiveSession = require("./models/activeSession");
+const ActiveSession = require("./models/activeSession");
 
 async function reqAuth(token) {
   const session = await ActiveSession.find({ token: token });
@@ -10,5 +10,6 @@ async function reqAuth(token) {
 }
 
 module.exports = {
-  reqAuth: reqAuth
+  reqAuth: reqAuth,
+  MONGO_DB_URI: "mongodb+srv://admincluster:pBOmjY56WaN4pSer@cluster0.l5yageu.mongodb.net/?retryWrites=true&w=majority"
 };

@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { User } from "../backend-sdk/user.sdk.js";
 import { Env, Remote } from "../backend-sdk/remote.js"
 import { useNavigate } from 'react-router-dom';
-Remote.env = Env.Local
 
 const re =
   /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;

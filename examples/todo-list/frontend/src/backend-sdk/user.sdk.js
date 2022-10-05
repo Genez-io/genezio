@@ -1,12 +1,8 @@
 import { Env, Remote } from "./remote.js"
 
 export class User {
-    static remote = new Remote(undefined)
+    static remote = new Remote("https://a4wvcqeztsbxgngodjkbwwiizm0xqgbq.lambda-url.us-east-1.on.aws/")
 
-    static async constructor() {
-        return User.remote.call("User.constructor")  
-    }
-    
     static async connect() {
         return User.remote.call("User.connect")  
     }

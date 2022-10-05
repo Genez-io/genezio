@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const reqAuth = require("./helper").reqAuth;
 const TaskModel = require("./models/task");
-require("dotenv").config();
+const MONGO_DB_URI = require("./helper").MONGO_DB_URI;
 
 export class Task {
   constructor() {
@@ -10,7 +10,7 @@ export class Task {
 
   // connect mongoose to mongodb
   connect() {
-    mongoose.connect(process.env.MONGO_DB_URI);
+    mongoose.connect(MONGO_DB_URI);
   }
 
   // get all tasks of a user
