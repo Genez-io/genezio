@@ -15,7 +15,7 @@ export default (props) => {
     }
 
     async function checkToken() {
-      const res = await User.checkToken(localStorage.getItem("apiToken"));
+      const res = await User.checkSession(localStorage.getItem("apiToken"));
       if (!res.success) {
         localStorage.clear();
         navigate("/login");

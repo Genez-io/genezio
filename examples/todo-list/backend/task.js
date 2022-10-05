@@ -29,12 +29,12 @@ export class Task {
     if (!authObject.success) {
       return authObject;
     }
-    await TaskModel.create({
+    const task = await TaskModel.create({
       title: title,
       ownerId: ownerId
     });
 
-    return { success: true, task: { title: title, ownerId: ownerId } };
+    return { success: true, task: { title: title, ownerId: ownerId, _id: task._id.toString() } };
   }
 
   // update a task
