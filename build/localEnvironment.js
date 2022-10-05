@@ -46,6 +46,7 @@ var file_1 = require("./utils/file");
 var yaml_1 = require("yaml");
 var chokidar_1 = __importDefault(require("chokidar"));
 var path_1 = __importDefault(require("path"));
+var http_terminator_1 = require("http-terminator");
 var Server = /** @class */ (function () {
     function Server() {
     }
@@ -98,12 +99,13 @@ var Server = /** @class */ (function () {
     Server.prototype.start = function (handlers) {
         return __awaiter(this, void 0, void 0, function () {
             var requestListener, server, cwd, watchPaths, ignoredPaths, startWatching;
+            var _this = this;
             return __generator(this, function (_a) {
                 if (handlers.length === 0) {
                     console.log("No class registered. Make sure that you have set the classes that you want to deploy in the genezio.yaml configuration file.");
                     return [2 /*return*/];
                 }
-                requestListener = function (request, response) {
+                requestListener = function (request, response, handlers) {
                     return __awaiter(this, void 0, void 0, function () {
                         var body;
                         return __generator(this, function (_a) {
@@ -191,7 +193,9 @@ var Server = /** @class */ (function () {
                         });
                     });
                 };
-                server = http_1.default.createServer(requestListener);
+                server = http_1.default.createServer(function (req, res) {
+                    return requestListener(req, res, handlers);
+                });
                 console.log("Functions registered:");
                 handlers.forEach(function (handler) {
                     console.log("  - ".concat(handler.className, ".").concat(handler.functionName));
@@ -199,21 +203,46 @@ var Server = /** @class */ (function () {
                 console.log("");
                 console.log("Listening for requests...");
                 server.listen(8083);
-                console.log("Server started");
                 cwd = process.cwd();
-                console.log("Watching for changes in", cwd);
                 watchPaths = [path_1.default.join(cwd, "/**/*.js")];
                 ignoredPaths = "**/node_modules/*";
-                console.log("watchPaths", watchPaths);
                 startWatching = function () {
                     chokidar_1.default
                         .watch(watchPaths, {
                         ignored: ignoredPaths,
                         ignoreInitial: true
                     })
-                        .on("all", function (event, path) {
-                        console.log("Change detected in", path);
-                    });
+                        .on("all", function (event, path) { return __awaiter(_this, void 0, void 0, function () {
+                        var httpTerminator, newHandlers;
+                        return __generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0:
+                                    console.log('\x1b[36m%s\x1b[0m', "Change detected, reloading...");
+                                    httpTerminator = (0, http_terminator_1.createHttpTerminator)({
+                                        server: server
+                                    });
+                                    return [4 /*yield*/, httpTerminator.terminate()];
+                                case 1:
+                                    _a.sent();
+                                    console.log("Server stopped");
+                                    return [4 /*yield*/, this.generateHandlersFromFiles()];
+                                case 2:
+                                    newHandlers = _a.sent();
+                                    server = http_1.default.createServer(function (req, res) {
+                                        return requestListener(req, res, newHandlers);
+                                    });
+                                    console.log("Functions registered:");
+                                    newHandlers.forEach(function (handler) {
+                                        console.log("  - ".concat(handler.className, ".").concat(handler.functionName));
+                                    });
+                                    console.log("");
+                                    console.log("Listening for requests...");
+                                    server.listen(8083);
+                                    console.log("Server started");
+                                    return [2 /*return*/];
+                            }
+                        });
+                    }); });
                 };
                 startWatching();
                 return [2 /*return*/];

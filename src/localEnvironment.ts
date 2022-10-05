@@ -5,6 +5,7 @@ import { readUTF8File } from "./utils/file";
 import { parse } from "yaml";
 import chokidar from "chokidar";
 import path from "path";
+import { createHttpTerminator } from "http-terminator";
 
 export default class Server {
   async generateHandlersFromFiles(): Promise<Handler[]> {
@@ -117,8 +118,9 @@ export default class Server {
       });
     };
 
-    
-    const server = http.createServer((req, res) => requestListener(req, res, handlers));
+    let server = http.createServer((req, res) =>
+      requestListener(req, res, handlers)
+    );
 
     console.log("Functions registered:");
     handlers.forEach((handler) => {
@@ -128,17 +130,9 @@ export default class Server {
     console.log("Listening for requests...");
     server.listen(8083);
 
-
-
-    console.log("Server started");
-
     const cwd = process.cwd();
-    console.log("Watching for changes in", cwd);
-
     const watchPaths = [path.join(cwd, "/**/*.js")];
     const ignoredPaths = "**/node_modules/*";
-
-    console.log("watchPaths", watchPaths);
 
     const startWatching = () => {
       chokidar
@@ -146,8 +140,27 @@ export default class Server {
           ignored: ignoredPaths,
           ignoreInitial: true
         })
-        .on("all", (event, path) => {
-          console.log("Change detected in", path);
+        .on("all", async (event, path) => {
+          console.log('\x1b[36m%s\x1b[0m', "Change detected, reloading..."); 
+          const httpTerminator = createHttpTerminator({
+            server
+          });
+          await httpTerminator.terminate();
+          console.log("Server stopped");
+          const newHandlers = await this.generateHandlersFromFiles();
+          server = http.createServer((req, res) =>
+            requestListener(req, res, newHandlers)
+          );
+
+          console.log("Functions registered:");
+          newHandlers.forEach((handler) => {
+            console.log(`  - ${handler.className}.${handler.functionName}`);
+          });
+          console.log("");
+          console.log("Listening for requests...");
+          server.listen(8083);
+
+          console.log("Server started");
         });
     };
 
