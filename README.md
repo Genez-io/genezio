@@ -67,6 +67,7 @@ Check out the `./examples/` folder for more examples.
 
 You can also test your code locally by running the `genezio local` command. This will spawn a local server that can be used for testing. To change the environment that your SDK is pointing to just run `genezio generateSdk local`. You can switch back to production environment by running `genezio generateSdk production` or `genezio deploy`.
 
+Check our [examples](https://github.com/Genez-io/genezio/tree/master/examples)!
 
 ## Troubleshooting
 
