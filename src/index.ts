@@ -1,9 +1,9 @@
 #! /usr/bin/env node
 
 import { Command } from 'commander'
-import keytar from 'keytar'
 import { deployFunctions, generateSdks, init } from './commands'
 import Server from './localEnvironment'
+import { writeToken } from './utils/file';
 
 const program = new Command();
 
@@ -22,7 +22,7 @@ program.command('login')
   .argument('<code>', 'The authentication code.')
   .description('Authenticate with Genezio platform to deploy your code.')
   .action(async (code) => {
-    await keytar.setPassword("genezio", "genezio", code);
+    writeToken(code)
   });
 
 program.command('deploy')
@@ -44,13 +44,13 @@ program.command('generateSdk')
           .then(() => {
             console.log('Your SDK was successfully generated!')
           }).catch((error: Error) => {
-            console.error(`${error}`);
+            console.error(`${error.message}`);
           })
         break;
       case "production":
         await deployFunctions()
         .catch((error: Error) => {
-          console.error(error);
+          console.error(`${error.message}`);
         });
         break;
       default:

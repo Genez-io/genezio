@@ -42,8 +42,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var path_1 = __importDefault(require("path"));
 var form_data_1 = __importDefault(require("form-data"));
 var fs_1 = __importDefault(require("fs"));
-var keytar_1 = __importDefault(require("keytar"));
 var axios_1 = __importDefault(require("axios"));
+var file_1 = require("../utils/file");
 function deployCode(bundledCode, filePath, extension, runtime) {
     var _a, _b;
     return __awaiter(this, void 0, void 0, function () {
@@ -52,7 +52,7 @@ function deployCode(bundledCode, filePath, extension, runtime) {
             switch (_c.label) {
                 case 0:
                     form = new form_data_1.default();
-                    return [4 /*yield*/, keytar_1.default.getPassword("genezio", "genezio")];
+                    return [4 /*yield*/, (0, file_1.readToken)().catch(function () { return undefined; })];
                 case 1:
                     token = _c.sent();
                     if (!token) {

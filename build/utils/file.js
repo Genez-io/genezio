@@ -39,7 +39,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.writeToFile = exports.readUTF8File = exports.getFileDetails = exports.createTemporaryFolder = exports.fileExists = void 0;
+exports.readToken = exports.writeToken = exports.writeToFile = exports.readUTF8File = exports.getFileDetails = exports.createTemporaryFolder = exports.fileExists = void 0;
 var assert_1 = require("assert");
 var fs_1 = __importDefault(require("fs"));
 var os_1 = __importDefault(require("os"));
@@ -109,3 +109,26 @@ function writeToFile(folderPath, filename, content, createPathIfNeeded) {
     });
 }
 exports.writeToFile = writeToFile;
+function writeToken(token) {
+    return __awaiter(this, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            return [2 /*return*/, writeToFile(os_1.default.homedir(), ".genezio", token, true)];
+        });
+    });
+}
+exports.writeToken = writeToken;
+function readToken() {
+    return __awaiter(this, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            return [2 /*return*/, new Promise(function (resolve, reject) {
+                    fs_1.default.readFile(path_1.default.join(os_1.default.homedir(), ".genezio"), 'utf8', function (error, data) {
+                        if (error) {
+                            reject(error);
+                        }
+                        resolve(data);
+                    });
+                })];
+        });
+    });
+}
+exports.readToken = readToken;

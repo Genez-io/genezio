@@ -41,9 +41,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var commander_1 = require("commander");
-var keytar_1 = __importDefault(require("keytar"));
 var commands_1 = require("./commands");
 var localEnvironment_1 = __importDefault(require("./localEnvironment"));
+var file_1 = require("./utils/file");
 var program = new commander_1.Command();
 program
     .name('genezio')
@@ -66,12 +66,8 @@ program.command('login')
     .description('Authenticate with Genezio platform to deploy your code.')
     .action(function (code) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0: return [4 /*yield*/, keytar_1.default.setPassword("genezio", "genezio", code)];
-            case 1:
-                _a.sent();
-                return [2 /*return*/];
-        }
+        (0, file_1.writeToken)(code);
+        return [2 /*return*/];
     });
 }); });
 program.command('deploy')
@@ -107,14 +103,14 @@ program.command('generateSdk')
                     .then(function () {
                     console.log('Your SDK was successfully generated!');
                 }).catch(function (error) {
-                    console.error("".concat(error));
+                    console.error("".concat(error.message));
                 })];
             case 2:
                 _b.sent();
                 return [3 /*break*/, 6];
             case 3: return [4 /*yield*/, (0, commands_1.deployFunctions)()
                     .catch(function (error) {
-                    console.error(error);
+                    console.error("".concat(error.message));
                 })];
             case 4:
                 _b.sent();
