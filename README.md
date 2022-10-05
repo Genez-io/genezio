@@ -79,6 +79,10 @@ import { Remote, Env } from "./sdk/remote.js"
 
 ```
 
+## Troubleshooting
+
+* If you see the following error `SyntaxError: Cannot use import statement outside a module` add `"type": "module"` in package.json.
+
 ## Knwown issues
 
 * Genezio currently support only Javascript. We plan to add support for more languages soon.
