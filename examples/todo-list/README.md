@@ -6,7 +6,7 @@ This is an example of a todo application with users, auth and tasks that uses Re
 
 1. Run `npm install` in the `backend/` folder to install the dependencies.
 2. Run `npm install` in the `frontend/` folder to install the dependencies.
-2. Change in the `helper.js` file the variable `MONGO_DB_URI` to point to your MongoDB. We recommend the free tier from MongoDB Atlas (https://www.mongodb.com/atlas/database).
+2. Change in the `backend/helper.js` file the variable `MONGO_DB_URI` to point to your MongoDB. We recommend the free tier from MongoDB Atlas (https://www.mongodb.com/atlas/database).
 
 ## Run the example locally
 
