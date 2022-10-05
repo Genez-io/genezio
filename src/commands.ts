@@ -103,16 +103,16 @@ export async function deployFunctions() {
     functionUrlForFilePath[path.parse(filePath).name] = functionUrl
   }
 
-  await generateSdks(functionUrlForFilePath)
+  await generateSdks("production", functionUrlForFilePath)
 
   console.log('Your code was deployed and the SDK was successfully generated!')
 }
 
-export async function generateSdks(urlMap?: any) {
+export async function generateSdks(env: string, urlMap?: any) {
   const configurationFileContentUTF8 = await readUTF8File('./genezio.yaml')
   const configurationFileContent = await parse(configurationFileContentUTF8);
   const outputPath = configurationFileContent.sdk.path
-  const sdk = await generateSdk(configurationFileContent.classPaths, configurationFileContent.sdk.runtime, urlMap)
+  const sdk = await generateSdk(configurationFileContent.classPaths, configurationFileContent.sdk.runtime, env, urlMap)
 
   if (sdk.remoteFile) {
     await writeToFile(outputPath, 'remote.js', sdk.remoteFile, true)
@@ -123,7 +123,7 @@ export async function generateSdks(urlMap?: any) {
 
   for (const classFile of sdk.classFiles) {
     await writeToFile(outputPath, `${classFile.filename}.sdk.js`, classFile.implementation, true)
-     .catch((error) => {
+      .catch((error) => {
         console.error(error.toString())
       })
   }

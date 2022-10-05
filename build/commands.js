@@ -167,7 +167,7 @@ function deployFunctions() {
                 case 5:
                     _i++;
                     return [3 /*break*/, 3];
-                case 6: return [4 /*yield*/, generateSdks(functionUrlForFilePath)];
+                case 6: return [4 /*yield*/, generateSdks("production", functionUrlForFilePath)];
                 case 7:
                     _b.sent();
                     console.log('Your code was deployed and the SDK was successfully generated!');
@@ -177,7 +177,7 @@ function deployFunctions() {
     });
 }
 exports.deployFunctions = deployFunctions;
-function generateSdks(urlMap) {
+function generateSdks(env, urlMap) {
     return __awaiter(this, void 0, void 0, function () {
         var configurationFileContentUTF8, configurationFileContent, outputPath, sdk, _i, _a, classFile;
         return __generator(this, function (_b) {
@@ -189,7 +189,7 @@ function generateSdks(urlMap) {
                 case 2:
                     configurationFileContent = _b.sent();
                     outputPath = configurationFileContent.sdk.path;
-                    return [4 /*yield*/, (0, generateSdk_1.default)(configurationFileContent.classPaths, configurationFileContent.sdk.runtime, urlMap)];
+                    return [4 /*yield*/, (0, generateSdk_1.default)(configurationFileContent.classPaths, configurationFileContent.sdk.runtime, env, urlMap)];
                 case 3:
                     sdk = _b.sent();
                     if (!sdk.remoteFile) return [3 /*break*/, 5];

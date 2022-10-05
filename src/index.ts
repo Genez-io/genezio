@@ -35,15 +35,27 @@ program.command('deploy')
   });
 
 program.command('generateSdk')
+  .argument('<env>', 'The environment used to make requests. Available options: "local" or "production".')
   .description('Generate the SDK.')
-  .action(async () => {
-    await generateSdks()
-      .catch((error: Error) => {
-        console.error(`${error}`);
-      })
-      .then(() => {
-        console.log('Your SDK was successfully generated!')
-      });
+  .action(async (env) => {
+    switch (env) {
+      case "local":
+        await generateSdks(env)
+          .then(() => {
+            console.log('Your SDK was successfully generated!')
+          }).catch((error: Error) => {
+            console.error(`${error}`);
+          })
+        break;
+      case "production":
+        await deployFunctions()
+        .catch((error: Error) => {
+          console.error(error);
+        });
+        break;
+      default:
+        console.error(`Wrong env value ${env}. Available options: "local" or "production".`)
+    }
   });
 
 program.command('local')
@@ -53,7 +65,7 @@ program.command('local')
       const server = new Server()
       const handlers = await server.generateHandlersFromFiles()
       await server.start(handlers)
-    } catch(error) {
+    } catch (error) {
       console.error(`${error}`);
     }
   });

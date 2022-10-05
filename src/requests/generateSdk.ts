@@ -5,9 +5,10 @@ import path from "path"
 import { getFileDetails } from '../utils/file'
 
 
-export default async function generateSdk(filePaths: string[], runtime: string, urlMap?: any) {
+export default async function generateSdk(filePaths: string[], runtime: string, env: string, urlMap?: any) {
     var form = new FormData()
     form.append("runtime", runtime)
+    form.append("env", env)
 
     if (urlMap) {
         form.append("urlMap", JSON.stringify(urlMap))

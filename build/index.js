@@ -90,20 +90,39 @@ program.command('deploy')
     });
 }); });
 program.command('generateSdk')
+    .argument('<env>', 'The environment used to make requests. Available options: "local" or "production".')
     .description('Generate the SDK.')
-    .action(function () { return __awaiter(void 0, void 0, void 0, function () {
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0: return [4 /*yield*/, (0, commands_1.generateSdks)()
-                    .catch(function (error) {
-                    console.error("".concat(error));
-                })
+    .action(function (env) { return __awaiter(void 0, void 0, void 0, function () {
+    var _a;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                _a = env;
+                switch (_a) {
+                    case "local": return [3 /*break*/, 1];
+                    case "production": return [3 /*break*/, 3];
+                }
+                return [3 /*break*/, 5];
+            case 1: return [4 /*yield*/, (0, commands_1.generateSdks)(env)
                     .then(function () {
                     console.log('Your SDK was successfully generated!');
+                }).catch(function (error) {
+                    console.error("".concat(error));
                 })];
-            case 1:
-                _a.sent();
-                return [2 /*return*/];
+            case 2:
+                _b.sent();
+                return [3 /*break*/, 6];
+            case 3: return [4 /*yield*/, (0, commands_1.deployFunctions)()
+                    .catch(function (error) {
+                    console.error(error);
+                })];
+            case 4:
+                _b.sent();
+                return [3 /*break*/, 6];
+            case 5:
+                console.error("Wrong env value ".concat(env, ". Available options: \"local\" or \"production\"."));
+                _b.label = 6;
+            case 6: return [2 /*return*/];
         }
     });
 }); });

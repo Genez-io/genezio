@@ -43,7 +43,7 @@ var form_data_1 = __importDefault(require("form-data"));
 var fs_1 = __importDefault(require("fs"));
 var axios_1 = __importDefault(require("axios"));
 var file_1 = require("../utils/file");
-function generateSdk(filePaths, runtime, urlMap) {
+function generateSdk(filePaths, runtime, env, urlMap) {
     var _a, _b;
     return __awaiter(this, void 0, void 0, function () {
         var form, response;
@@ -52,6 +52,7 @@ function generateSdk(filePaths, runtime, urlMap) {
                 case 0:
                     form = new form_data_1.default();
                     form.append("runtime", runtime);
+                    form.append("env", env);
                     if (urlMap) {
                         form.append("urlMap", JSON.stringify(urlMap));
                     }
