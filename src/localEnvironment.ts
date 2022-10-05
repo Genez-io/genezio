@@ -16,7 +16,7 @@ export default class Server {
             const module = require(path)
             const object = new module.genezio[className]()
             functionNames.forEach((functionName) => {
-                handlers.push(new Handler(functionName, object, functionName))
+                handlers.push(new Handler(path, object, className, functionName))
             });
         }
 
@@ -45,8 +45,22 @@ export default class Server {
 
             request.on('end', async function () {
                 const jsonRpcRequest: any = JSON.parse(body);
+                const components = jsonRpcRequest.method.split(".");
+
+                if (components.length !== 2) {
+                    response.writeHead(404);
+                    const responseData = { "jsonrpc": "2.0", "error": { "code": -32601, "message": "Wrong method format" }, "id": jsonRpcRequest.id }
+                    response.end(responseData);
+                    return;
+                }
+
+                const [ className, method ] = components
+
                 console.log(`Receive call on function ${jsonRpcRequest.method}`)
-                const handler = handlers.find((handler) => handler.path === jsonRpcRequest.method.split(".")[1])
+                const handler = handlers.find((handler) =>
+                    handler.className === className &&
+                    handler.functionName === method
+                )
 
                 if (!handler) {
                     response.writeHead(404);
@@ -78,7 +92,7 @@ export default class Server {
 
         console.log('Functions registered:')
         handlers.forEach((handler) => {
-            console.log(`  - ${handler.path}`)
+            console.log(`  - ${handler.className}.${handler.functionName}`)
         })
         console.log('')
         console.log('Listening for requests...')

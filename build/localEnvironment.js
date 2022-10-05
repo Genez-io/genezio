@@ -70,7 +70,7 @@ var Server = /** @class */ (function () {
                                         module_1 = require(path);
                                         object = new module_1.genezio[className]();
                                         functionNames.forEach(function (functionName) {
-                                            handlers.push(new handler_1.default(functionName, object, functionName));
+                                            handlers.push(new handler_1.default(path, object, className, functionName));
                                         });
                                         return [2 /*return*/];
                                 }
@@ -111,24 +111,36 @@ var Server = /** @class */ (function () {
                                 response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
                                 response.setHeader('Access-Control-Allow-Methods', 'POST');
                                 response.end();
+                                return [2 /*return*/];
                             }
                             request.on('data', function (data) {
                                 body += data;
                             });
                             request.on('end', function () {
                                 return __awaiter(this, void 0, void 0, function () {
-                                    var jsonRpcRequest, handler, responseData_1, functionName, responseData, functionResponse, error_1;
+                                    var jsonRpcRequest, components, responseData_1, className, method, handler, responseData_2, functionName, responseData, functionResponse, error_1;
                                     var _a;
                                     return __generator(this, function (_b) {
                                         switch (_b.label) {
                                             case 0:
                                                 jsonRpcRequest = JSON.parse(body);
+                                                components = jsonRpcRequest.method.split(".");
+                                                if (components.length !== 2) {
+                                                    response.writeHead(404);
+                                                    responseData_1 = { "jsonrpc": "2.0", "error": { "code": -32601, "message": "Wrong method format" }, "id": jsonRpcRequest.id };
+                                                    response.end(responseData_1);
+                                                    return [2 /*return*/];
+                                                }
+                                                className = components[0], method = components[1];
                                                 console.log("Receive call on function ".concat(jsonRpcRequest.method));
-                                                handler = handlers.find(function (handler) { return handler.path === jsonRpcRequest.method.split(".")[1]; });
+                                                handler = handlers.find(function (handler) {
+                                                    return handler.className === className &&
+                                                        handler.functionName === method;
+                                                });
                                                 if (!handler) {
                                                     response.writeHead(404);
-                                                    responseData_1 = { "jsonrpc": "2.0", "error": { "code": -32601, "message": "Method not found" }, "id": jsonRpcRequest.id };
-                                                    response.end(responseData_1);
+                                                    responseData_2 = { "jsonrpc": "2.0", "error": { "code": -32601, "message": "Method not found" }, "id": jsonRpcRequest.id };
+                                                    response.end(responseData_2);
                                                     return [2 /*return*/];
                                                 }
                                                 functionName = handler.functionName;
@@ -164,7 +176,7 @@ var Server = /** @class */ (function () {
                 server = http_1.default.createServer(requestListener);
                 console.log('Functions registered:');
                 handlers.forEach(function (handler) {
-                    console.log("  - ".concat(handler.path));
+                    console.log("  - ".concat(handler.className, ".").concat(handler.functionName));
                 });
                 console.log('');
                 console.log('Listening for requests...');
