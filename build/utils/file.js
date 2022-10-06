@@ -84,7 +84,7 @@ function getFileDetails(filePath) {
 exports.getFileDetails = getFileDetails;
 function readUTF8File(filePath) {
     return new Promise(function (resolve, reject) {
-        fs_1.default.readFile('./genezio.yaml', 'utf8', function (error, data) {
+        fs_1.default.readFile(filePath, 'utf8', function (error, data) {
             if (error) {
                 reject(error);
             }
