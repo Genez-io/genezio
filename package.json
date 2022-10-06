@@ -17,6 +17,10 @@
     "webpack": "^5.74.0",
     "yaml": "^2.1.1"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Genez-io/genezio.git"
+  },
   "bin": {
     "genezio": "./build/index.js"
   },
