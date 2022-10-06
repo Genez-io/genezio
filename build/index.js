@@ -42,6 +42,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var commander_1 = require("commander");
 var commands_1 = require("./commands");
+var file_1 = require("./utils/file");
 var localEnvironment_1 = __importDefault(require("./localEnvironment"));
 var chokidar_1 = __importDefault(require("chokidar"));
 var path_1 = __importDefault(require("path"));
@@ -150,7 +151,6 @@ program
             cwd = process.cwd();
             watchPaths_1 = [path_1.default.join(cwd, "/**/*")];
             ignoredPaths_1 = "**/node_modules/*";
-            console.log("Watching for changes in the classes...");
             startWatching = function () {
                 chokidar_1.default
                     .watch(watchPaths_1, {
@@ -161,6 +161,7 @@ program
                     return __generator(this, function (_a) {
                         switch (_a.label) {
                             case 0:
+                                console.clear();
                                 console.log("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
                                 return [4 /*yield*/, server_1.terminate()];
                             case 1:
