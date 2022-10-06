@@ -1,12 +1,11 @@
 #! /usr/bin/env node
 
 import { Command } from "commander";
-import keytar from "keytar";
 import { deployFunctions, generateSdks, init } from "./commands";
+import { writeToken } from "./utils/file";
 import Server from "./localEnvironment";
 import chokidar from "chokidar";
 import path from "path";
-import { createHttpTerminator } from "http-terminator";
 
 const program = new Command();
 
