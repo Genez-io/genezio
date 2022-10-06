@@ -44,11 +44,10 @@ var http_1 = __importDefault(require("http"));
 var handler_1 = __importDefault(require("./models/handler"));
 var file_1 = require("./utils/file");
 var yaml_1 = require("yaml");
-var chokidar_1 = __importDefault(require("chokidar"));
-var path_1 = __importDefault(require("path"));
 var http_terminator_1 = require("http-terminator");
 var Server = /** @class */ (function () {
     function Server() {
+        this.server = http_1.default.createServer();
     }
     Server.prototype.generateHandlersFromFiles = function () {
         return __awaiter(this, void 0, void 0, function () {
@@ -64,16 +63,16 @@ var Server = /** @class */ (function () {
                     case 2:
                         configurationFileContent = _b.sent();
                         _loop_1 = function (file) {
-                            var _c, path_2, className, functionNames, module_1, object;
+                            var _c, path_1, className, functionNames, module_1, object;
                             return __generator(this, function (_d) {
                                 switch (_d.label) {
                                     case 0: return [4 /*yield*/, (0, commands_1.bundleJavascriptCode)(file)];
                                     case 1:
-                                        _c = _d.sent(), path_2 = _c.path, className = _c.className, functionNames = _c.functionNames;
-                                        module_1 = require(path_2);
+                                        _c = _d.sent(), path_1 = _c.path, className = _c.className, functionNames = _c.functionNames;
+                                        module_1 = require(path_1);
                                         object = new module_1.genezio[className]();
                                         functionNames.forEach(function (functionName) {
-                                            handlers.push(new handler_1.default(path_2, object, className, functionName));
+                                            handlers.push(new handler_1.default(path_1, object, className, functionName));
                                         });
                                         return [2 /*return*/];
                                 }
@@ -98,8 +97,7 @@ var Server = /** @class */ (function () {
     };
     Server.prototype.start = function (handlers) {
         return __awaiter(this, void 0, void 0, function () {
-            var requestListener, server, cwd, watchPaths, ignoredPaths, startWatching;
-            var _this = this;
+            var requestListener;
             return __generator(this, function (_a) {
                 if (handlers.length === 0) {
                     console.log("No class registered. Make sure that you have set the classes that you want to deploy in the genezio.yaml configuration file.");
@@ -193,7 +191,7 @@ var Server = /** @class */ (function () {
                         });
                     });
                 };
-                server = http_1.default.createServer(function (req, res) {
+                this.server = http_1.default.createServer(function (req, res) {
                     return requestListener(req, res, handlers);
                 });
                 console.log("Functions registered:");
@@ -202,50 +200,23 @@ var Server = /** @class */ (function () {
                 });
                 console.log("");
                 console.log("Listening for requests...");
-                server.listen(8083);
-                cwd = process.cwd();
-                watchPaths = [path_1.default.join(cwd, "/**/*.js")];
-                ignoredPaths = "**/node_modules/*";
-                startWatching = function () {
-                    chokidar_1.default
-                        .watch(watchPaths, {
-                        ignored: ignoredPaths,
-                        ignoreInitial: true
-                    })
-                        .on("all", function (event, path) { return __awaiter(_this, void 0, void 0, function () {
-                        var httpTerminator, newHandlers;
-                        return __generator(this, function (_a) {
-                            switch (_a.label) {
-                                case 0:
-                                    console.log('\x1b[36m%s\x1b[0m', "Change detected, reloading...");
-                                    httpTerminator = (0, http_terminator_1.createHttpTerminator)({
-                                        server: server
-                                    });
-                                    return [4 /*yield*/, httpTerminator.terminate()];
-                                case 1:
-                                    _a.sent();
-                                    console.log("Server stopped");
-                                    return [4 /*yield*/, this.generateHandlersFromFiles()];
-                                case 2:
-                                    newHandlers = _a.sent();
-                                    server = http_1.default.createServer(function (req, res) {
-                                        return requestListener(req, res, newHandlers);
-                                    });
-                                    console.log("Functions registered:");
-                                    newHandlers.forEach(function (handler) {
-                                        console.log("  - ".concat(handler.className, ".").concat(handler.functionName));
-                                    });
-                                    console.log("");
-                                    console.log("Listening for requests...");
-                                    server.listen(8083);
-                                    console.log("Server started");
-                                    return [2 /*return*/];
-                            }
-                        });
-                    }); });
-                };
-                startWatching();
+                this.server.listen(8083);
                 return [2 /*return*/];
+            });
+        });
+    };
+    Server.prototype.terminate = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var httpTerminator;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        httpTerminator = (0, http_terminator_1.createHttpTerminator)({ server: this.server });
+                        return [4 /*yield*/, httpTerminator.terminate()];
+                    case 1:
+                        _a.sent();
+                        return [2 /*return*/];
+                }
             });
         });
     };

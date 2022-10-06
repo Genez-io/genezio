@@ -8,6 +8,13 @@ import path from "path";
 import { createHttpTerminator } from "http-terminator";
 
 export default class Server {
+
+	server: http.Server;
+
+	constructor() {
+		this.server = http.createServer();
+	}
+
   async generateHandlersFromFiles(): Promise<Handler[]> {
     const handlers: Handler[] = [];
     const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
@@ -118,7 +125,7 @@ export default class Server {
       });
     };
 
-    let server = http.createServer((req, res) =>
+    this.server = http.createServer((req, res) =>
       requestListener(req, res, handlers)
     );
 
@@ -128,42 +135,11 @@ export default class Server {
     });
     console.log("");
     console.log("Listening for requests...");
-    server.listen(8083);
+    this.server.listen(8083);
+  }
 
-    const cwd = process.cwd();
-    const watchPaths = [path.join(cwd, "/**/*.js")];
-    const ignoredPaths = "**/node_modules/*";
-
-    const startWatching = () => {
-      chokidar
-        .watch(watchPaths, {
-          ignored: ignoredPaths,
-          ignoreInitial: true
-        })
-        .on("all", async (event, path) => {
-          console.log('\x1b[36m%s\x1b[0m', "Change detected, reloading..."); 
-          const httpTerminator = createHttpTerminator({
-            server
-          });
-          await httpTerminator.terminate();
-          console.log("Server stopped");
-          const newHandlers = await this.generateHandlersFromFiles();
-          server = http.createServer((req, res) =>
-            requestListener(req, res, newHandlers)
-          );
-
-          console.log("Functions registered:");
-          newHandlers.forEach((handler) => {
-            console.log(`  - ${handler.className}.${handler.functionName}`);
-          });
-          console.log("");
-          console.log("Listening for requests...");
-          server.listen(8083);
-
-          console.log("Server started");
-        });
-    };
-
-    startWatching();
+  async terminate() {
+		const httpTerminator = createHttpTerminator({ server: this.server });
+		await httpTerminator.terminate();
   }
 }
