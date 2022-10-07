@@ -1,5 +1,4 @@
 import readline from 'readline'
-import path from 'path'
 
 
 export async function askQuestion(question: string, defaultValue?: string): Promise<string> {
