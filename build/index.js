@@ -46,6 +46,8 @@ var file_1 = require("./utils/file");
 var localEnvironment_1 = __importDefault(require("./localEnvironment"));
 var chokidar_1 = __importDefault(require("chokidar"));
 var path_1 = __importDefault(require("path"));
+var open_1 = __importDefault(require("open"));
+var strings_1 = require("./utils/strings");
 var program = new commander_1.Command();
 program
     .name("genezio")
@@ -71,6 +73,8 @@ program
     .action(function (code) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         (0, file_1.writeToken)(code);
+        (0, open_1.default)("https://genez-io.github.io/");
+        console.log(strings_1.asciiCapybara);
         return [2 /*return*/];
     });
 }); });

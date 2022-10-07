@@ -6,6 +6,9 @@ import { writeToken } from "./utils/file";
 import Server from "./localEnvironment";
 import chokidar from "chokidar";
 import path from "path";
+import { CLIENT_RENEG_WINDOW } from "tls";
+import open from "open";
+import { asciiCapybara } from "./utils/strings";
 
 const program = new Command();
 
@@ -26,7 +29,9 @@ program
   .argument("<code>", "The authentication code.")
   .description("Authenticate with Genezio platform to deploy your code.")
   .action(async (code) => {
-    writeToken(code)
+    writeToken(code);
+    open("https://genez-io.github.io/");
+    console.log(asciiCapybara);
   });
 
 program
