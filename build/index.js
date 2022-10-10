@@ -42,15 +42,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var commander_1 = require("commander");
 var commands_1 = require("./commands");
-var localEnvironment_1 = __importDefault(require("./localEnvironment"));
 var file_1 = require("./utils/file");
+var localEnvironment_1 = __importDefault(require("./localEnvironment"));
+var chokidar_1 = __importDefault(require("chokidar"));
+var path_1 = __importDefault(require("path"));
 var program = new commander_1.Command();
 program
-    .name('genezio')
-    .description('CLI to interact with the Genezio infrastructure!')
-    .version('0.1.0');
-program.command('init')
-    .description('Initialize a Genezio project.')
+    .name("genezio")
+    .description("CLI to interact with the Genezio infrastructure!")
+    .version("0.1.0");
+program
+    .command("init")
+    .description("Initialize a Genezio project.")
     .action(function () { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         switch (_a.label) {
@@ -61,22 +64,23 @@ program.command('init')
         }
     });
 }); });
-program.command('login')
-    .argument('<code>', 'The authentication code.')
-    .description('Authenticate with Genezio platform to deploy your code.')
+program
+    .command("login")
+    .argument("<code>", "The authentication code.")
+    .description("Authenticate with Genezio platform to deploy your code.")
     .action(function (code) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         (0, file_1.writeToken)(code);
         return [2 /*return*/];
     });
 }); });
-program.command('deploy')
-    .description('Deploy the functions mentioned in the genezio.yaml file to Genezio infrastructure.')
+program
+    .command("deploy")
+    .description("Deploy the functions mentioned in the genezio.yaml file to Genezio infrastructure.")
     .action(function () { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4 /*yield*/, (0, commands_1.deployFunctions)()
-                    .catch(function (error) {
+            case 0: return [4 /*yield*/, (0, commands_1.deployFunctions)().catch(function (error) {
                     console.error(error.message);
                 })];
             case 1:
@@ -85,9 +89,10 @@ program.command('deploy')
         }
     });
 }); });
-program.command('generateSdk')
-    .argument('<env>', 'The environment used to make requests. Available options: "local" or "production".')
-    .description('Generate the SDK.')
+program
+    .command("generateSdk")
+    .argument("<env>", 'The environment used to make requests. Available options: "local" or "production".')
+    .description("Generate the SDK.")
     .action(function (env) { return __awaiter(void 0, void 0, void 0, function () {
     var _a;
     return __generator(this, function (_b) {
@@ -101,16 +106,16 @@ program.command('generateSdk')
                 return [3 /*break*/, 5];
             case 1: return [4 /*yield*/, (0, commands_1.generateSdks)(env)
                     .then(function () {
-                    console.log('Your SDK was successfully generated!');
-                }).catch(function (error) {
-                    console.error("".concat(error.message));
+                    console.log("Your SDK was successfully generated!");
+                })
+                    .catch(function (error) {
+                    console.error("".concat(error));
                 })];
             case 2:
                 _b.sent();
                 return [3 /*break*/, 6];
-            case 3: return [4 /*yield*/, (0, commands_1.deployFunctions)()
-                    .catch(function (error) {
-                    console.error("".concat(error.message));
+            case 3: return [4 /*yield*/, (0, commands_1.deployFunctions)().catch(function (error) {
+                    console.error(error);
                 })];
             case 4:
                 _b.sent();
@@ -122,28 +127,57 @@ program.command('generateSdk')
         }
     });
 }); });
-program.command('local')
-    .description('Run a local environment for your functions.')
+program
+    .command("local")
+    .description("Run a local environment for your functions.")
     .action(function () { return __awaiter(void 0, void 0, void 0, function () {
-    var server, handlers, error_1;
+    var server_1, runServer_1, cwd, watchPaths_1, ignoredPaths_1, startWatching;
     return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                _a.trys.push([0, 3, , 4]);
-                server = new localEnvironment_1.default();
-                return [4 /*yield*/, server.generateHandlersFromFiles()];
-            case 1:
-                handlers = _a.sent();
-                return [4 /*yield*/, server.start(handlers)];
-            case 2:
-                _a.sent();
-                return [3 /*break*/, 4];
-            case 3:
-                error_1 = _a.sent();
-                console.error("".concat(error_1));
-                return [3 /*break*/, 4];
-            case 4: return [2 /*return*/];
+        try {
+            server_1 = new localEnvironment_1.default();
+            runServer_1 = function () { return __awaiter(void 0, void 0, void 0, function () {
+                var handlers;
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0: return [4 /*yield*/, server_1.generateHandlersFromFiles()];
+                        case 1:
+                            handlers = _a.sent();
+                            server_1.start(handlers);
+                            return [2 /*return*/];
+                    }
+                });
+            }); };
+            runServer_1();
+            cwd = process.cwd();
+            watchPaths_1 = [path_1.default.join(cwd, "/**/*")];
+            ignoredPaths_1 = "**/node_modules/*";
+            startWatching = function () {
+                chokidar_1.default
+                    .watch(watchPaths_1, {
+                    ignored: ignoredPaths_1,
+                    ignoreInitial: true
+                })
+                    .on("all", function (event, path) { return __awaiter(void 0, void 0, void 0, function () {
+                    return __generator(this, function (_a) {
+                        switch (_a.label) {
+                            case 0:
+                                console.clear();
+                                console.log("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
+                                return [4 /*yield*/, server_1.terminate()];
+                            case 1:
+                                _a.sent();
+                                runServer_1();
+                                return [2 /*return*/];
+                        }
+                    });
+                }); });
+            };
+            startWatching();
         }
+        catch (error) {
+            console.error("".concat(error));
+        }
+        return [2 /*return*/];
     });
 }); });
 program.parse();
