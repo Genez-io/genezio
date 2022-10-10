@@ -9,6 +9,9 @@ import path from "path";
 import { CLIENT_RENEG_WINDOW } from "tls";
 import open from "open";
 import { asciiCapybara } from "./utils/strings";
+import http, { request } from "http";
+import jsonBody from "body/json";
+import { createHttpTerminator } from "http-terminator";
 
 const program = new Command();
 
@@ -32,6 +35,20 @@ program
     writeToken(code);
     open("https://genez-io.github.io/");
     console.log(asciiCapybara);
+    const server = http.createServer((req, res) => {
+      jsonBody(req, res, (err, body) => {
+        console.log(body);
+        res.writeHead(200);
+        res.end("Token recieved!");
+      });
+      const httpTerminator = createHttpTerminator({ server });
+      httpTerminator.terminate();
+    });
+    
+    server.listen(8000, 'localhost', () => {
+      console.log("Waiting for token...");
+    });
+
   });
 
 program

@@ -10,7 +10,9 @@
   "author": "Genezio",
   "license": "GPL-3",
   "dependencies": {
+    "@types/body": "^5.1.1",
     "axios": "^0.27.2",
+    "body": "^5.1.0",
     "chokidar": "^3.5.3",
     "command-line-args": "^5.2.1",
     "commander": "^9.4.0",
