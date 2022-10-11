@@ -3,8 +3,6 @@ import http from "http";
 import Handler from "./models/handler";
 import { readUTF8File } from "./utils/file";
 import { parse } from "yaml";
-import chokidar from "chokidar";
-import path from "path";
 import { createHttpTerminator } from "http-terminator";
 
 export default class Server {
@@ -25,7 +23,7 @@ export default class Server {
         file
       );
 
-      const module = require(path);
+      const module = require(path); // eslint-disable-line @typescript-eslint/no-var-requires
       const object = new module.genezio[className]();
       functionNames.forEach((functionName) => {
         handlers.push(new Handler(path, object, className, functionName));
@@ -48,7 +46,7 @@ export default class Server {
       response: http.ServerResponse,
       handlers: Handler[]
     ) {
-      var body = "";
+      let body = "";
       if (request.method === "OPTIONS") {
         response.setHeader("Access-Control-Allow-Origin", "*");
         response.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -62,7 +60,7 @@ export default class Server {
       });
 
       request.on("end", async function () {
-        const jsonRpcRequest: any = JSON.parse(body);
+        const jsonRpcRequest = JSON.parse(body);
         const components = jsonRpcRequest.method.split(".");
 
         if (components.length !== 2) {
@@ -95,7 +93,7 @@ export default class Server {
           return;
         }
 
-        let functionName = handler.functionName;
+        const functionName = handler.functionName;
         let responseData = undefined;
 
         try {
@@ -108,7 +106,7 @@ export default class Server {
             error: null,
             id: jsonRpcRequest.id
           };
-        } catch (error: any) {
+        } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
           console.error("An error occured:", error.toString());
           responseData = {
             jsonrpc: "2.0",

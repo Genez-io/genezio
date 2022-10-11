@@ -1,17 +1,13 @@
-const readline = require('readline')
-import path from 'path'
-import { getFileDetails } from './file';
+import readline from 'readline'
 
 
 export async function askQuestion(question: string, defaultValue?: string): Promise<string> {
-    var rl = readline.createInterface({
+    const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout
     })
 
-    const defaultOutputPath = path.resolve('.');
-
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         rl.question(question, function (input: string) {
             if (input.length === 0 && defaultValue) {
                 resolve(defaultValue)
