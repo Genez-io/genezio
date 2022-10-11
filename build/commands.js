@@ -35,6 +35,15 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
+    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
+        if (ar || !(i in from)) {
+            if (!ar) ar = Array.prototype.slice.call(from, 0, i);
+            ar[i] = from[i];
+        }
+    }
+    return to.concat(ar || Array.prototype.slice.call(from));
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -42,12 +51,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.init = exports.generateSdks = exports.deployFunctions = exports.bundleJavascriptCode = void 0;
 var webpack_1 = __importDefault(require("webpack"));
 var path_1 = __importDefault(require("path"));
-var deployCode_1 = __importDefault(require("./requests/deployCode"));
+var deployCode_1 = require("./requests/deployCode");
 var generateSdk_1 = __importDefault(require("./requests/generateSdk"));
 var file_1 = require("./utils/file");
 var prompt_1 = require("./utils/prompt");
 var bundledCode_1 = __importDefault(require("./models/bundledCode"));
 var yaml_1 = require("yaml");
+var fs_1 = __importDefault(require("fs"));
 function bundleJavascriptCode(filePath) {
     return __awaiter(this, void 0, void 0, function () {
         var _this = this;
@@ -59,22 +69,22 @@ function bundleJavascriptCode(filePath) {
                             case 0:
                                 name = (0, file_1.getFileDetails)(filePath).name;
                                 outputFile = "".concat(name, "-processed.js");
-                                return [4 /*yield*/, (0, file_1.createTemporaryFolder)(filePath)];
+                                return [4 /*yield*/, (0, file_1.createTemporaryFolder)()];
                             case 1:
                                 temporaryFolder = _a.sent();
                                 compiler = (0, webpack_1.default)({
                                     entry: "./" + filePath,
-                                    target: 'node',
-                                    mode: 'production',
+                                    target: "node",
+                                    mode: "production",
                                     node: false,
                                     optimization: {
-                                        minimize: false,
+                                        minimize: false
                                     },
                                     module: {
                                         rules: [
                                             {
                                                 test: /\.html$/,
-                                                loader: 'dumb-loader',
+                                                loader: "dumb-loader",
                                                 exclude: /really\.html/
                                             }
                                         ]
@@ -82,9 +92,9 @@ function bundleJavascriptCode(filePath) {
                                     output: {
                                         path: temporaryFolder,
                                         filename: outputFile,
-                                        library: 'genezio',
-                                        libraryTarget: 'commonjs'
-                                    },
+                                        library: "genezio",
+                                        libraryTarget: "commonjs"
+                                    }
                                 });
                                 compiler.run(function (error, stats) {
                                     if (error) {
@@ -98,9 +108,11 @@ function bundleJavascriptCode(filePath) {
                                     var filePath = path_1.default.join(temporaryFolder, outputFile);
                                     var module = require(filePath);
                                     var className = Object.keys(module.genezio)[0];
-                                    var functionNames = Object.getOwnPropertyNames(module.genezio[className].prototype).filter(function (x) { return x !== 'constructor'; });
+                                    var functionNames = Object.getOwnPropertyNames(module.genezio[className].prototype).filter(function (x) { return x !== "constructor"; });
                                     resolve(new bundledCode_1.default(filePath, className, functionNames));
-                                    compiler.close(function (closeErr) { });
+                                    compiler.close(function (closeErr) {
+                                        /* TODO: handle error? */
+                                    });
                                 });
                                 return [2 /*return*/];
                         }
@@ -110,9 +122,58 @@ function bundleJavascriptCode(filePath) {
     });
 }
 exports.bundleJavascriptCode = bundleJavascriptCode;
-function deployFunction(filePath, language, sdkPath, runtime) {
+function createDeployArchive(bundledJavascriptCode, allNonJsFilesPaths) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, name, extension, filename, _b, bundledJavascriptCode, functionUrl;
+        var jsBundlePath, tmpPath, archivePath, jsBundleFile;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    jsBundlePath = bundledJavascriptCode.path;
+                    return [4 /*yield*/, (0, file_1.createTemporaryFolder)("genezio-")];
+                case 1:
+                    tmpPath = _a.sent();
+                    archivePath = path_1.default.join(tmpPath, "genezioDeploy.zip");
+                    // check if the tmp folder exists
+                    if (!fs_1.default.existsSync(tmpPath)) {
+                        fs_1.default.mkdirSync(tmpPath, { recursive: true });
+                    }
+                    return [4 /*yield*/, (0, file_1.fileExists)(archivePath)];
+                case 2:
+                    // check if archive already exists
+                    if (_a.sent()) {
+                        fs_1.default.unlinkSync(archivePath);
+                    }
+                    jsBundleFile = path_1.default.join(tmpPath, "index.js");
+                    // create js bundle file in tmp folder from bundledJavascriptCode path
+                    fs_1.default.copyFileSync(jsBundlePath, jsBundleFile);
+                    // iterare over all non js files and copy them to tmp folder
+                    allNonJsFilesPaths.forEach(function (filePath, key) {
+                        // get folders array
+                        var folders = filePath.path.split(path_1.default.sep);
+                        // remove file name from folders array
+                        folders.pop();
+                        // create folder structure in tmp folder
+                        var folderPath = path_1.default.join.apply(path_1.default, __spreadArray([tmpPath], folders, false));
+                        if (!fs_1.default.existsSync(folderPath)) {
+                            fs_1.default.mkdirSync(folderPath, { recursive: true });
+                        }
+                        // copy file to tmp folder
+                        var fileDestinationPath = path_1.default.join(tmpPath, filePath.path);
+                        fs_1.default.copyFileSync(filePath.path, fileDestinationPath);
+                    });
+                    // create zip archive
+                    return [4 /*yield*/, (0, file_1.zipDirectory)(tmpPath, archivePath)];
+                case 3:
+                    // create zip archive
+                    _a.sent();
+                    return [2 /*return*/, archivePath];
+            }
+        });
+    });
+}
+function deployFunction(filePath, language, sdkPath, runtime, projectName, allNonJsFilesPaths) {
+    return __awaiter(this, void 0, void 0, function () {
+        var _a, name, extension, filename, _b, bundledJavascriptCode, archivePath, functionUrl;
         return __generator(this, function (_c) {
             switch (_c.label) {
                 case 0: return [4 /*yield*/, (0, file_1.fileExists)(filePath)];
@@ -125,52 +186,63 @@ function deployFunction(filePath, language, sdkPath, runtime) {
                     switch (_b) {
                         case ".js": return [3 /*break*/, 2];
                     }
-                    return [3 /*break*/, 5];
-                case 2: return [4 /*yield*/, bundleJavascriptCode(filePath)];
+                    return [3 /*break*/, 6];
+                case 2:
+                    console.log("Bundling javascript code...");
+                    return [4 /*yield*/, bundleJavascriptCode(filePath)];
                 case 3:
                     bundledJavascriptCode = _c.sent();
-                    return [4 /*yield*/, (0, deployCode_1.default)(bundledJavascriptCode, filePath, extension, runtime)];
+                    return [4 /*yield*/, createDeployArchive(bundledJavascriptCode, allNonJsFilesPaths)];
                 case 4:
+                    archivePath = _c.sent();
+                    console.log("Bundling done for class: " + name);
+                    console.log("Deploying bundle...\n");
+                    console.log(archivePath);
+                    return [4 /*yield*/, (0, deployCode_1.deployCode)(bundledJavascriptCode, filePath, extension, runtime)];
+                case 5:
                     functionUrl = _c.sent();
                     if (!functionUrl) {
                         console.error("A problem occured while contacting Genezio servers. Check your internet connection and try again!");
                         return [2 /*return*/];
                     }
                     return [2 /*return*/, functionUrl];
-                case 5: throw new Error("Language represented by extension ".concat(extension, " is not supported!"));
+                case 6: throw new Error("Language represented by extension ".concat(extension, " is not supported!"));
             }
         });
     });
 }
 function deployFunctions() {
     return __awaiter(this, void 0, void 0, function () {
-        var configurationFileContentUTF8, configurationFileContent, functionUrlForFilePath, _i, _a, filePath, functionUrl;
+        var configurationFileContentUTF8, configurationFileContent, functionUrlForFilePath, allNonJsFilesPaths, _i, _a, filePath, functionUrl;
         return __generator(this, function (_b) {
             switch (_b.label) {
-                case 0: return [4 /*yield*/, (0, file_1.readUTF8File)('./genezio.yaml')];
+                case 0: return [4 /*yield*/, (0, file_1.readUTF8File)("./genezio.yaml")];
                 case 1:
                     configurationFileContentUTF8 = _b.sent();
                     return [4 /*yield*/, (0, yaml_1.parse)(configurationFileContentUTF8)];
                 case 2:
                     configurationFileContent = _b.sent();
                     functionUrlForFilePath = {};
-                    _i = 0, _a = configurationFileContent.classPaths;
-                    _b.label = 3;
+                    return [4 /*yield*/, (0, file_1.getAllNonJsFiles)()];
                 case 3:
-                    if (!(_i < _a.length)) return [3 /*break*/, 6];
-                    filePath = _a[_i];
-                    return [4 /*yield*/, deployFunction(filePath, configurationFileContent.sdk.language, configurationFileContent.sdk.path, configurationFileContent.sdk.runtime)];
+                    allNonJsFilesPaths = _b.sent();
+                    _i = 0, _a = configurationFileContent.classPaths;
+                    _b.label = 4;
                 case 4:
+                    if (!(_i < _a.length)) return [3 /*break*/, 7];
+                    filePath = _a[_i];
+                    return [4 /*yield*/, deployFunction(filePath, configurationFileContent.sdk.language, configurationFileContent.sdk.path, configurationFileContent.sdk.runtime, configurationFileContent.name, allNonJsFilesPaths)];
+                case 5:
                     functionUrl = _b.sent();
                     functionUrlForFilePath[path_1.default.parse(filePath).name] = functionUrl;
-                    _b.label = 5;
-                case 5:
+                    _b.label = 6;
+                case 6:
                     _i++;
-                    return [3 /*break*/, 3];
-                case 6: return [4 /*yield*/, generateSdks("production", functionUrlForFilePath)];
-                case 7:
+                    return [3 /*break*/, 4];
+                case 7: return [4 /*yield*/, generateSdks("production", functionUrlForFilePath)];
+                case 8:
                     _b.sent();
-                    console.log('Your code was deployed and the SDK was successfully generated!');
+                    console.log("\x1b[36m%s\x1b[0m", "Your code was deployed and the SDK was successfully generated!");
                     return [2 /*return*/];
             }
         });
@@ -182,7 +254,7 @@ function generateSdks(env, urlMap) {
         var configurationFileContentUTF8, configurationFileContent, outputPath, sdk, _i, _a, classFile;
         return __generator(this, function (_b) {
             switch (_b.label) {
-                case 0: return [4 /*yield*/, (0, file_1.readUTF8File)('./genezio.yaml')];
+                case 0: return [4 /*yield*/, (0, file_1.readUTF8File)("./genezio.yaml")];
                 case 1:
                     configurationFileContentUTF8 = _b.sent();
                     return [4 /*yield*/, (0, yaml_1.parse)(configurationFileContentUTF8)];
@@ -193,8 +265,7 @@ function generateSdks(env, urlMap) {
                 case 3:
                     sdk = _b.sent();
                     if (!sdk.remoteFile) return [3 /*break*/, 5];
-                    return [4 /*yield*/, (0, file_1.writeToFile)(outputPath, 'remote.js', sdk.remoteFile, true)
-                            .catch(function (error) {
+                    return [4 /*yield*/, (0, file_1.writeToFile)(outputPath, "remote.js", sdk.remoteFile, true).catch(function (error) {
                             console.error(error.toString());
                         })];
                 case 4:
@@ -206,8 +277,7 @@ function generateSdks(env, urlMap) {
                 case 6:
                     if (!(_i < _a.length)) return [3 /*break*/, 9];
                     classFile = _a[_i];
-                    return [4 /*yield*/, (0, file_1.writeToFile)(outputPath, "".concat(classFile.filename, ".sdk.js"), classFile.implementation, true)
-                            .catch(function (error) {
+                    return [4 /*yield*/, (0, file_1.writeToFile)(outputPath, "".concat(classFile.filename, ".sdk.js"), classFile.implementation, true).catch(function (error) {
                             console.error(error.toString());
                         })];
                 case 7:
@@ -231,7 +301,7 @@ function init() {
                 case 1:
                     projectName = _a.sent();
                     sdk = { name: projectName, sdk: {}, classPaths: [] };
-                    return [4 /*yield*/, (0, prompt_1.askQuestion)("In what programming language do you want your SDK? [js]: ", 'js')];
+                    return [4 /*yield*/, (0, prompt_1.askQuestion)("In what programming language do you want your SDK? [js]: ", "js")];
                 case 2:
                     language = _a.sent();
                     if (language !== "js") {
@@ -239,7 +309,7 @@ function init() {
                     }
                     sdk.sdk.language = language;
                     if (!(language === "js")) return [3 /*break*/, 4];
-                    return [4 /*yield*/, (0, prompt_1.askQuestion)("What runtime will you use? Options: \"node\" or \"browser\". [node]: ", 'node')];
+                    return [4 /*yield*/, (0, prompt_1.askQuestion)("What runtime will you use? Options: \"node\" or \"browser\". [node]: ", "node")];
                 case 3:
                     runtime = _a.sent();
                     if (runtime !== "node" && runtime !== "browser") {
@@ -247,15 +317,14 @@ function init() {
                     }
                     sdk.sdk.runtime = runtime;
                     _a.label = 4;
-                case 4: return [4 /*yield*/, (0, prompt_1.askQuestion)("Where do you want to save your SDK? [./sdk/]: ", './sdk/')];
+                case 4: return [4 /*yield*/, (0, prompt_1.askQuestion)("Where do you want to save your SDK? [./sdk/]: ", "./sdk/")];
                 case 5:
                     path = _a.sent();
                     sdk.sdk.path = path;
                     doc = new yaml_1.Document(sdk);
                     doc.commentBefore = "File that configures what classes will be deployed in Genezio Infrastructure. \nAdd the paths to classes that you want to deploy in \"classPaths\".\n\nExample:\n\nname: hello-world\nsdk:\n  language: js\n  runtime: node\n  path: ./sdk/\nclassPaths:\n  - \"./hello-world/index.js\"";
                     yamlConfigurationFileContent = doc.toString();
-                    return [4 /*yield*/, (0, file_1.writeToFile)('.', 'genezio.yaml', yamlConfigurationFileContent)
-                            .catch(function (error) {
+                    return [4 /*yield*/, (0, file_1.writeToFile)(".", "genezio.yaml", yamlConfigurationFileContent).catch(function (error) {
                             console.error(error.toString());
                         })];
                 case 6:

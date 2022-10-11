@@ -4,18 +4,23 @@ import os from "os";
 import path from "path";
 import FileDetails from "../models/fileDetails";
 import glob from "glob";
+import archiver from "archiver";
 
 export async function getAllNonJsFiles(): Promise<FileDetails[]> {
   return new Promise((resolve, reject) => {
-    const cwd = process.cwd();
-    glob(`${cwd}/**/*`, (err, files) => {
+    glob(`./**/*`, { dot: true }, (err, files) => {
       if (err) {
         reject(err);
       }
 
       const fileDetails: FileDetails[] = files
         .filter((file: string) => {
-          return path.extname(file) !== ".js";
+          // filter js files, node_modules and folders
+          return (
+            path.extname(file) !== ".js" &&
+            !file.includes("node_modules") &&
+            !fs.lstatSync(file).isDirectory()
+          );
         })
         .map((file: string) => {
           return {
@@ -27,6 +32,24 @@ export async function getAllNonJsFiles(): Promise<FileDetails[]> {
         });
       resolve(fileDetails);
     });
+  });
+}
+
+export async function zipDirectory(
+  sourceDir: string,
+  outPath: string
+): Promise<void> {
+  const archive = archiver("zip", { zlib: { level: 9 } });
+  const stream = fs.createWriteStream(outPath);
+
+  return new Promise((resolve, reject) => {
+    archive
+      .directory(sourceDir, false)
+      .on("error", (err: any) => reject(err))
+      .pipe(stream);
+
+    stream.on("close", () => resolve());
+    archive.finalize();
   });
 }
 
@@ -42,9 +65,11 @@ export async function fileExists(filePath: string): Promise<boolean> {
   });
 }
 
-export async function createTemporaryFolder(name: string): Promise<string> {
+export async function createTemporaryFolder(
+  name: string = "foo-"
+): Promise<string> {
   return new Promise((resolve, reject) => {
-    fs.mkdtemp(path.join(os.tmpdir(), "foo-"), (error: any, folder: string) => {
+    fs.mkdtemp(path.join(os.tmpdir(), name), (error: any, folder: string) => {
       if (error) {
         rejects(error);
       }

@@ -10,14 +10,18 @@
   "author": "Genezio",
   "license": "GPL-3",
   "dependencies": {
+    "archiver": "^5.3.1",
     "axios": "^0.27.2",
     "chokidar": "^3.5.3",
     "command-line-args": "^5.2.1",
     "commander": "^9.4.0",
+    "crypto": "^1.0.1",
     "form-data": "^4.0.0",
+    "fs": "^0.0.1-security",
     "glob": "^8.0.3",
     "http-terminator": "^3.2.0",
     "keytar": "^7.9.0",
+    "os": "^0.1.2",
     "path": "^0.12.7",
     "webpack": "^5.74.0",
     "yaml": "^2.1.1"
@@ -30,6 +34,7 @@
     "genezio": "./build/index.js"
   },
   "devDependencies": {
+    "@types/archiver": "^5.3.1",
     "@types/glob": "^8.0.0",
     "@types/node": "^18.7.18",
     "typescript": "^4.8.3",

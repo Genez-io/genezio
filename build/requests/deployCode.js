@@ -39,11 +39,49 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.deployCode = exports.getS3Link = void 0;
 var path_1 = __importDefault(require("path"));
 var form_data_1 = __importDefault(require("form-data"));
 var fs_1 = __importDefault(require("fs"));
 var axios_1 = __importDefault(require("axios"));
 var file_1 = require("../utils/file");
+var crypto_1 = __importDefault(require("crypto"));
+function getS3Link(archivePath, projectName, className) {
+    return __awaiter(this, void 0, void 0, function () {
+        var fileBuffer, hashSum, archiveHash, archiveSize, authToken, data;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (!archivePath || !projectName || !className) {
+                        throw new Error("Missing required parameters");
+                    }
+                    fileBuffer = fs_1.default.readFileSync("archivePath");
+                    hashSum = crypto_1.default.createHash("sha256");
+                    hashSum.update(fileBuffer);
+                    archiveHash = hashSum.digest("hex");
+                    archiveSize = fs_1.default.statSync(archivePath).size;
+                    return [4 /*yield*/, (0, file_1.readToken)()];
+                case 1:
+                    authToken = _a.sent();
+                    return [4 /*yield*/, axios_1.default.post("https://haavwx62n4.execute-api.us-east-1.amazonaws.com/dev/getS3Link", {
+                            archiveHash: archiveHash,
+                            archiveSize: archiveSize,
+                            // projectNAME,
+                            // className
+                        }, {
+                            headers: {
+                                Authorization: "Bearer ".concat(authToken)
+                            }
+                        })];
+                case 2:
+                    data = (_a.sent()).data;
+                    // return s3 link
+                    return [2 /*return*/, data.s3Link];
+            }
+        });
+    });
+}
+exports.getS3Link = getS3Link;
 function deployCode(bundledCode, filePath, extension, runtime) {
     var _a, _b;
     return __awaiter(this, void 0, void 0, function () {
@@ -59,11 +97,11 @@ function deployCode(bundledCode, filePath, extension, runtime) {
                         throw new Error("We are currently in the early access phase of our project. Run 'genezio login <code>' before you deploy your function. If you don't have a code, contact us at contact@genez.io.");
                     }
                     form.append("token", token);
-                    form.append('bundledFile', fs_1.default.createReadStream(bundledCode.path));
-                    form.append('file', fs_1.default.createReadStream(filePath));
-                    form.append('filename', path_1.default.parse(filePath).name);
-                    form.append('extension', extension);
-                    form.append('runtime', runtime);
+                    form.append("bundledFile", fs_1.default.createReadStream(bundledCode.path));
+                    form.append("file", fs_1.default.createReadStream(filePath));
+                    form.append("filename", path_1.default.parse(filePath).name);
+                    form.append("extension", extension);
+                    form.append("runtime", runtime);
                     return [4 /*yield*/, (0, axios_1.default)({
                             method: "post",
                             url: "https://haavwx62n4.execute-api.us-east-1.amazonaws.com/js/deploy",
@@ -85,4 +123,4 @@ function deployCode(bundledCode, filePath, extension, runtime) {
         });
     });
 }
-exports.default = deployCode;
+exports.deployCode = deployCode;
