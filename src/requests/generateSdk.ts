@@ -22,7 +22,7 @@ export default async function generateSdk(filePaths: string[], runtime: string, 
 
     const response: any = await axios({
         method: "post",
-        url: "https://haavwx62n4.execute-api.us-east-1.amazonaws.com/js/generateSdk",
+        url: "https://haavwx62n4.execute-api.us-east-1.amazonaws.com/project/generate-sdk",
         data: form,
         headers: form.getHeaders()
     }).catch((error: Error) => {

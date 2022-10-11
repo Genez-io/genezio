@@ -1,7 +1,7 @@
 import webpack from "webpack";
 import path from "path";
 import {
-  initializeDeploy,
+  prepareDeployment,
   uploadArchiveToS3,
   finalizeDeploy
 } from "./requests/deployCode";
@@ -156,8 +156,7 @@ async function deployFunction(
       console.log("Deploying bundle...\n");
       console.log(archivePath);
 
-      const s3Link = await initializeDeploy(
-        bundledJavascriptCode,
+      const signedUrl = await prepareDeployment(
         filePath,
         extension,
         runtime,
@@ -166,7 +165,7 @@ async function deployFunction(
         name
       );
 
-      const resAws = await uploadArchiveToS3(archivePath, s3Link);
+      const resAws = await uploadArchiveToS3(archivePath, signedUrl);
 
       const functionUrl = await finalizeDeploy(projectName, name);
 

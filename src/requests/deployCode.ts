@@ -8,7 +8,7 @@ import crypto from "crypto";
 
 export async function finalizeDeploy(projectName: string, className: string) {
   const authToken = await readToken();
-  const apiURL = `https://genezio.com/api/v1/projects/${projectName}/finalize-deploy`;
+  const apiURL = "https://haavwx62n4.execute-api.us-east-1.amazonaws.com/project/finalize-deployment";
   const response = await axios.post(
     apiURL,
     {
@@ -29,8 +29,8 @@ export async function finalizeDeploy(projectName: string, className: string) {
   return response.data.functionUrl;
 }
 
-export async function uploadArchiveToS3(s3Link: string, archivePath: string) {
-  const res = await axios.put(s3Link, fs.readFileSync(archivePath), {
+export async function uploadArchiveToS3(signedUrl: string, archivePath: string) {
+  const res = await axios.put(signedUrl, fs.readFileSync(archivePath), {
     headers: {
       "Content-Type": "application/zip"
     }
@@ -43,8 +43,7 @@ export async function uploadArchiveToS3(s3Link: string, archivePath: string) {
   return true;
 }
 
-export async function initializeDeploy(
-  bundledCode: BundledCode,
+export async function prepareDeployment(
   filePath: string,
   extension: string,
   runtime: string,
@@ -75,7 +74,6 @@ export async function initializeDeploy(
     );
   }
 
-  form.append("bundledFile", fs.createReadStream(bundledCode.path));
   form.append("file", fs.createReadStream(filePath));
   form.append("filename", path.parse(filePath).name);
   form.append("extension", extension);
@@ -87,7 +85,7 @@ export async function initializeDeploy(
 
   const response: any = await axios({
     method: "post",
-    url: "https://haavwx62n4.execute-api.us-east-1.amazonaws.com/js/deploy",
+    url: "https://haavwx62n4.execute-api.us-east-1.amazonaws.com/project/prepare-deployment",
     data: form,
     headers: { ...form.getHeaders(), Auhorization: `Bearer ${authToken}` }
   }).catch((error: Error) => {
@@ -104,5 +102,5 @@ export async function initializeDeploy(
 
   // return response.data.functionUrl;
   // return s3 link
-  return response.data.s3Link;
+  return response.data.signedUrl;
 }
