@@ -51,6 +51,7 @@ var strings_1 = require("./utils/strings");
 var http_1 = __importDefault(require("http"));
 var json_1 = __importDefault(require("body/json"));
 var http_terminator_1 = require("http-terminator");
+var keytar_1 = __importDefault(require("keytar"));
 var program = new commander_1.Command();
 program
     .name("genezio")
@@ -74,23 +75,27 @@ program
     .argument("<code>", "The authentication code.")
     .description("Authenticate with Genezio platform to deploy your code.")
     .action(function (code) { return __awaiter(void 0, void 0, void 0, function () {
-    var server;
+    var token, server;
     return __generator(this, function (_a) {
         (0, file_1.writeToken)(code);
         (0, open_1.default)("https://genez-io.github.io/");
         console.log(strings_1.asciiCapybara);
+        token = "";
         server = http_1.default.createServer(function (req, res) {
             (0, json_1.default)(req, res, function (err, body) {
                 console.log(body);
-                res.writeHead(200);
-                res.end("Token recieved!");
-                // console.log(server);
+                token = body.token;
+                console.log(token);
+                keytar_1.default.setPassword("genez.io", "stefan", token).then(function () {
+                    res.writeHead(200);
+                    res.end("Token recieved!");
+                });
             });
             var httpTerminator = (0, http_terminator_1.createHttpTerminator)({ server: server });
             httpTerminator.terminate();
         });
         server.listen(8000, 'localhost', function () {
-            console.log("Server listening...");
+            console.log("Waiting for token...");
         });
         return [2 /*return*/];
     });

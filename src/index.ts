@@ -12,6 +12,7 @@ import { asciiCapybara } from "./utils/strings";
 import http, { request } from "http";
 import jsonBody from "body/json";
 import { createHttpTerminator } from "http-terminator";
+import keytar from "keytar";
 
 const program = new Command();
 
@@ -35,11 +36,14 @@ program
     writeToken(code);
     open("https://genez-io.github.io/");
     console.log(asciiCapybara);
+    let token : string = "";
     const server = http.createServer((req, res) => {
-      jsonBody(req, res, (err, body) => {
-        console.log(body);
-        res.writeHead(200);
-        res.end("Token recieved!");
+      jsonBody(req, res, (err, body : any) => {
+        token = body.token;
+        keytar.setPassword("genez.io", "stefan", token).then(() => {
+          res.writeHead(200);
+          res.end("Token recieved!");
+        });
       });
       const httpTerminator = createHttpTerminator({ server });
       httpTerminator.terminate();
@@ -48,7 +52,6 @@ program
     server.listen(8000, 'localhost', () => {
       console.log("Waiting for token...");
     });
-
   });
 
 program
