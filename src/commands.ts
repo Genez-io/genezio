@@ -1,9 +1,7 @@
 import webpack from "webpack";
 import path from "path";
 import {
-  prepareDeployment,
-  uploadArchiveToS3,
-  finalizeDeploy
+  deployClass,
 } from "./requests/deployCode";
 import generateSdk from "./requests/generateSdk";
 import {
@@ -19,9 +17,8 @@ import { askQuestion } from "./utils/prompt";
 import BundledCode from "./models/bundledCode";
 import { parse, Document } from "yaml";
 import fs from "fs";
-import { connected } from "process";
-import { CommanderError } from "commander";
 import FileDetails from "./models/fileDetails";
+import { lambdaHandler } from "./utils/lambdaHander";
 
 export async function bundleJavascriptCode(
   filePath: string
@@ -101,9 +98,11 @@ async function createDeployArchive(
   if (await fileExists(archivePath)) {
     fs.unlinkSync(archivePath);
   }
+  
+  writeToFile(tmpPath, "index.js", lambdaHandler)
 
   // create file structure
-  const jsBundleFile = path.join(tmpPath, "index.js");
+  const jsBundleFile = path.join(tmpPath, "module.js");
 
   // create js bundle file in tmp folder from bundledJavascriptCode path
   fs.copyFileSync(jsBundlePath, jsBundleFile);
@@ -154,9 +153,8 @@ async function deployFunction(
       );
       console.log("Bundling done for class: " + name);
       console.log("Deploying bundle...\n");
-      console.log(archivePath);
 
-      const signedUrl = await prepareDeployment(
+      const response = await deployClass(
         filePath,
         extension,
         runtime,
@@ -165,18 +163,7 @@ async function deployFunction(
         name
       );
 
-      const resAws = await uploadArchiveToS3(archivePath, signedUrl);
-
-      const functionUrl = await finalizeDeploy(projectName, name);
-
-      if (!functionUrl) {
-        console.error(
-          "A problem occured while contacting Genezio servers. Check your internet connection and try again!"
-        );
-        return;
-      }
-
-      return functionUrl;
+      return response.functionUrl;
     default:
       throw new Error(
         `Language represented by extension ${extension} is not supported!`

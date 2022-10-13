@@ -18,6 +18,8 @@ export async function getAllNonJsFiles(): Promise<FileDetails[]> {
           // filter js files, node_modules and folders
           return (
             path.extname(file) !== ".js" &&
+            path.basename(file) !== "package.json" &&
+            path.basename(file) !== "package-lock.json" &&
             !file.includes("node_modules") &&
             !fs.lstatSync(file).isDirectory()
           );

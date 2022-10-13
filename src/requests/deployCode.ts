@@ -2,48 +2,9 @@ import path from "path";
 import FormData from "form-data";
 import fs from "fs";
 import axios from "axios";
-import BundledCode from "../models/bundledCode";
 import { readToken } from "../utils/file";
-import crypto from "crypto";
 
-export async function finalizeDeploy(projectName: string, className: string) {
-  const authToken = await readToken();
-  const apiURL = "https://haavwx62n4.execute-api.us-east-1.amazonaws.com/project/finalize-deployment";
-  const response = await axios.post(
-    apiURL,
-    {
-      projectName,
-      className
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${authToken}`
-      }
-    }
-  );
-
-  if (response.status !== 200) {
-    throw new Error("Failed to finalize deploy");
-  }
-
-  return response.data.functionUrl;
-}
-
-export async function uploadArchiveToS3(signedUrl: string, archivePath: string) {
-  const res = await axios.put(signedUrl, fs.readFileSync(archivePath), {
-    headers: {
-      "Content-Type": "application/zip"
-    }
-  });
-
-  if(res.status !== 200) {
-    throw new Error("Upload failed");
-  }
-
-  return true;
-}
-
-export async function prepareDeployment(
+export async function deployClass(
   filePath: string,
   extension: string,
   runtime: string,
@@ -55,15 +16,6 @@ export async function prepareDeployment(
     throw new Error("Missing required parameters");
   }
 
-  // get archive hash
-  const fileBuffer = fs.readFileSync("archivePath");
-  const hashSum = crypto.createHash("sha256");
-  hashSum.update(fileBuffer);
-  const archiveHash = hashSum.digest("hex");
-
-  // get archive size
-  const archiveSize = fs.statSync(archivePath).size;
-
   // auth token
   var form = new FormData();
   const authToken = await readToken().catch(() => undefined);
@@ -74,20 +26,19 @@ export async function prepareDeployment(
     );
   }
 
-  form.append("file", fs.createReadStream(filePath));
+  form.append("classFile", fs.createReadStream(filePath));
   form.append("filename", path.parse(filePath).name);
   form.append("extension", extension);
   form.append("runtime", runtime);
-  form.append("archiveHash", archiveHash);
-  form.append("archiveSize", archiveSize);
+  form.append("archiveContent", fs.createReadStream(archivePath));
   form.append("projectName", projectName);
   form.append("className", className);
 
   const response: any = await axios({
     method: "post",
-    url: "https://haavwx62n4.execute-api.us-east-1.amazonaws.com/project/prepare-deployment",
+    url: "http://localhost:8080/project/deployment",
     data: form,
-    headers: { ...form.getHeaders(), Auhorization: `Bearer ${authToken}` }
+    headers: { ...form.getHeaders(), Authorization: `Bearer ${authToken}` }
   }).catch((error: Error) => {
     throw error;
   });
@@ -100,7 +51,5 @@ export async function prepareDeployment(
     throw new Error(response.data.error.message);
   }
 
-  // return response.data.functionUrl;
-  // return s3 link
-  return response.data.signedUrl;
+  return response.data;
 }
