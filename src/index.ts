@@ -75,7 +75,7 @@ program
   .description("Run a local environment for your functions.")
   .action(async () => {
     try {
-      let server = new Server();
+      const server = new Server();
 
       const runServer = async () => {
         const handlers = await server.generateHandlersFromFiles();
@@ -95,7 +95,7 @@ program
             ignored: ignoredPaths,
             ignoreInitial: true
           })
-          .on("all", async (event, path) => {
+          .on("all", async () => {
             console.clear();
             console.log("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
             await server.terminate();
