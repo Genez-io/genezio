@@ -9,6 +9,6 @@ export class HelloWorldClass {
     }
 
     hello(name, location) {
-        return `Hello, ${name}! Greetings from ${location}!`
+        return `Hey, ${name}! Greetings from ${location}!`
     }
 }
