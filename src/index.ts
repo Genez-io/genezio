@@ -34,7 +34,7 @@ program
   .description("Authenticate with Genezio platform to deploy your code.")
   .action(async (code) => {
     writeToken(code);
-    open("https://genez-io.github.io/");
+    open("https://localhost:3000?redirect_url=http://localhost:8000");
     console.log(asciiCapybara);
     let token : string = "";
     const server = http.createServer((req, res) => {
