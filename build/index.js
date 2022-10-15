@@ -78,15 +78,26 @@ program
     var token, server;
     return __generator(this, function (_a) {
         (0, file_1.writeToken)(code);
-        (0, open_1.default)("https://genez-io.github.io/");
+        (0, open_1.default)("http://localhost:3000/cli/login?redirect_url=http://localhost:8000");
         console.log(strings_1.asciiCapybara);
         token = "";
         server = http_1.default.createServer(function (req, res) {
+            res.setHeader("Access-Control-Allow-Origin", "*");
+            res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+            res.setHeader("Access-Control-Allow-Methods", "POST");
+            res.setHeader("Access-Control-Allow-Credentials", "true");
+            if (req.method === "OPTIONS") {
+                res.end();
+                return;
+            }
             (0, json_1.default)(req, res, function (err, body) {
-                console.log(body);
                 token = body.token;
-                console.log(token);
                 keytar_1.default.setPassword("genez.io", "stefan", token).then(function () {
+                    console.log("Token recieved!");
+                    res.setHeader("Access-Control-Allow-Origin", "*");
+                    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+                    res.setHeader("Access-Control-Allow-Methods", "POST");
+                    res.setHeader("Access-Control-Allow-Credentials", "true");
                     res.writeHead(200);
                     res.end("Token recieved!");
                 });
@@ -94,7 +105,7 @@ program
             var httpTerminator = (0, http_terminator_1.createHttpTerminator)({ server: server });
             httpTerminator.terminate();
         });
-        server.listen(8000, 'localhost', function () {
+        server.listen(8000, "localhost", function () {
             console.log("Waiting for token...");
         });
         return [2 /*return*/];

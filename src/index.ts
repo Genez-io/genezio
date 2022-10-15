@@ -36,11 +36,24 @@ program
     writeToken(code);
     open("http://localhost:3000/cli/login?redirect_url=http://localhost:8000");
     console.log(asciiCapybara);
-    let token : string = "";
+    let token: string = "";
     const server = http.createServer((req, res) => {
-      jsonBody(req, res, (err, body : any) => {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+      res.setHeader("Access-Control-Allow-Methods", "POST");
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+      if (req.method === "OPTIONS") {
+        res.end();
+        return;
+      }
+      jsonBody(req, res, (err, body: any) => {
         token = body.token;
         keytar.setPassword("genez.io", "stefan", token).then(() => {
+          console.log("Token recieved!");
+          res.setHeader("Access-Control-Allow-Origin", "*");
+          res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+          res.setHeader("Access-Control-Allow-Methods", "POST");
+          res.setHeader("Access-Control-Allow-Credentials", "true");
           res.writeHead(200);
           res.end("Token recieved!");
         });
@@ -48,8 +61,8 @@ program
       const httpTerminator = createHttpTerminator({ server });
       httpTerminator.terminate();
     });
-    
-    server.listen(8000, 'localhost', () => {
+
+    server.listen(8000, "localhost", () => {
       console.log("Waiting for token...");
     });
   });
