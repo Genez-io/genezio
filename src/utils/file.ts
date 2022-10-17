@@ -47,7 +47,7 @@ export function readUTF8File(filePath: string): Promise<string> {
     })
 }
 
-export function writeToFile(folderPath: string, filename: string, content: any, createPathIfNeeded: boolean = false): Promise<void> {
+export function writeToFile(folderPath: string, filename: string, content: any, createPathIfNeeded = false): Promise<void> {
     return new Promise((resolve, reject) => {
         if (!fs.existsSync(folderPath) && createPathIfNeeded) {
             fs.mkdirSync(folderPath);
@@ -62,10 +62,6 @@ export function writeToFile(folderPath: string, filename: string, content: any, 
             resolve();
         })
     })
-}
-
-export async function writeToken(token: string) {
-    return writeToFile(os.homedir(), ".genezio", token, true);
 }
 
 export async function readToken(): Promise<string> {
