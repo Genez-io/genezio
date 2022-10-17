@@ -2,10 +2,15 @@
 
 import { Command } from "commander";
 import { deployFunctions, generateSdks, init } from "./commands";
-import { writeToken } from "./utils/file";
 import Server from "./localEnvironment";
 import chokidar from "chokidar";
 import path from "path";
+import open from "open";
+import { asciiCapybara } from "./utils/strings";
+import http from "http";
+import jsonBody from "body/json";
+import { createHttpTerminator } from "http-terminator";
+import keytar from "keytar";
 
 const program = new Command();
 
@@ -23,10 +28,41 @@ program
 
 program
   .command("login")
-  .argument("<code>", "The authentication code.")
   .description("Authenticate with Genezio platform to deploy your code.")
   .action(async (code) => {
-    writeToken(code)
+    open("https://app.genez.io/cli/login?redirect_url=http://localhost:8000");
+    console.log(asciiCapybara);
+    let token = "";
+    const server = http.createServer((req, res) => {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+      res.setHeader("Access-Control-Allow-Methods", "POST");
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+      if (req.method === "OPTIONS") {
+        res.end();
+        return;
+      }
+      jsonBody(req, res, (err, body: any) => {
+        token = body.token;
+        const name = body.user.name || "genezio-username";
+
+        keytar.setPassword("genez.io", name, token).then(() => {
+          console.log("Token recieved!");
+          res.setHeader("Access-Control-Allow-Origin", "*");
+          res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+          res.setHeader("Access-Control-Allow-Methods", "POST");
+          res.setHeader("Access-Control-Allow-Credentials", "true");
+          res.writeHead(200);
+          res.end("Token recieved!");
+        });
+      });
+      const httpTerminator = createHttpTerminator({ server });
+      httpTerminator.terminate();
+    });
+
+    server.listen(8000, "localhost", () => {
+      console.log("Waiting for token...");
+    });
   });
 
 program

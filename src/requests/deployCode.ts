@@ -17,7 +17,7 @@ export async function deployClass(
   }
 
   // auth token
-  var form = new FormData();
+  const form = new FormData();
   const authToken = await readToken().catch(() => undefined);
 
   if (!authToken) {

@@ -68,7 +68,7 @@ export async function fileExists(filePath: string): Promise<boolean> {
 }
 
 export async function createTemporaryFolder(
-  name: string = "foo-"
+  name = "foo-"
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     fs.mkdtemp(path.join(os.tmpdir(), name), (error: any, folder: string) => {
@@ -103,7 +103,7 @@ export function writeToFile(
   folderPath: string,
   filename: string,
   content: any,
-  createPathIfNeeded: boolean = false
+  createPathIfNeeded = false
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     if (!fs.existsSync(folderPath) && createPathIfNeeded) {
@@ -119,10 +119,6 @@ export function writeToFile(
       resolve();
     });
   });
-}
-
-export async function writeToken(token: string) {
-  return writeToFile(os.homedir(), ".genezio", token, true);
 }
 
 export async function readToken(): Promise<string> {

@@ -15,8 +15,10 @@
   "author": "Genezio",
   "license": "GPL-3",
   "dependencies": {
+    "@types/body": "^5.1.1",
     "archiver": "^5.3.1",
     "axios": "^0.27.2",
+    "body": "^5.1.0",
     "chokidar": "^3.5.3",
     "command-line-args": "^5.2.1",
     "commander": "^9.4.0",
@@ -26,6 +28,7 @@
     "glob": "^8.0.3",
     "http-terminator": "^3.2.0",
     "keytar": "^7.9.0",
+    "open": "^8.4.0",
     "os": "^0.1.2",
     "path": "^0.12.7",
     "webpack": "^5.74.0",

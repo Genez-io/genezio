@@ -1,8 +1,6 @@
 import webpack from "webpack";
 import path from "path";
-import {
-  deployClass,
-} from "./requests/deployCode";
+import { deployClass } from "./requests/deployCode";
 import generateSdk from "./requests/generateSdk";
 import {
   createTemporaryFolder,
@@ -23,6 +21,7 @@ import { lambdaHandler } from "./utils/lambdaHander";
 export async function bundleJavascriptCode(
   filePath: string
 ): Promise<BundledCode> {
+  // eslint-disable-next-line no-async-promise-executor
   return new Promise(async (resolve, reject) => {
     const { name } = getFileDetails(filePath);
     const outputFile = `${name}-processed.js`;
@@ -65,6 +64,7 @@ export async function bundleJavascriptCode(
       }
 
       const filePath = path.join(temporaryFolder, outputFile);
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const module = require(filePath);
       const className = Object.keys(module.genezio)[0];
       const functionNames = Object.getOwnPropertyNames(
@@ -98,8 +98,8 @@ async function createDeployArchive(
   if (await fileExists(archivePath)) {
     fs.unlinkSync(archivePath);
   }
-  
-  writeToFile(tmpPath, "index.js", lambdaHandler)
+
+  writeToFile(tmpPath, "index.js", lambdaHandler);
 
   // create file structure
   const jsBundleFile = path.join(tmpPath, "module.js");
@@ -146,7 +146,9 @@ async function deployFunction(
   switch (extension) {
     case ".js":
       console.log("Bundling javascript code...");
+      // eslint-disable-next-line no-case-declarations
       const bundledJavascriptCode = await bundleJavascriptCode(filePath);
+      // eslint-disable-next-line no-case-declarations
       const archivePath = await createDeployArchive(
         bundledJavascriptCode,
         allNonJsFilesPaths
@@ -154,6 +156,7 @@ async function deployFunction(
       console.log("Bundling done for class: " + name);
       console.log("Deploying bundle...\n");
 
+      // eslint-disable-next-line no-case-declarations
       const response = await deployClass(
         filePath,
         extension,
