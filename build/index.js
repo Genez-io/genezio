@@ -42,7 +42,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var commander_1 = require("commander");
 var commands_1 = require("./commands");
-var file_1 = require("./utils/file");
 var localEnvironment_1 = __importDefault(require("./localEnvironment"));
 var chokidar_1 = __importDefault(require("chokidar"));
 var path_1 = __importDefault(require("path"));
@@ -72,13 +71,11 @@ program
 }); });
 program
     .command("login")
-    .argument("<code>", "The authentication code.")
     .description("Authenticate with Genezio platform to deploy your code.")
     .action(function (code) { return __awaiter(void 0, void 0, void 0, function () {
     var token, server;
     return __generator(this, function (_a) {
-        (0, file_1.writeToken)(code);
-        (0, open_1.default)("http://localhost:3000/cli/login?redirect_url=http://localhost:8000");
+        (0, open_1.default)("https://app.genez.io/cli/login?redirect_url=http://localhost:8000");
         console.log(strings_1.asciiCapybara);
         token = "";
         server = http_1.default.createServer(function (req, res) {
@@ -92,7 +89,8 @@ program
             }
             (0, json_1.default)(req, res, function (err, body) {
                 token = body.token;
-                keytar_1.default.setPassword("genez.io", "stefan", token).then(function () {
+                var name = body.user.name || "genezio-username";
+                keytar_1.default.setPassword("genez.io", name, token).then(function () {
                     console.log("Token recieved!");
                     res.setHeader("Access-Control-Allow-Origin", "*");
                     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -194,7 +192,7 @@ program
                     ignored: ignoredPaths_1,
                     ignoreInitial: true
                 })
-                    .on("all", function (event, path) { return __awaiter(void 0, void 0, void 0, function () {
+                    .on("all", function () { return __awaiter(void 0, void 0, void 0, function () {
                     return __generator(this, function (_a) {
                         switch (_a.label) {
                             case 0:

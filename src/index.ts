@@ -2,14 +2,12 @@
 
 import { Command } from "commander";
 import { deployFunctions, generateSdks, init } from "./commands";
-import { writeToken } from "./utils/file";
 import Server from "./localEnvironment";
 import chokidar from "chokidar";
 import path from "path";
-import { CLIENT_RENEG_WINDOW } from "tls";
 import open from "open";
 import { asciiCapybara } from "./utils/strings";
-import http, { request } from "http";
+import http from "http";
 import jsonBody from "body/json";
 import { createHttpTerminator } from "http-terminator";
 import keytar from "keytar";
@@ -30,13 +28,11 @@ program
 
 program
   .command("login")
-  .argument("<code>", "The authentication code.")
   .description("Authenticate with Genezio platform to deploy your code.")
   .action(async (code) => {
-    writeToken(code);
-    open("http://localhost:3000/cli/login?redirect_url=http://localhost:8000");
+    open("https://app.genez.io/cli/login?redirect_url=http://localhost:8000");
     console.log(asciiCapybara);
-    let token: string = "";
+    let token = "";
     const server = http.createServer((req, res) => {
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -48,7 +44,9 @@ program
       }
       jsonBody(req, res, (err, body: any) => {
         token = body.token;
-        keytar.setPassword("genez.io", "stefan", token).then(() => {
+        const name = body.user.name || "genezio-username";
+
+        keytar.setPassword("genez.io", name, token).then(() => {
           console.log("Token recieved!");
           res.setHeader("Access-Control-Allow-Origin", "*");
           res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -113,7 +111,7 @@ program
   .description("Run a local environment for your functions.")
   .action(async () => {
     try {
-      let server = new Server();
+      const server = new Server();
 
       const runServer = async () => {
         const handlers = await server.generateHandlersFromFiles();
@@ -133,7 +131,7 @@ program
             ignored: ignoredPaths,
             ignoreInitial: true
           })
-          .on("all", async (event, path) => {
+          .on("all", async () => {
             console.clear();
             console.log("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
             await server.terminate();

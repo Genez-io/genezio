@@ -1,12 +1,16 @@
 {
   "name": "genezio",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Command line utility to interact with Genezio infrastructure.",
   "main": "index.js",
   "scripts": {
     "start": "npx tsc && node build/index.js",
-    "install-locally": "npx tsc && npm i -g"
+    "install-locally": "npx tsc && npm i -g",
+    "lint": "./scripts/lint"
   },
+  "pre-commit": [
+    "lint"
+  ],
   "author": "Genezio",
   "license": "GPL-3",
   "dependencies": {
@@ -33,6 +37,10 @@
   },
   "devDependencies": {
     "@types/node": "^18.7.18",
+    "@typescript-eslint/eslint-plugin": "^5.39.0",
+    "@typescript-eslint/parser": "^5.39.0",
+    "eslint": "^8.24.0",
+    "pre-commit": "^1.2.2",
     "typescript": "^4.8.3",
     "webpack-node-externals": "^3.0.0"
   }
