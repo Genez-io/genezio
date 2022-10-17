@@ -64,10 +64,6 @@ export function writeToFile(folderPath: string, filename: string, content: any, 
     })
 }
 
-export async function writeToken(token: string) {
-    return writeToFile(os.homedir(), ".genezio", token, true);
-}
-
 export async function readToken(): Promise<string> {
     return new Promise((resolve, reject) => {
         fs.readFile(path.join(os.homedir(), ".genezio"), 'utf8', function (error, data) {

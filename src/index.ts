@@ -2,7 +2,6 @@
 
 import { Command } from "commander";
 import { deployFunctions, generateSdks, init } from "./commands";
-import { writeToken } from "./utils/file";
 import Server from "./localEnvironment";
 import chokidar from "chokidar";
 import path from "path";
@@ -13,6 +12,7 @@ import http, { request } from "http";
 import jsonBody from "body/json";
 import { createHttpTerminator } from "http-terminator";
 import keytar from "keytar";
+import User from "./models/user";
 
 const program = new Command();
 
@@ -30,13 +30,12 @@ program
 
 program
   .command("login")
-  .argument("<code>", "The authentication code.")
   .description("Authenticate with Genezio platform to deploy your code.")
-  .action(async (code) => {
-    writeToken(code);
-    open("http://localhost:3000/cli/login?redirect_url=http://localhost:8000");
+  .action(async () => {
+    open("http://app.genez.io/cli/login?redirect_url=http://localhost:8000");
     console.log(asciiCapybara);
     let token: string = "";
+    let user: User;
     const server = http.createServer((req, res) => {
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -48,14 +47,15 @@ program
       }
       jsonBody(req, res, (err, body: any) => {
         token = body.token;
-        keytar.setPassword("genez.io", "stefan", token).then(() => {
-          console.log("Token recieved!");
+        user = body.user;
+        keytar.setPassword("genez.io", user.email, token).then(() => {
+          console.log("Token received!");
           res.setHeader("Access-Control-Allow-Origin", "*");
           res.setHeader("Access-Control-Allow-Headers", "Content-Type");
           res.setHeader("Access-Control-Allow-Methods", "POST");
           res.setHeader("Access-Control-Allow-Credentials", "true");
           res.writeHead(200);
-          res.end("Token recieved!");
+          res.end("Token received!");
         });
       });
       const httpTerminator = createHttpTerminator({ server });
