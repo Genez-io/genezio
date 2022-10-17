@@ -1,7 +1,7 @@
-import { Env, Remote } from "./remote.js"
+import { Remote } from "./remote.js"
 
 export class Task {
-    static remote = new Remote("https://eerl6g62cgzwmhpdtz4loug2u40ysnhl.lambda-url.us-east-1.on.aws/")
+    static remote = new Remote("https://ngyetz2b5l2whssimkr2sufpw40ivkrp.lambda-url.us-east-1.on.aws/", 443)
 
     static async connect() {
         return Task.remote.call("Task.connect")  
@@ -26,4 +26,4 @@ export class Task {
     
 }
 
-export { Env, Remote };
+export { Remote };
