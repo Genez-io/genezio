@@ -1,7 +1,7 @@
 import { Remote } from "./remote.js"
 
 export class HelloWorldClass {
-    static remote = new Remote("https://eelnzggrpyhdfnvhjkzcew22si0zagpz.lambda-url.us-east-1.on.aws/", 443)
+    static remote = new Remote("https://s7jdw5mj2q3wejdojvzoabnwhe0kuwqt.lambda-url.us-east-1.on.aws/", 443)
 
     static async helloWorld() {
         return HelloWorldClass.remote.call("HelloWorldClass.helloWorld")  

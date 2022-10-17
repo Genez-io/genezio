@@ -36,7 +36,7 @@ export async function deployClass(
 
   const response: any = await axios({
     method: "post",
-    url: "http://api.genez.io/project/deployment", // TODO modify to http://api.genez.io/core/deployment
+    url: "https://api.genez.io/project/deployment", // TODO modify to http://api.genez.io/core/deployment
     data: form,
     headers: { ...form.getHeaders(), Authorization: `Bearer ${authToken}` }
   }).catch((error: Error) => {
