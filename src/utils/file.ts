@@ -5,6 +5,7 @@ import path from "path";
 import FileDetails from "../models/fileDetails";
 import glob from "glob";
 import archiver from "archiver";
+import keytar from "keytar";
 
 export async function getAllNonJsFiles(): Promise<FileDetails[]> {
   return new Promise((resolve, reject) => {
@@ -122,17 +123,20 @@ export function writeToFile(
 }
 
 export async function readToken(): Promise<string> {
+  // get credentials from keytar
   return new Promise((resolve, reject) => {
-    fs.readFile(
-      path.join(os.homedir(), ".genezio"),
-      "utf8",
-      function (error, data) {
-        if (error) {
-          reject(error);
+    keytar
+      .findCredentials("genez.io")
+      .then((credentials) => {
+        if (credentials.length === 0) {
+          console.log("You are not logged in. Please login first.");
+          reject("No credentials found");
         }
 
-        resolve(data);
-      }
-    );
+        resolve(credentials[0].password);
+      })
+      .catch((error) => {
+        reject(error);
+      });
   });
 }

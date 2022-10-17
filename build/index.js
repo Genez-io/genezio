@@ -72,7 +72,7 @@ program
 program
     .command("login")
     .description("Authenticate with Genezio platform to deploy your code.")
-    .action(function (code) { return __awaiter(void 0, void 0, void 0, function () {
+    .action(function () { return __awaiter(void 0, void 0, void 0, function () {
     var token, server;
     return __generator(this, function (_a) {
         (0, open_1.default)("https://app.genez.io/cli/login?redirect_url=http://localhost:8000");

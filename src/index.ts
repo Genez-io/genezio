@@ -29,7 +29,7 @@ program
 program
   .command("login")
   .description("Authenticate with Genezio platform to deploy your code.")
-  .action(async (code) => {
+  .action(async () => {
     open("https://app.genez.io/cli/login?redirect_url=http://localhost:8000");
     console.log(asciiCapybara);
     let token = "";
