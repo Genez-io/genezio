@@ -22,7 +22,7 @@ export async function deployClass(
 
   if (!authToken) {
     throw new Error(
-      "We are currently in the early access phase of our project. Run 'genezio login <code>' before you deploy your function. If you don't have a code, contact us at contact@genez.io."
+      "You are not logged in. Run 'genezio login' before you deploy your function."
     );
   }
 
