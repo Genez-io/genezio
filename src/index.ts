@@ -49,13 +49,13 @@ program
         const name = body.user.name || "genezio-username";
 
         keytar.setPassword("genez.io", name, token).then(() => {
-          console.log("Token recieved!");
+          console.log("Token received!");
           res.setHeader("Access-Control-Allow-Origin", "*");
           res.setHeader("Access-Control-Allow-Headers", "Content-Type");
           res.setHeader("Access-Control-Allow-Methods", "POST");
           res.setHeader("Access-Control-Allow-Credentials", "true");
           res.writeHead(200);
-          res.end("Token recieved!");
+          res.end("Token received!");
         });
       });
       const httpTerminator = createHttpTerminator({ server });
