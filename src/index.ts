@@ -13,8 +13,10 @@ import http from "http";
 import jsonBody from "body/json";
 import { createHttpTerminator } from "http-terminator";
 import keytar from "keytar";
+import * as dotenv from "dotenv";
 
 const program = new Command();
+dotenv.config();
 
 program
   .name("genezio")
@@ -32,7 +34,8 @@ program
   .command("login")
   .description("Authenticate with Genezio platform to deploy your code.")
   .action(async () => {
-    open("https://app.genez.io/cli/login?redirect_url=http://localhost:8000");
+    const browserUrl = `${process.env.REACT_APP_BASE_URL}/cli/login?/redirect_url=http://localhost:${process.env.LOCAL_PORT}`
+    open(browserUrl);
     console.log(asciiCapybara);
     let token = "";
     const server = http.createServer((req, res) => {

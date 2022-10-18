@@ -23,6 +23,7 @@
     "command-line-args": "^5.2.1",
     "commander": "^9.4.0",
     "crypto": "^1.0.1",
+    "dotenv": "~16.0.3",
     "form-data": "^4.0.0",
     "fs": "^0.0.1-security",
     "glob": "^8.0.3",
@@ -49,7 +50,7 @@
     "@typescript-eslint/parser": "^5.39.0",
     "eslint": "^8.24.0",
     "pre-commit": "^1.2.2",
-    "typescript": "^4.8.3",
+    "typescript": "~4.8.4",
     "webpack-node-externals": "^3.0.0"
   }
 }
