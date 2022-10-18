@@ -1,22 +1,35 @@
 {
   "name": "genezio",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Command line utility to interact with Genezio infrastructure.",
   "main": "index.js",
   "scripts": {
     "start": "npx tsc && node build/index.js",
-    "install-locally": "npx tsc && npm i -g"
+    "install-locally": "npx tsc && npm i -g",
+    "preinstall": "npx tsc",
+    "lint": "./scripts/lint"
   },
+  "pre-commit": [
+    "lint"
+  ],
   "author": "Genezio",
   "license": "GPL-3",
   "dependencies": {
+    "@types/body": "^5.1.1",
+    "archiver": "^5.3.1",
     "axios": "^0.27.2",
+    "body": "^5.1.0",
     "chokidar": "^3.5.3",
     "command-line-args": "^5.2.1",
     "commander": "^9.4.0",
+    "crypto": "^1.0.1",
     "form-data": "^4.0.0",
+    "fs": "^0.0.1-security",
+    "glob": "^8.0.3",
     "http-terminator": "^3.2.0",
     "keytar": "^7.9.0",
+    "open": "^8.4.0",
+    "os": "^0.1.2",
     "path": "^0.12.7",
     "webpack": "^5.74.0",
     "yaml": "^2.1.1"
@@ -29,7 +42,13 @@
     "genezio": "./build/index.js"
   },
   "devDependencies": {
+    "@types/archiver": "^5.3.1",
+    "@types/glob": "^8.0.0",
     "@types/node": "^18.7.18",
+    "@typescript-eslint/eslint-plugin": "^5.39.0",
+    "@typescript-eslint/parser": "^5.39.0",
+    "eslint": "^8.24.0",
+    "pre-commit": "^1.2.2",
     "typescript": "^4.8.3",
     "webpack-node-externals": "^3.0.0"
   }

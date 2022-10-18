@@ -63,16 +63,16 @@ var Server = /** @class */ (function () {
                     case 2:
                         configurationFileContent = _b.sent();
                         _loop_1 = function (file) {
-                            var _c, path_1, className, functionNames, module_1, object;
+                            var _c, path, className, functionNames, module_1, object;
                             return __generator(this, function (_d) {
                                 switch (_d.label) {
                                     case 0: return [4 /*yield*/, (0, commands_1.bundleJavascriptCode)(file)];
                                     case 1:
-                                        _c = _d.sent(), path_1 = _c.path, className = _c.className, functionNames = _c.functionNames;
-                                        module_1 = require(path_1);
+                                        _c = _d.sent(), path = _c.path, className = _c.className, functionNames = _c.functionNames;
+                                        module_1 = require(path);
                                         object = new module_1.genezio[className]();
                                         functionNames.forEach(function (functionName) {
-                                            handlers.push(new handler_1.default(path_1, object, className, functionName));
+                                            handlers.push(new handler_1.default(path, object, className, functionName));
                                         });
                                         return [2 /*return*/];
                                 }

@@ -47,6 +47,12 @@ var localEnvironment_1 = __importDefault(require("./localEnvironment"));
 var chokidar_1 = __importDefault(require("chokidar"));
 var path_1 = __importDefault(require("path"));
 var yaml_1 = require("yaml");
+var open_1 = __importDefault(require("open"));
+var strings_1 = require("./utils/strings");
+var http_1 = __importDefault(require("http"));
+var json_1 = __importDefault(require("body/json"));
+var http_terminator_1 = require("http-terminator");
+var keytar_1 = __importDefault(require("keytar"));
 var program = new commander_1.Command();
 program
     .name("genezio")
@@ -67,11 +73,41 @@ program
 }); });
 program
     .command("login")
-    .argument("<code>", "The authentication code.")
     .description("Authenticate with Genezio platform to deploy your code.")
-    .action(function (code) { return __awaiter(void 0, void 0, void 0, function () {
+    .action(function () { return __awaiter(void 0, void 0, void 0, function () {
+    var token, server;
     return __generator(this, function (_a) {
-        (0, file_1.writeToken)(code);
+        (0, open_1.default)("https://app.genez.io/cli/login?redirect_url=http://localhost:8000");
+        console.log(strings_1.asciiCapybara);
+        token = "";
+        server = http_1.default.createServer(function (req, res) {
+            res.setHeader("Access-Control-Allow-Origin", "*");
+            res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+            res.setHeader("Access-Control-Allow-Methods", "POST");
+            res.setHeader("Access-Control-Allow-Credentials", "true");
+            if (req.method === "OPTIONS") {
+                res.end();
+                return;
+            }
+            (0, json_1.default)(req, res, function (err, body) {
+                token = body.token;
+                var name = body.user.name || "genezio-username";
+                keytar_1.default.setPassword("genez.io", name, token).then(function () {
+                    console.log("Token recieved!");
+                    res.setHeader("Access-Control-Allow-Origin", "*");
+                    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+                    res.setHeader("Access-Control-Allow-Methods", "POST");
+                    res.setHeader("Access-Control-Allow-Credentials", "true");
+                    res.writeHead(200);
+                    res.end("Token recieved!");
+                });
+            });
+            var httpTerminator = (0, http_terminator_1.createHttpTerminator)({ server: server });
+            httpTerminator.terminate();
+        });
+        server.listen(8000, "localhost", function () {
+            console.log("Waiting for token...");
+        });
         return [2 /*return*/];
     });
 }); });
@@ -180,7 +216,7 @@ program
                         ignored: ignoredPaths_1,
                         ignoreInitial: true
                     })
-                        .on("all", function (event, path) { return __awaiter(void 0, void 0, void 0, function () {
+                        .on("all", function () { return __awaiter(void 0, void 0, void 0, function () {
                         return __generator(this, function (_a) {
                             switch (_a.label) {
                                 case 0:

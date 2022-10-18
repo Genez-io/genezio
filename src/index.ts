@@ -2,11 +2,17 @@
 
 import { Command } from "commander";
 import { deployFunctions, generateSdks, init } from "./commands";
-import { fileExists, writeToken, readUTF8File } from "./utils/file";
+import { fileExists, readUTF8File } from "./utils/file";
 import Server from "./localEnvironment";
 import chokidar from "chokidar";
 import path from "path";
 import { parse } from "yaml"
+import open from "open";
+import { asciiCapybara } from "./utils/strings";
+import http from "http";
+import jsonBody from "body/json";
+import { createHttpTerminator } from "http-terminator";
+import keytar from "keytar";
 
 const program = new Command();
 
@@ -24,10 +30,41 @@ program
 
 program
   .command("login")
-  .argument("<code>", "The authentication code.")
   .description("Authenticate with Genezio platform to deploy your code.")
-  .action(async (code) => {
-    writeToken(code)
+  .action(async () => {
+    open("https://app.genez.io/cli/login?redirect_url=http://localhost:8000");
+    console.log(asciiCapybara);
+    let token = "";
+    const server = http.createServer((req, res) => {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+      res.setHeader("Access-Control-Allow-Methods", "POST");
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+      if (req.method === "OPTIONS") {
+        res.end();
+        return;
+      }
+      jsonBody(req, res, (err, body: any) => {
+        token = body.token;
+        const name = body.user.name || "genezio-username";
+
+        keytar.setPassword("genez.io", name, token).then(() => {
+          console.log("Token recieved!");
+          res.setHeader("Access-Control-Allow-Origin", "*");
+          res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+          res.setHeader("Access-Control-Allow-Methods", "POST");
+          res.setHeader("Access-Control-Allow-Credentials", "true");
+          res.writeHead(200);
+          res.end("Token recieved!");
+        });
+      });
+      const httpTerminator = createHttpTerminator({ server });
+      httpTerminator.terminate();
+    });
+
+    server.listen(8000, "localhost", () => {
+      console.log("Waiting for token...");
+    });
   });
 
 program
@@ -87,7 +124,8 @@ program
             .catch((error: Error) => {
               console.error(`${error}`);
             });
-      let server = new Server();
+
+      const server = new Server();
 
       const runServer = async () => {
         const handlers = await server.generateHandlersFromFiles();
@@ -106,7 +144,7 @@ program
             ignored: ignoredPaths,
             ignoreInitial: true
           })
-          .on("all", async (event, path) => {
+          .on("all", async () => {
             console.clear();
             console.log("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
             await server.terminate();

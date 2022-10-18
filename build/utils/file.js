@@ -39,12 +39,65 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.readToken = exports.writeToken = exports.writeToFile = exports.readUTF8File = exports.getFileDetails = exports.createTemporaryFolder = exports.fileExists = void 0;
+exports.readToken = exports.writeToFile = exports.readUTF8File = exports.getFileDetails = exports.createTemporaryFolder = exports.fileExists = exports.zipDirectory = exports.getAllNonJsFiles = void 0;
 var assert_1 = require("assert");
 var fs_1 = __importDefault(require("fs"));
 var os_1 = __importDefault(require("os"));
 var path_1 = __importDefault(require("path"));
 var fileDetails_1 = __importDefault(require("../models/fileDetails"));
+var glob_1 = __importDefault(require("glob"));
+var archiver_1 = __importDefault(require("archiver"));
+var keytar_1 = __importDefault(require("keytar"));
+function getAllNonJsFiles() {
+    return __awaiter(this, void 0, void 0, function () {
+        return __generator(this, function (_a) {
+            return [2 /*return*/, new Promise(function (resolve, reject) {
+                    (0, glob_1.default)("./**/*", { dot: true }, function (err, files) {
+                        if (err) {
+                            reject(err);
+                        }
+                        var fileDetails = files
+                            .filter(function (file) {
+                            // filter js files, node_modules and folders
+                            return (path_1.default.extname(file) !== ".js" &&
+                                path_1.default.basename(file) !== "package.json" &&
+                                path_1.default.basename(file) !== "package-lock.json" &&
+                                !file.includes("node_modules") &&
+                                !fs_1.default.lstatSync(file).isDirectory());
+                        })
+                            .map(function (file) {
+                            return {
+                                name: path_1.default.parse(file).name,
+                                extension: path_1.default.parse(file).ext,
+                                path: file,
+                                filename: file
+                            };
+                        });
+                        resolve(fileDetails);
+                    });
+                })];
+        });
+    });
+}
+exports.getAllNonJsFiles = getAllNonJsFiles;
+function zipDirectory(sourceDir, outPath) {
+    return __awaiter(this, void 0, void 0, function () {
+        var archive, stream;
+        return __generator(this, function (_a) {
+            archive = (0, archiver_1.default)("zip", { zlib: { level: 9 } });
+            stream = fs_1.default.createWriteStream(outPath);
+            return [2 /*return*/, new Promise(function (resolve, reject) {
+                    archive
+                        .directory(sourceDir, false)
+                        .on("error", function (err) { return reject(err); })
+                        .pipe(stream);
+                    stream.on("close", function () { return resolve(); });
+                    archive.finalize();
+                })];
+        });
+    });
+}
+exports.zipDirectory = zipDirectory;
 function fileExists(filePath) {
     return __awaiter(this, void 0, void 0, function () {
         return __generator(this, function (_a) {
@@ -53,7 +106,7 @@ function fileExists(filePath) {
                         if (exists == null) {
                             return resolve(true);
                         }
-                        else if (exists.code === 'ENOENT') {
+                        else if (exists.code === "ENOENT") {
                             return resolve(false);
                         }
                     });
@@ -63,10 +116,11 @@ function fileExists(filePath) {
 }
 exports.fileExists = fileExists;
 function createTemporaryFolder(name) {
+    if (name === void 0) { name = "foo-"; }
     return __awaiter(this, void 0, void 0, function () {
         return __generator(this, function (_a) {
             return [2 /*return*/, new Promise(function (resolve, reject) {
-                    fs_1.default.mkdtemp(path_1.default.join(os_1.default.tmpdir(), 'foo-'), function (error, folder) {
+                    fs_1.default.mkdtemp(path_1.default.join(os_1.default.tmpdir(), name), function (error, folder) {
                         if (error) {
                             (0, assert_1.rejects)(error);
                         }
@@ -109,23 +163,22 @@ function writeToFile(folderPath, filename, content, createPathIfNeeded) {
     });
 }
 exports.writeToFile = writeToFile;
-function writeToken(token) {
-    return __awaiter(this, void 0, void 0, function () {
-        return __generator(this, function (_a) {
-            return [2 /*return*/, writeToFile(os_1.default.homedir(), ".genezio", token, true)];
-        });
-    });
-}
-exports.writeToken = writeToken;
 function readToken() {
     return __awaiter(this, void 0, void 0, function () {
         return __generator(this, function (_a) {
+            // get credentials from keytar
             return [2 /*return*/, new Promise(function (resolve, reject) {
-                    fs_1.default.readFile(path_1.default.join(os_1.default.homedir(), ".genezio"), 'utf8', function (error, data) {
-                        if (error) {
-                            reject(error);
+                    keytar_1.default
+                        .findCredentials("genez.io")
+                        .then(function (credentials) {
+                        if (credentials.length === 0) {
+                            console.log("You are not logged in. Please login first.");
+                            reject("No credentials found");
                         }
-                        resolve(data);
+                        resolve(credentials[0].password);
+                    })
+                        .catch(function (error) {
+                        reject(error);
                     });
                 })];
         });

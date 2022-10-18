@@ -40,18 +40,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.askQuestion = void 0;
-var readline = require('readline');
-var path_1 = __importDefault(require("path"));
+var readline_1 = __importDefault(require("readline"));
 function askQuestion(question, defaultValue) {
     return __awaiter(this, void 0, void 0, function () {
-        var rl, defaultOutputPath;
+        var rl;
         return __generator(this, function (_a) {
-            rl = readline.createInterface({
+            rl = readline_1.default.createInterface({
                 input: process.stdin,
                 output: process.stdout
             });
-            defaultOutputPath = path_1.default.resolve('.');
-            return [2 /*return*/, new Promise(function (resolve, reject) {
+            return [2 /*return*/, new Promise(function (resolve) {
                     rl.question(question, function (input) {
                         if (input.length === 0 && defaultValue) {
                             resolve(defaultValue);

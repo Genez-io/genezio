@@ -1,12 +1,11 @@
 import FormData from 'form-data'
 import fs from 'fs'
 import axios from 'axios'
-import path from "path"
 import { getFileDetails } from '../utils/file'
 
 
 export default async function generateSdk(filePaths: string[], runtime: string, env: string, urlMap?: any) {
-    var form = new FormData()
+    const form = new FormData()
     form.append("runtime", runtime)
     form.append("env", env)
 
