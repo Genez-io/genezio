@@ -2,9 +2,11 @@
 
 import { Command } from "commander";
 import { deployFunctions, generateSdks, init } from "./commands";
+import { fileExists, readUTF8File } from "./utils/file";
 import Server from "./localEnvironment";
 import chokidar from "chokidar";
 import path from "path";
+import { parse } from "yaml"
 import open from "open";
 import { asciiCapybara } from "./utils/strings";
 import http from "http";
@@ -111,6 +113,18 @@ program
   .description("Run a local environment for your functions.")
   .action(async () => {
     try {
+      const configurationFileContentUTF8 = await readUTF8File('./genezio.yaml')
+      const configurationFileContent = await parse(configurationFileContentUTF8);
+      const cwd = process.cwd();
+      if (!(await fileExists(path.join(cwd, configurationFileContent.sdk.path))))
+        await generateSdks("local")
+            .then(() => {
+              console.log("Your SDK was successfully generated!");
+            })
+            .catch((error: Error) => {
+              console.error(`${error}`);
+            });
+
       const server = new Server();
 
       const runServer = async () => {
@@ -121,7 +135,6 @@ program
       runServer();
 
       // Watch for changes in the classes and update the handlers
-      const cwd = process.cwd();
       const watchPaths = [path.join(cwd, "/**/*")];
       const ignoredPaths = "**/node_modules/*";
 

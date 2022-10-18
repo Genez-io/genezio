@@ -42,9 +42,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var commander_1 = require("commander");
 var commands_1 = require("./commands");
+var file_1 = require("./utils/file");
 var localEnvironment_1 = __importDefault(require("./localEnvironment"));
 var chokidar_1 = __importDefault(require("chokidar"));
 var path_1 = __importDefault(require("path"));
+var yaml_1 = require("yaml");
 var open_1 = __importDefault(require("open"));
 var strings_1 = require("./utils/strings");
 var http_1 = __importDefault(require("http"));
@@ -166,53 +168,77 @@ program
     .command("local")
     .description("Run a local environment for your functions.")
     .action(function () { return __awaiter(void 0, void 0, void 0, function () {
-    var server_1, runServer_1, cwd, watchPaths_1, ignoredPaths_1, startWatching;
+    var configurationFileContentUTF8, configurationFileContent, cwd, server_1, runServer_1, watchPaths_1, ignoredPaths_1, startWatching, error_1;
     return __generator(this, function (_a) {
-        try {
-            server_1 = new localEnvironment_1.default();
-            runServer_1 = function () { return __awaiter(void 0, void 0, void 0, function () {
-                var handlers;
-                return __generator(this, function (_a) {
-                    switch (_a.label) {
-                        case 0: return [4 /*yield*/, server_1.generateHandlersFromFiles()];
-                        case 1:
-                            handlers = _a.sent();
-                            server_1.start(handlers);
-                            return [2 /*return*/];
-                    }
-                });
-            }); };
-            runServer_1();
-            cwd = process.cwd();
-            watchPaths_1 = [path_1.default.join(cwd, "/**/*")];
-            ignoredPaths_1 = "**/node_modules/*";
-            startWatching = function () {
-                chokidar_1.default
-                    .watch(watchPaths_1, {
-                    ignored: ignoredPaths_1,
-                    ignoreInitial: true
-                })
-                    .on("all", function () { return __awaiter(void 0, void 0, void 0, function () {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 6, , 7]);
+                return [4 /*yield*/, (0, file_1.readUTF8File)('./genezio.yaml')];
+            case 1:
+                configurationFileContentUTF8 = _a.sent();
+                return [4 /*yield*/, (0, yaml_1.parse)(configurationFileContentUTF8)];
+            case 2:
+                configurationFileContent = _a.sent();
+                cwd = process.cwd();
+                return [4 /*yield*/, (0, file_1.fileExists)(path_1.default.join(cwd, configurationFileContent.sdk.path))];
+            case 3:
+                if (!!(_a.sent())) return [3 /*break*/, 5];
+                return [4 /*yield*/, (0, commands_1.generateSdks)("local")
+                        .then(function () {
+                        console.log("Your SDK was successfully generated!");
+                    })
+                        .catch(function (error) {
+                        console.error("".concat(error));
+                    })];
+            case 4:
+                _a.sent();
+                _a.label = 5;
+            case 5:
+                server_1 = new localEnvironment_1.default();
+                runServer_1 = function () { return __awaiter(void 0, void 0, void 0, function () {
+                    var handlers;
                     return __generator(this, function (_a) {
                         switch (_a.label) {
-                            case 0:
-                                console.clear();
-                                console.log("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
-                                return [4 /*yield*/, server_1.terminate()];
+                            case 0: return [4 /*yield*/, server_1.generateHandlersFromFiles()];
                             case 1:
-                                _a.sent();
-                                runServer_1();
+                                handlers = _a.sent();
+                                server_1.start(handlers);
                                 return [2 /*return*/];
                         }
                     });
-                }); });
-            };
-            startWatching();
+                }); };
+                runServer_1();
+                watchPaths_1 = [path_1.default.join(cwd, "/**/*")];
+                ignoredPaths_1 = "**/node_modules/*";
+                startWatching = function () {
+                    chokidar_1.default
+                        .watch(watchPaths_1, {
+                        ignored: ignoredPaths_1,
+                        ignoreInitial: true
+                    })
+                        .on("all", function () { return __awaiter(void 0, void 0, void 0, function () {
+                        return __generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0:
+                                    console.clear();
+                                    console.log("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
+                                    return [4 /*yield*/, server_1.terminate()];
+                                case 1:
+                                    _a.sent();
+                                    runServer_1();
+                                    return [2 /*return*/];
+                            }
+                        });
+                    }); });
+                };
+                startWatching();
+                return [3 /*break*/, 7];
+            case 6:
+                error_1 = _a.sent();
+                console.error("".concat(error_1));
+                return [3 /*break*/, 7];
+            case 7: return [2 /*return*/];
         }
-        catch (error) {
-            console.error("".concat(error));
-        }
-        return [2 /*return*/];
     });
 }); });
 program.parse();
