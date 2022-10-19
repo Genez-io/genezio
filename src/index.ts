@@ -15,6 +15,7 @@ import { createHttpTerminator } from "http-terminator";
 import keytar from "keytar";
 import { PORT, REACT_APP_BASE_URL } from "./variables";
 import { exit } from "process";
+import { AxiosError } from "axios";
 
 const program = new Command();
 
@@ -96,8 +97,12 @@ program
     "Deploy the functions mentioned in the genezio.yaml file to Genezio infrastructure."
   )
   .action(async () => {
-    await deployFunctions().catch((error: Error) => {
-      console.error(error.message);
+    await deployFunctions().catch((error: AxiosError) => {
+      if (error.response?.status == 401) {
+        console.log("You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function.")
+      } else {
+        console.error(error.message);
+      }
     });
   });
 
