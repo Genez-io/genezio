@@ -3,6 +3,7 @@ import FormData from "form-data";
 import fs from "fs";
 import axios from "axios";
 import { readToken } from "../utils/file";
+import { BACKEND_ENDPOINT } from "../variables";
 
 export async function deployClass(
   filePath: string,
@@ -36,7 +37,7 @@ export async function deployClass(
 
   const response: any = await axios({
     method: "post",
-    url: "https://api.genez.io/project/deployment", // TODO modify to http://api.genez.io/core/deployment
+    url: `${BACKEND_ENDPOINT}/project/deployment`, // TODO modify to http://api.genez.io/core/deployment
     data: form,
     headers: { ...form.getHeaders(), Authorization: `Bearer ${authToken}` }
   }).catch((error: Error) => {
