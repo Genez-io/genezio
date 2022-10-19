@@ -54,11 +54,13 @@ program
         // delete all existing tokens for service genez.io
         keytar
           .findCredentials("genez.io")
-          .then((credentials) => {
-            credentials.forEach((credential) => {
-              keytar.deletePassword("genez.io", credential.account);
+          .then(async (credentials) => {
+           // delete all existing tokens for service genez.io before adding the new one
+            credentials.forEach(async (credential) => {
+              await keytar.deletePassword("genez.io", credential.account);
             });
-            
+          })
+          .then(() => {
             // save new token
             keytar.setPassword("genez.io", name, token).then(() => {
               console.log("You are now logged in!");
