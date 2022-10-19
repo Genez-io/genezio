@@ -128,7 +128,6 @@ export async function readToken(): Promise<string> {
       .findCredentials("genez.io")
       .then((credentials) => {
         if (credentials.length === 0) {
-          console.log("You are not logged in. Please login first.");
           reject("No credentials found");
         }
 
