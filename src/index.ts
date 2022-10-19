@@ -6,7 +6,7 @@ import { fileExists, readUTF8File } from "./utils/file";
 import Server from "./localEnvironment";
 import chokidar from "chokidar";
 import path from "path";
-import { parse } from "yaml"
+import { parse } from "yaml";
 import open from "open";
 import { asciiCapybara } from "./utils/strings";
 import http from "http";
@@ -54,24 +54,37 @@ program
         const user = JSON.parse(params.get("user")!)
         const name = user.name || "genezio-username";
 
-        keytar.setPassword("genez.io", name, token).then(() => {
-          console.log("Token received!");
-          res.setHeader("Access-Control-Allow-Origin", "*");
-          res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-          res.setHeader("Access-Control-Allow-Methods", "POST");
-          res.setHeader("Access-Control-Allow-Credentials", "true");
-          res.writeHead(301, {
-            Location: "https://app.genez.io"
-          });
-          res.end();
+        // delete all existing tokens for service genez.io
+        keytar
+          .findCredentials("genez.io")
+          .then(async (credentials) => {
+           // delete all existing tokens for service genez.io before adding the new one
+            credentials.forEach(async (credential) => {
+              await keytar.deletePassword("genez.io", credential.account);
+            });
+          })
+          .then(() => {
+            // save new token
+            keytar.setPassword("genez.io", name, token).then(() => {
+              console.log("You are now logged in!");
+              res.setHeader("Access-Control-Allow-Origin", "*");
+              res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+              res.setHeader("Access-Control-Allow-Methods", "POST");
+              res.setHeader("Access-Control-Allow-Credentials", "true");
+              res.writeHead(200);
+              res.end("Token received!");
 
-          exit(0)
-        });
+              exit(0)
+            });
+          })
+          .catch((error) => {
+            console.log(error);
+          });
       });
     });
 
-    server.listen(PORT, "localhost", () => {
-      console.log("Waiting for token...");
+    server.listen(8000, "localhost", () => {
+      console.log("Waiting for browser to login...");
     });
   });
 
@@ -121,17 +134,21 @@ program
   .description("Run a local environment for your functions.")
   .action(async () => {
     try {
-      const configurationFileContentUTF8 = await readUTF8File('./genezio.yaml')
-      const configurationFileContent = await parse(configurationFileContentUTF8);
+      const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
+      const configurationFileContent = await parse(
+        configurationFileContentUTF8
+      );
       const cwd = process.cwd();
-      if (!(await fileExists(path.join(cwd, configurationFileContent.sdk.path))))
+      if (
+        !(await fileExists(path.join(cwd, configurationFileContent.sdk.path)))
+      )
         await generateSdks("local")
-            .then(() => {
-              console.log("Your SDK was successfully generated!");
-            })
-            .catch((error: Error) => {
-              console.error(`${error}`);
-            });
+          .then(() => {
+            console.log("Your SDK was successfully generated!");
+          })
+          .catch((error: Error) => {
+            console.error(`${error}`);
+          });
 
       const server = new Server();
 
