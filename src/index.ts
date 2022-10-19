@@ -71,8 +71,10 @@ program
               res.setHeader("Access-Control-Allow-Headers", "Content-Type");
               res.setHeader("Access-Control-Allow-Methods", "POST");
               res.setHeader("Access-Control-Allow-Credentials", "true");
-              res.writeHead(200);
-              res.end("Token received!");
+              res.writeHead(301, {
+                Location: "https://app.genez.io"
+              });
+              res.end();
 
               exit(0)
             });
