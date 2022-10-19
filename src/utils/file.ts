@@ -1,4 +1,3 @@
-import { rejects } from "assert";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -74,7 +73,7 @@ export async function createTemporaryFolder(
   return new Promise((resolve, reject) => {
     fs.mkdtemp(path.join(os.tmpdir(), name), (error: any, folder: string) => {
       if (error) {
-        rejects(error);
+        reject(error);
       }
 
       resolve(folder);
@@ -128,7 +127,6 @@ export async function readToken(): Promise<string> {
       .findCredentials("genez.io")
       .then((credentials) => {
         if (credentials.length === 0) {
-          console.log("You are not logged in. Please login first.");
           reject("No credentials found");
         }
 
