@@ -1,4 +1,0 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.lambdaHandler = void 0;
-exports.lambdaHandler = "\n  const handler = require(\"./module.js\");    \n\n  const object = new handler.genezio[Object.keys(handler.genezio)[0]]();\n  \n  exports.handler =  async function(event, context) {\n      const body = JSON.parse(event.body);\n      const [_, method] = body.method.split(\".\")\n  \n      const requestId = body.id;\n      try {\n          const response = await object[method](...(body.params || []));\n          return {\"jsonrpc\": \"2.0\", \"result\": response, \"error\": null, \"id\": requestId};\n      } catch(error) {\n          return {\"jsonrpc\": \"2.0\", \"error\": {\"code\": -1, \"message\": error.toString()}, \"id\": requestId};\n      }\n  }\n";
