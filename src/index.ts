@@ -14,6 +14,7 @@ import jsonBody from "body/json";
 import { createHttpTerminator } from "http-terminator";
 import keytar from "keytar";
 import { PORT, REACT_APP_BASE_URL } from "./variables";
+import { exit } from "process";
 
 const program = new Command();
 
@@ -33,11 +34,10 @@ program
   .command("login")
   .description("Authenticate with Genezio platform to deploy your code.")
   .action(async () => {
-    const browserUrl = `${REACT_APP_BASE_URL}/cli/login?redirect_url=http://localhost:${PORT}`
-    console.log(browserUrl)
+    const browserUrl = `${REACT_APP_BASE_URL}/cli/login?redirect_url=http://localhost:${PORT}/`
     open(browserUrl);
     console.log(asciiCapybara);
-    let token = "";
+
     const server = http.createServer((req, res) => {
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -48,8 +48,11 @@ program
         return;
       }
       jsonBody(req, res, (err, body: any) => {
-        token = body.token;
-        const name = body.user.name || "genezio-username";
+        const params = new URLSearchParams(req.url)
+
+        const token = params.get("/?token")!;
+        const user = JSON.parse(params.get("user")!)
+        const name = user.name || "genezio-username";
 
         keytar.setPassword("genez.io", name, token).then(() => {
           console.log("Token received!");
@@ -57,12 +60,14 @@ program
           res.setHeader("Access-Control-Allow-Headers", "Content-Type");
           res.setHeader("Access-Control-Allow-Methods", "POST");
           res.setHeader("Access-Control-Allow-Credentials", "true");
-          res.writeHead(200);
-          res.end("Token received!");
+          res.writeHead(301, {
+            Location: "https://app.genez.io"
+          });
+          res.end();
+
+          exit(0)
         });
       });
-      const httpTerminator = createHttpTerminator({ server });
-      httpTerminator.terminate();
     });
 
     server.listen(PORT, "localhost", () => {
