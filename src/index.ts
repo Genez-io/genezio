@@ -72,7 +72,7 @@ program
               res.setHeader("Access-Control-Allow-Methods", "POST");
               res.setHeader("Access-Control-Allow-Credentials", "true");
               res.writeHead(301, {
-                Location: "https://app.genez.io"
+                Location: `${REACT_APP_BASE_URL}/cli/login/success`
               });
               res.end();
 
