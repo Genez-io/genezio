@@ -2,6 +2,7 @@ import FormData from 'form-data'
 import fs from 'fs'
 import axios from 'axios'
 import { getFileDetails } from '../utils/file'
+import { GENERATE_SDK_API_URL } from '../variables'
 
 
 export default async function generateSdk(filePaths: string[], runtime: string, env: string, urlMap?: any) {
@@ -21,7 +22,7 @@ export default async function generateSdk(filePaths: string[], runtime: string, 
 
     const response: any = await axios({
         method: "post",
-        url: "https://haavwx62n4.execute-api.us-east-1.amazonaws.com/js/generateSdk",
+        url: `${GENERATE_SDK_API_URL}/js/generateSdk`,
         data: form,
         headers: form.getHeaders()
     }).catch((error: Error) => {
