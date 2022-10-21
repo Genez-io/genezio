@@ -28,7 +28,11 @@ program
   .command("init")
   .description("Initialize a Genezio project.")
   .action(async () => {
-    await init();
+    try {
+      await init();
+    } catch(error: any) {
+      console.error(error.message)
+    }
   });
 
 program

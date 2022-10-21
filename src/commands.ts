@@ -67,6 +67,17 @@ export async function bundleJavascriptCode(
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const module = require(filePath);
       const className = Object.keys(module.genezio)[0];
+
+      if (Object.keys(module.genezio).length > 1) {
+        console.log("\x1b[33m", `Warning: We found multiple classes exported from the ${name} file. For now, we support only one class per file.`)
+        console.log("\x1b[0m", "")
+      }
+
+      if (!className) {
+        reject(new Error(`No class was found in the ${name} file. Make sure you exported the class.`))
+        return;
+      }
+
       const functionNames = Object.getOwnPropertyNames(
         module.genezio[className].prototype
       ).filter((x) => x !== "constructor");
@@ -178,6 +189,10 @@ export async function deployFunctions() {
   const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
   const configurationFileContent = await parse(configurationFileContentUTF8);
 
+  if (configurationFileContent.classPaths.length === 0) {
+    throw new Error("You don't have any class in specified in the genezio.yaml configuration file. Add a class in 'classPaths' field and then call again 'genezio deploy'.")
+  }
+
   const functionUrlForFilePath: any = {};
 
   const allNonJsFilesPaths = await getAllNonJsFiles();
@@ -235,7 +250,13 @@ export async function generateSdks(env: string, urlMap?: any) {
 }
 
 export async function init() {
-  const projectName = await askQuestion(`What is the name of the project: `);
+  let projectName = ""
+  while (projectName.length === 0) {
+    projectName = await askQuestion(`What is the name of the project: `);
+    if (projectName.length === 0) {
+      console.log("The project name can't be empty.")
+    }
+  } 
   const sdk: any = { name: projectName, sdk: {}, classPaths: [] };
 
   const language = await askQuestion(
@@ -244,7 +265,7 @@ export async function init() {
   );
 
   if (language !== "js") {
-    throw Error(`We don't currently support this language ${language}.`);
+    throw Error(`We don't currently support the ${language} language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`);
   }
   sdk.sdk.language = language;
 
@@ -287,4 +308,11 @@ classPaths:
       console.error(error.toString());
     }
   );
+
+  console.log("")
+  console.log("")
+  console.log("\x1b[36m%s\x1b[0m", "Your genezio project was successfully initialized!")
+  console.log("")
+  console.log("The genezio.yaml configuration file was generated. You can now add the classes that you want to deploy in the \"classPaths\" array. Happy coding!")
+  console.log("")
 }
