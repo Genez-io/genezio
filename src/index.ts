@@ -11,11 +11,11 @@ import open from "open";
 import { asciiCapybara } from "./utils/strings";
 import http from "http";
 import jsonBody from "body/json";
-import { createHttpTerminator } from "http-terminator";
 import keytar from "keytar";
-import { PORT, REACT_APP_BASE_URL } from "./variables";
+import { REACT_APP_BASE_URL } from "./variables";
 import { exit } from "process";
 import { AxiosError } from "axios";
+import { AddressInfo } from "net";
 
 const program = new Command();
 
@@ -35,8 +35,6 @@ program
   .command("login")
   .description("Authenticate with Genezio platform to deploy your code.")
   .action(async () => {
-    const browserUrl = `${REACT_APP_BASE_URL}/cli/login?redirect_url=http://localhost:${PORT}/`
-    open(browserUrl);
     console.log(asciiCapybara);
 
     const server = http.createServer((req, res) => {
@@ -84,11 +82,19 @@ program
             console.log(error);
           });
       });
-    });
+    })
 
-    server.listen(8000, "localhost", () => {
-      console.log("Waiting for browser to login...");
-    });
+    const promise = new Promise((resolve) => {
+      server.listen(0,"localhost", () => {
+        console.log("Waiting for browser to login...");
+        const address = server.address() as AddressInfo
+        resolve(address.port)
+      });
+    })
+
+    const port = await promise;
+    const browserUrl = `${REACT_APP_BASE_URL}/cli/login?redirect_url=http://localhost:${port}/`
+    open(browserUrl);
   });
 
 program
