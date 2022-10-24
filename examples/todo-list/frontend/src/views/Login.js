@@ -4,8 +4,6 @@ import { User } from "../backend-sdk/user.sdk.js";
 import { Env, Remote } from "../backend-sdk/remote.js"
 import { useNavigate } from 'react-router-dom';
 
-const re =
-  /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 
 export default (props) => {
   const navigate = useNavigate();
@@ -19,10 +17,7 @@ export default (props) => {
       setError("All fields are mandatory");
       return;
     }
-    if (!re.test(email)) {
-      setError("Please provide a valid email");
-      return;
-    }
+
     setError("");
 
     const res = await User.login(email, password);

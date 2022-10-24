@@ -25,6 +25,7 @@
     "crypto": "^1.0.1",
     "form-data": "^4.0.0",
     "fs": "^0.0.1-security",
+    "fs-extra": "^10.1.0",
     "glob": "^8.0.3",
     "http-terminator": "^3.2.0",
     "keytar": "^7.9.0",
@@ -43,8 +44,10 @@
   },
   "devDependencies": {
     "@types/archiver": "^5.3.1",
+    "@types/fs-extra": "^9.0.13",
     "@types/glob": "^8.0.0",
     "@types/node": "^18.7.18",
+    "@types/webpack-node-externals": "^2.5.3",
     "@typescript-eslint/eslint-plugin": "^5.39.0",
     "@typescript-eslint/parser": "^5.39.0",
     "eslint": "^8.24.0",

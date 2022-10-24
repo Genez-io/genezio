@@ -1,7 +1,7 @@
 import { Remote } from "./remote.js"
 
 export class Task {
-    static remote = new Remote("https://ngyetz2b5l2whssimkr2sufpw40ivkrp.lambda-url.us-east-1.on.aws/", 443)
+    static remote = new Remote("undefined", 443)
 
     static async connect() {
         return Task.remote.call("Task.connect")  

@@ -17,6 +17,8 @@ import { parse, Document } from "yaml";
 import fs from "fs";
 import FileDetails from "./models/fileDetails";
 import { lambdaHandler } from "./utils/lambdaHander";
+import nodeExternals from "webpack-node-externals";
+import { default as fsExtra } from "fs-extra";
 
 export async function bundleJavascriptCode(
   filePath: string
@@ -30,6 +32,9 @@ export async function bundleJavascriptCode(
     const compiler = webpack({
       entry: "./" + filePath,
       target: "node",
+
+      externals: [nodeExternals()], // in order to ignore all modules in node_modules folder
+
       mode: "production",
       node: false,
       optimization: {
@@ -54,9 +59,12 @@ export async function bundleJavascriptCode(
 
     compiler.run((error, stats) => {
       if (error) {
+        console.error(error);
         reject(error);
         return;
       }
+
+      console.log(stats!.toString({ colors: true }));
 
       if (stats?.hasErrors()) {
         reject(stats?.compilation.getErrors());
@@ -64,17 +72,30 @@ export async function bundleJavascriptCode(
       }
 
       const filePath = path.join(temporaryFolder, outputFile);
+
+      // move all node_modules to temporaryFolder
+      const nodeModulesPath = path.join(temporaryFolder, "node_modules");
+
+      fsExtra.copySync(path.join(process.cwd(), "node_modules"), nodeModulesPath);
+
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const module = require(filePath);
       const className = Object.keys(module.genezio)[0];
 
       if (Object.keys(module.genezio).length > 1) {
-        console.log("\x1b[33m", `Warning: We found multiple classes exported from the ${name} file. For now, we support only one class per file.`)
-        console.log("\x1b[0m", "")
+        console.log(
+          "\x1b[33m",
+          `Warning: We found multiple classes exported from the ${name} file. For now, we support only one class per file.`
+        );
+        console.log("\x1b[0m", "");
       }
 
       if (!className) {
-        reject(new Error(`No class was found in the ${name} file. Make sure you exported the class.`))
+        reject(
+          new Error(
+            `No class was found in the ${name} file. Make sure you exported the class.`
+          )
+        );
         return;
       }
 
@@ -159,6 +180,7 @@ async function deployFunction(
       console.log("Bundling javascript code...");
       // eslint-disable-next-line no-case-declarations
       const bundledJavascriptCode = await bundleJavascriptCode(filePath);
+      console.log(bundleJavascriptCode);
       // eslint-disable-next-line no-case-declarations
       const archivePath = await createDeployArchive(
         bundledJavascriptCode,
@@ -190,7 +212,9 @@ export async function deployFunctions() {
   const configurationFileContent = await parse(configurationFileContentUTF8);
 
   if (configurationFileContent.classPaths.length === 0) {
-    throw new Error("You don't have any class in specified in the genezio.yaml configuration file. Add a class in 'classPaths' field and then call again 'genezio deploy'.")
+    throw new Error(
+      "You don't have any class in specified in the genezio.yaml configuration file. Add a class in 'classPaths' field and then call again 'genezio deploy'."
+    );
   }
 
   const functionUrlForFilePath: any = {};
@@ -250,13 +274,13 @@ export async function generateSdks(env: string, urlMap?: any) {
 }
 
 export async function init() {
-  let projectName = ""
+  let projectName = "";
   while (projectName.length === 0) {
     projectName = await askQuestion(`What is the name of the project: `);
     if (projectName.length === 0) {
-      console.log("The project name can't be empty.")
+      console.log("The project name can't be empty.");
     }
-  } 
+  }
   const sdk: any = { name: projectName, sdk: {}, classPaths: [] };
 
   const language = await askQuestion(
@@ -265,7 +289,9 @@ export async function init() {
   );
 
   if (language !== "js") {
-    throw Error(`We don't currently support the ${language} language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`);
+    throw Error(
+      `We don't currently support the ${language} language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`
+    );
   }
   sdk.sdk.language = language;
 
@@ -309,10 +335,15 @@ classPaths:
     }
   );
 
-  console.log("")
-  console.log("")
-  console.log("\x1b[36m%s\x1b[0m", "Your genezio project was successfully initialized!")
-  console.log("")
-  console.log("The genezio.yaml configuration file was generated. You can now add the classes that you want to deploy in the \"classPaths\" array. Happy coding!")
-  console.log("")
+  console.log("");
+  console.log("");
+  console.log(
+    "\x1b[36m%s\x1b[0m",
+    "Your genezio project was successfully initialized!"
+  );
+  console.log("");
+  console.log(
+    'The genezio.yaml configuration file was generated. You can now add the classes that you want to deploy in the "classPaths" array. Happy coding!'
+  );
+  console.log("");
 }
