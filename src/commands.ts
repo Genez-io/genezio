@@ -43,6 +43,12 @@ export async function addNewClass(classPath: string) {
     return;
   }
 
+  const classExtension = className.split(".").pop();
+  if (!classExtension || className.split(".").length < 2) {
+    console.error("Invalid class extension.");
+    return;
+  }
+
   // check if class already exists
   if (configurationFileContent.classPaths.length > 0) {
     if (
