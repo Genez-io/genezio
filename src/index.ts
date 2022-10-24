@@ -213,4 +213,24 @@ program
     }
   });
 
+program
+  .command("logout")
+  .description("Logout from Genezio platform.")
+  .action(async () => {
+    keytar
+      .findCredentials("genez.io")
+      .then(async (credentials) => {
+        credentials.forEach(async (credential) => {
+          await keytar.deletePassword("genez.io", credential.account);
+        });
+      })
+      .then(() => {
+        console.log("You are now logged out!");
+      })
+      .catch(() => {
+        console.log("Logout failed!");
+      });
+  });
+
+
 program.parse();
