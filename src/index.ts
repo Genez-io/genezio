@@ -1,7 +1,7 @@
 #! /usr/bin/env node
 
 import { Command } from "commander";
-import { deployFunctions, generateSdks, init } from "./commands";
+import { deployFunctions, generateSdks, init, addNewClass } from "./commands";
 import { fileExists, readUTF8File } from "./utils/file";
 import Server from "./localEnvironment";
 import chokidar from "chokidar";
@@ -30,8 +30,8 @@ program
   .action(async () => {
     try {
       await init();
-    } catch(error: any) {
-      console.error(error.message)
+    } catch (error: any) {
+      console.error(error.message);
     }
   });
 
@@ -51,17 +51,17 @@ program
         return;
       }
       jsonBody(req, res, (err, body: any) => {
-        const params = new URLSearchParams(req.url)
+        const params = new URLSearchParams(req.url);
 
         const token = params.get("/?token")!;
-        const user = JSON.parse(params.get("user")!)
+        const user = JSON.parse(params.get("user")!);
         const name = user.name || "genezio-username";
 
         // delete all existing tokens for service genez.io
         keytar
           .findCredentials("genez.io")
           .then(async (credentials) => {
-           // delete all existing tokens for service genez.io before adding the new one
+            // delete all existing tokens for service genez.io before adding the new one
             credentials.forEach(async (credential) => {
               await keytar.deletePassword("genez.io", credential.account);
             });
@@ -79,25 +79,25 @@ program
               });
               res.end();
 
-              exit(0)
+              exit(0);
             });
           })
           .catch((error) => {
             console.log(error);
           });
       });
-    })
+    });
 
     const promise = new Promise((resolve) => {
-      server.listen(0,"localhost", () => {
+      server.listen(0, "localhost", () => {
         console.log("Waiting for browser to login...");
-        const address = server.address() as AddressInfo
-        resolve(address.port)
+        const address = server.address() as AddressInfo;
+        resolve(address.port);
       });
-    })
+    });
 
     const port = await promise;
-    const browserUrl = `${REACT_APP_BASE_URL}/cli/login?redirect_url=http://localhost:${port}/`
+    const browserUrl = `${REACT_APP_BASE_URL}/cli/login?redirect_url=http://localhost:${port}/`;
     open(browserUrl);
   });
 
@@ -109,11 +109,25 @@ program
   .action(async () => {
     await deployFunctions().catch((error: AxiosError) => {
       if (error.response?.status == 401) {
-        console.log("You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function.")
+        console.log(
+          "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
+        );
       } else {
         console.error(error.message);
       }
     });
+  });
+
+program
+  .command("addClass")
+  .argument("<classPath>", "Path of the class you want to add.")
+  .description("Add a new class to the genezio.yaml file.")
+  .action(async (classPath: string) => {
+    try {
+      addNewClass(classPath);
+    } catch (error: any) {
+      console.error(error.message);
+    }
   });
 
 program
@@ -198,5 +212,25 @@ program
       console.error(`${error}`);
     }
   });
+
+program
+  .command("logout")
+  .description("Logout from Genezio platform.")
+  .action(async () => {
+    keytar
+      .findCredentials("genez.io")
+      .then(async (credentials) => {
+        credentials.forEach(async (credential) => {
+          await keytar.deletePassword("genez.io", credential.account);
+        });
+      })
+      .then(() => {
+        console.log("You are now logged out!");
+      })
+      .catch(() => {
+        console.log("Logout failed!");
+      });
+  });
+
 
 program.parse();
