@@ -106,7 +106,7 @@ export function writeToFile(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     if (!fs.existsSync(folderPath) && createPathIfNeeded) {
-      fs.mkdirSync(folderPath);
+      fs.mkdirSync(folderPath, { recursive: true });
     }
 
     fs.writeFile(path.join(folderPath, filename), content, function (error) {

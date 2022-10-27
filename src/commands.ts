@@ -21,8 +21,8 @@ import nodeExternals from "webpack-node-externals";
 import { default as fsExtra } from "fs-extra";
 import util from "util";
 import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
-import { AnySoaRecord, CONNREFUSED } from "dns";
-import { Console } from "console";
+import yaml from "yaml";
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const exec = util.promisify(require("child_process").exec);
 
@@ -112,6 +112,71 @@ export async function getNodeModules(filePath: string): Promise<any> {
       resolve(uniqueDependenciesInfo);
     });
   });
+}
+
+export async function addNewClass(classPath: string) {
+  const genezioYamlPath = path.join("./genezio.yaml");
+  if (!(await fileExists(genezioYamlPath))) {
+    console.error(
+      "genezio.yaml file does not exist. Please run `genezio init` before you add a class."
+    );
+    return;
+  }
+
+  if (classPath === undefined || classPath === "") {
+    console.error("Please provide a path to the class you want to add.");
+    return;
+  }
+
+  const configurationFileContentUTF8 = await readUTF8File(genezioYamlPath);
+  const configurationFileContent = await parse(configurationFileContentUTF8);
+
+  const className = classPath.split("/").pop();
+
+  if (!className) {
+    console.error("Invalid class path.");
+    return;
+  }
+
+  const classExtension = className.split(".").pop();
+  if (!classExtension || className.split(".").length < 2) {
+    console.error("Invalid class extension.");
+    return;
+  }
+
+  // check if class already exists
+  if (configurationFileContent.classPaths.length > 0) {
+    if (
+      configurationFileContent.classPaths.includes(classPath) ||
+      configurationFileContent.classPaths
+        .map((e: any) => e.split("/").pop())
+        .includes(className)
+    ) {
+      console.error("Class already exists.");
+      return;
+    }
+  }
+
+  // create the file if it does not exist
+  if (!(await fileExists(classPath))) {
+    const onlyPath = classPath.split("/").slice(0, -1).join("/");
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    await writeToFile(onlyPath, classPath.split("/").pop()!, "", true).catch(
+      (error) => {
+        console.error(error.toString());
+      }
+    );
+  }
+
+  configurationFileContent.classPaths.push(classPath);
+  // json to yaml
+  const yamlString = yaml.stringify(configurationFileContent);
+
+  await writeToFile(".", genezioYamlPath, yamlString).catch((error) => {
+    console.error(error.toString());
+  });
+
+  console.log("\x1b[36m%s\x1b[0m", "Class added successfully.");
 }
 
 export async function bundleJavascriptCode(
@@ -505,14 +570,13 @@ classPaths:
   );
 
   console.log("");
-  console.log("");
   console.log(
     "\x1b[36m%s\x1b[0m",
     "Your genezio project was successfully initialized!"
   );
   console.log("");
   console.log(
-    'The genezio.yaml configuration file was generated. You can now add the classes that you want to deploy in the "classPaths" array. Happy coding!'
+    "The genezio.yaml configuration file was generated. You can now add the classes that you want to deploy using the 'genezio addClass <className>' command."
   );
   console.log("");
 }
