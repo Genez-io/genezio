@@ -39,16 +39,21 @@ export async function deployClass(
     method: "post",
     url: `${BACKEND_ENDPOINT}/project/deployment`, // TODO modify to http://api.genez.io/core/deployment
     data: form,
-    headers: { ...form.getHeaders(), Authorization: `Bearer ${authToken}` }
+    headers: { ...form.getHeaders(), Authorization: `Bearer ${authToken}` },
+    maxContentLength: Infinity,
+    maxBodyLength: Infinity
   }).catch((error: Error) => {
+    console.log("error0");
     throw error;
   });
 
   if (response.data.status === "error") {
+    console.log("error1");
     throw new Error(response.data.message);
   }
 
   if (response.data?.error?.message) {
+    console.log("error2");
     throw new Error(response.data.error.message);
   }
 
