@@ -16,12 +16,16 @@ import BundledCode from "./models/bundledCode";
 import { parse, Document } from "yaml";
 import fs from "fs";
 import FileDetails from "./models/fileDetails";
-import { lambdaHandler } from "./utils/lambdaHander";
+import {
+  lambdaHandlerJsonRpc,
+  lambdaHandlerWebhook
+} from "./utils/lambdaHander";
 import nodeExternals from "webpack-node-externals";
 import { default as fsExtra } from "fs-extra";
 import util from "util";
 import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import yaml from "yaml";
+import { webhookDocumentation } from "./utils/strings";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const exec = util.promisify(require("child_process").exec);
@@ -114,7 +118,14 @@ export async function getNodeModules(filePath: string): Promise<any> {
   });
 }
 
-export async function addNewClass(classPath: string) {
+export async function addNewClass(classPath: string, classType: string) {
+  if (classType === undefined) {
+    classType = "http";
+  } else if (classType !== "http" && classType !== "jsonrpc") {
+    throw new Error(
+      "Invalid class type. Valid class types are 'http' and 'jsonrpc'."
+    );
+  }
   const genezioYamlPath = path.join("./genezio.yaml");
   if (!(await fileExists(genezioYamlPath))) {
     console.error(
@@ -147,9 +158,8 @@ export async function addNewClass(classPath: string) {
   // check if class already exists
   if (configurationFileContent.classPaths.length > 0) {
     if (
-      configurationFileContent.classPaths.includes(classPath) ||
       configurationFileContent.classPaths
-        .map((e: any) => e.split("/").pop())
+        .map((e: any) => e.classPath.split("/").pop())
         .includes(className)
     ) {
       console.error("Class already exists.");
@@ -161,14 +171,21 @@ export async function addNewClass(classPath: string) {
   if (!(await fileExists(classPath))) {
     const onlyPath = classPath.split("/").slice(0, -1).join("/");
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    await writeToFile(onlyPath, classPath.split("/").pop()!, "", true).catch(
-      (error) => {
-        console.error(error.toString());
-      }
-    );
+
+    await writeToFile(
+      onlyPath,
+      classPath.split("/").pop()!,
+      (classType === "http" ? webhookDocumentation : "") +
+        "\n\nexport class " +
+        (className.charAt(0).toUpperCase() + className.slice(1)) +
+        " {}",
+      true
+    ).catch((error) => {
+      console.error(error.toString());
+    });
   }
 
-  configurationFileContent.classPaths.push(classPath);
+  configurationFileContent.classPaths.push({ classPath, type: classType });
   // json to yaml
   const yamlString = yaml.stringify(configurationFileContent);
 
@@ -279,7 +296,8 @@ export async function bundleJavascriptCode(
 
 async function createDeployArchive(
   bundledJavascriptCode: BundledCode,
-  allNonJsFilesPaths: FileDetails[]
+  allNonJsFilesPaths: FileDetails[],
+  classType: string
 ) {
   const jsBundlePath = bundledJavascriptCode.path;
   const dependenciesInfo: any = bundledJavascriptCode.dependencies;
@@ -297,7 +315,11 @@ async function createDeployArchive(
     fs.unlinkSync(archivePath);
   }
 
-  writeToFile(tmpPath, "index.js", lambdaHandler);
+  writeToFile(
+    tmpPath,
+    "index.js",
+    classType === "http" ? lambdaHandlerWebhook : lambdaHandlerJsonRpc
+  );
 
   // create file structure
   const jsBundleFile = path.join(tmpPath, "module.js");
@@ -396,6 +418,7 @@ async function createDeployArchive(
 
 async function deployFunction(
   filePath: string,
+  classType: string,
   language: string,
   sdkPath: string,
   runtime: string,
@@ -416,7 +439,8 @@ async function deployFunction(
       // eslint-disable-next-line no-case-declarations
       const archivePath = await createDeployArchive(
         bundledJavascriptCode,
-        allNonJsFilesPaths
+        allNonJsFilesPaths,
+        classType
       );
       console.log("Bundling done for class: " + name);
       console.log("Deploying bundle...\n");
@@ -432,6 +456,11 @@ async function deployFunction(
       );
 
       console.log("Deployed successfully for class: " + name);
+      if (classType === "http") {
+        console.log(
+          "Webhook URL: " + response.functionUrl + " for class: " + name + "\n"
+        );
+      }
 
       return response.functionUrl;
     default:
@@ -447,7 +476,7 @@ export async function deployFunctions() {
 
   if (configurationFileContent.classPaths.length === 0) {
     throw new Error(
-      "You don't have any class in specified in the genezio.yaml configuration file. Add a class in 'classPaths' field and then call again 'genezio deploy'."
+      "You don't have any class in specified in the genezio.yaml configuration file. Add a class with '' field and then call again 'genezio deploy'."
     );
   }
 
@@ -455,9 +484,12 @@ export async function deployFunctions() {
 
   const allNonJsFilesPaths = await getAllNonJsFiles();
 
-  for (const filePath of configurationFileContent.classPaths) {
+  for (const elem of configurationFileContent.classPaths) {
+    const filePath = elem.classPath;
+    const type = elem.type;
     const functionUrl = await deployFunction(
       filePath,
+      type,
       configurationFileContent.sdk.language,
       configurationFileContent.sdk.path,
       configurationFileContent.sdk.runtime,
@@ -559,7 +591,8 @@ sdk:
   runtime: node
   path: ./sdk/
 classPaths:
-  - "./hello-world/index.js"`;
+  - classPath: "./hello-world/index.js"
+    type: jsonrpc`;
 
   const yamlConfigurationFileContent = doc.toString();
 

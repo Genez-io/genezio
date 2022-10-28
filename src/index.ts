@@ -121,10 +121,14 @@ program
 program
   .command("addClass")
   .argument("<classPath>", "Path of the class you want to add.")
+  .argument(
+    "[<classType>]",
+    "The tipe of the class you want to add. [http, jsonrpc]"
+  )
   .description("Add a new class to the genezio.yaml file.")
-  .action(async (classPath: string) => {
+  .action(async (classPath: string, classType: string) => {
     try {
-      addNewClass(classPath);
+      addNewClass(classPath, classType);
     } catch (error: any) {
       console.error(error.message);
     }
@@ -231,6 +235,5 @@ program
         console.log("Logout failed!");
       });
   });
-
 
 program.parse();

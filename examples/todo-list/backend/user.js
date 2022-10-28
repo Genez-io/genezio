@@ -17,12 +17,12 @@ export class User {
   // create a new user
   async create(name, email, password) {
     const promise = new Promise((resolve, reject) => {
-      UserModel.findOne({ email: email }, function (err, user) {
+      UserModel.findOne({ email: email }, function(err, user) {
         if (user) {
           resolve({ success: false, msg: "User already exists" });
         } else {
-          bcrypt.genSalt(2, function (err, salt) {
-            bcrypt.hash(password, salt, async function (err, hash) {
+          bcrypt.genSalt(2, function(err, salt) {
+            bcrypt.hash(password, salt, async function(err, hash) {
               await UserModel.create({
                 name: name,
                 email: email,
@@ -48,7 +48,7 @@ export class User {
     }
 
     const promise = new Promise((resolve, reject) => {
-      bcrypt.compare(password, user.password, async function (err, res) {
+      bcrypt.compare(password, user.password, async function(err, res) {
         if (res) {
           user.password = null;
           const token = jwt.sign(user.toJSON(), "secret", {

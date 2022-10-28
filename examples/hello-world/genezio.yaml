@@ -7,4 +7,5 @@ sdk:
   runtime: node
   path: ./sdk/
 classPaths:
-  - "./hello.js"
+  - classPath: "./hello.js"
+    type: http
