@@ -5,10 +5,12 @@
   "main": "index.js",
   "scripts": {
     "start": "npx tsc && node build/index.js",
-    "install-locally": "npx tsc && npm i -g",
-    "preinstall": "npx tsc",
+    "build": "npx tsc",
     "lint": "./scripts/lint"
   },
+  "files": [
+    "/build"
+  ],
   "pre-commit": [
     "lint"
   ],
