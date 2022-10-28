@@ -497,7 +497,9 @@ export async function deployFunctions() {
       allNonJsFilesPaths
     );
 
-    functionUrlForFilePath[path.parse(filePath).name] = functionUrl;
+    if (type === "jsonrpc") {
+      functionUrlForFilePath[path.parse(filePath).name] = functionUrl;
+    }
   }
 
   await generateSdks("production", functionUrlForFilePath);

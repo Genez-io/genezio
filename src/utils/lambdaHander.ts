@@ -26,10 +26,10 @@ export const lambdaHandlerWebhook = `
       const method = event.requestContext.http.path.split("/")[1]
 
       const req = {
-      headers: event.headers,
-      http: event.requestContext.http,
-      queryParameters: event.queryStringParameters,
-      timeEpoch: event.requestContext.timeEpoch
+        headers: event.headers,
+        http: event.requestContext.http,
+        queryParameters: event.queryStringParameters,
+        timeEpoch: event.requestContext.timeEpoch
       }
 
       try {
