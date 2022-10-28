@@ -451,6 +451,10 @@ export async function deployFunctions() {
     );
   }
 
+  console.log(
+    "INFO: If you use binary dependencies, please run 'npm i -g @mapbox/node-pre-gyp' first"
+  );
+
   const functionUrlForFilePath: any = {};
 
   const allNonJsFilesPaths = await getAllNonJsFiles();
