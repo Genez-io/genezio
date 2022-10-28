@@ -5,10 +5,12 @@
   "main": "index.js",
   "scripts": {
     "start": "npx tsc && node build/index.js",
-    "install-locally": "npx tsc && npm i -g",
-    "preinstall": "npx tsc",
+    "build": "npx tsc",
     "lint": "./scripts/lint"
   },
+  "files": [
+    "/build"
+  ],
   "pre-commit": [
     "lint"
   ],
@@ -25,9 +27,11 @@
     "crypto": "^1.0.1",
     "form-data": "^4.0.0",
     "fs": "^0.0.1-security",
+    "fs-extra": "^10.1.0",
     "glob": "^8.0.3",
     "http-terminator": "^3.2.0",
     "keytar": "^7.9.0",
+    "node-polyfill-webpack-plugin": "^2.0.1",
     "open": "^8.4.0",
     "os": "^0.1.2",
     "path": "^0.12.7",
@@ -43,8 +47,10 @@
   },
   "devDependencies": {
     "@types/archiver": "^5.3.1",
+    "@types/fs-extra": "^9.0.13",
     "@types/glob": "^8.0.0",
-    "@types/node": "^18.7.18",
+    "@types/node": "^18.11.4",
+    "@types/webpack-node-externals": "^2.5.3",
     "@typescript-eslint/eslint-plugin": "^5.39.0",
     "@typescript-eslint/parser": "^5.39.0",
     "eslint": "^8.24.0",

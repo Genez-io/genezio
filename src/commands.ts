@@ -1,4 +1,4 @@
-import webpack from "webpack";
+import webpack, { NormalModule } from "webpack";
 import path from "path";
 import { deployClass } from "./requests/deployCode";
 import generateSdk from "./requests/generateSdk";
@@ -17,7 +17,102 @@ import { parse, Document } from "yaml";
 import fs from "fs";
 import FileDetails from "./models/fileDetails";
 import { lambdaHandler } from "./utils/lambdaHander";
+import nodeExternals from "webpack-node-externals";
+import { default as fsExtra } from "fs-extra";
+import util from "util";
+import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import yaml from "yaml";
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const exec = util.promisify(require("child_process").exec);
+
+class AccessDependenciesPlugin {
+  dependencies: string[];
+
+  // constructor() {
+  constructor(dependencies: string[]) {
+    this.dependencies = dependencies;
+  }
+
+  apply(compiler: {
+    hooks: {
+      compilation: {
+        tap: (arg0: string, arg1: (compilation: any) => void) => void;
+      };
+    };
+  }) {
+    compiler.hooks.compilation.tap(
+      "AccessDependenciesPlugin",
+      (compilation) => {
+        NormalModule.getCompilationHooks(compilation).beforeLoaders.tap(
+          "AccessDependenciesPlugin",
+          (loader: any, normalModule: any) => {
+            if (
+              normalModule.resource &&
+              normalModule.resource.includes("node_modules")
+            ) {
+              const resource = normalModule.resource;
+              this.dependencies.push(resource);
+            }
+          }
+        );
+      }
+    );
+  }
+}
+
+export async function getNodeModules(filePath: string): Promise<any> {
+  // eslint-disable-next-line no-async-promise-executor
+  return new Promise(async (resolve, reject) => {
+    const { name, extension, filename } = getFileDetails(filePath);
+    const outputFile = `${name}-processed.js`;
+    const temporaryFolder = await createTemporaryFolder();
+    const dependencies: string[] = [];
+
+    const compiler = webpack({
+      entry: "./" + filePath,
+      target: "node",
+      mode: "production",
+      output: {
+        path: temporaryFolder,
+        filename: outputFile,
+        library: "genezio",
+        libraryTarget: "commonjs"
+      },
+      plugins: [
+        new NodePolyfillPlugin(),
+        new AccessDependenciesPlugin(dependencies)
+      ]
+    });
+
+    compiler.run((err, stats) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+
+      const dependenciesInfo = dependencies.map((dependency) => {
+        const relativePath = dependency.split("node_modules/")[1];
+        const dependencyName = relativePath?.split(path.sep)[0];
+        const dependencyPath =
+          dependency.split("node_modules/")[0] +
+          "node_modules/" +
+          dependencyName;
+        return {
+          name: dependencyName,
+          path: dependencyPath
+        };
+      });
+
+      // remove duplicates from dependenciesInfo by name
+      const uniqueDependenciesInfo = dependenciesInfo.filter(
+        (v, i, a) => a.findIndex((t) => t.name === v.name) === i
+      );
+
+      resolve(uniqueDependenciesInfo);
+    });
+  });
+}
 
 export async function addNewClass(classPath: string) {
   const genezioYamlPath = path.join("./genezio.yaml");
@@ -96,6 +191,9 @@ export async function bundleJavascriptCode(
     const compiler = webpack({
       entry: "./" + filePath,
       target: "node",
+
+      externals: [nodeExternals()], // in order to ignore all modules in node_modules folder
+
       mode: "production",
       node: false,
       optimization: {
@@ -110,6 +208,7 @@ export async function bundleJavascriptCode(
           }
         ]
       },
+      // compilation stats json
       output: {
         path: temporaryFolder,
         filename: outputFile,
@@ -118,8 +217,11 @@ export async function bundleJavascriptCode(
       }
     });
 
-    compiler.run((error, stats) => {
+    const dependenciesInfo = await getNodeModules(filePath);
+
+    compiler.run(async (error, stats) => {
       if (error) {
+        console.error(error);
         reject(error);
         return;
       }
@@ -130,6 +232,15 @@ export async function bundleJavascriptCode(
       }
 
       const filePath = path.join(temporaryFolder, outputFile);
+
+      // move all node_modules to temporaryFolder
+      const nodeModulesPath = path.join(temporaryFolder, "node_modules");
+
+      fsExtra.copySync(
+        path.join(process.cwd(), "node_modules"),
+        nodeModulesPath
+      );
+
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const module = require(filePath);
       const className = Object.keys(module.genezio)[0];
@@ -155,7 +266,9 @@ export async function bundleJavascriptCode(
         module.genezio[className].prototype
       ).filter((x) => x !== "constructor");
 
-      resolve(new BundledCode(filePath, className, functionNames));
+      resolve(
+        new BundledCode(filePath, className, functionNames, dependenciesInfo)
+      );
 
       compiler.close((closeErr) => {
         /* TODO: handle error? */
@@ -169,6 +282,7 @@ async function createDeployArchive(
   allNonJsFilesPaths: FileDetails[]
 ) {
   const jsBundlePath = bundledJavascriptCode.path;
+  const dependenciesInfo: any = bundledJavascriptCode.dependencies;
 
   const tmpPath = await createTemporaryFolder("genezio-");
   const archivePath = path.join(tmpPath, "genezioDeploy.zip");
@@ -207,7 +321,79 @@ async function createDeployArchive(
     fs.copyFileSync(filePath.path, fileDestinationPath);
   });
 
-  // create zip archive
+  // create node_modules folder in tmp folder
+  const nodeModulesPath = path.join(tmpPath, "node_modules");
+  if (!fs.existsSync(nodeModulesPath)) {
+    fs.mkdirSync(nodeModulesPath, { recursive: true });
+  }
+
+  const binaryDependencies = [];
+
+  // copy all dependencies to node_modules folder
+  for (const dependency of dependenciesInfo) {
+    const dependencyPath = path.join(nodeModulesPath, dependency.name);
+    fsExtra.copySync(dependency.path, dependencyPath);
+
+    // read package.json file
+
+    if (dependency.name[0] === "@") {
+      // Get List of all files in a directory
+      const files = fs.readdirSync(dependencyPath);
+      // iterate files and check if there is a package.json file
+      for (const file of files) {
+        const packageJsonPath = path.join(dependencyPath, file, "package.json");
+        if (await fileExists(packageJsonPath)) {
+          const packageJson = JSON.parse(
+            fs.readFileSync(packageJsonPath, "utf8")
+          );
+          if (packageJson.binary) {
+            binaryDependencies.push({
+              path: path.join(dependencyPath, file),
+              name: file
+            });
+          }
+        }
+      }
+    } else {
+      try {
+        const packageJsonPath = path.join(dependencyPath, "package.json");
+        const packageJson = JSON.parse(
+          fs.readFileSync(packageJsonPath, "utf8")
+        );
+
+        // check if package.json has binary property
+        if (packageJson.binary) {
+          binaryDependencies.push({
+            path: dependencyPath,
+            name: dependency.name
+          });
+        }
+        // eslint-disable-next-line no-empty
+      } catch (error) {}
+    }
+  }
+
+  if (binaryDependencies.length > 0) {
+    await exec("npm i node-addon-api", {
+      cwd: tmpPath
+    });
+    await exec("npm i @mapbox/node-pre-gyp", {
+      cwd: tmpPath
+    });
+  }
+
+  for (const dependency of binaryDependencies) {
+    try {
+      const { stdout, stderr } = await exec(
+        "npx node-pre-gyp --update-binary --fallback-to-build --target_arch=x64 --target_platform=linux --target_libc=glibc clean install " +
+          dependency.name,
+        { cwd: dependency.path }
+      );
+    } catch (error) {
+      console.error("An error has occured while installing binary dependecies.");
+    }
+  }
+
   await zipDirectory(tmpPath, archivePath);
 
   return archivePath;
@@ -249,6 +435,8 @@ async function deployFunction(
         projectName,
         name
       );
+
+      console.log("Deployed successfully for class: " + name);
 
       return response.functionUrl;
     default:
