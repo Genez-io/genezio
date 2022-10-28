@@ -501,7 +501,11 @@ export async function deployFunctions() {
   );
 
   // print function urls
-  console.log("Functions URL:");
+  console.log(
+    "Function" +
+      (configurationFileContent.classes.length > 1 ? "s" : "") +
+      " URL:"
+  );
   for (const elem of configurationFileContent.classes) {
     const filePath = elem.path;
 

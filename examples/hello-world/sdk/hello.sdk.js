@@ -7,10 +7,6 @@ export class HelloWorldClass {
         return HelloWorldClass.remote.call("HelloWorldClass.helloWorld")  
     }
     
-    static async hello(name, location) {
-        return HelloWorldClass.remote.call("HelloWorldClass.hello", name, location)  
-    }
-
     
 }
 
