@@ -2,7 +2,7 @@
 
 import { Command } from "commander";
 import { deployFunctions, generateSdks, init, addNewClass } from "./commands";
-import { fileExists, readUTF8File } from "./utils/file";
+import { fileExists, readUTF8File, readToken } from "./utils/file";
 import Server from "./localEnvironment";
 import chokidar from "chokidar";
 import path from "path";
@@ -107,6 +107,15 @@ program
     "Deploy the functions mentioned in the genezio.yaml file to Genezio infrastructure."
   )
   .action(async () => {
+    // check if user is logged in
+    const authToken = await readToken().catch(() => undefined);
+
+    if (!authToken) {
+      throw new Error(
+        "You are not logged in. Run 'genezio login' before you deploy your function."
+      );
+    }
+
     await deployFunctions().catch((error: AxiosError) => {
       if (error.response?.status == 401) {
         console.log(

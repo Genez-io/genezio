@@ -3,10 +3,8 @@ sdk:
   language: js
   runtime: browser
   path: ./../frontend/src/backend-sdk
-classPaths:
-  - classPath: wds.js
+classes:
+  - path: ./task.js
     type: http
-  - classPath: asd/s/s/s.js
-    type: http
-  - classPath: asd/ss.js
+  - path: ./user.js
     type: http

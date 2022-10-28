@@ -5,14 +5,20 @@ import { getFileDetails, readToken } from "../utils/file";
 import { GENERATE_SDK_API_URL } from "../variables";
 
 export default async function generateSdk(
-  filePaths: string[],
-  runtime: string,
+  configurationFileContent: any,
   env: string,
   urlMap?: any
 ) {
+  const classes = configurationFileContent.classes;
+  const runtime = configurationFileContent.sdk.runtime;
+
   const form = new FormData();
   form.append("runtime", runtime);
   form.append("env", env);
+  form.append(
+    "configurationFileContent",
+    JSON.stringify(configurationFileContent)
+  );
 
   const authToken = await readToken().catch(() => undefined);
 
@@ -26,7 +32,8 @@ export default async function generateSdk(
     form.append("urlMap", JSON.stringify(urlMap));
   }
 
-  filePaths.forEach((filePath) => {
+  classes.forEach((classElem: any) => {
+    const filePath = classElem.path;
     const { name } = getFileDetails(filePath);
 
     form.append(name, fs.createReadStream(filePath));
