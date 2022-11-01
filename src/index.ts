@@ -12,7 +12,7 @@ import { asciiCapybara } from "./utils/strings";
 import http from "http";
 import jsonBody from "body/json";
 import keytar from "keytar";
-import { REACT_APP_BASE_URL } from "./variables";
+import { PORT_LOCAL_ENVIRONMENT, REACT_APP_BASE_URL } from "./variables";
 import { exit } from "process";
 import { AxiosError } from "axios";
 import { AddressInfo } from "net";
@@ -183,29 +183,37 @@ program
         configurationFileContentUTF8
       );
       const cwd = process.cwd();
-      if (
-        !(await fileExists(path.join(cwd, configurationFileContent.sdk.path)))
-      )
-        await generateSdks("local")
-          .then(() => {
-            console.log("Your SDK was successfully generated!");
-          })
-          .catch((error: Error) => {
-            console.error(`${error}`);
-          });
+
+      const functionUrlForFilePath: any = {};
 
       const server = new Server();
 
       const runServer = async () => {
-        const handlers = await server.generateHandlersFromFiles();
-        server.start(handlers);
+        const classes = await server.generateHandlersFromFiles();
+        for (const classElement of classes) {
+          functionUrlForFilePath[
+            classElement
+          ] = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/${classElement}`;
+        }
+        await generateSdks("local", functionUrlForFilePath)
+          .then(async () => {
+            await server.start();
+          })
+          .catch((error: Error) => {
+            console.error(`${error}`);
+          });
       };
 
-      runServer();
+      await runServer();
+      // get absolute path of configurationFileContent.sdk.path
+      const sdkPath = path.join(cwd, configurationFileContent.sdk.path);
 
       // Watch for changes in the classes and update the handlers
       const watchPaths = [path.join(cwd, "/**/*")];
-      const ignoredPaths = "**/node_modules/*";
+      const ignoredPaths = [
+        "**/node_modules/*",
+        configurationFileContent.sdk.path + "/**/*"
+      ];
 
       const startWatching = () => {
         chokidar
@@ -213,11 +221,15 @@ program
             ignored: ignoredPaths,
             ignoreInitial: true
           })
-          .on("all", async () => {
+          .on("all", async (event, path) => {
+            if (path.includes(sdkPath) || !server.isRunning()) {
+              return;
+            }
+
             console.clear();
             console.log("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
             await server.terminate();
-            runServer();
+            await runServer();
           });
       };
       startWatching();

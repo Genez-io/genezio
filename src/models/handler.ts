@@ -1,13 +1,11 @@
 export default class Handler {
-    path: string
-    object: any
-    className: string
-    functionName: any
+  path: string;
+  object: any;
+  className: string;
 
-    constructor(path: string, object: any, className: string, functionName: any) {
-        this.path = path
-        this.object = object
-        this.className = className
-        this.functionName = functionName
-    }
+  constructor(path: string, object: any, className: string) {
+    this.path = path;
+    this.object = object;
+    this.className = className;
+  }
 }
