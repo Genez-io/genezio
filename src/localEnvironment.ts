@@ -126,11 +126,23 @@ export default class Server {
           className: className
         });
 
+        // methods map
+        const methodsMap: any = {};
+
+        // iterate over all function names
+        for (const functionElem of classElem.methods) {
+          if (functionElem.type == undefined) {
+            functionElem.type = classElem.type;
+          }
+          methodsMap[functionElem.name] = functionElem;
+        }
+
         this.handlers[className] = new Handler(
           folderClassPath,
           module,
           className,
-          functionNames
+          functionNames,
+          methodsMap
         );
       }
 
@@ -297,13 +309,15 @@ export default class Server {
     });
 
     console.log("");
-    console.log("Classes registered:");
+    console.log("HTTP Methods Deployed::");
     Object.keys(this.handlers).forEach((handlerName) => {
       const handler = this.handlers[handlerName];
-      console.log(`  - ${handler.className}`);
       for (const functionName of handler.functionNames) {
+        if (handler.methodsMap[functionName].type !== "http") {
+          continue;
+        }
         console.log(
-          `     ${functionName} - http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/${handler.className}/${functionName}`
+          `  - ${handler.className}.${functionName}: http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/${handler.className}/${functionName}`
         );
       }
       console.log("");

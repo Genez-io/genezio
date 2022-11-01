@@ -499,11 +499,21 @@ export async function deployFunctions() {
       allNonJsFilesPaths
     );
 
+    const methodsMap: any = {};
+    // iterate over all function names
+    for (const functionElem of elem.methods) {
+      if (functionElem.type == undefined) {
+        functionElem.type = elem.type;
+      }
+      methodsMap[functionElem.name] = functionElem;
+    }
+
     functionUrlForFilePath[path.parse(filePath).name] = functionUrl;
     classesInfo[className] = {
       functionNames,
       functionUrl,
-      className
+      className,
+      methodsMap
     };
   }
 
@@ -515,16 +525,18 @@ export async function deployFunctions() {
   );
 
   // print function urls
-  console.log(
-    "Class" + (Object.keys(classesInfo).length > 1 ? "es" : "") + " deployed:"
-  );
+  console.log("");
+  console.log("HTTP Methods Deployed:");
 
   Object.keys(classesInfo).forEach((key: any) => {
     const classInfo = classesInfo[key];
-    console.log(`  - ${classInfo.className}`);
+
     for (const functionName of classInfo.functionNames) {
+      if (classInfo.methodsMap[functionName].type !== "http") {
+        continue;
+      }
       console.log(
-        `     ${functionName} - ${classInfo.functionUrl}${classInfo.className}/${functionName}`
+        `  - ${classInfo.className}.${functionName}: ${classInfo.functionUrl}${classInfo.className}/${functionName}`
       );
     }
     console.log("");
