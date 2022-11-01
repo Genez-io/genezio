@@ -1,0 +1,29 @@
+#File that configures what classes will be deployed in Genezio Infrastructure. 
+#Add the paths to classes that you want to deploy in "classes".
+
+#Example:
+
+#name: hello-world
+#sdk:
+#  language: js
+#  runtime: node
+#  path: ./sdk/
+#classes:
+#  - path: ./hello.js
+#    type: jsonrpc
+#    methods:
+#      - name: hello
+#        type: http
+
+name: webhook-example
+sdk:
+  language: js
+  runtime: node
+  path: ./sdk/
+classes:
+  - path: './index.js'
+    type: jsonrpc
+    methods:
+        - name: "helloWorldOverHttp"
+          type: http 
+        - name: "helloWorld"
