@@ -16,6 +16,7 @@ import fsExtra, { remove } from "fs-extra";
 import querystring from "querystring";
 import jsonBody from "body/json";
 import { PORT_LOCAL_ENVIRONMENT } from "./variables";
+import { exit } from "process";
 
 export default class Server {
   server: http.Server;
@@ -28,7 +29,7 @@ export default class Server {
 
   async createLocalEnvironmentFolderForOneClass(
     filePath: string
-  ): Promise<string> {
+  ): Promise<any> {
     // eslint-disable-next-line no-async-promise-executor
     return new Promise(async (resolve, reject) => {
       const allNonJsFilesPaths = await getAllNonJsFiles();
@@ -36,6 +37,7 @@ export default class Server {
 
       const jsBundlePath = bundledJavascriptCode.path;
       const dependenciesInfo: any = bundledJavascriptCode.dependencies;
+      const functionNames = bundledJavascriptCode.functionNames;
 
       const tmpPath = await createTemporaryFolder("genezio-");
 
@@ -80,7 +82,7 @@ export default class Server {
         fsExtra.copySync(dependency.path, dependencyPath);
       }
 
-      resolve(tmpPath);
+      resolve({ folderClassPath: tmpPath, functionNames: functionNames });
     });
   }
 
@@ -110,7 +112,7 @@ export default class Server {
 
       for (const classElem of configurationFileContent.classes) {
         hasClasses = true;
-        const folderClassPath =
+        const { folderClassPath, functionNames } =
           await this.createLocalEnvironmentFolderForOneClass(classElem.path);
 
         const module = require(path.join(folderClassPath, "module.js")); // eslint-disable-line @typescript-eslint/no-var-requires
@@ -119,12 +121,16 @@ export default class Server {
           // eslint-disable-next-line @typescript-eslint/no-var-requires
           module.genezio
         )[0];
-        classes.push(className);
+        classes.push({
+          fileName: path.parse(classElem.path).name,
+          className: className
+        });
 
         this.handlers[className] = new Handler(
           folderClassPath,
           module,
-          className
+          className,
+          functionNames
         );
       }
 
@@ -218,13 +224,6 @@ export default class Server {
                 res.writeHead(parseInt(response.status));
               }
 
-              // aws headers to response
-              if (response.headers) {
-                for (const header of Object.keys(response.headers)) {
-                  res.setHeader(header, response.headers[header]);
-                }
-              }
-
               res.end(response.body ? response.body : "");
             } catch (error) {
               res.writeHead(500);
@@ -287,13 +286,26 @@ export default class Server {
     console.log("Classes registered:");
     Object.keys(this.handlers).forEach((handlerName) => {
       const handler = this.handlers[handlerName];
-      console.log(
-        `  - ${handler.className} - URL: http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/${handler.className}`
-      );
+      console.log(`  - ${handler.className}`);
+      for (const functionName of handler.functionNames) {
+        console.log(
+          `     ${functionName} - http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/${handler.className}/${functionName}`
+        );
+      }
+      console.log("");
     });
     console.log("");
     console.log("Listening for requests...");
-    this.server.listen(PORT_LOCAL_ENVIRONMENT);
+    this.server.listen(PORT_LOCAL_ENVIRONMENT).on("error", (err: any) => {
+      if (err.code === "EADDRINUSE") {
+        console.log(
+          "Port " +
+            PORT_LOCAL_ENVIRONMENT +
+            " is already in use. Please close the process using it."
+        );
+        exit(1);
+      }
+    });
   }
 
   async terminate() {

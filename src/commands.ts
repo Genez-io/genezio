@@ -252,10 +252,13 @@ export async function bundleJavascriptCode(
       // move all node_modules to temporaryFolder
       const nodeModulesPath = path.join(temporaryFolder, "node_modules");
 
-      fsExtra.copySync(
-        path.join(process.cwd(), "node_modules"),
-        nodeModulesPath
-      );
+      // check if node_modules folder exists
+      if (await fileExists(nodeModulesPath)) {
+        fsExtra.copySync(
+          path.join(process.cwd(), "node_modules"),
+          nodeModulesPath
+        );
+      }
 
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const module = require(filePath);
@@ -454,7 +457,11 @@ async function deployFunction(
 
       console.log("Deployed successfully for class: " + name);
 
-      return response.functionUrl;
+      return {
+        functionUrl: response.functionUrl,
+        functionNames: bundledJavascriptCode.functionNames,
+        className: bundledJavascriptCode.className
+      };
     default:
       throw new Error(
         `Language represented by extension ${extension} is not supported!`
@@ -476,10 +483,12 @@ export async function deployFunctions() {
 
   const allNonJsFilesPaths = await getAllNonJsFiles();
 
+  const classesInfo: any = {};
+
   for (const elem of configurationFileContent.classes) {
     const filePath = elem.path;
     const type = elem.type;
-    const functionUrl = await deployFunction(
+    const { functionUrl, functionNames, className } = await deployFunction(
       configurationFileContent,
       filePath,
       type,
@@ -491,6 +500,11 @@ export async function deployFunctions() {
     );
 
     functionUrlForFilePath[path.parse(filePath).name] = functionUrl;
+    classesInfo[className] = {
+      functionNames,
+      functionUrl,
+      className
+    };
   }
 
   await generateSdks("production", functionUrlForFilePath);
@@ -502,20 +516,19 @@ export async function deployFunctions() {
 
   // print function urls
   console.log(
-    "Function" +
-      (configurationFileContent.classes.length > 1 ? "s" : "") +
-      " URL:"
+    "Class" + (Object.keys(classesInfo).length > 1 ? "es" : "") + " deployed:"
   );
-  for (const elem of configurationFileContent.classes) {
-    const filePath = elem.path;
 
-    console.log(
-      path.parse(filePath).name +
-        " - " +
-        functionUrlForFilePath[path.parse(filePath).name] +
-        "\n"
-    );
-  }
+  Object.keys(classesInfo).forEach((key: any) => {
+    const classInfo = classesInfo[key];
+    console.log(`  - ${classInfo.className}`);
+    for (const functionName of classInfo.functionNames) {
+      console.log(
+        `     ${functionName} - ${classInfo.functionUrl}${classInfo.className}/${functionName}`
+      );
+    }
+    console.log("");
+  });
 }
 
 export async function generateSdks(env: string, urlMap?: any) {
@@ -523,7 +536,6 @@ export async function generateSdks(env: string, urlMap?: any) {
   const configurationFileContent = await parse(configurationFileContentUTF8);
   const outputPath = configurationFileContent.sdk.path;
   const sdk = await generateSdk(configurationFileContent, env, urlMap);
-
   if (sdk.remoteFile) {
     await writeToFile(outputPath, "remote.js", sdk.remoteFile, true).catch(
       (error) => {

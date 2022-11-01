@@ -192,8 +192,8 @@ program
         const classes = await server.generateHandlersFromFiles();
         for (const classElement of classes) {
           functionUrlForFilePath[
-            classElement
-          ] = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/${classElement}`;
+            classElement.fileName
+          ] = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/${classElement.className}`;
         }
         await generateSdks("local", functionUrlForFilePath)
           .then(async () => {

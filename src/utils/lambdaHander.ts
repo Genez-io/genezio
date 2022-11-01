@@ -6,7 +6,7 @@ const object = new handler.genezio[Object.keys(handler.genezio)[0]]();
 exports.handler =  async function(event, context) {
     // if cron TOOD
     
-    if (event.requestContext.http.path != "/") {
+    if (event.requestContext.http.path.split("/").length > 2) {
         const method = event.requestContext.http.path.split("/")[1]
         const req = {
             headers: event.headers,
