@@ -15,12 +15,8 @@ export class HelloWorldCronExample {
         name
       }),
       bodyEncoding: "text",
-      // headers: {
-      //     "testHeader": [{
-      //         "testHeader": "testHeaderValue",
-      //      }],
-      // },
-      status: "200",
+      headers: { testHeader: "testHeaderValue" },
+      statusCode: "201",
       statusDescription: "Ok"
     };
   }

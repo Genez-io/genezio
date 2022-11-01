@@ -220,11 +220,25 @@ export default class Server {
 
             try {
               const response = await object[pathMethodName](reqToFunction);
-              if (response.status) {
-                res.writeHead(parseInt(response.status));
+
+              if (response.statusDescription) {
+                res.statusMessage = response.statusDescription;
+              }
+              if (response.headers) {
+                for (const header of Object.keys(response.headers)) {
+                  res.setHeader(header, response.headers[header]);
+                }
               }
 
-              res.end(response.body ? response.body : "");
+              if (response.statusCode) {
+                res.writeHead(parseInt(response.statusCode));
+              }
+
+              if (response.bodyEncoding === "base64") {
+                res.write(Buffer.from(response.body, "base64"));
+              } else {
+                res.end(response.body ? response.body : "");
+              }
             } catch (error) {
               res.writeHead(500);
               res.end();

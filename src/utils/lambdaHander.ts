@@ -7,7 +7,7 @@ exports.handler =  async function(event, context) {
     // if cron TOOD
     
     if (event.requestContext.http.path.split("/").length > 2) {
-        const method = event.requestContext.http.path.split("/")[1]
+        const method = event.requestContext.http.path.split("/")[2]
         const req = {
             headers: event.headers,
             http: event.requestContext.http,
@@ -20,6 +20,7 @@ exports.handler =  async function(event, context) {
             const response = await object[method](req);
             return response;
         } catch(error) {
+            console.error(error);
             return { statusCode: 500, headers: { 'Content-Type': 'text/json' }};
         }
     } else {
