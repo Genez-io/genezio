@@ -1,14 +1,13 @@
-
 export class HelloWorldClass {
-    constructor() {
-        console.log("hey!")
-    }
+  constructor() {
+    console.log("hey!");
+  }
 
-    helloWorld() {
-        return "Hello world!";
-    }
+  helloWorld() {
+    return "Hello world!";
+  }
 
-    hello(name, location) {
-        return `Hey, ${name}! Greetings from ${location}!`
-    }
+  hello(reqToFunction) {
+    return { body: "content", status: "200" };
+  }
 }

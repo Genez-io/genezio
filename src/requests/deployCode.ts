@@ -6,6 +6,7 @@ import { readToken } from "../utils/file";
 import { BACKEND_ENDPOINT } from "../variables";
 
 export async function deployClass(
+  configurationFileContent: any,
   filePath: string,
   extension: string,
   runtime: string,
@@ -26,6 +27,11 @@ export async function deployClass(
       "You are not logged in. Run 'genezio login' before you deploy your function."
     );
   }
+
+  form.append(
+    "configurationFileContent",
+    JSON.stringify(configurationFileContent)
+  );
 
   form.append("classFile", fs.createReadStream(filePath));
   form.append("filename", path.parse(filePath).name);

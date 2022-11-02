@@ -67,9 +67,7 @@ export async function fileExists(filePath: string): Promise<boolean> {
   });
 }
 
-export async function createTemporaryFolder(
-  name = "foo-"
-): Promise<string> {
+export async function createTemporaryFolder(name = "foo-"): Promise<string> {
   return new Promise((resolve, reject) => {
     fs.mkdtemp(path.join(os.tmpdir(), name), (error: any, folder: string) => {
       if (error) {
@@ -88,11 +86,11 @@ export function getFileDetails(filePath: string): FileDetails {
 }
 
 export function readUTF8File(filePath: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-        fs.readFile(filePath, 'utf8', function (error, data) {
-            if (error) {
-                reject(error)
-            }
+  return new Promise((resolve, reject) => {
+    fs.readFile(filePath, "utf8", function (error, data) {
+      if (error) {
+        reject(error);
+      }
       resolve(data);
     });
   });
@@ -109,6 +107,7 @@ export function writeToFile(
       fs.mkdirSync(folderPath, { recursive: true });
     }
 
+    // create the file if it doesn't exist
     fs.writeFile(path.join(folderPath, filename), content, function (error) {
       if (error) {
         reject(error);
