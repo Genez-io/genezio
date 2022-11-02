@@ -18,6 +18,7 @@ import fs from "fs";
 import FileDetails from "./models/fileDetails";
 import { lambdaHandler } from "./utils/lambdaHander";
 import yaml from "yaml";
+import { languages } from "./utils/languages";
 
 export async function addNewClass(classPath: string) {
   const genezioYamlPath = path.join("./genezio.yaml");
@@ -89,8 +90,8 @@ export async function bundleJavascriptCode(
 ): Promise<BundledCode> {
   // eslint-disable-next-line no-async-promise-executor
   return new Promise(async (resolve, reject) => {
-    const { name } = getFileDetails(filePath);
-    const outputFile = `${name}-processed.js`;
+    const { name, extension } = getFileDetails(filePath);
+    const outputFile = `${name}-processed.${extension}`;
     const temporaryFolder = await createTemporaryFolder();
 
     const compiler = webpack({
@@ -301,6 +302,7 @@ export async function generateSdks(env: string, urlMap?: any) {
     configurationFileContent.classPaths,
     configurationFileContent.sdk.runtime,
     env,
+    configurationFileContent.sdk.language,
     urlMap
   );
 
@@ -335,18 +337,18 @@ export async function init() {
   const sdk: any = { name: projectName, sdk: {}, classPaths: [] };
 
   const language = await askQuestion(
-    `In what programming language do you want your SDK? [js]: `,
+    `In what programming language do you want your SDK (js or ts)? [js]: `,
     "js"
   );
 
-  if (language !== "js") {
+  if (!languages.includes(language)) {
     throw Error(
       `We don't currently support the ${language} language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`
     );
   }
   sdk.sdk.language = language;
 
-  if (language === "js") {
+  if (language === "js" || language === "ts") {
     const runtime = await askQuestion(
       `What runtime will you use? Options: "node" or "browser". [node]: `,
       "node"

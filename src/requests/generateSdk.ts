@@ -5,7 +5,7 @@ import { getFileDetails, readToken } from '../utils/file'
 import { GENERATE_SDK_API_URL } from '../variables'
 
 
-export default async function generateSdk(filePaths: string[], runtime: string, env: string, urlMap?: any) {
+export default async function generateSdk(filePaths: string[], runtime: string, env: string, language: string, urlMap?: any) {
     const form = new FormData()
     form.append("runtime", runtime)
     form.append("env", env)
@@ -30,7 +30,7 @@ export default async function generateSdk(filePaths: string[], runtime: string, 
 
     const response: any = await axios({
         method: "post",
-        url: `${GENERATE_SDK_API_URL}/js/generateSdk`,
+        url: `${GENERATE_SDK_API_URL}/${language}/generateSdk`,
         data: form,
         headers: {...form.getHeaders(), Authorization: `Bearer ${authToken}` }
     }).catch((error: Error) => {
