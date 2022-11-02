@@ -2,7 +2,7 @@
 
 import { Command } from "commander";
 import { deployFunctions, generateSdks, init, addNewClass } from "./commands";
-import { fileExists, readUTF8File } from "./utils/file";
+import { fileExists, readUTF8File, readToken } from "./utils/file";
 import Server from "./localEnvironment";
 import chokidar from "chokidar";
 import path from "path";
@@ -12,7 +12,7 @@ import { asciiCapybara } from "./utils/strings";
 import http from "http";
 import jsonBody from "body/json";
 import keytar from "keytar";
-import { REACT_APP_BASE_URL } from "./variables";
+import { PORT_LOCAL_ENVIRONMENT, REACT_APP_BASE_URL } from "./variables";
 import { exit } from "process";
 import { AxiosError } from "axios";
 import { AddressInfo } from "net";
@@ -107,6 +107,15 @@ program
     "Deploy the functions mentioned in the genezio.yaml file to Genezio infrastructure."
   )
   .action(async () => {
+    // check if user is logged in
+    const authToken = await readToken().catch(() => undefined);
+
+    if (!authToken) {
+      throw new Error(
+        "You are not logged in. Run 'genezio login' before you deploy your function."
+      );
+    }
+
     await deployFunctions().catch((error: AxiosError) => {
       if (error.response?.status == 401) {
         console.log(
@@ -121,10 +130,14 @@ program
 program
   .command("addClass")
   .argument("<classPath>", "Path of the class you want to add.")
+  .argument(
+    "[<classType>]",
+    "The tipe of the class you want to add. [http, jsonrpc]"
+  )
   .description("Add a new class to the genezio.yaml file.")
-  .action(async (classPath: string) => {
+  .action(async (classPath: string, classType: string) => {
     try {
-      addNewClass(classPath);
+      addNewClass(classPath, classType);
     } catch (error: any) {
       console.error(error.message);
     }
@@ -170,29 +183,37 @@ program
         configurationFileContentUTF8
       );
       const cwd = process.cwd();
-      if (
-        !(await fileExists(path.join(cwd, configurationFileContent.sdk.path)))
-      )
-        await generateSdks("local")
-          .then(() => {
-            console.log("Your SDK was successfully generated!");
-          })
-          .catch((error: Error) => {
-            console.error(`${error}`);
-          });
+
+      const functionUrlForFilePath: any = {};
 
       const server = new Server();
 
       const runServer = async () => {
-        const handlers = await server.generateHandlersFromFiles();
-        server.start(handlers);
+        const classes = await server.generateHandlersFromFiles();
+        for (const classElement of classes) {
+          functionUrlForFilePath[
+            classElement.fileName
+          ] = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/${classElement.className}`;
+        }
+        await generateSdks("local", functionUrlForFilePath)
+          .then(async () => {
+            await server.start();
+          })
+          .catch((error: Error) => {
+            console.error(`${error}`);
+          });
       };
 
-      runServer();
+      await runServer();
+      // get absolute path of configurationFileContent.sdk.path
+      const sdkPath = path.join(cwd, configurationFileContent.sdk.path);
 
       // Watch for changes in the classes and update the handlers
       const watchPaths = [path.join(cwd, "/**/*")];
-      const ignoredPaths = "**/node_modules/*";
+      const ignoredPaths = [
+        "**/node_modules/*",
+        configurationFileContent.sdk.path + "/**/*"
+      ];
 
       const startWatching = () => {
         chokidar
@@ -200,11 +221,15 @@ program
             ignored: ignoredPaths,
             ignoreInitial: true
           })
-          .on("all", async () => {
+          .on("all", async (event, path) => {
+            if (path.includes(sdkPath) || !server.isRunning()) {
+              return;
+            }
+
             console.clear();
             console.log("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
             await server.terminate();
-            runServer();
+            await runServer();
           });
       };
       startWatching();
@@ -231,6 +256,5 @@ program
         console.log("Logout failed!");
       });
   });
-
 
 program.parse();

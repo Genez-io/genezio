@@ -6,6 +6,7 @@ import { readToken } from "../utils/file";
 import { BACKEND_ENDPOINT } from "../variables";
 
 export async function deployClass(
+  configurationFileContent: any,
   filePath: string,
   extension: string,
   runtime: string,
@@ -27,6 +28,11 @@ export async function deployClass(
     );
   }
 
+  form.append(
+    "configurationFileContent",
+    JSON.stringify(configurationFileContent)
+  );
+
   form.append("classFile", fs.createReadStream(filePath));
   form.append("filename", path.parse(filePath).name);
   form.append("extension", extension);
@@ -39,8 +45,11 @@ export async function deployClass(
     method: "post",
     url: `${BACKEND_ENDPOINT}/project/deployment`, // TODO modify to http://api.genez.io/core/deployment
     data: form,
-    headers: { ...form.getHeaders(), Authorization: `Bearer ${authToken}` }
+    headers: { ...form.getHeaders(), Authorization: `Bearer ${authToken}` },
+    maxContentLength: Infinity,
+    maxBodyLength: Infinity
   }).catch((error: Error) => {
+    console.log("error0");
     throw error;
   });
 

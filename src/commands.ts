@@ -1,4 +1,4 @@
-import webpack from "webpack";
+import webpack, { NormalModule } from "webpack";
 import path from "path";
 import { deployClass } from "./requests/deployCode";
 import generateSdk from "./requests/generateSdk";
@@ -17,10 +17,112 @@ import { parse, Document } from "yaml";
 import fs from "fs";
 import FileDetails from "./models/fileDetails";
 import { lambdaHandler } from "./utils/lambdaHander";
+import nodeExternals from "webpack-node-externals";
+import { default as fsExtra } from "fs-extra";
+import util from "util";
+import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import yaml from "yaml";
 import { languages } from "./utils/languages";
 
-export async function addNewClass(classPath: string) {
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const exec = util.promisify(require("child_process").exec);
+
+class AccessDependenciesPlugin {
+  dependencies: string[];
+
+  // constructor() {
+  constructor(dependencies: string[]) {
+    this.dependencies = dependencies;
+  }
+
+  apply(compiler: {
+    hooks: {
+      compilation: {
+        tap: (arg0: string, arg1: (compilation: any) => void) => void;
+      };
+    };
+  }) {
+    compiler.hooks.compilation.tap(
+      "AccessDependenciesPlugin",
+      (compilation) => {
+        NormalModule.getCompilationHooks(compilation).beforeLoaders.tap(
+          "AccessDependenciesPlugin",
+          (loader: any, normalModule: any) => {
+            if (
+              normalModule.resource &&
+              normalModule.resource.includes("node_modules")
+            ) {
+              const resource = normalModule.resource;
+              this.dependencies.push(resource);
+            }
+          }
+        );
+      }
+    );
+  }
+}
+
+export async function getNodeModules(filePath: string): Promise<any> {
+  // eslint-disable-next-line no-async-promise-executor
+  return new Promise(async (resolve, reject) => {
+    const { name, extension, filename } = getFileDetails(filePath);
+    const outputFile = `${name}-processed.js`;
+    const temporaryFolder = await createTemporaryFolder();
+    const dependencies: string[] = [];
+
+    const compiler = webpack({
+      entry: "./" + filePath,
+      target: "node",
+      mode: "production",
+      output: {
+        path: temporaryFolder,
+        filename: outputFile,
+        library: "genezio",
+        libraryTarget: "commonjs"
+      },
+      plugins: [
+        new NodePolyfillPlugin(),
+        new AccessDependenciesPlugin(dependencies)
+      ]
+    });
+
+    compiler.run((err, stats) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+
+      const dependenciesInfo = dependencies.map((dependency) => {
+        const relativePath = dependency.split("node_modules/")[1];
+        const dependencyName = relativePath?.split(path.sep)[0];
+        const dependencyPath =
+          dependency.split("node_modules/")[0] +
+          "node_modules/" +
+          dependencyName;
+        return {
+          name: dependencyName,
+          path: dependencyPath
+        };
+      });
+
+      // remove duplicates from dependenciesInfo by name
+      const uniqueDependenciesInfo = dependenciesInfo.filter(
+        (v, i, a) => a.findIndex((t) => t.name === v.name) === i
+      );
+
+      resolve(uniqueDependenciesInfo);
+    });
+  });
+}
+
+export async function addNewClass(classPath: string, classType: string) {
+  if (classType === undefined) {
+    classType = "jsonrpc";
+  } else if (classType !== "http" && classType !== "jsonrpc") {
+    throw new Error(
+      "Invalid class type. Valid class types are 'http' and 'jsonrpc'."
+    );
+  }
   const genezioYamlPath = path.join("./genezio.yaml");
   if (!(await fileExists(genezioYamlPath))) {
     console.error(
@@ -51,11 +153,10 @@ export async function addNewClass(classPath: string) {
   }
 
   // check if class already exists
-  if (configurationFileContent.classPaths.length > 0) {
+  if (configurationFileContent.classes.length > 0) {
     if (
-      configurationFileContent.classPaths.includes(classPath) ||
-      configurationFileContent.classPaths
-        .map((e: any) => e.split("/").pop())
+      configurationFileContent.classes
+        .map((e: any) => e.path.split("/").pop())
         .includes(className)
     ) {
       console.error("Class already exists.");
@@ -67,14 +168,24 @@ export async function addNewClass(classPath: string) {
   if (!(await fileExists(classPath))) {
     const onlyPath = classPath.split("/").slice(0, -1).join("/");
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    await writeToFile(onlyPath, classPath.split("/").pop()!, "", true).catch(
-      (error) => {
-        console.error(error.toString());
-      }
-    );
+
+    await writeToFile(
+      ".",
+      classPath,
+      "\nexport class " +
+        (className.charAt(0).toUpperCase() + className.slice(1)) +
+        " {}",
+      true
+    ).catch((error) => {
+      console.error(error.toString());
+    });
   }
 
-  configurationFileContent.classPaths.push(classPath);
+  configurationFileContent.classes.push({
+    path: classPath,
+    type: classType,
+    methods: []
+  });
   // json to yaml
   const yamlString = yaml.stringify(configurationFileContent);
 
@@ -97,6 +208,9 @@ export async function bundleJavascriptCode(
     const compiler = webpack({
       entry: "./" + filePath,
       target: "node",
+
+      externals: [nodeExternals()], // in order to ignore all modules in node_modules folder
+
       mode: "production",
       node: false,
       optimization: {
@@ -111,6 +225,7 @@ export async function bundleJavascriptCode(
           }
         ]
       },
+      // compilation stats json
       output: {
         path: temporaryFolder,
         filename: outputFile,
@@ -119,8 +234,11 @@ export async function bundleJavascriptCode(
       }
     });
 
-    compiler.run((error, stats) => {
+    const dependenciesInfo = await getNodeModules(filePath);
+
+    compiler.run(async (error, stats) => {
       if (error) {
+        console.error(error);
         reject(error);
         return;
       }
@@ -131,6 +249,18 @@ export async function bundleJavascriptCode(
       }
 
       const filePath = path.join(temporaryFolder, outputFile);
+
+      // move all node_modules to temporaryFolder
+      const nodeModulesPath = path.join(temporaryFolder, "node_modules");
+
+      // check if node_modules folder exists
+      if (await fileExists(nodeModulesPath)) {
+        fsExtra.copySync(
+          path.join(process.cwd(), "node_modules"),
+          nodeModulesPath
+        );
+      }
+
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const module = require(filePath);
       const className = Object.keys(module.genezio)[0];
@@ -156,7 +286,9 @@ export async function bundleJavascriptCode(
         module.genezio[className].prototype
       ).filter((x) => x !== "constructor");
 
-      resolve(new BundledCode(filePath, className, functionNames));
+      resolve(
+        new BundledCode(filePath, className, functionNames, dependenciesInfo)
+      );
 
       compiler.close((closeErr) => {
         /* TODO: handle error? */
@@ -167,9 +299,11 @@ export async function bundleJavascriptCode(
 
 async function createDeployArchive(
   bundledJavascriptCode: BundledCode,
-  allNonJsFilesPaths: FileDetails[]
+  allNonJsFilesPaths: FileDetails[],
+  classType: string
 ) {
   const jsBundlePath = bundledJavascriptCode.path;
+  const dependenciesInfo: any = bundledJavascriptCode.dependencies;
 
   const tmpPath = await createTemporaryFolder("genezio-");
   const archivePath = path.join(tmpPath, "genezioDeploy.zip");
@@ -208,14 +342,88 @@ async function createDeployArchive(
     fs.copyFileSync(filePath.path, fileDestinationPath);
   });
 
-  // create zip archive
+  // create node_modules folder in tmp folder
+  const nodeModulesPath = path.join(tmpPath, "node_modules");
+  if (!fs.existsSync(nodeModulesPath)) {
+    fs.mkdirSync(nodeModulesPath, { recursive: true });
+  }
+
+  const binaryDependencies = [];
+
+  // copy all dependencies to node_modules folder
+  for (const dependency of dependenciesInfo) {
+    const dependencyPath = path.join(nodeModulesPath, dependency.name);
+    fsExtra.copySync(dependency.path, dependencyPath);
+
+    // read package.json file
+
+    if (dependency.name[0] === "@") {
+      // Get List of all files in a directory
+      const files = fs.readdirSync(dependencyPath);
+      // iterate files and check if there is a package.json file
+      for (const file of files) {
+        const packageJsonPath = path.join(dependencyPath, file, "package.json");
+        if (await fileExists(packageJsonPath)) {
+          const packageJson = JSON.parse(
+            fs.readFileSync(packageJsonPath, "utf8")
+          );
+          if (packageJson.binary) {
+            binaryDependencies.push({
+              path: path.join(dependencyPath, file),
+              name: file
+            });
+          }
+        }
+      }
+    } else {
+      try {
+        const packageJsonPath = path.join(dependencyPath, "package.json");
+        const packageJson = JSON.parse(
+          fs.readFileSync(packageJsonPath, "utf8")
+        );
+
+        // check if package.json has binary property
+        if (packageJson.binary) {
+          binaryDependencies.push({
+            path: dependencyPath,
+            name: dependency.name
+          });
+        }
+        // eslint-disable-next-line no-empty
+      } catch (error) {}
+    }
+  }
+
+  if (binaryDependencies.length > 0) {
+    await exec("npm i node-addon-api", {
+      cwd: tmpPath
+    });
+    await exec("npm i @mapbox/node-pre-gyp", {
+      cwd: tmpPath
+    });
+  }
+
+  for (const dependency of binaryDependencies) {
+    try {
+      const { stdout, stderr } = await exec(
+        "npx node-pre-gyp --update-binary --fallback-to-build --target_arch=x64 --target_platform=linux --target_libc=glibc clean install " +
+          dependency.name,
+        { cwd: dependency.path }
+      );
+    } catch (error) {
+      console.error("An error has occured while installing binary dependecies.");
+    }
+  }
+
   await zipDirectory(tmpPath, archivePath);
 
   return archivePath;
 }
 
 async function deployFunction(
+  configurationFileContent: any,
   filePath: string,
+  classType: string,
   language: string,
   sdkPath: string,
   runtime: string,
@@ -236,13 +444,15 @@ async function deployFunction(
       // eslint-disable-next-line no-case-declarations
       const archivePath = await createDeployArchive(
         bundledJavascriptCode,
-        allNonJsFilesPaths
+        allNonJsFilesPaths,
+        classType
       );
       console.log("Bundling done for class: " + name);
       console.log("Deploying bundle...\n");
 
       // eslint-disable-next-line no-case-declarations
       const response = await deployClass(
+        configurationFileContent,
         filePath,
         extension,
         runtime,
@@ -251,7 +461,13 @@ async function deployFunction(
         name
       );
 
-      return response.functionUrl;
+      console.log("Deployed successfully for class: " + name);
+
+      return {
+        functionUrl: response.functionUrl,
+        functionNames: bundledJavascriptCode.functionNames,
+        className: bundledJavascriptCode.className
+      };
     default:
       throw new Error(
         `Language represented by extension ${extension} is not supported!`
@@ -263,9 +479,9 @@ export async function deployFunctions() {
   const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
   const configurationFileContent = await parse(configurationFileContentUTF8);
 
-  if (configurationFileContent.classPaths.length === 0) {
+  if (configurationFileContent.classes.length === 0) {
     throw new Error(
-      "You don't have any class in specified in the genezio.yaml configuration file. Add a class in 'classPaths' field and then call again 'genezio deploy'."
+      "You don't have any class in specified in the genezio.yaml configuration file. Add a class with 'genezio addClass <className> <classType>' field and then call again 'genezio deploy'."
     );
   }
 
@@ -273,9 +489,15 @@ export async function deployFunctions() {
 
   const allNonJsFilesPaths = await getAllNonJsFiles();
 
-  for (const filePath of configurationFileContent.classPaths) {
-    const functionUrl = await deployFunction(
+  const classesInfo: any = {};
+
+  for (const elem of configurationFileContent.classes) {
+    const filePath = elem.path;
+    const type = elem.type;
+    const { functionUrl, functionNames, className } = await deployFunction(
+      configurationFileContent,
       filePath,
+      type,
       configurationFileContent.sdk.language,
       configurationFileContent.sdk.path,
       configurationFileContent.sdk.runtime,
@@ -283,7 +505,22 @@ export async function deployFunctions() {
       allNonJsFilesPaths
     );
 
+    const methodsMap: any = {};
+    // iterate over all function names
+    for (const functionElem of elem.methods) {
+      if (functionElem.type == undefined) {
+        functionElem.type = elem.type;
+      }
+      methodsMap[functionElem.name] = functionElem;
+    }
+
     functionUrlForFilePath[path.parse(filePath).name] = functionUrl;
+    classesInfo[className] = {
+      functionNames,
+      functionUrl,
+      className,
+      methodsMap
+    };
   }
 
   await generateSdks("production", functionUrlForFilePath);
@@ -292,20 +529,31 @@ export async function deployFunctions() {
     "\x1b[36m%s\x1b[0m",
     "Your code was deployed and the SDK was successfully generated!"
   );
+
+  // print function urls
+  console.log("");
+  console.log("HTTP Methods Deployed:");
+
+  Object.keys(classesInfo).forEach((key: any) => {
+    const classInfo = classesInfo[key];
+
+    for (const functionName of classInfo.functionNames) {
+      if (classInfo.methodsMap[functionName].type !== "http") {
+        continue;
+      }
+      console.log(
+        `  - ${classInfo.className}.${functionName}: ${classInfo.functionUrl}${classInfo.className}/${functionName}`
+      );
+    }
+    console.log("");
+  });
 }
 
 export async function generateSdks(env: string, urlMap?: any) {
   const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
   const configurationFileContent = await parse(configurationFileContentUTF8);
   const outputPath = configurationFileContent.sdk.path;
-  const sdk = await generateSdk(
-    configurationFileContent.classPaths,
-    configurationFileContent.sdk.runtime,
-    env,
-    configurationFileContent.sdk.language,
-    urlMap
-  );
-
+  const sdk = await generateSdk(configurationFileContent, env, urlMap);
   if (sdk.remoteFile) {
     await writeToFile(outputPath, "remote.js", sdk.remoteFile, true).catch(
       (error) => {
@@ -334,7 +582,7 @@ export async function init() {
       console.log("The project name can't be empty.");
     }
   }
-  const sdk: any = { name: projectName, sdk: {}, classPaths: [] };
+  const sdk: any = { name: projectName, sdk: {}, classes: [] };
 
   const language = await askQuestion(
     `In what programming language do you want your SDK (js or ts)? [js]: `,
@@ -368,7 +616,7 @@ export async function init() {
 
   const doc = new Document(sdk);
   doc.commentBefore = `File that configures what classes will be deployed in Genezio Infrastructure. 
-Add the paths to classes that you want to deploy in "classPaths".
+Add the paths to classes that you want to deploy in "classes".
 
 Example:
 
@@ -377,8 +625,12 @@ sdk:
   language: js
   runtime: node
   path: ./sdk/
-classPaths:
-  - "./hello-world/index.js"`;
+classes:
+  - path: ./hello.js
+    type: jsonrpc
+    methods:
+      - name: hello
+        type: http`;
 
   const yamlConfigurationFileContent = doc.toString();
 
@@ -395,7 +647,7 @@ classPaths:
   );
   console.log("");
   console.log(
-    "The genezio.yaml configuration file was generated. You can now add the classes that you want to deploy using the 'genezio addClass <className>' command."
+    "The genezio.yaml configuration file was generated. You can now add the classes that you want to deploy using the 'genezio addClass <className> <classType>' command."
   );
   console.log("");
 }
