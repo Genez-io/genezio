@@ -1,7 +1,7 @@
 export class HelloWorldCronExample {
-  helloWorld(name) {
+  helloWorld() {
     return {
-      message: `Hello, ${name}!`
+      message: `Hello, ${"radu"}!`
     };
   }
 

@@ -27,3 +27,5 @@ classes:
       - name: "helloWorldOverHttp"
         type: http
       - name: "helloWorld"
+        type: cron
+        cronString: "* * * * ? *"
