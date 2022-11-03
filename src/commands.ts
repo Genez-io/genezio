@@ -24,6 +24,7 @@ import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import yaml from "yaml";
 import { exit } from "process";
 import awsCronParser from "aws-cron-parser";
+import { CONNREFUSED } from "dns";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const exec = util.promisify(require("child_process").exec);
@@ -524,7 +525,8 @@ export async function deployFunctions() {
       functionNames,
       functionUrl,
       className,
-      methodsMap
+      methodsMap,
+      type
     };
   }
 
@@ -536,37 +538,52 @@ export async function deployFunctions() {
   );
 
   // print function urls
-  console.log("");
-  console.log("HTTP Methods Deployed:");
+  let printHttpString = "";
 
   Object.keys(classesInfo).forEach((key: any) => {
     const classInfo = classesInfo[key];
 
     let localType = classInfo.type;
 
-    if (classInfo.methods != undefined) {
-      for (const functionName of classInfo.functionNames) {
-        if (classInfo.methodsMap[functionName]) {
-          localType = classInfo.methodsMap[functionName].type;
-        }
+    let addedNewLine = false;
 
-        if (localType !== "http") {
-          continue;
-        }
-        console.log(
-          `  - ${classInfo.className}.${functionName}: ${classInfo.functionUrl}${classInfo.className}/${functionName}`
-        );
-        localType = classInfo.type;
+    for (const functionName of classInfo.functionNames) {
+      if (classInfo.methodsMap[functionName]) {
+        localType = classInfo.methodsMap[functionName].type;
       }
-      console.log("");
+
+      if (localType !== "http") {
+        continue;
+      }
+      printHttpString +=
+        `  - ${classInfo.className}.${functionName}: ${classInfo.functionUrl}${classInfo.className}/${functionName}` +
+        "\n";
+      localType = classInfo.type;
+      addedNewLine = true;
     }
+    if (addedNewLine) {
+      printHttpString += "\n";
+    }
+    addedNewLine = false;
   });
+  if (printHttpString !== "") {
+    console.log("");
+    console.log("HTTP Methods Deployed:");
+    console.log(printHttpString);
+  }
 }
 
 export async function generateSdks(env: string, urlMap?: any) {
   const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
   const configurationFileContent = await parse(configurationFileContentUTF8);
   const outputPath = configurationFileContent.sdk.path;
+
+  // check if the output path exists
+  if (await fileExists(outputPath)) {
+    // delete the output path
+    fs.rmSync(outputPath, { recursive: true, force: true });
+  }
+
   const sdk = await generateSdk(configurationFileContent, env, urlMap);
   if (sdk.remoteFile) {
     await writeToFile(outputPath, "remote.js", sdk.remoteFile, true).catch(
