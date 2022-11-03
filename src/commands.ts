@@ -412,7 +412,9 @@ async function createDeployArchive(
         { cwd: dependency.path }
       );
     } catch (error) {
-      console.error("An error has occured while installing binary dependecies.");
+      console.error(
+        "An error has occured while installing binary dependecies."
+      );
     }
   }
 
@@ -665,6 +667,9 @@ export async function checkYamlFile() {
   }
 
   for (const elem of configurationFileContent.classes) {
+    if (elem.methods === undefined) {
+      continue;
+    }
     for (const method of elem.methods) {
       if (method.type === "cron") {
         if (method.cronString === undefined) {
