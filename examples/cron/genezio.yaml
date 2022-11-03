@@ -15,7 +15,7 @@
 #      - name: hello
 #        type: http
 
-name: webhook-example
+name: cron-example
 sdk:
   language: js
   runtime: node
@@ -24,5 +24,6 @@ classes:
   - path: "./index.js"
     type: jsonrpc
     methods:
-      - name: "helloWorldOverHttp"
-        type: http
+      - name: "sayHiEveryMinute"
+        type: cron
+        cronString: "* * * * ? *"
