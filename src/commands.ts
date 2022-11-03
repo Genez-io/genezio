@@ -349,10 +349,6 @@ async function createDeployArchive(
     fs.mkdirSync(nodeModulesPath, { recursive: true });
   }
 
-  const { stdout, stderr } = await exec("npm i node-addon-api", {
-    cwd: tmpPath
-  });
-
   const binaryDependencies = [];
 
   // copy all dependencies to node_modules folder
@@ -399,15 +395,24 @@ async function createDeployArchive(
     }
   }
 
+  if (binaryDependencies.length > 0) {
+    await exec("npm i node-addon-api", {
+      cwd: tmpPath
+    });
+    await exec("npm i @mapbox/node-pre-gyp", {
+      cwd: tmpPath
+    });
+  }
+
   for (const dependency of binaryDependencies) {
     try {
       const { stdout, stderr } = await exec(
-        "node-pre-gyp --update-binary --fallback-to-build --target_arch=x64 --target_platform=linux --target_libc=glibc clean install " +
+        "npx node-pre-gyp --update-binary --fallback-to-build --target_arch=x64 --target_platform=linux --target_libc=glibc clean install " +
           dependency.name,
         { cwd: dependency.path }
       );
     } catch (error) {
-      console.error("error");
+      console.error("An error has occured while installing binary dependecies.");
     }
   }
 

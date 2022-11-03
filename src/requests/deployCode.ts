@@ -56,12 +56,10 @@ export async function deployClass(
   });
 
   if (response.data.status === "error") {
-    console.log("error1");
     throw new Error(response.data.message);
   }
 
   if (response.data?.error?.message) {
-    console.log("error2");
     throw new Error(response.data.error.message);
   }
 
