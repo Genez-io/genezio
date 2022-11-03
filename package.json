@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "npx tsc && node build/index.js",
+    "install-locally": "npx tsc && npm install -g",
     "build": "npx tsc",
     "lint": "./scripts/lint"
   },

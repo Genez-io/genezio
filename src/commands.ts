@@ -255,7 +255,7 @@ export async function bundleJavascriptCode(
       const nodeModulesPath = path.join(temporaryFolder, "node_modules");
 
       // check if node_modules folder exists
-      if (await fileExists(nodeModulesPath)) {
+      if (await fileExists(path.join(process.cwd(), "node_modules"))) {
         fsExtra.copySync(
           path.join(process.cwd(), "node_modules"),
           nodeModulesPath
@@ -510,11 +510,13 @@ export async function deployFunctions() {
 
     const methodsMap: any = {};
     // iterate over all function names
-    for (const functionElem of elem.methods) {
-      if (functionElem.type == undefined) {
-        functionElem.type = elem.type;
+    if (elem.methods) {
+      for (const functionElem of elem.methods) {
+        if (functionElem.type == undefined) {
+          functionElem.type = elem.type;
+        }
+        methodsMap[functionElem.name] = functionElem;
       }
-      methodsMap[functionElem.name] = functionElem;
     }
 
     functionUrlForFilePath[path.parse(filePath).name] = functionUrl;
@@ -540,15 +542,24 @@ export async function deployFunctions() {
   Object.keys(classesInfo).forEach((key: any) => {
     const classInfo = classesInfo[key];
 
-    for (const functionName of classInfo.functionNames) {
-      if (classInfo.methodsMap[functionName].type !== "http") {
-        continue;
+    let localType = classInfo.type;
+
+    if (classInfo.methods != undefined) {
+      for (const functionName of classInfo.functionNames) {
+        if (classInfo.methodsMap[functionName]) {
+          localType = classInfo.methodsMap[functionName].type;
+        }
+
+        if (localType !== "http") {
+          continue;
+        }
+        console.log(
+          `  - ${classInfo.className}.${functionName}: ${classInfo.functionUrl}${classInfo.className}/${functionName}`
+        );
+        localType = classInfo.type;
       }
-      console.log(
-        `  - ${classInfo.className}.${functionName}: ${classInfo.functionUrl}${classInfo.className}/${functionName}`
-      );
+      console.log("");
     }
-    console.log("");
   });
 }
 
