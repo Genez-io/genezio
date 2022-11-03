@@ -29,8 +29,10 @@ export async function deployClass(
   }
 
   form.append(
-    "configurationFileContent",
-    JSON.stringify(configurationFileContent)
+    "configurationClassContent",
+    JSON.stringify(
+      configurationFileContent.classes.find((c: any) => c.path === filePath)
+    )
   );
 
   form.append("classFile", fs.createReadStream(filePath));

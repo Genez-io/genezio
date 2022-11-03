@@ -1,7 +1,13 @@
 #! /usr/bin/env node
 
 import { Command } from "commander";
-import { deployFunctions, generateSdks, init, addNewClass } from "./commands";
+import {
+  deployFunctions,
+  generateSdks,
+  init,
+  addNewClass,
+  checkYamlFile
+} from "./commands";
 import { fileExists, readUTF8File, readToken } from "./utils/file";
 import Server from "./localEnvironment";
 import chokidar from "chokidar";
@@ -115,6 +121,8 @@ program
         "You are not logged in. Run 'genezio login' before you deploy your function."
       );
     }
+
+    await checkYamlFile();
 
     await deployFunctions().catch((error: AxiosError) => {
       if (error.response?.status == 401) {
