@@ -6,7 +6,7 @@
 import https from 'https';
 import http from 'http';
 
-async function makeRequest(request, url, port) {
+async function makeRequest(request, url) {
 
     const data = JSON.stringify(request);
     const hostUrl = new URL(url);
@@ -14,13 +14,12 @@ async function makeRequest(request, url, port) {
     const options = {
         hostname: hostUrl.hostname,
         method: 'POST',
-        port,
         headers: {
             'Content-Type': 'application/json',
             'Content-Length': data.length,
         },
     };
-    const client = port === 443 ? https : http;
+    const client = url.includes('https') ? https : http;
 
     return new Promise((resolve, reject) => {
         const req = client.request(options, res => {
@@ -50,16 +49,14 @@ async function makeRequest(request, url, port) {
  */
 export class Remote {
     url = undefined
-    port = 443
 
-    constructor(url, port) {
+    constructor(url) {
         this.url = url
-        this.port = port
     }
 
     async call(method, ...args) {
         const requestContent = {"jsonrpc": "2.0", "method": method, "params": args, "id": 3};
-        const response = await makeRequest(requestContent, this.url, this.port);
+        const response = await makeRequest(requestContent, this.url);
 
         if (response.error) {
             return response.error.message;

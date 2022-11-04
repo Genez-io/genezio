@@ -130,11 +130,13 @@ export default class Server {
         const methodsMap: any = {};
 
         // iterate over all function names
-        for (const functionElem of classElem.methods) {
-          if (functionElem.type == undefined) {
-            functionElem.type = classElem.type;
+        if (classElem.methods) {
+          for (const functionElem of classElem.methods) {
+            if (functionElem.type == undefined) {
+              functionElem.type = classElem.type;
+            }
+            methodsMap[functionElem.name] = functionElem;
           }
-          methodsMap[functionElem.name] = functionElem;
         }
 
         this.handlers[className] = new Handler(
@@ -309,11 +311,14 @@ export default class Server {
     });
 
     console.log("");
-    console.log("HTTP Methods Deployed::");
+    console.log("HTTP Methods Deployed:");
     Object.keys(this.handlers).forEach((handlerName) => {
       const handler = this.handlers[handlerName];
       for (const functionName of handler.functionNames) {
-        if (handler.methodsMap[functionName].type !== "http") {
+        if (
+          handler.methodsMap[functionName] &&
+          handler.methodsMap[functionName].type !== "http"
+        ) {
           continue;
         }
         console.log(
@@ -322,6 +327,7 @@ export default class Server {
       }
       console.log("");
     });
+
     console.log("");
     console.log("Listening for requests...");
     this.server.listen(PORT_LOCAL_ENVIRONMENT).on("error", (err: any) => {
