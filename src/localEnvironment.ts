@@ -317,13 +317,12 @@ export default class Server {
       for (const functionName of handler.functionNames) {
         if (
           handler.methodsMap[functionName] &&
-          handler.methodsMap[functionName].type !== "http"
+          handler.methodsMap[functionName].type === "http"
         ) {
-          continue;
+          console.log(
+            `  - ${handler.className}.${functionName}: http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/${handler.className}/${functionName}`
+          );
         }
-        console.log(
-          `  - ${handler.className}.${functionName}: http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/${handler.className}/${functionName}`
-        );
       }
       console.log("");
     });

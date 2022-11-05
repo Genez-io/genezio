@@ -208,7 +208,7 @@ program
             await server.start();
           })
           .catch((error: Error) => {
-            console.error(`${error}`);
+            console.error(`${error.stack}`);
           });
       };
 

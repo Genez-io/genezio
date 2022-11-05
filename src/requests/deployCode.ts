@@ -44,14 +44,14 @@ export async function deployClass(
   form.append("className", className);
 
   const response: any = await axios({
-    method: "post",
+    method: "POST",
     url: `${BACKEND_ENDPOINT}/project/deployment`, // TODO modify to http://api.genez.io/core/deployment
     data: form,
     headers: { ...form.getHeaders(), Authorization: `Bearer ${authToken}` },
     maxContentLength: Infinity,
     maxBodyLength: Infinity
   }).catch((error: Error) => {
-    console.log("error0");
+    console.log("error", error);
     throw error;
   });
 
