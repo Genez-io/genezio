@@ -25,6 +25,7 @@ import yaml from "yaml";
 import { exit } from "process";
 import awsCronParser from "aws-cron-parser";
 import { CONNREFUSED } from "dns";
+import { ProjectConfiguration } from "./models/projectConfiguration";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const exec = util.promisify(require("child_process").exec);
@@ -530,7 +531,7 @@ export async function deployFunctions() {
     };
   }
 
-  await generateSdks("production", functionUrlForFilePath);
+  await generateSdks(functionUrlForFilePath);
 
   console.log(
     "\x1b[36m%s\x1b[0m",
@@ -573,10 +574,24 @@ export async function deployFunctions() {
   }
 }
 
-export async function generateSdks(env: string, urlMap?: any) {
+export async function generateLocalSdk() {
   const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
   const configurationFileContent = await parse(configurationFileContentUTF8);
-  const outputPath = configurationFileContent.sdk.path;
+  const configuration = await ProjectConfiguration.create(configurationFileContent);
+  const urlMap: { [id: string] : string; } = {}
+
+  for (const classElement of configuration.classes) {
+    urlMap[path.parse(classElement.path).name] = "http://127.0.0.1:8083";
+  }
+  
+  generateSdks(urlMap)
+}
+
+export async function generateSdks(urlMap: any) {
+  const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
+  const configurationFileContent = await parse(configurationFileContentUTF8);
+  const configuration = await ProjectConfiguration.create(configurationFileContent);
+  const outputPath = configuration.sdk.path;
 
   // check if the output path exists
   if (await fileExists(outputPath)) {
@@ -584,7 +599,7 @@ export async function generateSdks(env: string, urlMap?: any) {
     fs.rmSync(outputPath, { recursive: true, force: true });
   }
 
-  const sdk = await generateSdk(configurationFileContent, env, urlMap);
+  const sdk = await generateSdk(configuration, urlMap);
   if (sdk.remoteFile) {
     await writeToFile(outputPath, "remote.js", sdk.remoteFile, true).catch(
       (error) => {

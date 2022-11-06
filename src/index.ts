@@ -6,7 +6,8 @@ import {
   generateSdks,
   init,
   addNewClass,
-  checkYamlFile
+  checkYamlFile,
+  generateLocalSdk
 } from "./commands";
 import { fileExists, readUTF8File, readToken } from "./utils/file";
 import Server from "./localEnvironment";
@@ -161,7 +162,7 @@ program
   .action(async (env) => {
     switch (env) {
       case "local":
-        await generateSdks(env)
+        await generateLocalSdk()
           .then(() => {
             console.log("Your SDK was successfully generated!");
           })
@@ -203,7 +204,7 @@ program
             classElement.fileName
           ] = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/${classElement.className}`;
         }
-        await generateSdks("local", functionUrlForFilePath)
+        await generateSdks(functionUrlForFilePath)
           .then(async () => {
             await server.start();
           })
