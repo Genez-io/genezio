@@ -74,7 +74,6 @@ program
             }
           })
           .then(() => {
-            console.log("intraa");
             // save new token
             keytar.setPassword("genez.io", name, token).then(() => {
               console.log(`Welcome, ${name}! You can now start using genez.io.`);
