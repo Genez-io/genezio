@@ -55,7 +55,7 @@ export class BlockchainServer {
      */
     async getEvents(from, limit) {
         const count = await EventModel.count()
-        const events = await EventModel.find(undefined, undefined, { skip: from, limit, sort: undefined })
+        const events = await EventModel.find(undefined, undefined, { skip: from, limit, sort: { "blockNumber": -1, "logIndex": -1 } })
 
         return {
             count,
@@ -71,6 +71,8 @@ export class BlockchainServer {
         const blockNumber = await this.web3.eth.getBlockNumber()
         let events = await this.web3.eth.getPastLogs({ address: CONTRACT_ADDRESS, fromBlock: blockNumber - 10, toBlock: blockNumber });
 
+        console.log(`New sync started with ${events.length} to save`)
+
         for (const event of events) {
             const decodedEvent = this.#decodeEvent(event)
 
@@ -83,7 +85,9 @@ export class BlockchainServer {
                 $setOnInsert: {
                     id: `${event.transactionHash}-${event.logIndex}`,
                     name: decodedEvent.name,
-                    parameters: decodedEvent.parameters
+                    parameters: decodedEvent.parameters,
+                    blockNumber: event.blockNumber,
+                    logIndex: event.logIndex
                 }
             }, { upsert: true });
         }
