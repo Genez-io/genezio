@@ -118,9 +118,8 @@ program
     const authToken = await readToken().catch(() => undefined);
 
     if (!authToken) {
-      throw new Error(
-        "You are not logged in. Run 'genezio login' before you deploy your function."
-      );
+        console.log("You are not logged in. Run 'genezio login' before you deploy your function.");
+        exit(1)
     }
 
     await checkYamlFile();
