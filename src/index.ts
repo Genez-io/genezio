@@ -76,7 +76,9 @@ program
           .then(() => {
             // save new token
             keytar.setPassword("genez.io", name, token).then(() => {
-              console.log(`Welcome, ${name}! You can now start using genez.io.`);
+              console.log(
+                `Welcome, ${name}! You can now start using genez.io.`
+              );
               res.setHeader("Access-Control-Allow-Origin", "*");
               res.setHeader("Access-Control-Allow-Headers", "Content-Type");
               res.setHeader("Access-Control-Allow-Methods", "POST");
@@ -118,8 +120,10 @@ program
     const authToken = await readToken().catch(() => undefined);
 
     if (!authToken) {
-        console.log("You are not logged in. Run 'genezio login' before you deploy your function.");
-        exit(1)
+      console.log(
+        "You are not logged in. Run 'genezio login' before you deploy your function."
+      );
+      exit(1);
     }
 
     await checkYamlFile();
@@ -217,13 +221,19 @@ program
 
       await runServer();
       // get absolute path of configurationFileContent.sdk.path
-      const sdkPath = path.join(cwd, configurationFileContent.sdk.path);
+      let sdkPath = path.join(cwd, configurationFileContent.sdk.path);
+
+      // delete / if sdkPath ends with /
+      if (sdkPath.endsWith("/")) {
+        sdkPath = sdkPath.slice(0, -1);
+      }
 
       // Watch for changes in the classes and update the handlers
       const watchPaths = [path.join(cwd, "/**/*")];
       const ignoredPaths = [
         "**/node_modules/*",
-        configurationFileContent.sdk.path + "/**/*"
+        sdkPath + "/**/*",
+        sdkPath + "/*"
       ];
 
       const startWatching = () => {
