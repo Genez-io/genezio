@@ -437,7 +437,8 @@ async function deployFunction(
   const { name, extension, filename } = getFileDetails(filePath);
 
   switch (extension) {
-    case ".js":
+    case ".js": 
+    case ".ts":
       console.log("Bundling javascript code...");
       // eslint-disable-next-line no-case-declarations
       const bundledJavascriptCode = await bundleJavascriptCode(filePath);
@@ -553,6 +554,7 @@ export async function generateSdks(env: string, urlMap?: any) {
   const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
   const configurationFileContent = await parse(configurationFileContentUTF8);
   const outputPath = configurationFileContent.sdk.path;
+  const language = configurationFileContent.sdk.language;
   const sdk = await generateSdk(configurationFileContent, env, urlMap);
   if (sdk.remoteFile) {
     await writeToFile(outputPath, "remote.js", sdk.remoteFile, true).catch(
@@ -565,7 +567,7 @@ export async function generateSdks(env: string, urlMap?: any) {
   for (const classFile of sdk.classFiles) {
     await writeToFile(
       outputPath,
-      `${classFile.filename}.sdk.js`,
+      `${classFile.filename}.sdk.${language}`,
       classFile.implementation,
       true
     ).catch((error) => {
