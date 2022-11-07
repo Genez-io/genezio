@@ -76,7 +76,7 @@ program
           .then(() => {
             // save new token
             keytar.setPassword("genez.io", name, token).then(() => {
-              console.log("You are now logged in!");
+              console.log(`Welcome, ${name}! You can now start using genez.io.`);
               res.setHeader("Access-Control-Allow-Origin", "*");
               res.setHeader("Access-Control-Allow-Headers", "Content-Type");
               res.setHeader("Access-Control-Allow-Methods", "POST");
@@ -97,7 +97,7 @@ program
 
     const promise = new Promise((resolve) => {
       server.listen(0, "localhost", () => {
-        console.log("Waiting for browser to login...");
+        console.log("Redirecting to browser to complete authentication...");
         const address = server.address() as AddressInfo;
         resolve(address.port);
       });
@@ -133,7 +133,10 @@ program
       } else {
         console.error(error.message);
       }
+      exit(1);
     });
+
+    console.log("Your project has been deployed");
   });
 
 program
@@ -164,7 +167,7 @@ program
       case "local":
         await generateLocalSdk()
           .then(() => {
-            console.log("Your SDK was successfully generated!");
+            console.log(`Your ${env} SDK was successfully generated!`);
           })
           .catch((error: Error) => {
             console.error(`${error}`);
@@ -177,7 +180,7 @@ program
         break;
       default:
         console.error(
-          `Wrong env value ${env}. Available options: "local" or "production".`
+          `${env} is not a valid environment. Available options: “local” or “production”`
         );
     }
   });
