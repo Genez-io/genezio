@@ -328,6 +328,7 @@ export default class Server {
     });
 
     console.log("");
+    console.log("Starting your local environment…");
     console.log("Listening for requests...");
     this.server.listen(PORT_LOCAL_ENVIRONMENT).on("error", (err: any) => {
       if (err.code === "EADDRINUSE") {
