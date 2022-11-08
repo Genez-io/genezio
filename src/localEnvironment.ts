@@ -254,6 +254,7 @@ export default class Server {
                 res.end(response.body ? response.body : "");
               }
             } catch (error) {
+              console.error(error)
               res.writeHead(500);
               res.end();
               return;

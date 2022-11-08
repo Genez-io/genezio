@@ -6,7 +6,7 @@ export class HelloWorldCronExample {
   }
 
   helloWorldOverHttp(request) {
-    const name = JSON.parse(request.body).name;
+    const name = request.body ? JSON.parse(request.body).name : "No name";
 
     console.log(name);
 
