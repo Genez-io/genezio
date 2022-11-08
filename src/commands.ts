@@ -126,13 +126,10 @@ export async function addNewClass(classPath: string, classType: string) {
       "Invalid class type. Valid class types are 'http' and 'jsonrpc'."
     );
   }
-  const genezioYamlPath = path.join("./genezio.yaml");
-  if (!(await fileExists(genezioYamlPath))) {
-    console.error(
-      "genezio.yaml file does not exist. Please run `genezio init` before you add a class."
-    );
+  if (!await checkYamlFileExists()) {
     return;
   }
+  const genezioYamlPath = path.join("./genezio.yaml");
 
   if (classPath === undefined || classPath === "") {
     console.error("Please provide a path to the class you want to add.");
@@ -583,7 +580,7 @@ export async function generateLocalSdk() {
   for (const classElement of configuration.classes) {
     urlMap[path.parse(classElement.path).name] = "http://127.0.0.1:8083";
   }
-  
+
   generateSdks(urlMap)
 }
 
@@ -661,7 +658,7 @@ export async function init() {
   sdk.sdk.path = path;
 
   const doc = new Document(sdk);
-  doc.commentBefore = `File that configures what classes will be deployed in Genezio Infrastructure. 
+  doc.commentBefore = `File that configures what classes will be deployed in Genezio Infrastructure.
 Add the paths to classes that you want to deploy in "classes".
 
 Example:
@@ -696,6 +693,17 @@ classes:
     "The genezio.yaml configuration file was generated. You can now add the classes that you want to deploy using the 'genezio addClass <className> <classType>' command."
   );
   console.log("");
+}
+
+export async function checkYamlFileExists(yamlPath = "./genezio.yaml") {
+  if (!(await fileExists(yamlPath))) {
+    console.error(
+      "genezio.yaml file does not exist. Please run `genezio init` to initialize a project."
+    );
+    return false;
+  }
+
+  return true;
 }
 
 export async function checkYamlFile() {

@@ -7,7 +7,8 @@ import {
   init,
   addNewClass,
   checkYamlFile,
-  generateLocalSdk
+  generateLocalSdk,
+  checkYamlFileExists
 } from "./commands";
 import { fileExists, readUTF8File, readToken } from "./utils/file";
 import Server from "./localEnvironment";
@@ -126,6 +127,9 @@ program
       exit(1);
     }
 
+    if (!await checkYamlFileExists()) {
+      return;
+    }
     await checkYamlFile();
 
     await deployFunctions().catch((error: AxiosError) => {
@@ -193,6 +197,10 @@ program
   .description("Run a local environment for your functions.")
   .action(async () => {
     try {
+      if (!await checkYamlFileExists()) {
+        return;
+      }
+
       const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
       const configurationFileContent = await parse(
         configurationFileContentUTF8
