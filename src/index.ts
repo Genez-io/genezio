@@ -276,7 +276,7 @@ program
       if (!authToken) {
         console.log("Unauthorized. You are not logged in.");
       } else {
-        console.log(authToken);
+        console.log("Logged in as: " + authToken);
       }
     }
   );
