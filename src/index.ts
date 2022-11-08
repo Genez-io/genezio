@@ -6,11 +6,9 @@ import {
   generateSdks,
   init,
   addNewClass,
-  checkYamlFile,
-  generateLocalSdk,
-  checkYamlFileExists
+  generateLocalSdk
 } from "./commands";
-import { fileExists, readUTF8File, readToken } from "./utils/file";
+import { validateYamlFile, checkYamlFileExists, fileExists, readUTF8File, readToken } from "./utils/file";
 import Server from "./localEnvironment";
 import chokidar from "chokidar";
 import path from "path";
@@ -130,7 +128,7 @@ program
     if (!await checkYamlFileExists()) {
       return;
     }
-    await checkYamlFile();
+    await validateYamlFile();
 
     await deployFunctions().catch((error: AxiosError) => {
       if (error.response?.status == 401) {

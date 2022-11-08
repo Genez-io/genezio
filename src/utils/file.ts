@@ -5,6 +5,9 @@ import FileDetails from "../models/fileDetails";
 import glob from "glob";
 import archiver from "archiver";
 import keytar from "keytar";
+import { parse, Document } from "yaml";
+import { exit } from "process";
+import awsCronParser from "aws-cron-parser";
 
 export async function getAllNonJsFiles(): Promise<FileDetails[]> {
   return new Promise((resolve, reject) => {
@@ -135,4 +138,54 @@ export async function readToken(): Promise<string> {
         reject(error);
       });
   });
+}
+
+export async function checkYamlFileExists(yamlPath = "./genezio.yaml") {
+  if (!(await fileExists(yamlPath))) {
+    console.error(
+      "genezio.yaml file does not exist. Please run `genezio init` to initialize a project."
+    );
+    return false;
+  }
+
+  return true;
+}
+
+export async function validateYamlFile() {
+  const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
+  const configurationFileContent = await parse(configurationFileContentUTF8);
+
+  if (configurationFileContent.classes.length === 0) {
+    console.log(
+      "You don't have any classes in your genezio.yaml file. You can add classes using the 'genezio addClass <className> <classType>' command."
+    );
+    exit(1);
+  }
+
+  for (const elem of configurationFileContent.classes) {
+    if (elem.methods === undefined) {
+      continue;
+    }
+    for (const method of elem.methods) {
+      if (method.type === "cron") {
+        if (method.cronString === undefined) {
+          console.log(
+            `You need to specify a cronString for the method ${elem.path}.${method.name}.`
+          );
+          exit(1);
+        } else {
+          try {
+            const cron = awsCronParser.parse(method.cronString);
+          } catch (error: any) {
+            console.log(
+              `The cronString ${method.cronString} for the method ${elem.path}.${method.name} is not valid.`
+            );
+            console.log("You must use a 6-part cron expression.");
+            console.log(error.toString());
+            exit(1);
+          }
+        }
+      }
+    }
+  }
 }
