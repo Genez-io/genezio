@@ -6,10 +6,8 @@ import {
   generateSdks,
   init,
   addNewClass,
-  checkYamlFile,
-  generateLocalSdk
 } from "./commands";
-import { fileExists, readUTF8File, readToken } from "./utils/file";
+import { validateYamlFile, checkYamlFileExists, fileExists, readUTF8File, readToken } from "./utils/file";
 import Server from "./localEnvironment";
 import chokidar from "chokidar";
 import path from "path";
@@ -126,7 +124,10 @@ program
       exit(1);
     }
 
-    await checkYamlFile();
+    if (!await checkYamlFileExists()) {
+      return;
+    }
+    await validateYamlFile();
 
     await deployFunctions().catch((error: AxiosError) => {
       if (error.response?.status == 401) {
@@ -159,40 +160,14 @@ program
   });
 
 program
-  .command("generateSdk")
-  .argument(
-    "<env>",
-    'The environment used to make requests. Available options: "local" or "production".'
-  )
-  .description("Generate the SDK.")
-  .action(async (env) => {
-    switch (env) {
-      case "local":
-        await generateLocalSdk()
-          .then(() => {
-            console.log(`Your ${env} SDK was successfully generated!`);
-          })
-          .catch((error: Error) => {
-            console.error(`${error}`);
-          });
-        break;
-      case "production":
-        await deployFunctions().catch((error: Error) => {
-          console.error(error);
-        });
-        break;
-      default:
-        console.error(
-          `${env} is not a valid environment. Available options: “local” or “production”`
-        );
-    }
-  });
-
-program
   .command("local")
   .description("Run a local environment for your functions.")
   .action(async () => {
     try {
+      if (!await checkYamlFileExists()) {
+        return;
+      }
+
       const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
       const configurationFileContent = await parse(
         configurationFileContentUTF8
@@ -280,23 +255,16 @@ program
 
 program
   .command("account")
-  .description("Display currently logged in account.")
+  .description("Display information about the current account.")
   .action(
     async () => {
-      keytar
-        .findCredentials("genez.io")
-        .then(async (credentials) => {
-          if (Array.isArray(credentials) && credentials.length) {
-            credentials.forEach(async (credential) => {
-              console.log("Logged in as: " + credential.account);
-            })
-          } else {
-            console.log("Unauthorized. You are not logged in.")
-          }
-        })
-        .catch(() => {
-          console.log("Cannot access keychain.")
-        })
+      const authToken = await readToken(true).catch(() => undefined);
+
+      if (!authToken) {
+        console.log("You are not logged in. Run 'genezio login' before displaying account information.");
+      } else {
+        console.log("Logged in as: " + authToken);
+      }
     }
   );
 
