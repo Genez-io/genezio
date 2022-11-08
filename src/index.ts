@@ -166,6 +166,16 @@ program
   )
   .description("Generate the SDK.")
   .action(async (env) => {
+    // check if user is logged in
+    const authToken = await readToken().catch(() => undefined);
+
+    if (!authToken) {
+      console.log(
+        "You are not logged in. Run 'genezio login' before you deploy your function."
+      );
+      exit(1);
+    }
+
     switch (env) {
       case "local":
         await generateLocalSdk()
@@ -178,7 +188,7 @@ program
         break;
       case "production":
         await deployFunctions().catch((error: Error) => {
-          console.error(error);
+          console.error(`${error}`);
         });
         break;
       default:
