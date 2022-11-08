@@ -27,7 +27,7 @@ const program = new Command();
 program
   .name("genezio")
   .description("CLI to interact with the Genezio infrastructure!")
-  .version("0.1.0");
+  .version("0.1.4");
 
 program
   .command("init")
