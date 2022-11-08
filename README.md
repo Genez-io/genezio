@@ -13,7 +13,7 @@ For more details about the `genezio` CLI command, run `genezio help`.
 
 ## Getting started
 
-1. Run `genezio login`. 
+1. Run `genezio login`.
 
 2. Run `genezio init` and answer the following questions:
 
@@ -63,9 +63,9 @@ Check our [examples](https://github.com/Genez-io/genezio/tree/master/examples)!
 
 * If you see the following error `SyntaxError: Cannot use import statement outside a module` add `"type": "module"` in package.json.
 
-## Knwown issues
+## Known issues
 
-* Genezio currently support only Javascript. We will offer support for Typescript, Swift, Kotlin and many others.
+* Genezio currently support only JavaScript. We will offer support for TypeScript, Swift, Kotlin and many others.
 * The execution time of the functions cannot exceed 10 seconds. This limitation will go away soon.
 
 ## How does Genezio work?
