@@ -136,3 +136,21 @@ export async function readToken(): Promise<string> {
       });
   });
 }
+
+export async function readAccount(): Promise<string> {
+  // get credentials from keytar
+  return new Promise((resolve, reject) => {
+    keytar
+      .findCredentials("genez.io")
+      .then((credentials) => {
+        if (credentials.length === 0) {
+          reject("No credentials found");
+        }
+
+        resolve(credentials[0].account);
+      })
+      .catch((error) => {
+        reject(error);
+      });
+  });
+}

@@ -9,7 +9,7 @@ import {
   checkYamlFile,
   generateLocalSdk
 } from "./commands";
-import { fileExists, readUTF8File, readToken } from "./utils/file";
+import { fileExists, readUTF8File, readToken, readAccount } from "./utils/file";
 import Server from "./localEnvironment";
 import chokidar from "chokidar";
 import path from "path";
@@ -271,20 +271,13 @@ program
   .description("Display currently logged in account.")
   .action(
     async () => {
-      keytar
-        .findCredentials("genez.io")
-        .then(async (credentials) => {
-          if (Array.isArray(credentials) && credentials.length) {
-            credentials.forEach(async (credential) => {
-              console.log("Logged in as: " + credential.account);
-            })
-          } else {
-            console.log("Unauthorized. You are not logged in.")
-          }
-        })
-        .catch(() => {
-          console.log("Cannot access keychain.")
-        })
+      const authToken = await readAccount().catch(() => undefined);
+
+      if (!authToken) {
+        console.log("Unauthorized. You are not logged in.");
+      } else {
+        console.log(authToken);
+      }
     }
   );
 
