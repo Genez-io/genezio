@@ -4,6 +4,8 @@ In this example, we have implemented a class that queries periodically using Bla
 
 The class is implemented in the `blockchainServer.js` file.
 
+Run `npm install` in both `backend/` and `frontend/` folders.
+
 ## Run the example locally
 
 1. From the `backend/` folder run `genezio generateSdk local`. This will create the SDK that makes the requests locally.
