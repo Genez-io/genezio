@@ -274,7 +274,7 @@ program
       const authToken = await readToken(true).catch(() => undefined);
 
       if (!authToken) {
-        console.log("Unauthorized. You are not logged in.");
+        console.log("You are not logged in. Run 'genezio login' before displaying account information.");
       } else {
         console.log("Logged in as: " + authToken);
       }
