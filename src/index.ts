@@ -6,7 +6,6 @@ import {
   generateSdks,
   init,
   addNewClass,
-  generateLocalSdk
 } from "./commands";
 import { validateYamlFile, checkYamlFileExists, fileExists, readUTF8File, readToken } from "./utils/file";
 import Server from "./localEnvironment";
