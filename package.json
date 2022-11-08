@@ -1,13 +1,14 @@
 {
   "name": "genezio",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Command line utility to interact with Genezio infrastructure.",
   "main": "index.js",
   "scripts": {
     "start": "npx tsc && node build/index.js",
     "install-locally": "npx tsc && npm install -g",
     "build": "npx tsc",
-    "lint": "./scripts/lint"
+    "lint": "./scripts/lint",
+    "release": "npm run build && npm publish"
   },
   "files": [
     "/build"

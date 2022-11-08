@@ -22,12 +22,15 @@ import { exit } from "process";
 import { AxiosError } from "axios";
 import { AddressInfo } from "net";
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const pjson = require('../package.json');
+
 const program = new Command();
 
 program
   .name("genezio")
   .description("CLI to interact with the Genezio infrastructure!")
-  .version("0.1.5");
+  .version(pjson.version);
 
 program
   .command("init")
