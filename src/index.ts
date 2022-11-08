@@ -6,10 +6,9 @@ import {
   generateSdks,
   init,
   addNewClass,
-  checkYamlFile,
   generateLocalSdk
 } from "./commands";
-import { fileExists, readUTF8File, readToken } from "./utils/file";
+import { validateYamlFile, checkYamlFileExists, fileExists, readUTF8File, readToken } from "./utils/file";
 import Server from "./localEnvironment";
 import chokidar from "chokidar";
 import path from "path";
@@ -126,7 +125,10 @@ program
       exit(1);
     }
 
-    await checkYamlFile();
+    if (!await checkYamlFileExists()) {
+      return;
+    }
+    await validateYamlFile();
 
     await deployFunctions().catch((error: AxiosError) => {
       if (error.response?.status == 401) {
@@ -193,6 +195,10 @@ program
   .description("Run a local environment for your functions.")
   .action(async () => {
     try {
+      if (!await checkYamlFileExists()) {
+        return;
+      }
+
       const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
       const configurationFileContent = await parse(
         configurationFileContentUTF8
