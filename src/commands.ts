@@ -570,19 +570,6 @@ export async function deployFunctions() {
   }
 }
 
-export async function generateLocalSdk() {
-  const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
-  const configurationFileContent = await parse(configurationFileContentUTF8);
-  const configuration = await ProjectConfiguration.create(configurationFileContent);
-  const urlMap: { [id: string] : string; } = {}
-
-  for (const classElement of configuration.classes) {
-    urlMap[path.parse(classElement.path).name] = "http://127.0.0.1:8083";
-  }
-
-  generateSdks(urlMap)
-}
-
 export async function generateSdks(urlMap: any) {
   const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
   const configurationFileContent = await parse(configurationFileContentUTF8);

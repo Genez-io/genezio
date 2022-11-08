@@ -161,36 +161,6 @@ program
   });
 
 program
-  .command("generateSdk")
-  .argument(
-    "<env>",
-    'The environment used to make requests. Available options: "local" or "production".'
-  )
-  .description("Generate the SDK.")
-  .action(async (env) => {
-    switch (env) {
-      case "local":
-        await generateLocalSdk()
-          .then(() => {
-            console.log(`Your ${env} SDK was successfully generated!`);
-          })
-          .catch((error: Error) => {
-            console.error(`${error}`);
-          });
-        break;
-      case "production":
-        await deployFunctions().catch((error: Error) => {
-          console.error(error);
-        });
-        break;
-      default:
-        console.error(
-          `${env} is not a valid environment. Available options: “local” or “production”`
-        );
-    }
-  });
-
-program
   .command("local")
   .description("Run a local environment for your functions.")
   .action(async () => {
