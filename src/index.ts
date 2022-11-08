@@ -278,4 +278,26 @@ program
       });
   });
 
+program
+  .command("account")
+  .description("Display currently logged in account.")
+  .action(
+    async () => {
+      keytar
+        .findCredentials("genez.io")
+        .then(async (credentials) => {
+          if (Array.isArray(credentials) && credentials.length) {
+            credentials.forEach(async (credential) => {
+              console.log("Logged in as: " + credential.account);
+            })
+          } else {
+            console.log("Unauthorized. You are not logged in.")
+          }
+        })
+        .catch(() => {
+          console.log("Cannot access keychain.")
+        })
+    }
+  );
+
 program.parse();
