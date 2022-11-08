@@ -9,7 +9,8 @@ import {
   readUTF8File,
   writeToFile,
   getAllNonJsFiles,
-  zipDirectory
+  zipDirectory,
+  checkYamlFileExists
 } from "./utils/file";
 import { askQuestion } from "./utils/prompt";
 import BundledCode from "./models/bundledCode";
@@ -22,8 +23,6 @@ import { default as fsExtra } from "fs-extra";
 import util from "util";
 import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import yaml from "yaml";
-import { exit } from "process";
-import awsCronParser from "aws-cron-parser";
 import { CONNREFUSED } from "dns";
 import { ProjectConfiguration } from "./models/projectConfiguration";
 
@@ -126,13 +125,10 @@ export async function addNewClass(classPath: string, classType: string) {
       "Invalid class type. Valid class types are 'http' and 'jsonrpc'."
     );
   }
-  const genezioYamlPath = path.join("./genezio.yaml");
-  if (!(await fileExists(genezioYamlPath))) {
-    console.error(
-      "genezio.yaml file does not exist. Please run `genezio init` before you add a class."
-    );
+  if (!await checkYamlFileExists()) {
     return;
   }
+  const genezioYamlPath = path.join("./genezio.yaml");
 
   if (classPath === undefined || classPath === "") {
     console.error("Please provide a path to the class you want to add.");
@@ -648,7 +644,7 @@ export async function init() {
   sdk.sdk.path = path;
 
   const doc = new Document(sdk);
-  doc.commentBefore = `File that configures what classes will be deployed in Genezio Infrastructure. 
+  doc.commentBefore = `File that configures what classes will be deployed in Genezio Infrastructure.
 Add the paths to classes that you want to deploy in "classes".
 
 Example:
@@ -683,43 +679,4 @@ classes:
     "The genezio.yaml configuration file was generated. You can now add the classes that you want to deploy using the 'genezio addClass <className> <classType>' command."
   );
   console.log("");
-}
-
-export async function checkYamlFile() {
-  const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
-  const configurationFileContent = await parse(configurationFileContentUTF8);
-
-  if (configurationFileContent.classes.length === 0) {
-    console.log(
-      "You don't have any classes in your genezio.yaml file. You can add classes using the 'genezio addClass <className> <classType>' command."
-    );
-    exit(1);
-  }
-
-  for (const elem of configurationFileContent.classes) {
-    if (elem.methods === undefined) {
-      continue;
-    }
-    for (const method of elem.methods) {
-      if (method.type === "cron") {
-        if (method.cronString === undefined) {
-          console.log(
-            `You need to specify a cronString for the method ${elem.path}.${method.name}.`
-          );
-          exit(1);
-        } else {
-          try {
-            const cron = awsCronParser.parse(method.cronString);
-          } catch (error: any) {
-            console.log(
-              `The cronString ${method.cronString} for the method ${elem.path}.${method.name} is not valid.`
-            );
-            console.log("You must use a 6-part cron expression.");
-            console.log(error.toString());
-            exit(1);
-          }
-        }
-      }
-    }
-  }
 }
