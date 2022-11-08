@@ -119,7 +119,7 @@ export function writeToFile(
   });
 }
 
-export async function readToken(): Promise<string> {
+export async function readToken(account = false): Promise<string> {
   // get credentials from keytar
   return new Promise((resolve, reject) => {
     keytar
@@ -129,25 +129,11 @@ export async function readToken(): Promise<string> {
           reject("No credentials found");
         }
 
-        resolve(credentials[0].password);
-      })
-      .catch((error) => {
-        reject(error);
-      });
-  });
-}
-
-export async function readAccount(): Promise<string> {
-  // get credentials from keytar
-  return new Promise((resolve, reject) => {
-    keytar
-      .findCredentials("genez.io")
-      .then((credentials) => {
-        if (credentials.length === 0) {
-          reject("No credentials found");
+        if (account) {
+          resolve(credentials[0].account);
+        } else {
+          resolve(credentials[0].password);
         }
-
-        resolve(credentials[0].account);
       })
       .catch((error) => {
         reject(error);

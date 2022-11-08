@@ -9,7 +9,7 @@ import {
   checkYamlFile,
   generateLocalSdk
 } from "./commands";
-import { fileExists, readUTF8File, readToken, readAccount } from "./utils/file";
+import { fileExists, readUTF8File, readToken } from "./utils/file";
 import Server from "./localEnvironment";
 import chokidar from "chokidar";
 import path from "path";
@@ -271,7 +271,7 @@ program
   .description("Display currently logged in account.")
   .action(
     async () => {
-      const authToken = await readAccount().catch(() => undefined);
+      const authToken = await readToken(true).catch(() => undefined);
 
       if (!authToken) {
         console.log("Unauthorized. You are not logged in.");
