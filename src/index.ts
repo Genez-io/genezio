@@ -268,7 +268,7 @@ program
 
 program
   .command("account")
-  .description("Display currently logged in account.")
+  .description("Display information about the current account.")
   .action(
     async () => {
       const authToken = await readToken(true).catch(() => undefined);
