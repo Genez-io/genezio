@@ -8,9 +8,9 @@ import {
   getFileDetails,
   readUTF8File,
   writeToFile,
-  getAllNonJsFiles,
   zipDirectory,
-  checkYamlFileExists
+  checkYamlFileExists,
+  getAllFilesFromCurrentPath
 } from "./utils/file";
 import { askQuestion } from "./utils/prompt";
 import BundledCode from "./models/bundledCode";
@@ -25,6 +25,8 @@ import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import yaml from "yaml";
 import { CONNREFUSED } from "dns";
 import { ProjectConfiguration } from "./models/projectConfiguration";
+import { NodeJsBundler } from "./bundlers/nodeJsBundler";
+import { NodeJsBinaryDependenciesBundler } from "./bundlers/nodeJsBinaryDepenciesBundler";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const exec = util.promisify(require("child_process").exec);
@@ -172,8 +174,8 @@ export async function addNewClass(classPath: string, classType: string) {
       ".",
       classPath,
       "\nexport class " +
-        (className.charAt(0).toUpperCase() + className.slice(1)) +
-        " {}",
+      (className.charAt(0).toUpperCase() + className.slice(1)) +
+      " {}",
       true
     ).catch((error) => {
       console.error(error.toString());
@@ -389,7 +391,7 @@ async function createDeployArchive(
           });
         }
         // eslint-disable-next-line no-empty
-      } catch (error) {}
+      } catch (error) { }
     }
   }
 
@@ -406,7 +408,7 @@ async function createDeployArchive(
     try {
       const { stdout, stderr } = await exec(
         "npx node-pre-gyp --update-binary --fallback-to-build --target_arch=x64 --target_platform=linux --target_libc=glibc clean install " +
-          dependency.name,
+        dependency.name,
         { cwd: dependency.path }
       );
     } catch (error) {
@@ -452,23 +454,23 @@ async function deployFunction(
       console.log("Deploying bundle...\n");
 
       // eslint-disable-next-line no-case-declarations
-      const response = await deployClass(
-        configurationFileContent,
-        filePath,
-        extension,
-        runtime,
-        archivePath,
-        projectName,
-        name
-      );
+      // const response = await deployClass(
+      //   configurationFileContent,
+      //   filePath,
+      //   extension,
+      //   runtime,
+      //   archivePath,
+      //   projectName,
+      //   name
+      // );
 
-      console.log("Deployed successfully for class: " + name);
+      // console.log("Deployed successfully for class: " + name);
 
-      return {
-        functionUrl: response.functionUrl,
-        functionNames: bundledJavascriptCode.functionNames,
-        className: bundledJavascriptCode.className
-      };
+      // return {
+      //   functionUrl: response.functionUrl,
+      //   functionNames: bundledJavascriptCode.functionNames,
+      //   className: bundledJavascriptCode.className
+      // };
     default:
       throw new Error(
         `Language represented by extension ${extension} is not supported!`
@@ -476,98 +478,144 @@ async function deployFunction(
   }
 }
 
-export async function deployFunctions() {
+export async function newDeployClasses() {
   const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
   const configurationFileContent = await parse(configurationFileContentUTF8);
+  const configuration = await ProjectConfiguration.create(configurationFileContent)
 
-  if (configurationFileContent.classes.length === 0) {
+  if (configuration.classes.length === 0) {
     throw new Error(
       "You don't have any class in specified in the genezio.yaml configuration file. Add a class with 'genezio addClass <className> <classType>' field and then call again 'genezio deploy'."
     );
   }
 
-  const functionUrlForFilePath: any = {};
+  for (const element of configuration.classes) {
+    const currentFolder = process.cwd()
+    switch(element.language) {
+      case ".js":
+        const bundler = new NodeJsBundler()
+        const binaryDepBundler = new NodeJsBinaryDependenciesBundler()
 
-  const allNonJsFilesPaths = await getAllNonJsFiles();
+        let output = await bundler.bundle({configuration: element, path: element.path})
+        output = await binaryDepBundler.bundle(output)
 
-  const classesInfo: any = {};
+        const archivePath = path.join(currentFolder, `genezioDeploy.zip`);
+        zipDirectory(output.path, archivePath)
 
-  for (const elem of configurationFileContent.classes) {
-    const filePath = elem.path;
-    const type = elem.type;
-    const { functionUrl, functionNames, className } = await deployFunction(
-      configurationFileContent,
-      filePath,
-      type,
-      configurationFileContent.sdk.language,
-      configurationFileContent.sdk.path,
-      configurationFileContent.sdk.runtime,
-      configurationFileContent.name,
-      allNonJsFilesPaths
-    );
+        const result = await deployClass(element, archivePath, configuration.name, output.extra?.className)
+        console.log(result)
+        break;
 
-    const methodsMap: any = {};
-    // iterate over all function names
-    if (elem.methods) {
-      for (const functionElem of elem.methods) {
-        if (functionElem.type == undefined) {
-          functionElem.type = elem.type;
-        }
-        methodsMap[functionElem.name] = functionElem;
-      }
+        // await fs.promises.unlink(archivePath)
+        break;
+      default:
+        console.log(`Unsupported ${element.language}`)
     }
-
-    functionUrlForFilePath[path.parse(filePath).name] = functionUrl;
-    classesInfo[className] = {
-      functionNames,
-      functionUrl,
-      className,
-      methodsMap,
-      type
-    };
   }
+}
 
-  await generateSdks(functionUrlForFilePath);
+export async function deployFunctions() {
+  // const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
+  // const configurationFileContent = await parse(configurationFileContentUTF8);
 
-  console.log(
-    "\x1b[36m%s\x1b[0m",
-    "Your code was deployed and the SDK was successfully generated!"
-  );
+  // if (configurationFileContent.classes.length === 0) {
+  //   throw new Error(
+  //     "You don't have any class in specified in the genezio.yaml configuration file. Add a class with 'genezio addClass <className> <classType>' field and then call again 'genezio deploy'."
+  //   );
+  // }
 
-  // print function urls
-  let printHttpString = "";
+  // const functionUrlForFilePath: any = {};
 
-  Object.keys(classesInfo).forEach((key: any) => {
-    const classInfo = classesInfo[key];
+  // const allNonJsFilesPaths = (await getAllFilesFromCurrentPath())
+  //   .filter((file: FileDetails) => {
+  //     // filter js files, node_modules and folders
+  //     return (
+  //         file.extension !== ".js" &&
+  //         path.basename(file.path) !== "package.json" &&
+  //         path.basename(file.path) !== "package-lock.json" &&
+  //         !file.path.includes("node_modules") &&
+  //         !fs.lstatSync(file.path).isDirectory()
+  //     );
+  //   });
 
-    let localType = classInfo.type;
+  // const classesInfo: any = {};
 
-    let addedNewLine = false;
+  // for (const elem of configurationFileContent.classes) {
+  //   const filePath = elem.path;
+  //   const type = elem.type;
+  //   const { functionUrl, functionNames, className } = await deployFunction(
+  //     configurationFileContent,
+  //     filePath,
+  //     type,
+  //     configurationFileContent.sdk.language,
+  //     configurationFileContent.sdk.path,
+  //     configurationFileContent.sdk.runtime,
+  //     configurationFileContent.name,
+  //     allNonJsFilesPaths
+  //   );
 
-    for (const functionName of classInfo.functionNames) {
-      if (classInfo.methodsMap[functionName]) {
-        localType = classInfo.methodsMap[functionName].type;
-      }
+  //   const methodsMap: any = {};
+  //   // iterate over all function names
+  //   if (elem.methods) {
+  //     for (const functionElem of elem.methods) {
+  //       if (functionElem.type == undefined) {
+  //         functionElem.type = elem.type;
+  //       }
+  //       methodsMap[functionElem.name] = functionElem;
+  //     }
+  //   }
 
-      if (localType !== "http") {
-        continue;
-      }
-      printHttpString +=
-        `  - ${classInfo.className}.${functionName}: ${classInfo.functionUrl}${classInfo.className}/${functionName}` +
-        "\n";
-      localType = classInfo.type;
-      addedNewLine = true;
-    }
-    if (addedNewLine) {
-      printHttpString += "\n";
-    }
-    addedNewLine = false;
-  });
-  if (printHttpString !== "") {
-    console.log("");
-    console.log("HTTP Methods Deployed:");
-    console.log(printHttpString);
-  }
+  //   functionUrlForFilePath[path.parse(filePath).name] = functionUrl;
+  //   classesInfo[className] = {
+  //     functionNames,
+  //     functionUrl,
+  //     className,
+  //     methodsMap,
+  //     type
+  //   };
+  // }
+
+  // await generateSdks(functionUrlForFilePath);
+
+  // console.log(
+  //   "\x1b[36m%s\x1b[0m",
+  //   "Your code was deployed and the SDK was successfully generated!"
+  // );
+
+  // // print function urls
+  // let printHttpString = "";
+
+  // Object.keys(classesInfo).forEach((key: any) => {
+  //   const classInfo = classesInfo[key];
+
+  //   let localType = classInfo.type;
+
+  //   let addedNewLine = false;
+
+  //   for (const functionName of classInfo.functionNames) {
+  //     if (classInfo.methodsMap[functionName]) {
+  //       localType = classInfo.methodsMap[functionName].type;
+  //     }
+
+  //     if (localType !== "http") {
+  //       continue;
+  //     }
+  //     printHttpString +=
+  //       `  - ${classInfo.className}.${functionName}: ${classInfo.functionUrl}${classInfo.className}/${functionName}` +
+  //       "\n";
+  //     localType = classInfo.type;
+  //     addedNewLine = true;
+  //   }
+  //   if (addedNewLine) {
+  //     printHttpString += "\n";
+  //   }
+  //   addedNewLine = false;
+  // });
+  // if (printHttpString !== "") {
+  //   console.log("");
+  //   console.log("HTTP Methods Deployed:");
+  //   console.log(printHttpString);
+  // }
 }
 
 export async function generateSdks(urlMap: any) {

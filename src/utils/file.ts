@@ -9,7 +9,7 @@ import { parse, Document } from "yaml";
 import { exit } from "process";
 import awsCronParser from "aws-cron-parser";
 
-export async function getAllNonJsFiles(): Promise<FileDetails[]> {
+export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
   return new Promise((resolve, reject) => {
     glob(`./**/*`, { dot: true }, (err, files) => {
       if (err) {
@@ -17,16 +17,6 @@ export async function getAllNonJsFiles(): Promise<FileDetails[]> {
       }
 
       const fileDetails: FileDetails[] = files
-        .filter((file: string) => {
-          // filter js files, node_modules and folders
-          return (
-            path.extname(file) !== ".js" &&
-            path.basename(file) !== "package.json" &&
-            path.basename(file) !== "package-lock.json" &&
-            !file.includes("node_modules") &&
-            !fs.lstatSync(file).isDirectory()
-          );
-        })
         .map((file: string) => {
           return {
             name: path.parse(file).name,

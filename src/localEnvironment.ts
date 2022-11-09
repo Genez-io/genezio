@@ -3,7 +3,7 @@ import http from "http";
 import Handler from "./models/handler";
 import {
   createTemporaryFolder,
-  getAllNonJsFiles,
+  getAllFilesFromCurrentPath,
   readUTF8File,
   writeToFile
 } from "./utils/file";
@@ -17,6 +17,7 @@ import querystring from "querystring";
 import jsonBody from "body/json";
 import { PORT_LOCAL_ENVIRONMENT } from "./variables";
 import { exit } from "process";
+import FileDetails from "./models/fileDetails";
 
 export default class Server {
   server: http.Server;
@@ -28,11 +29,11 @@ export default class Server {
   }
 
   async createLocalEnvironmentFolderForOneClass(
-    filePath: string
+    filePath: string,
+    allNonJsFilesPaths: FileDetails[],
   ): Promise<any> {
     // eslint-disable-next-line no-async-promise-executor
     return new Promise(async (resolve, reject) => {
-      const allNonJsFilesPaths = await getAllNonJsFiles();
       const bundledJavascriptCode = await bundleJavascriptCode(filePath);
 
       const jsBundlePath = bundledJavascriptCode.path;
@@ -109,11 +110,13 @@ export default class Server {
       let hasClasses = false;
 
       const classes = [];
+      const allNonJsFilesPaths = await getAllFilesFromCurrentPath();
+      //TODO FILTER!
 
       for (const classElem of configurationFileContent.classes) {
         hasClasses = true;
         const { folderClassPath, functionNames } =
-          await this.createLocalEnvironmentFolderForOneClass(classElem.path);
+          await this.createLocalEnvironmentFolderForOneClass(classElem.path, allNonJsFilesPaths);
 
         const module = require(path.join(folderClassPath, "module.js")); // eslint-disable-line @typescript-eslint/no-var-requires
 

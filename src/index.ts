@@ -6,6 +6,7 @@ import {
   generateSdks,
   init,
   addNewClass,
+  newDeployClasses,
 } from "./commands";
 import { validateYamlFile, checkYamlFileExists, fileExists, readUTF8File, readToken } from "./utils/file";
 import Server from "./localEnvironment";
@@ -109,6 +110,41 @@ program
     const port = await promise;
     const browserUrl = `${REACT_APP_BASE_URL}/cli/login?redirect_url=http://localhost:${port}/`;
     open(browserUrl);
+  });
+
+program
+  .command("newdeploy")
+  .description(
+    "Deploy the functions mentioned in the genezio.yaml file to Genezio infrastructure."
+  )
+  .action(async () => {
+    // check if user is logged in
+    const authToken = await readToken().catch(() => undefined);
+
+    if (!authToken) {
+      console.log(
+        "You are not logged in. Run 'genezio login' before you deploy your function."
+      );
+      exit(1);
+    }
+
+    if (!await checkYamlFileExists()) {
+      return;
+    }
+    await validateYamlFile();
+
+    await newDeployClasses().catch((error: AxiosError) => {
+      if (error.response?.status == 401) {
+        console.log(
+          "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
+        );
+      } else {
+        console.error(error.message);
+      }
+      exit(1);
+    });
+
+    console.log("Your project has been deployed");
   });
 
 program
