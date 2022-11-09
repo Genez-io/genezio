@@ -48,7 +48,7 @@ function App() {
         <List sx={{ width: '100%', maxWidth: 360, bgcolor: 'background.paper' }}>
           {events.map((event) =>
             <ListItem>
-              <ListItemText primary={event.name} secondary={JSON.stringify(event.parameters)} />
+              <ListItemText primary={event.name} secondary={event.blockNumber + " " + JSON.stringify(event.parameters)} />
             </ListItem>
           )
           }
