@@ -8,10 +8,9 @@ To deploy and test it run `genezio deploy`. Once the command was successfully ex
 
 ## Run the example locally
 
-1. Run `genezio generateSdk local`. This will create the SDK that makes the requests locally.
-2. Run `genezio local`. This will start a local web server that listens for requests.
-3. Open a new terminal and run `node test-hello-sdk.js`. This script will use the SDK to call the methods that you have deployed locally in the previous step.
-4. You should see the greeting messages.
+1. Run `genezio local`. This will generate the SDK and start a local web server that listens for requests.
+2. Open a new terminal and run `node test-hello-sdk.js`. This script will use the SDK to call the methods that you have deployed locally in the previous step.
+3. You should see the greeting messages.
 
 ## Deploy the example in the Genezio infrastructure
 

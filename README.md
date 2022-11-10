@@ -5,6 +5,7 @@ Genezio is a platform for developers that want to write a backend in a very simp
 ## Install `genezio`
 
 To install `genezio` run:
+
 ```bash
 npm install genezio -g
 ```
@@ -30,24 +31,24 @@ A configuration file `genezio.yaml` will be generated.
 
 ```javascript
 export class HelloWorldClass {
-    helloWorld() {
-        return "Hello world!";
-    }
+  helloWorld() {
+    return "Hello world!";
+  }
 
-    hello(name, location) {
-        return `Hello, ${name}! Greetings from ${location}!`
-    }
+  hello(name, location) {
+    return `Hello, ${name}! Greetings from ${location}!`;
+  }
 }
 ```
 
 4. Run `genezio deploy` to deploy your code. An SDK is generated for you in the `./sdk/` path. You can now call your hello world methods remotely.
 
 ```javascript
-import { HelloWorldClass } from "./sdk/hello.sdk.js"
+import { HelloWorldClass } from "./sdk/hello.sdk.js";
 
 (async () => {
-    console.log(await HelloWorldClass.helloWorld())
-    console.log(await HelloWorldClass.hello("George", "Tenerife"))
+  console.log(await HelloWorldClass.helloWorld());
+  console.log(await HelloWorldClass.hello("George", "Tenerife"));
 })();
 ```
 
@@ -55,18 +56,18 @@ Check out the `./examples/` folder for more examples.
 
 ### Test your code locally
 
-You can also test your code locally by running the `genezio local` command. This will spawn a local server that can be used for testing. To change the environment that your SDK is pointing to just run `genezio generateSdk local`. You can switch back to production environment by running `genezio generateSdk production` or `genezio deploy`.
+You can also test your code locally by running the `genezio local` command. This will spawn a local server that can be used for testing. You can switch back to production environment by running `genezio deploy`.
 
 Check our [examples](https://github.com/Genez-io/genezio/tree/master/examples)!
 
 ## Troubleshooting
 
-* If you see the following error `SyntaxError: Cannot use import statement outside a module` add `"type": "module"` in package.json.
+- If you see the following error `SyntaxError: Cannot use import statement outside a module` add `"type": "module"` in package.json.
 
 ## Known issues
 
-* Genezio currently support only JavaScript. We will offer support for TypeScript, Swift, Kotlin and many others.
-* The execution time of the functions cannot exceed 10 seconds. This limitation will go away soon.
+- Genezio currently support only JavaScript. We will offer support for TypeScript, Swift, Kotlin and many others.
+- The execution time of the functions cannot exceed 10 seconds. This limitation will go away soon.
 
 ## How does Genezio work?
 
