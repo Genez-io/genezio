@@ -66,9 +66,9 @@ Check our [examples](https://github.com/Genez-io/genezio/tree/master/examples)!
 
 ## Known issues
 
-- Genezio currently support only JavaScript. We will offer support for TypeScript, Swift, Kotlin and many others.
+- Genezio currently supports only JavaScript. We will offer support for TypeScript, Swift, Kotlin and many others.
 - The execution time of the functions cannot exceed 10 seconds. This limitation will go away soon.
 
 ## How does Genezio work?
 
-Genezio is using JSON RPC 2.0 to facilitate the communication between SDK and your class. Your functions are deployed in Genezio infrastructure. The functions are not executed on a long lasting Virtual Machine. Instead our system uses a serverless approach. Whenever a request is received, your code is loaded and executed. This is more cost and energy efficient. However, the developer needs to take this into account. The values of the global variables are not persisted between runs.
+Genezio is using JSON RPC 2.0 to facilitate the communication between SDK and your class. Your functions are deployed in the Genezio infrastructure. The functions are not executed on a long lasting Virtual Machine. Instead, our system uses a serverless approach. Whenever a request is received, your code is loaded and executed. This is more cost and energy efficient. However, the developer needs to take into account the following - the values of the global variables are not persistent between runs.
