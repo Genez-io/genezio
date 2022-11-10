@@ -489,6 +489,9 @@ export async function newDeployClasses() {
     );
   }
 
+  const functionUrlForFilePath: {[id: string]: string} = {}
+  const classesInfo = []
+
   for (const element of configuration.classes) {
     const currentFolder = process.cwd()
     switch(element.language) {
@@ -499,19 +502,25 @@ export async function newDeployClasses() {
         let output = await bundler.bundle({configuration: element, path: element.path})
         output = await binaryDepBundler.bundle(output)
 
+        classesInfo.push({...output.extra, type: element.type})
+
         const archivePath = path.join(currentFolder, `genezioDeploy.zip`);
-        zipDirectory(output.path, archivePath)
+        await zipDirectory(output.path, archivePath)
 
         const result = await deployClass(element, archivePath, configuration.name, output.extra?.className)
-        console.log(result)
-        break;
 
-        // await fs.promises.unlink(archivePath)
+        functionUrlForFilePath[path.parse(element.path).name] = result.functionUrl;
+
+        await fs.promises.unlink(archivePath)
         break;
       default:
         console.log(`Unsupported ${element.language}`)
     }
   }
+
+  generateSdks(functionUrlForFilePath)
+
+  reportSuccess(classesInfo)
 }
 
 export async function deployFunctions() {
@@ -616,6 +625,54 @@ export async function deployFunctions() {
   //   console.log("HTTP Methods Deployed:");
   //   console.log(printHttpString);
   // }
+}
+
+export function reportSuccess(classesInfo: any) {
+  console.log(
+    "\x1b[36m%s\x1b[0m",
+    "Your code was deployed and the SDK was successfully generated!"
+  );
+
+  // print function urls
+  let printHttpString = "";
+
+  classesInfo.forEach((classInfo: any) => {
+    if (classInfo.type === "http") {
+
+    }
+  })
+
+  Object.keys(classesInfo).forEach((key: any) => {
+    const classInfo = classesInfo[key];
+
+    let localType = classInfo.type;
+
+    let addedNewLine = false;
+
+    for (const functionName of classInfo.functionNames) {
+      if (classInfo.methodsMap[functionName]) {
+        localType = classInfo.methodsMap[functionName].type;
+      }
+
+      if (localType !== "http") {
+        continue;
+      }
+      printHttpString +=
+        `  - ${classInfo.className}.${functionName}: ${classInfo.functionUrl}${classInfo.className}/${functionName}` +
+        "\n";
+      localType = classInfo.type;
+      addedNewLine = true;
+    }
+    if (addedNewLine) {
+      printHttpString += "\n";
+    }
+    addedNewLine = false;
+  });
+  if (printHttpString !== "") {
+    console.log("");
+    console.log("HTTP Methods Deployed:");
+    console.log(printHttpString);
+  }
 }
 
 export async function generateSdks(urlMap: any) {

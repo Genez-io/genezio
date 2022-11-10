@@ -108,6 +108,36 @@ export class NodeJsBundler implements BundlerInterface {
         });
     }
 
+    #getClassDetails(filePath: string, tempFolderPath: string): any {
+        const moduleJsPath = path.join(tempFolderPath, "module.js");
+        const module = require(moduleJsPath);
+        const className = Object.keys(module.genezio)[0];
+        console.log(className)
+
+        if (Object.keys(module.genezio).length > 1) {
+            console.log(
+              "\x1b[33m",
+              `Warning: We found multiple classes exported from the ${filePath} file. For now, we support only one class per file.`
+            );
+            console.log("\x1b[0m", "");
+          }
+    
+          if (!className) {
+            throw new Error(
+                `No class was found in the ${filePath} file. Make sure you exported the class.`
+              )
+          }
+    
+          const functionNames = Object.getOwnPropertyNames(
+            module.genezio[className].prototype
+          ).filter((x) => x !== "constructor");
+
+          return {
+            className,
+            functionNames
+          }
+    }
+
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
         const temporaryFolder = await createTemporaryFolder();
         const dependenciesInfo = await getNodeModules(input.path);
@@ -122,18 +152,16 @@ export class NodeJsBundler implements BundlerInterface {
         await this.#copyDependencies(dependenciesInfo, temporaryFolder)
 
         // 4. Get class name
+        const classDetails = this.#getClassDetails(input.path, temporaryFolder)
 
         // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const filePath = path.join(temporaryFolder, "module.js");
-        const module = require(filePath);
-        const className = Object.keys(module.genezio)[0];
-        console.log(className)
 
         return {
             ...input,
             path: temporaryFolder,
             extra: {
-                className,
+                className: classDetails.className,
+                functionNames: classDetails.functionNames,
                 dependenciesInfo
             }
         }
