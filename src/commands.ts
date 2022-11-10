@@ -125,7 +125,7 @@ export async function addNewClass(classPath: string, classType: string) {
       "Invalid class type. Valid class types are 'http' and 'jsonrpc'."
     );
   }
-  if (!await checkYamlFileExists()) {
+  if (!(await checkYamlFileExists())) {
     return;
   }
   const genezioYamlPath = path.join("./genezio.yaml");
@@ -168,14 +168,7 @@ export async function addNewClass(classPath: string, classType: string) {
     const onlyPath = classPath.split("/").slice(0, -1).join("/");
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 
-    await writeToFile(
-      ".",
-      classPath,
-      "\nexport class " +
-        (className.charAt(0).toUpperCase() + className.slice(1)) +
-        " {}",
-      true
-    ).catch((error) => {
+    await writeToFile(".", classPath, "", true).catch((error) => {
       console.error(error.toString());
     });
   }
@@ -573,7 +566,9 @@ export async function deployFunctions() {
 export async function generateSdks(urlMap: any) {
   const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
   const configurationFileContent = await parse(configurationFileContentUTF8);
-  const configuration = await ProjectConfiguration.create(configurationFileContent);
+  const configuration = await ProjectConfiguration.create(
+    configurationFileContent
+  );
   const outputPath = configuration.sdk.path;
 
   // check if the output path exists
