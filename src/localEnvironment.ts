@@ -4,6 +4,7 @@ import chokidar from 'chokidar';
 import express from 'express'
 import cors from 'cors'
 import bodyParser from 'body-parser'
+import { PORT_LOCAL_ENVIRONMENT } from "./variables";
 
 
 export function getEventObjectFromRequest(request: any) {
@@ -127,5 +128,5 @@ export function startServer(handlers: any) {
   })
 
   console.log("Listening...")
-  return app.listen(8083)
+  return app.listen(PORT_LOCAL_ENVIRONMENT)
 }
