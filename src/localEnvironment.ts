@@ -1,358 +1,131 @@
-import { bundleJavascriptCode } from "./commands";
-import http from "http";
-import Handler from "./models/handler";
-import {
-  createTemporaryFolder,
-  getAllFilesFromCurrentPath,
-  readUTF8File,
-  writeToFile
-} from "./utils/file";
-import { parse } from "yaml";
-import { createHttpTerminator } from "http-terminator";
-import path from "path";
-import fs from "fs";
-import { lambdaHandler } from "./utils/lambdaHander";
-import fsExtra, { remove } from "fs-extra";
 import querystring from "querystring";
-import jsonBody from "body/json";
-import { PORT_LOCAL_ENVIRONMENT } from "./variables";
-import { exit } from "process";
-import FileDetails from "./models/fileDetails";
+import path from "path";
+import chokidar from 'chokidar';
+import express from 'express'
+import cors from 'cors'
+import bodyParser from 'body-parser'
 
-export default class Server {
-  server: http.Server;
-  handlers: any = {};
-  activeStatus = false;
 
-  constructor() {
-    this.server = http.createServer();
+export function getEventObjectFromRequest(request: any) {
+  return {
+    headers: request.headers,
+    http: {
+      // get path without the className
+      path: request.url,
+      protocol: request.httpVersion,
+      method: request.method,
+      sourceIp: request.socket.remoteAddress,
+      userAgent: request.headers["user-agent"]
+    },
+    queryParameters: request.url!.includes("?")
+      ? querystring.parse(request.url!.split("?")[1])
+      : {},
+    timeEpoch: Date.now(),
+    body: Object.keys(request.body).length > 0 ? JSON.stringify(request.body) : undefined,
+    requestContext: {
+      http: {
+        path: request.url,
+      }
+    }
+  }
+}
+
+export function handleResponseForJsonRpc(res: any, jsonRpcResponse: any) {
+  res.setHeader('Content-Type', 'application/json')
+  res.end(JSON.stringify(jsonRpcResponse))
+}
+
+export function handleResponseforHttp(res: any, httpResponse: any) {
+  if (httpResponse.statusDescription) {
+    res.statusMessage = httpResponse.statusDescription;
+  }
+  if (httpResponse.headers) {
+    for (const header of Object.keys(httpResponse.headers)) {
+      res.setHeader(header, httpResponse.headers[header]);
+    }
   }
 
-  async createLocalEnvironmentFolderForOneClass(
-    filePath: string,
-    allNonJsFilesPaths: FileDetails[],
-  ): Promise<any> {
-    // eslint-disable-next-line no-async-promise-executor
-    return new Promise(async (resolve, reject) => {
-      const bundledJavascriptCode = await bundleJavascriptCode(filePath);
-
-      const jsBundlePath = bundledJavascriptCode.path;
-      const dependenciesInfo: any = bundledJavascriptCode.dependencies;
-      const functionNames = bundledJavascriptCode.functionNames;
-
-      const tmpPath = await createTemporaryFolder("genezio-");
-
-      // check if the tmp folder exists
-      if (!fs.existsSync(tmpPath)) {
-        fs.mkdirSync(tmpPath, { recursive: true });
-      }
-
-      writeToFile(tmpPath, "index.js", lambdaHandler);
-
-      // create file structure
-      const jsBundleFile = path.join(tmpPath, "module.js");
-
-      // create js bundle file in tmp folder from bundledJavascriptCode path
-      fs.copyFileSync(jsBundlePath, jsBundleFile);
-
-      // iterare over all non js files and copy them to tmp folder
-      allNonJsFilesPaths.forEach((filePath, key) => {
-        // get folders array
-        const folders = filePath.path.split(path.sep);
-        // remove file name from folders array
-        folders.pop();
-        // create folder structure in tmp folder
-        const folderPath = path.join(tmpPath, ...folders);
-        if (!fs.existsSync(folderPath)) {
-          fs.mkdirSync(folderPath, { recursive: true });
-        }
-        // copy file to tmp folder
-        const fileDestinationPath = path.join(tmpPath, filePath.path);
-        fs.copyFileSync(filePath.path, fileDestinationPath);
-      });
-
-      // create node_modules folder in tmp folder
-      const nodeModulesPath = path.join(tmpPath, "node_modules");
-      if (!fs.existsSync(nodeModulesPath)) {
-        fs.mkdirSync(nodeModulesPath, { recursive: true });
-      }
-
-      // copy all dependencies to node_modules folder
-      for (const dependency of dependenciesInfo) {
-        const dependencyPath = path.join(nodeModulesPath, dependency.name);
-        fsExtra.copySync(dependency.path, dependencyPath);
-      }
-
-      resolve({ folderClassPath: tmpPath, functionNames: functionNames });
-    });
+  if (httpResponse.statusCode) {
+    res.writeHead(parseInt(httpResponse.statusCode));
   }
 
-  async generateHandlersFromFiles(): Promise<any> {
-    // eslint-disable-next-line no-async-promise-executor
-    return new Promise(async (resolve, reject) => {
-      // delete all tmp folders of handler
+  if (httpResponse.bodyEncoding === "base64") {
+    res.write(Buffer.from(httpResponse.body, "base64"));
+  } else {
+    res.end(httpResponse.body ? httpResponse.body : "");
+  }
+}
 
-      // iterate all the objet keys of handlers
-      for (const handlerKey of Object.keys(this.handlers)) {
-        // get handler
-        const handler = this.handlers[handlerKey];
-        // delete tmp folder
-        fs.rmSync(handler.path, { recursive: true, force: true });
-      }
+export function listenForChanges(sdkPathRelative: any, server: any) {
+  const cwd = process.cwd()
 
-      this.handlers = {};
+  let sdkPath = path.join(cwd, sdkPathRelative);
+  
+  return new Promise((resolve) => {
+    // delete / if sdkPath ends with /
+    if (sdkPath.endsWith("/")) {
+      sdkPath = sdkPath.slice(0, -1);
+    }
 
-      const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
-      const configurationFileContent = await parse(
-        configurationFileContentUTF8
-      );
+    // Watch for changes in the classes and update the handlers
+    const watchPaths = [path.join(cwd, "/**/*")];
+    const ignoredPaths = [
+      "**/node_modules/*",
+      sdkPath + "/**/*",
+      sdkPath + "/*"
+    ];
 
-      let hasClasses = false;
+    const startWatching = () => {
+      chokidar
+        .watch(watchPaths, {
+          ignored: ignoredPaths,
+          ignoreInitial: true
+        })
+        .on("all", async (event: any, path: any) => {
+          if (path.includes(sdkPath)) {
+            return;
+          }
 
-      const classes = [];
-      const allNonJsFilesPaths = await getAllFilesFromCurrentPath();
-      //TODO FILTER!
-
-      for (const classElem of configurationFileContent.classes) {
-        hasClasses = true;
-        const { folderClassPath, functionNames } =
-          await this.createLocalEnvironmentFolderForOneClass(classElem.path, allNonJsFilesPaths);
-
-        const module = require(path.join(folderClassPath, "module.js")); // eslint-disable-line @typescript-eslint/no-var-requires
-
-        const className = Object.keys(
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
-          module.genezio
-        )[0];
-        classes.push({
-          fileName: path.parse(classElem.path).name,
-          className: className
+          console.clear();
+          console.log("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
+          await server.close();
+          resolve({})
         });
+    };
+    startWatching();
+  })
+}
 
-        // methods map
-        const methodsMap: any = {};
+export function startServer(handlers: any) {
+  const app = express()
+  app.use(cors())
+  app.use(bodyParser());
 
-        // iterate over all function names
-        if (classElem.methods) {
-          for (const functionElem of classElem.methods) {
-            if (functionElem.type == undefined) {
-              functionElem.type = classElem.type;
-            }
-            methodsMap[functionElem.name] = functionElem;
-          }
-        }
+  app.all(`/:className`, async (req: any, res: any) => {
+    const reqToFunction = getEventObjectFromRequest(req)
 
-        this.handlers[className] = new Handler(
-          folderClassPath,
-          module,
-          className,
-          functionNames,
-          methodsMap
-        );
-      }
+    const path = handlers[req.params.className].path
 
-      if (hasClasses) {
-        resolve(classes);
-      } else {
-        resolve(false);
-      }
-    });
-  }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const module = require(path);
 
-  async start() {
-    this.activeStatus = true;
-    this.server = http.createServer((req, res) => {
-      jsonBody(req, res, async (err: any, body: any) => {
-        try {
-          res.setHeader("Access-Control-Allow-Origin", "*");
-          res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-          res.setHeader("Access-Control-Allow-Methods", "POST");
-          if (req.method === "OPTIONS") {
-            res.writeHead(200);
-            res.end();
-            return;
-          }
+    const response = await module.handler(reqToFunction);
 
-          if (req.url === "/") {
-            res.writeHead(404);
-            res.end();
-            return;
-          }
+    handleResponseForJsonRpc(res, response)
+  });
 
-          const components = req.url?.split("/");
-          if (components == undefined || components?.length < 2) {
-            res.writeHead(404);
-            res.end();
-            return;
-          }
+  app.all(`/:className/:methodName`, async (req: any, res: any) => {
+    const reqToFunction = getEventObjectFromRequest(req)
 
-          const pathClassName = components?.[1];
+    const path = handlers[req.params.className].path
 
-          if (!pathClassName) {
-            res.writeHead(404);
-            res.end();
-            return;
-          }
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const module = require(path);
 
-          if (components?.length > 2) {
-            // handler for webhooks
-            const pathMethodName = components?.[2];
-            if (!pathMethodName) {
-              res.writeHead(404);
-              res.end();
-              return;
-            }
+    const response = await module.handler(reqToFunction);
+    handleResponseforHttp(res, response)
+  })
 
-            const handler = this.handlers[pathClassName];
-            if (!handler) {
-              res.writeHead(404);
-              res.end();
-              return;
-            }
-
-            const reqToFunction = {
-              headers: req.headers,
-              http: {
-                // get path without the className
-                path: req.url?.replace(`/${pathClassName}`, ""),
-                protocol: req.httpVersion,
-                method: req.method,
-                sourceIp: req.socket.remoteAddress,
-                userAgent: req.headers["user-agent"]
-              },
-              queryParameters: req.url!.includes("?")
-                ? querystring.parse(req.url!.split("?")[1])
-                : {},
-              timeEpoch: Date.now(),
-              body: JSON.stringify(body)
-            };
-
-            const object = new handler.object.genezio[
-              Object.keys(handler.object.genezio)[0]
-            ]();
-
-            console.log(
-              `HTTP request received for ${pathMethodName} on class ${pathClassName}\n`
-            );
-
-            try {
-              const response = await object[pathMethodName](reqToFunction);
-
-              if (response.statusDescription) {
-                res.statusMessage = response.statusDescription;
-              }
-              if (response.headers) {
-                for (const header of Object.keys(response.headers)) {
-                  res.setHeader(header, response.headers[header]);
-                }
-              }
-
-              if (response.statusCode) {
-                res.writeHead(parseInt(response.statusCode));
-              }
-
-              if (response.bodyEncoding === "base64") {
-                res.write(Buffer.from(response.body, "base64"));
-              } else {
-                res.end(response.body ? response.body : "");
-              }
-            } catch (error) {
-              console.error(error)
-              res.writeHead(500);
-              res.end();
-              return;
-            }
-          } else {
-            // handler for jsonrpc
-            const [_, method] = body.method.split(".");
-            const handler = this.handlers[pathClassName];
-            if (!handler) {
-              res.writeHead(404);
-              res.end();
-              return;
-            }
-
-            console.log(
-              "Invoking method ",
-              method,
-              " on class ",
-              pathClassName + "\n"
-            );
-
-            const object = new handler.object.genezio[
-              Object.keys(handler.object.genezio)[0]
-            ]();
-
-            const requestId = body.id;
-            try {
-              const response = await object[method](...(body.params || []));
-              res.setHeader("Content-Type", "application/json");
-              res.writeHead(200);
-              return res.end(
-                JSON.stringify({
-                  jsonrpc: "2.0",
-                  result: response,
-                  error: null,
-                  id: requestId
-                })
-              );
-            } catch (error: any) {
-              const response = {
-                jsonrpc: "2.0",
-                error: { code: -1, message: error.toString() },
-                id: requestId
-              };
-              res.setHeader("Content-Type", "application/json");
-              res.writeHead(200);
-              return res.end(JSON.stringify(response));
-            }
-          }
-        } catch (error: any) {
-          res.writeHead(500);
-          res.end(error.toString());
-        }
-      });
-    });
-
-    console.log("");
-    console.log("HTTP Methods Deployed:");
-    Object.keys(this.handlers).forEach((handlerName) => {
-      const handler = this.handlers[handlerName];
-      for (const functionName of handler.functionNames) {
-        if (
-          handler.methodsMap[functionName] &&
-          handler.methodsMap[functionName].type === "http"
-        ) {
-          console.log(
-            `  - ${handler.className}.${functionName}: http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/${handler.className}/${functionName}`
-          );
-        }
-      }
-      console.log("");
-    });
-
-    console.log("");
-    console.log("Starting your local environment…");
-    console.log("Listening for requests...");
-    this.server.listen(PORT_LOCAL_ENVIRONMENT).on("error", (err: any) => {
-      if (err.code === "EADDRINUSE") {
-        console.log(
-          "Port " +
-            PORT_LOCAL_ENVIRONMENT +
-            " is already in use. Please close the process using it."
-        );
-        exit(1);
-      }
-    });
-  }
-
-  async terminate() {
-    const httpTerminator = createHttpTerminator({ server: this.server });
-    this.activeStatus = false;
-    await httpTerminator.terminate();
-  }
-
-  isRunning() {
-    return this.activeStatus;
-  }
+  console.log("Listening...")
+  return app.listen(8083)
 }

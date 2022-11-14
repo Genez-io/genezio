@@ -2,7 +2,7 @@ import { webpack } from "webpack";
 import path from "path";
 import fs from "fs";
 import webpackNodeExternals from "webpack-node-externals";
-import { createTemporaryFolder, fileExists, getAllFilesFromCurrentPath, getFileDetails, writeToFile } from "../utils/file";
+import { createTemporaryFolder, getAllFilesFromCurrentPath, getFileDetails, writeToFile } from "../utils/file";
 import { BundlerInput, BundlerInterface, BundlerOutput } from "./bundler.interface";
 import FileDetails from "../models/fileDetails";
 import { getNodeModules } from "../commands";
@@ -34,7 +34,7 @@ export class NodeJsBundler implements BundlerInterface {
             });
 
         // iterare over all non js files and copy them to tmp folder
-        allNonJsFilesPaths.forEach((filePath, key) => {
+        allNonJsFilesPaths.forEach((filePath) => {
             // get folders array
             const folders = filePath.path.split(path.sep);
             // remove file name from folders array
@@ -53,7 +53,6 @@ export class NodeJsBundler implements BundlerInterface {
     async #bundleJavascriptCode(filePath: string, tempFolderPath: string): Promise<void> {
         // eslint-disable-next-line no-async-promise-executor
         return new Promise(async (resolve, reject) => {
-            const { name } = getFileDetails(filePath);
             const outputFile = `module.js`;
 
             const compiler = webpack({
@@ -110,6 +109,8 @@ export class NodeJsBundler implements BundlerInterface {
 
     #getClassDetails(filePath: string, tempFolderPath: string): any {
         const moduleJsPath = path.join(tempFolderPath, "module.js");
+
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const module = require(moduleJsPath);
         const className = Object.keys(module.genezio)[0];
         console.log(className)
@@ -128,13 +129,13 @@ export class NodeJsBundler implements BundlerInterface {
               )
           }
     
-          const functionNames = Object.getOwnPropertyNames(
+          const methodNames = Object.getOwnPropertyNames(
             module.genezio[className].prototype
           ).filter((x) => x !== "constructor");
 
           return {
             className,
-            functionNames
+            methodNames
           }
     }
 
@@ -161,7 +162,7 @@ export class NodeJsBundler implements BundlerInterface {
             path: temporaryFolder,
             extra: {
                 className: classDetails.className,
-                functionNames: classDetails.functionNames,
+                methodNames: classDetails.methodNames,
                 dependenciesInfo
             }
         }

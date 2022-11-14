@@ -2,15 +2,12 @@
 
 import { Command } from "commander";
 import {
-  deployFunctions,
   generateSdks,
   init,
   addNewClass,
   newDeployClasses,
 } from "./commands";
-import { validateYamlFile, checkYamlFileExists, fileExists, readUTF8File, readToken } from "./utils/file";
-import Server from "./localEnvironment";
-import chokidar from "chokidar";
+import { validateYamlFile, checkYamlFileExists, readUTF8File, readToken } from "./utils/file";
 import path from "path";
 import { parse } from "yaml";
 import open from "open";
@@ -22,6 +19,9 @@ import { PORT_LOCAL_ENVIRONMENT, REACT_APP_BASE_URL } from "./variables";
 import { exit } from "process";
 import { AxiosError } from "axios";
 import { AddressInfo } from "net";
+import { ProjectConfiguration } from "./models/projectConfiguration";
+import { NodeJsBundler } from "./bundlers/nodeJsBundler";
+import { listenForChanges, startServer } from "./localEnvironment";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require('../package.json');
@@ -113,41 +113,6 @@ program
   });
 
 program
-  .command("newdeploy")
-  .description(
-    "Deploy the functions mentioned in the genezio.yaml file to Genezio infrastructure."
-  )
-  .action(async () => {
-    // check if user is logged in
-    const authToken = await readToken().catch(() => undefined);
-
-    if (!authToken) {
-      console.log(
-        "You are not logged in. Run 'genezio login' before you deploy your function."
-      );
-      exit(1);
-    }
-
-    if (!await checkYamlFileExists()) {
-      return;
-    }
-    await validateYamlFile();
-
-    await newDeployClasses().catch((error: AxiosError) => {
-      if (error.response?.status == 401) {
-        console.log(
-          "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
-        );
-      } else {
-        console.error(error.message);
-      }
-      exit(1);
-    });
-
-    console.log("Your project has been deployed");
-  });
-
-program
   .command("deploy")
   .description(
     "Deploy the functions mentioned in the genezio.yaml file to Genezio infrastructure."
@@ -168,7 +133,7 @@ program
     }
     await validateYamlFile();
 
-    await deployFunctions().catch((error: AxiosError) => {
+    await newDeployClasses().catch((error: AxiosError) => {
       if (error.response?.status == 401) {
         console.log(
           "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
@@ -211,63 +176,41 @@ program
       const configurationFileContent = await parse(
         configurationFileContentUTF8
       );
-      const cwd = process.cwd();
+      const projectConfiguration = await ProjectConfiguration.create(configurationFileContent)
+      const functionUrlForFilePath: any = {}
+      const handlers: any = {}
 
-      const functionUrlForFilePath: any = {};
+      for (const element of projectConfiguration.classes) {
+        switch (element.language) {
+          case ".js": {
+            const bundler = new NodeJsBundler()
 
-      const server = new Server();
+            const output = await bundler.bundle({ configuration: element, path: element.path })
+            const className = output.extra?.className
+            const handlerPath = path.join(output.path, "index.js")
+            functionUrlForFilePath[
+              path.parse(element.path).name
+            ] = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/${className}`;
 
-      const runServer = async () => {
-        const classes = await server.generateHandlersFromFiles();
-        for (const classElement of classes) {
-          functionUrlForFilePath[
-            classElement.fileName
-          ] = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/${classElement.className}`;
+            handlers[className] = {
+              path: handlerPath
+            }
+            break;
+          }
         }
-        await generateSdks(functionUrlForFilePath)
-          .then(async () => {
-            await server.start();
-          })
-          .catch((error: Error) => {
-            console.error(`${error.stack}`);
-          });
-      };
-
-      await runServer();
-      // get absolute path of configurationFileContent.sdk.path
-      let sdkPath = path.join(cwd, configurationFileContent.sdk.path);
-
-      // delete / if sdkPath ends with /
-      if (sdkPath.endsWith("/")) {
-        sdkPath = sdkPath.slice(0, -1);
       }
 
-      // Watch for changes in the classes and update the handlers
-      const watchPaths = [path.join(cwd, "/**/*")];
-      const ignoredPaths = [
-        "**/node_modules/*",
-        sdkPath + "/**/*",
-        sdkPath + "/*"
-      ];
+      await generateSdks(functionUrlForFilePath)
+        .catch((error: Error) => {
+          console.error(`${error.stack}`);
+        });
 
-      const startWatching = () => {
-        chokidar
-          .watch(watchPaths, {
-            ignored: ignoredPaths,
-            ignoreInitial: true
-          })
-          .on("all", async (event, path) => {
-            if (path.includes(sdkPath) || !server.isRunning()) {
-              return;
-            }
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const server = await startServer(handlers)
+        await listenForChanges(projectConfiguration.sdk.path, server)
+      }
 
-            console.clear();
-            console.log("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
-            await server.terminate();
-            await runServer();
-          });
-      };
-      startWatching();
     } catch (error) {
       console.error(`${error}`);
     }

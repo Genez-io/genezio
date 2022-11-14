@@ -78,6 +78,20 @@ export class ClassConfiguration {
     this.language = language
   }
 
+  getMethodType(methodName: string): TriggerType {
+    const method = this.methods.find((method) => method.name === methodName)
+
+    if (!method) {
+      return this.type;
+    }
+
+    if (method && method.type) {
+      return method.type
+    }
+
+    return TriggerType.jsonrpc;
+  }
+
   static async create(classConfigurationYaml: any): Promise<ClassConfiguration> {
     if (!classConfigurationYaml.path) {
       throw new Error("Path is missing from class.")
@@ -104,6 +118,8 @@ export class ClassConfiguration {
       methods
     )
   }
+
+
 }
 
 export class ProjectConfiguration {
@@ -157,5 +173,11 @@ export class ProjectConfiguration {
       sdk,
       classes
     )
+  }
+
+  getMethodType(path: string, methodName: string): TriggerType|undefined {
+    const classElement = this.classes.find((classElement) => { return classElement.path === path })
+
+    return classElement?.getMethodType(methodName)
   }
 }
