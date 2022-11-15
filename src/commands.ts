@@ -1,4 +1,4 @@
-import webpack, { NormalModule } from "webpack";
+import webpack, { Dependency, NormalModule } from "webpack";
 import path from "path";
 import { deployClass } from "./requests/deployCode";
 import generateSdk from "./requests/generateSdk";
@@ -93,19 +93,19 @@ export async function getNodeModules(filePath: string): Promise<any> {
         reject(err);
         return;
       }
-
       const dependenciesInfo = dependencies.map((dependency) => {
-        const relativePath = dependency.split("node_modules/")[1];
+        const relativePath = dependency.split("node_modules"+path.sep)[1];
         const dependencyName = relativePath?.split(path.sep)[0];
         const dependencyPath =
-          dependency.split("node_modules/")[0] +
-          "node_modules/" +
+          dependency.split("node_modules"+path.sep)[0] +
+          "node_modules"+path.sep +
           dependencyName;
         return {
           name: dependencyName,
           path: dependencyPath
         };
       });
+      // console.log("dependeciesInfo from commands = "+ JSON.stringify(dependenciesInfo))
 
       // remove duplicates from dependenciesInfo by name
       const uniqueDependenciesInfo = dependenciesInfo.filter(
@@ -165,6 +165,7 @@ export async function addNewClass(classPath: string, classType: string) {
 
   // create the file if it does not exist
   if (!(await fileExists(classPath))) {
+    console.log("class path= "+classPath)
     const onlyPath = classPath.split("/").slice(0, -1).join("/");
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 
@@ -241,6 +242,7 @@ export async function bundleJavascriptCode(
       }
 
       const filePath = path.join(temporaryFolder, outputFile);
+      console.log(filePath)
 
       // move all node_modules to temporaryFolder
       const nodeModulesPath = path.join(temporaryFolder, "node_modules");
