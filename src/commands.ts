@@ -614,7 +614,7 @@ export async function init() {
   const sdk: any = { name: projectName, sdk: {}, classes: [] };
 
   const language = await askQuestion(
-    `In what programming language do you want your SDK? [js]: `,
+    `In what programming language do you want your SDK? [default value: js]: `,
     "js"
   );
 
@@ -627,7 +627,7 @@ export async function init() {
 
   if (language === "js") {
     const runtime = await askQuestion(
-      `What runtime will you use? Options: "node" or "browser". [node]: `,
+      `What runtime will you use? Options: "node" or "browser". [default value: node]: `,
       "node"
     );
     if (runtime !== "node" && runtime !== "browser") {
@@ -638,7 +638,7 @@ export async function init() {
   }
 
   const path = await askQuestion(
-    `Where do you want to save your SDK? [./sdk/]: `,
+    `Where do you want to save your SDK? [default value: ./sdk/]: `,
     "./sdk/"
   );
   sdk.sdk.path = path;
