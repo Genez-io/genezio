@@ -2,14 +2,13 @@
 
 import { Command } from "commander";
 import {
-  deployFunctions,
   generateSdks,
   init,
   addNewClass,
+  newDeployClasses,
+  reportSuccess,
 } from "./commands";
-import { validateYamlFile, checkYamlFileExists, fileExists, readUTF8File, readToken } from "./utils/file";
-import Server from "./localEnvironment";
-import chokidar from "chokidar";
+import { validateYamlFile, checkYamlFileExists, readUTF8File, readToken } from "./utils/file";
 import path from "path";
 import { parse } from "yaml";
 import open from "open";
@@ -21,6 +20,9 @@ import { PORT_LOCAL_ENVIRONMENT, REACT_APP_BASE_URL } from "./variables";
 import { exit } from "process";
 import { AxiosError } from "axios";
 import { AddressInfo } from "net";
+import { ProjectConfiguration } from "./models/projectConfiguration";
+import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
+import { listenForChanges, startServer } from "./localEnvironment";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require('../package.json');
@@ -132,7 +134,7 @@ program
     }
     await validateYamlFile();
 
-    await deployFunctions().catch((error: AxiosError) => {
+    await newDeployClasses().catch((error: AxiosError) => {
       if (error.response?.status == 401) {
         console.log(
           "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
@@ -175,63 +177,48 @@ program
       const configurationFileContent = await parse(
         configurationFileContentUTF8
       );
-      const cwd = process.cwd();
+      const projectConfiguration = await ProjectConfiguration.create(configurationFileContent)
+      const functionUrlForFilePath: any = {}
+      const handlers: any = {}
+      const classesInfo = []
 
-      const functionUrlForFilePath: any = {};
+      for (const element of projectConfiguration.classes) {
+        switch (element.language) {
+          case ".js": {
+            const bundler = new NodeJsBundler()
 
-      const server = new Server();
+            const output = await bundler.bundle({ configuration: element, path: element.path })
+            const className = output.extra?.className
+            const handlerPath = path.join(output.path, "index.js")
+            const baseurl = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/`
+            const functionUrl = `${baseurl}${className}`
+            functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
 
-      const runServer = async () => {
-        const classes = await server.generateHandlersFromFiles();
-        for (const classElement of classes) {
-          functionUrlForFilePath[
-            classElement.fileName
-          ] = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/${classElement.className}`;
+            classesInfo.push({className: output.extra?.className, methodNames: output.extra?.methodNames, path: element.path, functionUrl: baseurl })
+
+            handlers[className] = {
+              path: handlerPath
+            }
+            break;
+          }
+          default: {
+            console.error(`Unsupported language ${element.language}. Skipping class ${element.path}`)
+          }
         }
-        await generateSdks(functionUrlForFilePath)
-          .then(async () => {
-            await server.start();
-          })
-          .catch((error: Error) => {
-            console.error(`${error.stack}`);
-          });
-      };
-
-      await runServer();
-      // get absolute path of configurationFileContent.sdk.path
-      let sdkPath = path.join(cwd, configurationFileContent.sdk.path);
-
-      // delete / if sdkPath ends with /
-      if (sdkPath.endsWith("/")) {
-        sdkPath = sdkPath.slice(0, -1);
       }
 
-      // Watch for changes in the classes and update the handlers
-      const watchPaths = [path.join(cwd, "/**/*")];
-      const ignoredPaths = [
-        "**/node_modules/*",
-        sdkPath + "/**/*",
-        sdkPath + "/*"
-      ];
+      await generateSdks(functionUrlForFilePath)
+        .catch((error: Error) => {
+          console.error(`${error.stack}`);
+        });
 
-      const startWatching = () => {
-        chokidar
-          .watch(watchPaths, {
-            ignored: ignoredPaths,
-            ignoreInitial: true
-          })
-          .on("all", async (event, path) => {
-            if (path.includes(sdkPath) || !server.isRunning()) {
-              return;
-            }
+      reportSuccess(classesInfo, projectConfiguration)
 
-            console.clear();
-            console.log("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
-            await server.terminate();
-            await runServer();
-          });
-      };
-      startWatching();
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const server = await startServer(handlers)
+        await listenForChanges(projectConfiguration.sdk.path, server)
+      }
     } catch (error) {
       console.error(`${error}`);
     }

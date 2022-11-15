@@ -1,3 +1,5 @@
+import path from 'path'
+
 export enum TriggerType {
   jsonrpc = "jsonrpc",
   cron = "cron",
@@ -66,12 +68,28 @@ export class MethodConfiguration {
 export class ClassConfiguration {
   path: string
   type: TriggerType
+  language: string
   methods: MethodConfiguration[]
 
-  constructor(path: string, type: TriggerType, methods: MethodConfiguration[]) {
+  constructor(path: string, type: TriggerType, language: string, methods: MethodConfiguration[]) {
     this.path = path
     this.type = type
     this.methods = methods
+    this.language = language
+  }
+
+  getMethodType(methodName: string): TriggerType {
+    const method = this.methods.find((method) => method.name === methodName)
+
+    if (!method) {
+      return this.type;
+    }
+
+    if (method && method.type) {
+      return method.type
+    }
+
+    return TriggerType.jsonrpc;
   }
 
   static async create(classConfigurationYaml: any): Promise<ClassConfiguration> {
@@ -91,13 +109,17 @@ export class ClassConfiguration {
     
     const unparsedMethods: any[] = classConfigurationYaml.methods || []
     const methods = await Promise.all(unparsedMethods.map((method: any) => MethodConfiguration.create(method, triggerType)))
+    const language = path.parse(classConfigurationYaml.path).ext
 
     return new ClassConfiguration(
       classConfigurationYaml.path,
       triggerType,
+      language,
       methods
     )
   }
+
+
 }
 
 export class ProjectConfiguration {
@@ -151,5 +173,11 @@ export class ProjectConfiguration {
       sdk,
       classes
     )
+  }
+
+  getMethodType(path: string, methodName: string): TriggerType|undefined {
+    const classElement = this.classes.find((classElement) => { return classElement.path === path })
+
+    return classElement?.getMethodType(methodName)
   }
 }
