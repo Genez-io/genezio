@@ -168,16 +168,16 @@ export async function addNewClass(classPath: string, classType: string) {
   log.info("\x1b[36m%s\x1b[0m", "Class added successfully.");
 }
 
-export async function deleteProjectHandler(classId : string, forced : boolean) {
+export async function deleteProjectHandler(projectId : string, forced : boolean) {
   // show prompt if no project id is selected
-  if (typeof classId === 'string' && classId.trim().length === 0) {
+  if (typeof projectId === 'string' && projectId.trim().length === 0) {
     console.log('No project ID specified, select an ID to delete from this list:')
     await listProjects();
 
     return false;
   } else {
     if (!forced) {
-      const confirmation = await askQuestion(`Are you sure you want to delete project ${classId}? [Y]/n: `, "n");
+      const confirmation = await askQuestion(`Are you sure you want to delete project ${projectId}? [Y]/n: `, "n");
 
       if (confirmation !== "y" && confirmation !== "Y") {
         console.log("Aborted operation.");
@@ -185,7 +185,7 @@ export async function deleteProjectHandler(classId : string, forced : boolean) {
       }
     }
 
-    const status = await deleteProject(classId);
+    const status = await deleteProject(projectId);
     return status;
   }
 }

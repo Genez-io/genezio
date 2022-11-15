@@ -249,10 +249,10 @@ program
 
 program
   .command("delete")
-  .argument("[classId]", "ID of the project you want to delete.")
+  .argument("[projectId]", "ID of the project you want to delete.")
   .argument("[-f]", "Skip confirmation prompt for deletion.")
   .description("Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs.")
-  .action(async (classId  = "", forced  = false) => {
+  .action(async (projectId  = "", forced  = false) => {
     // check if user is logged in
     const authToken = await readToken().catch(() => undefined);
 
@@ -268,7 +268,7 @@ program
     // }
     // await validateYamlFile();
 
-    const result = await deleteProjectHandler(classId, forced).catch((error: AxiosError) => {
+    const result = await deleteProjectHandler(projectId, forced).catch((error: AxiosError) => {
       if (error.response?.status == 401) {
         console.log(
           "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."

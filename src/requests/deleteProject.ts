@@ -4,7 +4,7 @@ import { readToken } from "../utils/file";
 import { BACKEND_ENDPOINT } from "../variables";
 
 export default async function deleteProject(
-  classId: string,
+  projectId: string,
 ) {
   const form = new FormData();
 
@@ -18,7 +18,7 @@ export default async function deleteProject(
 
   const response: any = await axios({
     method: "DELETE",
-    url: `${BACKEND_ENDPOINT}/projects/${classId}`,
+    url: `${BACKEND_ENDPOINT}/projects/${projectId}`,
     data: form,
     timeout: 100000,
     headers: { ...form.getHeaders(), Authorization: `Bearer ${authToken}` }
