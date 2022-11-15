@@ -21,8 +21,6 @@ import { ProjectConfiguration, TriggerType } from "./models/projectConfiguration
 import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBinaryDepenciesBundler";
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const exec = util.promisify(require("child_process").exec);
 
 class AccessDependenciesPlugin {
   dependencies: string[];
@@ -62,7 +60,7 @@ class AccessDependenciesPlugin {
 export async function getNodeModules(filePath: string): Promise<any> {
   // eslint-disable-next-line no-async-promise-executor
   return new Promise(async (resolve, reject) => {
-    const { name, extension, filename } = getFileDetails(filePath);
+    const { name } = getFileDetails(filePath);
     const outputFile = `${name}-processed.js`;
     const temporaryFolder = await createTemporaryFolder();
     const dependencies: string[] = [];
@@ -83,7 +81,7 @@ export async function getNodeModules(filePath: string): Promise<any> {
       ]
     });
 
-    compiler.run((err, stats) => {
+    compiler.run((err) => {
       if (err) {
         reject(err);
         return;
