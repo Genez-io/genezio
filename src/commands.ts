@@ -90,11 +90,11 @@ export async function getNodeModules(filePath: string): Promise<any> {
       }
 
       const dependenciesInfo = dependencies.map((dependency) => {
-        const relativePath = dependency.split("node_modules/")[1];
+        const relativePath = dependency.split("node_modules" + path.sep)[1];
         const dependencyName = relativePath?.split(path.sep)[0];
         const dependencyPath =
-          dependency.split("node_modules/")[0] +
-          "node_modules/" +
+          dependency.split("node_modules" + path.sep)[0] +
+          "node_modules" + path.sep +
           dependencyName;
         return {
           name: dependencyName,
@@ -133,7 +133,7 @@ export async function addNewClass(classPath: string, classType: string) {
   const configurationFileContentUTF8 = await readUTF8File(genezioYamlPath);
   const configurationFileContent = await parse(configurationFileContentUTF8);
 
-  const className = classPath.split("/").pop();
+  const className = classPath.split(path.sep).pop();
 
   if (!className) {
     console.error("Invalid class path.");
@@ -150,7 +150,7 @@ export async function addNewClass(classPath: string, classType: string) {
   if (configurationFileContent.classes.length > 0) {
     if (
       configurationFileContent.classes
-        .map((e: any) => e.path.split("/").pop())
+        .map((e: any) => e.path.split(path.sep).pop())
         .includes(className)
     ) {
       console.error("Class already exists.");
@@ -160,9 +160,6 @@ export async function addNewClass(classPath: string, classType: string) {
 
   // create the file if it does not exist
   if (!(await fileExists(classPath))) {
-    const onlyPath = classPath.split("/").slice(0, -1).join("/");
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-
     await writeToFile(
       ".",
       classPath,
