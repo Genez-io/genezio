@@ -6,6 +6,7 @@ import {
   init,
   addNewClass,
   newDeployClasses,
+  reportSuccess,
 } from "./commands";
 import { validateYamlFile, checkYamlFileExists, readUTF8File, readToken } from "./utils/file";
 import path from "path";
@@ -20,7 +21,7 @@ import { exit } from "process";
 import { AxiosError } from "axios";
 import { AddressInfo } from "net";
 import { ProjectConfiguration } from "./models/projectConfiguration";
-import { NodeJsBundler } from "./bundlers/nodeJsBundler";
+import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import { listenForChanges, startServer } from "./localEnvironment";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -179,6 +180,7 @@ program
       const projectConfiguration = await ProjectConfiguration.create(configurationFileContent)
       const functionUrlForFilePath: any = {}
       const handlers: any = {}
+      const classesInfo = []
 
       for (const element of projectConfiguration.classes) {
         switch (element.language) {
@@ -188,14 +190,19 @@ program
             const output = await bundler.bundle({ configuration: element, path: element.path })
             const className = output.extra?.className
             const handlerPath = path.join(output.path, "index.js")
-            functionUrlForFilePath[
-              path.parse(element.path).name
-            ] = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/${className}`;
+            const baseurl = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/`
+            const functionUrl = `${baseurl}${className}`
+            functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
+
+            classesInfo.push({className: output.extra?.className, methodNames: output.extra?.methodNames, path: element.path, functionUrl: baseurl })
 
             handlers[className] = {
               path: handlerPath
             }
             break;
+          }
+          default: {
+            console.error(`Unsupported language ${element.language}. Skipping class ${element.path}`)
           }
         }
       }
@@ -205,12 +212,13 @@ program
           console.error(`${error.stack}`);
         });
 
+      reportSuccess(classesInfo, projectConfiguration)
+
       // eslint-disable-next-line no-constant-condition
       while (true) {
         const server = await startServer(handlers)
         await listenForChanges(projectConfiguration.sdk.path, server)
       }
-
     } catch (error) {
       console.error(`${error}`);
     }

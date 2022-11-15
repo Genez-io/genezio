@@ -31,7 +31,6 @@ export async function deployClass(
     JSON.stringify(classConfiguration)
   );
 
-  console.log(archivePath, classConfiguration.path)
   form.append("classFile", fs.createReadStream(classConfiguration.path));
   form.append("filename", path.parse(classConfiguration.path).name);
   form.append("archiveContent", fs.createReadStream(archivePath));

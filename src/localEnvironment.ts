@@ -3,7 +3,6 @@ import path from "path";
 import chokidar from 'chokidar';
 import express from 'express'
 import cors from 'cors'
-import bodyParser from 'body-parser'
 import { PORT_LOCAL_ENVIRONMENT } from "./variables";
 
 
@@ -100,12 +99,16 @@ export function listenForChanges(sdkPathRelative: any, server: any) {
 export function startServer(handlers: any) {
   const app = express()
   app.use(cors())
-  app.use(bodyParser());
+  app.use(express.json());
+  app.use(express.urlencoded({
+    extended: true
+  }));
 
   app.all(`/:className`, async (req: any, res: any) => {
     const reqToFunction = getEventObjectFromRequest(req)
 
     const path = handlers[req.params.className].path
+    console.log(`Request received for ${req.params.className}.`)
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const module = require(path);
@@ -117,6 +120,7 @@ export function startServer(handlers: any) {
 
   app.all(`/:className/:methodName`, async (req: any, res: any) => {
     const reqToFunction = getEventObjectFromRequest(req)
+    console.log(`HTTP Request received ${req.method} ${req.url}.`)
 
     const path = handlers[req.params.className].path
 

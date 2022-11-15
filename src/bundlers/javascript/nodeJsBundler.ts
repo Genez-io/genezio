@@ -2,12 +2,12 @@ import { webpack } from "webpack";
 import path from "path";
 import fs from "fs";
 import webpackNodeExternals from "webpack-node-externals";
-import { createTemporaryFolder, getAllFilesFromCurrentPath, getFileDetails, writeToFile } from "../utils/file";
-import { BundlerInput, BundlerInterface, BundlerOutput } from "./bundler.interface";
-import FileDetails from "../models/fileDetails";
-import { getNodeModules } from "../commands";
+import { createTemporaryFolder, getAllFilesFromCurrentPath, getFileDetails, writeToFile } from "../../utils/file";
+import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface";
+import FileDetails from "../../models/fileDetails";
+import { getNodeModules } from "../../commands";
 import { default as fsExtra } from "fs-extra";
-import { lambdaHandler } from "../utils/lambdaHander";
+import { lambdaHandler } from "../../utils/lambdaHander";
 
 
 export class NodeJsBundler implements BundlerInterface {
@@ -113,7 +113,6 @@ export class NodeJsBundler implements BundlerInterface {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const module = require(moduleJsPath);
         const className = Object.keys(module.genezio)[0];
-        console.log(className)
 
         if (Object.keys(module.genezio).length > 1) {
             console.log(

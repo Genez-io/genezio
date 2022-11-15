@@ -12,20 +12,14 @@ import {
   checkYamlFileExists,
 } from "./utils/file";
 import { askQuestion } from "./utils/prompt";
-import BundledCode from "./models/bundledCode";
 import { parse, Document } from "yaml";
 import fs from "fs";
-import FileDetails from "./models/fileDetails";
-import { lambdaHandler } from "./utils/lambdaHander";
-import nodeExternals from "webpack-node-externals";
-import { default as fsExtra } from "fs-extra";
 import util from "util";
 import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import yaml from "yaml";
-import { CONNREFUSED } from "dns";
 import { ProjectConfiguration, TriggerType } from "./models/projectConfiguration";
-import { NodeJsBundler } from "./bundlers/nodeJsBundler";
-import { NodeJsBinaryDependenciesBundler } from "./bundlers/nodeJsBinaryDepenciesBundler";
+import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
+import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBinaryDepenciesBundler";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const exec = util.promisify(require("child_process").exec);

@@ -1,9 +1,8 @@
 import path from 'path'
 import fs from 'fs'
 import util from "util";
-import { BundlerInput, BundlerInterface, BundlerOutput } from "./bundler.interface"
-import { default as fsExtra } from "fs-extra";
-import { fileExists } from '../utils/file';
+import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface"
+import { fileExists } from '../../utils/file';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const exec = util.promisify(require("child_process").exec);
 
@@ -23,7 +22,6 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
             const dependencyPath = path.join(nodeModulesPath, dependency.name);
 
             // read package.json file
-
             if (dependency.name[0] === "@") {
                 // Get List of all files in a directory
                 const files = fs.readdirSync(dependencyPath);
@@ -43,21 +41,18 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
                     }
                 }
             } else {
-                try {
-                    const packageJsonPath = path.join(dependencyPath, "package.json");
-                    const packageJson = JSON.parse(
-                        fs.readFileSync(packageJsonPath, "utf8")
-                    );
+                const packageJsonPath = path.join(dependencyPath, "package.json");
+                const packageJson = JSON.parse(
+                    fs.readFileSync(packageJsonPath, "utf8")
+                );
 
-                    // check if package.json has binary property
-                    if (packageJson.binary) {
-                        binaryDependencies.push({
-                            path: dependencyPath,
-                            name: dependency.name
-                        });
-                    }
-                    // eslint-disable-next-line no-empty
-                } catch (error) { }
+                // check if package.json has binary property
+                if (packageJson.binary) {
+                    binaryDependencies.push({
+                        path: dependencyPath,
+                        name: dependency.name
+                    });
+                }
             }
         }
 
@@ -81,6 +76,7 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
                 console.error(
                     "An error has occured while installing binary dependecies."
                 );
+                throw new Error("An error has occured while installing binary dependecies.")
             }
         }
     }
@@ -89,7 +85,6 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
         if (!input.extra) {
             return Promise.resolve(input)
         }
-        console.log("path", input.path)
 
         // 4. Redownload binary dependencies if necessary
         this.#handleBinaryDependencies(input.extra.dependenciesInfo, input.path)
