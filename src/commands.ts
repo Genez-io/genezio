@@ -93,13 +93,12 @@ export async function getNodeModules(filePath: string): Promise<any> {
         reject(err);
         return;
       }
-
       const dependenciesInfo = dependencies.map((dependency) => {
-        const relativePath = dependency.split("node_modules/")[1];
+        const relativePath = dependency.split("node_modules" + path.sep)[1];
         const dependencyName = relativePath?.split(path.sep)[0];
         const dependencyPath =
-          dependency.split("node_modules/")[0] +
-          "node_modules/" +
+          dependency.split("node_modules" + path.sep)[0] +
+          "node_modules" + path.sep +
           dependencyName;
         return {
           name: dependencyName,
