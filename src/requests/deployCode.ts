@@ -4,7 +4,7 @@ import fs from "fs";
 import axios from "axios";
 import { readToken } from "../utils/file";
 import { BACKEND_ENDPOINT } from "../variables";
-import { ClassConfiguration, MethodConfiguration, ProjectConfiguration } from "../models/projectConfiguration";
+import { ClassConfiguration } from "../models/projectConfiguration";
 
 export async function deployClass(
   classConfiguration: ClassConfiguration,
