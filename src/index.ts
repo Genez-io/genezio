@@ -2,6 +2,7 @@
 
 import { Command } from "commander";
 import {
+  deleteProjectHandler,
   generateSdks,
   init,
   addNewClass,
@@ -243,6 +244,43 @@ program
       );
     } else {
       log.info("Logged in as: " + authToken);
+    }
+  });
+
+program
+  .command("delete")
+  .argument("[classId]", "ID of the project you want to delete.")
+  .argument("[-f]", "Skip confirmation prompt for deletion.")
+  .description("Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs.")
+  .action(async (classId  = "", forced  = false) => {
+    // check if user is logged in
+    const authToken = await readToken().catch(() => undefined);
+
+    if (!authToken) {
+      console.log(
+        "You are not logged in. Run 'genezio login' before you deploy your function."
+      );
+      exit(1);
+    }
+
+    // if (!await checkYamlFileExists()) {
+    //   return;
+    // }
+    // await validateYamlFile();
+
+    const result = await deleteProjectHandler(classId, forced).catch((error: AxiosError) => {
+      if (error.response?.status == 401) {
+        console.log(
+          "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
+        );
+      } else {
+        console.error(error.message);
+      }
+      exit(1);
+    });
+
+    if (result) {
+      console.log("Your project has been deleted");
     }
   });
 

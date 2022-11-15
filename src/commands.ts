@@ -2,6 +2,8 @@ import webpack, { NormalModule } from "webpack";
 import path from "path";
 import { deployClass } from "./requests/deployCode";
 import generateSdk from "./requests/generateSdk";
+import listProjects from "./requests/listProjects";
+import deleteProject from "./requests/deleteProject";
 import {
   createTemporaryFolder,
   fileExists,
@@ -164,6 +166,28 @@ export async function addNewClass(classPath: string, classType: string) {
   await projectConfiguration.writeToFile();
 
   log.info("\x1b[36m%s\x1b[0m", "Class added successfully.");
+}
+
+export async function deleteProjectHandler(classId : string, forced : boolean) {
+  // show prompt if no project id is selected
+  if (typeof classId === 'string' && classId.trim().length === 0) {
+    console.log('No project ID specified, select an ID to delete from this list:')
+    await listProjects();
+
+    return false;
+  } else {
+    if (!forced) {
+      const confirmation = await askQuestion(`Are you sure you want to delete project ${classId}? [Y]/n: `, "n");
+
+      if (confirmation !== "y" && confirmation !== "Y") {
+        console.log("Aborted operation.");
+        return false;
+      }
+    }
+
+    const status = await deleteProject(classId);
+    return status;
+  }
 }
 
 export async function deployClasses() {
