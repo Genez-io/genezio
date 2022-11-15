@@ -263,11 +263,6 @@ program
       exit(1);
     }
 
-    // if (!await checkYamlFileExists()) {
-    //   return;
-    // }
-    // await validateYamlFile();
-
     const result = await deleteProjectHandler(projectId, forced).catch((error: AxiosError) => {
       if (error.response?.status == 401) {
         console.log(
