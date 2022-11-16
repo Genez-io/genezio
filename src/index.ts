@@ -10,7 +10,6 @@ import {
 } from "./commands";
 import { validateYamlFile, checkYamlFileExists, readUTF8File, readToken } from "./utils/file";
 import path from "path";
-import { parse } from "yaml";
 import open from "open";
 import { asciiCapybara } from "./utils/strings";
 import http from "http";
@@ -20,7 +19,6 @@ import { PORT_LOCAL_ENVIRONMENT, REACT_APP_BASE_URL } from "./variables";
 import { exit } from "process";
 import { AxiosError } from "axios";
 import { AddressInfo } from "net";
-import { ProjectConfiguration } from "./models/projectConfiguration";
 import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import { listenForChanges, startServer } from "./localEnvironment";
 import { getProjectConfiguration } from "./utils/configuration";
