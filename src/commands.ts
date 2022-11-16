@@ -95,11 +95,11 @@ export async function getNodeModules(filePath: string): Promise<any> {
       }
 
       const dependenciesInfo = dependencies.map((dependency) => {
-        const relativePath = dependency.split("node_modules/")[1];
+        const relativePath = dependency.split("node_modules" + path.sep)[1];
         const dependencyName = relativePath?.split(path.sep)[0];
         const dependencyPath =
-          dependency.split("node_modules/")[0] +
-          "node_modules/" +
+          dependency.split("node_modules" + path.sep)[0] +
+          "node_modules" + path.sep +
           dependencyName;
         return {
           name: dependencyName,
@@ -465,6 +465,8 @@ async function deployFunction(
       console.log("Deployed successfully for class: " + name);
 
       return {
+        projectId: response.projectId,
+        projectName: response.projectName,
         functionUrl: response.functionUrl,
         functionNames: bundledJavascriptCode.functionNames,
         className: bundledJavascriptCode.className
@@ -492,10 +494,12 @@ export async function deployFunctions() {
 
   const classesInfo: any = {};
 
+  let projectIdComplete = undefined
+
   for (const elem of configurationFileContent.classes) {
     const filePath = elem.path;
     const type = elem.type;
-    const { functionUrl, functionNames, className } = await deployFunction(
+    const { projectId, projectName, functionUrl, functionNames, className } = await deployFunction(
       configurationFileContent,
       filePath,
       type,
@@ -505,6 +509,9 @@ export async function deployFunctions() {
       configurationFileContent.name,
       allNonJsFilesPaths
     );
+    if(!projectIdComplete && projectId){
+      projectIdComplete=projectId
+    }
 
     const methodsMap: any = {};
     // iterate over all function names
@@ -563,11 +570,16 @@ export async function deployFunctions() {
     }
     addedNewLine = false;
   });
+  if(!projectIdComplete){
+    projectIdComplete="7a4f4527-a3db-4060-a427-9e633976c92e"
+  }
+
   if (printHttpString !== "") {
     console.log("");
     console.log("HTTP Methods Deployed:");
     console.log(printHttpString);
   }
+  return projectIdComplete
 }
 
 export async function generateSdks(urlMap: any) {

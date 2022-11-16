@@ -132,7 +132,7 @@ program
     }
     await validateYamlFile();
 
-    await deployFunctions().catch((error: AxiosError) => {
+    const projectIdComplete = await deployFunctions().catch((error: AxiosError) => {
       if (error.response?.status == 401) {
         console.log(
           "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
@@ -144,6 +144,7 @@ program
     });
 
     console.log("Your project has been deployed");
+    console.log("Your Project is available at https://app.genez.io/project/"+projectIdComplete)
   });
 
 program
