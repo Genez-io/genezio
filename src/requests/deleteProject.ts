@@ -6,8 +6,6 @@ import { BACKEND_ENDPOINT } from "../variables";
 export default async function deleteProject(
   projectId: string,
 ) : Promise<boolean> {
-  const form = new FormData();
-
   const authToken = await readToken().catch(() => undefined);
 
   if (!authToken) {
@@ -19,9 +17,8 @@ export default async function deleteProject(
   const response: any = await axios({
     method: "DELETE",
     url: `${BACKEND_ENDPOINT}/projects/${projectId}`,
-    data: form,
-    timeout: 100000,
-    headers: { ...form.getHeaders(), Authorization: `Bearer ${authToken}` }
+    timeout: 15000,
+    headers: { Authorization: `Bearer ${authToken}` }
   }).catch((error: Error) => {
     throw error;
   });

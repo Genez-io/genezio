@@ -5,10 +5,8 @@ import { BACKEND_ENDPOINT } from "../variables";
 
 export default async function listProjects(
   index = 0,
-) : Promise<Array<Array<string>>> {
+) : Promise<Array<string>> {
   const limit = 100;
-
-  const form = new FormData();
 
   const authToken = await readToken().catch(() => undefined);
 
@@ -21,9 +19,8 @@ export default async function listProjects(
   const response: any = await axios({
     method: "GET",
     url: `${BACKEND_ENDPOINT}/projects?startIndex=${index}&projectsLimit=${limit}`,
-    data: form,
-    timeout: 100000,
-    headers: { ...form.getHeaders(), Authorization: `Bearer ${authToken}` }
+    timeout: 15000,
+    headers: { Authorization: `Bearer ${authToken}` }
   }).catch((error: Error) => {
     throw error;
   });
@@ -38,14 +35,8 @@ export default async function listProjects(
   }
 
   const projects = response.data.projects.map(function(project : any, index : any) {
-    return [`[${index}]`, `Project name: ${project.name}`, `ID: ${project.id}`];
+    return `[${1 + index}]: Project name: ${project.name}, ID: ${project.id}`;
   })
-
-  if (projects.length === 0) {
-    console.log("There are no currently deployed projects.");
-  } else {
-    console.log(projects);
-  }
 
   return projects;
 }

@@ -171,25 +171,28 @@ export async function addNewClass(classPath: string, classType: string) {
 export async function deleteProjectHandler(projectId : string, forced : boolean) {
   // show prompt if no project id is selected
   if (typeof projectId === 'string' && projectId.trim().length === 0) {
-    console.log('No project ID specified, select an ID to delete from this list:')
     const projects = await listProjects();
     if (projects.length === 0) {
+      console.log("There are no currently deployed projects.");
       return false;
+    } else {
+      console.log('No project ID specified, select an ID to delete from this list:')
+      console.log(projects);
     }
 
-    const selection = await askQuestion(`Please select project number to delete (0--${projects.length - 1}) [none]: `, "");
+    const selection = await askQuestion(`Please select project number to delete (1--${projects.length}) [none]: `, "");
     const selectionNum = Number(selection);
-    if (isNaN(selectionNum) || selectionNum < 0 || selectionNum >= projects.length) {
+    if (isNaN(selectionNum) || selectionNum <= 0 || selectionNum > projects.length) {
       console.log("No valid selection was made, aborting.");
       return false;
     } else {
       forced = false;
-      projectId = projects[selectionNum][2].split(':')[1].trim();
+      projectId = projects[selectionNum - 1].split(':')[3].trim();
     }
   }
 
   if (!forced) {
-    const confirmation = await askQuestion(`Are you sure you want to delete project ${projectId}? [Y]/n: `, "n");
+    const confirmation = await askQuestion(`Are you sure you want to delete project ${projectId}? y/[N]: `, "n");
 
     if (confirmation !== "y" && confirmation !== "Y") {
       console.log("Aborted operation.");
