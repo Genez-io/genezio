@@ -5,7 +5,7 @@ import { BACKEND_ENDPOINT } from "../variables";
 
 export default async function deleteProject(
   projectId: string,
-) {
+) : Promise<boolean> {
   const form = new FormData();
 
   const authToken = await readToken().catch(() => undefined);

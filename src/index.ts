@@ -258,7 +258,7 @@ program
 
     if (!authToken) {
       console.log(
-        "You are not logged in. Run 'genezio login' before you deploy your function."
+        "You are not logged in. Run 'genezio login' before you delete your function."
       );
       exit(1);
     }
@@ -266,7 +266,7 @@ program
     const result = await deleteProjectHandler(projectId, forced).catch((error: AxiosError) => {
       if (error.response?.status == 401) {
         console.log(
-          "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
+          "You are not logged in or your token is invalid. Please run `genezio login` before you delete your function."
         );
       } else {
         console.error(error.message);

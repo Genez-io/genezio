@@ -5,7 +5,7 @@ import { BACKEND_ENDPOINT } from "../variables";
 
 export default async function listProjects(
   index = 0,
-) {
+) : Promise<Array<Array<string>>> {
   const limit = 100;
 
   const form = new FormData();
@@ -14,7 +14,7 @@ export default async function listProjects(
 
   if (!authToken) {
     throw new Error(
-      "You are not logged in. Run 'genezio login' before you deploy your function."
+      "You are not logged in. Run 'genezio login' before you delete your function."
     );
   }
 
@@ -33,16 +33,19 @@ export default async function listProjects(
   }
 
   if (response.data.status !== 'ok') {
-    console.log('Unknown error in `list projects` response from server.');
     console.log(response);
-    return false;
+    throw new Error('Unknown error in `list projects` response from server.');
   }
 
-  const projects = response.data.projects.map(function(project : any) {
-    return [`Project name: ${project.name}`, `ID: ${project.id}`];
+  const projects = response.data.projects.map(function(project : any, index : any) {
+    return [`[${index}]`, `Project name: ${project.name}`, `ID: ${project.id}`];
   })
 
-  console.log(projects);
+  if (projects.length === 0) {
+    console.log("There are no currently deployed projects.");
+  } else {
+    console.log(projects);
+  }
 
-  return true;
+  return projects;
 }
