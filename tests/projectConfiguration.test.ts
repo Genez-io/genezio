@@ -139,7 +139,7 @@ describe('project configuration', () => {
             ]
         }
         const configuration = await ProjectConfiguration.create(yaml)
-        console.log(configuration.classes[0].type)
+
         expect(configuration.classes[0].methods[0].name).toEqual("cronMethod")
         expect(configuration.classes[0].methods[0].type).toEqual(TriggerType.cron)
         expect(configuration.classes[0].methods[0].cronString).toEqual("* * *")
@@ -175,7 +175,7 @@ describe('project configuration', () => {
             ]
         }
         const configuration = await ProjectConfiguration.create(yaml)
-        console.log(configuration.classes[0].type)
+
         expect(configuration.classes[0].methods[0].type).toEqual(TriggerType.http)
         expect(configuration.classes[0].methods[0].name).toEqual("method1")
         expect(configuration.classes[0].methods[1].type).toEqual(TriggerType.http)

@@ -11,8 +11,9 @@ beforeEach(() => {
 })
 
 describe('addNewClass', () => {
-    test('throws error if incompatible extension type', async () => {
+    test('throws error if class type is not supported', async () => {
         await expect(addNewClass("./test.js", "grpc")).rejects.toThrowError()
+        await expect(addNewClass("./test.js", "cron")).rejects.toThrowError()
     })
 
     test('create class with non existing file', async () => {
@@ -28,7 +29,7 @@ describe('addNewClass', () => {
         projectConfiguration.writeToFile = jest.fn()
         mockedGetProjectConfiguration.mockResolvedValue(projectConfiguration)
 
-        await expect(addNewClass("./test.js", "cron")).resolves.toBeUndefined()
+        await expect(addNewClass("./test.js", "jsonrpc")).resolves.toBeUndefined()
 
         expect(mockedFileExists).toBeCalledTimes(1)
         expect(mockedWriteToFile).toBeCalledTimes(1)
@@ -49,7 +50,7 @@ describe('addNewClass', () => {
         projectConfiguration.writeToFile = jest.fn()
         mockedGetProjectConfiguration.mockResolvedValue(projectConfiguration)
 
-        await expect(addNewClass("./test.js", "cron")).resolves.toBeUndefined()
+        await expect(addNewClass("./test.js", "jsonrpc")).resolves.toBeUndefined()
 
         expect(mockedFileExists).toBeCalledTimes(1)
         expect(mockedWriteToFile).toBeCalledTimes(0)

@@ -111,7 +111,7 @@ export async function getNodeModules(filePath: string): Promise<any> {
 export async function addNewClass(classPath: string, classType: string) {
   if (classType === undefined) {
     classType = "jsonrpc";
-  } else if (!["http", "jsonrpc", "cron"].includes(classType)) {
+  } else if (!["http", "jsonrpc"].includes(classType)) {
     throw new Error(
       "Invalid class type. Valid class types are 'http' and 'jsonrpc'."
     );
