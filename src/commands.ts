@@ -226,7 +226,10 @@ export async function deployClasses() {
 
         output = await binaryDepBundler.bundle(output);
 
-        const archivePath = path.join(currentFolder, `genezioDeploy.zip`);
+        const archivePath = path.join(
+          await createTemporaryFolder("genezio-"),
+          `genezioDeploy.zip`
+        );
         await zipDirectory(output.path, archivePath);
 
         const prom = deployClass(

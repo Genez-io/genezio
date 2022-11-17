@@ -16,15 +16,14 @@ export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
         reject(err);
       }
 
-      const fileDetails: FileDetails[] = files
-        .map((file: string) => {
-          return {
-            name: path.parse(file).name,
-            extension: path.parse(file).ext,
-            path: file,
-            filename: file
-          };
-        });
+      const fileDetails: FileDetails[] = files.map((file: string) => {
+        return {
+          name: path.parse(file).name,
+          extension: path.parse(file).ext,
+          path: file,
+          filename: file
+        };
+      });
       resolve(fileDetails);
     });
   });
