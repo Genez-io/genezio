@@ -3,23 +3,24 @@ import path from "path";
 import { deployClass } from "./requests/deployCode";
 import generateSdk from "./requests/generateSdk";
 import {
-  checkYamlFileExists,
   createTemporaryFolder,
   fileExists,
   getFileDetails,
   readUTF8File,
   writeToFile,
-  zipDirectory,
+  zipDirectory
 } from "./utils/file";
 import { askQuestion } from "./utils/prompt";
 import { parse, Document } from "yaml";
 import fs from "fs";
 import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
-import { ProjectConfiguration, TriggerType } from "./models/projectConfiguration";
+import {
+  ProjectConfiguration,
+  TriggerType
+} from "./models/projectConfiguration";
 import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBinaryDepenciesBundler";
 import { getProjectConfiguration } from "./utils/configuration";
-
 
 class AccessDependenciesPlugin {
   dependencies: string[];
@@ -90,7 +91,8 @@ export async function getNodeModules(filePath: string): Promise<any> {
         const dependencyName = relativePath?.split(path.sep)[0];
         const dependencyPath =
           dependency.split("node_modules" + path.sep)[0] +
-          "node_modules" + path.sep +
+          "node_modules" +
+          path.sep +
           dependencyName;
         return {
           name: dependencyName,
@@ -117,16 +119,12 @@ export async function addNewClass(classPath: string, classType: string) {
     );
   }
 
-  if (!(await checkYamlFileExists())) {
-    return;
-  }
-
   if (classPath === undefined || classPath === "") {
     console.error("Please provide a path to the class you want to add.");
     return;
   }
 
-  const projectConfiguration = await getProjectConfiguration()
+  const projectConfiguration = await getProjectConfiguration();
 
   const className = classPath.split(path.sep).pop();
 
@@ -157,20 +155,22 @@ export async function addNewClass(classPath: string, classType: string) {
   if (!(await fileExists(classPath))) {
     await writeToFile(".", classPath, "", true).catch((error) => {
       console.error(error.toString());
-      throw error
+      throw error;
     });
   }
 
-  projectConfiguration.addClass(classPath, classType as TriggerType, [])
-  await projectConfiguration.writeToFile()
+  projectConfiguration.addClass(classPath, classType as TriggerType, []);
+  await projectConfiguration.writeToFile();
 
   console.log("\x1b[36m%s\x1b[0m", "Class added successfully.");
 }
 
-export async function newDeployClasses() {
+export async function deployClasses() {
   const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
   const configurationFileContent = await parse(configurationFileContentUTF8);
-  const configuration = await ProjectConfiguration.create(configurationFileContent)
+  const configuration = await ProjectConfiguration.create(
+    configurationFileContent
+  );
 
   if (configuration.classes.length === 0) {
     throw new Error(
@@ -178,42 +178,73 @@ export async function newDeployClasses() {
     );
   }
 
-  const functionUrlForFilePath: {[id: string]: string} = {}
-  const classesInfo = []
+  const functionUrlForFilePath: { [id: string]: string } = {};
+  const classesInfo: {
+    className: any;
+    methodNames: any;
+    path: string;
+    functionUrl: any;
+  }[] = [];
 
-  for (const element of configuration.classes) {
-    const currentFolder = process.cwd()
-    switch(element.language) {
-      case ".js": {
-        const bundler = new NodeJsBundler()
-        const binaryDepBundler = new NodeJsBinaryDependenciesBundler()
+  const promisesDeploy: any = configuration.classes.map(
+    async (element: any) => {
+      switch (element.language) {
+        case ".js": {
+          const bundler = new NodeJsBundler();
+          const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
 
-        let output = await bundler.bundle({configuration: element, path: element.path})
-        output = await binaryDepBundler.bundle(output)
+          let output = await bundler.bundle({
+            configuration: element,
+            path: element.path
+          });
 
-        const archivePath = path.join(currentFolder, `genezioDeploy.zip`);
-        await zipDirectory(output.path, archivePath)
+          output = await binaryDepBundler.bundle(output);
 
-        const result = await deployClass(element, archivePath, configuration.name, output.extra?.className)
+          const archivePath = path.join(
+            await createTemporaryFolder("genezio-"),
+            `genezioDeploy.zip`
+          );
+          await zipDirectory(output.path, archivePath);
 
-        functionUrlForFilePath[path.parse(element.path).name] = result.functionUrl;
+          const prom = deployClass(
+            element,
+            archivePath,
+            configuration.name,
+            output.extra?.className
+          ).then((result) => {
+            functionUrlForFilePath[path.parse(element.path).name] =
+              result.functionUrl;
 
-        classesInfo.push({className: output.extra?.className, methodNames: output.extra?.methodNames, path: element.path, functionUrl: result.functionUrl })
+            classesInfo.push({
+              className: output.extra?.className,
+              methodNames: output.extra?.methodNames,
+              path: element.path,
+              functionUrl: result.functionUrl
+            });
 
-        await fs.promises.unlink(archivePath)
-        break;
+            fs.promises.unlink(archivePath);
+          });
+          return prom;
+        }
+        default:
+          console.log(`Unsupported ${element.language}`);
+          return Promise.resolve();
       }
-      default:
-        console.log(`Unsupported ${element.language}`)
     }
-  }
+  );
 
-  await generateSdks(functionUrlForFilePath)
+  // wait for all promises to finish
+  await Promise.all(promisesDeploy);
 
-  reportSuccess(classesInfo, configuration)
+  await generateSdks(functionUrlForFilePath);
+
+  reportSuccess(classesInfo, configuration);
 }
 
-export function reportSuccess(classesInfo: any, projectConfiguration: ProjectConfiguration) {
+export function reportSuccess(
+  classesInfo: any,
+  projectConfiguration: ProjectConfiguration
+) {
   console.log(
     "\x1b[36m%s\x1b[0m",
     "Your code was deployed and the SDK was successfully generated!"
@@ -224,15 +255,18 @@ export function reportSuccess(classesInfo: any, projectConfiguration: ProjectCon
 
   classesInfo.forEach((classInfo: any) => {
     classInfo.methodNames.forEach((methodName: any) => {
-      const type = projectConfiguration.getMethodType(classInfo.path, methodName)
+      const type = projectConfiguration.getMethodType(
+        classInfo.path,
+        methodName
+      );
 
       if (type === TriggerType.http) {
         printHttpString +=
-        `  - ${classInfo.className}.${methodName}: ${classInfo.functionUrl}${classInfo.className}/${methodName}` +
-        "\n";
+          `  - ${classInfo.className}.${methodName}: ${classInfo.functionUrl}${classInfo.className}/${methodName}` +
+          "\n";
       }
-    })
-  })
+    });
+  });
 
   if (printHttpString !== "") {
     console.log("");
@@ -256,6 +290,7 @@ export async function generateSdks(urlMap: any) {
   }
 
   const sdk = await generateSdk(configuration, urlMap);
+
   if (sdk.remoteFile) {
     await writeToFile(outputPath, "remote.js", sdk.remoteFile, true).catch(
       (error) => {
@@ -264,16 +299,16 @@ export async function generateSdks(urlMap: any) {
     );
   }
 
-  for (const classFile of sdk.classFiles) {
-    await writeToFile(
-      outputPath,
-      `${classFile.filename}.sdk.js`,
-      classFile.implementation,
-      true
-    ).catch((error) => {
-      console.error(error.toString());
-    });
-  }
+  await Promise.all(
+    sdk.classFiles.map((classFile: any) => {
+      return writeToFile(
+        outputPath,
+        `${classFile.filename}.sdk.js`,
+        classFile.implementation,
+        true
+      );
+    })
+  );
 }
 
 export async function init() {

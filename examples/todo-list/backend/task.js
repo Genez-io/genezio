@@ -34,7 +34,10 @@ export class Task {
       ownerId: ownerId
     });
 
-    return { success: true, task: { title: title, ownerId: ownerId, _id: task._id.toString() } };
+    return {
+      success: true,
+      task: { title: title, ownerId: ownerId, _id: task._id.toString() }
+    };
   }
 
   // update a task

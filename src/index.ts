@@ -5,27 +5,34 @@ import {
   generateSdks,
   init,
   addNewClass,
-  newDeployClasses,
-  reportSuccess,
+  deployClasses,
+  reportSuccess
 } from "./commands";
-import { validateYamlFile, checkYamlFileExists, readUTF8File, readToken } from "./utils/file";
-import path from "path";
+import {
+  validateYamlFile,
+  checkYamlFileExists,
+  readUTF8File,
+  readToken
+} from "./utils/file";
 import { parse } from "yaml";
 import open from "open";
 import { asciiCapybara } from "./utils/strings";
 import http from "http";
 import jsonBody from "body/json";
 import keytar from "keytar";
-import { PORT_LOCAL_ENVIRONMENT, REACT_APP_BASE_URL } from "./variables";
+import { REACT_APP_BASE_URL } from "./variables";
 import { exit } from "process";
 import { AxiosError } from "axios";
 import { AddressInfo } from "net";
 import { ProjectConfiguration } from "./models/projectConfiguration";
-import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
-import { listenForChanges, prepareForLocalEnvironment, startServer } from "./localEnvironment";
+import {
+  listenForChanges,
+  prepareForLocalEnvironment,
+  startServer
+} from "./localEnvironment";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const pjson = require('../package.json');
+const pjson = require("../package.json");
 
 const program = new Command();
 
@@ -129,12 +136,13 @@ program
       exit(1);
     }
 
-    if (!await checkYamlFileExists()) {
+    if (!(await checkYamlFileExists())) {
       return;
     }
     await validateYamlFile();
 
-    await newDeployClasses().catch((error: AxiosError) => {
+    console.log("Deploying your project to genez.io infrastructure...");
+    await deployClasses().catch((error: AxiosError) => {
       if (error.response?.status == 401) {
         console.log(
           "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
@@ -144,8 +152,6 @@ program
       }
       exit(1);
     });
-
-    console.log("Your project has been deployed");
   });
 
 program
@@ -169,29 +175,33 @@ program
   .description("Run a local environment for your functions.")
   .action(async () => {
     try {
-      if (!await checkYamlFileExists()) {
+      if (!(await checkYamlFileExists())) {
         return;
       }
 
       // eslint-disable-next-line no-constant-condition
       while (true) {
-        const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
+        const configurationFileContentUTF8 = await readUTF8File(
+          "./genezio.yaml"
+        );
         const configurationFileContent = await parse(
           configurationFileContentUTF8
         );
-        const projectConfiguration = await ProjectConfiguration.create(configurationFileContent)
+        const projectConfiguration = await ProjectConfiguration.create(
+          configurationFileContent
+        );
 
-        const { functionUrlForFilePath, classesInfo, handlers } = await prepareForLocalEnvironment(projectConfiguration)
+        const { functionUrlForFilePath, classesInfo, handlers } =
+          await prepareForLocalEnvironment(projectConfiguration);
 
-        await generateSdks(functionUrlForFilePath)
-          .catch((error: Error) => {
-            console.error(`${error.stack}`);
-          });
+        await generateSdks(functionUrlForFilePath).catch((error: Error) => {
+          console.error(`${error.stack}`);
+        });
 
-        reportSuccess(classesInfo, projectConfiguration)
+        reportSuccess(classesInfo, projectConfiguration);
 
-        const server = await startServer(handlers)
-        await listenForChanges(projectConfiguration.sdk.path, server)
+        const server = await startServer(handlers);
+        await listenForChanges(projectConfiguration.sdk.path, server);
       }
     } catch (error) {
       console.error(`${error}`);
@@ -220,16 +230,16 @@ program
 program
   .command("account")
   .description("Display information about the current account.")
-  .action(
-    async () => {
-      const authToken = await readToken(true).catch(() => undefined);
+  .action(async () => {
+    const authToken = await readToken(true).catch(() => undefined);
 
-      if (!authToken) {
-        console.log("You are not logged in. Run 'genezio login' before displaying account information.");
-      } else {
-        console.log("Logged in as: " + authToken);
-      }
+    if (!authToken) {
+      console.log(
+        "You are not logged in. Run 'genezio login' before displaying account information."
+      );
+    } else {
+      console.log("Logged in as: " + authToken);
     }
-  );
+  });
 
 program.parse();

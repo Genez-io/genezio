@@ -1,13 +1,12 @@
 import querystring from "querystring";
 import path from "path";
-import chokidar from 'chokidar';
-import express from 'express'
-import cors from 'cors'
+import chokidar from "chokidar";
+import express from "express";
+import cors from "cors";
 import { PORT_LOCAL_ENVIRONMENT } from "./variables";
 import { ProjectConfiguration } from "./models/projectConfiguration";
 import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import LocalEnvInputParameters from "./models/localEnvInputParams";
-
 
 export function getEventObjectFromRequest(request: any) {
   return {
@@ -24,18 +23,21 @@ export function getEventObjectFromRequest(request: any) {
       ? querystring.parse(request.url!.split("?")[1])
       : {},
     timeEpoch: Date.now(),
-    body: Object.keys(request.body).length > 0 ? JSON.stringify(request.body) : undefined,
+    body:
+      Object.keys(request.body).length > 0
+        ? JSON.stringify(request.body)
+        : undefined,
     requestContext: {
       http: {
-        path: request.url,
+        path: request.url
       }
     }
-  }
+  };
 }
 
 export function handleResponseForJsonRpc(res: any, jsonRpcResponse: any) {
-  res.setHeader('Content-Type', 'application/json')
-  res.end(JSON.stringify(jsonRpcResponse))
+  res.setHeader("Content-Type", "application/json");
+  res.end(JSON.stringify(jsonRpcResponse));
 }
 
 export function handleResponseforHttp(res: any, httpResponse: any) {
@@ -60,10 +62,10 @@ export function handleResponseforHttp(res: any, httpResponse: any) {
 }
 
 export function listenForChanges(sdkPathRelative: any, server: any) {
-  const cwd = process.cwd()
+  const cwd = process.cwd();
 
   let sdkPath = path.join(cwd, sdkPathRelative);
-  
+
   return new Promise((resolve) => {
     // delete / if sdkPath ends with /
     if (sdkPath.endsWith("/")) {
@@ -93,89 +95,108 @@ export function listenForChanges(sdkPathRelative: any, server: any) {
           console.log("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
           await server.close();
 
-          watch.close()
-          resolve({})
+          watch.close();
+          resolve({});
         });
     };
     startWatching();
-  })
+  });
 }
 
 export function startServer(handlers: any) {
-  const app = express()
-  app.use(cors())
+  const app = express();
+  app.use(cors());
   app.use(express.json());
-  app.use(express.urlencoded({
-    extended: true
-  }));
+  app.use(
+    express.urlencoded({
+      extended: true
+    })
+  );
 
   app.all(`/:className`, async (req: any, res: any) => {
-    const reqToFunction = getEventObjectFromRequest(req)
+    const reqToFunction = getEventObjectFromRequest(req);
 
-    const path = handlers[req.params.className].path
-    console.log(`Request received for ${req.params.className}.`)
+    const path = handlers[req.params.className].path;
+    console.log(`Request received for ${req.params.className}.`);
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const module = require(path);
 
     const response = await module.handler(reqToFunction);
 
-    handleResponseForJsonRpc(res, response)
+    handleResponseForJsonRpc(res, response);
   });
 
   app.all(`/:className/:methodName`, async (req: any, res: any) => {
-    const reqToFunction = getEventObjectFromRequest(req)
-    console.log(`HTTP Request received ${req.method} ${req.url}.`)
+    const reqToFunction = getEventObjectFromRequest(req);
+    console.log(`HTTP Request received ${req.method} ${req.url}.`);
 
-    const path = handlers[req.params.className].path
+    const path = handlers[req.params.className].path;
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const module = require(path);
 
     const response = await module.handler(reqToFunction);
-    handleResponseforHttp(res, response)
-  })
+    handleResponseforHttp(res, response);
+  });
 
-  console.log("Listening...")
-  return app.listen(PORT_LOCAL_ENVIRONMENT)
+  console.log("Listening...");
+  return app.listen(PORT_LOCAL_ENVIRONMENT);
 }
 
-export async function prepareForLocalEnvironment(projectConfiguration: ProjectConfiguration): Promise<LocalEnvInputParameters> {
-  const functionUrlForFilePath: any = {}
-  const handlers: any = {}
-  const classesInfo: { className: any; methodNames: any; path: string; functionUrl: string; }[] = []
+export async function prepareForLocalEnvironment(
+  projectConfiguration: ProjectConfiguration
+): Promise<LocalEnvInputParameters> {
+  const functionUrlForFilePath: any = {};
+  const handlers: any = {};
+  const classesInfo: {
+    className: any;
+    methodNames: any;
+    path: string;
+    functionUrl: string;
+  }[] = [];
 
   const promises = projectConfiguration.classes.map((element) => {
     switch (element.language) {
       case ".js": {
-        const bundler = new NodeJsBundler()
+        const bundler = new NodeJsBundler();
 
-        return bundler.bundle({ configuration: element, path: element.path }).then((output) => {
-          const className = output.extra?.className
-          const handlerPath = path.join(output.path, "index.js")
-          const baseurl = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/`
-          const functionUrl = `${baseurl}${className}`
-          functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
-  
-          classesInfo.push({className: output.extra?.className, methodNames: output.extra?.methodNames, path: element.path, functionUrl: baseurl })
-  
-          handlers[className] = {
-            path: handlerPath
-          }
-        })
+        const prom = bundler
+          .bundle({ configuration: element, path: element.path })
+          .then((output) => {
+            const className = output.extra?.className;
+            const handlerPath = path.join(output.path, "index.js");
+            const baseurl = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/`;
+            const functionUrl = `${baseurl}${className}`;
+            functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
+
+            classesInfo.push({
+              className: output.extra?.className,
+              methodNames: output.extra?.methodNames,
+              path: element.path,
+              functionUrl: baseurl
+            });
+
+            handlers[className] = {
+              path: handlerPath
+            };
+          });
+        return prom;
       }
       default: {
-        console.error(`Unsupported language ${element.language}. Skipping class ${element.path}`)
-        return Promise.resolve()
+        console.error(
+          `Unsupported language ${element.language}. Skipping class ${element.path}`
+        );
+        return Promise.resolve();
       }
     }
-  })
+  });
 
-  await Promise.all(promises)
+  await Promise.all(promises);
 
   return {
     functionUrlForFilePath,
     handlers,
     classesInfo
-  }
+  };
 }
