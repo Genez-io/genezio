@@ -8,7 +8,8 @@
     "install-locally": "npx tsc && npm install -g",
     "build": "npx tsc",
     "lint": "./scripts/lint",
-    "release": "npm run build && npm publish"
+    "release": "npm run build && npm publish",
+    "test": "jest"
   },
   "files": [
     "/build"

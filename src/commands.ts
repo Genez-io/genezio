@@ -9,17 +9,15 @@ import {
   readUTF8File,
   writeToFile,
   zipDirectory,
-  checkYamlFileExists,
 } from "./utils/file";
 import { askQuestion } from "./utils/prompt";
 import { parse, Document } from "yaml";
 import fs from "fs";
-import util from "util";
 import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
-import yaml from "yaml";
 import { ProjectConfiguration, TriggerType } from "./models/projectConfiguration";
 import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBinaryDepenciesBundler";
+import { getProjectConfiguration } from "./utils/configuration";
 
 
 class AccessDependenciesPlugin {
@@ -113,23 +111,18 @@ export async function getNodeModules(filePath: string): Promise<any> {
 export async function addNewClass(classPath: string, classType: string) {
   if (classType === undefined) {
     classType = "jsonrpc";
-  } else if (classType !== "http" && classType !== "jsonrpc") {
+  } else if (!["http", "jsonrpc"].includes(classType)) {
     throw new Error(
       "Invalid class type. Valid class types are 'http' and 'jsonrpc'."
     );
   }
-  if (!await checkYamlFileExists()) {
-    return;
-  }
-  const genezioYamlPath = path.join("./genezio.yaml");
 
   if (classPath === undefined || classPath === "") {
     console.error("Please provide a path to the class you want to add.");
     return;
   }
 
-  const configurationFileContentUTF8 = await readUTF8File(genezioYamlPath);
-  const configurationFileContent = await parse(configurationFileContentUTF8);
+  const projectConfiguration = await getProjectConfiguration()
 
   const className = classPath.split(path.sep).pop();
 
@@ -145,10 +138,10 @@ export async function addNewClass(classPath: string, classType: string) {
   }
 
   // check if class already exists
-  if (configurationFileContent.classes.length > 0) {
+  if (projectConfiguration.classes.length > 0) {
     if (
-      configurationFileContent.classes
-        .map((e: any) => e.path.split(path.sep).pop())
+      projectConfiguration.classes
+        .map((c) => c.path.split(path.sep).pop())
         .includes(className)
     ) {
       console.error("Class already exists.");
@@ -158,29 +151,14 @@ export async function addNewClass(classPath: string, classType: string) {
 
   // create the file if it does not exist
   if (!(await fileExists(classPath))) {
-    await writeToFile(
-      ".",
-      classPath,
-      "\nexport class " +
-      (className.charAt(0).toUpperCase() + className.slice(1)) +
-      " {}",
-      true
-    ).catch((error) => {
+    await writeToFile(".", classPath, "", true).catch((error) => {
       console.error(error.toString());
+      throw error
     });
   }
 
-  configurationFileContent.classes.push({
-    path: classPath,
-    type: classType,
-    methods: []
-  });
-  // json to yaml
-  const yamlString = yaml.stringify(configurationFileContent);
-
-  await writeToFile(".", genezioYamlPath, yamlString).catch((error) => {
-    console.error(error.toString());
-  });
+  projectConfiguration.addClass(classPath, classType as TriggerType, [])
+  await projectConfiguration.writeToFile()
 
   console.log("\x1b[36m%s\x1b[0m", "Class added successfully.");
 }
