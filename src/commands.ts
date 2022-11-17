@@ -177,6 +177,7 @@ export async function newDeployClasses() {
   const functionUrlForFilePath: {[id: string]: string} = {}
   const classesInfo = []
 
+  let projectId = undefined
   for (const element of configuration.classes) {
     const currentFolder = process.cwd()
     switch(element.language) {
@@ -193,6 +194,7 @@ export async function newDeployClasses() {
         const result = await deployClass(element, archivePath, configuration.name, output.extra?.className)
 
         functionUrlForFilePath[path.parse(element.path).name] = result.functionUrl;
+        projectId = result.class.ProjectID
 
         classesInfo.push({className: output.extra?.className, methodNames: output.extra?.methodNames, path: element.path, functionUrl: result.functionUrl })
 
@@ -207,6 +209,8 @@ export async function newDeployClasses() {
   await generateSdks(functionUrlForFilePath)
 
   reportSuccess(classesInfo, configuration)
+
+  return projectId
 }
 
 export function reportSuccess(classesInfo: any, projectConfiguration: ProjectConfiguration) {

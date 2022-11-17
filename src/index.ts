@@ -134,7 +134,7 @@ program
     }
     await validateYamlFile();
 
-    await newDeployClasses().catch((error: AxiosError) => {
+    const projectId = await newDeployClasses().catch((error: AxiosError) => {
       if (error.response?.status == 401) {
         console.log(
           "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
@@ -146,6 +146,12 @@ program
     });
 
     console.log("Your project has been deployed");
+    if(projectId){
+      console.log(`Your project is available at ${REACT_APP_BASE_URL}/project/${projectId}`)
+    }
+    else{
+      console.log(`Couldn't retrieve your project URL, go to ${REACT_APP_BASE_URL} to see all your projects`)
+    }
   });
 
 program
