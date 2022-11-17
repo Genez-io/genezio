@@ -152,13 +152,6 @@ program
       }
       exit(1);
     });
-
-    console.log("Your project has been deployed");
-    // end time in milliseconds
-    const endTime = new Date().getTime();
-    // compute time difference in seconds
-    const timeDiff = (endTime - startTime) / 1000;
-    console.log(`Deployment took ${timeDiff} seconds.`);
   });
 
 program

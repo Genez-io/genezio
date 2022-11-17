@@ -210,58 +210,65 @@ export async function deployClasses() {
     functionUrl: any;
   }[] = [];
 
-  const promisesDeploy: any = [];
+  const promisesDeploy: any = configuration.classes.map(
+    async (element: any) => {
+      switch (element.language) {
+        case ".js": {
+          const bundler = new NodeJsBundler();
+          const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
 
-  for (const element of configuration.classes) {
-    const currentFolder = process.cwd();
-    switch (element.language) {
-      case ".js": {
-        const bundler = new NodeJsBundler();
-        const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
+          let startTime = new Date().getTime();
 
-        let output = await bundler.bundle({
-          configuration: element,
-          path: element.path
-        });
-
-        output = await binaryDepBundler.bundle(output);
-
-        const archivePath = path.join(
-          await createTemporaryFolder("genezio-"),
-          `genezioDeploy.zip`
-        );
-        await zipDirectory(output.path, archivePath);
-
-        const prom = deployClass(
-          element,
-          archivePath,
-          configuration.name,
-          output.extra?.className
-        ).then((result) => {
-          functionUrlForFilePath[path.parse(element.path).name] =
-            result.functionUrl;
-
-          classesInfo.push({
-            className: output.extra?.className,
-            methodNames: output.extra?.methodNames,
-            path: element.path,
-            functionUrl: result.functionUrl
+          let output = await bundler.bundle({
+            configuration: element,
+            path: element.path
           });
 
-          fs.promises.unlink(archivePath);
-        });
-        promisesDeploy.push(prom);
+          startTime = new Date().getTime();
 
-        break;
+          output = await binaryDepBundler.bundle(output);
+
+          startTime = new Date().getTime();
+          const archivePath = path.join(
+            await createTemporaryFolder("genezio-"),
+            `genezioDeploy.zip`
+          );
+          await zipDirectory(output.path, archivePath);
+
+          const prom = deployClass(
+            element,
+            archivePath,
+            configuration.name,
+            output.extra?.className
+          ).then((result) => {
+            functionUrlForFilePath[path.parse(element.path).name] =
+              result.functionUrl;
+
+            classesInfo.push({
+              className: output.extra?.className,
+              methodNames: output.extra?.methodNames,
+              path: element.path,
+              functionUrl: result.functionUrl
+            });
+
+            fs.promises.unlink(archivePath);
+          });
+          return prom;
+
+          break;
+        }
+        default:
+          console.log(`Unsupported ${element.language}`);
+          break;
       }
-      default:
-        console.log(`Unsupported ${element.language}`);
     }
-  }
+  );
 
   // wait for all promises to finish
+  let startTime = new Date().getTime();
   await Promise.all(promisesDeploy);
 
+  startTime = new Date().getTime();
   await generateSdks(functionUrlForFilePath);
 
   reportSuccess(classesInfo, configuration);
