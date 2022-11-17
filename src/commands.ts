@@ -166,11 +166,7 @@ export async function addNewClass(classPath: string, classType: string) {
 }
 
 export async function deployClasses() {
-  const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
-  const configurationFileContent = await parse(configurationFileContentUTF8);
-  const configuration = await ProjectConfiguration.create(
-    configurationFileContent
-  );
+  const configuration = await getProjectConfiguration();
 
   if (configuration.classes.length === 0) {
     throw new Error(
