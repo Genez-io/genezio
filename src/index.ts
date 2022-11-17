@@ -5,10 +5,15 @@ import {
   generateSdks,
   init,
   addNewClass,
-  newDeployClasses,
-  reportSuccess,
+  deployClasses,
+  reportSuccess
 } from "./commands";
-import { validateYamlFile, checkYamlFileExists, readUTF8File, readToken } from "./utils/file";
+import {
+  validateYamlFile,
+  checkYamlFileExists,
+  readUTF8File,
+  readToken
+} from "./utils/file";
 import path from "path";
 import { parse } from "yaml";
 import open from "open";
@@ -25,7 +30,7 @@ import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import { listenForChanges, startServer } from "./localEnvironment";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const pjson = require('../package.json');
+const pjson = require("../package.json");
 
 const program = new Command();
 
@@ -119,6 +124,9 @@ program
     "Deploy the functions mentioned in the genezio.yaml file to Genezio infrastructure."
   )
   .action(async () => {
+    // start time in milliseconds
+    const startTime = new Date().getTime();
+
     // check if user is logged in
     const authToken = await readToken().catch(() => undefined);
 
@@ -129,12 +137,12 @@ program
       exit(1);
     }
 
-    if (!await checkYamlFileExists()) {
+    if (!(await checkYamlFileExists())) {
       return;
     }
     await validateYamlFile();
 
-    await newDeployClasses().catch((error: AxiosError) => {
+    await deployClasses().catch((error: AxiosError) => {
       if (error.response?.status == 401) {
         console.log(
           "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
@@ -146,6 +154,11 @@ program
     });
 
     console.log("Your project has been deployed");
+    // end time in milliseconds
+    const endTime = new Date().getTime();
+    // compute time difference in seconds
+    const timeDiff = (endTime - startTime) / 1000;
+    console.log(`Deployment took ${timeDiff} seconds.`);
   });
 
 program
@@ -169,7 +182,7 @@ program
   .description("Run a local environment for your functions.")
   .action(async () => {
     try {
-      if (!await checkYamlFileExists()) {
+      if (!(await checkYamlFileExists())) {
         return;
       }
 
@@ -177,47 +190,58 @@ program
       const configurationFileContent = await parse(
         configurationFileContentUTF8
       );
-      const projectConfiguration = await ProjectConfiguration.create(configurationFileContent)
-      const functionUrlForFilePath: any = {}
-      const handlers: any = {}
-      const classesInfo = []
+      const projectConfiguration = await ProjectConfiguration.create(
+        configurationFileContent
+      );
+      const functionUrlForFilePath: any = {};
+      const handlers: any = {};
+      const classesInfo = [];
 
       for (const element of projectConfiguration.classes) {
         switch (element.language) {
           case ".js": {
-            const bundler = new NodeJsBundler()
+            const bundler = new NodeJsBundler();
 
-            const output = await bundler.bundle({ configuration: element, path: element.path })
-            const className = output.extra?.className
-            const handlerPath = path.join(output.path, "index.js")
-            const baseurl = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/`
-            const functionUrl = `${baseurl}${className}`
+            const output = await bundler.bundle({
+              configuration: element,
+              path: element.path
+            });
+            const className = output.extra?.className;
+            const handlerPath = path.join(output.path, "index.js");
+            const baseurl = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/`;
+            const functionUrl = `${baseurl}${className}`;
             functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
 
-            classesInfo.push({className: output.extra?.className, methodNames: output.extra?.methodNames, path: element.path, functionUrl: baseurl })
+            classesInfo.push({
+              className: output.extra?.className,
+              methodNames: output.extra?.methodNames,
+              path: element.path,
+              functionUrl: baseurl
+            });
 
             handlers[className] = {
               path: handlerPath
-            }
+            };
             break;
           }
           default: {
-            console.error(`Unsupported language ${element.language}. Skipping class ${element.path}`)
+            console.error(
+              `Unsupported language ${element.language}. Skipping class ${element.path}`
+            );
           }
         }
       }
 
-      await generateSdks(functionUrlForFilePath)
-        .catch((error: Error) => {
-          console.error(`${error.stack}`);
-        });
+      await generateSdks(functionUrlForFilePath).catch((error: Error) => {
+        console.error(`${error.stack}`);
+      });
 
-      reportSuccess(classesInfo, projectConfiguration)
+      reportSuccess(classesInfo, projectConfiguration);
 
       // eslint-disable-next-line no-constant-condition
       while (true) {
-        const server = await startServer(handlers)
-        await listenForChanges(projectConfiguration.sdk.path, server)
+        const server = await startServer(handlers);
+        await listenForChanges(projectConfiguration.sdk.path, server);
       }
     } catch (error) {
       console.error(`${error}`);
@@ -246,16 +270,16 @@ program
 program
   .command("account")
   .description("Display information about the current account.")
-  .action(
-    async () => {
-      const authToken = await readToken(true).catch(() => undefined);
+  .action(async () => {
+    const authToken = await readToken(true).catch(() => undefined);
 
-      if (!authToken) {
-        console.log("You are not logged in. Run 'genezio login' before displaying account information.");
-      } else {
-        console.log("Logged in as: " + authToken);
-      }
+    if (!authToken) {
+      console.log(
+        "You are not logged in. Run 'genezio login' before displaying account information."
+      );
+    } else {
+      console.log("Logged in as: " + authToken);
     }
-  );
+  });
 
 program.parse();
