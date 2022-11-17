@@ -4,6 +4,9 @@ import chokidar from 'chokidar';
 import express from 'express'
 import cors from 'cors'
 import { PORT_LOCAL_ENVIRONMENT } from "./variables";
+import { ProjectConfiguration } from "./models/projectConfiguration";
+import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
+import LocalEnvInputParameters from "./models/localEnvInputParams";
 
 
 export function getEventObjectFromRequest(request: any) {
@@ -76,7 +79,7 @@ export function listenForChanges(sdkPathRelative: any, server: any) {
     ];
 
     const startWatching = () => {
-      chokidar
+      const watch = chokidar
         .watch(watchPaths, {
           ignored: ignoredPaths,
           ignoreInitial: true
@@ -89,6 +92,8 @@ export function listenForChanges(sdkPathRelative: any, server: any) {
           console.clear();
           console.log("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
           await server.close();
+
+          watch.close()
           resolve({})
         });
     };
@@ -133,4 +138,44 @@ export function startServer(handlers: any) {
 
   console.log("Listening...")
   return app.listen(PORT_LOCAL_ENVIRONMENT)
+}
+
+export async function prepareForLocalEnvironment(projectConfiguration: ProjectConfiguration): Promise<LocalEnvInputParameters> {
+  const functionUrlForFilePath: any = {}
+  const handlers: any = {}
+  const classesInfo: { className: any; methodNames: any; path: string; functionUrl: string; }[] = []
+
+  const promises = projectConfiguration.classes.map((element) => {
+    switch (element.language) {
+      case ".js": {
+        const bundler = new NodeJsBundler()
+
+        return bundler.bundle({ configuration: element, path: element.path }).then((output) => {
+          const className = output.extra?.className
+          const handlerPath = path.join(output.path, "index.js")
+          const baseurl = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/`
+          const functionUrl = `${baseurl}${className}`
+          functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
+  
+          classesInfo.push({className: output.extra?.className, methodNames: output.extra?.methodNames, path: element.path, functionUrl: baseurl })
+  
+          handlers[className] = {
+            path: handlerPath
+          }
+        })
+      }
+      default: {
+        console.error(`Unsupported language ${element.language}. Skipping class ${element.path}`)
+        return Promise.resolve()
+      }
+    }
+  })
+
+  await Promise.all(promises)
+
+  return {
+    functionUrlForFilePath,
+    handlers,
+    classesInfo
+  }
 }

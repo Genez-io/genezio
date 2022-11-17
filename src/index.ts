@@ -10,6 +10,7 @@ import {
 } from "./commands";
 import { validateYamlFile, checkYamlFileExists, readUTF8File, readToken } from "./utils/file";
 import path from "path";
+import { parse } from "yaml";
 import open from "open";
 import { asciiCapybara } from "./utils/strings";
 import http from "http";
@@ -19,9 +20,9 @@ import { PORT_LOCAL_ENVIRONMENT, REACT_APP_BASE_URL } from "./variables";
 import { exit } from "process";
 import { AxiosError } from "axios";
 import { AddressInfo } from "net";
+import { ProjectConfiguration } from "./models/projectConfiguration";
 import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
-import { listenForChanges, startServer } from "./localEnvironment";
-import { getProjectConfiguration } from "./utils/configuration";
+import { listenForChanges, prepareForLocalEnvironment, startServer } from "./localEnvironment";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require('../package.json');
@@ -168,45 +169,27 @@ program
   .description("Run a local environment for your functions.")
   .action(async () => {
     try {
-      const projectConfiguration = await getProjectConfiguration()
-      const functionUrlForFilePath: any = {}
-      const handlers: any = {}
-      const classesInfo = []
-
-      for (const element of projectConfiguration.classes) {
-        switch (element.language) {
-          case ".js": {
-            const bundler = new NodeJsBundler()
-
-            const output = await bundler.bundle({ configuration: element, path: element.path })
-            const className = output.extra?.className
-            const handlerPath = path.join(output.path, "index.js")
-            const baseurl = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/`
-            const functionUrl = `${baseurl}${className}`
-            functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
-
-            classesInfo.push({className: output.extra?.className, methodNames: output.extra?.methodNames, path: element.path, functionUrl: baseurl })
-
-            handlers[className] = {
-              path: handlerPath
-            }
-            break;
-          }
-          default: {
-            console.error(`Unsupported language ${element.language}. Skipping class ${element.path}`)
-          }
-        }
+      if (!await checkYamlFileExists()) {
+        return;
       }
-
-      await generateSdks(functionUrlForFilePath)
-        .catch((error: Error) => {
-          console.error(`${error.stack}`);
-        });
-
-      reportSuccess(classesInfo, projectConfiguration)
 
       // eslint-disable-next-line no-constant-condition
       while (true) {
+        const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
+        const configurationFileContent = await parse(
+          configurationFileContentUTF8
+        );
+        const projectConfiguration = await ProjectConfiguration.create(configurationFileContent)
+
+        const { functionUrlForFilePath, classesInfo, handlers } = await prepareForLocalEnvironment(projectConfiguration)
+
+        await generateSdks(functionUrlForFilePath)
+          .catch((error: Error) => {
+            console.error(`${error.stack}`);
+          });
+
+        reportSuccess(classesInfo, projectConfiguration)
+
         const server = await startServer(handlers)
         await listenForChanges(projectConfiguration.sdk.path, server)
       }
