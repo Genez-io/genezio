@@ -3,6 +3,7 @@ import path from "path";
 import { deployClass } from "./requests/deployCode";
 import generateSdk from "./requests/generateSdk";
 import {
+  checkYamlFileExists,
   createTemporaryFolder,
   fileExists,
   getFileDetails,
@@ -84,7 +85,6 @@ export async function getNodeModules(filePath: string): Promise<any> {
         reject(err);
         return;
       }
-
       const dependenciesInfo = dependencies.map((dependency) => {
         const relativePath = dependency.split("node_modules" + path.sep)[1];
         const dependencyName = relativePath?.split(path.sep)[0];
@@ -115,6 +115,10 @@ export async function addNewClass(classPath: string, classType: string) {
     throw new Error(
       "Invalid class type. Valid class types are 'http' and 'jsonrpc'."
     );
+  }
+
+  if (!(await checkYamlFileExists())) {
+    return;
   }
 
   if (classPath === undefined || classPath === "") {
@@ -240,7 +244,9 @@ export function reportSuccess(classesInfo: any, projectConfiguration: ProjectCon
 export async function generateSdks(urlMap: any) {
   const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
   const configurationFileContent = await parse(configurationFileContentUTF8);
-  const configuration = await ProjectConfiguration.create(configurationFileContent);
+  const configuration = await ProjectConfiguration.create(
+    configurationFileContent
+  );
   const outputPath = configuration.sdk.path;
 
   // check if the output path exists
