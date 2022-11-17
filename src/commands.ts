@@ -3,6 +3,7 @@ import path from "path";
 import { deployClass } from "./requests/deployCode";
 import generateSdk from "./requests/generateSdk";
 import {
+  checkYamlFileExists,
   createTemporaryFolder,
   fileExists,
   getFileDetails,
@@ -117,6 +118,10 @@ export async function addNewClass(classPath: string, classType: string) {
     throw new Error(
       "Invalid class type. Valid class types are 'http' and 'jsonrpc'."
     );
+  }
+
+  if (!(await checkYamlFileExists())) {
+    return;
   }
 
   if (classPath === undefined || classPath === "") {
