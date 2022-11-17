@@ -193,18 +193,13 @@ export async function deployClasses() {
           const bundler = new NodeJsBundler();
           const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
 
-          let startTime = new Date().getTime();
-
           let output = await bundler.bundle({
             configuration: element,
             path: element.path
           });
 
-          startTime = new Date().getTime();
-
           output = await binaryDepBundler.bundle(output);
 
-          startTime = new Date().getTime();
           const archivePath = path.join(
             await createTemporaryFolder("genezio-"),
             `genezioDeploy.zip`
@@ -230,21 +225,17 @@ export async function deployClasses() {
             fs.promises.unlink(archivePath);
           });
           return prom;
-
-          break;
         }
         default:
           console.log(`Unsupported ${element.language}`);
-          break;
+          return Promise.resolve();
       }
     }
   );
 
   // wait for all promises to finish
-  let startTime = new Date().getTime();
   await Promise.all(promisesDeploy);
 
-  startTime = new Date().getTime();
   await generateSdks(functionUrlForFilePath);
 
   reportSuccess(classesInfo, configuration);

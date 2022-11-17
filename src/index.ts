@@ -14,19 +14,17 @@ import {
   readUTF8File,
   readToken
 } from "./utils/file";
-import path from "path";
 import { parse } from "yaml";
 import open from "open";
 import { asciiCapybara } from "./utils/strings";
 import http from "http";
 import jsonBody from "body/json";
 import keytar from "keytar";
-import { PORT_LOCAL_ENVIRONMENT, REACT_APP_BASE_URL } from "./variables";
+import { REACT_APP_BASE_URL } from "./variables";
 import { exit } from "process";
 import { AxiosError } from "axios";
 import { AddressInfo } from "net";
 import { ProjectConfiguration } from "./models/projectConfiguration";
-import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import {
   listenForChanges,
   prepareForLocalEnvironment,
@@ -128,9 +126,6 @@ program
     "Deploy the functions mentioned in the genezio.yaml file to Genezio infrastructure."
   )
   .action(async () => {
-    // start time in milliseconds
-    const startTime = new Date().getTime();
-
     // check if user is logged in
     const authToken = await readToken().catch(() => undefined);
 
@@ -146,6 +141,7 @@ program
     }
     await validateYamlFile();
 
+    console.log("Deploying your project to genez.io infrastructure...");
     await deployClasses().catch((error: AxiosError) => {
       if (error.response?.status == 401) {
         console.log(

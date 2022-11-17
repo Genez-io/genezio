@@ -161,7 +161,7 @@ export async function prepareForLocalEnvironment(
       case ".js": {
         const bundler = new NodeJsBundler();
 
-        return bundler
+        const prom = bundler
           .bundle({ configuration: element, path: element.path })
           .then((output) => {
             const className = output.extra?.className;
@@ -181,6 +181,7 @@ export async function prepareForLocalEnvironment(
               path: handlerPath
             };
           });
+        return prom;
       }
       default: {
         console.error(
