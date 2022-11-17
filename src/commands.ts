@@ -465,8 +465,7 @@ async function deployFunction(
       console.log("Deployed successfully for class: " + name);
 
       return {
-        projectId: response.projectId,
-        projectName: response.projectName,
+        projectId: response.class.Project.ID,
         functionUrl: response.functionUrl,
         functionNames: bundledJavascriptCode.functionNames,
         className: bundledJavascriptCode.className
@@ -499,7 +498,7 @@ export async function deployFunctions() {
   for (const elem of configurationFileContent.classes) {
     const filePath = elem.path;
     const type = elem.type;
-    const { projectId, projectName, functionUrl, functionNames, className } = await deployFunction(
+    const { projectId, functionUrl, functionNames, className } = await deployFunction(
       configurationFileContent,
       filePath,
       type,
@@ -571,7 +570,7 @@ export async function deployFunctions() {
     addedNewLine = false;
   });
   if(!projectIdComplete){
-    projectIdComplete="7a4f4527-a3db-4060-a427-9e633976c92e"
+    throw new Error("Problem with retrieving the ProjectId in deployFunctions")
   }
 
   if (printHttpString !== "") {

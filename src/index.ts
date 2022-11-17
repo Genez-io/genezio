@@ -144,7 +144,7 @@ program
     });
 
     console.log("Your project has been deployed");
-    console.log("Your Project is available at https://app.genez.io/project/"+projectIdComplete)
+    console.log(`Your project is available at ${REACT_APP_BASE_URL}/project/`+projectIdComplete)
   });
 
 program
