@@ -89,7 +89,6 @@ export async function getNodeModules(filePath: string): Promise<any> {
         reject(err);
         return;
       }
-
       const dependenciesInfo = dependencies.map((dependency) => {
         const relativePath = dependency.split("node_modules" + path.sep)[1];
         const dependencyName = relativePath?.split(path.sep)[0];
@@ -162,14 +161,8 @@ export async function addNewClass(classPath: string, classType: string) {
 
   // create the file if it does not exist
   if (!(await fileExists(classPath))) {
-    await writeToFile(
-      ".",
-      classPath,
-      "\nexport class " +
-        (className.charAt(0).toUpperCase() + className.slice(1)) +
-        " {}",
-      true
-    ).catch((error) => {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    await writeToFile(".", classPath, "", true).catch((error) => {
       console.error(error.toString());
     });
   }

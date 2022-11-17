@@ -6,13 +6,12 @@ This is an example of a todo application with users, auth and tasks that uses Re
 
 1. Run `npm install` in the `backend/` folder to install the dependencies.
 2. Run `npm install` in the `frontend/` folder to install the dependencies.
-2. Change in the `backend/helper.js` file the variable `MONGO_DB_URI` to point to your MongoDB. We recommend the free tier from MongoDB Atlas (https://www.mongodb.com/atlas/database).
+3. Change in the `backend/helper.js` file the variable `MONGO_DB_URI` to point to your MongoDB. We recommend the free tier from MongoDB Atlas (https://www.mongodb.com/atlas/database).
 
 ## Run the example locally
 
-1. Run `genezio generateSdk local` in the project's root folder that contains also the `genezio.yaml` file. This will create an SDK that can be used to call the methods locally.
-2. Now you have to run the server locally. Run `genezio local` in the same folder to start the local server.
-3. Start the React app by going to the `frontend/` folder and run `npm start`.
+1. Run `genezio local` in the project's folder to start the local server.
+2. Start the React app by going to the `frontend/` folder and run `npm start`.
 
 ## Deploy the example in the Genezio infrastructure
 
