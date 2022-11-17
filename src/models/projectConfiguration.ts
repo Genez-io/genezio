@@ -1,4 +1,6 @@
 import path from 'path'
+import yaml from "yaml";
+import { getFileDetails, writeToFile } from '../utils/file';
 
 export enum TriggerType {
   jsonrpc = "jsonrpc",
@@ -179,5 +181,42 @@ export class ProjectConfiguration {
     const classElement = this.classes.find((classElement) => { return classElement.path === path })
 
     return classElement?.getMethodType(methodName)
+  }
+
+  addClass(classPath: string, type: TriggerType, methods: MethodConfiguration[]) {
+    const language = path.parse(classPath).ext
+    this.classes.push(new ClassConfiguration(classPath, type, language, methods))
+  }
+
+  async writeToFile(path = "./genezio.yaml") {
+    const classes = []
+    const content = {
+      name: this.name,
+      sdk: {
+        language: this.sdk.language,
+        runtime: this.sdk.runtime,
+        path: this.sdk.path
+      },
+      classes: this.classes.map((c) => ({
+        path: c.path,
+        type: c.type,
+        methods: c.methods.map((m) => ({
+          name: m.name,
+          type: m.type,
+          cronString: m.cronString
+        }))
+      }))
+    };
+
+    this.classes.forEach((c) => {
+      classes.push()
+    });
+
+    const fileDetails = getFileDetails(path);
+    const yamlString = yaml.stringify(content);
+
+    await writeToFile(fileDetails.path, fileDetails.filename, yamlString).catch((error) => {
+      console.error(error.toString());
+    });
   }
 }
