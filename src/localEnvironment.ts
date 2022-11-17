@@ -7,6 +7,7 @@ import { PORT_LOCAL_ENVIRONMENT } from "./variables";
 import { ProjectConfiguration } from "./models/projectConfiguration";
 import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import LocalEnvInputParameters from "./models/localEnvInputParams";
+import log from "loglevel";
 
 export function getEventObjectFromRequest(request: any) {
   return {
@@ -92,7 +93,7 @@ export function listenForChanges(sdkPathRelative: any, server: any) {
           }
 
           console.clear();
-          console.log("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
+          log.info("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
           await server.close();
 
           watch.close();
@@ -117,7 +118,7 @@ export function startServer(handlers: any) {
     const reqToFunction = getEventObjectFromRequest(req);
 
     const path = handlers[req.params.className].path;
-    console.log(`Request received for ${req.params.className}.`);
+    log.debug(`Request received for ${req.params.className}.`);
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const module = require(path);
@@ -129,7 +130,7 @@ export function startServer(handlers: any) {
 
   app.all(`/:className/:methodName`, async (req: any, res: any) => {
     const reqToFunction = getEventObjectFromRequest(req);
-    console.log(`HTTP Request received ${req.method} ${req.url}.`);
+    log.debug(`HTTP Request received ${req.method} ${req.url}.`);
 
     const path = handlers[req.params.className].path;
 
@@ -140,7 +141,7 @@ export function startServer(handlers: any) {
     handleResponseforHttp(res, response);
   });
 
-  console.log("Listening...");
+  log.info("Listening...");
   return app.listen(PORT_LOCAL_ENVIRONMENT);
 }
 
@@ -184,7 +185,7 @@ export async function prepareForLocalEnvironment(
         return prom;
       }
       default: {
-        console.error(
+        log.error(
           `Unsupported language ${element.language}. Skipping class ${element.path}`
         );
         return Promise.resolve();
