@@ -30,6 +30,7 @@ import {
   prepareForLocalEnvironment,
   startServer
 } from "./localEnvironment";
+import { getProjectConfiguration } from "./utils/configuration";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
@@ -136,11 +137,6 @@ program
       exit(1);
     }
 
-    if (!(await checkYamlFileExists())) {
-      return;
-    }
-    await validateYamlFile();
-
     console.log("Deploying your project to genez.io infrastructure...");
     await deployClasses().catch((error: AxiosError) => {
       if (error.response?.status == 401) {
@@ -175,21 +171,9 @@ program
   .description("Run a local environment for your functions.")
   .action(async () => {
     try {
-      if (!(await checkYamlFileExists())) {
-        return;
-      }
-
       // eslint-disable-next-line no-constant-condition
       while (true) {
-        const configurationFileContentUTF8 = await readUTF8File(
-          "./genezio.yaml"
-        );
-        const configurationFileContent = await parse(
-          configurationFileContentUTF8
-        );
-        const projectConfiguration = await ProjectConfiguration.create(
-          configurationFileContent
-        );
+        const projectConfiguration = await getProjectConfiguration()
 
         const { functionUrlForFilePath, classesInfo, handlers } =
           await prepareForLocalEnvironment(projectConfiguration);
