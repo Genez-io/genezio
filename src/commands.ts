@@ -2,6 +2,8 @@ import webpack, { NormalModule } from "webpack";
 import path from "path";
 import { deployClass } from "./requests/deployCode";
 import generateSdk from "./requests/generateSdk";
+import listProjects from "./requests/listProjects";
+import deleteProject from "./requests/deleteProject";
 import {
   createTemporaryFolder,
   fileExists,
@@ -164,6 +166,42 @@ export async function addNewClass(classPath: string, classType: string) {
   await projectConfiguration.writeToFile();
 
   log.info("\x1b[36m%s\x1b[0m", "Class added successfully.");
+}
+
+export async function deleteProjectHandler(projectId : string, forced : boolean) {
+  // show prompt if no project id is selected
+  if (typeof projectId === 'string' && projectId.trim().length === 0) {
+    const projects = await listProjects();
+    if (projects.length === 0) {
+      log.info("There are no currently deployed projects.");
+      return false;
+    } else {
+      log.info('No project ID specified, select an ID to delete from this list:')
+      log.info(projects);
+    }
+
+    const selection = await askQuestion(`Please select project number to delete (1--${projects.length}) [none]: `, "");
+    const selectionNum = Number(selection);
+    if (isNaN(selectionNum) || selectionNum <= 0 || selectionNum > projects.length) {
+      log.info("No valid selection was made, aborting.");
+      return false;
+    } else {
+      forced = false;
+      projectId = projects[selectionNum - 1].split(':')[3].trim();
+    }
+  }
+
+  if (!forced) {
+    const confirmation = await askQuestion(`Are you sure you want to delete project ${projectId}? y/[N]: `, "n");
+
+    if (confirmation !== "y" && confirmation !== "Y") {
+      log.warn("Aborted operation.");
+      return false;
+    }
+  }
+
+  const status = await deleteProject(projectId);
+  return status;
 }
 
 export async function deployClasses() {
