@@ -26,4 +26,3 @@ classes:
     methods:
       - name: "helloWorldOverHttp"
         type: http
-      - name: "helloWorld"

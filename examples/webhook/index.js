@@ -1,13 +1,13 @@
 export class HelloWorldCronExample {
-  helloWorld(name) {
+  helloWorld() {
     return {
-      message: `Hello, ${name}!`
+      message: `Hello, ${"radu"}!`
     };
   }
 
   helloWorldOverHttp(request) {
-    const name = JSON.parse(request.body).name;
-
+    const name = request.body ? JSON.parse(request.body).name : "No name";
+ 
     console.log(name);
 
     return {

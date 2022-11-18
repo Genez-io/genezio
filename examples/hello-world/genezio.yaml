@@ -5,7 +5,4 @@ sdk:
   path: ./sdk/
 classes:
   - path: ./hello.js
-    type: http
-    methods:
-      - name: hello
-        type: http
+    type: jsonrpc

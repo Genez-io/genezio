@@ -13,7 +13,9 @@ For more details about the `genezio` CLI command, run `genezio help`.
 
 ## Getting started
 
-1. Run `genezio init` and answer the following questions:
+1. Run `genezio login`.
+
+2. Run `genezio init` and answer the following questions:
 
 ```
 What is the name of the project: hello-world
@@ -24,7 +26,7 @@ Where do you want to save your SDK? [./sdk/]: ./sdk/
 
 A configuration file `genezio.yaml` will be generated.
 
-2. Create a file `hello.js` and write the following class.
+3. Run `genezio addClass hello.js` and open the newly created file and write the following class:
 
 ```javascript
 export class HelloWorldClass {
@@ -38,19 +40,7 @@ export class HelloWorldClass {
 }
 ```
 
-3. Add `hello.js` path in the `genezio.yaml` configuration file in `classPaths`.
-
-```yaml
-name: hello-world
-sdk:
-  language: js
-  runtime: node
-  path: ./sdk/
-classPaths:
-  - "./hello.js"
-```
-
-4. Run `genezio login <code>` with the code for the early testing phase. If you don't have a code and you want to participate in the early testing phase contact us at contact@genez.io. After that, you can run `genezio deploy` to deploy your code. An SDK is generated for you in the `./sdk/` path. You can now call your hello world methods remotely.
+4. Run `genezio deploy` to deploy your code. An SDK is generated for you in the `./sdk/` path. You can now call your hello world methods remotely.
 
 ```javascript
 import { HelloWorldClass } from "./sdk/hello.sdk.js"
@@ -73,10 +63,9 @@ Check our [examples](https://github.com/Genez-io/genezio/tree/master/examples)!
 
 * If you see the following error `SyntaxError: Cannot use import statement outside a module` add `"type": "module"` in package.json.
 
-## Knwown issues
+## Known issues
 
-* Genezio currently support only Javascript. We will offer support for Typescript, Swift, Kotlin and many others.
-* You can use external npm dependencies. However, we currently have a problem with the binary dependecies. If you encounter any issues, contact us.
+* Genezio currently support only JavaScript. We will offer support for TypeScript, Swift, Kotlin and many others.
 * The execution time of the functions cannot exceed 10 seconds. This limitation will go away soon.
 
 ## How does Genezio work?

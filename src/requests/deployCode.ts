@@ -4,12 +4,10 @@ import fs from "fs";
 import axios from "axios";
 import { readToken } from "../utils/file";
 import { BACKEND_ENDPOINT } from "../variables";
+import { ClassConfiguration } from "../models/projectConfiguration";
 
 export async function deployClass(
-  configurationFileContent: any,
-  filePath: string,
-  extension: string,
-  runtime: string,
+  classConfiguration: ClassConfiguration,
   archivePath: string,
   projectName: string,
   className: string
@@ -29,27 +27,25 @@ export async function deployClass(
   }
 
   form.append(
-    "configurationFileContent",
-    JSON.stringify(configurationFileContent)
+    "configurationClassContent",
+    JSON.stringify(classConfiguration)
   );
 
-  form.append("classFile", fs.createReadStream(filePath));
-  form.append("filename", path.parse(filePath).name);
-  form.append("extension", extension);
-  form.append("runtime", runtime);
+  form.append("classFile", fs.createReadStream(classConfiguration.path));
+  form.append("filename", path.parse(classConfiguration.path).name);
   form.append("archiveContent", fs.createReadStream(archivePath));
   form.append("projectName", projectName);
   form.append("className", className);
 
   const response: any = await axios({
-    method: "post",
+    method: "POST",
     url: `${BACKEND_ENDPOINT}/project/deployment`, // TODO modify to http://api.genez.io/core/deployment
     data: form,
     headers: { ...form.getHeaders(), Authorization: `Bearer ${authToken}` },
     maxContentLength: Infinity,
     maxBodyLength: Infinity
   }).catch((error: Error) => {
-    console.log("error0");
+    console.log("error", error);
     throw error;
   });
 

@@ -1,12 +1,15 @@
 #! /usr/bin/env node
 
 import { Command } from "commander";
-import { deployFunctions, generateSdks, init, addNewClass } from "./commands";
-import { fileExists, readUTF8File, readToken } from "./utils/file";
-import Server from "./localEnvironment";
-import chokidar from "chokidar";
+import {
+  generateSdks,
+  init,
+  addNewClass,
+  newDeployClasses,
+  reportSuccess,
+} from "./commands";
+import { validateYamlFile, checkYamlFileExists, readUTF8File, readToken } from "./utils/file";
 import path from "path";
-import { parse } from "yaml";
 import open from "open";
 import { asciiCapybara } from "./utils/strings";
 import http from "http";
@@ -16,13 +19,20 @@ import { PORT_LOCAL_ENVIRONMENT, REACT_APP_BASE_URL } from "./variables";
 import { exit } from "process";
 import { AxiosError } from "axios";
 import { AddressInfo } from "net";
+import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
+import { NodeTsBundler } from "./bundlers/typescript/nodeTsBundler";
+import { listenForChanges, startServer } from "./localEnvironment";
+import { getProjectConfiguration } from "./utils/configuration";
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const pjson = require('../package.json');
 
 const program = new Command();
 
 program
   .name("genezio")
   .description("CLI to interact with the Genezio infrastructure!")
-  .version("0.1.0");
+  .version(pjson.version);
 
 program
   .command("init")
@@ -62,14 +72,16 @@ program
           .findCredentials("genez.io")
           .then(async (credentials) => {
             // delete all existing tokens for service genez.io before adding the new one
-            credentials.forEach(async (credential) => {
-              await keytar.deletePassword("genez.io", credential.account);
-            });
+            for (const elem of credentials) {
+              await keytar.deletePassword("genez.io", elem.account);
+            }
           })
           .then(() => {
             // save new token
             keytar.setPassword("genez.io", name, token).then(() => {
-              console.log("You are now logged in!");
+              console.log(
+                `Welcome, ${name}! You can now start using genez.io.`
+              );
               res.setHeader("Access-Control-Allow-Origin", "*");
               res.setHeader("Access-Control-Allow-Headers", "Content-Type");
               res.setHeader("Access-Control-Allow-Methods", "POST");
@@ -90,7 +102,7 @@ program
 
     const promise = new Promise((resolve) => {
       server.listen(0, "localhost", () => {
-        console.log("Waiting for browser to login...");
+        console.log("Redirecting to browser to complete authentication...");
         const address = server.address() as AddressInfo;
         resolve(address.port);
       });
@@ -111,12 +123,18 @@ program
     const authToken = await readToken().catch(() => undefined);
 
     if (!authToken) {
-      throw new Error(
+      console.log(
         "You are not logged in. Run 'genezio login' before you deploy your function."
       );
+      exit(1);
     }
 
-    await deployFunctions().catch((error: AxiosError) => {
+    if (!await checkYamlFileExists()) {
+      return;
+    }
+    await validateYamlFile();
+
+    await newDeployClasses().catch((error: AxiosError) => {
       if (error.response?.status == 401) {
         console.log(
           "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
@@ -124,7 +142,10 @@ program
       } else {
         console.error(error.message);
       }
+      exit(1);
     });
+
+    console.log("Your project has been deployed");
   });
 
 program
@@ -144,95 +165,69 @@ program
   });
 
 program
-  .command("generateSdk")
-  .argument(
-    "<env>",
-    'The environment used to make requests. Available options: "local" or "production".'
-  )
-  .description("Generate the SDK.")
-  .action(async (env) => {
-    switch (env) {
-      case "local":
-        await generateSdks(env)
-          .then(() => {
-            console.log("Your SDK was successfully generated!");
-          })
-          .catch((error: Error) => {
-            console.error(`${error}`);
-          });
-        break;
-      case "production":
-        await deployFunctions().catch((error: Error) => {
-          console.error(error);
-        });
-        break;
-      default:
-        console.error(
-          `Wrong env value ${env}. Available options: "local" or "production".`
-        );
-    }
-  });
-
-program
   .command("local")
   .description("Run a local environment for your functions.")
   .action(async () => {
     try {
-      const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
-      const configurationFileContent = await parse(
-        configurationFileContentUTF8
-      );
-      const cwd = process.cwd();
+      const projectConfiguration = await getProjectConfiguration()
+      const functionUrlForFilePath: any = {}
+      const handlers: any = {}
+      const classesInfo = []
 
-      const functionUrlForFilePath: any = {};
+      for (const element of projectConfiguration.classes) {
+        switch (element.language) {
+          case ".ts": {
+            const bundler = new NodeTsBundler()
 
-      const server = new Server();
+            const output = await bundler.bundle({ configuration: element, path: element.path })
+            const className = output.extra?.className
+            const handlerPath = path.join(output.path, "index.js")
+            const baseurl = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/`
+            const functionUrl = `${baseurl}${className}`
+            functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
 
-      const runServer = async () => {
-        const classes = await server.generateHandlersFromFiles();
-        for (const classElement of classes) {
-          functionUrlForFilePath[
-            classElement.fileName
-          ] = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/${classElement.className}`;
-        }
-        await generateSdks("local", functionUrlForFilePath)
-          .then(async () => {
-            await server.start();
-          })
-          .catch((error: Error) => {
-            console.error(`${error}`);
-          });
-      };
+            classesInfo.push({className: output.extra?.className, methodNames: output.extra?.methodNames, path: element.path, functionUrl: baseurl })
 
-      await runServer();
-      // get absolute path of configurationFileContent.sdk.path
-      const sdkPath = path.join(cwd, configurationFileContent.sdk.path);
-
-      // Watch for changes in the classes and update the handlers
-      const watchPaths = [path.join(cwd, "/**/*")];
-      const ignoredPaths = [
-        "**/node_modules/*",
-        configurationFileContent.sdk.path + "/**/*"
-      ];
-
-      const startWatching = () => {
-        chokidar
-          .watch(watchPaths, {
-            ignored: ignoredPaths,
-            ignoreInitial: true
-          })
-          .on("all", async (event, path) => {
-            if (path.includes(sdkPath) || !server.isRunning()) {
-              return;
+            handlers[className] = {
+              path: handlerPath
             }
+            break;
+          }
+          case ".js": {
+            const bundler = new NodeJsBundler()
 
-            console.clear();
-            console.log("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
-            await server.terminate();
-            await runServer();
-          });
-      };
-      startWatching();
+            const output = await bundler.bundle({ configuration: element, path: element.path })
+            const className = output.extra?.className
+            const handlerPath = path.join(output.path, "index.js")
+            const baseurl = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/`
+            const functionUrl = `${baseurl}${className}`
+            functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
+
+            classesInfo.push({className: output.extra?.className, methodNames: output.extra?.methodNames, path: element.path, functionUrl: baseurl })
+
+            handlers[className] = {
+              path: handlerPath
+            }
+            break;
+          }
+          default: {
+            console.error(`Unsupported language ${element.language}. Skipping class ${element.path}`)
+          }
+        }
+      }
+
+      await generateSdks(functionUrlForFilePath)
+        .catch((error: Error) => {
+          console.error(`${error.stack}`);
+        });
+
+      reportSuccess(classesInfo, projectConfiguration)
+
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const server = await startServer(handlers)
+        await listenForChanges(projectConfiguration.sdk.path, server)
+      }
     } catch (error) {
       console.error(`${error}`);
     }
@@ -256,5 +251,20 @@ program
         console.log("Logout failed!");
       });
   });
+
+program
+  .command("account")
+  .description("Display information about the current account.")
+  .action(
+    async () => {
+      const authToken = await readToken(true).catch(() => undefined);
+
+      if (!authToken) {
+        console.log("You are not logged in. Run 'genezio login' before displaying account information.");
+      } else {
+        console.log("Logged in as: " + authToken);
+      }
+    }
+  );
 
 program.parse();

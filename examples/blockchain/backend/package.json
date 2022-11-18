@@ -1,0 +1,16 @@
+{
+  "name": "blockchain-example",
+  "version": "1.0.0",
+  "description": "Example on how to use Genezio with blockchain",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "mongoose": "^6.7.1",
+    "web3": "^1.8.0"
+  }
+}

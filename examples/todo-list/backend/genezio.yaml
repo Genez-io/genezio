@@ -5,6 +5,6 @@ sdk:
   path: ./../frontend/src/backend-sdk
 classes:
   - path: ./task.js
-    type: http
+    type: jsonrpc
   - path: ./user.js
-    type: http
+    type: jsonrpc
