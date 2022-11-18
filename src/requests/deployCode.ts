@@ -4,13 +4,8 @@ import fs from "fs";
 import axios from "axios";
 import { readToken } from "../utils/file";
 import { BACKEND_ENDPOINT } from "../variables";
-<<<<<<< HEAD
 import { ClassConfiguration } from "../models/projectConfiguration";
 import log from "loglevel";
-=======
-import { ClassConfiguration, MethodConfiguration, ProjectConfiguration } from "../models/projectConfiguration";
-import log from "loglevel";
->>>>>>> e39258e (Change logs to use loglevel)
 
 export async function deployClass(
   classConfiguration: ClassConfiguration,
