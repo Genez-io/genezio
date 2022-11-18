@@ -22,6 +22,7 @@ import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBinaryDepenciesBundler";
 import { getProjectConfiguration } from "./utils/configuration";
 import { REACT_APP_BASE_URL } from "./variables";
+import log from "loglevel";
 
 class AccessDependenciesPlugin {
   dependencies: string[];
