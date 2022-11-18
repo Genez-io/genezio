@@ -1,5 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 import { Language, ProjectConfiguration, TriggerType } from '../src/models/projectConfiguration'
+import log from "loglevel";
 
 describe('project configuration', () => {
     test('missing name should throw error', async () => {
@@ -139,7 +140,6 @@ describe('project configuration', () => {
             ]
         }
         const configuration = await ProjectConfiguration.create(yaml)
-
         expect(configuration.classes[0].methods[0].name).toEqual("cronMethod")
         expect(configuration.classes[0].methods[0].type).toEqual(TriggerType.cron)
         expect(configuration.classes[0].methods[0].cronString).toEqual("* * *")
@@ -175,7 +175,6 @@ describe('project configuration', () => {
             ]
         }
         const configuration = await ProjectConfiguration.create(yaml)
-
         expect(configuration.classes[0].methods[0].type).toEqual(TriggerType.http)
         expect(configuration.classes[0].methods[0].name).toEqual("method1")
         expect(configuration.classes[0].methods[1].type).toEqual(TriggerType.http)

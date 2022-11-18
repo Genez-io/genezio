@@ -8,6 +8,7 @@ import keytar from "keytar";
 import { parse, Document } from "yaml";
 import { exit } from "process";
 import awsCronParser from "aws-cron-parser";
+import log from "loglevel";
 
 export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
   return new Promise((resolve, reject) => {
@@ -135,7 +136,7 @@ export async function readToken(account = false): Promise<string> {
 
 export async function checkYamlFileExists(yamlPath = "./genezio.yaml") {
   if (!(await fileExists(yamlPath))) {
-    console.error(
+    log.error(
       "genezio.yaml file does not exist. Please run `genezio init` to initialize a project."
     );
     return false;
@@ -149,7 +150,7 @@ export async function validateYamlFile() {
   const configurationFileContent = await parse(configurationFileContentUTF8);
 
   if (configurationFileContent.classes.length === 0) {
-    console.log(
+    log.info(
       "You don't have any classes in your genezio.yaml file. You can add classes using the 'genezio addClass <className> <classType>' command."
     );
     exit(1);
@@ -162,7 +163,7 @@ export async function validateYamlFile() {
     for (const method of elem.methods) {
       if (method.type === "cron") {
         if (method.cronString === undefined) {
-          console.log(
+          log.warn(
             `You need to specify a cronString for the method ${elem.path}.${method.name}.`
           );
           exit(1);
@@ -170,11 +171,11 @@ export async function validateYamlFile() {
           try {
             const cron = awsCronParser.parse(method.cronString);
           } catch (error: any) {
-            console.log(
+            log.error(
               `The cronString ${method.cronString} for the method ${elem.path}.${method.name} is not valid.`
             );
-            console.log("You must use a 6-part cron expression.");
-            console.log(error.toString());
+            log.error("You must use a 6-part cron expression.");
+            log.error(error.toString());
             exit(1);
           }
         }

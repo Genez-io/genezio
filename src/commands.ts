@@ -21,6 +21,7 @@ import {
 import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBinaryDepenciesBundler";
 import { getProjectConfiguration } from "./utils/configuration";
+import log from "loglevel";
 
 class AccessDependenciesPlugin {
   dependencies: string[];
@@ -120,7 +121,7 @@ export async function addNewClass(classPath: string, classType: string) {
   }
 
   if (classPath === undefined || classPath === "") {
-    console.error("Please provide a path to the class you want to add.");
+    log.error("Please provide a path to the class you want to add.");
     return;
   }
 
@@ -129,13 +130,13 @@ export async function addNewClass(classPath: string, classType: string) {
   const className = classPath.split(path.sep).pop();
 
   if (!className) {
-    console.error("Invalid class path.");
+    log.error("Invalid class path.");
     return;
   }
 
   const classExtension = className.split(".").pop();
   if (!classExtension || className.split(".").length < 2) {
-    console.error("Invalid class extension.");
+    log.error("Invalid class extension.");
     return;
   }
 
@@ -146,7 +147,7 @@ export async function addNewClass(classPath: string, classType: string) {
         .map((c) => c.path.split(path.sep).pop())
         .includes(className)
     ) {
-      console.error("Class already exists.");
+      log.error("Class already exists.");
       return;
     }
   }
@@ -154,7 +155,7 @@ export async function addNewClass(classPath: string, classType: string) {
   // create the file if it does not exist
   if (!(await fileExists(classPath))) {
     await writeToFile(".", classPath, "", true).catch((error) => {
-      console.error(error.toString());
+      log.error(error.toString());
       throw error;
     });
   }
@@ -162,7 +163,7 @@ export async function addNewClass(classPath: string, classType: string) {
   projectConfiguration.addClass(classPath, classType as TriggerType, []);
   await projectConfiguration.writeToFile();
 
-  console.log("\x1b[36m%s\x1b[0m", "Class added successfully.");
+  log.info("\x1b[36m%s\x1b[0m", "Class added successfully.");
 }
 
 export async function deployClasses() {
@@ -223,7 +224,7 @@ export async function deployClasses() {
           return prom;
         }
         default:
-          console.log(`Unsupported ${element.language}`);
+          log.error(`Unsupported ${element.language}`);
           return Promise.resolve();
       }
     }
@@ -241,7 +242,7 @@ export function reportSuccess(
   classesInfo: any,
   projectConfiguration: ProjectConfiguration
 ) {
-  console.log(
+  log.info(
     "\x1b[36m%s\x1b[0m",
     "Your code was deployed and the SDK was successfully generated!"
   );
@@ -265,9 +266,9 @@ export function reportSuccess(
   });
 
   if (printHttpString !== "") {
-    console.log("");
-    console.log("HTTP Methods Deployed:");
-    console.log(printHttpString);
+    log.debug("");
+    log.debug("HTTP Methods Deployed:");
+    log.debug(printHttpString);
   }
 }
 
@@ -290,7 +291,7 @@ export async function generateSdks(urlMap: any) {
   if (sdk.remoteFile) {
     await writeToFile(outputPath, "remote.js", sdk.remoteFile, true).catch(
       (error) => {
-        console.error(error.toString());
+        log.error(error.toString());
       }
     );
   }
@@ -312,7 +313,7 @@ export async function init() {
   while (projectName.length === 0) {
     projectName = await askQuestion(`What is the name of the project: `);
     if (projectName.length === 0) {
-      console.log("The project name can't be empty.");
+      log.error("The project name can't be empty.");
     }
   }
   const sdk: any = { name: projectName, sdk: {}, classes: [] };
@@ -369,18 +370,18 @@ classes:
 
   await writeToFile(".", "genezio.yaml", yamlConfigurationFileContent).catch(
     (error) => {
-      console.error(error.toString());
+      log.error(error.toString());
     }
   );
 
-  console.log("");
-  console.log(
+  log.info("");
+  log.info(
     "\x1b[36m%s\x1b[0m",
     "Your genezio project was successfully initialized!"
   );
-  console.log("");
-  console.log(
+  log.info("");
+  log.info(
     "The genezio.yaml configuration file was generated. You can now add the classes that you want to deploy using the 'genezio addClass <className> <classType>' command."
   );
-  console.log("");
+  log.info("");
 }
