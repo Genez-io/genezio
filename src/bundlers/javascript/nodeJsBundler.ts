@@ -17,6 +17,7 @@ import FileDetails from "../../models/fileDetails";
 import { getNodeModules } from "../../commands";
 import { default as fsExtra } from "fs-extra";
 import { lambdaHandler } from "../../utils/lambdaHander";
+import log from "loglevel";
 
 export class NodeJsBundler implements BundlerInterface {
   async #copyDependencies(dependenciesInfo: any, tempFolderPath: string) {
@@ -131,11 +132,11 @@ export class NodeJsBundler implements BundlerInterface {
     const className = Object.keys(module.genezio)[0];
 
     if (Object.keys(module.genezio).length > 1) {
-      console.log(
+      log.warn(
         "\x1b[33m",
         `Warning: We found multiple classes exported from the ${filePath} file. For now, we support only one class per file.`
       );
-      console.log("\x1b[0m", "");
+      log.warn("\x1b[0m", "");
     }
 
     if (!className) {
