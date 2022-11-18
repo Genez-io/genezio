@@ -224,7 +224,7 @@ export async function deployClasses() {
           return prom;
         }
         default:
-          console.log(`Unsupported ${element.language}`);
+          log.error(`Unsupported ${element.language}`);
           return Promise.resolve();
       }
     }

@@ -149,7 +149,7 @@ program
       exit(1);
     }
 
-    console.log("Deploying your project to genez.io infrastructure...");
+    log.info("Deploying your project to genez.io infrastructure...");
     await deployClasses().catch((error: AxiosError) => {
       if (error.response?.status == 401) {
         log.error(
@@ -233,7 +233,6 @@ program
   .command("account")
   .option("-v, --verbose", "Show debug logs to console.")
   .description("Display information about the current account.")
-<<<<<<< HEAD
   .action(async (options: any) => {
     setLogLevel(options.verbose);
     const authToken = await readToken(true).catch(() => undefined);
@@ -244,18 +243,6 @@ program
       );
     } else {
       log.info("Logged in as: " + authToken);
-=======
-  .action(
-    async (options: any) => {
-      setLogLevel(options.verbose);
-      const authToken = await readToken(true).catch(() => undefined);
-
-      if (!authToken) {
-        log.info("You are not logged in. Run 'genezio login' before displaying account information.");
-      } else {
-        log.info("Logged in as: " + authToken);
-      }
->>>>>>> e39258e (Change logs to use loglevel)
     }
   });
 
