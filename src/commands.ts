@@ -23,6 +23,7 @@ import {
 import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBinaryDepenciesBundler";
 import { getProjectConfiguration } from "./utils/configuration";
+import { REACT_APP_BASE_URL } from "./variables";
 import log from "loglevel";
 
 class AccessDependenciesPlugin {
@@ -219,6 +220,7 @@ export async function deployClasses() {
     methodNames: any;
     path: string;
     functionUrl: any;
+    projectId : string;
   }[] = [];
 
   const promisesDeploy: any = configuration.classes.map(
@@ -249,12 +251,13 @@ export async function deployClasses() {
           ).then((result) => {
             functionUrlForFilePath[path.parse(element.path).name] =
               result.functionUrl;
-
+            
             classesInfo.push({
               className: output.extra?.className,
               methodNames: output.extra?.methodNames,
               path: element.path,
-              functionUrl: result.functionUrl
+              functionUrl: result.functionUrl,
+              projectId: result.class.ProjectID  
             });
 
             fs.promises.unlink(archivePath);
@@ -274,6 +277,9 @@ export async function deployClasses() {
   await generateSdks(functionUrlForFilePath);
 
   reportSuccess(classesInfo, configuration);
+  
+  let projectId = classesInfo[0].projectId
+  console.log(`Your project has been depolyed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`)
 }
 
 export function reportSuccess(
