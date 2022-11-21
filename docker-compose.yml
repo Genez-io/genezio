@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  genezio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: genezio_tests
+    privileged: true
+    secrets:
+      - genezio_token
+    command: 
+      - /bin/bash
+      - -c
+      - |
+        genezio --version
+        eval $$(/usr/bin/dbus-launch --auto-syntax)
+        echo $$DBUS_SESSION_BUS_ADDRESS > /dev/null
+        eval $$(echo '\n' | gnome-keyring-daemon --unlock)
+        sleep 1
+        secret-tool store --label="genez.io/Andreia Ocanoaia" account "Andreia Ocanoaia" service "genez.io" < /run/secrets/genezio_token
+        genezio account
+        cd examples/hello-world && npm install && python3 test_hello.py && cd -
+        cd examples/cron && npm install && python3 test_cron.py && cd -
+        cd examples/webhook && npm install && python3 test_webhook.py && cd -
+
+# Create `.env.genezio_token` locally in the repo and paste in it a valid `dev` genezio token from the Keychain/Keyring
+secrets:
+  genezio_token:
+    file: .env.genezio_token
+    name: genezio_token
