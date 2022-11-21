@@ -25,16 +25,3 @@ RUN apt install --quiet --yes \
     dbus-x11 \
     libsecret-tools \
     libsecret-1-dev
-
-# These instruction have to be executed in a privileged mode
-# RUN eval $(/usr/bin/dbus-launch --auto-syntax)
-# RUN echo $DBUS_SESSION_BUS_ADDRESS
-# RUN --security=insecure echo '\n' | gnome-keyring-daemon --unlock
-# RUN secret-tool store --label="genez.io/Andreia Ocanoaia" account "Andreia Ocanoaia" service "genez.io" < pass.txt
-# RUN secret-tool lookup account "Andreia Ocanoaia" service "genez.io"
-
-# FROM base as test-hello
-# RUN apt install apt install python3 python3-pip -y
-# WORKDIR /root/genezio/hello-world
-# RUN npm install
-# RUN python3 test.py
