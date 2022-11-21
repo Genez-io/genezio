@@ -278,7 +278,7 @@ export async function deployClasses() {
 
   reportSuccess(classesInfo, configuration);
   
-  let projectId = classesInfo[0].projectId
+  const projectId = classesInfo[0].projectId
   console.log(`Your project has been depolyed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`)
 }
 
