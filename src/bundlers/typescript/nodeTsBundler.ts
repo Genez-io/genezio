@@ -25,7 +25,7 @@ export class NodeTsBundler implements BundlerInterface {
             .filter((file: FileDetails) => {
                 // filter js files, node_modules and folders
                 return (
-                    file.extension !== ".ts" && file.extension !== ".js" &&
+                    file.extension !== ".ts" && file.extension !== ".js" && file.extension !== ".tsx" && file.extension !== ".jsx" &&
                     path.basename(file.path) !== "package.json" &&
                     path.basename(file.path) !== "package-lock.json" &&
                     !file.path.includes("node_modules") &&
