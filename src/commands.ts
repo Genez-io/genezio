@@ -1,4 +1,3 @@
-import webpack, { NormalModule } from "webpack";
 import path from "path";
 import { deployClass } from "./requests/deployCode";
 import generateSdk from "./requests/generateSdk";
@@ -15,53 +14,18 @@ import {
 import { askQuestion } from "./utils/prompt";
 import { parse, Document } from "yaml";
 import fs from "fs";
-import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import {
   ProjectConfiguration,
   TriggerType
 } from "./models/projectConfiguration";
+import { getProjectConfiguration } from "./utils/configuration";
+import { REACT_APP_BASE_URL } from "./variables";
+import log from "loglevel";
 import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import { NodeTsBundler } from "./bundlers/typescript/nodeTsBundler";
 import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBinaryDepenciesBundler";
 import { NodeTsBinaryDependenciesBundler } from "./bundlers/typescript/nodeTsBinaryDepenciesBundler";
-import { getProjectConfiguration } from "./utils/configuration";
-import { REACT_APP_BASE_URL } from "./variables";
-import log from "loglevel";
-
-class AccessDependenciesPlugin {
-  dependencies: string[];
-
-  // constructor() {
-  constructor(dependencies: string[]) {
-    this.dependencies = dependencies;
-  }
-
-  apply(compiler: {
-    hooks: {
-      compilation: {
-        tap: (arg0: string, arg1: (compilation: any) => void) => void;
-      };
-    };
-  }) {
-    compiler.hooks.compilation.tap(
-      "AccessDependenciesPlugin",
-      (compilation) => {
-        NormalModule.getCompilationHooks(compilation).beforeLoaders.tap(
-          "AccessDependenciesPlugin",
-          (loader: any, normalModule: any) => {
-            if (
-              normalModule.resource &&
-              normalModule.resource.includes("node_modules")
-            ) {
-              const resource = normalModule.resource;
-              this.dependencies.push(resource);
-            }
-          }
-        );
-      }
-    );
-  }
-}
+import { languages } from "./utils/languages";
 
 export async function addNewClass(classPath: string, classType: string) {
   if (classType === undefined) {
@@ -175,6 +139,44 @@ export async function deployClasses() {
   const promisesDeploy: any = configuration.classes.map(
     async (element: any) => {
       switch (element.language) {
+        case ".ts": {
+          const bundler = new NodeTsBundler();
+          const binaryDepBundler = new NodeTsBinaryDependenciesBundler();
+
+          let output = await bundler.bundle({
+            configuration: element,
+            path: element.path
+          });
+
+          output = await binaryDepBundler.bundle(output);
+
+          const archivePath = path.join(
+            await createTemporaryFolder("genezio-"),
+            `genezioDeploy.zip`
+          );
+          await zipDirectory(output.path, archivePath);
+
+          const prom = deployClass(
+            element,
+            archivePath,
+            configuration.name,
+            output.extra?.className
+          ).then((result) => {
+            functionUrlForFilePath[path.parse(element.path).name] =
+              result.functionUrl;
+            
+            classesInfo.push({
+              className: output.extra?.className,
+              methodNames: output.extra?.methodNames,
+              path: element.path,
+              functionUrl: result.functionUrl,
+              projectId: result.class.ProjectID  
+            });
+
+            fs.promises.unlink(archivePath);
+          });
+          return prom;
+        }
         case ".js": {
           const bundler = new NodeJsBundler();
           const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
@@ -294,7 +296,7 @@ export async function generateSdks(urlMap: any) {
     sdk.classFiles.map((classFile: any) => {
       return writeToFile(
         outputPath,
-        `${classFile.filename}.sdk.js`,
+        `${classFile.filename}.sdk.${language}`,
         classFile.implementation,
         true
       );

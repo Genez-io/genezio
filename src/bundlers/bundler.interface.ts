@@ -1,4 +1,5 @@
-import { ClassConfiguration } from "../models/projectConfiguration"
+import { ClassConfiguration } from "../models/projectConfiguration";
+import webpack, { NormalModule } from "webpack";
 
 /**
  * The input that goes into the bundler.
@@ -26,4 +27,39 @@ export type BundlerOutput = {
  */
 export interface BundlerInterface {
     bundle: (input: BundlerInput) => Promise<BundlerOutput>
+}
+
+export class AccessDependenciesPlugin {
+    dependencies: string[];
+
+    // constructor() {
+    constructor(dependencies: string[]) {
+        this.dependencies = dependencies;
+    }
+
+    apply(compiler: {
+        hooks: {
+            compilation: {
+                tap: (arg0: string, arg1: (compilation: any) => void) => void;
+            };
+        };
+    }) {
+        compiler.hooks.compilation.tap(
+            "AccessDependenciesPlugin",
+            (compilation) => {
+                NormalModule.getCompilationHooks(compilation).beforeLoaders.tap(
+                    "AccessDependenciesPlugin",
+                    (loader: any, normalModule: any) => {
+                        if (
+                            normalModule.resource &&
+                            normalModule.resource.includes("node_modules")
+                        ) {
+                            const resource = normalModule.resource;
+                            this.dependencies.push(resource);
+                        }
+                    }
+                );
+            }
+        );
+    }
 }

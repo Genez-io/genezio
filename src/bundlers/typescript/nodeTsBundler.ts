@@ -17,6 +17,8 @@ import FileDetails from "../../models/fileDetails";
 import { default as fsExtra } from "fs-extra";
 import { lambdaHandler } from "../../utils/lambdaHander";
 import log from "loglevel";
+import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
+import { AccessDependenciesPlugin } from "../bundler.interface";
 
 export class NodeTsBundler implements BundlerInterface {
     async #getNodeModulesTs(filePath: string): Promise<any> {
