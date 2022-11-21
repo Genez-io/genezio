@@ -149,14 +149,16 @@ program
       );
       exit(1);
     }
+    
 
     log.info("Deploying your project to genez.io infrastructure...");
     await deployClasses().catch((error: AxiosError) => {
-      if (error.response?.status == 401) {
+      if (error.response?.status == 401 || error.response?.status===500) {
         log.error(
           "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
         );
-      } else {
+      }
+      else{
         log.error(error.message);
       }
       exit(1);

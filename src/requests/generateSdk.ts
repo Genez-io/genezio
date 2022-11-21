@@ -1,9 +1,10 @@
 import FormData from "form-data";
 import fs from "fs";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { getFileDetails, readToken } from "../utils/file";
 import { GENERATE_SDK_API_URL } from "../variables";
 import { ClassConfiguration, ProjectConfiguration } from "../models/projectConfiguration";
+import { exit } from "process";
 
 export default async function generateSdk(
   configuration: ProjectConfiguration,
@@ -47,7 +48,13 @@ export default async function generateSdk(
   });
 
   if (response.data?.error?.message) {
-    throw new Error(response.data.error.message);
+    if(response.data.error.message === 'Unauthorized'){
+      console.log("You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function.")
+      exit(1)     
+    }
+    else{
+      throw new Error(response.data.error.message);
+    }
   }
 
   return response.data;

@@ -121,7 +121,6 @@ export async function readToken(account = false): Promise<string> {
         if (credentials.length === 0) {
           reject("No credentials found");
         }
-
         if (account) {
           resolve(credentials[0].account);
         } else {

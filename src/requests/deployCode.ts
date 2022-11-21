@@ -46,7 +46,7 @@ export async function deployClass(
     maxContentLength: Infinity,
     maxBodyLength: Infinity
   }).catch((error: Error) => {
-    log.error("error", error);
+    // log.error("error", error);
     throw error;
   });
 
