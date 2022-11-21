@@ -2,32 +2,46 @@
 
 import { Command } from "commander";
 import {
+  deleteProjectHandler,
   generateSdks,
   init,
   addNewClass,
-  newDeployClasses,
-  reportSuccess,
+  deployClasses,
+  reportSuccess
 } from "./commands";
-import { validateYamlFile, checkYamlFileExists, readUTF8File, readToken } from "./utils/file";
-import path from "path";
+import {
+  validateYamlFile,
+  checkYamlFileExists,
+  readUTF8File,
+  readToken
+} from "./utils/file";
+import {
+  setLogLevel,
+} from "./utils/logging"
+import { parse } from "yaml";
 import open from "open";
 import { asciiCapybara } from "./utils/strings";
 import http from "http";
 import jsonBody from "body/json";
 import keytar from "keytar";
-import { PORT_LOCAL_ENVIRONMENT, REACT_APP_BASE_URL } from "./variables";
+import { REACT_APP_BASE_URL } from "./variables";
 import { exit } from "process";
 import { AxiosError } from "axios";
 import { AddressInfo } from "net";
-import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
-import { NodeTsBundler } from "./bundlers/typescript/nodeTsBundler";
-import { listenForChanges, startServer } from "./localEnvironment";
+import {
+  listenForChanges,
+  prepareForLocalEnvironment,
+  startServer
+} from "./localEnvironment";
 import { getProjectConfiguration } from "./utils/configuration";
+import log from 'loglevel';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const pjson = require('../package.json');
+const pjson = require("../package.json");
 
 const program = new Command();
+
+log.setDefaultLevel("INFO");
 
 program
   .name("genezio")
@@ -36,20 +50,24 @@ program
 
 program
   .command("init")
+  .option("-v, --verbose", "Show debug logs to console.")
   .description("Initialize a Genezio project.")
-  .action(async () => {
+  .action(async (options: any) => {
+    setLogLevel(options.verbose);
     try {
       await init();
     } catch (error: any) {
-      console.error(error.message);
+      log.error(error.message);
     }
   });
 
 program
   .command("login")
+  .option("-v, --verbose", "Show debug logs to console.")
   .description("Authenticate with Genezio platform to deploy your code.")
-  .action(async () => {
-    console.log(asciiCapybara);
+  .action(async (options: any) => {
+    setLogLevel(options.verbose)
+    log.info(asciiCapybara);
 
     const server = http.createServer((req, res) => {
       res.setHeader("Access-Control-Allow-Origin", "*");
@@ -79,7 +97,7 @@ program
           .then(() => {
             // save new token
             keytar.setPassword("genez.io", name, token).then(() => {
-              console.log(
+              log.info(
                 `Welcome, ${name}! You can now start using genez.io.`
               );
               res.setHeader("Access-Control-Allow-Origin", "*");
@@ -95,14 +113,14 @@ program
             });
           })
           .catch((error) => {
-            console.log(error);
+            log.error(error);
           });
       });
     });
 
     const promise = new Promise((resolve) => {
       server.listen(0, "localhost", () => {
-        console.log("Redirecting to browser to complete authentication...");
+        log.info("Redirecting to browser to complete authentication...");
         const address = server.address() as AddressInfo;
         resolve(address.port);
       });
@@ -115,128 +133,87 @@ program
 
 program
   .command("deploy")
+  .option("-v, --verbose", "Show debug logs to console.")
   .description(
     "Deploy the functions mentioned in the genezio.yaml file to Genezio infrastructure."
   )
-  .action(async () => {
+  .action(async (options: any) => {
     // check if user is logged in
+    setLogLevel(options.verbose);
     const authToken = await readToken().catch(() => undefined);
 
     if (!authToken) {
-      console.log(
+      log.warn(
         "You are not logged in. Run 'genezio login' before you deploy your function."
       );
       exit(1);
     }
 
-    if (!await checkYamlFileExists()) {
-      return;
-    }
-    await validateYamlFile();
-
-    await newDeployClasses().catch((error: AxiosError) => {
+    log.info("Deploying your project to genez.io infrastructure...");
+    await deployClasses().catch((error: AxiosError) => {
       if (error.response?.status == 401) {
-        console.log(
+        log.error(
           "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
         );
       } else {
-        console.error(error.message);
+        log.error(error.message);
       }
       exit(1);
     });
-
-    console.log("Your project has been deployed");
   });
 
 program
   .command("addClass")
+  .option("-v, --verbose", "Show debug logs to console.")
   .argument("<classPath>", "Path of the class you want to add.")
   .argument(
     "[<classType>]",
     "The tipe of the class you want to add. [http, jsonrpc]"
   )
   .description("Add a new class to the genezio.yaml file.")
-  .action(async (classPath: string, classType: string) => {
+  .action(async (classPath: string, classType: string, options: any) => {
+    setLogLevel(options.verbose);
     try {
       addNewClass(classPath, classType);
     } catch (error: any) {
-      console.error(error.message);
+      log.error(error.message);
     }
   });
 
 program
   .command("local")
+  .option("-v, --verbose", "Show debug logs to console.")
   .description("Run a local environment for your functions.")
-  .action(async () => {
+  .action(async (options: any) => {
+    setLogLevel(options.verbose);
     try {
-      const projectConfiguration = await getProjectConfiguration()
-      const functionUrlForFilePath: any = {}
-      const handlers: any = {}
-      const classesInfo = []
-
-      for (const element of projectConfiguration.classes) {
-        switch (element.language) {
-          case ".ts": {
-            const bundler = new NodeTsBundler()
-
-            const output = await bundler.bundle({ configuration: element, path: element.path })
-            const className = output.extra?.className
-            const handlerPath = path.join(output.path, "index.js")
-            const baseurl = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/`
-            const functionUrl = `${baseurl}${className}`
-            functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
-
-            classesInfo.push({className: output.extra?.className, methodNames: output.extra?.methodNames, path: element.path, functionUrl: baseurl })
-
-            handlers[className] = {
-              path: handlerPath
-            }
-            break;
-          }
-          case ".js": {
-            const bundler = new NodeJsBundler()
-
-            const output = await bundler.bundle({ configuration: element, path: element.path })
-            const className = output.extra?.className
-            const handlerPath = path.join(output.path, "index.js")
-            const baseurl = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/`
-            const functionUrl = `${baseurl}${className}`
-            functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
-
-            classesInfo.push({className: output.extra?.className, methodNames: output.extra?.methodNames, path: element.path, functionUrl: baseurl })
-
-            handlers[className] = {
-              path: handlerPath
-            }
-            break;
-          }
-          default: {
-            console.error(`Unsupported language ${element.language}. Skipping class ${element.path}`)
-          }
-        }
-      }
-
-      await generateSdks(functionUrlForFilePath)
-        .catch((error: Error) => {
-          console.error(`${error.stack}`);
-        });
-
-      reportSuccess(classesInfo, projectConfiguration)
-
       // eslint-disable-next-line no-constant-condition
       while (true) {
-        const server = await startServer(handlers)
-        await listenForChanges(projectConfiguration.sdk.path, server)
+        const projectConfiguration = await getProjectConfiguration()
+
+        const { functionUrlForFilePath, classesInfo, handlers } =
+          await prepareForLocalEnvironment(projectConfiguration);
+
+        await generateSdks(functionUrlForFilePath).catch((error: Error) => {
+          log.error(`${error.stack}`);
+        });
+
+        reportSuccess(classesInfo, projectConfiguration);
+
+        const server = await startServer(handlers);
+        await listenForChanges(projectConfiguration.sdk.path, server);
       }
     } catch (error) {
-      console.error(`${error}`);
+      log.error(`${error}`);
     }
   });
 
 program
   .command("logout")
+  .option("-v, --verbose", "Show debug logs to console.")
   .description("Logout from Genezio platform.")
-  .action(async () => {
+  .action(async (options: any) => {
+    setLogLevel(options.verbose);
     keytar
       .findCredentials("genez.io")
       .then(async (credentials) => {
@@ -245,26 +222,60 @@ program
         });
       })
       .then(() => {
-        console.log("You are now logged out!");
+        log.info("You are now logged out!");
       })
       .catch(() => {
-        console.log("Logout failed!");
+        log.warn("Logout failed!");
       });
   });
 
 program
   .command("account")
+  .option("-v, --verbose", "Show debug logs to console.")
   .description("Display information about the current account.")
-  .action(
-    async () => {
-      const authToken = await readToken(true).catch(() => undefined);
+  .action(async (options: any) => {
+    setLogLevel(options.verbose);
+    const authToken = await readToken(true).catch(() => undefined);
 
-      if (!authToken) {
-        console.log("You are not logged in. Run 'genezio login' before displaying account information.");
-      } else {
-        console.log("Logged in as: " + authToken);
-      }
+    if (!authToken) {
+      log.info(
+        "You are not logged in. Run 'genezio login' before displaying account information."
+      );
+    } else {
+      log.info("Logged in as: " + authToken);
     }
-  );
+  });
+
+program
+  .command("delete")
+  .argument("[projectId]", "ID of the project you want to delete.")
+  .argument("[-f]", "Skip confirmation prompt for deletion.")
+  .description("Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs.")
+  .action(async (projectId  = "", forced  = false) => {
+    // check if user is logged in
+    const authToken = await readToken().catch(() => undefined);
+
+    if (!authToken) {
+      log.info(
+        "You are not logged in. Run 'genezio login' before you delete your function."
+      );
+      exit(1);
+    }
+
+    const result = await deleteProjectHandler(projectId, forced).catch((error: AxiosError) => {
+      if (error.response?.status == 401) {
+        log.info(
+          "You are not logged in or your token is invalid. Please run `genezio login` before you delete your function."
+        );
+      } else {
+        log.error(error.message);
+      }
+      exit(1);
+    });
+
+    if (result) {
+      log.info("Your project has been deleted");
+    }
+  });
 
 program.parse();

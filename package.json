@@ -1,6 +1,6 @@
 {
   "name": "genezio",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Command line utility to interact with Genezio infrastructure.",
   "main": "index.js",
   "scripts": {
@@ -38,6 +38,7 @@
     "glob": "^8.0.3",
     "http-terminator": "^3.2.0",
     "keytar": "^7.9.0",
+    "loglevel": "^1.8.1",
     "node-polyfill-webpack-plugin": "^2.0.1",
     "open": "^8.4.0",
     "os": "^0.1.2",

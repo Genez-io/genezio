@@ -3,6 +3,7 @@ import fs from 'fs'
 import util from "util";
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface"
 import { fileExists } from '../../utils/file';
+import log from "loglevel";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const exec = util.promisify(require("child_process").exec);
 
@@ -73,7 +74,7 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
                     { cwd: dependency.path }
                 );
             } catch (error) {
-                console.error(
+                log.error(
                     "An error has occured while installing binary dependecies."
                 );
                 throw new Error("An error has occured while installing binary dependecies.")

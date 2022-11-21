@@ -1,22 +1,22 @@
 export const lambdaHandler = `
-const handler = require("./module.js");    
+const handler = require("./module.js");
 
 const object = new handler.genezio[Object.keys(handler.genezio)[0]]();
 
 exports.handler =  async function(event, context) {
     if (event.genezioEventType === "cron") {
-        
+
         const method = event.methodName;
-        
+
         console.log("DEBUG: trigger cron: " + event.cronString + " on method: " + method)
-        
+
         try {
           await object[method]();
         } catch(error) {
           console.log("ERROR: cron trigger with error: " + error);
         }
         return;
-    }    
+    }
     if (event.requestContext.http.path.split("/").length > 2) {
         const method = event.requestContext.http.path.split("/")[2]
         const req = {
@@ -37,7 +37,7 @@ exports.handler =  async function(event, context) {
     } else {
         const body = JSON.parse(event.body);
         const [_, method] = body.method.split(".")
-        
+
         const requestId = body.id;
         try {
           const response = await object[method](...(body.params || []));

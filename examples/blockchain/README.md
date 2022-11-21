@@ -8,9 +8,8 @@ Run `npm install` in both `backend/` and `frontend/` folders.
 
 ## Run the example locally
 
-1. From the `backend/` folder run `genezio generateSdk local`. This will create the SDK that makes the requests locally.
-2. Run `genezio local`. This will start a local web server that listens for requests.
-3. Open a new terminal and run the React app in the `frontend/` folder.
+1. Run `genezio local`. This will start a local web server that listens for requests.
+2. Open a new terminal and run the React app in the `frontend/` folder.
 
 ## Deploy the example in the Genezio infrastructure
 

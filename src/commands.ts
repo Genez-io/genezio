@@ -2,26 +2,31 @@ import webpack, { NormalModule } from "webpack";
 import path from "path";
 import { deployClass } from "./requests/deployCode";
 import generateSdk from "./requests/generateSdk";
+import listProjects from "./requests/listProjects";
+import deleteProject from "./requests/deleteProject";
 import {
   createTemporaryFolder,
   fileExists,
   getFileDetails,
   readUTF8File,
   writeToFile,
-  zipDirectory,
+  zipDirectory
 } from "./utils/file";
 import { askQuestion } from "./utils/prompt";
 import { parse, Document } from "yaml";
 import fs from "fs";
 import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
-import { languages } from "./utils/languages";
-import { ProjectConfiguration, TriggerType } from "./models/projectConfiguration";
+import {
+  ProjectConfiguration,
+  TriggerType
+} from "./models/projectConfiguration";
 import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import { NodeTsBundler } from "./bundlers/typescript/nodeTsBundler";
 import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBinaryDepenciesBundler";
 import { NodeTsBinaryDependenciesBundler } from "./bundlers/typescript/nodeTsBinaryDepenciesBundler";
 import { getProjectConfiguration } from "./utils/configuration";
-
+import { REACT_APP_BASE_URL } from "./variables";
+import log from "loglevel";
 
 class AccessDependenciesPlugin {
   dependencies: string[];
@@ -58,59 +63,6 @@ class AccessDependenciesPlugin {
   }
 }
 
-export async function getNodeModules(filePath: string): Promise<any> {
-  // eslint-disable-next-line no-async-promise-executor
-  return new Promise(async (resolve, reject) => {
-    const { name } = getFileDetails(filePath);
-    const outputFile = `${name}-processed.js`;
-    const temporaryFolder = await createTemporaryFolder();
-    const dependencies: string[] = [];
-
-    const compiler = webpack({
-      entry: "./" + filePath,
-      target: "node",
-      mode: "production",
-      output: {
-        path: temporaryFolder,
-        filename: outputFile,
-        library: "genezio",
-        libraryTarget: "commonjs"
-      },
-      plugins: [
-        new NodePolyfillPlugin(),
-        new AccessDependenciesPlugin(dependencies)
-      ]
-    });
-
-    compiler.run((err) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-
-      const dependenciesInfo = dependencies.map((dependency) => {
-        const relativePath = dependency.split("node_modules" + path.sep)[1];
-        const dependencyName = relativePath?.split(path.sep)[0];
-        const dependencyPath =
-          dependency.split("node_modules" + path.sep)[0] +
-          "node_modules" + path.sep +
-          dependencyName;
-        return {
-          name: dependencyName,
-          path: dependencyPath
-        };
-      });
-
-      // remove duplicates from dependenciesInfo by name
-      const uniqueDependenciesInfo = dependenciesInfo.filter(
-        (v, i, a) => a.findIndex((t) => t.name === v.name) === i
-      );
-
-      resolve(uniqueDependenciesInfo);
-    });
-  });
-}
-
 export async function addNewClass(classPath: string, classType: string) {
   if (classType === undefined) {
     classType = "jsonrpc";
@@ -121,22 +73,22 @@ export async function addNewClass(classPath: string, classType: string) {
   }
 
   if (classPath === undefined || classPath === "") {
-    console.error("Please provide a path to the class you want to add.");
+    log.error("Please provide a path to the class you want to add.");
     return;
   }
 
-  const projectConfiguration = await getProjectConfiguration()
+  const projectConfiguration = await getProjectConfiguration();
 
   const className = classPath.split(path.sep).pop();
 
   if (!className) {
-    console.error("Invalid class path.");
+    log.error("Invalid class path.");
     return;
   }
 
   const classExtension = className.split(".").pop();
   if (!classExtension || className.split(".").length < 2) {
-    console.error("Invalid class extension.");
+    log.error("Invalid class extension.");
     return;
   }
 
@@ -147,7 +99,7 @@ export async function addNewClass(classPath: string, classType: string) {
         .map((c) => c.path.split(path.sep).pop())
         .includes(className)
     ) {
-      console.error("Class already exists.");
+      log.error("Class already exists.");
       return;
     }
   }
@@ -155,21 +107,55 @@ export async function addNewClass(classPath: string, classType: string) {
   // create the file if it does not exist
   if (!(await fileExists(classPath))) {
     await writeToFile(".", classPath, "", true).catch((error) => {
-      console.error(error.toString());
-      throw error
+      log.error(error.toString());
+      throw error;
     });
   }
 
-  projectConfiguration.addClass(classPath, classType as TriggerType, [])
-  await projectConfiguration.writeToFile()
+  projectConfiguration.addClass(classPath, classType as TriggerType, []);
+  await projectConfiguration.writeToFile();
 
-  console.log("\x1b[36m%s\x1b[0m", "Class added successfully.");
+  log.info("\x1b[36m%s\x1b[0m", "Class added successfully.");
 }
 
-export async function newDeployClasses() {
-  const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
-  const configurationFileContent = await parse(configurationFileContentUTF8);
-  const configuration = await ProjectConfiguration.create(configurationFileContent)
+export async function deleteProjectHandler(projectId : string, forced : boolean) {
+  // show prompt if no project id is selected
+  if (typeof projectId === 'string' && projectId.trim().length === 0) {
+    const projects = await listProjects();
+    if (projects.length === 0) {
+      log.info("There are no currently deployed projects.");
+      return false;
+    } else {
+      log.info('No project ID specified, select an ID to delete from this list:')
+      log.info(projects);
+    }
+
+    const selection = await askQuestion(`Please select project number to delete (1--${projects.length}) [none]: `, "");
+    const selectionNum = Number(selection);
+    if (isNaN(selectionNum) || selectionNum <= 0 || selectionNum > projects.length) {
+      log.info("No valid selection was made, aborting.");
+      return false;
+    } else {
+      forced = false;
+      projectId = projects[selectionNum - 1].split(':')[3].trim();
+    }
+  }
+
+  if (!forced) {
+    const confirmation = await askQuestion(`Are you sure you want to delete project ${projectId}? y/[N]: `, "n");
+
+    if (confirmation !== "y" && confirmation !== "Y") {
+      log.warn("Aborted operation.");
+      return false;
+    }
+  }
+
+  const status = await deleteProject(projectId);
+  return status;
+}
+
+export async function deployClasses() {
+  const configuration = await getProjectConfiguration();
 
   if (configuration.classes.length === 0) {
     throw new Error(
@@ -177,62 +163,79 @@ export async function newDeployClasses() {
     );
   }
 
-  const functionUrlForFilePath: {[id: string]: string} = {}
-  const classesInfo = []
+  const functionUrlForFilePath: { [id: string]: string } = {};
+  const classesInfo: {
+    className: any;
+    methodNames: any;
+    path: string;
+    functionUrl: any;
+    projectId : string;
+  }[] = [];
 
-  for (const element of configuration.classes) {
-    const currentFolder = process.cwd()
-    switch(element.language) {
-      case ".ts": {
-        const bundler = new NodeTsBundler()
-        const binaryDepBundler = new NodeTsBinaryDependenciesBundler()
+  const promisesDeploy: any = configuration.classes.map(
+    async (element: any) => {
+      switch (element.language) {
+        case ".js": {
+          const bundler = new NodeJsBundler();
+          const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
 
-        let output = await bundler.bundle({configuration: element, path: element.path})
-        output = await binaryDepBundler.bundle(output)
+          let output = await bundler.bundle({
+            configuration: element,
+            path: element.path
+          });
 
-        const archivePath = path.join(currentFolder, `genezioDeploy.zip`);
-        await zipDirectory(output.path, archivePath)
+          output = await binaryDepBundler.bundle(output);
 
-        const result = await deployClass(element, archivePath, configuration.name, output.extra?.className)
+          const archivePath = path.join(
+            await createTemporaryFolder("genezio-"),
+            `genezioDeploy.zip`
+          );
+          await zipDirectory(output.path, archivePath);
 
-        functionUrlForFilePath[path.parse(element.path).name] = result.functionUrl;
+          const prom = deployClass(
+            element,
+            archivePath,
+            configuration.name,
+            output.extra?.className
+          ).then((result) => {
+            functionUrlForFilePath[path.parse(element.path).name] =
+              result.functionUrl;
+            
+            classesInfo.push({
+              className: output.extra?.className,
+              methodNames: output.extra?.methodNames,
+              path: element.path,
+              functionUrl: result.functionUrl,
+              projectId: result.class.ProjectID  
+            });
 
-        classesInfo.push({className: output.extra?.className, methodNames: output.extra?.methodNames, path: element.path, functionUrl: result.functionUrl })
-
-        await fs.promises.unlink(archivePath)
-        break;
+            fs.promises.unlink(archivePath);
+          });
+          return prom;
+        }
+        default:
+          log.error(`Unsupported ${element.language}`);
+          return Promise.resolve();
       }
-      case ".js": {
-        const bundler = new NodeJsBundler()
-        const binaryDepBundler = new NodeJsBinaryDependenciesBundler()
-
-        let output = await bundler.bundle({configuration: element, path: element.path})
-        output = await binaryDepBundler.bundle(output)
-
-        const archivePath = path.join(currentFolder, `genezioDeploy.zip`);
-        await zipDirectory(output.path, archivePath)
-
-        const result = await deployClass(element, archivePath, configuration.name, output.extra?.className)
-
-        functionUrlForFilePath[path.parse(element.path).name] = result.functionUrl;
-
-        classesInfo.push({className: output.extra?.className, methodNames: output.extra?.methodNames, path: element.path, functionUrl: result.functionUrl })
-
-        await fs.promises.unlink(archivePath)
-        break;
-      }
-      default:
-        console.log(`Unsupported ${element.language}`)
     }
-  }
+  );
 
-  await generateSdks(functionUrlForFilePath)
+  // wait for all promises to finish
+  await Promise.all(promisesDeploy);
 
-  reportSuccess(classesInfo, configuration)
+  await generateSdks(functionUrlForFilePath);
+
+  reportSuccess(classesInfo, configuration);
+  
+  const projectId = classesInfo[0].projectId
+  console.log(`Your project has been depolyed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`)
 }
 
-export function reportSuccess(classesInfo: any, projectConfiguration: ProjectConfiguration) {
-  console.log(
+export function reportSuccess(
+  classesInfo: any,
+  projectConfiguration: ProjectConfiguration
+) {
+  log.info(
     "\x1b[36m%s\x1b[0m",
     "Your code was deployed and the SDK was successfully generated!"
   );
@@ -242,27 +245,32 @@ export function reportSuccess(classesInfo: any, projectConfiguration: ProjectCon
 
   classesInfo.forEach((classInfo: any) => {
     classInfo.methodNames.forEach((methodName: any) => {
-      const type = projectConfiguration.getMethodType(classInfo.path, methodName)
+      const type = projectConfiguration.getMethodType(
+        classInfo.path,
+        methodName
+      );
 
       if (type === TriggerType.http) {
         printHttpString +=
-        `  - ${classInfo.className}.${methodName}: ${classInfo.functionUrl}${classInfo.className}/${methodName}` +
-        "\n";
+          `  - ${classInfo.className}.${methodName}: ${classInfo.functionUrl}${classInfo.className}/${methodName}` +
+          "\n";
       }
-    })
-  })
+    });
+  });
 
   if (printHttpString !== "") {
-    console.log("");
-    console.log("HTTP Methods Deployed:");
-    console.log(printHttpString);
+    log.debug("");
+    log.debug("HTTP Methods Deployed:");
+    log.debug(printHttpString);
   }
 }
 
 export async function generateSdks(urlMap: any) {
   const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
   const configurationFileContent = await parse(configurationFileContentUTF8);
-  const configuration = await ProjectConfiguration.create(configurationFileContent);
+  const configuration = await ProjectConfiguration.create(
+    configurationFileContent
+  );
   const outputPath = configuration.sdk.path;
   const language = configuration.sdk.language;
 
@@ -273,24 +281,25 @@ export async function generateSdks(urlMap: any) {
   }
 
   const sdk = await generateSdk(configuration, urlMap);
+
   if (sdk.remoteFile) {
     await writeToFile(outputPath, "remote.js", sdk.remoteFile, true).catch(
       (error) => {
-        console.error(error.toString());
+        log.error(error.toString());
       }
     );
   }
 
-  for (const classFile of sdk.classFiles) {
-    await writeToFile(
-      outputPath,
-      `${classFile.filename}.sdk.${language}`,
-      classFile.implementation,
-      true
-    ).catch((error) => {
-      console.error(error.toString());
-    });
-  }
+  await Promise.all(
+    sdk.classFiles.map((classFile: any) => {
+      return writeToFile(
+        outputPath,
+        `${classFile.filename}.sdk.js`,
+        classFile.implementation,
+        true
+      );
+    })
+  );
 }
 
 export async function init() {
@@ -298,7 +307,7 @@ export async function init() {
   while (projectName.length === 0) {
     projectName = await askQuestion(`What is the name of the project: `);
     if (projectName.length === 0) {
-      console.log("The project name can't be empty.");
+      log.error("The project name can't be empty.");
     }
   }
   const sdk: any = { name: projectName, sdk: {}, classes: [] };
@@ -355,18 +364,18 @@ classes:
 
   await writeToFile(".", "genezio.yaml", yamlConfigurationFileContent).catch(
     (error) => {
-      console.error(error.toString());
+      log.error(error.toString());
     }
   );
 
-  console.log("");
-  console.log(
+  log.info("");
+  log.info(
     "\x1b[36m%s\x1b[0m",
     "Your genezio project was successfully initialized!"
   );
-  console.log("");
-  console.log(
+  log.info("");
+  log.info(
     "The genezio.yaml configuration file was generated. You can now add the classes that you want to deploy using the 'genezio addClass <className> <classType>' command."
   );
-  console.log("");
+  log.info("");
 }

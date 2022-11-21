@@ -5,6 +5,7 @@ import axios from "axios";
 import { readToken } from "../utils/file";
 import { BACKEND_ENDPOINT } from "../variables";
 import { ClassConfiguration } from "../models/projectConfiguration";
+import log from "loglevel";
 
 export async function deployClass(
   classConfiguration: ClassConfiguration,
@@ -45,7 +46,7 @@ export async function deployClass(
     maxContentLength: Infinity,
     maxBodyLength: Infinity
   }).catch((error: Error) => {
-    console.log("error", error);
+    log.error("error", error);
     throw error;
   });
 
