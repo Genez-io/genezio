@@ -48,13 +48,7 @@ export default async function generateSdk(
   });
 
   if (response.data?.error?.message) {
-    if(response.data.error.message === 'Unauthorized'){
-      console.log("You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function.")
-      exit(1)     
-    }
-    else{
       throw new Error(response.data.error.message);
-    }
   }
 
   return response.data;

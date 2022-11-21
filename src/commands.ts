@@ -274,7 +274,9 @@ export async function deployClasses() {
 
   // wait for all promises to finish
   await Promise.all(promisesDeploy);
-  await generateSdks(functionUrlForFilePath)
+  await generateSdks(functionUrlForFilePath).catch((error)=>{
+    throw error
+  })
 
   reportSuccess(classesInfo, configuration);
   
@@ -330,7 +332,9 @@ export async function generateSdks(urlMap: any) {
     fs.rmSync(outputPath, { recursive: true, force: true });
   }
   
-  const sdk = await generateSdk(configuration, urlMap)
+  const sdk = await generateSdk(configuration, urlMap).catch((error)=>{
+    throw error
+  })
 
   if (sdk.remoteFile) {
     await writeToFile(outputPath, "remote.js", sdk.remoteFile, true).catch(

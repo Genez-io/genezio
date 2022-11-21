@@ -198,7 +198,15 @@ program
           await prepareForLocalEnvironment(projectConfiguration);
 
         await generateSdks(functionUrlForFilePath).catch((error: Error) => {
-          log.error(`${error.stack}`);
+          if (error.message === "Unauthorized") {
+            log.error(
+              "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
+            );
+          }
+          else{
+            log.error(`${error.stack}`);
+          }
+          exit(1);
         });
 
         reportSuccess(classesInfo, projectConfiguration);
