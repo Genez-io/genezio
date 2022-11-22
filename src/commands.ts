@@ -4,7 +4,6 @@ import { deployClass } from "./requests/deployCode";
 import generateSdk from "./requests/generateSdk";
 import listProjects from "./requests/listProjects";
 import deleteProject from "./requests/deleteProject";
-import axios, { AxiosError } from "axios";
 import {
   createTemporaryFolder,
   fileExists,
