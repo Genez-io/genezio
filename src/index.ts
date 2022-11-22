@@ -202,14 +202,29 @@ program
         });
 
         reportSuccess(classesInfo, projectConfiguration);
-
-        const server = await startServer(handlers,Number(options.port)).catch((error)=>{
-          console.log("hello 2")
-        });
+        const server = await startServer(handlers,Number(options.port))
+        const err = await new Promise((resolve,reject)=>{
+          server.on('listening',()=>{
+            console.log("Listening...")
+            resolve(undefined)
+          })
+          server.on('error',(error: Error)=>{
+            server.close()
+            reject(error)
+          })  
+        })
+        if(err){
+          throw err
+        }
         await listenForChanges(projectConfiguration.sdk.path, server);
       }
-    } catch (error) {
-      log.error(`${error}`);
+    } catch (error: any) {
+      if(error.code === 'EADDRINUSE'){
+        log.error(`The port ${error.port} is already in use. Please use a different port to start your local server`)
+      }
+      else{
+        log.error(`${error}`);
+      }
     }
   });
 
