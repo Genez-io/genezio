@@ -18,6 +18,7 @@ import { getNodeModules } from "../../commands";
 import { default as fsExtra } from "fs-extra";
 import { lambdaHandler } from "../../utils/lambdaHander";
 import log from "loglevel";
+import { exit } from "process";
 
 export class NodeJsBundler implements BundlerInterface {
   async #copyDependencies(dependenciesInfo: any, tempFolderPath: string) {
@@ -109,8 +110,25 @@ export class NodeJsBundler implements BundlerInterface {
         }
 
         if (stats?.hasErrors()) {
-          reject(stats?.compilation.getErrors());
-          return;
+          if (stats?.toJson().errors !== undefined) {
+            stats?.toJson().errors?.forEach((error) => {
+              log.error("Syntax error:");
+              log.info("file: " + error.moduleIdentifier?.split("|")[1]);
+              // get first line of error
+              const firstLine = error.message.split("\n")[0];
+              log.info(firstLine);
+
+              //get message line that contains '>' first character
+              const messageLine = error.message
+                .split("\n")
+                .find((line) => line.startsWith(">"));
+              if (messageLine) {
+                log.info(messageLine);
+              }
+
+            });
+          }
+          exit(1);
         }
 
         writeToFile(tempFolderPath, "index.js", lambdaHandler);
