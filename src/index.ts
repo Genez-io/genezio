@@ -15,9 +15,7 @@ import {
   readUTF8File,
   readToken
 } from "./utils/file";
-import {
-  setLogLevel,
-} from "./utils/logging"
+import { setLogLevel } from "./utils/logging";
 import { parse } from "yaml";
 import open from "open";
 import { asciiCapybara } from "./utils/strings";
@@ -35,7 +33,7 @@ import {
   startServer
 } from "./localEnvironment";
 import { getProjectConfiguration } from "./utils/configuration";
-import log from 'loglevel';
+import log from "loglevel";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
@@ -64,72 +62,83 @@ program
 
 program
   .command("login")
+  .argument("[accessToken]", "Personal access token.")
   .option("-v, --verbose", "Show debug logs to console.")
   .description("Authenticate with Genezio platform to deploy your code.")
-  .action(async (options: any) => {
-    setLogLevel(options.verbose)
+  .action(async (accessToken = "", options: any) => {
+    setLogLevel(options.verbose);
     log.info(asciiCapybara);
 
-    const server = http.createServer((req, res) => {
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-      res.setHeader("Access-Control-Allow-Methods", "POST");
-      res.setHeader("Access-Control-Allow-Credentials", "true");
-      if (req.method === "OPTIONS") {
-        res.end();
-        return;
-      }
-      jsonBody(req, res, (err, body: any) => {
-        const params = new URLSearchParams(req.url);
+    if (accessToken !== "") {
+      keytar
+        .setPassword("genez.io", "genez.io-accessToken", accessToken)
+        .then(() => {
+          log.info("Successfully logged in!");
+          exit(0);
+        })
+        .catch((error: any) => {
+          log.error(error);
+          exit(1);
+        });
+    } else {
+      const server = http.createServer((req, res) => {
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        res.setHeader("Access-Control-Allow-Methods", "POST");
+        res.setHeader("Access-Control-Allow-Credentials", "true");
+        if (req.method === "OPTIONS") {
+          res.end();
+          return;
+        }
+        jsonBody(req, res, (err, body: any) => {
+          const params = new URLSearchParams(req.url);
 
-        const token = params.get("/?token")!;
-        const user = JSON.parse(params.get("user")!);
-        const name = user.name || "genezio-username";
+          const token = params.get("/?token")!;
+          const name = "genez.io-accessToken";
 
-        // delete all existing tokens for service genez.io
-        keytar
-          .findCredentials("genez.io")
-          .then(async (credentials) => {
-            // delete all existing tokens for service genez.io before adding the new one
-            for (const elem of credentials) {
-              await keytar.deletePassword("genez.io", elem.account);
-            }
-          })
-          .then(() => {
-            // save new token
-            keytar.setPassword("genez.io", name, token).then(() => {
-              log.info(
-                `Welcome, ${name}! You can now start using genez.io.`
-              );
-              res.setHeader("Access-Control-Allow-Origin", "*");
-              res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-              res.setHeader("Access-Control-Allow-Methods", "POST");
-              res.setHeader("Access-Control-Allow-Credentials", "true");
-              res.writeHead(301, {
-                Location: `${REACT_APP_BASE_URL}/cli/login/success`
+          // delete all existing tokens for service genez.io
+          keytar
+            .findCredentials("genez.io")
+            .then(async (credentials) => {
+              // delete all existing tokens for service genez.io before adding the new one
+              for (const elem of credentials) {
+                await keytar.deletePassword("genez.io", elem.account);
+              }
+            })
+            .then(() => {
+              // save new token
+              keytar.setPassword("genez.io", name, token).then(() => {
+                log.info(`Welcome, ${name}! You can now start using genez.io.`);
+                res.setHeader("Access-Control-Allow-Origin", "*");
+                res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+                res.setHeader("Access-Control-Allow-Methods", "POST");
+                res.setHeader("Access-Control-Allow-Credentials", "true");
+                res.writeHead(301, {
+                  Location: `${REACT_APP_BASE_URL}/cli/login/success`
+                });
+                res.end();
+
+                exit(0);
               });
-              res.end();
-
-              exit(0);
+            })
+            .catch((error) => {
+              log.error(error);
             });
-          })
-          .catch((error) => {
-            log.error(error);
-          });
+        });
       });
-    });
 
-    const promise = new Promise((resolve) => {
-      server.listen(0, "localhost", () => {
-        log.info("Redirecting to browser to complete authentication...");
-        const address = server.address() as AddressInfo;
-        resolve(address.port);
+      const promise = new Promise((resolve) => {
+        server.listen(0, "localhost", () => {
+          log.info("Redirecting to browser to complete authentication...");
+          const address = server.address() as AddressInfo;
+          resolve(address.port);
+        });
       });
-    });
 
-    const port = await promise;
-    const browserUrl = `${REACT_APP_BASE_URL}/cli/login?redirect_url=http://localhost:${port}/`;
-    open(browserUrl);
+      const port = await promise;
+      const browserUrl = `${REACT_APP_BASE_URL}/cli/login?redirect_url=http://localhost:${port}/`;
+      open(browserUrl);
+    }
   });
 
 program
@@ -149,16 +158,14 @@ program
       );
       exit(1);
     }
-    
 
     log.info("Deploying your project to genez.io infrastructure...");
     await deployClasses().catch((error: AxiosError) => {
-      if (error.response?.status == 401 || error.response?.status===500) {
+      if (error.response?.status == 401 || error.response?.status === 500) {
         log.error(
           "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
         );
-      }
-      else{
+      } else {
         log.error(error.message);
       }
       exit(1);
@@ -192,7 +199,7 @@ program
     try {
       // eslint-disable-next-line no-constant-condition
       while (true) {
-        const projectConfiguration = await getProjectConfiguration()
+        const projectConfiguration = await getProjectConfiguration();
 
         const { functionUrlForFilePath, classesInfo, handlers } =
           await prepareForLocalEnvironment(projectConfiguration);
@@ -202,8 +209,7 @@ program
             log.error(
               "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
             );
-          }
-          else{
+          } else {
             log.error(`${error.stack}`);
           }
           exit(1);
@@ -253,7 +259,7 @@ program
         "You are not logged in. Run 'genezio login' before displaying account information."
       );
     } else {
-      log.info("Logged in as: " + authToken);
+      log.info("You are logged in.");
     }
   });
 
@@ -261,8 +267,10 @@ program
   .command("delete")
   .argument("[projectId]", "ID of the project you want to delete.")
   .argument("[-f]", "Skip confirmation prompt for deletion.")
-  .description("Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs.")
-  .action(async (projectId  = "", forced  = false) => {
+  .description(
+    "Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs."
+  )
+  .action(async (projectId = "", forced = false) => {
     // check if user is logged in
     const authToken = await readToken().catch(() => undefined);
 
@@ -273,16 +281,18 @@ program
       exit(1);
     }
 
-    const result = await deleteProjectHandler(projectId, forced).catch((error: AxiosError) => {
-      if (error.response?.status == 401) {
-        log.info(
-          "You are not logged in or your token is invalid. Please run `genezio login` before you delete your function."
-        );
-      } else {
-        log.error(error.message);
+    const result = await deleteProjectHandler(projectId, forced).catch(
+      (error: AxiosError) => {
+        if (error.response?.status == 401) {
+          log.info(
+            "You are not logged in or your token is invalid. Please run `genezio login` before you delete your function."
+          );
+        } else {
+          log.error(error.message);
+        }
+        exit(1);
       }
-      exit(1);
-    });
+    );
 
     if (result) {
       log.info("Your project has been deleted");
