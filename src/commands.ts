@@ -128,7 +128,7 @@ export async function addNewClass(classPath: string, classType: string) {
     return;
   }
 
-  const projectConfiguration = await getProjectConfiguration();
+  const projectConfiguration = await getProjectConfiguration()
 
   const className = classPath.split(path.sep).pop();
 

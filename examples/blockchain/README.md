@@ -4,7 +4,10 @@ In this example, we have implemented a class that queries periodically using Bla
 
 The class is implemented in the `blockchainServer.js` file.
 
-Run `npm install` in both `backend/` and `frontend/` folders.
+## Initialization
+
+1. Run `npm install` in the `backend/` folder to install the dependencies.
+2. Run `npm install` in the `frontend/` folder to install the dependencies.
 
 ## Run the example locally
 
