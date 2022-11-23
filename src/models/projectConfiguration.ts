@@ -98,12 +98,6 @@ export class ClassConfiguration {
     if (!classConfigurationYaml.path) {
       throw new Error("Path is missing from class.")
     }
-
-    if (!(await fileExists(classConfigurationYaml.path))) {
-      throw new Error(
-        `\`${classConfigurationYaml.path}\` file does not exist at the indicated path.`
-      );
-    }
     
     if (classConfigurationYaml.type && !TriggerType[classConfigurationYaml.type as keyof typeof TriggerType]) {
       throw new Error("The type is incorrect.")
