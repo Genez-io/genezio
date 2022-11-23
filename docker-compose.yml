@@ -14,17 +14,20 @@ services:
       - /bin/bash
       - -c
       - |
+        echo -n "genezio version: "
         genezio --version
         eval $$(/usr/bin/dbus-launch --auto-syntax)
         echo '\n' | gnome-keyring-daemon --unlock &> /dev/null
-        # wait $$(pidof /usr/bin/gnome-keyring-daemon)
-        # The line below is introduced to avoid flakiness
+        # The line below is introduced to be sure to avoid flakiness
+        # The robust solution would be `wait $$(pidof /usr/bin/gnome-keyring-daemon)`
         sleep 1
-        secret-tool store --label="genez.io/Andreia Ocanoaia" account "Andreia Ocanoaia" service "genez.io" < /run/secrets/genezio_token
+        secret-tool store --label="genez.io/Test Account" account "Test Account" service "genez.io" < /run/secrets/genezio_token
         genezio account
-        cd examples/hello-world && npm install && python3 test_hello.py && cd -
-        cd examples/cron && npm install && python3 test_cron.py && cd -
-        cd examples/webhook && npm install && python3 test_webhook.py && cd -
+        cd examples/hello-world && npm install > /dev/null && python3 test_hello.py && cd -
+        cd examples/cron && python3 test_cron.py && cd -
+        cd examples/webhook && python3 test_webhook.py && cd -
+        cd examples/todo-list/backend && npm install > /dev/null && python3 test_todo_list.py && cd -
+        cd examples/blockchain/backend && npm install > /dev/null && python3 test_blockchain.py && cd -
 
 # Create `.env.genezio_token` locally in the repo and paste in it a valid `dev` genezio token from the Keychain/Keyring
 secrets:

@@ -17,6 +17,7 @@ RUN npm install && npm run build && npm i -g
 
 # Install python for testing
 RUN apt install python3 python3-pip -y
+RUN python3 -m pip install termcolor
 
 # Mock `genezio login`
 # Install utilities for keyring

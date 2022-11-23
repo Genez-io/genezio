@@ -7,7 +7,5 @@ sys.path.insert(1, '../../tests/')
 import test as gnz_test
 
 if __name__ == '__main__':
-    print("Test `genezio account`")
     gnz_test.test_genezio_account()
-    print("Test `genezio deploy`")
-    gnz_test.test_genezio_deploy()
+    gnz_test.test_genezio_deploy("../frontend/src/backend-sdk")
