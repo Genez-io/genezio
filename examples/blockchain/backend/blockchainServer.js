@@ -60,7 +60,7 @@ export class BlockchainServer {
 
         return {
             count,
-            "events": events.map((event) => ({ id: event.id, name: event.name, parameters: event.parameters }))
+            "events": events.map((event) => ({ id: event.id, name: event.name, parameters: event.parameters, blockNumber: event.blockNumber }))
         }
     }
 
@@ -70,7 +70,7 @@ export class BlockchainServer {
     async sync() {
         // Get the current block number and request the last 100 blocks
         const blockNumber = await this.web3.eth.getBlockNumber()
-        let events = await this.web3.eth.getPastLogs({ address: CONTRACT_ADDRESS, fromBlock: blockNumber - 10, toBlock: blockNumber });
+        let events = await this.web3.eth.getPastLogs({ address: CONTRACT_ADDRESS, fromBlock: blockNumber - 50, toBlock: blockNumber });
 
         console.log(`New sync started with ${events.length} to save`)
 

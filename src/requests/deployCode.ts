@@ -4,12 +4,11 @@ import fs from "fs";
 import axios from "axios";
 import { readToken } from "../utils/file";
 import { BACKEND_ENDPOINT } from "../variables";
+import { ClassConfiguration } from "../models/projectConfiguration";
+import log from "loglevel";
 
 export async function deployClass(
-  configurationFileContent: any,
-  filePath: string,
-  extension: string,
-  runtime: string,
+  classConfiguration: ClassConfiguration,
   archivePath: string,
   projectName: string,
   className: string
@@ -30,15 +29,11 @@ export async function deployClass(
 
   form.append(
     "configurationClassContent",
-    JSON.stringify(
-      configurationFileContent.classes.find((c: any) => c.path === filePath)
-    )
+    JSON.stringify(classConfiguration)
   );
 
-  form.append("classFile", fs.createReadStream(filePath));
-  form.append("filename", path.parse(filePath).name);
-  form.append("extension", extension);
-  form.append("runtime", runtime);
+  form.append("classFile", fs.createReadStream(classConfiguration.path));
+  form.append("filename", path.parse(classConfiguration.path).name);
   form.append("archiveContent", fs.createReadStream(archivePath));
   form.append("projectName", projectName);
   form.append("className", className);
@@ -51,7 +46,6 @@ export async function deployClass(
     maxContentLength: Infinity,
     maxBodyLength: Infinity
   }).catch((error: Error) => {
-    console.log("error", error);
     throw error;
   });
 

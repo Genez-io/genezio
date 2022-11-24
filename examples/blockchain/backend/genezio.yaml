@@ -25,4 +25,4 @@ classes:
     methods:
       - name: sync
         type: cron
-        cronString: "0/5 * * * ? *"
+        cronString: "0/7 * * * ? *"
