@@ -113,7 +113,23 @@ export class NodeJsBundler implements BundlerInterface {
           if (stats?.toJson().errors !== undefined) {
             stats?.toJson().errors?.forEach((error) => {
               log.error("Syntax error:");
-              log.info("file: " + error.moduleIdentifier?.split("|")[1]);
+
+              if (error.moduleIdentifier?.includes("|")) {
+                log.info(
+                  "file: " +
+                    error.moduleIdentifier?.split("|")[1] +
+                    ":" +
+                    error.loc?.split(":")[0]
+                );
+              } else {
+                log.info(
+                  "file: " +
+                    error.moduleIdentifier +
+                    ":" +
+                    error.loc?.split(":")[0]
+                );
+              }
+
               // get first line of error
               const firstLine = error.message.split("\n")[0];
               log.info(firstLine);
@@ -125,7 +141,6 @@ export class NodeJsBundler implements BundlerInterface {
               if (messageLine) {
                 log.info(messageLine);
               }
-
             });
           }
           exit(1);
