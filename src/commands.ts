@@ -279,7 +279,7 @@ export async function deployClasses() {
 
   reportSuccess(classesInfo, configuration);
   
-  let projectId = classesInfo[0].projectId
+  const projectId = classesInfo[0].projectId
   console.log(`Your project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`)
 }
 
@@ -311,9 +311,9 @@ export function reportSuccess(
   });
 
   if (printHttpString !== "") {
-    log.debug("");
-    log.debug("HTTP Methods Deployed:");
-    log.debug(printHttpString);
+    log.info("");
+    log.info("HTTP Methods Deployed:");
+    log.info(printHttpString);
   }
 }
 
