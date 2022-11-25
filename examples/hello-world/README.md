@@ -6,6 +6,10 @@ The class is implemented in the `hello.js` file.
 
 To deploy and test it run `genezio deploy`. Once the command was successfully executed you can run `node test-hello-sdk.js`.
 
+## Initialization
+
+1. Run `npm install` to install the dependencies.
+
 ## Run the example locally
 
 1. Run `genezio local`. This will generate the SDK and start a local web server that listens for requests.

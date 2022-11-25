@@ -14,12 +14,66 @@ import {
   BundlerOutput
 } from "../bundler.interface";
 import FileDetails from "../../models/fileDetails";
-import { getNodeModules } from "../../commands";
 import { default as fsExtra } from "fs-extra";
 import { lambdaHandler } from "../../utils/lambdaHander";
 import log from "loglevel";
+import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
+import { AccessDependenciesPlugin } from "../bundler.interface";
 
 export class NodeJsBundler implements BundlerInterface {
+  async #getNodeModulesJs(filePath: string): Promise<any> {
+    // eslint-disable-next-line no-async-promise-executor
+    return new Promise(async (resolve, reject) => {
+      const { name } = getFileDetails(filePath);
+      const outputFile = `${name}-processed.js`;
+      const temporaryFolder = await createTemporaryFolder();
+      const dependencies: string[] = [];
+
+      const compiler = webpack({
+        entry: "./" + filePath,
+        target: "node",
+        mode: "production",
+        output: {
+          path: temporaryFolder,
+          filename: outputFile,
+          library: "genezio",
+          libraryTarget: "commonjs"
+        },
+        plugins: [
+          new NodePolyfillPlugin(),
+          new AccessDependenciesPlugin(dependencies)
+        ]
+      });
+
+      compiler.run((err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        const dependenciesInfo = dependencies.map((dependency) => {
+          const relativePath = dependency.split("node_modules" + path.sep)[1];
+          const dependencyName = relativePath?.split(path.sep)[0];
+          const dependencyPath =
+            dependency.split("node_modules" + path.sep)[0] +
+            "node_modules" +
+            path.sep +
+            dependencyName;
+          return {
+            name: dependencyName,
+            path: dependencyPath
+          };
+        });
+
+        // remove duplicates from dependenciesInfo by name
+        const uniqueDependenciesInfo = dependenciesInfo.filter(
+          (v, i, a) => a.findIndex((t) => t.name === v.name) === i
+        );
+
+        resolve(uniqueDependenciesInfo);
+      });
+    });
+  }
+
   async #copyDependencies(dependenciesInfo: any, tempFolderPath: string) {
     const nodeModulesPath = path.join(tempFolderPath, "node_modules");
     // copy all dependencies to node_modules folder
@@ -160,7 +214,7 @@ export class NodeJsBundler implements BundlerInterface {
 
     // 1. Run webpack to get dependenciesInfo and the packed file
     const [dependenciesInfo, _] = await Promise.all([
-      getNodeModules(input.path),
+      this.#getNodeModulesJs(input.path),
       this.#bundleJavascriptCode(input.configuration.path, temporaryFolder)
     ]);
 
