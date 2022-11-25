@@ -7,29 +7,24 @@ import {
   init,
   addNewClass,
   deployClasses,
-  reportSuccess
+  reportSuccess,
+  handleLogin
 } from "./commands";
 import { readToken } from "./utils/file";
-import {
-  setLogLevel,
-} from "./utils/logging"
-import open from "open";
+import { setLogLevel } from "./utils/logging";
 import { asciiCapybara } from "./utils/strings";
-import http from "http";
-import jsonBody from "body/json";
+
 import keytar from "keytar";
-import { PORT_LOCAL_ENVIRONMENT, REACT_APP_BASE_URL } from "./variables";
 import { exit } from "process";
 import { AxiosError } from "axios";
-import { AddressInfo } from "net";
+import { PORT_LOCAL_ENVIRONMENT } from "./variables";
 import {
   listenForChanges,
   prepareForLocalEnvironment,
   startServer
 } from "./localEnvironment";
 import { getProjectConfiguration } from "./utils/configuration";
-import log from 'loglevel';
-import { error } from "console";
+import log from "loglevel";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
@@ -41,11 +36,11 @@ log.setDefaultLevel("INFO");
 program
   .name("genezio")
   .description("CLI to interact with the Genezio infrastructure!")
-  .exitOverride((err : CommanderError) => {
+  .exitOverride((err: CommanderError) => {
     if (err.code === "commander.help") {
-      exit(0)
+      exit(0);
     } else {
-      console.log(`Type 'genezio --help'`)
+      console.log(`Type 'genezio --help'`);
     }
   })
   .version(pjson.version);
@@ -65,72 +60,14 @@ program
 
 program
   .command("login")
+  .argument("[accessToken]", "Personal access token.")
   .option("-v, --verbose", "Show debug logs to console.")
   .description("Authenticate with Genezio platform to deploy your code.")
-  .action(async (options: any) => {
-    setLogLevel(options.verbose)
+  .action(async (accessToken = "", options: any) => {
+    setLogLevel(options.verbose);
     log.info(asciiCapybara);
 
-    const server = http.createServer((req, res) => {
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-      res.setHeader("Access-Control-Allow-Methods", "POST");
-      res.setHeader("Access-Control-Allow-Credentials", "true");
-      if (req.method === "OPTIONS") {
-        res.end();
-        return;
-      }
-      jsonBody(req, res, (err, body: any) => {
-        const params = new URLSearchParams(req.url);
-
-        const token = params.get("/?token")!;
-        const user = JSON.parse(params.get("user")!);
-        const name = user.name || "genezio-username";
-
-        // delete all existing tokens for service genez.io
-        keytar
-          .findCredentials("genez.io")
-          .then(async (credentials) => {
-            // delete all existing tokens for service genez.io before adding the new one
-            for (const elem of credentials) {
-              await keytar.deletePassword("genez.io", elem.account);
-            }
-          })
-          .then(() => {
-            // save new token
-            keytar.setPassword("genez.io", name, token).then(() => {
-              log.info(
-                `Welcome, ${name}! You can now start using genez.io.`
-              );
-              res.setHeader("Access-Control-Allow-Origin", "*");
-              res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-              res.setHeader("Access-Control-Allow-Methods", "POST");
-              res.setHeader("Access-Control-Allow-Credentials", "true");
-              res.writeHead(301, {
-                Location: `${REACT_APP_BASE_URL}/cli/login/success`
-              });
-              res.end();
-
-              exit(0);
-            });
-          })
-          .catch((error) => {
-            log.error(error);
-          });
-      });
-    });
-
-    const promise = new Promise((resolve) => {
-      server.listen(0, "localhost", () => {
-        log.info("Redirecting to browser to complete authentication...");
-        const address = server.address() as AddressInfo;
-        resolve(address.port);
-      });
-    });
-
-    const port = await promise;
-    const browserUrl = `${REACT_APP_BASE_URL}/cli/login?redirect_url=http://localhost:${port}/`;
-    open(browserUrl);
+    await handleLogin(accessToken);
   });
 
 program
@@ -150,16 +87,15 @@ program
       );
       exit(1);
     }
-    
 
     log.info("Deploying your project to genez.io infrastructure...");
     await deployClasses().catch((error: AxiosError) => {
-      if (error.response?.status == 401 || error.response?.status===500) {
+      console.log(error);
+      if (error.response?.status == 401 || error.response?.status === 500) {
         log.error(
           "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
         );
-      }
-      else{
+      } else {
         log.error(error.message);
       }
       exit(1);
@@ -179,15 +115,19 @@ program
     setLogLevel(options.verbose);
 
     await addNewClass(classPath, classType).catch((error: Error) => {
-      log.error(error.message)
-      exit(1)
+      log.error(error.message);
+      exit(1);
     });
   });
 
 program
   .command("local")
   .option("-v, --verbose", "Show debug logs to console.")
-  .option("-p, --port <port>", "Set the port your local server will be running on.",String(PORT_LOCAL_ENVIRONMENT))
+  .option(
+    "-p, --port <port>",
+    "Set the port your local server will be running on.",
+    String(PORT_LOCAL_ENVIRONMENT)
+  )
   .description("Run a local environment for your functions.")
   .action(async (options: any) => {
     setLogLevel(options.verbose);
@@ -200,49 +140,52 @@ program
       );
       exit(1);
     }
-    
+
     try {
       // eslint-disable-next-line no-constant-condition
       while (true) {
-        const projectConfiguration = await getProjectConfiguration()
+        const projectConfiguration = await getProjectConfiguration();
 
         const { functionUrlForFilePath, classesInfo, handlers } =
-          await prepareForLocalEnvironment(projectConfiguration,Number(options.port));
-        
+          await prepareForLocalEnvironment(
+            projectConfiguration,
+            Number(options.port)
+          );
+
         await generateSdks(functionUrlForFilePath).catch((error: Error) => {
           if (error.message === "Unauthorized") {
             log.error(
               "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
             );
-          }
-          else{
+          } else {
             log.error(`${error.stack}`);
           }
           exit(1);
         });
 
         reportSuccess(classesInfo, projectConfiguration);
-        const server = await startServer(handlers,Number(options.port))
-        const err = await new Promise((resolve,reject)=>{
-          server.on('listening',()=>{
-            console.log("Listening...")
-            resolve(undefined)
-          })
-          server.on('error',(error: Error)=>{
-            server.close()
-            reject(error)
-          })  
-        })
-        if(err){
-          throw err
+        const server = await startServer(handlers, Number(options.port));
+        const err = await new Promise((resolve, reject) => {
+          server.on("listening", () => {
+            console.log("Listening...");
+            resolve(undefined);
+          });
+          server.on("error", (error: Error) => {
+            server.close();
+            reject(error);
+          });
+        });
+        if (err) {
+          throw err;
         }
         await listenForChanges(projectConfiguration.sdk.path, server);
       }
     } catch (error: any) {
-      if (error.code === 'EADDRINUSE') {
-        log.error(`The port ${error.port} is already in use. Please use a different port to start your local server`)
-      }
-      else {
+      if (error.code === "EADDRINUSE") {
+        log.error(
+          `The port ${error.port} is already in use. Please use a different port to start your local server`
+        );
+      } else {
         log.error(`${error.message}`);
       }
     }
@@ -282,7 +225,7 @@ program
         "You are not logged in. Run 'genezio login' before displaying account information."
       );
     } else {
-      log.info("Logged in as: " + authToken);
+      log.info("You are logged in.");
     }
   });
 
@@ -290,8 +233,10 @@ program
   .command("delete")
   .argument("[projectId]", "ID of the project you want to delete.")
   .argument("[-f]", "Skip confirmation prompt for deletion.")
-  .description("Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs.")
-  .action(async (projectId  = "", forced  = false) => {
+  .description(
+    "Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs."
+  )
+  .action(async (projectId = "", forced = false) => {
     // check if user is logged in
     const authToken = await readToken().catch(() => undefined);
 
@@ -302,16 +247,18 @@ program
       exit(1);
     }
 
-    const result = await deleteProjectHandler(projectId, forced).catch((error: AxiosError) => {
-      if (error.response?.status == 401) {
-        log.info(
-          "You are not logged in or your token is invalid. Please run `genezio login` before you delete your function."
-        );
-      } else {
-        log.error(error.message);
+    const result = await deleteProjectHandler(projectId, forced).catch(
+      (error: AxiosError) => {
+        if (error.response?.status == 401) {
+          log.info(
+            "You are not logged in or your token is invalid. Please run `genezio login` before you delete your function."
+          );
+        } else {
+          log.error(error.message);
+        }
+        exit(1);
       }
-      exit(1);
-    });
+    );
 
     if (result) {
       log.info("Your project has been deleted");
