@@ -25,6 +25,12 @@ import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBin
 import { getProjectConfiguration } from "./utils/configuration";
 import { REACT_APP_BASE_URL } from "./variables";
 import log from "loglevel";
+import http from "http";
+import jsonBody from "body/json";
+import keytar from "keytar";
+import { exit } from "process";
+import { AddressInfo } from "net";
+import open from "open";
 
 class AccessDependenciesPlugin {
   dependencies: string[];
@@ -169,31 +175,43 @@ export async function addNewClass(classPath: string, classType: string) {
   log.info("\x1b[36m%s\x1b[0m", "Class added successfully.");
 }
 
-export async function deleteProjectHandler(projectId : string, forced : boolean) {
+export async function deleteProjectHandler(projectId: string, forced: boolean) {
   // show prompt if no project id is selected
-  if (typeof projectId === 'string' && projectId.trim().length === 0) {
+  if (typeof projectId === "string" && projectId.trim().length === 0) {
     const projects = await listProjects();
     if (projects.length === 0) {
       log.info("There are no currently deployed projects.");
       return false;
     } else {
-      log.info('No project ID specified, select an ID to delete from this list:')
+      log.info(
+        "No project ID specified, select an ID to delete from this list:"
+      );
       log.info(projects);
     }
 
-    const selection = await askQuestion(`Please select project number to delete (1--${projects.length}) [none]: `, "");
+    const selection = await askQuestion(
+      `Please select project number to delete (1--${projects.length}) [none]: `,
+      ""
+    );
     const selectionNum = Number(selection);
-    if (isNaN(selectionNum) || selectionNum <= 0 || selectionNum > projects.length) {
+    if (
+      isNaN(selectionNum) ||
+      selectionNum <= 0 ||
+      selectionNum > projects.length
+    ) {
       log.info("No valid selection was made, aborting.");
       return false;
     } else {
       forced = false;
-      projectId = projects[selectionNum - 1].split(':')[3].trim();
+      projectId = projects[selectionNum - 1].split(":")[3].trim();
     }
   }
 
   if (!forced) {
-    const confirmation = await askQuestion(`Are you sure you want to delete project ${projectId}? y/[N]: `, "n");
+    const confirmation = await askQuestion(
+      `Are you sure you want to delete project ${projectId}? y/[N]: `,
+      "n"
+    );
 
     if (confirmation !== "y" && confirmation !== "Y") {
       log.warn("Aborted operation.");
@@ -220,7 +238,7 @@ export async function deployClasses() {
     methodNames: any;
     path: string;
     functionUrl: any;
-    projectId : string;
+    projectId: string;
   }[] = [];
 
   const promisesDeploy: any = configuration.classes.map(
@@ -251,13 +269,13 @@ export async function deployClasses() {
           ).then((result) => {
             functionUrlForFilePath[path.parse(element.path).name] =
               result.functionUrl;
-            
+
             classesInfo.push({
               className: output.extra?.className,
               methodNames: output.extra?.methodNames,
               path: element.path,
               functionUrl: result.functionUrl,
-              projectId: result.class.ProjectID  
+              projectId: result.class.ProjectID
             });
 
             fs.promises.unlink(archivePath);
@@ -273,14 +291,16 @@ export async function deployClasses() {
 
   // wait for all promises to finish
   await Promise.all(promisesDeploy);
-  await generateSdks(functionUrlForFilePath).catch((error)=>{
-    throw error
-  })
+  await generateSdks(functionUrlForFilePath).catch((error) => {
+    throw error;
+  });
 
   reportSuccess(classesInfo, configuration);
-  
-  let projectId = classesInfo[0].projectId
-  console.log(`Your project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`)
+
+  const projectId = classesInfo[0].projectId;
+  console.log(
+    `Your project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`
+  );
 }
 
 export function reportSuccess(
@@ -330,10 +350,10 @@ export async function generateSdks(urlMap: any) {
     // delete the output path
     fs.rmSync(outputPath, { recursive: true, force: true });
   }
-  
-  const sdk = await generateSdk(configuration, urlMap).catch((error)=>{
-    throw error
-  })
+
+  const sdk = await generateSdk(configuration, urlMap).catch((error) => {
+    throw error;
+  });
 
   if (sdk.remoteFile) {
     await writeToFile(outputPath, "remote.js", sdk.remoteFile, true).catch(
@@ -431,4 +451,88 @@ classes:
     "The genezio.yaml configuration file was generated. You can now add the classes that you want to deploy using the 'genezio addClass <className> <classType>' command."
   );
   log.info("");
+}
+
+export async function handleLogin(accessToken: string) {
+  if (accessToken !== "") {
+    // delete all existing tokens for service genez.io
+    keytar
+      .findCredentials("genez.io")
+      .then(async (credentials) => {
+        // delete all existing tokens for service genez.io before adding the new one
+        for (const elem of credentials) {
+          await keytar.deletePassword("genez.io", elem.account);
+        }
+      })
+      .then(() => {
+        keytar
+          .setPassword("genez.io", "genez.io-accessToken", accessToken)
+          .then(() => {
+            log.info("Access token was added succesfully!");
+            exit(0);
+          })
+          .catch((error: any) => {
+            log.error(error);
+            exit(1);
+          });
+      });
+  } else {
+    const server = http.createServer((req, res) => {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+      res.setHeader("Access-Control-Allow-Methods", "POST");
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+      if (req.method === "OPTIONS") {
+        res.end();
+        return;
+      }
+      jsonBody(req, res, (err, body: any) => {
+        const params = new URLSearchParams(req.url);
+
+        const token = params.get("/?token")!;
+        const name = "genez.io-accessToken";
+
+        // delete all existing tokens for service genez.io
+        keytar
+          .findCredentials("genez.io")
+          .then(async (credentials) => {
+            // delete all existing tokens for service genez.io before adding the new one
+            for (const elem of credentials) {
+              await keytar.deletePassword("genez.io", elem.account);
+            }
+          })
+          .then(() => {
+            // save new token
+            keytar.setPassword("genez.io", name, token).then(() => {
+              log.info(`Welcome, ${name}! You can now start using genez.io.`);
+              res.setHeader("Access-Control-Allow-Origin", "*");
+              res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+              res.setHeader("Access-Control-Allow-Methods", "POST");
+              res.setHeader("Access-Control-Allow-Credentials", "true");
+              res.writeHead(301, {
+                Location: `${REACT_APP_BASE_URL}/cli/login/success`
+              });
+              res.end();
+
+              exit(0);
+            });
+          })
+          .catch((error) => {
+            log.error(error);
+          });
+      });
+    });
+
+    const promise = new Promise((resolve) => {
+      server.listen(0, "localhost", () => {
+        log.info("Redirecting to browser to complete authentication...");
+        const address = server.address() as AddressInfo;
+        resolve(address.port);
+      });
+    });
+
+    const port = await promise;
+    const browserUrl = `${REACT_APP_BASE_URL}/cli/login?redirect_url=http://localhost:${port}/`;
+    open(browserUrl);
+  }
 }

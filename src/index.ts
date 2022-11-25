@@ -7,7 +7,8 @@ import {
   init,
   addNewClass,
   deployClasses,
-  reportSuccess
+  reportSuccess,
+  handleLogin
 } from "./commands";
 import {
   validateYamlFile,
@@ -16,17 +17,11 @@ import {
   readToken
 } from "./utils/file";
 import { setLogLevel } from "./utils/logging";
-import { parse } from "yaml";
-import open from "open";
 import { asciiCapybara } from "./utils/strings";
-import http from "http";
-import jsonBody from "body/json";
+
 import keytar from "keytar";
-import { REACT_APP_BASE_URL } from "./variables";
 import { exit } from "process";
 import { AxiosError } from "axios";
-import { AddressInfo } from "net";
-import { ProjectConfiguration } from "./models/projectConfiguration";
 import {
   listenForChanges,
   prepareForLocalEnvironment,
@@ -69,76 +64,7 @@ program
     setLogLevel(options.verbose);
     log.info(asciiCapybara);
 
-    if (accessToken !== "") {
-      keytar
-        .setPassword("genez.io", "genez.io-accessToken", accessToken)
-        .then(() => {
-          log.info("Successfully logged in!");
-          exit(0);
-        })
-        .catch((error: any) => {
-          log.error(error);
-          exit(1);
-        });
-    } else {
-      const server = http.createServer((req, res) => {
-        res.setHeader("Access-Control-Allow-Origin", "*");
-        res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-        res.setHeader("Access-Control-Allow-Methods", "POST");
-        res.setHeader("Access-Control-Allow-Credentials", "true");
-        if (req.method === "OPTIONS") {
-          res.end();
-          return;
-        }
-        jsonBody(req, res, (err, body: any) => {
-          const params = new URLSearchParams(req.url);
-
-          const token = params.get("/?token")!;
-          const name = "genez.io-accessToken";
-
-          // delete all existing tokens for service genez.io
-          keytar
-            .findCredentials("genez.io")
-            .then(async (credentials) => {
-              // delete all existing tokens for service genez.io before adding the new one
-              for (const elem of credentials) {
-                await keytar.deletePassword("genez.io", elem.account);
-              }
-            })
-            .then(() => {
-              // save new token
-              keytar.setPassword("genez.io", name, token).then(() => {
-                log.info(`Welcome, ${name}! You can now start using genez.io.`);
-                res.setHeader("Access-Control-Allow-Origin", "*");
-                res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-                res.setHeader("Access-Control-Allow-Methods", "POST");
-                res.setHeader("Access-Control-Allow-Credentials", "true");
-                res.writeHead(301, {
-                  Location: `${REACT_APP_BASE_URL}/cli/login/success`
-                });
-                res.end();
-
-                exit(0);
-              });
-            })
-            .catch((error) => {
-              log.error(error);
-            });
-        });
-      });
-
-      const promise = new Promise((resolve) => {
-        server.listen(0, "localhost", () => {
-          log.info("Redirecting to browser to complete authentication...");
-          const address = server.address() as AddressInfo;
-          resolve(address.port);
-        });
-      });
-
-      const port = await promise;
-      const browserUrl = `${REACT_APP_BASE_URL}/cli/login?redirect_url=http://localhost:${port}/`;
-      open(browserUrl);
-    }
+    await handleLogin(accessToken);
   });
 
 program
@@ -161,6 +87,7 @@ program
 
     log.info("Deploying your project to genez.io infrastructure...");
     await deployClasses().catch((error: AxiosError) => {
+      console.log(error);
       if (error.response?.status == 401 || error.response?.status === 500) {
         log.error(
           "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
