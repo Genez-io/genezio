@@ -225,6 +225,12 @@ export async function deployClasses() {
 
   const promisesDeploy: any = configuration.classes.map(
     async (element: any) => {
+      if (!(await fileExists(element.path))) {
+        throw new Error(
+          `\`${element.path}\` file does not exist at the indicated path.`
+        );
+      }
+
       switch (element.language) {
         case ".js": {
           const bundler = new NodeJsBundler();
