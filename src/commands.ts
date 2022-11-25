@@ -1,4 +1,3 @@
-import webpack, { NormalModule } from "webpack";
 import path from "path";
 import { deployClass } from "./requests/deployCode";
 import generateSdk from "./requests/generateSdk";
@@ -15,104 +14,18 @@ import {
 import { askQuestion } from "./utils/prompt";
 import { parse, Document } from "yaml";
 import fs from "fs";
-import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import {
   ProjectConfiguration,
   TriggerType
 } from "./models/projectConfiguration";
-import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
-import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBinaryDepenciesBundler";
 import { getProjectConfiguration } from "./utils/configuration";
 import { REACT_APP_BASE_URL } from "./variables";
 import log from "loglevel";
-
-class AccessDependenciesPlugin {
-  dependencies: string[];
-
-  // constructor() {
-  constructor(dependencies: string[]) {
-    this.dependencies = dependencies;
-  }
-
-  apply(compiler: {
-    hooks: {
-      compilation: {
-        tap: (arg0: string, arg1: (compilation: any) => void) => void;
-      };
-    };
-  }) {
-    compiler.hooks.compilation.tap(
-      "AccessDependenciesPlugin",
-      (compilation) => {
-        NormalModule.getCompilationHooks(compilation).beforeLoaders.tap(
-          "AccessDependenciesPlugin",
-          (loader: any, normalModule: any) => {
-            if (
-              normalModule.resource &&
-              normalModule.resource.includes("node_modules")
-            ) {
-              const resource = normalModule.resource;
-              this.dependencies.push(resource);
-            }
-          }
-        );
-      }
-    );
-  }
-}
-
-export async function getNodeModules(filePath: string): Promise<any> {
-  // eslint-disable-next-line no-async-promise-executor
-  return new Promise(async (resolve, reject) => {
-    const { name } = getFileDetails(filePath);
-    const outputFile = `${name}-processed.js`;
-    const temporaryFolder = await createTemporaryFolder();
-    const dependencies: string[] = [];
-
-    const compiler = webpack({
-      entry: "./" + filePath,
-      target: "node",
-      mode: "production",
-      output: {
-        path: temporaryFolder,
-        filename: outputFile,
-        library: "genezio",
-        libraryTarget: "commonjs"
-      },
-      plugins: [
-        new NodePolyfillPlugin(),
-        new AccessDependenciesPlugin(dependencies)
-      ]
-    });
-
-    compiler.run((err) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      const dependenciesInfo = dependencies.map((dependency) => {
-        const relativePath = dependency.split("node_modules" + path.sep)[1];
-        const dependencyName = relativePath?.split(path.sep)[0];
-        const dependencyPath =
-          dependency.split("node_modules" + path.sep)[0] +
-          "node_modules" +
-          path.sep +
-          dependencyName;
-        return {
-          name: dependencyName,
-          path: dependencyPath
-        };
-      });
-
-      // remove duplicates from dependenciesInfo by name
-      const uniqueDependenciesInfo = dependenciesInfo.filter(
-        (v, i, a) => a.findIndex((t) => t.name === v.name) === i
-      );
-
-      resolve(uniqueDependenciesInfo);
-    });
-  });
-}
+import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
+import { NodeTsBundler } from "./bundlers/typescript/nodeTsBundler";
+import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBinaryDepenciesBundler";
+import { NodeTsBinaryDependenciesBundler } from "./bundlers/typescript/nodeTsBinaryDepenciesBundler";
+import { languages } from "./utils/languages";
 
 export async function addNewClass(classPath: string, classType: string) {
   if (classType === undefined) {
@@ -232,6 +145,44 @@ export async function deployClasses() {
       }
 
       switch (element.language) {
+        case ".ts": {
+          const bundler = new NodeTsBundler();
+          const binaryDepBundler = new NodeTsBinaryDependenciesBundler();
+
+          let output = await bundler.bundle({
+            configuration: element,
+            path: element.path
+          });
+
+          output = await binaryDepBundler.bundle(output);
+
+          const archivePath = path.join(
+            await createTemporaryFolder("genezio-"),
+            `genezioDeploy.zip`
+          );
+          await zipDirectory(output.path, archivePath);
+
+          const prom = deployClass(
+            element,
+            archivePath,
+            configuration.name,
+            output.extra?.className
+          ).then((result) => {
+            functionUrlForFilePath[path.parse(element.path).name] =
+              result.functionUrl;
+            
+            classesInfo.push({
+              className: output.extra?.className,
+              methodNames: output.extra?.methodNames,
+              path: element.path,
+              functionUrl: result.functionUrl,
+              projectId: result.class.ProjectID  
+            });
+
+            fs.promises.unlink(archivePath);
+          });
+          return prom;
+        }
         case ".js": {
           const bundler = new NodeJsBundler();
           const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
@@ -330,6 +281,7 @@ export async function generateSdks(urlMap: any) {
     configurationFileContent
   );
   const outputPath = configuration.sdk.path;
+  const language = configuration.sdk.language;
 
   // check if the output path exists
   if (await fileExists(outputPath)) {
@@ -353,7 +305,7 @@ export async function generateSdks(urlMap: any) {
     sdk.classFiles.map((classFile: any) => {
       return writeToFile(
         outputPath,
-        `${classFile.filename}.sdk.js`,
+        `${classFile.filename}.sdk.${language}`,
         classFile.implementation,
         true
       );
@@ -372,18 +324,18 @@ export async function init() {
   const sdk: any = { name: projectName, sdk: {}, classes: [] };
 
   const language = await askQuestion(
-    `In what programming language do you want your SDK? [default value: js]: `,
+    `In what programming language do you want your SDK? (js or ts) [default value: js]: `,
     "js"
   );
 
-  if (language !== "js") {
+  if (!languages.includes(language)) {
     throw Error(
       `We don't currently support the ${language} language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`
     );
   }
   sdk.sdk.language = language;
 
-  if (language === "js") {
+  if (language === "js" || language === "ts") {
     const runtime = await askQuestion(
       `What runtime will you use? Options: "node" or "browser". [default value: node]: `,
       "node"

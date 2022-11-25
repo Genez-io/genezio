@@ -43,6 +43,7 @@
     "open": "^8.4.0",
     "os": "^0.1.2",
     "path": "^0.12.7",
+    "ts-loader": "^9.4.1",
     "web3": "^1.8.0",
     "webpack": "^5.74.0",
     "webpack-node-externals": "^3.0.0",

@@ -6,6 +6,7 @@ import cors from "cors";
 import { PORT_LOCAL_ENVIRONMENT } from "./variables";
 import { ProjectConfiguration } from "./models/projectConfiguration";
 import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
+import { NodeTsBundler } from "./bundlers/typescript/nodeTsBundler";
 import LocalEnvInputParameters from "./models/localEnvInputParams";
 import log from "loglevel";
 import { fileExists } from "./utils/file";
@@ -165,6 +166,31 @@ export async function prepareForLocalEnvironment(
     }
 
     switch (element.language) {
+      case ".ts": {
+        const bundler = new NodeTsBundler();
+
+        const prom = bundler
+          .bundle({ configuration: element, path: element.path })
+          .then((output) => {
+            const className = output.extra?.className;
+            const handlerPath = path.join(output.path, "index.js");
+            const baseurl = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/`;
+            const functionUrl = `${baseurl}${className}`;
+            functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
+
+            classesInfo.push({
+              className: output.extra?.className,
+              methodNames: output.extra?.methodNames,
+              path: element.path,
+              functionUrl: baseurl
+            });
+
+            handlers[className] = {
+              path: handlerPath
+            };
+          });
+        return prom;
+      }
       case ".js": {
         const bundler = new NodeJsBundler();
 
