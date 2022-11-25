@@ -138,6 +138,12 @@ export async function deployClasses() {
 
   const promisesDeploy: any = configuration.classes.map(
     async (element: any) => {
+      if (!(await fileExists(element.path))) {
+        throw new Error(
+          `\`${element.path}\` file does not exist at the indicated path.`
+        );
+      }
+
       switch (element.language) {
         case ".ts": {
           const bundler = new NodeTsBundler();
@@ -224,13 +230,14 @@ export async function deployClasses() {
 
   // wait for all promises to finish
   await Promise.all(promisesDeploy);
-
-  await generateSdks(functionUrlForFilePath);
+  await generateSdks(functionUrlForFilePath).catch((error)=>{
+    throw error
+  })
 
   reportSuccess(classesInfo, configuration);
   
   const projectId = classesInfo[0].projectId
-  console.log(`Your project has been depolyed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`)
+  console.log(`Your project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`)
 }
 
 export function reportSuccess(
@@ -261,9 +268,9 @@ export function reportSuccess(
   });
 
   if (printHttpString !== "") {
-    log.debug("");
-    log.debug("HTTP Methods Deployed:");
-    log.debug(printHttpString);
+    log.info("");
+    log.info("HTTP Methods Deployed:");
+    log.info(printHttpString);
   }
 }
 
@@ -281,8 +288,10 @@ export async function generateSdks(urlMap: any) {
     // delete the output path
     fs.rmSync(outputPath, { recursive: true, force: true });
   }
-
-  const sdk = await generateSdk(configuration, urlMap);
+  
+  const sdk = await generateSdk(configuration, urlMap).catch((error)=>{
+    throw error
+  })
 
   if (sdk.remoteFile) {
     await writeToFile(outputPath, "remote.js", sdk.remoteFile, true).catch(

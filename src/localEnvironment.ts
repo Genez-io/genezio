@@ -9,6 +9,7 @@ import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import { NodeTsBundler } from "./bundlers/typescript/nodeTsBundler";
 import LocalEnvInputParameters from "./models/localEnvInputParams";
 import log from "loglevel";
+import { fileExists } from "./utils/file";
 
 export function getEventObjectFromRequest(request: any) {
   return {
@@ -105,7 +106,7 @@ export function listenForChanges(sdkPathRelative: any, server: any) {
   });
 }
 
-export function startServer(handlers: any) {
+export async function startServer(handlers: any,port = PORT_LOCAL_ENVIRONMENT) {
   const app = express();
   app.use(cors());
   app.use(express.json());
@@ -141,13 +142,12 @@ export function startServer(handlers: any) {
     const response = await module.handler(reqToFunction);
     handleResponseforHttp(res, response);
   });
-
-  log.info("Listening...");
-  return app.listen(PORT_LOCAL_ENVIRONMENT);
+  
+  return app.listen(port);
 }
 
 export async function prepareForLocalEnvironment(
-  projectConfiguration: ProjectConfiguration
+  projectConfiguration: ProjectConfiguration, port= PORT_LOCAL_ENVIRONMENT
 ): Promise<LocalEnvInputParameters> {
   const functionUrlForFilePath: any = {};
   const handlers: any = {};
@@ -158,7 +158,13 @@ export async function prepareForLocalEnvironment(
     functionUrl: string;
   }[] = [];
 
-  const promises = projectConfiguration.classes.map((element) => {
+  const promises = projectConfiguration.classes.map(async (element: any) => {
+    if (!(await fileExists(element.path))) {
+      throw new Error(
+        `\`${element.path}\` file does not exist at the indicated path.`
+      );
+    }
+
     switch (element.language) {
       case ".ts": {
         const bundler = new NodeTsBundler();
@@ -193,7 +199,7 @@ export async function prepareForLocalEnvironment(
           .then((output) => {
             const className = output.extra?.className;
             const handlerPath = path.join(output.path, "index.js");
-            const baseurl = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/`;
+            const baseurl = `http://127.0.0.1:${port}/`;
             const functionUrl = `${baseurl}${className}`;
             functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
 

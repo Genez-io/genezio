@@ -1,6 +1,6 @@
 #! /usr/bin/env node
 
-import { Command } from "commander";
+import { Command, CommanderError } from "commander";
 import {
   deleteProjectHandler,
   generateSdks,
@@ -9,22 +9,16 @@ import {
   deployClasses,
   reportSuccess
 } from "./commands";
-import {
-  validateYamlFile,
-  checkYamlFileExists,
-  readUTF8File,
-  readToken
-} from "./utils/file";
+import { readToken } from "./utils/file";
 import {
   setLogLevel,
 } from "./utils/logging"
-import { parse } from "yaml";
 import open from "open";
 import { asciiCapybara } from "./utils/strings";
 import http from "http";
 import jsonBody from "body/json";
 import keytar from "keytar";
-import { REACT_APP_BASE_URL } from "./variables";
+import { PORT_LOCAL_ENVIRONMENT, REACT_APP_BASE_URL } from "./variables";
 import { exit } from "process";
 import { AxiosError } from "axios";
 import { AddressInfo } from "net";
@@ -35,6 +29,7 @@ import {
 } from "./localEnvironment";
 import { getProjectConfiguration } from "./utils/configuration";
 import log from 'loglevel';
+import { error } from "console";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
@@ -46,6 +41,13 @@ log.setDefaultLevel("INFO");
 program
   .name("genezio")
   .description("CLI to interact with the Genezio infrastructure!")
+  .exitOverride((err : CommanderError) => {
+    if (err.code === "commander.help") {
+      exit(0)
+    } else {
+      console.log(`Type 'genezio --help'`)
+    }
+  })
   .version(pjson.version);
 
 program
@@ -148,14 +150,16 @@ program
       );
       exit(1);
     }
+    
 
     log.info("Deploying your project to genez.io infrastructure...");
     await deployClasses().catch((error: AxiosError) => {
-      if (error.response?.status == 401) {
+      if (error.response?.status == 401 || error.response?.status===500) {
         log.error(
           "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
         );
-      } else {
+      }
+      else{
         log.error(error.message);
       }
       exit(1);
@@ -173,38 +177,74 @@ program
   .description("Add a new class to the genezio.yaml file.")
   .action(async (classPath: string, classType: string, options: any) => {
     setLogLevel(options.verbose);
-    try {
-      addNewClass(classPath, classType);
-    } catch (error: any) {
-      log.error(error.message);
-    }
+
+    await addNewClass(classPath, classType).catch((error: Error) => {
+      log.error(error.message)
+      exit(1)
+    });
   });
 
 program
   .command("local")
   .option("-v, --verbose", "Show debug logs to console.")
+  .option("-p, --port <port>", "Set the port your local server will be running on.",String(PORT_LOCAL_ENVIRONMENT))
   .description("Run a local environment for your functions.")
   .action(async (options: any) => {
     setLogLevel(options.verbose);
+
+    const authToken = await readToken().catch(() => undefined);
+
+    if (!authToken) {
+      log.warn(
+        "You are not logged in. Run 'genezio login' before you deploy your function."
+      );
+      exit(1);
+    }
+    
     try {
       // eslint-disable-next-line no-constant-condition
       while (true) {
         const projectConfiguration = await getProjectConfiguration()
 
         const { functionUrlForFilePath, classesInfo, handlers } =
-          await prepareForLocalEnvironment(projectConfiguration);
-
+          await prepareForLocalEnvironment(projectConfiguration,Number(options.port));
+        
         await generateSdks(functionUrlForFilePath).catch((error: Error) => {
-          log.error(`${error.stack}`);
+          if (error.message === "Unauthorized") {
+            log.error(
+              "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
+            );
+          }
+          else{
+            log.error(`${error.stack}`);
+          }
+          exit(1);
         });
 
         reportSuccess(classesInfo, projectConfiguration);
-
-        const server = await startServer(handlers);
+        const server = await startServer(handlers,Number(options.port))
+        const err = await new Promise((resolve,reject)=>{
+          server.on('listening',()=>{
+            console.log("Listening...")
+            resolve(undefined)
+          })
+          server.on('error',(error: Error)=>{
+            server.close()
+            reject(error)
+          })  
+        })
+        if(err){
+          throw err
+        }
         await listenForChanges(projectConfiguration.sdk.path, server);
       }
-    } catch (error) {
-      log.error(`${error}`);
+    } catch (error: any) {
+      if (error.code === 'EADDRINUSE') {
+        log.error(`The port ${error.port} is already in use. Please use a different port to start your local server`)
+      }
+      else {
+        log.error(`${error.message}`);
+      }
     }
   });
 
