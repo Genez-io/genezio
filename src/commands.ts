@@ -462,7 +462,7 @@ export async function handleLogin(accessToken: string) {
           .then(() => {
             // save new token
             keytar.setPassword("genez.io", name, token).then(() => {
-              log.info(`Welcome, ${name}! You can now start using genez.io.`);
+              log.info(`Welcome! You can now start using genez.io.`);
               res.setHeader("Access-Control-Allow-Origin", "*");
               res.setHeader("Access-Control-Allow-Headers", "Content-Type");
               res.setHeader("Access-Control-Allow-Methods", "POST");
