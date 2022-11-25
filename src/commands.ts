@@ -225,6 +225,12 @@ export async function deployClasses() {
 
   const promisesDeploy: any = configuration.classes.map(
     async (element: any) => {
+      if (!(await fileExists(element.path))) {
+        throw new Error(
+          `\`${element.path}\` file does not exist at the indicated path.`
+        );
+      }
+
       switch (element.language) {
         case ".js": {
           const bundler = new NodeJsBundler();
@@ -279,7 +285,7 @@ export async function deployClasses() {
 
   reportSuccess(classesInfo, configuration);
   
-  let projectId = classesInfo[0].projectId
+  const projectId = classesInfo[0].projectId
   console.log(`Your project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`)
 }
 
@@ -311,9 +317,9 @@ export function reportSuccess(
   });
 
   if (printHttpString !== "") {
-    log.debug("");
-    log.debug("HTTP Methods Deployed:");
-    log.debug(printHttpString);
+    log.info("");
+    log.info("HTTP Methods Deployed:");
+    log.info(printHttpString);
   }
 }
 

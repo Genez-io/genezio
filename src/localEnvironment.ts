@@ -8,6 +8,7 @@ import { ProjectConfiguration } from "./models/projectConfiguration";
 import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import LocalEnvInputParameters from "./models/localEnvInputParams";
 import log from "loglevel";
+import { fileExists } from "./utils/file";
 
 export function getEventObjectFromRequest(request: any) {
   return {
@@ -156,7 +157,13 @@ export async function prepareForLocalEnvironment(
     functionUrl: string;
   }[] = [];
 
-  const promises = projectConfiguration.classes.map((element) => {
+  const promises = projectConfiguration.classes.map(async (element: any) => {
+    if (!(await fileExists(element.path))) {
+      throw new Error(
+        `\`${element.path}\` file does not exist at the indicated path.`
+      );
+    }
+
     switch (element.language) {
       case ".js": {
         const bundler = new NodeJsBundler();

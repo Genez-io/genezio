@@ -1,6 +1,6 @@
 #! /usr/bin/env node
 
-import { Command } from "commander";
+import { Command, CommanderError } from "commander";
 import {
   deleteProjectHandler,
   generateSdks,
@@ -9,16 +9,10 @@ import {
   deployClasses,
   reportSuccess
 } from "./commands";
-import {
-  validateYamlFile,
-  checkYamlFileExists,
-  readUTF8File,
-  readToken
-} from "./utils/file";
+import { readToken } from "./utils/file";
 import {
   setLogLevel,
 } from "./utils/logging"
-import { parse } from "yaml";
 import open from "open";
 import { asciiCapybara } from "./utils/strings";
 import http from "http";
@@ -28,7 +22,6 @@ import { PORT_LOCAL_ENVIRONMENT, REACT_APP_BASE_URL } from "./variables";
 import { exit } from "process";
 import { AxiosError } from "axios";
 import { AddressInfo } from "net";
-import { ProjectConfiguration } from "./models/projectConfiguration";
 import {
   listenForChanges,
   prepareForLocalEnvironment,
@@ -48,6 +41,13 @@ log.setDefaultLevel("INFO");
 program
   .name("genezio")
   .description("CLI to interact with the Genezio infrastructure!")
+  .exitOverride((err : CommanderError) => {
+    if (err.code === "commander.help") {
+      exit(0)
+    } else {
+      console.log(`Type 'genezio --help'`)
+    }
+  })
   .version(pjson.version);
 
 program
@@ -177,11 +177,11 @@ program
   .description("Add a new class to the genezio.yaml file.")
   .action(async (classPath: string, classType: string, options: any) => {
     setLogLevel(options.verbose);
-    try {
-      addNewClass(classPath, classType);
-    } catch (error: any) {
-      log.error(error.message);
-    }
+
+    await addNewClass(classPath, classType).catch((error: Error) => {
+      log.error(error.message)
+      exit(1)
+    });
   });
 
 program
@@ -191,6 +191,16 @@ program
   .description("Run a local environment for your functions.")
   .action(async (options: any) => {
     setLogLevel(options.verbose);
+
+    const authToken = await readToken().catch(() => undefined);
+
+    if (!authToken) {
+      log.warn(
+        "You are not logged in. Run 'genezio login' before you deploy your function."
+      );
+      exit(1);
+    }
+    
     try {
       // eslint-disable-next-line no-constant-condition
       while (true) {
@@ -229,11 +239,11 @@ program
         await listenForChanges(projectConfiguration.sdk.path, server);
       }
     } catch (error: any) {
-      if(error.code === 'EADDRINUSE'){
+      if (error.code === 'EADDRINUSE') {
         log.error(`The port ${error.port} is already in use. Please use a different port to start your local server`)
       }
-      else{
-        log.error(`${error}`);
+      else {
+        log.error(`${error.message}`);
       }
     }
   });

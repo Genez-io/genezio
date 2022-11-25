@@ -1,6 +1,6 @@
 import path from 'path'
 import yaml from "yaml";
-import { getFileDetails, writeToFile } from '../utils/file';
+import { fileExists, getFileDetails, writeToFile } from '../utils/file';
 
 export enum TriggerType {
   jsonrpc = "jsonrpc",
@@ -98,7 +98,7 @@ export class ClassConfiguration {
     if (!classConfigurationYaml.path) {
       throw new Error("Path is missing from class.")
     }
-
+    
     if (classConfigurationYaml.type && !TriggerType[classConfigurationYaml.type as keyof typeof TriggerType]) {
       throw new Error("The type is incorrect.")
     }
