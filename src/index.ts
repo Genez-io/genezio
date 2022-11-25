@@ -18,7 +18,7 @@ import { asciiCapybara } from "./utils/strings";
 import http from "http";
 import jsonBody from "body/json";
 import keytar from "keytar";
-import { REACT_APP_BASE_URL } from "./variables";
+import { PORT_LOCAL_ENVIRONMENT, REACT_APP_BASE_URL } from "./variables";
 import { exit } from "process";
 import { AxiosError } from "axios";
 import { AddressInfo } from "net";
@@ -29,6 +29,7 @@ import {
 } from "./localEnvironment";
 import { getProjectConfiguration } from "./utils/configuration";
 import log from 'loglevel';
+import { error } from "console";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
@@ -186,6 +187,7 @@ program
 program
   .command("local")
   .option("-v, --verbose", "Show debug logs to console.")
+  .option("-p, --port <port>", "Set the port your local server will be running on.",String(PORT_LOCAL_ENVIRONMENT))
   .description("Run a local environment for your functions.")
   .action(async (options: any) => {
     setLogLevel(options.verbose);
@@ -205,8 +207,8 @@ program
         const projectConfiguration = await getProjectConfiguration()
 
         const { functionUrlForFilePath, classesInfo, handlers } =
-          await prepareForLocalEnvironment(projectConfiguration);
-
+          await prepareForLocalEnvironment(projectConfiguration,Number(options.port));
+        
         await generateSdks(functionUrlForFilePath).catch((error: Error) => {
           if (error.message === "Unauthorized") {
             log.error(
@@ -220,12 +222,29 @@ program
         });
 
         reportSuccess(classesInfo, projectConfiguration);
-
-        const server = await startServer(handlers);
+        const server = await startServer(handlers,Number(options.port))
+        const err = await new Promise((resolve,reject)=>{
+          server.on('listening',()=>{
+            console.log("Listening...")
+            resolve(undefined)
+          })
+          server.on('error',(error: Error)=>{
+            server.close()
+            reject(error)
+          })  
+        })
+        if(err){
+          throw err
+        }
         await listenForChanges(projectConfiguration.sdk.path, server);
       }
     } catch (error: any) {
-      log.error(error.message);
+      if (error.code === 'EADDRINUSE') {
+        log.error(`The port ${error.port} is already in use. Please use a different port to start your local server`)
+      }
+      else {
+        log.error(`${error.message}`);
+      }
     }
   });
 

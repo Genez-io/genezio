@@ -105,7 +105,7 @@ export function listenForChanges(sdkPathRelative: any, server: any) {
   });
 }
 
-export function startServer(handlers: any) {
+export async function startServer(handlers: any,port = PORT_LOCAL_ENVIRONMENT) {
   const app = express();
   app.use(cors());
   app.use(express.json());
@@ -141,13 +141,12 @@ export function startServer(handlers: any) {
     const response = await module.handler(reqToFunction);
     handleResponseforHttp(res, response);
   });
-
-  log.info("Listening...");
-  return app.listen(PORT_LOCAL_ENVIRONMENT);
+  
+  return app.listen(port);
 }
 
 export async function prepareForLocalEnvironment(
-  projectConfiguration: ProjectConfiguration
+  projectConfiguration: ProjectConfiguration, port= PORT_LOCAL_ENVIRONMENT
 ): Promise<LocalEnvInputParameters> {
   const functionUrlForFilePath: any = {};
   const handlers: any = {};
@@ -174,7 +173,7 @@ export async function prepareForLocalEnvironment(
           .then((output) => {
             const className = output.extra?.className;
             const handlerPath = path.join(output.path, "index.js");
-            const baseurl = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/`;
+            const baseurl = `http://127.0.0.1:${port}/`;
             const functionUrl = `${baseurl}${className}`;
             functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
 
