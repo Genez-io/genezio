@@ -117,7 +117,13 @@ export function startServer(handlers: any) {
   app.all(`/:className`, async (req: any, res: any) => {
     const reqToFunction = getEventObjectFromRequest(req);
 
-    const path = handlers[req.params.className].path;
+    const localHandler = handlers[req.params.className];
+    if (!localHandler) {
+      res.status(404).send("Not found");
+      return;
+    }
+
+    const path = localHandler.path;
     log.debug(`Request received for ${req.params.className}.`);
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
