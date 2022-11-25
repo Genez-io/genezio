@@ -317,9 +317,9 @@ export function reportSuccess(
   });
 
   if (printHttpString !== "") {
-    log.debug("");
-    log.debug("HTTP Methods Deployed:");
-    log.debug(printHttpString);
+    log.info("");
+    log.info("HTTP Methods Deployed:");
+    log.info(printHttpString);
   }
 }
 
