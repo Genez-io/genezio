@@ -3,7 +3,8 @@ export const tsconfig = {
         target: "es6",
         module: "commonjs",
         lib: [
-            "es6"
+            "es6",
+            "dom"
         ],
         outDir: "build",
         rootDir: ".",
