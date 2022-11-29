@@ -147,7 +147,7 @@ export async function startServer(handlers: any,port = PORT_LOCAL_ENVIRONMENT) {
 }
 
 export async function prepareForLocalEnvironment(
-  projectConfiguration: ProjectConfiguration, port= PORT_LOCAL_ENVIRONMENT
+  projectConfiguration: ProjectConfiguration, port = PORT_LOCAL_ENVIRONMENT
 ): Promise<LocalEnvInputParameters> {
   const functionUrlForFilePath: any = {};
   const handlers: any = {};
@@ -174,7 +174,7 @@ export async function prepareForLocalEnvironment(
           .then((output) => {
             const className = output.extra?.className;
             const handlerPath = path.join(output.path, "index.js");
-            const baseurl = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/`;
+            const baseurl = `http://127.0.0.1:${port}/`;
             const functionUrl = `${baseurl}${className}`;
             functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
 
@@ -225,7 +225,7 @@ export async function prepareForLocalEnvironment(
     }
   });
 
-  await Promise.all(promises);
+  await Promise.all(promises).catch((error) => console.log(error));
 
   return {
     functionUrlForFilePath,

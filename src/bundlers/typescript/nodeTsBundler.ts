@@ -26,16 +26,16 @@ const exec = util.promisify(require("child_process").exec);
 
 
 export class NodeTsBundler implements BundlerInterface {
-    async #generateTsconfigJson(tempFolderPath: string) {
+    #generateTsconfigJson(tempFolderPath: string) {
         tsconfig.compilerOptions.rootDir = process.cwd();
         tsconfig.compilerOptions.outDir = path.join(process.cwd(), "build");
         tsconfig.include = [path.join(process.cwd(), "**/*")];
         writeToFile(tempFolderPath, "tsconfig.json", JSON.stringify(tsconfig));
         writeToFile(tempFolderPath, "package.json", packagejson);
 
-        await exec("npm i ts-loader", {
-            cwd: tempFolderPath
-        });
+        // await exec("npm i ts-loader", {
+        //     cwd: tempFolderPath
+        // });
     }
 
     async #getNodeModulesTs(folder: string, filePath: string): Promise<any> {
@@ -70,8 +70,8 @@ export class NodeTsBundler implements BundlerInterface {
                         }
                     ]
                 },
-                resolve: {
-                    modules: ["node_modules", path.join(folder, "node_modules")],
+                resolveLoader: {
+                    modules: [path.resolve(__dirname, "../../../", "node_modules")]
                 },
                 plugins: [
                     new NodePolyfillPlugin(),
@@ -179,15 +179,18 @@ export class NodeTsBundler implements BundlerInterface {
                             use: [{
                                 loader: "ts-loader",
                                 options: {
-                                    configFile: (fs.existsSync("tsconfig.json") ? "./tsconfig.json" : path.join(folder, "tsconfig.json"))
+                                    configFile: (fs.existsSync("tsconfig.json") ? "./tsconfig.json" : path.join(folder, "tsconfig.json")),
+                                    onlyCompileBundledFiles: true
                                 }
                             }],
                             exclude: /really\.html/
                         }
                     ]
                 },
+                resolveLoader: {
+                    modules: [path.resolve(__dirname, "../../../", "node_modules")]
+                },
                 resolve: {
-                    modules: ["node_modules", path.join(folder, "node_modules")],
                     extensions: ['.tsx', '.ts', '.js'],
                 },
                 // compilation stats json
@@ -258,7 +261,7 @@ export class NodeTsBundler implements BundlerInterface {
         const temporaryFolder = await createTemporaryFolder();
 
         // 1. Create auxiliary folder and copy the entire project
-        await this.#generateTsconfigJson(auxFolder);
+        this.#generateTsconfigJson(auxFolder);
 
         // 2. Run webpack to get dependenciesInfo and the packed file
         const [dependenciesInfo, _] = await Promise.all([
