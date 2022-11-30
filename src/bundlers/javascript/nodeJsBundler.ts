@@ -28,7 +28,7 @@ export class NodeJsBundler implements BundlerInterface {
         const temporaryFolder = await createTemporaryFolder();
         const dependencies: string[] = [];
 
-        await bundle("./" + filePath, "development", [], undefined, [
+        await bundle("./" + filePath, mode, [], undefined, [
             new NodePolyfillPlugin(),
             new AccessDependenciesPlugin(dependencies)
         ], temporaryFolder, outputFile)
@@ -107,7 +107,7 @@ export class NodeJsBundler implements BundlerInterface {
         const outputFile = `module.js`;
 
         // eslint-disable-next-line no-async-promise-executor
-        await bundle("./" + filePath, "development", [webpackNodeExternals()], {
+        await bundle("./" + filePath, mode, [webpackNodeExternals()], {
             rules: [
                 {
                     test: /\.html$/,

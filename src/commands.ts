@@ -254,7 +254,7 @@ export async function deployClasses() {
 
   // wait for all promises to finish
   await Promise.all(promisesDeploy);
-  console.log("Generate sdk")
+
   await generateSdks(functionUrlForFilePath).catch((error) => {
     console.log("Generate sdk", error)
     throw error;
