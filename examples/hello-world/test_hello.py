@@ -3,7 +3,7 @@
 from os import path
 import sys
 # Add local testing module
-sys.path.insert(1, '../tests/')
+sys.path.insert(1, '../../tests/integration/')
 import test as gnz_test
 
 NODE_FILENAME = "test-hello-sdk.js"
@@ -12,7 +12,9 @@ NODE_FILENAME = "test-hello-sdk.js"
 # `genezio deploy` creates an SDK
 # `genezo addClass` creates an empty file class and adds it to `genezio.yaml`
 if __name__ == '__main__':
+    print("Starting Hello world test...")
     gnz_test.test_genezio_account()
     gnz_test.test_genezio_deploy()
     gnz_test.test_genezio_add_class()
     gnz_test.test_genezio_remote_call(NODE_FILENAME)
+    print ("Success!")
