@@ -21,6 +21,7 @@ import { tsconfig, packagejson } from "../../utils/configs";
 import log from "loglevel";
 import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import { AccessDependenciesPlugin } from "../bundler.interface";
+import { bundle } from "../../utils/webpack";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const exec = util.promisify(require("child_process").exec);
 
@@ -32,81 +33,58 @@ export class NodeTsBundler implements BundlerInterface {
         tsconfig.include = [path.join(process.cwd(), "**/*")];
         writeToFile(tempFolderPath, "tsconfig.json", JSON.stringify(tsconfig));
         writeToFile(tempFolderPath, "package.json", packagejson);
-
-        // await exec("npm i ts-loader", {
-        //     cwd: tempFolderPath
-        // });
     }
 
-    async #getNodeModulesTs(folder: string, filePath: string): Promise<any> {
-        // eslint-disable-next-line no-async-promise-executor
-        return new Promise(async (resolve, reject) => {
-            const { name } = getFileDetails(filePath);
-            const outputFile = `${name}-processed.js`;
-            const temporaryFolder = await createTemporaryFolder();
-            const dependencies: string[] = [];
-
-            const compiler = webpack({
-                entry: "./" + filePath,
-                target: "node",
-                mode: "production",
-                output: {
-                    path: temporaryFolder,
-                    filename: outputFile,
-                    library: "genezio",
-                    libraryTarget: "commonjs"
-                },
-                module: {
-                    rules: [
-                        {
-                            test: /\.tsx?$/,
-                            use: [{
-                                loader: "ts-loader",
-                                options: {
-                                    configFile: (fs.existsSync("tsconfig.json") ? "./tsconfig.json" : path.join(folder, "tsconfig.json"))
-                                }
-                            }],
-                            exclude: /really\.html/
+    async #getNodeModulesTs(folder: string, filePath: string, mode: "development"|"production"): Promise<any> {
+        const dependencies: string[] = [];
+        const { name } = getFileDetails(filePath);
+        const outputFile = `${name}-processed.js`;
+        const temporaryFolder = await createTemporaryFolder();
+        const module = {
+            rules: [
+                {
+                    test: /\.tsx?$/,
+                    use: [{
+                        loader: "ts-loader",
+                        options: {
+                            configFile: (fs.existsSync("tsconfig.json") ? "./tsconfig.json" : path.join(folder, "tsconfig.json"))
                         }
-                    ]
-                },
-                resolveLoader: {
-                    modules: [path.resolve(__dirname, "../../../", "node_modules")]
-                },
-                plugins: [
-                    new NodePolyfillPlugin(),
-                    new AccessDependenciesPlugin(dependencies)
-                ]
-            });
-
-            compiler.run((err) => {
-                if (err) {
-                    reject(err);
-                    return;
+                    }],
+                    exclude: /really\.html/
                 }
-                const dependenciesInfo = dependencies.map((dependency) => {
-                    const relativePath = dependency.split("node_modules" + path.sep)[1];
-                    const dependencyName = relativePath?.split(path.sep)[0];
-                    const dependencyPath =
-                        dependency.split("node_modules" + path.sep)[0] +
-                        "node_modules" +
-                        path.sep +
-                        dependencyName;
-                    //dependencyPath.replace(folder, cwd);
-                    return {
-                        name: dependencyName,
-                        path: dependencyPath
-                    };
-                });
+            ]
+        }
+        const plugins = [
+            new NodePolyfillPlugin(),
+            new AccessDependenciesPlugin(dependencies)
+        ]
+        const resolveLoader = {
+            modules: [path.resolve(__dirname, "../../../", "node_modules")]
+        }
 
-                // remove duplicates from dependenciesInfo by name
-                const uniqueDependenciesInfo = dependenciesInfo.filter(
-                    (v, i, a) => a.findIndex((t) => t.name === v.name) === i
-                );
+        await bundle("./" + filePath, mode, [], module, plugins, temporaryFolder, outputFile, resolveLoader)
 
-                resolve(uniqueDependenciesInfo);
-            });
+        const dependenciesInfo = dependencies.map((dependency) => {
+            const relativePath = dependency.split("node_modules" + path.sep)[1];
+            const dependencyName = relativePath?.split(path.sep)[0];
+            const dependencyPath =
+                dependency.split("node_modules" + path.sep)[0] +
+                "node_modules" +
+                path.sep +
+                dependencyName;
+            //dependencyPath.replace(folder, cwd);
+            return {
+                name: dependencyName,
+                path: dependencyPath
+            };
         });
+
+        // remove duplicates from dependenciesInfo by name
+        const uniqueDependenciesInfo = dependenciesInfo.filter(
+            (v, i, a) => a.findIndex((t) => t.name === v.name) === i
+        );
+
+        return uniqueDependenciesInfo
     }
     async #copyDependencies(dependenciesInfo: any, tempFolderPath: string) {
         const nodeModulesPath = path.join(tempFolderPath, "node_modules");
@@ -155,74 +133,34 @@ export class NodeTsBundler implements BundlerInterface {
     async #bundleTypescriptCode(
         folder: string,
         filePath: string,
-        tempFolderPath: string
+        tempFolderPath: string,
+        mode: "development"|"production"
     ): Promise<void> {
         // eslint-disable-next-line no-async-promise-executor
-        return new Promise(async (resolve, reject) => {
-            const outputFile = `module.js`;
-            
-            const compiler = webpack({
-                entry: "./" + filePath,
-                target: "node",
-
-                externals: [webpackNodeExternals()], // in order to ignore all modules in node_modules folder
-
-                mode: "production",
-                node: false,
-                optimization: {
-                    minimize: false
-                },
-                module: {
-                    rules: [
-                        {
-                            test: /\.tsx?$/,
-                            use: [{
-                                loader: "ts-loader",
-                                options: {
-                                    configFile: (fs.existsSync("tsconfig.json") ? "./tsconfig.json" : path.join(folder, "tsconfig.json")),
-                                    onlyCompileBundledFiles: true
-                                }
-                            }],
-                            exclude: /really\.html/
+        const module = {
+            rules: [
+                {
+                    test: /\.tsx?$/,
+                    use: [{
+                        loader: "ts-loader",
+                        options: {
+                            configFile: (fs.existsSync("tsconfig.json") ? "./tsconfig.json" : path.join(folder, "tsconfig.json")),
+                            onlyCompileBundledFiles: true
                         }
-                    ]
-                },
-                resolveLoader: {
-                    modules: [path.resolve(__dirname, "../../../", "node_modules")]
-                },
-                resolve: {
-                    extensions: ['.tsx', '.ts', '.js'],
-                },
-                // compilation stats json
-                output: {
-                    path: tempFolderPath,
-                    filename: outputFile,
-                    library: "genezio",
-                    libraryTarget: "commonjs"
+                    }],
+                    exclude: /really\.html/
                 }
-            });
+            ]
+        }
+        const resolve = { extensions: ['.tsx', '.ts', '.js'] }
+        const resolveLoader = {
+            modules: [path.resolve(__dirname, "../../../", "node_modules")]
+        }
+        const outputFile = `module.js`;
 
-            compiler.run(async (error, stats) => {
-                if (error) {
-                    console.error(error);
-                    reject(error);
-                    return;
-                }
+        await bundle("./" + filePath, mode, [webpackNodeExternals()], module, undefined, tempFolderPath, outputFile, resolve, resolveLoader)
 
-                if (stats?.hasErrors()) {
-                    reject(stats?.compilation.getErrors());
-                    return;
-                }
-
-                writeToFile(tempFolderPath, "index.js", lambdaHandler);
-
-                compiler.close((closeErr) => {
-                    /* TODO: handle error? */
-                });
-
-                resolve();
-            });
-        });
+        await writeToFile(tempFolderPath, "index.js", lambdaHandler);
     }
 
     #getClassDetails(filePath: string, tempFolderPath: string): any {
@@ -259,14 +197,15 @@ export class NodeTsBundler implements BundlerInterface {
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
         const auxFolder = await createTemporaryFolder();
         const temporaryFolder = await createTemporaryFolder();
+        const mode = (input.extra ? input.extra["mode"] : undefined) || "production";
 
         // 1. Create auxiliary folder and copy the entire project
         this.#generateTsconfigJson(auxFolder);
 
         // 2. Run webpack to get dependenciesInfo and the packed file
         const [dependenciesInfo, _] = await Promise.all([
-            this.#getNodeModulesTs(auxFolder, input.path),
-            this.#bundleTypescriptCode(auxFolder, input.configuration.path, temporaryFolder)
+            this.#getNodeModulesTs(auxFolder, input.path, mode),
+            this.#bundleTypescriptCode(auxFolder, input.configuration.path, temporaryFolder, mode)
         ]);
 
         // 3. Remove auxiliary folder
