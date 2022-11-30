@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  genezio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: genezio_tests
+    # This line is required by `gnome-keyring-daemon`
+    privileged: true
+    secrets:
+      - genezio_token
+    command: 
+      - /bin/bash
+      - -c
+      - |
+        echo -n "genezio version: "
+        genezio --version
+        eval $$(/usr/bin/dbus-launch --auto-syntax)
+        echo '\n' | gnome-keyring-daemon --unlock &> /dev/null
+        # The line below is introduced to be sure to avoid flakiness
+        # The robust solution would be `wait $$(pidof /usr/bin/gnome-keyring-daemon)`
+        sleep 1
+        secret-tool store --label="genez.io/Test Account" account "Test Account" service "genez.io" < /run/secrets/genezio_token
+        genezio account
+        cd examples/hello-world && npm install 1> /dev/null 2> /dev/null && python3 test_hello.py && cd -
+        cd examples/cron && python3 test_cron.py && cd -
+        cd examples/webhook && python3 test_webhook.py && cd -
+        cd examples/todo-list/backend && npm install 1> /dev/null 2> /dev/null && python3 test_todo_list.py && cd -
+        cd examples/blockchain/backend && npm install 1> /dev/null 2> /dev/null && python3 test_blockchain.py && cd -
+
+# Create `.env.genezio_token` locally in the repo and paste in it a valid `dev` genezio token from the Keychain/Keyring
+secrets:
+  genezio_token:
+    file: .env.genezio_token
+    name: genezio_token

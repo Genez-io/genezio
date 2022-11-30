@@ -1,0 +1,16 @@
+# name: End to End Tests
+
+# on:
+#   pull_request:
+#     types: [opened, reopened, edited]
+
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v3
+#       - name: Execute tests from docker-compose
+#         with:
+#           secrets: |
+#             "genezio_token = {{ secrets.TEST_TOKEN }}"
+#         run: docker-compose up --abort-on-container-exit --exit-code-from genezio 
