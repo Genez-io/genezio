@@ -26,6 +26,9 @@ exports.handler =  async function(event, context) {
             timeEpoch: event.requestContext.timeEpoch,
             body: event.body
           }
+        if (!object[method]) {
+          return { statusCode: 404, headers: { 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Method not found" }) };
+        }
 
         try {
             const response = await object[method](req);
@@ -35,8 +38,29 @@ exports.handler =  async function(event, context) {
             return { statusCode: 500, headers: { 'Content-Type': 'text/json' }};
         }
     } else {
-        const body = JSON.parse(event.body);
-        const [_, method] = body.method.split(".")
+        let body = null;
+        try {
+          body = JSON.parse(event.body);
+        } catch (error) {
+          return { statusCode: 400, headers: { 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Invalid JSON" }) };
+        }
+        if (!body || !body.method || !body.params || !body.id) {
+          return { statusCode: 400, headers: { 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Invalid JSON-RPC 2.0 request" }) };
+        }
+
+        let method = null;
+        try {
+          const methodElems = body.method.split(".");
+          method = methodElems[1];
+        } catch (error) {
+          return { statusCode: 400, headers: { 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Invalid JSON-RPC 2.0 request" }) };
+        }
+
+        if (!object[method]) {
+          return { statusCode: 404, headers: { 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Method not found" }) };
+        }
+
+
 
         const requestId = body.id;
         try {

@@ -1,6 +1,7 @@
 import { webpack } from "webpack";
 import path from "path";
 import fs from "fs";
+import util from "util";
 import webpackNodeExternals from "webpack-node-externals";
 import {
     createTemporaryFolder,
@@ -16,22 +17,52 @@ import {
 import FileDetails from "../../models/fileDetails";
 import { default as fsExtra } from "fs-extra";
 import { lambdaHandler } from "../../utils/lambdaHander";
+import { tsconfig, packagejson } from "../../utils/configs";
 import log from "loglevel";
 import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import { AccessDependenciesPlugin } from "../bundler.interface";
 import { bundle } from "../../utils/webpack";
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const exec = util.promisify(require("child_process").exec);
 
-export class NodeJsBundler implements BundlerInterface {
-    async #getNodeModulesJs(filePath: string, mode: "development"|"production"): Promise<any> {
+
+export class NodeTsBundler implements BundlerInterface {
+    #generateTsconfigJson(tempFolderPath: string) {
+        tsconfig.compilerOptions.rootDir = process.cwd();
+        tsconfig.compilerOptions.outDir = path.join(process.cwd(), "build");
+        tsconfig.include = [path.join(process.cwd(), "**/*")];
+        writeToFile(tempFolderPath, "tsconfig.json", JSON.stringify(tsconfig));
+        writeToFile(tempFolderPath, "package.json", packagejson);
+    }
+
+    async #getNodeModulesTs(folder: string, filePath: string, mode: "development"|"production"): Promise<any> {
+        const dependencies: string[] = [];
         const { name } = getFileDetails(filePath);
         const outputFile = `${name}-processed.js`;
         const temporaryFolder = await createTemporaryFolder();
-        const dependencies: string[] = [];
-
-        await bundle("./" + filePath, mode, [], undefined, [
+        const module = {
+            rules: [
+                {
+                    test: /\.tsx?$/,
+                    use: [{
+                        loader: "ts-loader",
+                        options: {
+                            configFile: (fs.existsSync("tsconfig.json") ? "./tsconfig.json" : path.join(folder, "tsconfig.json"))
+                        }
+                    }],
+                    exclude: /really\.html/
+                }
+            ]
+        }
+        const plugins = [
             new NodePolyfillPlugin(),
             new AccessDependenciesPlugin(dependencies)
-        ], temporaryFolder, outputFile)
+        ]
+        const resolveLoader = {
+            modules: [path.resolve(__dirname, "../../../", "node_modules")]
+        }
+
+        await bundle("./" + filePath, mode, [], module, plugins, temporaryFolder, outputFile, resolveLoader)
 
         const dependenciesInfo = dependencies.map((dependency) => {
             const relativePath = dependency.split("node_modules" + path.sep)[1];
@@ -41,6 +72,7 @@ export class NodeJsBundler implements BundlerInterface {
                 "node_modules" +
                 path.sep +
                 dependencyName;
+            //dependencyPath.replace(folder, cwd);
             return {
                 name: dependencyName,
                 path: dependencyPath
@@ -54,7 +86,6 @@ export class NodeJsBundler implements BundlerInterface {
 
         return uniqueDependenciesInfo
     }
-
     async #copyDependencies(dependenciesInfo: any, tempFolderPath: string) {
         const nodeModulesPath = path.join(tempFolderPath, "node_modules");
         // copy all dependencies to node_modules folder
@@ -66,12 +97,12 @@ export class NodeJsBundler implements BundlerInterface {
         );
     }
 
-    async #copyNonJsFiles(tempFolderPath: string) {
+    async #copyNonTsFiles(tempFolderPath: string) {
         const allNonJsFilesPaths = (await getAllFilesFromCurrentPath()).filter(
             (file: FileDetails) => {
                 // filter js files, node_modules and folders
                 return (
-                    file.extension !== ".js" &&
+                    file.extension !== ".ts" && file.extension !== ".js" && file.extension !== ".tsx" && file.extension !== ".jsx" &&
                     path.basename(file.path) !== "package.json" &&
                     path.basename(file.path) !== "package-lock.json" &&
                     !file.path.includes("node_modules") &&
@@ -99,23 +130,35 @@ export class NodeJsBundler implements BundlerInterface {
         );
     }
 
-    async #bundleJavascriptCode(
+    async #bundleTypescriptCode(
+        folder: string,
         filePath: string,
         tempFolderPath: string,
         mode: "development"|"production"
     ): Promise<void> {
-        const outputFile = `module.js`;
-
         // eslint-disable-next-line no-async-promise-executor
-        await bundle("./" + filePath, mode, [webpackNodeExternals()], {
+        const module = {
             rules: [
                 {
-                    test: /\.html$/,
-                    loader: "dumb-loader",
+                    test: /\.tsx?$/,
+                    use: [{
+                        loader: "ts-loader",
+                        options: {
+                            configFile: (fs.existsSync("tsconfig.json") ? "./tsconfig.json" : path.join(folder, "tsconfig.json")),
+                            onlyCompileBundledFiles: true
+                        }
+                    }],
                     exclude: /really\.html/
                 }
             ]
-        }, undefined, tempFolderPath, outputFile)
+        }
+        const resolve = { extensions: ['.tsx', '.ts', '.js'] }
+        const resolveLoader = {
+            modules: [path.resolve(__dirname, "../../../", "node_modules")]
+        }
+        const outputFile = `module.js`;
+
+        await bundle("./" + filePath, mode, [webpackNodeExternals()], module, undefined, tempFolderPath, outputFile, resolve, resolveLoader)
 
         await writeToFile(tempFolderPath, "index.js", lambdaHandler);
     }
@@ -152,22 +195,29 @@ export class NodeJsBundler implements BundlerInterface {
     }
 
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
+        const auxFolder = await createTemporaryFolder();
         const temporaryFolder = await createTemporaryFolder();
         const mode = (input.extra ? input.extra["mode"] : undefined) || "production";
 
-        // 1. Run webpack to get dependenciesInfo and the packed file
+        // 1. Create auxiliary folder and copy the entire project
+        this.#generateTsconfigJson(auxFolder);
+
+        // 2. Run webpack to get dependenciesInfo and the packed file
         const [dependenciesInfo, _] = await Promise.all([
-            this.#getNodeModulesJs(input.path, mode),
-            this.#bundleJavascriptCode(input.configuration.path, temporaryFolder, mode)
+            this.#getNodeModulesTs(auxFolder, input.path, mode),
+            this.#bundleTypescriptCode(auxFolder, input.configuration.path, temporaryFolder, mode)
         ]);
 
-        // 2. Copy non js files and node_modules
+        // 3. Remove auxiliary folder
+        fs.rmSync(auxFolder, { recursive: true, force: true });
+
+        // 4. Copy non js files and node_modules
         await Promise.all([
-            this.#copyNonJsFiles(temporaryFolder),
+            this.#copyNonTsFiles(temporaryFolder),
             this.#copyDependencies(dependenciesInfo, temporaryFolder)
         ]);
 
-        // 3. Get class name
+        // 5. Get class name
         const classDetails = this.#getClassDetails(input.path, temporaryFolder);
 
         return {
