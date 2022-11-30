@@ -176,7 +176,7 @@ export async function prepareForLocalEnvironment(
         const bundler = new NodeTsBundler();
 
         const prom = bundler
-          .bundle({ configuration: element, path: element.path })
+          .bundle({ configuration: element, path: element.path, extra: { mode: "development" } })
           .then((output) => {
             const className = output.extra?.className;
             const handlerPath = path.join(output.path, "index.js");
@@ -201,7 +201,7 @@ export async function prepareForLocalEnvironment(
         const bundler = new NodeJsBundler();
 
         const prom = bundler
-          .bundle({ configuration: element, path: element.path })
+          .bundle({ configuration: element, path: element.path, extra: { mode: "development" } })
           .then((output) => {
             const className = output.extra?.className;
             const handlerPath = path.join(output.path, "index.js");

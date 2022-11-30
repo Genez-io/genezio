@@ -169,7 +169,10 @@ export async function deployClasses() {
 
           let output = await bundler.bundle({
             configuration: element,
-            path: element.path
+            path: element.path,
+            extra: {
+              mode: "production"
+            }
           });
 
           output = await binaryDepBundler.bundle(output);
@@ -207,7 +210,10 @@ export async function deployClasses() {
 
           let output = await bundler.bundle({
             configuration: element,
-            path: element.path
+            path: element.path,
+            extra: {
+              mode: "development"
+            }
           });
 
           output = await binaryDepBundler.bundle(output);
@@ -248,7 +254,9 @@ export async function deployClasses() {
 
   // wait for all promises to finish
   await Promise.all(promisesDeploy);
+
   await generateSdks(functionUrlForFilePath).catch((error) => {
+    console.log("Generate sdk", error)
     throw error;
   });
 
