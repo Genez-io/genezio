@@ -1,22 +1,13 @@
 import axios from 'axios';
-import { readToken } from "../../src/utils/file";
 import { ClassConfiguration, JsRuntime, Language, MethodConfiguration, ProjectConfiguration, SdkConfiguration, TriggerType } from '../../src/models/projectConfiguration';
 import generateSdk from "../../src/requests/generateSdk"
+import { getAuthToken } from '../../src/utils/accounts';
 
 jest.mock('axios');
-jest.mock("../../src/utils/file", () => {
-    // return a new module implementation
-    return {
-      __esModule: true,
-  
-      ...jest.requireActual('../../src/utils/file'),
-
-      readToken: jest.fn(() => []),
-    }
-  });
+jest.mock("../../src/utils/accounts");
 
 const mockedAxios = jest.mocked(axios, { shallow: true })
-const mockedReadToken = jest.mocked(readToken, { shallow: true })
+const mockedReadToken = jest.mocked(getAuthToken, { shallow: true })
 
 beforeEach(() => {
     mockedReadToken.mockClear()

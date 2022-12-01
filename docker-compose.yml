@@ -6,7 +6,6 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: genezio_tests
-    # This line is required by `gnome-keyring-daemon`
     privileged: true
     secrets:
       - genezio_token
@@ -16,12 +15,8 @@ services:
       - |
         echo -n "genezio version: "
         genezio --version
-        eval $$(/usr/bin/dbus-launch --auto-syntax)
-        echo '\n' | gnome-keyring-daemon --unlock &> /dev/null
-        # The line below is introduced to be sure to avoid flakiness
-        # The robust solution would be `wait $$(pidof /usr/bin/gnome-keyring-daemon)`
         sleep 1
-        secret-tool store --label="genez.io/Test Account" account "Test Account" service "genez.io" < /run/secrets/genezio_token
+        cat /run/secrets/genezio_token > ~/.geneziorc
         genezio account
         cd examples/hello-world && npm install 1> /dev/null 2> /dev/null && python3 test_hello.py && cd -
         cd examples/cron && python3 test_cron.py && cd -
