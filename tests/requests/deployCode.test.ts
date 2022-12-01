@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { readToken } from "../../src/utils/file";
+import { getAuthToken } from "../../src/utils/accounts";
 import { ClassConfiguration, TriggerType } from '../../src/models/projectConfiguration';
 import { deployClass } from "../../src/requests/deployCode"
 
@@ -7,7 +7,7 @@ jest.mock('axios');
 jest.mock("../../src/utils/file");
 
 const mockedAxios = jest.mocked(axios, { shallow: true })
-const mockedReadToken = jest.mocked(readToken, { shallow: true })
+const mockedReadToken = jest.mocked(getAuthToken, { shallow: true })
 
 beforeEach(() => {
     mockedReadToken.mockClear()

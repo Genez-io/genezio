@@ -23,7 +23,6 @@ import { REACT_APP_BASE_URL } from "./variables";
 import log from "loglevel";
 import http from "http";
 import jsonBody from "body/json";
-import keytar from "keytar";
 import { exit } from "process";
 import { AddressInfo } from "net";
 import open from "open";
@@ -32,6 +31,7 @@ import { NodeTsBundler } from "./bundlers/typescript/nodeTsBundler";
 import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBinaryDepenciesBundler";
 import { NodeTsBinaryDependenciesBundler } from "./bundlers/typescript/nodeTsBinaryDepenciesBundler";
 import { languages } from "./utils/languages";
+import { saveAuthToken } from "./utils/accounts";
 
 export async function addNewClass(classPath: string, classType: string) {
   if (classType === undefined) {
@@ -421,27 +421,7 @@ classes:
 
 export async function handleLogin(accessToken: string) {
   if (accessToken !== "") {
-    // delete all existing tokens for service genez.io
-    keytar
-      .findCredentials("genez.io")
-      .then(async (credentials) => {
-        // delete all existing tokens for service genez.io before adding the new one
-        for (const elem of credentials) {
-          await keytar.deletePassword("genez.io", elem.account);
-        }
-      })
-      .then(() => {
-        keytar
-          .setPassword("genez.io", "genez.io-accessToken", accessToken)
-          .then(() => {
-            log.info("Access token was added succesfully!");
-            exit(0);
-          })
-          .catch((error: any) => {
-            log.error(error);
-            exit(1);
-          });
-      });
+    saveAuthToken(accessToken)
   } else {
     const server = http.createServer((req, res) => {
       res.setHeader("Access-Control-Allow-Origin", "*");
@@ -456,36 +436,20 @@ export async function handleLogin(accessToken: string) {
         const params = new URLSearchParams(req.url);
 
         const token = params.get("/?token")!;
-        const name = "genez.io-accessToken";
 
-        // delete all existing tokens for service genez.io
-        keytar
-          .findCredentials("genez.io")
-          .then(async (credentials) => {
-            // delete all existing tokens for service genez.io before adding the new one
-            for (const elem of credentials) {
-              await keytar.deletePassword("genez.io", elem.account);
-            }
-          })
-          .then(() => {
-            // save new token
-            keytar.setPassword("genez.io", name, token).then(() => {
-              log.info(`Welcome! You can now start using genez.io.`);
-              res.setHeader("Access-Control-Allow-Origin", "*");
-              res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-              res.setHeader("Access-Control-Allow-Methods", "POST");
-              res.setHeader("Access-Control-Allow-Credentials", "true");
-              res.writeHead(301, {
-                Location: `${REACT_APP_BASE_URL}/cli/login/success`
-              });
-              res.end();
-
-              exit(0);
-            });
-          })
-          .catch((error) => {
-            log.error(error);
+        saveAuthToken(token).then(() => {
+          log.info(`Welcome! You can now start using genez.io.`);
+          res.setHeader("Access-Control-Allow-Origin", "*");
+          res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+          res.setHeader("Access-Control-Allow-Methods", "POST");
+          res.setHeader("Access-Control-Allow-Credentials", "true");
+          res.writeHead(301, {
+            Location: `${REACT_APP_BASE_URL}/cli/login/success`
           });
+          res.end();
+  
+          exit(0);
+        })
       });
     });
 

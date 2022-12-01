@@ -1,6 +1,5 @@
-import FormData from "form-data";
 import axios from "axios";
-import { readToken } from "../utils/file";
+import { getAuthToken } from "../utils/accounts";
 import { BACKEND_ENDPOINT } from "../variables";
 
 export default async function listProjects(
@@ -8,7 +7,7 @@ export default async function listProjects(
 ) : Promise<Array<string>> {
   const limit = 100;
 
-  const authToken = await readToken().catch(() => undefined);
+  const authToken = await getAuthToken()
 
   if (!authToken) {
     throw new Error(

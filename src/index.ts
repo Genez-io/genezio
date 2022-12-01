@@ -10,11 +10,10 @@ import {
   reportSuccess,
   handleLogin
 } from "./commands";
-import { readToken } from "./utils/file";
+
 import { setLogLevel } from "./utils/logging";
 import { asciiCapybara } from "./utils/strings";
 
-import keytar from "keytar";
 import { exit } from "process";
 import { AxiosError } from "axios";
 import { PORT_LOCAL_ENVIRONMENT } from "./variables";
@@ -25,6 +24,7 @@ import {
 } from "./localEnvironment";
 import { getProjectConfiguration } from "./utils/configuration";
 import log from "loglevel";
+import { getAuthToken, removeAuthToken } from "./utils/accounts";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
@@ -79,7 +79,7 @@ program
   .action(async (options: any) => {
     // check if user is logged in
     setLogLevel(options.verbose);
-    const authToken = await readToken().catch(() => undefined);
+    const authToken = await getAuthToken()
 
     if (!authToken) {
       log.warn(
@@ -132,7 +132,7 @@ program
   .action(async (options: any) => {
     setLogLevel(options.verbose);
 
-    const authToken = await readToken().catch(() => undefined);
+    const authToken = await getAuthToken()
 
     if (!authToken) {
       log.warn(
@@ -197,13 +197,7 @@ program
   .description("Logout from Genezio platform.")
   .action(async (options: any) => {
     setLogLevel(options.verbose);
-    keytar
-      .findCredentials("genez.io")
-      .then(async (credentials) => {
-        credentials.forEach(async (credential) => {
-          await keytar.deletePassword("genez.io", credential.account);
-        });
-      })
+    await removeAuthToken()      
       .then(() => {
         log.info("You are now logged out!");
       })
@@ -218,7 +212,7 @@ program
   .description("Display information about the current account.")
   .action(async (options: any) => {
     setLogLevel(options.verbose);
-    const authToken = await readToken(true).catch(() => undefined);
+    const authToken = await getAuthToken()
 
     if (!authToken) {
       log.info(
@@ -238,7 +232,7 @@ program
   )
   .action(async (projectId = "", forced = false) => {
     // check if user is logged in
-    const authToken = await readToken().catch(() => undefined);
+    const authToken = await getAuthToken()
 
     if (!authToken) {
       log.info(

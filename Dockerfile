@@ -19,10 +19,3 @@ RUN npm install && npm run build && npm i -g
 RUN apt install python3 python3-pip -y
 RUN python3 -m pip install termcolor
 
-# Mock `genezio login`
-# Install utilities for keyring
-RUN apt install --quiet --yes \
-    gnome-keyring \
-    dbus-x11 \
-    libsecret-tools \
-    libsecret-1-dev

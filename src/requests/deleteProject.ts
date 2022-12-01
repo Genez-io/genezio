@@ -1,12 +1,11 @@
-import FormData from "form-data";
 import axios from "axios";
-import { readToken } from "../utils/file";
+import { getAuthToken } from "../utils/accounts";
 import { BACKEND_ENDPOINT } from "../variables";
 
 export default async function deleteProject(
   projectId: string,
 ) : Promise<boolean> {
-  const authToken = await readToken().catch(() => undefined);
+  const authToken = await getAuthToken()
 
   if (!authToken) {
     throw new Error(

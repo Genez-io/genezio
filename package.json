@@ -37,7 +37,6 @@
     "fs-extra": "^10.1.0",
     "glob": "^8.0.3",
     "http-terminator": "^3.2.0",
-    "keytar": "^7.9.0",
     "loglevel": "^1.8.1",
     "node-polyfill-webpack-plugin": "^2.0.1",
     "open": "^8.4.0",
