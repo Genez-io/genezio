@@ -447,7 +447,7 @@ export async function handleLogin(accessToken: string) {
             Location: `${REACT_APP_BASE_URL}/cli/login/success`
           });
           res.end();
-  
+
           exit(0);
         })
       });
