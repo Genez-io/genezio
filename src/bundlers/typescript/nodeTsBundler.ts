@@ -58,11 +58,12 @@ export class NodeTsBundler implements BundlerInterface {
             new NodePolyfillPlugin(),
             new AccessDependenciesPlugin(dependencies)
         ]
+        const resolve = { extensions: ['.tsx', '.ts', '.js'] }
         const resolveLoader = {
             modules: [path.resolve(__dirname, "../../../", "node_modules")]
         }
 
-        await bundle("./" + filePath, mode, [], module, plugins, temporaryFolder, outputFile, resolveLoader)
+        await bundle("./" + filePath, mode, [], module, plugins, temporaryFolder, outputFile, resolve, resolveLoader)
 
         const dependenciesInfo = dependencies.map((dependency) => {
             const relativePath = dependency.split("node_modules" + path.sep)[1];
