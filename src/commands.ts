@@ -157,9 +157,8 @@ export async function deployClasses() {
   const promisesDeploy: any = configuration.classes.map(
     async (element: any) => {
       if (!(await fileExists(element.path))) {
-        throw new Error(
-          `\`${element.path}\` file does not exist at the indicated path.`
-        );
+          log.error(`\`${element.path}\` file does not exist at the indicated path.`)
+          exit(1)
       }
 
       switch (element.language) {

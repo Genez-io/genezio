@@ -10,6 +10,7 @@ import { NodeTsBundler } from "./bundlers/typescript/nodeTsBundler";
 import LocalEnvInputParameters from "./models/localEnvInputParams";
 import log from "loglevel";
 import { fileExists } from "./utils/file";
+import { exit } from "process";
 
 export function getEventObjectFromRequest(request: any) {
   return {
@@ -166,9 +167,8 @@ export async function prepareForLocalEnvironment(
 
   const promises = projectConfiguration.classes.map(async (element: any) => {
     if (!(await fileExists(element.path))) {
-      throw new Error(
-        `\`${element.path}\` file does not exist at the indicated path.`
-      );
+      log.error(`\`${element.path}\` file does not exist at the indicated path.`)
+      exit(1)
     }
 
     switch (element.language) {

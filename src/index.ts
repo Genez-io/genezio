@@ -158,7 +158,7 @@ program
               "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
             );
           } else {
-            log.error(`${error.stack}`);
+            log.error(`${error.message}`);
           }
           exit(1);
         });
