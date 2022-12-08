@@ -1,4 +1,5 @@
 import { ModuleOptions, webpack } from "webpack";
+import log from "loglevel"
 
 export function bundle(
     entryFilePath: string,
@@ -39,6 +40,9 @@ export function bundle(
             }
 
             if (stats?.hasErrors()) {
+                stats?.compilation.getErrors().forEach((error) => {
+                    log.error(error.message)
+                });
                 reject(stats?.compilation.getErrors());
                 return;
             }

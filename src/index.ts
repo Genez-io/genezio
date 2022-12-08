@@ -90,13 +90,16 @@ program
 
     log.info("Deploying your project to genez.io infrastructure...");
     await deployClasses().catch((error: AxiosError) => {
-      console.log(error);
       if (error.response?.status == 401 || error.response?.status === 500) {
         log.error(
           "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
         );
       } else {
-        log.error(error.message);
+        if (error.message) {
+          log.error(error.message);
+        } else {
+          log.error("An error has occured during deployment. Make sure that the project dependencies are correctly installed.")
+        }
       }
       exit(1);
     });
