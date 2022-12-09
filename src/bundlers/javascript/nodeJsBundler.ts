@@ -112,10 +112,12 @@ export class NodeJsBundler implements BundlerInterface {
         if (stats?.hasErrors()) {
           if (stats?.toJson().errors !== undefined) {
             stats?.toJson().errors?.forEach((error) => {
-              log.error("Syntax error:");
+              // log error red
+              log.error("\x1b[31m", "Syntax error:");
 
               if (error.moduleIdentifier?.includes("|")) {
                 log.info(
+                  "\x1b[37m",
                   "file: " +
                     error.moduleIdentifier?.split("|")[1] +
                     ":" +
@@ -135,15 +137,17 @@ export class NodeJsBundler implements BundlerInterface {
               log.info(firstLine);
 
               //get message line that contains '>' first character
-              const messageLine = error.message
+              const messageLine: string = error.message
                 .split("\n")
-                .find((line) => line.startsWith(">"));
+                .filter((line) => line.startsWith(">") || line.startsWith("|"))
+                .join("\n");
               if (messageLine) {
                 log.info(messageLine);
               }
             });
           }
-          exit(1);
+          reject("Compilation failed");
+          // exit(1);
         }
 
         writeToFile(tempFolderPath, "index.js", lambdaHandler);

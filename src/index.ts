@@ -15,9 +15,7 @@ import {
   readUTF8File,
   readToken
 } from "./utils/file";
-import {
-  setLogLevel,
-} from "./utils/logging"
+import { setLogLevel } from "./utils/logging";
 import { parse } from "yaml";
 import open from "open";
 import { asciiCapybara } from "./utils/strings";
@@ -35,7 +33,7 @@ import {
   startServer
 } from "./localEnvironment";
 import { getProjectConfiguration } from "./utils/configuration";
-import log from 'loglevel';
+import log from "loglevel";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
@@ -67,7 +65,7 @@ program
   .option("-v, --verbose", "Show debug logs to console.")
   .description("Authenticate with Genezio platform to deploy your code.")
   .action(async (options: any) => {
-    setLogLevel(options.verbose)
+    setLogLevel(options.verbose);
     log.info(asciiCapybara);
 
     const server = http.createServer((req, res) => {
@@ -98,9 +96,7 @@ program
           .then(() => {
             // save new token
             keytar.setPassword("genez.io", name, token).then(() => {
-              log.info(
-                `Welcome, ${name}! You can now start using genez.io.`
-              );
+              log.info(`Welcome, ${name}! You can now start using genez.io.`);
               res.setHeader("Access-Control-Allow-Origin", "*");
               res.setHeader("Access-Control-Allow-Headers", "Content-Type");
               res.setHeader("Access-Control-Allow-Methods", "POST");
@@ -149,16 +145,14 @@ program
       );
       exit(1);
     }
-    
 
     log.info("Deploying your project to genez.io infrastructure...");
     await deployClasses().catch((error: AxiosError) => {
-      if (error.response?.status == 401 || error.response?.status===500) {
+      if (error.response?.status == 401 || error.response?.status === 500) {
         log.error(
           "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
         );
-      }
-      else{
+      } else {
         log.error(error.message);
       }
       exit(1);
@@ -192,26 +186,42 @@ program
     try {
       // eslint-disable-next-line no-constant-condition
       while (true) {
-        const projectConfiguration = await getProjectConfiguration()
+        const projectConfiguration = await getProjectConfiguration();
 
-        const { functionUrlForFilePath, classesInfo, handlers } =
-          await prepareForLocalEnvironment(projectConfiguration);
+        let server: any = undefined;
+        let functionUrlForFilePath = undefined;
+        let classesInfo = undefined;
+        let handlers = undefined;
+        try {
+          const localEnvInfo = await prepareForLocalEnvironment(
+            projectConfiguration
+          );
 
-        await generateSdks(functionUrlForFilePath).catch((error: Error) => {
-          if (error.message === "Unauthorized") {
-            log.error(
-              "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
-            );
-          }
-          else{
-            log.error(`${error.stack}`);
-          }
-          exit(1);
-        });
+          functionUrlForFilePath = localEnvInfo.functionUrlForFilePath;
+          classesInfo = localEnvInfo.classesInfo;
+          handlers = localEnvInfo.handlers;
 
-        reportSuccess(classesInfo, projectConfiguration);
+          await generateSdks(functionUrlForFilePath).catch((error: Error) => {
+            if (error.message === "Unauthorized") {
+              log.error(
+                "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
+              );
+            } else {
+              log.error(`${error.stack}`);
+            }
+            exit(1);
+          });
 
-        const server = await startServer(handlers);
+          reportSuccess(classesInfo, projectConfiguration);
+          // eslint-disable-next-line no-empty
+        } catch (error) {}
+
+        if (handlers) {
+          server = await startServer(handlers);
+        } else {
+          log.info("Listening for changes...");
+        }
+
         await listenForChanges(projectConfiguration.sdk.path, server);
       }
     } catch (error) {
@@ -261,8 +271,10 @@ program
   .command("delete")
   .argument("[projectId]", "ID of the project you want to delete.")
   .argument("[-f]", "Skip confirmation prompt for deletion.")
-  .description("Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs.")
-  .action(async (projectId  = "", forced  = false) => {
+  .description(
+    "Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs."
+  )
+  .action(async (projectId = "", forced = false) => {
     // check if user is logged in
     const authToken = await readToken().catch(() => undefined);
 
@@ -273,16 +285,18 @@ program
       exit(1);
     }
 
-    const result = await deleteProjectHandler(projectId, forced).catch((error: AxiosError) => {
-      if (error.response?.status == 401) {
-        log.info(
-          "You are not logged in or your token is invalid. Please run `genezio login` before you delete your function."
-        );
-      } else {
-        log.error(error.message);
+    const result = await deleteProjectHandler(projectId, forced).catch(
+      (error: AxiosError) => {
+        if (error.response?.status == 401) {
+          log.info(
+            "You are not logged in or your token is invalid. Please run `genezio login` before you delete your function."
+          );
+        } else {
+          log.error(error.message);
+        }
+        exit(1);
       }
-      exit(1);
-    });
+    );
 
     if (result) {
       log.info("Your project has been deleted");

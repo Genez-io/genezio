@@ -25,6 +25,7 @@ import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBin
 import { getProjectConfiguration } from "./utils/configuration";
 import { REACT_APP_BASE_URL } from "./variables";
 import log from "loglevel";
+import { exit } from "process";
 
 class AccessDependenciesPlugin {
   dependencies: string[];
@@ -169,31 +170,43 @@ export async function addNewClass(classPath: string, classType: string) {
   log.info("\x1b[36m%s\x1b[0m", "Class added successfully.");
 }
 
-export async function deleteProjectHandler(projectId : string, forced : boolean) {
+export async function deleteProjectHandler(projectId: string, forced: boolean) {
   // show prompt if no project id is selected
-  if (typeof projectId === 'string' && projectId.trim().length === 0) {
+  if (typeof projectId === "string" && projectId.trim().length === 0) {
     const projects = await listProjects();
     if (projects.length === 0) {
       log.info("There are no currently deployed projects.");
       return false;
     } else {
-      log.info('No project ID specified, select an ID to delete from this list:')
+      log.info(
+        "No project ID specified, select an ID to delete from this list:"
+      );
       log.info(projects);
     }
 
-    const selection = await askQuestion(`Please select project number to delete (1--${projects.length}) [none]: `, "");
+    const selection = await askQuestion(
+      `Please select project number to delete (1--${projects.length}) [none]: `,
+      ""
+    );
     const selectionNum = Number(selection);
-    if (isNaN(selectionNum) || selectionNum <= 0 || selectionNum > projects.length) {
+    if (
+      isNaN(selectionNum) ||
+      selectionNum <= 0 ||
+      selectionNum > projects.length
+    ) {
       log.info("No valid selection was made, aborting.");
       return false;
     } else {
       forced = false;
-      projectId = projects[selectionNum - 1].split(':')[3].trim();
+      projectId = projects[selectionNum - 1].split(":")[3].trim();
     }
   }
 
   if (!forced) {
-    const confirmation = await askQuestion(`Are you sure you want to delete project ${projectId}? y/[N]: `, "n");
+    const confirmation = await askQuestion(
+      `Are you sure you want to delete project ${projectId}? y/[N]: `,
+      "n"
+    );
 
     if (confirmation !== "y" && confirmation !== "Y") {
       log.warn("Aborted operation.");
@@ -220,7 +233,7 @@ export async function deployClasses() {
     methodNames: any;
     path: string;
     functionUrl: any;
-    projectId : string;
+    projectId: string;
   }[] = [];
 
   const promisesDeploy: any = configuration.classes.map(
@@ -230,10 +243,14 @@ export async function deployClasses() {
           const bundler = new NodeJsBundler();
           const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
 
-          let output = await bundler.bundle({
-            configuration: element,
-            path: element.path
-          });
+          let output = await bundler
+            .bundle({
+              configuration: element,
+              path: element.path
+            })
+            .catch((err) => {
+              exit(1);
+            });
 
           output = await binaryDepBundler.bundle(output);
 
@@ -251,13 +268,13 @@ export async function deployClasses() {
           ).then((result) => {
             functionUrlForFilePath[path.parse(element.path).name] =
               result.functionUrl;
-            
+
             classesInfo.push({
               className: output.extra?.className,
               methodNames: output.extra?.methodNames,
               path: element.path,
               functionUrl: result.functionUrl,
-              projectId: result.class.ProjectID  
+              projectId: result.class.ProjectID
             });
 
             fs.promises.unlink(archivePath);
@@ -273,14 +290,16 @@ export async function deployClasses() {
 
   // wait for all promises to finish
   await Promise.all(promisesDeploy);
-  await generateSdks(functionUrlForFilePath).catch((error)=>{
-    throw error
-  })
+  await generateSdks(functionUrlForFilePath).catch((error) => {
+    throw error;
+  });
 
   reportSuccess(classesInfo, configuration);
-  
-  let projectId = classesInfo[0].projectId
-  console.log(`Your project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`)
+
+  const projectId = classesInfo[0].projectId;
+  console.log(
+    `Your project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`
+  );
 }
 
 export function reportSuccess(
@@ -330,10 +349,10 @@ export async function generateSdks(urlMap: any) {
     // delete the output path
     fs.rmSync(outputPath, { recursive: true, force: true });
   }
-  
-  const sdk = await generateSdk(configuration, urlMap).catch((error)=>{
-    throw error
-  })
+
+  const sdk = await generateSdk(configuration, urlMap).catch((error) => {
+    throw error;
+  });
 
   if (sdk.remoteFile) {
     await writeToFile(outputPath, "remote.js", sdk.remoteFile, true).catch(
