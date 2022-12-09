@@ -6,7 +6,6 @@ import deleteProject from "./requests/deleteProject";
 import {
   createTemporaryFolder,
   fileExists,
-  getFileDetails,
   readUTF8File,
   writeToFile,
   zipDirectory
@@ -157,8 +156,10 @@ export async function deployClasses() {
   const promisesDeploy: any = configuration.classes.map(
     async (element: any) => {
       if (!(await fileExists(element.path))) {
-          log.error(`\`${element.path}\` file does not exist at the indicated path.`)
-          exit(1)
+        log.error(
+          `\`${element.path}\` file does not exist at the indicated path.`
+        );
+        exit(1);
       }
 
       switch (element.language) {
@@ -255,7 +256,7 @@ export async function deployClasses() {
   await Promise.all(promisesDeploy);
 
   await generateSdks(functionUrlForFilePath).catch((error) => {
-    console.log("Generate sdk", error)
+    console.log("Generate sdk", error);
     throw error;
   });
 
@@ -420,7 +421,7 @@ classes:
 
 export async function handleLogin(accessToken: string) {
   if (accessToken !== "") {
-    saveAuthToken(accessToken)
+    saveAuthToken(accessToken);
   } else {
     const server = http.createServer((req, res) => {
       res.setHeader("Access-Control-Allow-Origin", "*");
@@ -446,9 +447,9 @@ export async function handleLogin(accessToken: string) {
             Location: `${REACT_APP_BASE_URL}/cli/login/success`
           });
           res.end();
-  
+
           exit(0);
-        })
+        });
       });
     });
 
