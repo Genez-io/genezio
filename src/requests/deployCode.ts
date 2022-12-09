@@ -2,10 +2,10 @@ import path from "path";
 import FormData from "form-data";
 import fs from "fs";
 import axios from "axios";
-import { readToken } from "../utils/file";
 import { BACKEND_ENDPOINT } from "../variables";
 import { ClassConfiguration } from "../models/projectConfiguration";
 import log from "loglevel";
+import { getAuthToken } from "../utils/accounts";
 
 export async function deployClass(
   classConfiguration: ClassConfiguration,
@@ -19,7 +19,7 @@ export async function deployClass(
 
   // auth token
   const form = new FormData();
-  const authToken = await readToken().catch(() => undefined);
+  const authToken = await getAuthToken()
 
   if (!authToken) {
     throw new Error(

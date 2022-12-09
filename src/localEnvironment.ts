@@ -6,8 +6,11 @@ import cors from "cors";
 import { PORT_LOCAL_ENVIRONMENT } from "./variables";
 import { ProjectConfiguration } from "./models/projectConfiguration";
 import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
+import { NodeTsBundler } from "./bundlers/typescript/nodeTsBundler";
 import LocalEnvInputParameters from "./models/localEnvInputParams";
 import log from "loglevel";
+import { fileExists } from "./utils/file";
+import { exit } from "process";
 
 export function getEventObjectFromRequest(request: any) {
   return {
@@ -106,7 +109,10 @@ export function listenForChanges(sdkPathRelative: any, server: any) {
   });
 }
 
-export function startServer(handlers: any) {
+export async function startServer(
+  handlers: any,
+  port = PORT_LOCAL_ENVIRONMENT
+) {
   const app = express();
   app.use(cors());
   app.use(express.json());
@@ -119,7 +125,13 @@ export function startServer(handlers: any) {
   app.all(`/:className`, async (req: any, res: any) => {
     const reqToFunction = getEventObjectFromRequest(req);
 
-    const path = handlers[req.params.className].path;
+    const localHandler = handlers[req.params.className];
+    if (!localHandler) {
+      res.status(404).send("Not found");
+      return;
+    }
+
+    const path = localHandler.path;
     log.debug(`Request received for ${req.params.className}.`);
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -143,12 +155,13 @@ export function startServer(handlers: any) {
     handleResponseforHttp(res, response);
   });
 
-  log.info("Listening...");
-  return app.listen(PORT_LOCAL_ENVIRONMENT);
+  log.info("Local Server Listening...");
+  return app.listen(port);
 }
 
 export async function prepareForLocalEnvironment(
-  projectConfiguration: ProjectConfiguration
+  projectConfiguration: ProjectConfiguration,
+  port = PORT_LOCAL_ENVIRONMENT
 ): Promise<LocalEnvInputParameters> {
   const functionUrlForFilePath: any = {};
   const handlers: any = {};
@@ -159,17 +172,57 @@ export async function prepareForLocalEnvironment(
     functionUrl: string;
   }[] = [];
 
-  const promises = projectConfiguration.classes.map((element) => {
+  const promises = projectConfiguration.classes.map(async (element: any) => {
+    if (!(await fileExists(element.path))) {
+      log.error(
+        `\`${element.path}\` file does not exist at the indicated path.`
+      );
+      exit(1);
+    }
+
     switch (element.language) {
+      case ".ts": {
+        const bundler = new NodeTsBundler();
+
+        const prom = bundler
+          .bundle({
+            configuration: element,
+            path: element.path,
+            extra: { mode: "development" }
+          })
+          .then((output) => {
+            const className = output.extra?.className;
+            const handlerPath = path.join(output.path, "index.js");
+            const baseurl = `http://127.0.0.1:${port}/`;
+            const functionUrl = `${baseurl}${className}`;
+            functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
+
+            classesInfo.push({
+              className: output.extra?.className,
+              methodNames: output.extra?.methodNames,
+              path: element.path,
+              functionUrl: baseurl
+            });
+
+            handlers[className] = {
+              path: handlerPath
+            };
+          });
+        return prom;
+      }
       case ".js": {
         const bundler = new NodeJsBundler();
 
         const prom = bundler
-          .bundle({ configuration: element, path: element.path })
+          .bundle({
+            configuration: element,
+            path: element.path,
+            extra: { mode: "development" }
+          })
           .then((output) => {
             const className = output.extra?.className;
             const handlerPath = path.join(output.path, "index.js");
-            const baseurl = `http://127.0.0.1:${PORT_LOCAL_ENVIRONMENT}/`;
+            const baseurl = `http://127.0.0.1:${port}/`;
             const functionUrl = `${baseurl}${className}`;
             functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
 

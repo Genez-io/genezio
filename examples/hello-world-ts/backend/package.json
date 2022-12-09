@@ -1,9 +1,8 @@
 {
-  "name": "webhook-example",
+  "name": "hello-world-ts",
   "version": "1.0.0",
-  "description": "Example on how to use webhooks in genezio.",
+  "description": "",
   "main": "index.js",
-  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
