@@ -93,7 +93,7 @@ program
         log.error(
           "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
         );
-      } else {
+      } else if (error.message) {
         log.error(error.message);
       }
       exit(1);
