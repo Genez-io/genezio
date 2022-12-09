@@ -146,13 +146,17 @@ export async function startServer(
     const reqToFunction = getEventObjectFromRequest(req);
     log.debug(`HTTP Request received ${req.method} ${req.url}.`);
 
-    const handler = handlers[req.params.className]
+    const handler = handlers[req.params.className];
     if (!handler) {
-      log.error(`Could not find class ${req.params.className}. The path should be /<class_name>/<method_name>`)
+      log.error(
+        `Could not find class ${req.params.className}. The path should be /<class_name>/<method_name>`
+      );
       res.set("Content-Type", "application/json");
       res.writeHead(404);
-      res.end(JSON.stringify({ error: `Class not found ${req.params.className}.` }))
-      return
+      res.end(
+        JSON.stringify({ error: `Class not found ${req.params.className}.` })
+      );
+      return;
     }
 
     const path = handler.path;

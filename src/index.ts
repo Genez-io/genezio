@@ -150,7 +150,8 @@ program
         let handlers = undefined;
         try {
           const localEnvInfo = await prepareForLocalEnvironment(
-            projectConfiguration
+            projectConfiguration,
+            Number(options.port)
           );
 
           functionUrlForFilePath = localEnvInfo.functionUrlForFilePath;
@@ -173,7 +174,7 @@ program
         } catch (error) {}
 
         if (handlers != undefined) {
-          server = await startServer(handlers);
+          server = await startServer(handlers, Number(options.port));
         } else {
           log.info("\x1b[36m%s\x1b[0m", "Listening for changes...");
         }
