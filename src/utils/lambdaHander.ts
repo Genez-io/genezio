@@ -1,7 +1,9 @@
-export const lambdaHandler = `
+//const object = new handler.genezio[Object.keys(handler.genezio)[0]]();
+
+export const lambdaHandler = (className: string): string => `
 const handler = require("./module.js");
 
-const object = new handler.genezio[Object.keys(handler.genezio)[0]]();
+const object = new handler.genezio[${className}]();
 
 exports.handler =  async function(event, context) {
     if (event.genezioEventType === "cron") {
