@@ -97,7 +97,9 @@ export function listenForChanges(sdkPathRelative: any, server: any) {
 
           console.clear();
           log.info("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
-          await server.close();
+          if (server) {
+            await server.close();
+          }
 
           watch.close();
           resolve({});
@@ -107,7 +109,10 @@ export function listenForChanges(sdkPathRelative: any, server: any) {
   });
 }
 
-export async function startServer(handlers: any,port = PORT_LOCAL_ENVIRONMENT) {
+export async function startServer(
+  handlers: any,
+  port = PORT_LOCAL_ENVIRONMENT
+) {
   const app = express();
   app.use(cors());
   app.use(express.json());
@@ -149,12 +154,14 @@ export async function startServer(handlers: any,port = PORT_LOCAL_ENVIRONMENT) {
     const response = await module.handler(reqToFunction);
     handleResponseforHttp(res, response);
   });
-  
+
+  log.info("Local Server Listening...");
   return app.listen(port);
 }
 
 export async function prepareForLocalEnvironment(
-  projectConfiguration: ProjectConfiguration, port = PORT_LOCAL_ENVIRONMENT
+  projectConfiguration: ProjectConfiguration,
+  port = PORT_LOCAL_ENVIRONMENT
 ): Promise<LocalEnvInputParameters> {
   const functionUrlForFilePath: any = {};
   const handlers: any = {};
@@ -167,8 +174,10 @@ export async function prepareForLocalEnvironment(
 
   const promises = projectConfiguration.classes.map(async (element: any) => {
     if (!(await fileExists(element.path))) {
-      log.error(`\`${element.path}\` file does not exist at the indicated path.`)
-      exit(1)
+      log.error(
+        `\`${element.path}\` file does not exist at the indicated path.`
+      );
+      exit(1);
     }
 
     switch (element.language) {
@@ -176,7 +185,11 @@ export async function prepareForLocalEnvironment(
         const bundler = new NodeTsBundler();
 
         const prom = bundler
-          .bundle({ configuration: element, path: element.path, extra: { mode: "development" } })
+          .bundle({
+            configuration: element,
+            path: element.path,
+            extra: { mode: "development" }
+          })
           .then((output) => {
             const className = output.extra?.className;
             const handlerPath = path.join(output.path, "index.js");
@@ -201,7 +214,11 @@ export async function prepareForLocalEnvironment(
         const bundler = new NodeJsBundler();
 
         const prom = bundler
-          .bundle({ configuration: element, path: element.path, extra: { mode: "development" } })
+          .bundle({
+            configuration: element,
+            path: element.path,
+            extra: { mode: "development" }
+          })
           .then((output) => {
             const className = output.extra?.className;
             const handlerPath = path.join(output.path, "index.js");
@@ -231,7 +248,7 @@ export async function prepareForLocalEnvironment(
     }
   });
 
-  await Promise.all(promises).catch((error) => console.log(error));
+  await Promise.all(promises);
 
   return {
     functionUrlForFilePath,

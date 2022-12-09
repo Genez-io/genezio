@@ -10,10 +10,8 @@ import {
   reportSuccess,
   handleLogin
 } from "./commands";
-
 import { setLogLevel } from "./utils/logging";
 import { asciiCapybara } from "./utils/strings";
-
 import { exit } from "process";
 import { AxiosError } from "axios";
 import { PORT_LOCAL_ENVIRONMENT } from "./variables";
@@ -79,7 +77,7 @@ program
   .action(async (options: any) => {
     // check if user is logged in
     setLogLevel(options.verbose);
-    const authToken = await getAuthToken()
+    const authToken = await getAuthToken();
 
     if (!authToken) {
       log.warn(
@@ -132,7 +130,7 @@ program
   .action(async (options: any) => {
     setLogLevel(options.verbose);
 
-    const authToken = await getAuthToken()
+    const authToken = await getAuthToken();
 
     if (!authToken) {
       log.warn(
@@ -146,38 +144,40 @@ program
       while (true) {
         const projectConfiguration = await getProjectConfiguration();
 
-        const { functionUrlForFilePath, classesInfo, handlers } =
-          await prepareForLocalEnvironment(
-            projectConfiguration,
-            Number(options.port)
+        let server: any = undefined;
+        let functionUrlForFilePath = undefined;
+        let classesInfo = undefined;
+        let handlers = undefined;
+        try {
+          const localEnvInfo = await prepareForLocalEnvironment(
+            projectConfiguration
           );
 
-        await generateSdks(functionUrlForFilePath).catch((error: Error) => {
-          if (error.message === "Unauthorized") {
-            log.error(
-              "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
-            );
-          } else {
-            log.error(`${error.message}`);
-          }
-          exit(1);
-        });
+          functionUrlForFilePath = localEnvInfo.functionUrlForFilePath;
+          classesInfo = localEnvInfo.classesInfo;
+          handlers = localEnvInfo.handlers;
+          if (Object.keys(functionUrlForFilePath).length > 0) {
+            await generateSdks(functionUrlForFilePath).catch((error: Error) => {
+              if (error.message === "Unauthorized") {
+                log.error(
+                  "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
+                );
+              } else {
+                log.error(`${error.stack}`);
+              }
+            });
 
-        reportSuccess(classesInfo, projectConfiguration);
-        const server = await startServer(handlers, Number(options.port));
-        const err = await new Promise((resolve, reject) => {
-          server.on("listening", () => {
-            console.log("Listening...");
-            resolve(undefined);
-          });
-          server.on("error", (error: Error) => {
-            server.close();
-            reject(error);
-          });
-        });
-        if (err) {
-          throw err;
+            reportSuccess(classesInfo, projectConfiguration);
+          }
+          // eslint-disable-next-line no-empty
+        } catch (error) {}
+
+        if (handlers != undefined) {
+          server = await startServer(handlers);
+        } else {
+          log.info("\x1b[36m%s\x1b[0m", "Listening for changes...");
         }
+
         await listenForChanges(projectConfiguration.sdk.path, server);
       }
     } catch (error: any) {
@@ -197,7 +197,7 @@ program
   .description("Logout from Genezio platform.")
   .action(async (options: any) => {
     setLogLevel(options.verbose);
-    await removeAuthToken()      
+    await removeAuthToken()
       .then(() => {
         log.info("You are now logged out!");
       })
@@ -212,7 +212,7 @@ program
   .description("Display information about the current account.")
   .action(async (options: any) => {
     setLogLevel(options.verbose);
-    const authToken = await getAuthToken()
+    const authToken = await getAuthToken();
 
     if (!authToken) {
       log.info(
@@ -232,7 +232,7 @@ program
   )
   .action(async (projectId = "", forced = false) => {
     // check if user is logged in
-    const authToken = await getAuthToken()
+    const authToken = await getAuthToken();
 
     if (!authToken) {
       log.info(
