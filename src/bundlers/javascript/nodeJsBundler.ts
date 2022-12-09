@@ -31,7 +31,9 @@ export class NodeJsBundler implements BundlerInterface {
         await bundle("./" + filePath, mode, [], undefined, [
             new NodePolyfillPlugin(),
             new AccessDependenciesPlugin(dependencies)
-        ], temporaryFolder, outputFile)
+        ], temporaryFolder, outputFile, {
+            conditionNames: ['require'],
+        })
 
         const dependenciesInfo = dependencies.map((dependency) => {
             const relativePath = dependency.split("node_modules" + path.sep)[1];

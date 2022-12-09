@@ -60,7 +60,8 @@ export class NodeTsBundler implements BundlerInterface {
         ]
         const resolve = { extensions: ['.tsx', '.ts', '.js'] }
         const resolveLoader = {
-            modules: [path.resolve(__dirname, "../../../", "node_modules")]
+            modules: [path.resolve(__dirname, "../../../", "node_modules")],
+            conditionNames: ['require'],
         }
 
         await bundle("./" + filePath, mode, [], module, plugins, temporaryFolder, outputFile, resolve, resolveLoader)
