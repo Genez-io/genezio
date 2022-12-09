@@ -141,7 +141,16 @@ export async function startServer(handlers: any,port = PORT_LOCAL_ENVIRONMENT) {
     const reqToFunction = getEventObjectFromRequest(req);
     log.debug(`HTTP Request received ${req.method} ${req.url}.`);
 
-    const path = handlers[req.params.className].path;
+    const handler = handlers[req.params.className]
+    if (!handler) {
+      log.error(`Could not find class ${req.params.className}. The path should be /<class_name>/<method_name>`)
+      res.set("Content-Type", "application/json");
+      res.writeHead(404);
+      res.end(JSON.stringify({ error: `Class not found ${req.params.className}.` }))
+      return
+    }
+
+    const path = handler.path;
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const module = require(path);
