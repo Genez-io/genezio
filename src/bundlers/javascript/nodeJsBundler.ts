@@ -117,7 +117,7 @@ export class NodeJsBundler implements BundlerInterface {
             ]
         }, undefined, tempFolderPath, outputFile)
 
-        await writeToFile(tempFolderPath, "index.js", lambdaHandler);
+        await writeToFile(tempFolderPath, "index.js", lambdaHandler("Object.keys(handler.genezio)[0]"));
     }
 
     #getClassDetails(filePath: string, tempFolderPath: string): any {

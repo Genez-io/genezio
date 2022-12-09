@@ -47,7 +47,8 @@ export class NodeTsBundler implements BundlerInterface {
                     use: [{
                         loader: "ts-loader",
                         options: {
-                            configFile: (fs.existsSync("tsconfig.json") ? "./tsconfig.json" : path.join(folder, "tsconfig.json"))
+                            configFile: (fs.existsSync("tsconfig.json") ? "./tsconfig.json" : path.join(folder, "tsconfig.json")),
+                            onlyCompileBundledFiles: true
                         }
                     }],
                     exclude: /really\.html/
@@ -161,17 +162,28 @@ export class NodeTsBundler implements BundlerInterface {
 
         await bundle("./" + filePath, mode, [webpackNodeExternals()], module, undefined, tempFolderPath, outputFile, resolve, resolveLoader)
 
-        await writeToFile(tempFolderPath, "index.js", lambdaHandler);
+        //await writeToFile(tempFolderPath, "index.js", lambdaHandler);
     }
 
-    #getClassDetails(filePath: string, tempFolderPath: string): any {
+    async #getClassDetails(filePath: string, tempFolderPath: string): Promise<any> {
         const moduleJsPath = path.join(tempFolderPath, "module.js");
 
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const module = require(moduleJsPath);
-        const className = Object.keys(module.genezio)[0];
 
-        if (Object.keys(module.genezio).length > 1) {
+        const classes: string[] = [];
+
+        let className = "";
+
+        for (const name in module.genezio) {
+            if (typeof module.genezio[name] == 'function') {
+                classes.push(name);
+                className = name;
+            }
+        }
+        //console.log(typeof module.genezio["Directions"]);
+
+        if (classes.length > 1) {
             log.warn(
                 "\x1b[33m",
                 `Warning: We found multiple classes exported from the ${filePath} file. For now, we support only one class per file.`
@@ -184,6 +196,8 @@ export class NodeTsBundler implements BundlerInterface {
                 `No class was found in the ${filePath} file. Make sure you exported the class.`
             );
         }
+
+        await writeToFile(tempFolderPath, "index.js", lambdaHandler(`"${className}"`));
 
         const methodNames = Object.getOwnPropertyNames(
             module.genezio[className].prototype
@@ -219,7 +233,7 @@ export class NodeTsBundler implements BundlerInterface {
         ]);
 
         // 5. Get class name
-        const classDetails = this.#getClassDetails(input.path, temporaryFolder);
+        const classDetails = await this.#getClassDetails(input.path, temporaryFolder);
 
         return {
             ...input,
