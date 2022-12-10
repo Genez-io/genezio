@@ -1,6 +1,9 @@
 //const object = new handler.genezio[Object.keys(handler.genezio)[0]]();
 
 export const lambdaHandler = (className: string): string => `
+delete process.env.AWS_ACCESS_KEY_ID
+delete process.env.AWS_SECRET_ACCESS_KEY
+delete process.env.AWS_REGION
 const handler = require("./module.js");
 
 const object = new handler.genezio[${className}]();
