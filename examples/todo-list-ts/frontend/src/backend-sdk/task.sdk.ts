@@ -28,7 +28,7 @@ export type DeleteTaskResponse = {
 
 
 export class TaskService {
-    static remote = new Remote("https://gpssmcrpp3fl5vydeljl3lfc740iaedg.lambda-url.us-east-1.on.aws/")
+    static remote = new Remote("https://3yliuslxs242nwksjoxbfjtnx40zclud.lambda-url.us-east-1.on.aws/")
 
     static async connect()  {
         return TaskService.remote.call("TaskService.connect")

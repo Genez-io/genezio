@@ -24,7 +24,7 @@ export type CheckSessionResponse = {
 
 
 export class UserService {
-    static remote = new Remote("https://rpnwq4mjgm74cesqrzj63vo5qq0ldmza.lambda-url.us-east-1.on.aws/")
+    static remote = new Remote("https://squfzxnjhj6ryx4uvzx4ddnism0czdxf.lambda-url.us-east-1.on.aws/")
 
     static async connect()  {
         return UserService.remote.call("UserService.connect")

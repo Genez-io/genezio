@@ -31,9 +31,9 @@ export class NodeTsBundler implements BundlerInterface {
             return;
         } else {
             console.log("No tsconfig.json file found. We will create one...")
-            tsconfig.compilerOptions.rootDir = process.cwd();
-            tsconfig.compilerOptions.outDir = path.join(process.cwd(), "build");
-            tsconfig.include = [path.join(process.cwd(), "**/*")];
+            tsconfig.compilerOptions.rootDir = ".";
+            tsconfig.compilerOptions.outDir = path.join(".", "build");
+            tsconfig.include = [path.join(".", "**/*")];
             writeToFile(process.cwd(), "tsconfig.json", JSON.stringify(tsconfig, null, 4));
             // writeToFile(process.cwd(), "package.json", packagejson);
         }
@@ -200,10 +200,9 @@ export class NodeTsBundler implements BundlerInterface {
             output.forEach((error: any) => {
                 // log error red
                 log.error("\x1b[31m", "Syntax error:");
-                if (error.details.includes("ts-loader-default")) {
+                if (error.details?.includes("ts-loader-default")) {
                     log.info(error.message)
                 } else {
-
                     if (error.moduleIdentifier?.includes("|")) {
                         log.info(
                             "\x1b[37m",
