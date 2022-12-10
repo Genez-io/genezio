@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  genezio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: genezio_tests
+    privileged: true
+    secrets:
+      - genezio_token
+    command: 
+      - /bin/bash
+      - -c
+      - |
+        echo -n "genezio version: "
+        genezio --version
+        sleep 1
+        cat /run/secrets/genezio_token > ~/.geneziorc
+        genezio account
+        cd examples/hello-world && npm install 1> /dev/null 2> /dev/null && python3 test_hello.py && cd -
+        cd examples/cron && python3 test_cron.py && cd -
+        cd examples/webhook && python3 test_webhook.py && cd -
+        cd examples/todo-list/backend && npm install 1> /dev/null 2> /dev/null && python3 test_todo_list.py && cd -
+        cd examples/blockchain/backend && npm install 1> /dev/null 2> /dev/null && python3 test_blockchain.py && cd -
+
+# Create `.env.genezio_token` locally in the repo and paste in it a valid `dev` genezio token from the Keychain/Keyring
+secrets:
+  genezio_token:
+    file: .env.genezio_token
+    name: genezio_token

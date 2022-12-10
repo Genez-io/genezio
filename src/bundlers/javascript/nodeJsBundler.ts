@@ -11,15 +11,63 @@ import {
 import {
   BundlerInput,
   BundlerInterface,
-  BundlerOutput
+  BundlerOutput,
+  AccessDependenciesPlugin
 } from "../bundler.interface";
 import FileDetails from "../../models/fileDetails";
-import { getNodeModules } from "../../commands";
 import { default as fsExtra } from "fs-extra";
 import { lambdaHandler } from "../../utils/lambdaHander";
 import log from "loglevel";
+import { exit } from "process";
+import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
+import { bundle } from "../../utils/webpack";
 
 export class NodeJsBundler implements BundlerInterface {
+  async #getNodeModulesJs(
+    filePath: string,
+    mode: "development" | "production"
+  ): Promise<any> {
+    const { name } = getFileDetails(filePath);
+    const outputFile = `${name}-processed.js`;
+    const temporaryFolder = await createTemporaryFolder();
+    const dependencies: string[] = [];
+
+    await bundle(
+      "./" + filePath,
+      mode,
+      [],
+      undefined,
+      [new NodePolyfillPlugin(), new AccessDependenciesPlugin(dependencies)],
+      temporaryFolder,
+      outputFile,
+      {
+        conditionNames: ["require"]
+      }
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
+    );
+
+    const dependenciesInfo = dependencies.map((dependency) => {
+      const relativePath = dependency.split("node_modules" + path.sep)[1];
+      const dependencyName = relativePath?.split(path.sep)[0];
+      const dependencyPath =
+        dependency.split("node_modules" + path.sep)[0] +
+        "node_modules" +
+        path.sep +
+        dependencyName;
+      return {
+        name: dependencyName,
+        path: dependencyPath
+      };
+    });
+
+    // remove duplicates from dependenciesInfo by name
+    const uniqueDependenciesInfo = dependenciesInfo.filter(
+      (v, i, a) => a.findIndex((t) => t.name === v.name) === i
+    );
+
+    return uniqueDependenciesInfo;
+  }
+
   async #copyDependencies(dependenciesInfo: any, tempFolderPath: string) {
     const nodeModulesPath = path.join(tempFolderPath, "node_modules");
     // copy all dependencies to node_modules folder
@@ -66,62 +114,66 @@ export class NodeJsBundler implements BundlerInterface {
 
   async #bundleJavascriptCode(
     filePath: string,
-    tempFolderPath: string
+    tempFolderPath: string,
+    mode: "development" | "production"
   ): Promise<void> {
+    const outputFile = `module.js`;
+
     // eslint-disable-next-line no-async-promise-executor
-    return new Promise(async (resolve, reject) => {
-      const outputFile = `module.js`;
+    const output: any = await bundle(
+      "./" + filePath,
+      mode,
+      [webpackNodeExternals()],
+      {
+        rules: [
+          {
+            test: /\.html$/,
+            loader: "dumb-loader",
+            exclude: /really\.html/
+          }
+        ]
+      },
+      undefined,
+      tempFolderPath,
+      outputFile
+    );
 
-      const compiler = webpack({
-        entry: "./" + filePath,
-        target: "node",
+    if (output != undefined) {
+      output.forEach((error: any) => {
+        // log error red
+        log.error("\x1b[31m", "Syntax error:");
 
-        externals: [webpackNodeExternals()], // in order to ignore all modules in node_modules folder
+        if (error.moduleIdentifier?.includes("|")) {
+          log.info(
+            "\x1b[37m",
+            "file: " +
+              error.moduleIdentifier?.split("|")[1] +
+              ":" +
+              error.loc?.split(":")[0]
+          );
+        } else {
+          log.info(
+            "file: " + error.moduleIdentifier + ":" + error.loc?.split(":")[0]
+          );
+        }
 
-        mode: "production",
-        node: false,
-        optimization: {
-          minimize: false
-        },
-        module: {
-          rules: [
-            {
-              test: /\.html$/,
-              loader: "dumb-loader",
-              exclude: /really\.html/
-            }
-          ]
-        },
-        // compilation stats json
-        output: {
-          path: tempFolderPath,
-          filename: outputFile,
-          library: "genezio",
-          libraryTarget: "commonjs"
+        // get first line of error
+        const firstLine = error.message.split("\n")[0];
+        log.info(firstLine);
+
+        //get message line that contains '>' first character
+        const messageLine: string = error.message
+          .split("\n")
+          .filter((line: any) => line.startsWith(">") || line.startsWith("|"))
+          .join("\n");
+        if (messageLine) {
+          log.info(messageLine);
         }
       });
+      throw "Compilation failed";
+    }
 
-      compiler.run(async (error, stats) => {
-        if (error) {
-          console.error(error);
-          reject(error);
-          return;
-        }
-
-        if (stats?.hasErrors()) {
-          reject(stats?.compilation.getErrors());
-          return;
-        }
-
-        writeToFile(tempFolderPath, "index.js", lambdaHandler);
-
-        compiler.close((closeErr) => {
-          /* TODO: handle error? */
-        });
-
-        resolve();
-      });
-    });
+    await writeToFile(tempFolderPath, "index.js", lambdaHandler("Object.keys(handler.genezio)[0]"));
   }
 
   #getClassDetails(filePath: string, tempFolderPath: string): any {
@@ -157,11 +209,17 @@ export class NodeJsBundler implements BundlerInterface {
 
   async bundle(input: BundlerInput): Promise<BundlerOutput> {
     const temporaryFolder = await createTemporaryFolder();
+    const mode =
+      (input.extra ? input.extra["mode"] : undefined) || "production";
 
     // 1. Run webpack to get dependenciesInfo and the packed file
     const [dependenciesInfo, _] = await Promise.all([
-      getNodeModules(input.path),
-      this.#bundleJavascriptCode(input.configuration.path, temporaryFolder)
+      this.#getNodeModulesJs(input.path, mode),
+      this.#bundleJavascriptCode(
+        input.configuration.path,
+        temporaryFolder,
+        mode
+      )
     ]);
 
     // 2. Copy non js files and node_modules

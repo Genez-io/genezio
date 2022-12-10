@@ -1,4 +1,3 @@
-import webpack, { NormalModule } from "webpack";
 import path from "path";
 import { deployClass } from "./requests/deployCode";
 import generateSdk from "./requests/generateSdk";
@@ -7,7 +6,6 @@ import deleteProject from "./requests/deleteProject";
 import {
   createTemporaryFolder,
   fileExists,
-  getFileDetails,
   readUTF8File,
   writeToFile,
   zipDirectory
@@ -15,104 +13,24 @@ import {
 import { askQuestion } from "./utils/prompt";
 import { parse, Document } from "yaml";
 import fs from "fs";
-import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import {
   ProjectConfiguration,
   TriggerType
 } from "./models/projectConfiguration";
-import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
-import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBinaryDepenciesBundler";
 import { getProjectConfiguration } from "./utils/configuration";
 import { REACT_APP_BASE_URL } from "./variables";
 import log from "loglevel";
-
-class AccessDependenciesPlugin {
-  dependencies: string[];
-
-  // constructor() {
-  constructor(dependencies: string[]) {
-    this.dependencies = dependencies;
-  }
-
-  apply(compiler: {
-    hooks: {
-      compilation: {
-        tap: (arg0: string, arg1: (compilation: any) => void) => void;
-      };
-    };
-  }) {
-    compiler.hooks.compilation.tap(
-      "AccessDependenciesPlugin",
-      (compilation) => {
-        NormalModule.getCompilationHooks(compilation).beforeLoaders.tap(
-          "AccessDependenciesPlugin",
-          (loader: any, normalModule: any) => {
-            if (
-              normalModule.resource &&
-              normalModule.resource.includes("node_modules")
-            ) {
-              const resource = normalModule.resource;
-              this.dependencies.push(resource);
-            }
-          }
-        );
-      }
-    );
-  }
-}
-
-export async function getNodeModules(filePath: string): Promise<any> {
-  // eslint-disable-next-line no-async-promise-executor
-  return new Promise(async (resolve, reject) => {
-    const { name } = getFileDetails(filePath);
-    const outputFile = `${name}-processed.js`;
-    const temporaryFolder = await createTemporaryFolder();
-    const dependencies: string[] = [];
-
-    const compiler = webpack({
-      entry: "./" + filePath,
-      target: "node",
-      mode: "production",
-      output: {
-        path: temporaryFolder,
-        filename: outputFile,
-        library: "genezio",
-        libraryTarget: "commonjs"
-      },
-      plugins: [
-        new NodePolyfillPlugin(),
-        new AccessDependenciesPlugin(dependencies)
-      ]
-    });
-
-    compiler.run((err) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      const dependenciesInfo = dependencies.map((dependency) => {
-        const relativePath = dependency.split("node_modules" + path.sep)[1];
-        const dependencyName = relativePath?.split(path.sep)[0];
-        const dependencyPath =
-          dependency.split("node_modules" + path.sep)[0] +
-          "node_modules" +
-          path.sep +
-          dependencyName;
-        return {
-          name: dependencyName,
-          path: dependencyPath
-        };
-      });
-
-      // remove duplicates from dependenciesInfo by name
-      const uniqueDependenciesInfo = dependenciesInfo.filter(
-        (v, i, a) => a.findIndex((t) => t.name === v.name) === i
-      );
-
-      resolve(uniqueDependenciesInfo);
-    });
-  });
-}
+import http from "http";
+import jsonBody from "body/json";
+import { exit } from "process";
+import { AddressInfo } from "net";
+import open from "open";
+import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
+import { NodeTsBundler } from "./bundlers/typescript/nodeTsBundler";
+import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBinaryDepenciesBundler";
+import { NodeTsBinaryDependenciesBundler } from "./bundlers/typescript/nodeTsBinaryDepenciesBundler";
+import { languages } from "./utils/languages";
+import { saveAuthToken } from "./utils/accounts";
 
 export async function addNewClass(classPath: string, classType: string) {
   if (classType === undefined) {
@@ -169,31 +87,43 @@ export async function addNewClass(classPath: string, classType: string) {
   log.info("\x1b[36m%s\x1b[0m", "Class added successfully.");
 }
 
-export async function deleteProjectHandler(projectId : string, forced : boolean) {
+export async function deleteProjectHandler(projectId: string, forced: boolean) {
   // show prompt if no project id is selected
-  if (typeof projectId === 'string' && projectId.trim().length === 0) {
+  if (typeof projectId === "string" && projectId.trim().length === 0) {
     const projects = await listProjects();
     if (projects.length === 0) {
       log.info("There are no currently deployed projects.");
       return false;
     } else {
-      log.info('No project ID specified, select an ID to delete from this list:')
+      log.info(
+        "No project ID specified, select an ID to delete from this list:"
+      );
       log.info(projects);
     }
 
-    const selection = await askQuestion(`Please select project number to delete (1--${projects.length}) [none]: `, "");
+    const selection = await askQuestion(
+      `Please select project number to delete (1--${projects.length}) [none]: `,
+      ""
+    );
     const selectionNum = Number(selection);
-    if (isNaN(selectionNum) || selectionNum <= 0 || selectionNum > projects.length) {
+    if (
+      isNaN(selectionNum) ||
+      selectionNum <= 0 ||
+      selectionNum > projects.length
+    ) {
       log.info("No valid selection was made, aborting.");
       return false;
     } else {
       forced = false;
-      projectId = projects[selectionNum - 1].split(':')[3].trim();
+      projectId = projects[selectionNum - 1].split(":")[3].trim();
     }
   }
 
   if (!forced) {
-    const confirmation = await askQuestion(`Are you sure you want to delete project ${projectId}? y/[N]: `, "n");
+    const confirmation = await askQuestion(
+      `Are you sure you want to delete project ${projectId}? y/[N]: `,
+      "n"
+    );
 
     if (confirmation !== "y" && confirmation !== "Y") {
       log.warn("Aborted operation.");
@@ -220,19 +150,29 @@ export async function deployClasses() {
     methodNames: any;
     path: string;
     functionUrl: any;
-    projectId : string;
+    projectId: string;
   }[] = [];
 
   const promisesDeploy: any = configuration.classes.map(
     async (element: any) => {
+      if (!(await fileExists(element.path))) {
+        log.error(
+          `\`${element.path}\` file does not exist at the indicated path.`
+        );
+        exit(1);
+      }
+
       switch (element.language) {
-        case ".js": {
-          const bundler = new NodeJsBundler();
-          const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
+        case ".ts": {
+          const bundler = new NodeTsBundler();
+          const binaryDepBundler = new NodeTsBinaryDependenciesBundler();
 
           let output = await bundler.bundle({
             configuration: element,
-            path: element.path
+            path: element.path,
+            extra: {
+              mode: "production"
+            }
           });
 
           output = await binaryDepBundler.bundle(output);
@@ -251,13 +191,54 @@ export async function deployClasses() {
           ).then((result) => {
             functionUrlForFilePath[path.parse(element.path).name] =
               result.functionUrl;
-            
+
             classesInfo.push({
               className: output.extra?.className,
               methodNames: output.extra?.methodNames,
               path: element.path,
               functionUrl: result.functionUrl,
-              projectId: result.class.ProjectID  
+              projectId: result.class.ProjectID
+            });
+
+            fs.promises.unlink(archivePath);
+          });
+          return prom;
+        }
+        case ".js": {
+          const bundler = new NodeJsBundler();
+          const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
+
+          let output = await bundler.bundle({
+            configuration: element,
+            path: element.path,
+            extra: {
+              mode: "development"
+            }
+          });
+
+          output = await binaryDepBundler.bundle(output);
+
+          const archivePath = path.join(
+            await createTemporaryFolder("genezio-"),
+            `genezioDeploy.zip`
+          );
+          await zipDirectory(output.path, archivePath);
+
+          const prom = deployClass(
+            element,
+            archivePath,
+            configuration.name,
+            output.extra?.className
+          ).then((result) => {
+            functionUrlForFilePath[path.parse(element.path).name] =
+              result.functionUrl;
+
+            classesInfo.push({
+              className: output.extra?.className,
+              methodNames: output.extra?.methodNames,
+              path: element.path,
+              functionUrl: result.functionUrl,
+              projectId: result.class.ProjectID
             });
 
             fs.promises.unlink(archivePath);
@@ -273,14 +254,18 @@ export async function deployClasses() {
 
   // wait for all promises to finish
   await Promise.all(promisesDeploy);
-  await generateSdks(functionUrlForFilePath).catch((error)=>{
-    throw error
-  })
+
+  await generateSdks(functionUrlForFilePath).catch((error) => {
+    console.log("Generate sdk", error);
+    throw error;
+  });
 
   reportSuccess(classesInfo, configuration);
-  
-  const projectId = classesInfo[0].projectId
-  console.log(`Your project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`)
+
+  const projectId = classesInfo[0].projectId;
+  console.log(
+    `Your project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`
+  );
 }
 
 export function reportSuccess(
@@ -324,16 +309,17 @@ export async function generateSdks(urlMap: any) {
     configurationFileContent
   );
   const outputPath = configuration.sdk.path;
+  const language = configuration.sdk.language;
 
   // check if the output path exists
   if (await fileExists(outputPath)) {
     // delete the output path
     fs.rmSync(outputPath, { recursive: true, force: true });
   }
-  
-  const sdk = await generateSdk(configuration, urlMap).catch((error)=>{
-    throw error
-  })
+
+  const sdk = await generateSdk(configuration, urlMap).catch((error) => {
+    throw error;
+  });
 
   if (sdk.remoteFile) {
     await writeToFile(outputPath, "remote.js", sdk.remoteFile, true).catch(
@@ -347,7 +333,7 @@ export async function generateSdks(urlMap: any) {
     sdk.classFiles.map((classFile: any) => {
       return writeToFile(
         outputPath,
-        `${classFile.filename}.sdk.js`,
+        `${classFile.filename}.sdk.${language}`,
         classFile.implementation,
         true
       );
@@ -366,18 +352,18 @@ export async function init() {
   const sdk: any = { name: projectName, sdk: {}, classes: [] };
 
   const language = await askQuestion(
-    `In what programming language do you want your SDK? [default value: js]: `,
+    `In what programming language do you want your SDK? (js or ts) [default value: js]: `,
     "js"
   );
 
-  if (language !== "js") {
+  if (!languages.includes(language)) {
     throw Error(
       `We don't currently support the ${language} language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`
     );
   }
   sdk.sdk.language = language;
 
-  if (language === "js") {
+  if (language === "js" || language === "ts") {
     const runtime = await askQuestion(
       `What runtime will you use? Options: "node" or "browser". [default value: node]: `,
       "node"
@@ -431,4 +417,52 @@ classes:
     "The genezio.yaml configuration file was generated. You can now add the classes that you want to deploy using the 'genezio addClass <className> <classType>' command."
   );
   log.info("");
+}
+
+export async function handleLogin(accessToken: string) {
+  if (accessToken !== "") {
+    saveAuthToken(accessToken);
+  } else {
+    const server = http.createServer((req, res) => {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+      res.setHeader("Access-Control-Allow-Methods", "POST");
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+      if (req.method === "OPTIONS") {
+        res.end();
+        return;
+      }
+      jsonBody(req, res, (err, body: any) => {
+        const params = new URLSearchParams(req.url);
+
+        const token = params.get("/?token")!;
+
+        saveAuthToken(token).then(() => {
+          log.info(`Welcome! You can now start using genez.io.`);
+          res.setHeader("Access-Control-Allow-Origin", "*");
+          res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+          res.setHeader("Access-Control-Allow-Methods", "POST");
+          res.setHeader("Access-Control-Allow-Credentials", "true");
+          res.writeHead(301, {
+            Location: `${REACT_APP_BASE_URL}/cli/login/success`
+          });
+          res.end();
+
+          exit(0);
+        });
+      });
+    });
+
+    const promise = new Promise((resolve) => {
+      server.listen(0, "localhost", () => {
+        log.info("Redirecting to browser to complete authentication...");
+        const address = server.address() as AddressInfo;
+        resolve(address.port);
+      });
+    });
+
+    const port = await promise;
+    const browserUrl = `${REACT_APP_BASE_URL}/cli/login?redirect_url=http://localhost:${port}/`;
+    open(browserUrl);
+  }
 }

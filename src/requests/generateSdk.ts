@@ -1,10 +1,11 @@
 import FormData from "form-data";
 import fs from "fs";
 import axios, { AxiosError } from "axios";
-import { getFileDetails, readToken } from "../utils/file";
+import { getFileDetails } from "../utils/file";
 import { GENERATE_SDK_API_URL } from "../variables";
 import { ClassConfiguration, ProjectConfiguration } from "../models/projectConfiguration";
 import { exit } from "process";
+import { getAuthToken } from "../utils/accounts";
 
 export default async function generateSdk(
   configuration: ProjectConfiguration,
@@ -18,7 +19,7 @@ export default async function generateSdk(
     JSON.stringify(configuration)
   );
 
-  const authToken = await readToken().catch(() => undefined);
+  const authToken = await getAuthToken()
 
   if (!authToken) {
     throw new Error(

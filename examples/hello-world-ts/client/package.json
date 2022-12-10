@@ -1,0 +1,14 @@
+{
+  "name": "hello-world-ts-client",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "build": "npx tsc",
+    "start": "node build/test-hello.js"
+  },
+  "author": "Genezio",
+  "license": "ISC",
+  "devDependencies": {
+    "typescript": "^4.9.3"
+  }
+}

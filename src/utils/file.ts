@@ -4,7 +4,6 @@ import path from "path";
 import FileDetails from "../models/fileDetails";
 import glob from "glob";
 import archiver from "archiver";
-import keytar from "keytar";
 import { parse, Document } from "yaml";
 import { exit } from "process";
 import awsCronParser from "aws-cron-parser";
@@ -109,27 +108,6 @@ export function writeToFile(
 
       resolve();
     });
-  });
-}
-
-export async function readToken(account = false): Promise<string> {
-  // get credentials from keytar
-  return new Promise((resolve, reject) => {
-    keytar
-      .findCredentials("genez.io")
-      .then((credentials) => {
-        if (credentials.length === 0) {
-          reject("No credentials found");
-        }
-        if (account) {
-          resolve(credentials[0].account);
-        } else {
-          resolve(credentials[0].password);
-        }
-      })
-      .catch((error) => {
-        reject(error);
-      });
   });
 }
 
