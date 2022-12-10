@@ -12,7 +12,10 @@ export const tsconfig = {
         noImplicitAny: true,
         esModuleInterop: true,
         resolveJsonModule: true,
-        allowJs: true
+        allowJs: true,
+        types: [
+            "node"
+        ]
     },
     //files: ["hello.ts"],
     include: [""],

@@ -1,0 +1,23 @@
+{
+    "compilerOptions": {
+        "target": "es6",
+        "module": "commonjs",
+        "lib": [
+            "es6",
+            "dom"
+        ],
+        "outDir": "/Users/iulian-bogdanvlad/Documents/genezio/genezio-main/command-line/examples/hello-world-ts/backend/build",
+        "rootDir": "/Users/iulian-bogdanvlad/Documents/genezio/genezio-main/command-line/examples/hello-world-ts/backend",
+        "strict": true,
+        "noImplicitAny": true,
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "allowJs": true,
+        "types": [
+            "node"
+        ]
+    },
+    "include": [
+        "/Users/iulian-bogdanvlad/Documents/genezio/genezio-main/command-line/examples/hello-world-ts/backend/**/*"
+    ]
+}
