@@ -88,8 +88,7 @@ program
 
     log.info("Deploying your project to genez.io infrastructure...");
     await deployClasses().catch((error: AxiosError) => {
-      console.log(error);
-      if (error.response?.status == 401 || error.response?.status === 500) {
+      if (error.response?.status == 401) {
         log.error(
           "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
         );
