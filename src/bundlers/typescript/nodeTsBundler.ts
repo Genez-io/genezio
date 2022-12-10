@@ -26,16 +26,20 @@ import { bundle } from "../../utils/webpack";
 const exec = util.promisify(require("child_process").exec);
 
 export class NodeTsBundler implements BundlerInterface {
-    #generateTsconfigJson(tempFolderPath: string) {
-        tsconfig.compilerOptions.rootDir = process.cwd();
-        tsconfig.compilerOptions.outDir = path.join(process.cwd(), "build");
-        tsconfig.include = [path.join(process.cwd(), "**/*")];
-        writeToFile(tempFolderPath, "tsconfig.json", JSON.stringify(tsconfig));
-        writeToFile(tempFolderPath, "package.json", packagejson);
+    #generateTsconfigJson() {
+        if (fs.existsSync("tsconfig.json")) {
+            return;
+        } else {
+            console.log("No tsconfig.json file found. We will create one...")
+            tsconfig.compilerOptions.rootDir = process.cwd();
+            tsconfig.compilerOptions.outDir = path.join(process.cwd(), "build");
+            tsconfig.include = [path.join(process.cwd(), "**/*")];
+            writeToFile(process.cwd(), "tsconfig.json", JSON.stringify(tsconfig, null, 4));
+            // writeToFile(process.cwd(), "package.json", packagejson);
+        }
     }
 
     async #getNodeModulesTs(
-        folder: string,
         filePath: string,
         mode: "development" | "production"
     ): Promise<any> {
@@ -51,9 +55,7 @@ export class NodeTsBundler implements BundlerInterface {
                         {
                             loader: "ts-loader",
                             options: {
-                                configFile: fs.existsSync("tsconfig.json")
-                                    ? "./tsconfig.json"
-                                    : path.join(folder, "tsconfig.json"),
+                                configFile: "./tsconfig.json",
                                 onlyCompileBundledFiles: true
                             }
                         }
@@ -154,7 +156,6 @@ export class NodeTsBundler implements BundlerInterface {
     }
 
     async #bundleTypescriptCode(
-        folder: string,
         filePath: string,
         tempFolderPath: string,
         mode: "development" | "production"
@@ -168,9 +169,7 @@ export class NodeTsBundler implements BundlerInterface {
                         {
                             loader: "ts-loader",
                             options: {
-                                configFile: fs.existsSync("tsconfig.json")
-                                    ? "./tsconfig.json"
-                                    : path.join(folder, "tsconfig.json"),
+                                configFile: "./tsconfig.json",
                                 onlyCompileBundledFiles: true
                             }
                         }
@@ -201,32 +200,36 @@ export class NodeTsBundler implements BundlerInterface {
             output.forEach((error: any) => {
                 // log error red
                 log.error("\x1b[31m", "Syntax error:");
-
-                if (error.moduleIdentifier?.includes("|")) {
-                    log.info(
-                        "\x1b[37m",
-                        "file: " +
-                        error.moduleIdentifier?.split("|")[1] +
-                        ":" +
-                        error.loc?.split(":")[0]
-                    );
+                if (error.details.includes("ts-loader-default")) {
+                    log.info(error.message)
                 } else {
-                    log.info(
-                        "file: " + error.moduleIdentifier + ":" + error.loc?.split(":")[0]
-                    );
-                }
 
-                // get first line of error
-                const firstLine = error.message.split("\n")[0];
-                log.info(firstLine);
+                    if (error.moduleIdentifier?.includes("|")) {
+                        log.info(
+                            "\x1b[37m",
+                            "file: " +
+                            error.moduleIdentifier?.split("|")[1] +
+                            ":" +
+                            error.loc?.split(":")[0]
+                        );
+                    } else {
+                        log.info(
+                            "file: " + error.moduleIdentifier + ":" + error.loc?.split(":")[0]
+                        );
+                    }
 
-                //get message line that contains '>' first character
-                const messageLine: string = error.message
-                    .split("\n")
-                    .filter((line: any) => line.startsWith(">") || line.startsWith("|"))
-                    .join("\n");
-                if (messageLine) {
-                    log.info(messageLine);
+                    // get first line of error
+                    const firstLine = error.message.split("\n")[0];
+                    log.info(firstLine);
+
+                    //get message line that contains '>' first character
+                    const messageLine: string = error.message
+                        .split("\n")
+                        .filter((line: any) => line.startsWith(">") || line.startsWith("|"))
+                        .join("\n");
+                    if (messageLine) {
+                        log.info(messageLine);
+                    }
                 }
             });
             throw "Compilation failed";
@@ -280,19 +283,18 @@ export class NodeTsBundler implements BundlerInterface {
     }
 
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
-        const auxFolder = await createTemporaryFolder();
+        // const auxFolder = await createTemporaryFolder();
         const temporaryFolder = await createTemporaryFolder();
         const mode =
             (input.extra ? input.extra["mode"] : undefined) || "production";
 
         // 1. Create auxiliary folder and copy the entire project
-        this.#generateTsconfigJson(auxFolder);
+        this.#generateTsconfigJson();
 
         // 2. Run webpack to get dependenciesInfo and the packed file
         const [dependenciesInfo, _] = await Promise.all([
-            this.#getNodeModulesTs(auxFolder, input.path, mode),
+            this.#getNodeModulesTs(input.path, mode),
             this.#bundleTypescriptCode(
-                auxFolder,
                 input.configuration.path,
                 temporaryFolder,
                 mode
@@ -300,7 +302,7 @@ export class NodeTsBundler implements BundlerInterface {
         ]);
 
         // 3. Remove auxiliary folder
-        fs.rmSync(auxFolder, { recursive: true, force: true });
+        // fs.rmSync(auxFolder, { recursive: true, force: true });
 
         // 4. Copy non js files and node_modules
         await Promise.all([
