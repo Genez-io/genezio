@@ -18,14 +18,19 @@ export enum Language {
   ts = "ts"
 }
 
+export type JsSdkOptions = {
+  runtime: "node" | "browser";
+};
+
 export class SdkConfiguration {
   sdkLanguage: Language;
-  runtime: JsRuntime;
+  sdkOptions: JsSdkOptions | any;
   path: string;
 
   constructor(sdkLanguage: Language, runtime: JsRuntime, path: string) {
     this.sdkLanguage = sdkLanguage;
-    this.runtime = runtime;
+    this.sdkOptions = {};
+    this.sdkOptions.runtime = runtime;
     this.path = path;
   }
 }
@@ -177,7 +182,7 @@ export class ProjectConfiguration {
     const language: string = configurationFileContent.sdk.sdkLanguage;
 
     if (!language || !Language[language as keyof typeof Language]) {
-      throw new Error("The sdk.language property is invalid.");
+      throw new Error("The sdk.sdkLanguage property is invalid.");
     }
 
     if (
@@ -193,7 +198,7 @@ export class ProjectConfiguration {
           .runtime as keyof typeof JsRuntime
       ]
     ) {
-      throw new Error("The sdk.runtime property is invalid.");
+      throw new Error("The sdk.sdkOptions.runtime property is invalid.");
     }
 
     const sdk = new SdkConfiguration(
@@ -252,7 +257,7 @@ export class ProjectConfiguration {
       sdk: {
         sdkLanguage: this.sdk.sdkLanguage,
         sdkOptions: {
-          runtime: this.sdk.runtime
+          runtime: this.sdk.sdkOptions?.runtime
         },
         path: this.sdk.path
       },
