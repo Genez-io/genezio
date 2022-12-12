@@ -55,7 +55,9 @@ describe("project configuration", () => {
         sdk: {
           path: "/",
           sdkLanguage: "js",
-          runtime: "node"
+          sdkOptions: {
+            runtime: "node"
+          }
         }
       };
       await ProjectConfiguration.create(yaml);
@@ -69,7 +71,9 @@ describe("project configuration", () => {
         sdk: {
           path: "/",
           sdkLanguage: "js",
-          runtime: "node"
+          sdkOptions: {
+            runtime: "node"
+          }
         },
         classes: [
           {
@@ -89,7 +93,9 @@ describe("project configuration", () => {
         sdk: {
           path: "/",
           sdkLanguage: "js",
-          runtime: "node"
+          sdkOptions: {
+            runtime: "node"
+          }
         },
         classes: [
           {
@@ -108,7 +114,9 @@ describe("project configuration", () => {
       sdk: {
         path: "/",
         sdkLanguage: "js",
-        runtime: "node"
+        sdkOptions: {
+          runtime: "node"
+        }
       },
       classes: [
         {
@@ -127,7 +135,9 @@ describe("project configuration", () => {
       sdk: {
         path: "/",
         sdkLanguage: "js",
-        runtime: "node"
+        sdkOptions: {
+          runtime: "node"
+        }
       },
       classes: [
         {
@@ -156,7 +166,9 @@ describe("project configuration", () => {
       sdk: {
         path: "/",
         sdkLanguage: "js",
-        runtime: "node"
+        sdkOptions: {
+          runtime: "node"
+        }
       },
       classes: [
         {
