@@ -1,7 +1,8 @@
 name: hello-world
 sdk:
-  language: js
-  runtime: node
+  sdkLanguage: js
+  sdkOptions:
+    runtime: node
   path: ./sdk/
 classes:
   - path: ./hello.js
