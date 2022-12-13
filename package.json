@@ -5,8 +5,10 @@
   "main": "index.js",
   "scripts": {
     "start": "npx tsc && node build/index.js",
-    "install-locally": "npx tsc && npm install -g",
-    "build": "npx tsc",
+    "install-locally": "npx tsc && NODE_ENV=production node solveEnvVariables.js build/variables.js && npm install -g",
+    "build": "npx tsc && NODE_ENV=production node solveEnvVariables.js build/variables.js",
+    "install-locally-dev": "npx tsc && NODE_ENV=dev node solveEnvVariables.js build/variables.js && npm install -g",
+    "build-dev": "npx tsc && NODE_ENV=dev node solveEnvVariables.js build/variables.js",
     "lint": "./scripts/lint",
     "release": "npm run build && npm publish",
     "test": "jest"
@@ -65,6 +67,7 @@
     "@types/node": "^18.11.4",
     "@typescript-eslint/eslint-plugin": "^5.39.0",
     "@typescript-eslint/parser": "^5.39.0",
+    "envify": "^4.1.0",
     "eslint": "^8.24.0",
     "jest": "^29.2.2",
     "pre-commit": "^1.2.2",
