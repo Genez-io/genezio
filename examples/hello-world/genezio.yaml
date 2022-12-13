@@ -1,6 +1,6 @@
 name: hello-world
 sdk:
-  sdkLanguage: js
+  sdkLanguage: swift
   sdkOptions:
     runtime: node
   path: ./sdk/

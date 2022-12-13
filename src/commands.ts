@@ -321,10 +321,8 @@ export async function generateSdks(urlMap: any) {
     throw error;
   });
 
-  console.log("sdk", sdk);
-
   if (sdk.remoteFile) {
-    await writeToFile(outputPath, "remote.js", sdk.remoteFile, true).catch(
+    await writeToFile(outputPath, `remote.${language}`, sdk.remoteFile, true).catch(
       (error) => {
         log.error(error.toString());
       }

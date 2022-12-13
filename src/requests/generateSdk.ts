@@ -32,9 +32,9 @@ export default async function generateSdk(
 
   classes.forEach((classElem: ClassConfiguration) => {
     const filePath = classElem.path;
-    const { name } = getFileDetails(filePath);
+    const { name, extension } = getFileDetails(filePath);
 
-    form.append(name, fs.createReadStream(filePath));
+    form.append(name + extension, fs.createReadStream(filePath));
   });
 
   const response: any = await axios({
