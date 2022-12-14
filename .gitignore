@@ -137,3 +137,5 @@ dist
 
 **/__pycache__
 **/.env*
+
+./src/variables.ts
