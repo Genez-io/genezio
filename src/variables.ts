@@ -1,6 +1,6 @@
 const environment = process.env.NODE_ENV
 
-declare let REACT_APP_BASE_URL: string;
+let REACT_APP_BASE_URL: string;
 let BACKEND_ENDPOINT: string;
 let GENERATE_SDK_API_URL: string;
 let PORT_LOCAL_ENVIRONMENT: number;
