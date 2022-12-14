@@ -88,11 +88,22 @@ program
 
     log.info("Deploying your project to genez.io infrastructure...");
     await deployClasses().catch((error: AxiosError) => {
-      if (error.response?.status == 401) {
-        log.error(
-          "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
-        );
-      } else if (error.message) {
+      if (error.response?.status === 401) {
+        log.error("You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function.");
+      } else if (error.response?.status === 500) {
+        log.error(error.message)
+        if (error.response?.data) {
+          const data: any = error.response?.data
+          log.error(data.error?.message)
+        }
+      } else if (error.response?.status === 400) {
+        log.error(error.message)
+        if (error.response?.data) {
+          const data: any = error.response?.data
+          log.error(data.error?.message)
+        }
+      }
+      else{
         log.error(error.message);
       }
       exit(1);
