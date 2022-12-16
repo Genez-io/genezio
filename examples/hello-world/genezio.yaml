@@ -2,7 +2,7 @@ name: hello-world
 sdk:
   language: js
   runtime: node
-  path: ./sdk/
+  path: ./client/sdk/
 classes:
-  - path: ./hello.js
+  - path: ./server/hello.js
     type: jsonrpc

@@ -48,6 +48,8 @@ export default async function generateSdk(
     throw error;
   });
 
+  console.log(`${JSON.stringify(response.data)}`)
+
   if (response.data?.error?.message) {
       throw new Error(response.data.error.message);
   }

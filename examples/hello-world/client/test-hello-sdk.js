@@ -1,4 +1,4 @@
-import { HelloWorld, Season } from "./sdk/hello.sdk"
+import { HelloWorldService } from "./sdk/hello.sdk.js"
 
 /**
  * Client that makes requests to the HelloWorldService deployed on genez.io.
@@ -8,5 +8,6 @@ import { HelloWorld, Season } from "./sdk/hello.sdk"
 
 (async () => {
     // Use the SDK to make requests to the Hello World Service.
-    console.log(await HelloWorld.hello("George", "Tenerife", Season.Winter))
-})()
+    console.log(await HelloWorldService.helloWorld())
+    console.log(await HelloWorldService.hello("George", "Tenerife"))
+})();
