@@ -5,9 +5,9 @@ name: webhook-example
 sdk:
   language: js
   runtime: node
-  path: ./client/sdk/
+  path: ../client/sdk/
 classes:
-  - path: "./server/index.js"
+  - path: "./index.js"
     type: jsonrpc
     methods:
       - name: "helloWorldOverHttp"

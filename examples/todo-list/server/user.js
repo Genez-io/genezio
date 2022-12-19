@@ -2,7 +2,7 @@ import { mongoose } from "mongoose"
 import jwt from "jsonwebtoken"
 import { UserModel } from "./models/user"
 import { ActiveSession } from "./models/activeSession"
-import { MONGO_DB_URI, validatePassword } from "./helper"
+import { MONGO_DB_URI, validatePassword, saltPassword } from "./helper"
 
 /**
  * The User server class that will be deployed on the genez.io infrastructure.
@@ -38,7 +38,7 @@ export class User {
     if (user) {
       return { success: false, msg: "User already exists" }
     } else {
-      const saltedPassword = await saltedPassword(password)
+      const saltedPassword = await saltPassword(password)
       await UserModel.create({
         name: name,
         email: email,
