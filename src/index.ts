@@ -23,6 +23,7 @@ import {
 import { getProjectConfiguration } from "./utils/configuration";
 import log from "loglevel";
 import { getAuthToken, removeAuthToken } from "./utils/accounts";
+import { Spinner } from "cli-spinner";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
@@ -86,28 +87,37 @@ program
       exit(1);
     }
 
+    const spinner = new Spinner("%s  ");
+    spinner.setSpinnerString("|/-\\");
+    spinner.start();
+
     log.info("Deploying your project to genez.io infrastructure...");
-    await deployClasses().catch((error: AxiosError) => {
-      if (error.response?.status === 401) {
-        log.error("You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function.");
-      } else if (error.response?.status === 500) {
-        log.error(error.message)
-        if (error.response?.data) {
-          const data: any = error.response?.data
-          log.error(data.error?.message)
+    await deployClasses()
+      .then(() => {
+        spinner.stop(true);
+      })
+      .catch((error: AxiosError) => {
+        if (error.response?.status === 401) {
+          log.error(
+            "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
+          );
+        } else if (error.response?.status === 500) {
+          log.error(error.message);
+          if (error.response?.data) {
+            const data: any = error.response?.data;
+            log.error(data.error?.message);
+          }
+        } else if (error.response?.status === 400) {
+          log.error(error.message);
+          if (error.response?.data) {
+            const data: any = error.response?.data;
+            log.error(data.error?.message);
+          }
+        } else {
+          log.error(error.message);
         }
-      } else if (error.response?.status === 400) {
-        log.error(error.message)
-        if (error.response?.data) {
-          const data: any = error.response?.data
-          log.error(data.error?.message)
-        }
-      }
-      else{
-        log.error(error.message);
-      }
-      exit(1);
-    });
+        exit(1);
+      });
   });
 
 program
@@ -149,9 +159,13 @@ program
       exit(1);
     }
 
+    const spinner = new Spinner("%s  ");
+    spinner.setSpinnerString("|/-\\");
+
     try {
       // eslint-disable-next-line no-constant-condition
       while (true) {
+        spinner.start();
         const projectConfiguration = await getProjectConfiguration();
 
         let server: any = undefined;
@@ -185,6 +199,7 @@ program
 
         if (handlers != undefined) {
           server = await startServer(handlers, Number(options.port));
+          spinner.stop(true);
         } else {
           log.info("\x1b[36m%s\x1b[0m", "Listening for changes...");
         }
