@@ -19,3 +19,10 @@ RUN npm install && npm run build && npm i -g
 RUN apt install python3 python3-pip -y
 RUN python3 -m pip install termcolor
 
+FROM base as test
+
+# Prepare examples for testing
+RUN cd examples/todo-list/server && npm install
+RUN cd examples/todo-list/client && npm install
+RUN cd examples/blockchain/server && npm install
+RUN cd examples/blockchain/client && npm install

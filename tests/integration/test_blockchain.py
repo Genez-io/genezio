@@ -1,13 +1,11 @@
 #!/usr/bin/python3
 
-from os import path
-import sys
-# Add local testing module
-sys.path.insert(1, '../../../tests/integration/')
+import os
 import test as gnz_test
 
 if __name__ == '__main__':
     print("Starting blockchain test...")
+    os.chdir("../../examples/blockchain/server/")
     gnz_test.test_genezio_account()
-    gnz_test.test_genezio_deploy("../frontend/src/sdk")
+    gnz_test.test_genezio_deploy("../client/src/sdk/")
     print("Success!")

@@ -1,8 +1,6 @@
 #!/usr/bin/python3
 
-from os import path
-import sys
-
+import os
 import test as gnz_test
 
 if __name__ == '__main__':
