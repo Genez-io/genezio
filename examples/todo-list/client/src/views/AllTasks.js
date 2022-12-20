@@ -12,8 +12,7 @@ import {
   ButtonGroup
 } from "reactstrap";
 import React, { useState, useEffect, useRef } from "react";
-import { Task } from "../backend-sdk/task.sdk.js";
-import { Env, Remote } from "../backend-sdk/remote.js";
+import { Task } from "../sdk/task.sdk.js";
 import { useNavigate } from "react-router-dom";
 
 

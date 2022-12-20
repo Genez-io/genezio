@@ -1,7 +1,6 @@
 import { Button, Card, Container, Row, Col, Input } from "reactstrap";
-import React, { useState, useEffect, useRef } from "react";
-import { User } from "../backend-sdk/user.sdk.js";
-import { Env, Remote } from "../backend-sdk/remote.js"
+import React, { useState } from "react";
+import { User } from "../sdk/user.sdk.js";
 import { useNavigate } from 'react-router-dom';
 
 export default (props) => {

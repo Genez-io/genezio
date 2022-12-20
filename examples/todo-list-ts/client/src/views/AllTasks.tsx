@@ -11,8 +11,8 @@ import {
   ModalFooter,
   ButtonGroup
 } from "reactstrap";
-import React, { useState, useEffect, useRef } from "react";
-import { TaskService, Task, GetTasksResponse } from "../backend-sdk/task.sdk";
+import React, { useState, useEffect } from "react";
+import { TaskService, Task, GetTasksResponse } from "../sdk/task.sdk";
 import { useNavigate } from "react-router-dom";
 import { User } from "../backend-sdk/user.sdk";
 

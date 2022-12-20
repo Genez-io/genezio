@@ -2,7 +2,7 @@ name: todo-list
 sdk:
   language: ts
   runtime: browser
-  path: ../client/src/backend-sdk
+  path: ../client/src/sdk
 classes:
   - path: ./task.ts
     type: jsonrpc
