@@ -1,0 +1,8 @@
+name: hello-world
+sdk:
+  language: js
+  runtime: node
+  path: ../client/sdk/
+classes:
+  - path: ./hello.js
+    type: jsonrpc
