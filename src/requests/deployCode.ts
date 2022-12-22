@@ -11,7 +11,8 @@ export async function deployClass(
   classConfiguration: ClassConfiguration,
   archivePath: string,
   projectName: string,
-  className: string
+  className: string,
+  region: string
 ) {
   if (!archivePath || !projectName || !className) {
     throw new Error("Missing required parameters");
@@ -19,7 +20,7 @@ export async function deployClass(
 
   // auth token
   const form = new FormData();
-  const authToken = await getAuthToken()
+  const authToken = await getAuthToken();
 
   if (!authToken) {
     throw new Error(
@@ -27,16 +28,14 @@ export async function deployClass(
     );
   }
 
-  form.append(
-    "configurationClassContent",
-    JSON.stringify(classConfiguration)
-  );
+  form.append("configurationClassContent", JSON.stringify(classConfiguration));
 
   form.append("classFile", fs.createReadStream(classConfiguration.path));
   form.append("filename", path.parse(classConfiguration.path).name);
   form.append("archiveContent", fs.createReadStream(archivePath));
   form.append("projectName", projectName);
   form.append("className", className);
+  form.append("region", region);
 
   const response: any = await axios({
     method: "POST",

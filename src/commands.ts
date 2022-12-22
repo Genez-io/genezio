@@ -187,7 +187,8 @@ export async function deployClasses() {
             element,
             archivePath,
             configuration.name,
-            output.extra?.className
+            output.extra?.className,
+            configuration.region
           ).then((result) => {
             functionUrlForFilePath[path.parse(element.path).name] =
               result.functionUrl;
@@ -228,7 +229,8 @@ export async function deployClasses() {
             element,
             archivePath,
             configuration.name,
-            output.extra?.className
+            output.extra?.className,
+            configuration.region
           ).then((result) => {
             functionUrlForFilePath[path.parse(element.path).name] =
               result.functionUrl;
