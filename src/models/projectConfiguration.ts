@@ -16,7 +16,7 @@ export enum JsRuntime {
 export enum Language {
   js = "js",
   ts = "ts",
-  swift = "swift",
+  swift = "swift"
 }
 
 export type JsSdkOptions = {
@@ -28,10 +28,10 @@ export class SdkConfiguration {
   sdkOptions: JsSdkOptions | any;
   path: string;
 
-  constructor(sdkLanguage: Language, runtime: JsRuntime, path: string) {
+  constructor(sdkLanguage: Language, runtime: JsRuntime | null, path: string) {
     this.sdkLanguage = sdkLanguage;
     this.sdkOptions = {};
-    this.sdkOptions.runtime = runtime;
+    this.sdkOptions.runtime = runtime || null;
     this.path = path;
   }
 }
@@ -202,14 +202,18 @@ export class ProjectConfiguration {
       throw new Error("The sdk.sdkOptions.runtime property is invalid.");
     }
 
+    const jsRuntime: JsRuntime | null = configurationFileContent.sdk.sdkOptions
+      ? JsRuntime[
+          configurationFileContent.sdk.sdkOptions
+            .runtime as keyof typeof JsRuntime
+        ]
+      : null;
+
     const sdk = new SdkConfiguration(
       Language[
         configurationFileContent.sdk.sdkLanguage as keyof typeof Language
       ],
-      JsRuntime[
-        configurationFileContent.sdk.sdkOptions
-          .runtime as keyof typeof JsRuntime
-      ],
+      jsRuntime,
       configurationFileContent.sdk.path
     );
 
