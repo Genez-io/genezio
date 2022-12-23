@@ -322,11 +322,14 @@ export async function generateSdks(urlMap: any) {
   });
 
   if (sdk.remoteFile) {
-    await writeToFile(outputPath, `remote.${language}`, sdk.remoteFile, true).catch(
-      (error) => {
-        log.error(error.toString());
-      }
-    );
+    await writeToFile(
+      outputPath,
+      `remote.${language}`,
+      sdk.remoteFile,
+      true
+    ).catch((error) => {
+      log.error(error.toString());
+    });
   }
 
   await Promise.all(
@@ -352,7 +355,7 @@ export async function init() {
   const configFile: any = { name: projectName, sdk: {}, classes: [] };
 
   const sdkLanguage = await askQuestion(
-    `In what programming language do you want your SDK? (js or ts) [default value: js]: `,
+    `In what programming language do you want your SDK? (js, ts or swift) [default value: js]: `,
     "js"
   );
 
