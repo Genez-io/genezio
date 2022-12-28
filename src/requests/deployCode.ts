@@ -1,10 +1,8 @@
 import path from "path";
 import FormData from "form-data";
-import fs from "fs";
 import axios from "axios";
 import { BACKEND_ENDPOINT } from "../variables";
 import { ClassConfiguration } from "../models/projectConfiguration";
-import log from "loglevel";
 import { getAuthToken } from "../utils/accounts";
 
 export async function deployClass(
@@ -19,29 +17,26 @@ export async function deployClass(
   }
 
   // auth token
-  const form = new FormData();
   const authToken = await getAuthToken();
-
   if (!authToken) {
     throw new Error(
       "You are not logged in. Run 'genezio login' before you deploy your function."
-    );
-  }
-
+      );
+    }
+    
+  const form = new FormData();
   form.append("configurationClassContent", JSON.stringify(classConfiguration));
-
-  form.append("classFile", fs.createReadStream(classConfiguration.path));
+  form.append("archiveName", 'genezioDeploy.zip')
   form.append("filename", path.parse(classConfiguration.path).name);
-  form.append("archiveContent", fs.createReadStream(archivePath));
   form.append("projectName", projectName);
   form.append("className", className);
   form.append("region", region);
 
   const response: any = await axios({
-    method: "POST",
-    url: `${BACKEND_ENDPOINT}/project/deployment`, // TODO modify to http://api.genez.io/core/deployment
+    method: "PUT",
+    url: `${BACKEND_ENDPOINT}/core/deployment`,
     data: form,
-    headers: { ...form.getHeaders(), Authorization: `Bearer ${authToken}` },
+    headers: { Authorization: `Bearer ${authToken}` },
     maxContentLength: Infinity,
     maxBodyLength: Infinity
   }).catch((error: Error) => {
