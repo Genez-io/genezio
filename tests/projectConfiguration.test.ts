@@ -1,6 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import { Language, ProjectConfiguration, TriggerType } from '../src/models/projectConfiguration'
-import log from "loglevel";
+import { ProjectConfiguration, TriggerType } from '../src/models/projectConfiguration'
 
 describe('project configuration', () => {
     test('missing name should throw error', async () => {
@@ -78,6 +77,27 @@ describe('project configuration', () => {
         }).rejects.toThrowError()
     });
 
+    test('cronString with 5 fields should throw error', async () => {
+        await expect(async () => {
+            const yaml = {
+                name: "test",
+                sdk: {
+                    path: "/",
+                    language: "js",
+                    runtime: "node"
+                },
+                classes: [
+                    {
+                        name: "method1",
+                        type: "cron",
+                        cronString: "* * * * *"
+                    }
+                ]
+            }
+            await ProjectConfiguration.create(yaml)
+        }).rejects.toThrowError()
+    });
+
     test('create configuration without methods defined no throw', async () => {
         await expect(async () => {
             const yaml = {
@@ -133,7 +153,7 @@ describe('project configuration', () => {
                         {
                             name: "cronMethod",
                             type: "cron",
-                            cronString: "* * *"
+                            cronString: "* * * * ? *"
                         }
                     ]
                 }
@@ -142,7 +162,7 @@ describe('project configuration', () => {
         const configuration = await ProjectConfiguration.create(yaml)
         expect(configuration.classes[0].methods[0].name).toEqual("cronMethod")
         expect(configuration.classes[0].methods[0].type).toEqual(TriggerType.cron)
-        expect(configuration.classes[0].methods[0].cronString).toEqual("* * *")
+        expect(configuration.classes[0].methods[0].cronString).toEqual("* * * * ? *")
         return {}
     });
 

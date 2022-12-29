@@ -77,7 +77,7 @@ export class MethodConfiguration {
     }
 
     // Check AWS 6 field format cron string
-    if (!MethodConfiguration.isCronStringValid(methodConfigurationYaml.cronString)) {
+    if (type == TriggerType.cron && !MethodConfiguration.isCronStringValid(methodConfigurationYaml.cronString)) {
       throw new Error("The cron string is not valid. Check AWS documentation for more details at this link https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions")
     }
 
