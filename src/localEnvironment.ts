@@ -9,7 +9,7 @@ import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import { NodeTsBundler } from "./bundlers/typescript/nodeTsBundler";
 import LocalEnvInputParameters from "./models/localEnvInputParams";
 import log from "loglevel";
-import { fileExists } from "./utils/file";
+import { fileExists, readUTF8File } from "./utils/file";
 import { exit } from "process";
 
 export function getEventObjectFromRequest(request: any) {
@@ -65,10 +65,37 @@ export function handleResponseforHttp(res: any, httpResponse: any) {
   }
 }
 
-export function listenForChanges(sdkPathRelative: any, server: any) {
+export async function listenForChanges(sdkPathRelative: any, server: any) {
   const cwd = process.cwd();
 
   let sdkPath = path.join(cwd, sdkPathRelative);
+
+  let ignoredPathsFromGenezioIgnore: string[] = [];
+
+
+  // check for .genezioignore file
+  const ignoreFilePath = path.join(cwd, ".genezioignore");
+  if (await fileExists(ignoreFilePath)) {
+    // read the file as a string
+    const ignoreFile = await readUTF8File(ignoreFilePath);
+    // split the string by new line \n
+    const ignoreFileLines = ignoreFile.split("\n");
+    // remove empty lines
+    const ignoreFileLinesWithoutEmptyLines = ignoreFileLines.filter(
+      (line) => line !== "" && !line.startsWith("#")
+    )
+
+    ignoredPathsFromGenezioIgnore = ignoreFileLinesWithoutEmptyLines.map(
+      (line: string) => {
+        if (line.startsWith("/")) {
+          return line;
+        }
+        return path.join(cwd, line);
+      }
+    );
+  }
+
+
 
   return new Promise((resolve) => {
     // delete / if sdkPath ends with /
@@ -80,8 +107,10 @@ export function listenForChanges(sdkPathRelative: any, server: any) {
     const watchPaths = [path.join(cwd, "/**/*")];
     const ignoredPaths = [
       "**/node_modules/*",
+      // "**/node_modules/**/*",
       sdkPath + "/**/*",
-      sdkPath + "/*"
+      sdkPath + "/*",
+      ...ignoredPathsFromGenezioIgnore
     ];
 
     const startWatching = () => {

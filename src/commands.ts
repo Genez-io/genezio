@@ -223,6 +223,7 @@ export async function deployClasses() {
             await createTemporaryFolder("genezio-"),
             `genezioDeploy.zip`
           );
+
           await zipDirectory(output.path, archivePath);
 
           const prom = deployClass(
