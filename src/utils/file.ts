@@ -10,12 +10,12 @@ import awsCronParser from "aws-cron-parser";
 import log from "loglevel";
 
 export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
-  // get gitignore file
+  // get genezioIgnore file
   let genezioIgnore: string[] = [];
-  const gitignorePath = path.join(process.cwd(), ".genezioignore");
-  if (fs.existsSync(gitignorePath)) {
-    const gitignoreContent = await readUTF8File(gitignorePath);
-    genezioIgnore = gitignoreContent.split("\n").filter(
+  const genezioIgnorePath = path.join(process.cwd(), ".genezioignore");
+  if (fs.existsSync(genezioIgnorePath)) {
+    const genezioIgnoreContent = await readUTF8File(genezioIgnorePath);
+    genezioIgnore = genezioIgnoreContent.split("\n").filter(
       (line) => line !== "" && !line.startsWith("#")
     );
   }
