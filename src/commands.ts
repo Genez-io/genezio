@@ -252,11 +252,10 @@ export async function deployClasses() {
               path: element.path,
               functionUrl: result.functionUrl,
               projectId: result.class.ProjectID
-            })
-          })
+            });
 
-          fs.promises.unlink(archivePath);
-
+            fs.promises.unlink(archivePath);
+          });
           return prom;
         }
         default:
