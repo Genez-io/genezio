@@ -253,6 +253,7 @@ export class ProjectConfiguration {
     const classes = [];
     const content = {
       name: this.name,
+      region: this.region,
       sdk: {
         language: this.sdk.language,
         runtime: this.sdk.runtime,
