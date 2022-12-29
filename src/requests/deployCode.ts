@@ -1,5 +1,4 @@
 import path from "path";
-import FormData from "form-data";
 import axios from "axios";
 import { BACKEND_ENDPOINT } from "../variables";
 import { ClassConfiguration } from "../models/projectConfiguration";
@@ -23,19 +22,20 @@ export async function deployClass(
       "You are not logged in. Run 'genezio login' before you deploy your function."
       );
     }
-    
-  const form = new FormData();
-  form.append("configurationClassContent", JSON.stringify(classConfiguration));
-  form.append("archiveName", 'genezioDeploy.zip')
-  form.append("filename", path.parse(classConfiguration.path).name);
-  form.append("projectName", projectName);
-  form.append("className", className);
-  form.append("region", region);
+
+  const json = JSON.stringify({
+    configurationClassContent: JSON.stringify(classConfiguration),
+    archiveName : "genezioDeploy.zip",
+    filename : path.parse(classConfiguration.path).name,
+    projectName : projectName,
+    className : className,
+    region: region,
+  })
 
   const response: any = await axios({
     method: "PUT",
     url: `${BACKEND_ENDPOINT}/core/deployment`,
-    data: form,
+    data: json,
     headers: { Authorization: `Bearer ${authToken}` },
     maxContentLength: Infinity,
     maxBodyLength: Infinity

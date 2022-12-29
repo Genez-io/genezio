@@ -1,5 +1,4 @@
 import axios from "axios";
-import fs from "fs";
 import { getAuthToken } from "../utils/accounts";
 import { BACKEND_ENDPOINT } from "../variables";
 
@@ -20,10 +19,18 @@ export async function getPresignedURL (
             "You are not logged in. Run 'genezio login' before you deploy your function."
         );
     }
-    
+
+    const json = JSON.stringify({
+        projectName: projectName,
+        className: className,
+        filename: archiveName,
+        region : region,
+    });
+
     const response: any = await axios({
         method: "GET",
-        url: `${BACKEND_ENDPOINT}/core/deployment-url?projectName=${projectName}&className=${className}&fileName=${archiveName}&region=${region}`, 
+        url: `${BACKEND_ENDPOINT}/core/deployment-url`, 
+        data: json,
         headers: {Authorization: `Bearer ${authToken}`},
         maxContentLength: Infinity,
         maxBodyLength: Infinity
