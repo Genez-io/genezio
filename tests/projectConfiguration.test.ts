@@ -137,6 +137,27 @@ describe('project configuration', () => {
         }).rejects.toThrowError()
     });
 
+    test('invalid cronString should throw error', async () => {
+        await expect(async () => {
+            const yaml = {
+                name: "test",
+                sdk: {
+                    path: "/",
+                    language: "js",
+                    runtime: "node"
+                },
+                classes: [
+                    {
+                        name: "method1",
+                        type: "cron",
+                        cronString: "* * * * * *"
+                    }
+                ]
+            }
+            await ProjectConfiguration.create(yaml)
+        }).rejects.toThrowError()
+    });
+
     test('create configuration without methods defined no throw', async () => {
         await expect(async () => {
             const yaml = {
@@ -257,7 +278,7 @@ describe('project configuration', () => {
                         {
                             name: "method3",
                             type: "cron",
-                            cronString: "* * * * * *"
+                            cronString: "* * * * ? *"
                         }
                     ]
                 }

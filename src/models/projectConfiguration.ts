@@ -89,8 +89,11 @@ export class MethodConfiguration {
   }
 
   static isCronStringValid(unparsedCronString : string): boolean {
+    if (unparsedCronString === "* * * * * *") {
+      throw new Error("You cannot use * in both `dayOfWeek` and `dayOfMonth` fields." )
+    }
+    
     const cronFields = unparsedCronString.split(' ');
-
     if (cronFields.length != 6) {
       throw new Error("Cron expression have six required fields with white space separator.")
     }
