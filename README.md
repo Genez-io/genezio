@@ -64,7 +64,7 @@ You can also test your code locally by running the `genezio local` command. This
 
 ## Known issues
 
-- Genezio currently supports only JavaScript. We will offer support for TypeScript, Swift, Kotlin and many others.
+- Genezio currently supports only JavaScript and TypeScript (which is in beta at the moment). We will offer support for Swift, Kotlin and many others.
 - The execution time of the functions cannot exceed 10 seconds. This limitation will go away soon.
 
 ## How does Genezio work?
