@@ -34,7 +34,7 @@ export default async function listProjects(
   }
 
   const projects = response.data.projects.map(function(project : any, index : any) {
-    return `[${1 + index}]: Project name: ${project.name}, ID: ${project.id}`;
+    return `[${1 + index}]: Project name: ${project.name}, Region: ${project.region}, ID: ${project.id}`;
   })
 
   return projects;

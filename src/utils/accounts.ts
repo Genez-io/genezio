@@ -9,7 +9,7 @@ export async function getAuthToken(): Promise<string|undefined> {
     const loginConfigFilePath = path.join(homeDirectory, ".geneziorc")
     try {
         const result = await readUTF8File(loginConfigFilePath)
-        return result;
+        return result.trim();
     } catch(error) {
         log.debug(error);
         return undefined;
