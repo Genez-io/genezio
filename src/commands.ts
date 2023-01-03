@@ -31,6 +31,8 @@ import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBin
 import { NodeTsBinaryDependenciesBundler } from "./bundlers/typescript/nodeTsBinaryDepenciesBundler";
 import { languages } from "./utils/languages";
 import { saveAuthToken } from "./utils/accounts";
+import { getPresignedURL } from "./requests/getPresignedURL";
+import { uploadContentToS3 } from "./requests/uploadContentToS3";
 
 export async function addNewClass(classPath: string, classType: string) {
   if (classType === undefined) {
@@ -183,6 +185,15 @@ export async function deployClasses() {
           );
           await zipDirectory(output.path, archivePath);
 
+          const resultPresignedUrl = await getPresignedURL(
+            configuration.region,
+            'genezioDeploy.zip',
+            configuration.name,
+            output.extra?.className
+          )
+
+          await uploadContentToS3(resultPresignedUrl.presignedURL, archivePath)
+
           const prom = deployClass(
             element,
             archivePath,
@@ -225,6 +236,15 @@ export async function deployClasses() {
           );
 
           await zipDirectory(output.path, archivePath);
+
+          const resultPresignedUrl = await getPresignedURL(
+            configuration.region,
+            'genezioDeploy.zip',
+            configuration.name,
+            output.extra?.className
+          )
+
+          await uploadContentToS3(resultPresignedUrl.presignedURL, archivePath)
 
           const prom = deployClass(
             element,
