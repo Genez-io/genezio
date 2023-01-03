@@ -185,6 +185,15 @@ export async function deployClasses() {
           );
           await zipDirectory(output.path, archivePath);
 
+          const resultPresignedUrl = await getPresignedURL(
+            configuration.region,
+            'genezioDeploy.zip',
+            configuration.name,
+            output.extra?.className
+          )
+
+          await uploadContentToS3(resultPresignedUrl.presignedURL, archivePath)
+
           const prom = deployClass(
             element,
             archivePath,
