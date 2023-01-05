@@ -5,8 +5,8 @@ import test as gnz_test
 from utils import read_config_file_to_json
 
 if __name__ == '__main__':
-    print("Starting cron test...")
-    os.chdir("../../examples/cron/")
+    print("Starting TO-DO List test...")
+    os.chdir("../../examples/todo-list-ts/server/")
     configuration = read_config_file_to_json()
     print("Succesfully read `genezio.yaml`")
 

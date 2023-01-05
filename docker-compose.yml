@@ -21,6 +21,10 @@ services:
         python3 test_webhook.py
         python3 test_todo_list.py
         python3 test_blockchain.py
+        python3 test_hello_ts.py
+        python3 test_todo_list_ts.py
+        python3 test_hello_local.py
+        python3 test_hello_add_class.py
 
 # Create `.env.genezio_token` locally in the repo and paste in it a valid `dev` genezio token
 secrets:

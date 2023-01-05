@@ -5,13 +5,13 @@ import requests
 import test as gnz_test
 from utils import read_config_file_to_json, get_auth_token, get_project_id
 
-NODE_FILENAME = "../client/test-hello-sdk.js"
+NODE_FILENAME = "../client/test-hello-sdk.ts"
 
 # Test order matters because the commands are having side effects.
 if __name__ == '__main__':
     print("Starting Hello World test...")
 
-    os.chdir("../../examples/hello-world/server/")
+    os.chdir("../../examples/hello-world-ts/server/")
     configuration = read_config_file_to_json()
     print("Succesfully read `genezio.yaml`")
 
