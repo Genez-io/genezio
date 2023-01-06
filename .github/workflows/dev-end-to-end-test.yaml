@@ -1,0 +1,17 @@
+name: End-to-End Tests
+
+on:
+  pull_request:
+    types: [opened, reopened, edited]
+    branches:
+      - 'dev'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GENEZIO_TOKEN: ${{ secrets.GENEZIO_DEV_AUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Execute tests from docker-compose
+        run: STAGE="dev" docker-compose up --abort-on-container-exit --exit-code-from genezio

@@ -9,7 +9,7 @@ NODE_FILENAME = "../client/test-hello-sdk.js"
 
 # Test order matters because the commands are having side effects.
 if __name__ == '__main__':
-    print("Starting Hello World test...")
+    print("Starting hello_world for Javascript test...")
 
     os.chdir("../../examples/hello-world/server/")
     configuration = read_config_file_to_json()
@@ -27,5 +27,4 @@ if __name__ == '__main__':
     project_id = get_project_id(r.json()['projects'], configuration['name'], configuration['region'])
 
     gnz_test.test_genezio_delete(configuration, project_id)
-    gnz_test.test_genezio_logout()
     print ("Success!")

@@ -45,10 +45,7 @@ def test_genezio_deploy(configuration):
     # Test if sdk and classes were generated
     sdk = configuration['sdk']
     assert_log(path.isdir(sdk['path']), process, "SDK directory not found")
-    if sdk['language'] == 'js':
-        assert_log(path.exists(sdk['path'] + '/remote.js'), process, "remote.js not found")
-    elif sdk['language'] == 'ts':
-        assert_log(path.exists(sdk['path'] + '/remote.ts'), process, "remote.ts not found")
+    assert_log(path.exists(sdk['path'] + '/remote.js'), process, "remote.js not found")
 
     classes = configuration['classes']
     if not classes:
@@ -62,6 +59,8 @@ def test_genezio_deploy(configuration):
     endpoint = 'https://dev.api.genez.io/projects?startIndex=0&projectsLimit=100'
     headers = {'Authorization': 'Bearer ' + auth_token}
     r = requests.get(endpoint, headers=headers)
+    if "region" not in configuration:
+        configuration['region'] = "us-east-1"
     assert_log(contains_project(r.json()['projects'], configuration['name'], configuration['region']), process, "Project not found in backend")
 
     print(colored("Test for " + str(process.args) + " passed", "green"))
@@ -93,10 +92,7 @@ def test_genezio_local(configuration, client_script_name):
     # Test if sdk and classes were generated
     sdk = configuration['sdk']
     assert_log(path.isdir(sdk['path']), process, "SDK directory not found")
-    if sdk['language'] == 'js':
-        assert_log(path.exists(sdk['path'] + '/remote.js'), process, "remote.js not found")
-    elif sdk['language'] == 'ts':
-        assert_log(path.exists(sdk['path'] + '/remote.ts'), process, "remote.ts not found")
+    assert_log(path.exists(sdk['path'] + '/remote.js'), process, "remote.js not found")
     classes = configuration['classes']
     if not classes:
         logging.warning("Class path not provided. This assertion is skiped...")

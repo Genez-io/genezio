@@ -21,7 +21,6 @@ def get_project_id(projects, name, region):
             return project['id']
     return ""
 
-
 def contains_project(projects, name, region):
     for project in projects:
         if project['name'] == name and project['region'] == region:
