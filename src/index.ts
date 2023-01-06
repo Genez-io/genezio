@@ -252,11 +252,11 @@ program
 program
   .command("delete")
   .argument("[projectId]", "ID of the project you want to delete.")
-  .argument("[-f]", "Skip confirmation prompt for deletion.")
+  .option("-f, --force", "Skip confirmation prompt for deletion.", false)
   .description(
     "Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs."
   )
-  .action(async (projectId = "", forced = false) => {
+  .action(async (projectId = "", options: any) => {
     // check if user is logged in
     const authToken = await getAuthToken();
 
@@ -267,7 +267,7 @@ program
       exit(1);
     }
 
-    const result = await deleteProjectHandler(projectId, forced).catch(
+    const result = await deleteProjectHandler(projectId, options.force).catch(
       (error: AxiosError) => {
         if (error.response?.status == 401) {
           log.info(
