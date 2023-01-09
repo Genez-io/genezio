@@ -4,6 +4,7 @@ import subprocess
 import logging
 import requests
 import socket
+import time
 from os import path
 from termcolor import colored
 from os.path import expanduser
@@ -82,12 +83,14 @@ def test_genezio_delete(configuration, project_id):
 # `genezio local` cannot be gracefully terminated
 def test_genezio_local(configuration, client_script_name):
     process = subprocess.Popen(['genezio', 'local'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    # Wait for `genezio local` to start listening
+
+    # Wait until `genezio local` to start listening
+    time.sleep(10)
+
+    # Test if port 8083 is listening
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     port_status = sock.connect_ex(('127.0.0.1',8083))
-    # Busy waiting until `genezio local` starts listening
-    while port_status != 0:
-        port_status = sock.connect_ex(('127.0.0.1',8083))        
+    assert port_status == 0, "Connecting to port 8083 failed"
 
     # Test if sdk and classes were generated
     sdk = configuration['sdk']
