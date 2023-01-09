@@ -1,6 +1,7 @@
 name: End-to-End Tests
 
 on:
+  push:
   pull_request:
     types: [opened, reopened, edited]
     branches:
