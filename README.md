@@ -2,17 +2,49 @@
 
 [genezio](https://genez.io/) is a platform for developers that want to write a backend in a very simple way. Just write a simple class using your preferred programming language then call `genezio deploy`. The code will be deployed in a scalable and production-ready infrastructure. An SDK is generated for you and you can use it to remotely call the methods of your class in a very natural way.
 
-## Install genezio
+For more details about the `genezio` CLI tool, you can check out the official [documentation](https://docs.genezio).
 
-To install `genezio` run:
+## Getting started
+
+1. **Install `genezio`.** Use the command below to install genezio:
 
 ```bash
 npm install genezio -g
 ```
 
+2. **Login to `genezio`.** Run the following command to login into your account:
+
+```bash
+genezio login
+```
+
+3. **Clone our `Hello World` example.** Copy the following command in your terminal:
+
+```bash
+git clone https://github.com/Genez-io/genezio-examples.git
+```
+
+4. **Navigate to the project folder.** Copy the following command in your terminal to go to the "Hello World" project folder:
+
+```bash
+cd ./genezio-examples/javascript/hello-world
+```
+
+5. **Deploy your code.** Use the command below to deploy the code using genezio:
+
+```bash
+genezio deploy
+```
+
+6. **Test the code.** Run this command to test the code:
+
+```bash
+node ./test-hello-sdk.js
+```
+
 For more details about the `genezio` CLI command, run `genezio help`.
 
-## Getting started
+## Create your first project from scratch
 
 1. Run `genezio login`.
 
@@ -20,7 +52,7 @@ For more details about the `genezio` CLI command, run `genezio help`.
 
 ```
 What is the name of the project: hello-world
-In what programming language do you want your SDK? [default value: js]: js
+In what programming language do you want your SDK? (js or ts) [default value: js]: js
 What runtime will you use? Options: "node" or "browser". [default value: node]: node
 Where do you want to save your SDK? [default value: ./sdk/]: ./sdk/
 ```
@@ -52,9 +84,9 @@ import { HelloWorldClass } from "./sdk/hello.sdk.js";
 })();
 ```
 
-Check our [examples](https://github.com/Genez-io/genezio/tree/master/examples) for more examples!
+For more details, check our [examples](https://github.com/Genez-io/genezio/tree/master/examples)!
 
-### Test your code locally
+## Test your code locally
 
 You can also test your code locally by running the `genezio local` command. This will spawn a local server that can be used for testing. You can switch back to production environment by running `genezio deploy`.
 
@@ -64,7 +96,7 @@ You can also test your code locally by running the `genezio local` command. This
 
 ## Known issues
 
-- Genezio currently supports only JavaScript. We will offer support for TypeScript, Swift, Kotlin and many others.
+- Genezio currently supports JavaScript and TypeScript in beta. We will offer full support for TypeScript, Swift, Kotlin and many others.
 - The execution time of the functions cannot exceed 10 seconds. This limitation will go away soon.
 
 ## How does Genezio work?
