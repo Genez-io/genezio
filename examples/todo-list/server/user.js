@@ -17,7 +17,6 @@ export class User {
    */
   #connect() {
     mongoose.connect(MONGO_DB_URI);
-    console.log("Connect to ", MONGO_DB_URI)
   }
 
   /**
