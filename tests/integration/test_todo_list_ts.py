@@ -6,8 +6,8 @@ import test as gnz_test
 from utils import get_auth_token, get_project_id, read_config_file_to_json
 
 if __name__ == '__main__':
-    print("Starting cron test...")
-    os.chdir("../../examples/cron/")
+    print("Starting todo_list for Typescript test...")
+    os.chdir("../../examples/todo-list-ts/server/")
     configuration = read_config_file_to_json()
     print("Succesfully read `genezio.yaml`")
 
