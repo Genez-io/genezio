@@ -197,8 +197,9 @@ export async function startServer(
     handleResponseforHttp(res, response);
   });
 
-  log.info("Local Server Listening...");
-  return app.listen(port);
+  return app.listen(port, () => {
+    log.info("Local Server Listening...");
+  })
 }
 
 export async function prepareForLocalEnvironment(
