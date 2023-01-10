@@ -117,7 +117,8 @@ export async function deleteProjectHandler(projectId: string, forced: boolean) {
       return false;
     } else {
       forced = false;
-      projectId = projects[selectionNum - 1].split(":")[3].trim();
+      // get the project id from the selection
+      projectId = projects[selectionNum - 1].split(":")[4].trim();
     }
   }
 
