@@ -20,7 +20,7 @@ function App() {
   }, [])
 
   useEffect(() => {
-    // Use the SDK to get events from the BlockchainServer class hosted on genez.io
+    // Use the SDK to get events from the BlockchainServer class hosted on genezio
     BlockchainServer.getEvents(currentIndex, CHUNKS)
       .then((response) => {
         setEvents(response.events)

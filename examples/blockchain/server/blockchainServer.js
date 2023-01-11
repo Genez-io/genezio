@@ -6,7 +6,7 @@ import { MONGO_DB_URI, CONTRACT_ADDRESS, BWARE_URL } from "./config.js";
 
 
 /**
- * The Blockchain server class that will be deployed on the genez.io infrastructure.
+ * The Blockchain server class that will be deployed on the genezio infrastructure.
  */
 export class BlockchainServer {
 
@@ -22,7 +22,7 @@ export class BlockchainServer {
     /**
      * Private method that decodes an event and returns the name and the parameters.
      * 
-     * This will not be callable using the genez.io SDK. Only the public methods are exposed publicly.
+     * This will not be callable using the genezio SDK. Only the public methods are exposed publicly.
      * 
      * @param {*} event 
      * @returns An object containing the name of the event and its parameters.
@@ -78,9 +78,9 @@ export class BlockchainServer {
     }
 
     /**
-     * Method that will be called periodically by the genez.io infrastructure to index the events.
+     * Method that will be called periodically by the genezio infrastructure to index the events.
      * 
-     * The frequency with which the method will be called can be modified from the genez.io YAML file.
+     * The frequency with which the method will be called can be modified from the genezio YAML file.
      * 
      */
     async sync() {

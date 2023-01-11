@@ -91,7 +91,7 @@ program
     spinner.setSpinnerString("|/-\\");
     spinner.start();
 
-    log.info("Deploying your project to genez.io infrastructure...");
+    log.info("Deploying your project to genezio infrastructure...");
     await deployClasses()
       .then(() => {
         spinner.stop(true);

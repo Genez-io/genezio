@@ -462,7 +462,7 @@ export async function handleLogin(accessToken: string) {
         const token = params.get("/?token")!;
 
         saveAuthToken(token).then(() => {
-          log.info(`Welcome! You can now start using genez.io.`);
+          log.info(`Welcome! You can now start using genezio.`);
           res.setHeader("Access-Control-Allow-Origin", "*");
           res.setHeader("Access-Control-Allow-Headers", "Content-Type");
           res.setHeader("Access-Control-Allow-Methods", "POST");

@@ -5,7 +5,7 @@ import { ActiveSession } from "./models/activeSession"
 import { MONGO_DB_URI, validatePassword, saltPassword } from "./helper"
 
 /**
- * The User server class that will be deployed on the genez.io infrastructure.
+ * The User server class that will be deployed on the genezio infrastructure.
  */
 export class User {
   constructor() {
@@ -22,7 +22,7 @@ export class User {
   /**
    * Method that can be used to create a new user.
    * 
-   * The method will be exported via SDK using genez.io.
+   * The method will be exported via SDK using genezio.
    * 
    * @param {*} name The user's name.
    * @param {*} email The user's email.
@@ -51,7 +51,7 @@ export class User {
   /**
    * Method that can be used to obtain a login token for a giving user.
    * 
-   * The method will be exported via SDK using genez.io.
+   * The method will be exported via SDK using genezio.
    * 
    * @param {*} email The user's email.
    * @param {*} password The user's password.
