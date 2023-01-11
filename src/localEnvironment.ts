@@ -11,29 +11,27 @@ import LocalEnvInputParameters from "./models/localEnvInputParams";
 import log from "loglevel";
 import { fileExists, readUTF8File } from "./utils/file";
 import { exit } from "process";
+import bodyParser from 'body-parser'
+import url from "url"
+import { genezioRequestParser } from "./utils/genezioRequestParser";
 
 export function getEventObjectFromRequest(request: any) {
+  const urlDetails = url.parse(request.url, true)
+  console.log(urlDetails)
   return {
     headers: request.headers,
-    http: {
-      // get path without the className
-      path: request.url,
-      protocol: request.httpVersion,
-      method: request.method,
-      sourceIp: request.socket.remoteAddress,
-      userAgent: request.headers["user-agent"]
-    },
-    queryParameters: request.url!.includes("?")
-      ? querystring.parse(request.url!.split("?")[1])
-      : {},
+    rawQueryString: urlDetails.search ? urlDetails.search?.slice(1) : '',
+    queryStringParameters: urlDetails.search ? urlDetails.query : undefined,
     timeEpoch: Date.now(),
-    body:
-      Object.keys(request.body).length > 0
-        ? JSON.stringify(request.body)
-        : undefined,
+    body: request.body,
+    isBase64Encoded: request.isBase64Encoded,
     requestContext: {
       http: {
-        path: request.url
+        method: request.method,
+        path: urlDetails.pathname,
+        protocol: request.httpVersion,
+        sourceIp: request.socket.remoteAddress,
+        userAgent: request.headers["user-agent"]
       }
     }
   };
@@ -58,7 +56,7 @@ export function handleResponseforHttp(res: any, httpResponse: any) {
     res.writeHead(parseInt(httpResponse.statusCode));
   }
 
-  if (httpResponse.bodyEncoding === "base64") {
+  if (httpResponse.isBase64Encoded === true) {
     res.write(Buffer.from(httpResponse.body, "base64"));
   } else {
     res.end(httpResponse.body ? httpResponse.body : "");
@@ -144,12 +142,8 @@ export async function startServer(
 ) {
   const app = express();
   app.use(cors());
-  app.use(express.json());
-  app.use(
-    express.urlencoded({
-      extended: true
-    })
-  );
+  app.use(bodyParser.raw( { type: "*/*" }))
+  app.use(genezioRequestParser);
 
   app.all(`/:className`, async (req: any, res: any) => {
     const reqToFunction = getEventObjectFromRequest(req);
