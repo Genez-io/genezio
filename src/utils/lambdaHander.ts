@@ -27,7 +27,7 @@ exports.handler =  async function(event, context) {
         const req = {
             headers: event.headers,
             http: event.requestContext.http,
-            queryParameters: event.queryStringParameters,
+            queryStringParameters: event.queryStringParameters,
             timeEpoch: event.requestContext.timeEpoch,
             body: event.body
           }
