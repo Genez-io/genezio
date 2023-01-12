@@ -1,5 +1,5 @@
 /**
- * This class represents a hello world server that can be deployed on genez.io infrastructure
+ * This class represents a hello world server that can be deployed on genezio infrastructure
  * using "genezio deploy" command or tested locally using "genezio local".
  */
 export class HelloWorldService {

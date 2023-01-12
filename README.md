@@ -1,10 +1,10 @@
-# genez.io
+# genezio
 
-[genez.io](https://genez.io/) is a platform for developers that want to write a backend in a very simple way. Just write a simple class using your preferred programming language then call `genezio deploy`. The code will be deployed in a scalable and production-ready infrastructure. An SDK is generated for you and you can use it to remotely call the methods of your class in a very natural way.
+[genezio](https://genez.io/) is a platform for developers that want to write a backend in a very simple way. Just write a simple class using your preferred programming language then call `genezio deploy`. The code will be deployed in a scalable and production-ready infrastructure. An SDK is generated for you and you can use it to remotely call the methods of your class in a very natural way.
 
-## Install genez.io
+## Install genezio
 
-To install `genez.io` run:
+To install `genezio` run:
 
 ```bash
 npm install genezio -g
@@ -71,7 +71,7 @@ You can also test your code locally by running the `genezio local` command. This
 
 Genezio is using JSON RPC 2.0 to facilitate the communication between SDK and your class. Your functions are deployed in the Genezio infrastructure. The functions are not executed on a long lasting Virtual Machine. Instead, our system uses a serverless approach. Whenever a request is received, your code is loaded and executed. This is more cost and energy efficient. However, the developer needs to take into account the following - the values of the global variables are not persistent between runs.
 
-## Learn more about genez.io using other examples:
+## Learn more about genezio using other examples:
 
 - [To do app](https://github.com/Genez-io/genezio/tree/master/examples/todo-list) - an example of a todo application with users, auth and tasks that uses React for the frontend application and Genezio for deploying and developing the backend.
 - [Crons](https://github.com/Genez-io/genezio/tree/master/examples/cron) - a simple class that has a method that will be called every minute.
