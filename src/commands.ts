@@ -425,7 +425,16 @@ classes:
 
   const yamlConfigurationFileContent = doc.toString();
 
-  await writeToFile(".", "genezio.yaml", yamlConfigurationFileContent).catch(
+  if (!fs.existsSync(`./${projectName}`)) {
+    fs.mkdirSync(projectName);
+  }
+  if (!fs.existsSync(`./${projectName}/server`)) {
+    fs.mkdirSync(`./${projectName}/server`);
+  }
+  if (!fs.existsSync(`./${projectName}/client`)) {
+    fs.mkdirSync(`./${projectName}/client`);
+  }
+  await writeToFile(`./${projectName}/server`, "genezio.yaml", yamlConfigurationFileContent).catch(
     (error) => {
       log.error(error.toString());
     }
