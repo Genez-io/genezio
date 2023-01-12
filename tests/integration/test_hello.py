@@ -1,18 +1,30 @@
 #!/usr/bin/python3
 
 import os
+import requests
 import test as gnz_test
+from utils import read_config_file_to_json, get_auth_token, get_project_id
 
 NODE_FILENAME = "../client/test-hello-sdk.js"
 
-# Test order matters because the commands are having side effects. E.g:
-# `genezio deploy` creates an SDK
-# `genezo addClass` creates an empty file class and adds it to `genezio.yaml`
+# Test order matters because the commands are having side effects.
 if __name__ == '__main__':
-    print("Starting Hello World test...")
+    print("Starting hello_world for Javascript test...")
+
     os.chdir("../../examples/hello-world/server/")
+    configuration = read_config_file_to_json()
+    print("Succesfully read `genezio.yaml`")
+
     gnz_test.test_genezio_account()
-    gnz_test.test_genezio_deploy("../client/sdk/")
-    gnz_test.test_genezio_add_class()
+    gnz_test.test_genezio_deploy(configuration)
     gnz_test.test_genezio_remote_call(NODE_FILENAME)
+
+    # Retrieve project id after deployment
+    auth_token = get_auth_token()
+    endpoint = 'https://dev.api.genez.io/projects?startIndex=0&projectsLimit=100'
+    headers = {'Authorization': 'Bearer ' + auth_token}
+    r = requests.get(endpoint, headers=headers)
+    project_id = get_project_id(r.json()['projects'], configuration['name'], configuration['region'])
+
+    gnz_test.test_genezio_delete(configuration, project_id)
     print ("Success!")
