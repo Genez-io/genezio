@@ -1,5 +1,12 @@
-import { HelloWorldCronExample } from "./sdk/index.sdk.js"
+import argv from 'process'
+import axios from 'axios';
 
 (async () => {
-    console.log(await HelloWorldCronExample.helloWorld())
+    const url = argv.argv[2]
+
+    const response = await axios.get(url + "HelloWorldCronExample/handleQueryParams?name=john")
+    console.log(response.data)
+
+
 })();
+ 

@@ -22,6 +22,13 @@ exports.handler =  async function(event, context) {
         }
         return;
     }
+
+    let body = event.body
+
+    try {
+      body = JSON.parse(event.body)
+    } catch (error) {}
+
     if (event.requestContext.http.path.split("/").length > 2) {
         const method = event.requestContext.http.path.split("/")[2]
         const req = {
@@ -29,7 +36,7 @@ exports.handler =  async function(event, context) {
             http: event.requestContext.http,
             queryStringParameters: event.queryStringParameters,
             timeEpoch: event.requestContext.timeEpoch,
-            body: event.body
+            body: body
           }
         if (!object[method]) {
           return { statusCode: 404, headers: { 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Method not found" }) };
@@ -37,10 +44,19 @@ exports.handler =  async function(event, context) {
 
         try {
             const response = await object[method](req);
+
+            if (!response.statusCode) {
+              response.statusCode = 200;
+            }
+
+            try {
+              response.body = JSON.stringify(response.body)
+            } catch (error) {}
+
             return response;
         } catch(error) {
             console.error(error);
-            return { statusCode: 500, headers: { 'Content-Type': 'text/json' }};
+            return { statusCode: 500, body: JSON.stringify({"error": error.message}), headers: { 'Content-Type': 'application/json' }};
         }
     } else {
         let body = null;

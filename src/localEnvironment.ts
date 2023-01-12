@@ -21,7 +21,7 @@ export function getEventObjectFromRequest(request: any) {
   return {
     headers: request.headers,
     rawQueryString: urlDetails.search ? urlDetails.search?.slice(1) : '',
-    queryStringParameters: urlDetails.search ? urlDetails.query : undefined,
+    queryStringParameters: urlDetails.search ? Object.assign({},urlDetails.query) : undefined,
     timeEpoch: Date.now(),
     body: request.body,
     isBase64Encoded: request.isBase64Encoded,
@@ -46,10 +46,20 @@ export function handleResponseforHttp(res: any, httpResponse: any) {
   if (httpResponse.statusDescription) {
     res.statusMessage = httpResponse.statusDescription;
   }
+  let contentTypeHeader = false;
+
   if (httpResponse.headers) {
     for (const header of Object.keys(httpResponse.headers)) {
-      res.setHeader(header, httpResponse.headers[header]);
+      res.setHeader(header.toLowerCase(), httpResponse.headers[header]);
+
+      if (header.toLowerCase() === "content-type") {
+        contentTypeHeader = httpResponse.headers[header]
+      }
     }
+  }
+
+  if (!contentTypeHeader) {
+    res.setHeader("content-type", "application/json")
   }
 
   if (httpResponse.statusCode) {
@@ -57,9 +67,13 @@ export function handleResponseforHttp(res: any, httpResponse: any) {
   }
 
   if (httpResponse.isBase64Encoded === true) {
-    res.write(Buffer.from(httpResponse.body, "base64"));
+    res.end(Buffer.from(httpResponse.body, "base64"))
   } else {
-    res.end(httpResponse.body ? httpResponse.body : "");
+    if (Buffer.isBuffer(httpResponse.body)) {
+      res.end(JSON.stringify(httpResponse.body.toJSON()));  
+    } else {
+      res.end(httpResponse.body ? httpResponse.body : "");
+    }
   }
 }
 
