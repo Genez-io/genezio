@@ -2,15 +2,11 @@ import Web3 from "web3"
 import { abi } from "./abi.js";
 import { EventModel } from "./models/event.js"
 import { mongoose } from "mongoose";
+import { MONGO_DB_URI, CONTRACT_ADDRESS, BWARE_URL } from "./config.js";
 
-
-// Replace these with your own values.
-const MONGO_DB_URI = "mongodb+srv://genezio:genezio@cluster0.c6qmwnq.mongodb.net/?retryWrites=true&w=majority"
-const CONTRACT_ADDRESS = "0x942BC2d3e7a589FE5bd4A5C6eF9727DFd82F5C8a"
-const BWARE_URL = "https://eth-mainnet.blastapi.io/23450296-544f-4ccc-a438-7cf90659b49e"
 
 /**
- * The Blockchain server class that will be deployed on the genez.io infrastructure.
+ * The Blockchain server class that will be deployed on the genezio infrastructure.
  */
 export class BlockchainServer {
 
@@ -26,7 +22,7 @@ export class BlockchainServer {
     /**
      * Private method that decodes an event and returns the name and the parameters.
      * 
-     * This will not be callable using the genez.io SDK. Only the public methods are exposed publicly.
+     * This will not be callable using the genezio SDK. Only the public methods are exposed publicly.
      * 
      * @param {*} event 
      * @returns An object containing the name of the event and its parameters.
@@ -82,9 +78,9 @@ export class BlockchainServer {
     }
 
     /**
-     * Method that will be called periodically by the genez.io infrastructure to index the events.
+     * Method that will be called periodically by the genezio infrastructure to index the events.
      * 
-     * The frequency with which the method will be called can be modified from the genez.io YAML file.
+     * The frequency with which the method will be called can be modified from the genezio YAML file.
      * 
      */
     async sync() {

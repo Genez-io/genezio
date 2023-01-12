@@ -1,7 +1,7 @@
 import { HelloWorldService } from "./sdk/hello.sdk.js"
 
 /**
- * Client that makes requests to the HelloWorldService deployed on genez.io.
+ * Client that makes requests to the HelloWorldService deployed on genezio.
  * 
  * Before running this script, run either "genezio deploy" or "genezio local".
  */

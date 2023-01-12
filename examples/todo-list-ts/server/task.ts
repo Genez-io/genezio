@@ -29,7 +29,7 @@ export type DeleteTaskResponse = {
 }
 
 /**
- * The Task server class that will be deployed on the genez.io infrastructure.
+ * The Task server class that will be deployed on the genezio infrastructure.
  */
 export class TaskService {
   constructor() {
@@ -47,7 +47,7 @@ export class TaskService {
    * Method that returns all tasks for a giving user ID.
    * Only authenticated users with a valid token can access this method.
    * 
-   * The method will be exported via SDK using genez.io.
+   * The method will be exported via SDK using genezio.
    * 
    * @param {*} token The user's token.
    * @param {*} userId The user ID.
@@ -75,7 +75,7 @@ export class TaskService {
    * Method that creates a task for a giving user ID.
    * Only authenticated users with a valid token can access this method.
    * 
-   * The method will be exported via SDK using genez.io.
+   * The method will be exported via SDK using genezio.
    * 
    * @param {*} token The user's token.
    * @param {*} title The tasktitle.
@@ -104,7 +104,7 @@ export class TaskService {
    * Method that creates a task for a giving user ID.
    * Only authenticated users with a valid token can access this method.
    * 
-   * The method will be exported via SDK using genez.io.
+   * The method will be exported via SDK using genezio.
    * 
    * @param {*} token The user's token.
    * @param {*} id The task's id.
@@ -134,7 +134,7 @@ export class TaskService {
    * Method that deletes a task for a giving user ID.
    * Only authenticated users with a valid token can access this method.
    * 
-   * The method will be exported via SDK using genez.io.
+   * The method will be exported via SDK using genezio.
    * 
    * @param {*} token The user's token.
    * @param {*} title The tasktitle.

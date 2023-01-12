@@ -1,4 +1,5 @@
-name: todo-list
+name: todo-list-ts
+region: us-east-1
 sdk:
   language: ts
   runtime: browser
@@ -6,5 +7,14 @@ sdk:
 classes:
   - path: ./task.ts
     type: jsonrpc
+    methods: []
   - path: ./user.ts
     type: jsonrpc
+    methods: []
+  - path: ./cron.ts
+    type: jsonrpc
+    methods:
+      - name: "deleteAllData"
+        type: cron
+        cronString: "0 12 * * ? *"
+

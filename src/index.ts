@@ -91,7 +91,7 @@ program
     spinner.setSpinnerString("|/-\\");
     spinner.start();
 
-    log.info("Deploying your project to genez.io infrastructure...");
+    log.info("Deploying your project to genezio infrastructure...");
     await deployClasses()
       .then(() => {
         spinner.stop(true);
@@ -161,11 +161,11 @@ program
 
     const spinner = new Spinner("%s  ");
     spinner.setSpinnerString("|/-\\");
+    spinner.start();
 
     try {
       // eslint-disable-next-line no-constant-condition
       while (true) {
-        spinner.start();
         const projectConfiguration = await getProjectConfiguration();
 
         let server: any = undefined;
@@ -189,31 +189,43 @@ program
                 );
               } else {
                 log.error(`${error.stack}`);
+                exit(1)
               }
             });
 
             reportSuccess(classesInfo, projectConfiguration);
           }
           // eslint-disable-next-line no-empty
-        } catch (error) {}
+        } catch (error: any) {
+          log.error(`${error.message}`);
+          exit(1)
+        }
 
         if (handlers != undefined) {
-          server = await startServer(handlers, Number(options.port));
+          server = await startServer(handlers, Number(options.port))
+          server.on("error", (error: any) => {
+            if (error.code === "EADDRINUSE") {
+              log.error(
+                `The port ${error.port} is already in use. Please use a different port by specifying --port <port> to start your local server.`
+              );
+            } else {
+              log.error(`${error.message}`);
+            }
+            exit(1)
+          });
           spinner.stop(true);
         } else {
           log.info("\x1b[36m%s\x1b[0m", "Listening for changes...");
         }
 
-        await listenForChanges(projectConfiguration.sdk.path, server);
+        await listenForChanges(projectConfiguration.sdk.path, server).catch((error: Error) => {
+          log.error(`${error.message}`);
+          exit(1)
+        });
       }
     } catch (error: any) {
-      if (error.code === "EADDRINUSE") {
-        log.error(
-          `The port ${error.port} is already in use. Please use a different port to start your local server`
-        );
-      } else {
-        log.error(`${error.message}`);
-      }
+      log.error(`${error.message}`);
+      exit(1);
     }
   });
 
