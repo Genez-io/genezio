@@ -1,0 +1,11 @@
+name: todo-list
+sdk:
+  sdkLanguage: js
+  sdkOptions:
+    runtime: browser
+  path: ./../frontend/src/backend-sdk
+classes:
+  - path: ./task.js
+    type: jsonrpc
+  - path: ./user.js
+    type: jsonrpc

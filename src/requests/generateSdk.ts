@@ -3,8 +3,10 @@ import fs from "fs";
 import axios, { AxiosError } from "axios";
 import { getFileDetails } from "../utils/file";
 import { GENERATE_SDK_API_URL } from "../variables";
-import { ClassConfiguration, ProjectConfiguration } from "../models/projectConfiguration";
-import { exit } from "process";
+import {
+  ClassConfiguration,
+  ProjectConfiguration
+} from "../models/projectConfiguration";
 import { getAuthToken } from "../utils/accounts";
 
 export default async function generateSdk(
@@ -14,12 +16,9 @@ export default async function generateSdk(
   const classes = configuration.classes;
 
   const form = new FormData();
-  form.append(
-    "projectConfiguration",
-    JSON.stringify(configuration)
-  );
+  form.append("projectConfiguration", JSON.stringify(configuration));
 
-  const authToken = await getAuthToken()
+  const authToken = await getAuthToken();
 
   if (!authToken) {
     throw new Error(
@@ -33,9 +32,9 @@ export default async function generateSdk(
 
   classes.forEach((classElem: ClassConfiguration) => {
     const filePath = classElem.path;
-    const { name } = getFileDetails(filePath);
+    const { name, extension } = getFileDetails(filePath);
 
-    form.append(name, fs.createReadStream(filePath));
+    form.append(name + extension, fs.createReadStream(filePath));
   });
 
   const response: any = await axios({
@@ -49,7 +48,8 @@ export default async function generateSdk(
   });
 
   if (response.data?.error?.message) {
-      throw new Error(response.data.error.message);
+    console.log(response.data);
+    throw new Error(response.data.error.message);
   }
 
   return response.data;

@@ -1,7 +1,7 @@
 import path from "path";
 import yaml from "yaml";
+import { fileExists, getFileDetails, writeToFile } from "../utils/file";
 import { regions } from "../utils/configs";
-import { getFileDetails, writeToFile } from "../utils/file";
 
 export enum TriggerType {
   jsonrpc = "jsonrpc",
@@ -16,17 +16,23 @@ export enum JsRuntime {
 
 export enum Language {
   js = "js",
-  ts = "ts"
+  ts = "ts",
+  swift = "swift"
 }
 
+export type JsSdkOptions = {
+  runtime: "node" | "browser";
+};
+
 export class SdkConfiguration {
-  language: Language;
-  runtime: JsRuntime;
+  sdkLanguage: Language;
+  options: JsSdkOptions | any;
   path: string;
 
-  constructor(language: Language, runtime: JsRuntime, path: string) {
-    this.language = language;
-    this.runtime = runtime;
+  constructor(sdkLanguage: Language, runtime: JsRuntime | null, path: string) {
+    this.sdkLanguage = sdkLanguage;
+    this.options = {};
+    this.options.runtime = runtime || null;
     this.path = path;
   }
 }
@@ -249,7 +255,7 @@ export class ProjectConfiguration {
     const language: string = configurationFileContent.sdk.language;
 
     if (!language || !Language[language as keyof typeof Language]) {
-      throw new Error("The sdk.language property is invalid.");
+      throw new Error("The sdk.sdkLanguage property is invalid.");
     }
 
     if (
@@ -259,14 +265,27 @@ export class ProjectConfiguration {
         Language[
           configurationFileContent.sdk.language as keyof typeof Language
         ] == Language.ts) &&
-      !JsRuntime[configurationFileContent.sdk.runtime as keyof typeof JsRuntime]
+      configurationFileContent.sdk.options &&
+      !JsRuntime[
+        configurationFileContent.sdk.options
+          .runtime as keyof typeof JsRuntime
+      ]
     ) {
-      throw new Error("The sdk.runtime property is invalid.");
+      throw new Error("The sdk.options.runtime property is invalid.");
     }
 
+    const jsRuntime: JsRuntime | null = configurationFileContent.sdk.options
+      ? JsRuntime[
+          configurationFileContent.sdk.options
+            .runtime as keyof typeof JsRuntime
+        ]
+      : null;
+
     const sdk = new SdkConfiguration(
-      Language[configurationFileContent.sdk.language as keyof typeof Language],
-      JsRuntime[configurationFileContent.sdk.runtime as keyof typeof JsRuntime],
+      Language[
+        configurationFileContent.sdk.sdkLanguage as keyof typeof Language
+      ],
+      jsRuntime,
       configurationFileContent.sdk.path
     );
 
@@ -323,8 +342,10 @@ export class ProjectConfiguration {
       name: this.name,
       region: this.region,
       sdk: {
-        language: this.sdk.language,
-        runtime: this.sdk.runtime,
+        sdkLanguage: this.sdk.sdkLanguage,
+        options: {
+          runtime: this.sdk.options?.runtime
+        },
         path: this.sdk.path
       },
       classes: this.classes.map((c) => ({

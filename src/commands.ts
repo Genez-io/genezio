@@ -367,7 +367,7 @@ export async function generateSdks(urlMap: any) {
     configurationFileContent
   );
   const outputPath = configuration.sdk.path;
-  const language = configuration.sdk.language;
+  const language = configuration.sdk.sdkLanguage;
 
   // check if the output path exists
   if (await fileExists(outputPath)) {
@@ -380,11 +380,14 @@ export async function generateSdks(urlMap: any) {
   });
 
   if (sdk.remoteFile) {
-    await writeToFile(outputPath, "remote.js", sdk.remoteFile, true).catch(
-      (error) => {
-        log.error(error.toString());
-      }
-    );
+    await writeToFile(
+      outputPath,
+      `remote.${language}`,
+      sdk.remoteFile,
+      true
+    ).catch((error) => {
+      log.error(error.toString());
+    });
   }
 
   await Promise.all(
@@ -407,21 +410,21 @@ export async function init() {
       log.error("The project name can't be empty.");
     }
   }
-  const sdk: any = { name: projectName, sdk: {}, classes: [] };
+  const configFile: any = { name: projectName, sdk: {}, classes: [] };
 
-  const language = await askQuestion(
-    `In what programming language do you want your SDK? (js or ts) [default value: js]: `,
+  const sdkLanguage = await askQuestion(
+    `In what programming language do you want your SDK? (js, ts or swift) [default value: js]: `,
     "js"
   );
 
-  if (!languages.includes(language)) {
+  if (!languages.includes(sdkLanguage)) {
     throw Error(
-      `We don't currently support the ${language} language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`
+      `We don't currently support the ${sdkLanguage} language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`
     );
   }
-  sdk.sdk.language = language;
+  configFile.sdk.sdkLanguage = sdkLanguage;
 
-  if (language === "js" || language === "ts") {
+  if (sdkLanguage === "js" || sdkLanguage === "ts") {
     const runtime = await askQuestion(
       `What runtime will you use? Options: "node" or "browser". [default value: node]: `,
       "node"
@@ -430,16 +433,16 @@ export async function init() {
       throw Error(`We don't currently support this JS runtime ${runtime}.`);
     }
 
-    sdk.sdk.runtime = runtime;
+    configFile.sdk.sdkOptions.runtime = runtime;
   }
 
   const path = await askQuestion(
     `Where do you want to save your SDK? [default value: ./sdk/]: `,
     "./sdk/"
   );
-  sdk.sdk.path = path;
+  configFile.sdk.path = path;
 
-  const doc = new Document(sdk);
+  const doc = new Document(configFile);
   doc.commentBefore = `File that configures what classes will be deployed in Genezio Infrastructure.
 Add the paths to classes that you want to deploy in "classes".
 
@@ -447,8 +450,9 @@ Example:
 
 name: hello-world
 sdk:
-  language: js
-  runtime: node
+  sdkLanguage: js
+  sdkOptions:
+    runtime: node
   path: ./sdk/
 classes:
   - path: ./hello.js

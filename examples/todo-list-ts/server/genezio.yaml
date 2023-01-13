@@ -2,7 +2,8 @@ name: todo-list-ts
 region: us-east-1
 sdk:
   language: ts
-  runtime: browser
+  options:
+    runtime: browser
   path: ../client/src/sdk
 classes:
   - path: ./task.ts
