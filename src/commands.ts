@@ -410,7 +410,7 @@ export async function init() {
       log.error("The project name can't be empty.");
     }
   }
-  const configFile: any = { name: projectName, sdk: {}, classes: [] };
+  const configFile: any = { name: projectName, region: "us-east-1", sdk: { options: {} }, classes: [] };
 
   const sdkLanguage = await askQuestion(
     `In what programming language do you want your SDK? (js, ts or swift) [default value: js]: `,
@@ -433,7 +433,7 @@ export async function init() {
       throw Error(`We don't currently support this JS runtime ${runtime}.`);
     }
 
-    configFile.sdk.sdkOptions.runtime = runtime;
+    configFile.sdk.options.runtime = runtime;
   }
 
   const path = await askQuestion(
@@ -449,9 +449,10 @@ Add the paths to classes that you want to deploy in "classes".
 Example:
 
 name: hello-world
+region: us-east-1
 sdk:
   language: js
-  sdkOptions:
+  options:
     runtime: node
   path: ./sdk/
 classes:
