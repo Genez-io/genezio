@@ -34,6 +34,8 @@ import { saveAuthToken } from "./utils/accounts";
 import { getPresignedURL } from "./requests/getPresignedURL";
 import { uploadContentToS3 } from "./requests/uploadContentToS3";
 import moment from "moment";
+import { Spinner } from "cli-spinner";
+import { info } from "console";
 
 export async function addNewClass(classPath: string, classType: string) {
   if (classType === undefined) {
@@ -92,7 +94,12 @@ export async function addNewClass(classPath: string, classType: string) {
 
 export async function lsHandler(identifier: string, l: boolean) {
   // show prompt if no project id is selected
+  const spinner = new Spinner("%s  ");
+  spinner.setSpinnerString("|/-\\");
+  spinner.start();
   let projectsJson = await listProjects();
+  spinner.stop();
+  log.info("");
   if (projectsJson.length == 0) {
     log.info("There are no currently deployed projects.");
       return;
