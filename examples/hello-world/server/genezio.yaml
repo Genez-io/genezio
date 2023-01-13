@@ -1,8 +1,8 @@
 name: hello-world
 region: eu-central-1
 sdk:
-  sdkLanguage: swift
-  sdkOptions:
+  language: swift
+  options:
     runtime: node
   path: ./sdk/
 classes:

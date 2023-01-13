@@ -18,7 +18,8 @@
 name: genezio-blockchain
 sdk:
   language: js
-  runtime: browser
+  options:
+    runtime: browser
   path: ../client/src/sdk/
 classes:
   - path: ./blockchainServer.js

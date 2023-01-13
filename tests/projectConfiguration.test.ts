@@ -140,7 +140,9 @@ describe("project configuration", () => {
                 sdk: {
                     path: "/",
                     language: "js",
-                    runtime: "node"
+                    options: {
+                      runtime: "node"
+                    }
                 },
                 classes: [
                     {
@@ -195,33 +197,13 @@ describe("project configuration", () => {
         }).not.toThrowError()
     });
 
-    test('create a class with type http', async () => {
-      await expect(async () => {
-        const yaml = {
-            name: "test",
-            sdk: {
-                path: "/",
-                language: "js",
-                runtime: "node"
-            },
-            classes: [
-                {
-                    path: "test",
-                    type: "http"
-                }
-            ]
-        }
-      await ProjectConfiguration.create(yaml);
-    }).rejects.toThrowError();
-  });
-
-  test("wrong sdk.sdkLanguage should throw error", async () => {
+  test("wrong sdk.language should throw error", async () => {
     await expect(async () => {
       const yaml = {
         name: "test",
         sdk: {
           path: "/",
-          sdkLanguage: "nothing"
+          language: "nothing"
         }
       };
       await ProjectConfiguration.create(yaml);
@@ -234,8 +216,8 @@ describe("project configuration", () => {
         name: "test",
         sdk: {
           path: "/",
-          sdkLanguage: "js",
-          sdkOptions: {
+          language: "js",
+          options: {
             runtime: "node"
           }
         }
@@ -249,7 +231,9 @@ describe("project configuration", () => {
             sdk: {
                 path: "/",
                 language: "js",
-                runtime: "node"
+                options: {
+                  runtime: "node"
+                }
             },
             classes: [
                 {
@@ -279,7 +263,9 @@ describe("project configuration", () => {
             sdk: {
                 path: "/",
                 language: "js",
-                runtime: "node"
+                options: {
+                  runtime: "node"
+                }
             },
             classes: [
                 {
@@ -309,7 +295,9 @@ describe("project configuration", () => {
             sdk: {
                 path: "/",
                 language: "js",
-                runtime: "node"
+                options: {
+                  runtime: "node"
+                }
             },
             classes: [
                 {
@@ -325,7 +313,7 @@ describe("project configuration", () => {
                         {
                             name: "method3",
                             type: "cron",
-                            cronString: "* * * * ? *"
+                            cronString: "* * * * * *"
                         }
                     ]
                 }
@@ -341,8 +329,8 @@ describe("project configuration", () => {
         name: "test",
         sdk: {
           path: "/",
-          sdkLanguage: "js",
-          sdkOptions: {
+          language: "js",
+          options: {
             runtime: "node"
           }
         },
@@ -363,8 +351,8 @@ describe("project configuration", () => {
         name: "test",
         sdk: {
           path: "/",
-          sdkLanguage: "js",
-          sdkOptions: {
+          language: "js",
+          options: {
             runtime: "node"
           }
         },
@@ -384,8 +372,8 @@ describe("project configuration", () => {
       name: "test",
       sdk: {
         path: "/",
-        sdkLanguage: "js",
-        sdkOptions: {
+        language: "js",
+        options: {
           runtime: "node"
         }
       },
@@ -400,44 +388,13 @@ describe("project configuration", () => {
     expect(configuration.classes[0].type).toEqual(TriggerType.http);
   });
 
-  test("create a class with type http and a cron method", async () => {
+  test("create a class with type http and declare other methods 2", async () => {
     const yaml = {
       name: "test",
       sdk: {
         path: "/",
-        sdkLanguage: "js",
-        sdkOptions: {
-          runtime: "node"
-        }
-      },
-      classes: [
-        {
-          path: "test",
-          type: "http",
-          methods: [
-            {
-              name: "cronMethod",
-              type: "cron",
-              cronString: "* * *"
-            }
-          ]
-        }
-      ]
-    };
-    const configuration = await ProjectConfiguration.create(yaml);
-    expect(configuration.classes[0].methods[0].name).toEqual("cronMethod");
-    expect(configuration.classes[0].methods[0].type).toEqual(TriggerType.cron);
-    expect(configuration.classes[0].methods[0].cronString).toEqual("* * *");
-    return {};
-  });
-
-  test("create a class with type http and declare other methods", async () => {
-    const yaml = {
-      name: "test",
-      sdk: {
-        path: "/",
-        sdkLanguage: "js",
-        sdkOptions: {
+        language: "js",
+        options: {
           runtime: "node"
         }
       },
@@ -455,7 +412,7 @@ describe("project configuration", () => {
             {
               name: "method3",
               type: "cron",
-              cronString: "* * * * * *"
+              cronString: "* * * * ? *"
             }
           ]
         }

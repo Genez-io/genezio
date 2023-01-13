@@ -1,7 +1,8 @@
 name: hello-world-ts
 sdk:
   language: ts
-  runtime: node
+  options:
+    runtime: node
   path: ../client/sdk/
 classes:
   - path: ./hello.ts

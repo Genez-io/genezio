@@ -26,13 +26,13 @@ export type JsSdkOptions = {
 
 export class SdkConfiguration {
   sdkLanguage: Language;
-  sdkOptions: JsSdkOptions | any;
+  options: JsSdkOptions | any;
   path: string;
 
   constructor(sdkLanguage: Language, runtime: JsRuntime | null, path: string) {
     this.sdkLanguage = sdkLanguage;
-    this.sdkOptions = {};
-    this.sdkOptions.runtime = runtime || null;
+    this.options = {};
+    this.options.runtime = runtime || null;
     this.path = path;
   }
 }
@@ -252,7 +252,7 @@ export class ProjectConfiguration {
       );
     }
 
-    const language: string = configurationFileContent.sdk.sdkLanguage;
+    const language: string = configurationFileContent.sdk.language;
 
     if (!language || !Language[language as keyof typeof Language]) {
       throw new Error("The sdk.sdkLanguage property is invalid.");
@@ -265,18 +265,18 @@ export class ProjectConfiguration {
         Language[
           configurationFileContent.sdk.language as keyof typeof Language
         ] == Language.ts) &&
-      configurationFileContent.sdk.sdkOptions &&
+      configurationFileContent.sdk.options &&
       !JsRuntime[
-        configurationFileContent.sdk.sdkOptions
+        configurationFileContent.sdk.options
           .runtime as keyof typeof JsRuntime
       ]
     ) {
-      throw new Error("The sdk.sdkOptions.runtime property is invalid.");
+      throw new Error("The sdk.options.runtime property is invalid.");
     }
 
-    const jsRuntime: JsRuntime | null = configurationFileContent.sdk.sdkOptions
+    const jsRuntime: JsRuntime | null = configurationFileContent.sdk.options
       ? JsRuntime[
-          configurationFileContent.sdk.sdkOptions
+          configurationFileContent.sdk.options
             .runtime as keyof typeof JsRuntime
         ]
       : null;
@@ -343,8 +343,8 @@ export class ProjectConfiguration {
       region: this.region,
       sdk: {
         sdkLanguage: this.sdk.sdkLanguage,
-        sdkOptions: {
-          runtime: this.sdk.sdkOptions?.runtime
+        options: {
+          runtime: this.sdk.options?.runtime
         },
         path: this.sdk.path
       },
