@@ -8,7 +8,8 @@ import {
   addNewClass,
   deployClasses,
   reportSuccess,
-  handleLogin
+  handleLogin,
+  lsHandler
 } from "./commands";
 import { setLogLevel } from "./utils/logging";
 import { asciiCapybara } from "./utils/strings";
@@ -260,6 +261,38 @@ program
       log.info("You are logged in.");
     }
   });
+
+program
+  .command("ls")
+  .argument("[identifier]", "Name or ID of the project you want to display.")
+  .option("-l, --long-listed", "List more details for each project")
+  .description(
+    "Display details of your projects. You can view them all at once or display a particular one by providing its name or ID."
+  )
+  .action(async (identifier = "", options: any) => {
+    // check if user is logged in
+    const authToken = await getAuthToken();
+
+    if (!authToken) {
+      log.info(
+        "You are not logged in. Run 'genezio login' before you delete your function."
+      );
+      exit(1);
+    }
+
+    await lsHandler(identifier, options.longListed).catch(
+      (error: AxiosError) => {
+        if (error.response?.status == 401) {
+          log.info(
+            "You are not logged in or your token is invalid. Please run `genezio login` before you delete your function."
+          );
+        } else {
+          log.error(error.message);
+        }
+        exit(1);
+      }
+    );
+  })
 
 program
   .command("delete")
