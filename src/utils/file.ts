@@ -4,14 +4,27 @@ import path from "path";
 import FileDetails from "../models/fileDetails";
 import glob from "glob";
 import archiver from "archiver";
-import { parse, Document } from "yaml";
+import { parse } from "yaml";
 import { exit } from "process";
 import awsCronParser from "aws-cron-parser";
 import log from "loglevel";
 
 export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
+  // get genezioIgnore file
+  let genezioIgnore: string[] = [];
+  const genezioIgnorePath = path.join(process.cwd(), ".genezioignore");
+  if (fs.existsSync(genezioIgnorePath)) {
+    const genezioIgnoreContent = await readUTF8File(genezioIgnorePath);
+    genezioIgnore = genezioIgnoreContent.split("\n").filter(
+      (line) => line !== "" && !line.startsWith("#")
+    );
+  }
+
   return new Promise((resolve, reject) => {
-    glob(`./**/*`, { dot: true }, (err, files) => {
+    glob(`./**/*`, {
+        dot: true,
+        ignore: genezioIgnore
+      }, (err, files) => {
       if (err) {
         reject(err);
       }

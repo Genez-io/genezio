@@ -8,7 +8,8 @@ import {
   addNewClass,
   deployClasses,
   reportSuccess,
-  handleLogin
+  handleLogin,
+  lsHandler
 } from "./commands";
 import { setLogLevel } from "./utils/logging";
 import { asciiCapybara } from "./utils/strings";
@@ -23,6 +24,7 @@ import {
 import { getProjectConfiguration } from "./utils/configuration";
 import log from "loglevel";
 import { getAuthToken, removeAuthToken } from "./utils/accounts";
+import { Spinner } from "cli-spinner";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
@@ -86,17 +88,37 @@ program
       exit(1);
     }
 
-    log.info("Deploying your project to genez.io infrastructure...");
-    await deployClasses().catch((error: AxiosError) => {
-      if (error.response?.status == 401) {
-        log.error(
-          "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
-        );
-      } else if (error.message) {
-        log.error(error.message);
-      }
-      exit(1);
-    });
+    const spinner = new Spinner("%s  ");
+    spinner.setSpinnerString("|/-\\");
+    spinner.start();
+
+    log.info("Deploying your project to genezio infrastructure...");
+    await deployClasses()
+      .then(() => {
+        spinner.stop(true);
+      })
+      .catch((error: AxiosError) => {
+        if (error.response?.status === 401) {
+          log.error(
+            "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
+          );
+        } else if (error.response?.status === 500) {
+          log.error(error.message);
+          if (error.response?.data) {
+            const data: any = error.response?.data;
+            log.error(data.error?.message);
+          }
+        } else if (error.response?.status === 400) {
+          log.error(error.message);
+          if (error.response?.data) {
+            const data: any = error.response?.data;
+            log.error(data.error?.message);
+          }
+        } else {
+          log.error(error.message);
+        }
+        exit(1);
+      });
   });
 
 program
@@ -138,6 +160,10 @@ program
       exit(1);
     }
 
+    const spinner = new Spinner("%s  ");
+    spinner.setSpinnerString("|/-\\");
+    spinner.start();
+
     try {
       // eslint-disable-next-line no-constant-condition
       while (true) {
@@ -164,30 +190,43 @@ program
                 );
               } else {
                 log.error(`${error.stack}`);
+                exit(1)
               }
             });
 
             reportSuccess(classesInfo, projectConfiguration);
           }
           // eslint-disable-next-line no-empty
-        } catch (error) {}
+        } catch (error: any) {
+          log.error(`${error.message}`);
+          exit(1)
+        }
 
         if (handlers != undefined) {
-          server = await startServer(handlers, Number(options.port));
+          server = await startServer(handlers, Number(options.port))
+          server.on("error", (error: any) => {
+            if (error.code === "EADDRINUSE") {
+              log.error(
+                `The port ${error.port} is already in use. Please use a different port by specifying --port <port> to start your local server.`
+              );
+            } else {
+              log.error(`${error.message}`);
+            }
+            exit(1)
+          });
+          spinner.stop(true);
         } else {
           log.info("\x1b[36m%s\x1b[0m", "Listening for changes...");
         }
 
-        await listenForChanges(projectConfiguration.sdk.path, server);
+        await listenForChanges(projectConfiguration.sdk.path, server).catch((error: Error) => {
+          log.error(`${error.message}`);
+          exit(1)
+        });
       }
     } catch (error: any) {
-      if (error.code === "EADDRINUSE") {
-        log.error(
-          `The port ${error.port} is already in use. Please use a different port to start your local server`
-        );
-      } else {
-        log.error(`${error.message}`);
-      }
+      log.error(`${error.message}`);
+      exit(1);
     }
   });
 
@@ -224,13 +263,13 @@ program
   });
 
 program
-  .command("delete")
-  .argument("[projectId]", "ID of the project you want to delete.")
-  .argument("[-f]", "Skip confirmation prompt for deletion.")
+  .command("ls")
+  .argument("[identifier]", "Name or ID of the project you want to display.")
+  .option("-l, --long-listed", "List more details for each project")
   .description(
-    "Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs."
+    "Display details of your projects. You can view them all at once or display a particular one by providing its name or ID."
   )
-  .action(async (projectId = "", forced = false) => {
+  .action(async (identifier = "", options: any) => {
     // check if user is logged in
     const authToken = await getAuthToken();
 
@@ -241,7 +280,39 @@ program
       exit(1);
     }
 
-    const result = await deleteProjectHandler(projectId, forced).catch(
+    await lsHandler(identifier, options.longListed).catch(
+      (error: AxiosError) => {
+        if (error.response?.status == 401) {
+          log.info(
+            "You are not logged in or your token is invalid. Please run `genezio login` before you delete your function."
+          );
+        } else {
+          log.error(error.message);
+        }
+        exit(1);
+      }
+    );
+  })
+
+program
+  .command("delete")
+  .argument("[projectId]", "ID of the project you want to delete.")
+  .option("-f, --force", "Skip confirmation prompt for deletion.", false)
+  .description(
+    "Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs."
+  )
+  .action(async (projectId = "", options: any) => {
+    // check if user is logged in
+    const authToken = await getAuthToken();
+
+    if (!authToken) {
+      log.info(
+        "You are not logged in. Run 'genezio login' before you delete your function."
+      );
+      exit(1);
+    }
+
+    const result = await deleteProjectHandler(projectId, options.force).catch(
       (error: AxiosError) => {
         if (error.response?.status == 401) {
           log.info(

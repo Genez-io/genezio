@@ -31,6 +31,11 @@ import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBin
 import { NodeTsBinaryDependenciesBundler } from "./bundlers/typescript/nodeTsBinaryDepenciesBundler";
 import { languages } from "./utils/languages";
 import { saveAuthToken } from "./utils/accounts";
+import { getPresignedURL } from "./requests/getPresignedURL";
+import { uploadContentToS3 } from "./requests/uploadContentToS3";
+import moment from "moment";
+import { Spinner } from "cli-spinner";
+import { info } from "console";
 
 export async function addNewClass(classPath: string, classType: string) {
   if (classType === undefined) {
@@ -87,10 +92,41 @@ export async function addNewClass(classPath: string, classType: string) {
   log.info("\x1b[36m%s\x1b[0m", "Class added successfully.");
 }
 
+export async function lsHandler(identifier: string, l: boolean) {
+  // show prompt if no project id is selected
+  const spinner = new Spinner("%s  ");
+  spinner.setSpinnerString("|/-\\");
+  spinner.start();
+  let projectsJson = await listProjects();
+  spinner.stop();
+  log.info("");
+  if (projectsJson.length == 0) {
+    log.info("There are no currently deployed projects.");
+      return;
+  }
+  if (identifier.trim().length !== 0) {
+    projectsJson = projectsJson.filter(project => project.name === identifier || project.id === identifier);
+    if (projectsJson.length == 0) {
+      log.info("There is no project with this identifier.");
+        return;
+    }
+  }
+  const projects = projectsJson.forEach(function(project : any, index : any) {
+    if (l) {
+      log.info(`[${1 + index}]: Project name: ${project.name},\n\tRegion: ${project.region},\n\tID: ${project.id},\n\tCreated: ${moment.unix(project.createdAt).format()},\n\tUpdated: ${moment.unix(project.updatedAt).format()}`);
+    } else {
+      log.info(`[${1 + index}]: Project name: ${project.name}, Region: ${project.region}, Updated: ${moment.unix(project.updatedAt).format()}`);
+    }
+  });
+}
+
 export async function deleteProjectHandler(projectId: string, forced: boolean) {
   // show prompt if no project id is selected
   if (typeof projectId === "string" && projectId.trim().length === 0) {
-    const projects = await listProjects();
+    const projectsJson = await listProjects();
+    const projects = projectsJson.map(function(project : any, index : any) {
+      return `[${1 + index}]: Project name: ${project.name}, Region: ${project.region}, ID: ${project.id}`;
+    })
     if (projects.length === 0) {
       log.info("There are no currently deployed projects.");
       return false;
@@ -115,7 +151,8 @@ export async function deleteProjectHandler(projectId: string, forced: boolean) {
       return false;
     } else {
       forced = false;
-      projectId = projects[selectionNum - 1].split(":")[3].trim();
+      // get the project id from the selection
+      projectId = projects[selectionNum - 1].split(":")[4].trim();
     }
   }
 
@@ -183,11 +220,21 @@ export async function deployClasses() {
           );
           await zipDirectory(output.path, archivePath);
 
+          const resultPresignedUrl = await getPresignedURL(
+            configuration.region,
+            'genezioDeploy.zip',
+            configuration.name,
+            output.extra?.className
+          )
+
+          await uploadContentToS3(resultPresignedUrl.presignedURL, archivePath)
+
           const prom = deployClass(
             element,
             archivePath,
             configuration.name,
-            output.extra?.className
+            output.extra?.className,
+            configuration.region
           ).then((result) => {
             functionUrlForFilePath[path.parse(element.path).name] =
               result.functionUrl;
@@ -222,13 +269,24 @@ export async function deployClasses() {
             await createTemporaryFolder("genezio-"),
             `genezioDeploy.zip`
           );
+
           await zipDirectory(output.path, archivePath);
+
+          const resultPresignedUrl = await getPresignedURL(
+            configuration.region,
+            'genezioDeploy.zip',
+            configuration.name,
+            output.extra?.className
+          )
+
+          await uploadContentToS3(resultPresignedUrl.presignedURL, archivePath)
 
           const prom = deployClass(
             element,
             archivePath,
             configuration.name,
-            output.extra?.className
+            output.extra?.className,
+            configuration.region
           ).then((result) => {
             functionUrlForFilePath[path.parse(element.path).name] =
               result.functionUrl;
@@ -442,7 +500,7 @@ export async function handleLogin(accessToken: string) {
         const token = params.get("/?token")!;
 
         saveAuthToken(token).then(() => {
-          log.info(`Welcome! You can now start using genez.io.`);
+          log.info(`Welcome! You can now start using genezio.`);
           res.setHeader("Access-Control-Allow-Origin", "*");
           res.setHeader("Access-Control-Allow-Headers", "Content-Type");
           res.setHeader("Access-Control-Allow-Methods", "POST");

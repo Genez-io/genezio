@@ -1,4 +1,5 @@
 //const object = new handler.genezio[Object.keys(handler.genezio)[0]]();
+/* eslint-disable no-useless-escape */
 
 export const lambdaHandler = (className: string): string => `
 delete process.env.AWS_ACCESS_KEY_ID
@@ -13,6 +14,11 @@ exports.handler =  async function(event, context) {
 
         const method = event.methodName;
 
+        if (!object[method]) {
+          console.error(\`ERROR: Cron method named \$\{method\} does not exist.\`);
+          return
+        }
+
         console.log("DEBUG: trigger cron: " + event.cronString + " on method: " + method)
 
         try {
@@ -22,25 +28,52 @@ exports.handler =  async function(event, context) {
         }
         return;
     }
+
+    let body = event.body
+
+    try {
+      body = JSON.parse(event.body)
+    } catch (error) {
+    }
+
     if (event.requestContext.http.path.split("/").length > 2) {
         const method = event.requestContext.http.path.split("/")[2]
         const req = {
             headers: event.headers,
             http: event.requestContext.http,
-            queryParameters: event.queryStringParameters,
+            queryStringParameters: event.queryStringParameters,
             timeEpoch: event.requestContext.timeEpoch,
-            body: event.body
+            body: event.isBase64Encoded ? Buffer.from(body, "base64") : body,
           }
+        console.log(req)
         if (!object[method]) {
           return { statusCode: 404, headers: { 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Method not found" }) };
         }
 
         try {
             const response = await object[method](req);
+
+            if (!response.statusCode) {
+              response.statusCode = 200;
+            }
+
+            if (response.body instanceof Buffer) {
+              response.body = response.body.toString('base64')
+
+              return {
+                ...response,
+                isBase64Encoded: true,
+              }
+            } else if (response.body instanceof Object) {
+              try {
+                response.body = JSON.stringify(response.body)
+              } catch (error) {}
+            }
+
             return response;
         } catch(error) {
             console.error(error);
-            return { statusCode: 500, headers: { 'Content-Type': 'text/json' }};
+            return { statusCode: 500, body: JSON.stringify({"error": error.message}), headers: { 'Content-Type': 'application/json' }};
         }
     } else {
         let body = null;

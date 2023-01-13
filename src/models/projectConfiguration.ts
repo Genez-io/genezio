@@ -1,6 +1,7 @@
 import path from "path";
 import yaml from "yaml";
 import { fileExists, getFileDetails, writeToFile } from "../utils/file";
+import { regions } from "../utils/configs";
 
 export enum TriggerType {
   jsonrpc = "jsonrpc",
@@ -34,6 +35,15 @@ export class SdkConfiguration {
     this.sdkOptions.runtime = runtime || null;
     this.path = path;
   }
+}
+
+export type ParsedCronFields = {
+  minutes: string;
+  hours: string;
+  dayOfMonth: string;
+  month: string;
+  dayOfWeek: string;
+  year: string;
 }
 
 export class MethodConfiguration {
@@ -72,11 +82,70 @@ export class MethodConfiguration {
       throw new Error("The cron method is missing a cron string property.");
     }
 
+    // Check AWS 6 field format cron string
+    if (type == TriggerType.cron && !MethodConfiguration.isCronStringValid(methodConfigurationYaml.cronString)) {
+      throw new Error("The cron string is not valid. Check AWS documentation for more details at this link https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions")
+    }
+
     return new MethodConfiguration(
       methodConfigurationYaml.name,
       type,
       methodConfigurationYaml.cronString
     );
+  }
+
+  static isCronStringValid(unparsedCronString : string): boolean {
+    if (unparsedCronString === "* * * * * *") {
+      throw new Error("You cannot use * in both `dayOfWeek` and `dayOfMonth` fields." )
+    }
+    
+    const cronFields = unparsedCronString.split(' ');
+    if (cronFields.length != 6) {
+      throw new Error("Cron expression have six required fields with white space separator.")
+    }
+
+    const parsedCron : ParsedCronFields = {
+      minutes: cronFields[0],
+      hours: cronFields[1],
+      dayOfMonth: cronFields[2],
+      month: cronFields[3],
+      dayOfWeek: cronFields[4],
+      year: cronFields[5],
+    }
+
+    // See https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions
+    const regexMinutes = new RegExp('([0-59])|(,)|(-)|(\\*)|(/)');
+    const regexHours = new RegExp('([0-23])|(,)|(-)|(\\*)|(/)');
+    const regexDayOfMonth = new RegExp('([1-31])|(,)|(-)|(\\*)|(/)|(\\?)|(L)|(W)');
+    const regexMonth = new RegExp('([1-12])|(,)|(-)|(\\*)|(/)|(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)');
+    const regexDayOfWeek = new RegExp('([1-7])|(,)|(-)|(\\*)|(/)|(\\?)|(L)|(#)|(SUN|MON|TUE|WED|THU|FRI|SAT)');
+    const regexYear = new RegExp('([1970-2199])|(,)|(-)|(\\*)|(/)');
+
+    if (!regexMinutes.test(parsedCron.minutes)) {
+      throw new Error("Cron field for `minutes` does not have a valid syntax.")
+    }
+
+    if (!regexHours.test(parsedCron.hours)) {
+      throw new Error("Cron field for `hours` does not have a valid syntax.")
+    }
+
+    if (!regexDayOfMonth.test(parsedCron.dayOfMonth)) {
+      throw new Error("Cron field for `dayOfMonth` does not have a valid syntax.")
+    }
+
+    if (!regexMonth.test(parsedCron.month)) {
+      throw new Error("Cron field for `month` does not have a valid syntax.")
+    }
+
+    if (!regexDayOfWeek.test(parsedCron.dayOfWeek)) {
+      throw new Error("Cron field for `dayOfWeek` does not have a valid syntax.")
+    }
+
+    if (!regexYear.test(parsedCron.year)) {
+      throw new Error("Cron field for `year` does not have a valid syntax.")
+    }
+
+    return true
   }
 }
 
@@ -152,15 +221,18 @@ export class ClassConfiguration {
 
 export class ProjectConfiguration {
   name: string;
+  region: string;
   sdk: SdkConfiguration;
   classes: ClassConfiguration[];
 
   constructor(
     name: string,
+    region: string,
     sdk: SdkConfiguration,
     classes: ClassConfiguration[]
   ) {
     this.name = name;
+    this.region = region;
     this.sdk = sdk;
     this.classes = classes;
   }
@@ -229,8 +301,17 @@ export class ProjectConfiguration {
       unparsedClasses.map((c) => ClassConfiguration.create(c))
     );
 
+    if (configurationFileContent.region) {
+      if (!regions.includes(configurationFileContent.region)) {
+        throw new Error(
+          `The region is invalid. Please use a valid region.\n Region list: ${regions}`
+        );
+      }
+    }
+
     return new ProjectConfiguration(
       configurationFileContent.name,
+      configurationFileContent.region || "us-east-1",
       sdk,
       classes
     );
@@ -259,6 +340,7 @@ export class ProjectConfiguration {
     const classes = [];
     const content = {
       name: this.name,
+      region: this.region,
       sdk: {
         sdkLanguage: this.sdk.sdkLanguage,
         sdkOptions: {

@@ -9,31 +9,29 @@ import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import { NodeTsBundler } from "./bundlers/typescript/nodeTsBundler";
 import LocalEnvInputParameters from "./models/localEnvInputParams";
 import log from "loglevel";
-import { fileExists } from "./utils/file";
+import { fileExists, readUTF8File } from "./utils/file";
 import { exit } from "process";
+import bodyParser from 'body-parser'
+import url from "url"
+import { genezioRequestParser } from "./utils/genezioRequestParser";
 
 export function getEventObjectFromRequest(request: any) {
+  const urlDetails = url.parse(request.url, true)
+
   return {
     headers: request.headers,
-    http: {
-      // get path without the className
-      path: request.url,
-      protocol: request.httpVersion,
-      method: request.method,
-      sourceIp: request.socket.remoteAddress,
-      userAgent: request.headers["user-agent"]
-    },
-    queryParameters: request.url!.includes("?")
-      ? querystring.parse(request.url!.split("?")[1])
-      : {},
+    rawQueryString: urlDetails.search ? urlDetails.search?.slice(1) : '',
+    queryStringParameters: urlDetails.search ? Object.assign({},urlDetails.query) : undefined,
     timeEpoch: Date.now(),
-    body:
-      Object.keys(request.body).length > 0
-        ? JSON.stringify(request.body)
-        : undefined,
+    body: request.body,
+    isBase64Encoded: request.isBase64Encoded,
     requestContext: {
       http: {
-        path: request.url
+        method: request.method,
+        path: urlDetails.pathname,
+        protocol: request.httpVersion,
+        sourceIp: request.socket.remoteAddress,
+        userAgent: request.headers["user-agent"]
       }
     }
   };
@@ -48,27 +46,68 @@ export function handleResponseforHttp(res: any, httpResponse: any) {
   if (httpResponse.statusDescription) {
     res.statusMessage = httpResponse.statusDescription;
   }
+  let contentTypeHeader = false;
+
   if (httpResponse.headers) {
     for (const header of Object.keys(httpResponse.headers)) {
-      res.setHeader(header, httpResponse.headers[header]);
+      res.setHeader(header.toLowerCase(), httpResponse.headers[header]);
+
+      if (header.toLowerCase() === "content-type") {
+        contentTypeHeader = httpResponse.headers[header]
+      }
     }
+  }
+
+  if (!contentTypeHeader) {
+    res.setHeader("content-type", "application/json")
   }
 
   if (httpResponse.statusCode) {
     res.writeHead(parseInt(httpResponse.statusCode));
   }
 
-  if (httpResponse.bodyEncoding === "base64") {
-    res.write(Buffer.from(httpResponse.body, "base64"));
+  if (httpResponse.isBase64Encoded === true) {
+    res.end(Buffer.from(httpResponse.body, "base64"))
   } else {
-    res.end(httpResponse.body ? httpResponse.body : "");
+    if (Buffer.isBuffer(httpResponse.body)) {
+      res.end(JSON.stringify(httpResponse.body.toJSON()));  
+    } else {
+      res.end(httpResponse.body ? httpResponse.body : "");
+    }
   }
 }
 
-export function listenForChanges(sdkPathRelative: any, server: any) {
+export async function listenForChanges(sdkPathRelative: any, server: any) {
   const cwd = process.cwd();
 
   let sdkPath = path.join(cwd, sdkPathRelative);
+
+  let ignoredPathsFromGenezioIgnore: string[] = [];
+
+
+  // check for .genezioignore file
+  const ignoreFilePath = path.join(cwd, ".genezioignore");
+  if (await fileExists(ignoreFilePath)) {
+    // read the file as a string
+    const ignoreFile = await readUTF8File(ignoreFilePath);
+    // split the string by new line \n
+    const ignoreFileLines = ignoreFile.split("\n");
+    // remove empty lines
+    const ignoreFileLinesWithoutEmptyLines = ignoreFileLines.filter(
+      (line) => line !== "" && !line.startsWith("#")
+    )
+
+    ignoredPathsFromGenezioIgnore = ignoreFileLinesWithoutEmptyLines.map(
+      (line: string) => {
+        if (line.startsWith("/")) {
+          return line;
+        }
+        return path.join(cwd, line);
+      }
+    );
+  }
+
+
 
   return new Promise((resolve) => {
     // delete / if sdkPath ends with /
@@ -80,8 +119,10 @@ export function listenForChanges(sdkPathRelative: any, server: any) {
     const watchPaths = [path.join(cwd, "/**/*")];
     const ignoredPaths = [
       "**/node_modules/*",
+      // "**/node_modules/**/*",
       sdkPath + "/**/*",
-      sdkPath + "/*"
+      sdkPath + "/*",
+      ...ignoredPathsFromGenezioIgnore
     ];
 
     const startWatching = () => {
@@ -115,12 +156,8 @@ export async function startServer(
 ) {
   const app = express();
   app.use(cors());
-  app.use(express.json());
-  app.use(
-    express.urlencoded({
-      extended: true
-    })
-  );
+  app.use(bodyParser.raw( { type: () => true }))
+  app.use(genezioRequestParser);
 
   app.all(`/:className`, async (req: any, res: any) => {
     const reqToFunction = getEventObjectFromRequest(req);
@@ -168,8 +205,9 @@ export async function startServer(
     handleResponseforHttp(res, response);
   });
 
-  log.info("Local Server Listening...");
-  return app.listen(port);
+  return app.listen(port, () => {
+    log.info("Local Server Listening...");
+  })
 }
 
 export async function prepareForLocalEnvironment(

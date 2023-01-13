@@ -1,9 +1,0 @@
-name: hello-world
-sdk:
-  sdkLanguage: swift
-  sdkOptions:
-    runtime: node
-  path: ./sdk/
-classes:
-  - path: ./hello.js
-    type: jsonrpc

@@ -4,7 +4,7 @@ import { BACKEND_ENDPOINT } from "../variables";
 
 export default async function listProjects(
   index = 0,
-) : Promise<Array<string>> {
+) : Promise<Array<any>> {
   const limit = 100;
 
   const authToken = await getAuthToken()
@@ -33,9 +33,7 @@ export default async function listProjects(
     throw new Error('Unknown error in `list projects` response from server.');
   }
 
-  const projects = response.data.projects.map(function(project : any, index : any) {
-    return `[${1 + index}]: Project name: ${project.name}, ID: ${project.id}`;
-  })
+  const projects = response.data.projects;
 
   return projects;
 }
