@@ -1,6 +1,6 @@
 # Webhook example
 
-Sometimes we might need to communicate directly over HTTP instead of JSONRPC. In this example, the `helloWorldOverHttp` implemented in `HelloWorldCronExample` class will be triggered by an HTTP request.
+Sometimes we might need to communicate directly over HTTP instead of JSONRPC. In this example, the `helloWorldOverHttp` implemented in `HelloWorldHttpExample` class will be triggered by an HTTP request.
 
 ## Run the example locally
 

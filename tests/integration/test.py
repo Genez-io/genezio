@@ -5,6 +5,7 @@ import logging
 import requests
 import socket
 import time
+import time
 from os import path
 from termcolor import colored
 from os.path import expanduser
@@ -43,6 +44,16 @@ def test_genezio_deploy(configuration):
     assert_log(process.returncode == 0, process, "genezio deploy returned non-zero exit code")
     assert_log(process.stderr == "", process, "genezio deploy returned non-empty stderr")
 
+    deployed_endpoints = {}
+    lines = process.stdout.splitlines()
+    for line in lines:
+        try:
+            name = line.split(":")[0].replace("  - ", "")
+            url = line[line.index("https://"):]
+            deployed_endpoints[name] = url
+        except:
+            pass
+
     # Test if sdk and classes were generated
     sdk = configuration['sdk']
     assert_log(path.isdir(sdk['path']), process, "SDK directory not found")
@@ -66,6 +77,8 @@ def test_genezio_deploy(configuration):
 
     print(colored("Test for " + str(process.args) + " passed", "green"))
 
+    return deployed_endpoints
+
 def test_genezio_delete(configuration, project_id):
     process = subprocess.run(['genezio', 'delete', project_id, "--force"], capture_output=True, text=True)
     assert_log(process.returncode == 0, process, "genezio delete returned non-zero exit code")
@@ -79,6 +92,26 @@ def test_genezio_delete(configuration, project_id):
     assert_log(contains_project(r.json()['projects'], configuration['name'], configuration['region']) == False, process, "Project not deleted in backend")
 
     print(colored("Test for " + str(process.args) + " passed", "green"))
+
+def start_genezio_local():
+    process = subprocess.Popen(['genezio', 'local'], stdout=subprocess.PIPE, shell=False, stderr=subprocess.PIPE, text=True, close_fds=True)
+    start = time.time()
+
+    while True:
+        time.sleep(0.05)
+        # Test if port 8083 is listening
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        port_status = sock.connect_ex(('127.0.0.1',8083))
+
+        if port_status == 0:
+            break
+        
+        end = time.time()
+        if end - start > 60:
+            assert false, "Connecting to port 8083 failed"
+    
+    return process
+
 
 # `genezio local` cannot be gracefully terminated
 def test_genezio_local(configuration, client_script_name):
