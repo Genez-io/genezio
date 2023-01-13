@@ -11,7 +11,6 @@ function bodyIsBinary(contentType: string) {
     const components = contentType.split("/")
     // TODO check if components length is 2.
     const [mimeType, subType] = components
-    console.log(mimeType, subType)
 
     if (mimeType === "text") {
         return false
@@ -31,7 +30,7 @@ export function genezioRequestParser(request: any, response: any, next: any) {
     const headers = request.headers
     const contentType = headers["content-type"]
 
-    if (request.body && Object.keys(request.body).length > 0) {
+    if (request.body && request.body.length > 0) {
         if (bodyIsBinary(contentType)) {
             request.body = request.body.toString('base64');
             request.isBase64Encoded = true
@@ -39,6 +38,8 @@ export function genezioRequestParser(request: any, response: any, next: any) {
             request.body = request.body.toString()
             request.isBase64Encoded = false
         }
+    } else {
+        request.body = undefined
     }
 
     next()

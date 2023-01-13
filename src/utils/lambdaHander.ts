@@ -27,7 +27,8 @@ exports.handler =  async function(event, context) {
 
     try {
       body = JSON.parse(event.body)
-    } catch (error) {}
+    } catch (error) {
+    }
 
     if (event.requestContext.http.path.split("/").length > 2) {
         const method = event.requestContext.http.path.split("/")[2]
@@ -36,7 +37,7 @@ exports.handler =  async function(event, context) {
             http: event.requestContext.http,
             queryStringParameters: event.queryStringParameters,
             timeEpoch: event.requestContext.timeEpoch,
-            body: body
+            body: event.isBase64Encoded ? Buffer.from(body, "base64") : body,
           }
         if (!object[method]) {
           return { statusCode: 404, headers: { 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Method not found" }) };
@@ -49,9 +50,18 @@ exports.handler =  async function(event, context) {
               response.statusCode = 200;
             }
 
-            try {
-              response.body = JSON.stringify(response.body)
-            } catch (error) {}
+            if (response.body instanceof Buffer) {
+              response.body = response.body.toString('base64')
+
+              return {
+                ...response,
+                isBase64Encoded: true,
+              }
+            } else if (response.body instanceof Object) {
+              try {
+                response.body = JSON.stringify(response.body)
+              } catch (error) {}
+            }
 
             return response;
         } catch(error) {

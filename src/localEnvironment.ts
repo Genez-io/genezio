@@ -17,7 +17,7 @@ import { genezioRequestParser } from "./utils/genezioRequestParser";
 
 export function getEventObjectFromRequest(request: any) {
   const urlDetails = url.parse(request.url, true)
-  console.log(urlDetails)
+
   return {
     headers: request.headers,
     rawQueryString: urlDetails.search ? urlDetails.search?.slice(1) : '',
@@ -156,7 +156,7 @@ export async function startServer(
 ) {
   const app = express();
   app.use(cors());
-  app.use(bodyParser.raw( { type: "*/*" }))
+  app.use(bodyParser.raw( { type: () => true }))
   app.use(genezioRequestParser);
 
   app.all(`/:className`, async (req: any, res: any) => {
