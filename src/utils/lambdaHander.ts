@@ -1,4 +1,5 @@
 //const object = new handler.genezio[Object.keys(handler.genezio)[0]]();
+/* eslint-disable no-useless-escape */
 
 export const lambdaHandler = (className: string): string => `
 delete process.env.AWS_ACCESS_KEY_ID
@@ -12,6 +13,11 @@ exports.handler =  async function(event, context) {
     if (event.genezioEventType === "cron") {
 
         const method = event.methodName;
+
+        if (!object[method]) {
+          console.error(\`ERROR: Cron method named \$\{method\} does not exist.\`);
+          return
+        }
 
         console.log("DEBUG: trigger cron: " + event.cronString + " on method: " + method)
 
@@ -39,6 +45,7 @@ exports.handler =  async function(event, context) {
             timeEpoch: event.requestContext.timeEpoch,
             body: event.isBase64Encoded ? Buffer.from(body, "base64") : body,
           }
+        console.log(req)
         if (!object[method]) {
           return { statusCode: 404, headers: { 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Method not found" }) };
         }

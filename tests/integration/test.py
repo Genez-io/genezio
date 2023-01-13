@@ -97,7 +97,6 @@ def start_genezio_local():
     process = subprocess.Popen(['genezio', 'local'], stdout=subprocess.PIPE, shell=False, stderr=subprocess.PIPE, text=True, close_fds=True)
     start = time.time()
 
-    # time.sleep(10)
     while True:
         time.sleep(0.05)
         # Test if port 8083 is listening

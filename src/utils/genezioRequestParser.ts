@@ -9,7 +9,11 @@ function bodyIsBinary(contentType: string) {
     }
 
     const components = contentType.split("/")
-    // TODO check if components length is 2.
+
+    if (components.length != 2) {
+        return true
+    }
+
     const [mimeType, subType] = components
 
     if (mimeType === "text") {
