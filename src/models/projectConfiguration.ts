@@ -25,12 +25,12 @@ export type JsSdkOptions = {
 };
 
 export class SdkConfiguration {
-  sdkLanguage: Language;
+  language: Language;
   options: JsSdkOptions | any;
   path: string;
 
-  constructor(sdkLanguage: Language, runtime: JsRuntime | null, path: string) {
-    this.sdkLanguage = sdkLanguage;
+  constructor(language: Language, runtime: JsRuntime | null, path: string) {
+    this.language = language;
     this.options = {};
     this.options.runtime = runtime || null;
     this.path = path;
@@ -255,7 +255,7 @@ export class ProjectConfiguration {
     const language: string = configurationFileContent.sdk.language;
 
     if (!language || !Language[language as keyof typeof Language]) {
-      throw new Error("The sdk.sdkLanguage property is invalid.");
+      throw new Error("The sdk.language property is invalid.");
     }
 
     if (
@@ -283,7 +283,7 @@ export class ProjectConfiguration {
 
     const sdk = new SdkConfiguration(
       Language[
-        configurationFileContent.sdk.sdkLanguage as keyof typeof Language
+        configurationFileContent.sdk.language as keyof typeof Language
       ],
       jsRuntime,
       configurationFileContent.sdk.path
@@ -342,7 +342,7 @@ export class ProjectConfiguration {
       name: this.name,
       region: this.region,
       sdk: {
-        sdkLanguage: this.sdk.sdkLanguage,
+        language: this.sdk.language,
         options: {
           runtime: this.sdk.options?.runtime
         },

@@ -1,6 +1,6 @@
 name: todo-list
 sdk:
-  sdkLanguage: js
+  language: js
   sdkOptions:
     runtime: browser
   path: ./../frontend/src/backend-sdk

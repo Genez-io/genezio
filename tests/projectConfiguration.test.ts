@@ -23,7 +23,7 @@ describe("project configuration", () => {
     }).rejects.toThrowError();
   });
 
-  test("missing sdk.sdkLanguage should throw error", async () => {
+  test("missing sdk.language should throw error", async () => {
     await expect(async () => {
       const yaml = {
         name: "test",

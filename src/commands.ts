@@ -367,12 +367,12 @@ export async function generateSdks(urlMap: any) {
     configurationFileContent
   );
   const outputPath = configuration.sdk.path;
-  const language = configuration.sdk.sdkLanguage;
+  const language = configuration.sdk.language;
 
   // check if the output path exists
   if (await fileExists(outputPath)) {
     // delete the output path
-    fs.rmSync(outputPath, { recursive: true, force: true });
+    fs.rmSync(outputPath, { recursive: true, force: true }); 
   }
 
   const sdk = await generateSdk(configuration, urlMap).catch((error) => {
@@ -422,7 +422,7 @@ export async function init() {
       `We don't currently support the ${sdkLanguage} language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`
     );
   }
-  configFile.sdk.sdkLanguage = sdkLanguage;
+  configFile.sdk.language = sdkLanguage;
 
   if (sdkLanguage === "js" || sdkLanguage === "ts") {
     const runtime = await askQuestion(
@@ -450,7 +450,7 @@ Example:
 
 name: hello-world
 sdk:
-  sdkLanguage: js
+  language: js
   sdkOptions:
     runtime: node
   path: ./sdk/
