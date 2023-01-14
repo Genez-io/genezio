@@ -9,5 +9,5 @@ import test as gnz_test
 if __name__ == '__main__':
     print ("Starting TO-DO List test...")
     gnz_test.test_genezio_account()
-    gnz_test.test_genezio_deploy("../frontend/src/backend-sdk")
+    gnz_test.test_genezio_deploy("../frontend/src/sdk")
     print ("Success!")
