@@ -56,8 +56,14 @@ def test_genezio_deploy(configuration):
 
     # Test if sdk and classes were generated
     sdk = configuration['sdk']
+
     assert_log(path.isdir(sdk['path']), process, "SDK directory not found")
-    assert_log(path.exists(sdk['path'] + '/remote.js'), process, "remote.js not found")
+    if (sdk['language'] == "js"):
+        assert_log(path.exists(sdk['path'] + '/remote.js'), process, "remote.js not found")
+    elif (sdk['language'] == "ts"):
+        assert_log(path.exists(sdk['path'] + '/remote.ts'), process, "remote.ts not found")
+    elif (sdk['language'] == "swift"):
+        assert_log(path.exists(sdk['path'] + '/remote.swift'), process, "remote.swift not found")
 
     classes = configuration['classes']
     if not classes:

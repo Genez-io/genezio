@@ -1,10 +1,10 @@
 name: hello-world
 region: eu-central-1
 sdk:
-  language: swift
+  language: js
   options:
     runtime: node
-  path: ./sdk/
+  path: ../client/sdk/
 classes:
   - path: ./hello.js
     type: jsonrpc

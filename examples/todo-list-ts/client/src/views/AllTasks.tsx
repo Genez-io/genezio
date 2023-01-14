@@ -14,7 +14,7 @@ import {
 import React, { useState, useEffect } from "react";
 import { TaskService, Task, GetTasksResponse } from "../sdk/task.sdk";
 import { useNavigate } from "react-router-dom";
-import { User } from "../backend-sdk/user.sdk";
+import { User } from "../sdk/user.sdk";
 
 
 export default () => {
