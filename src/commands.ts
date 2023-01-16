@@ -314,7 +314,6 @@ export async function deployClasses() {
   await Promise.all(promisesDeploy);
 
   await generateSdks(functionUrlForFilePath).catch((error) => {
-    console.log("Generate sdk", error);
     throw error;
   });
 

@@ -115,7 +115,9 @@ program
             log.error(data.error?.message);
           }
         } else {
-          log.error(error.message);
+          if (error.message) {
+            log.error(error.message);
+          }
         }
         exit(1);
       });
@@ -198,7 +200,11 @@ program
           }
           // eslint-disable-next-line no-empty
         } catch (error: any) {
-          log.error(`${error.message}`);
+          if (error.message) {
+            log.error(`${error.message}`);
+          } else {
+            log.error("An error occured while generating the SDK. Please try again!")
+          }
           exit(1)
         }
 

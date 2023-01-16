@@ -9,3 +9,5 @@ Run `genezio local` in the `server/` folder. This will start a local web server.
 ## Deploy the example in the Genezio infrastructure
 
 Run `genezio deploy` in the `/server` folder.
+
+In the `/client` folder you can find a `test-webhook-example.js` that sends different types of HTTP requests. You can run it with `node test-webhook-example.js`.
