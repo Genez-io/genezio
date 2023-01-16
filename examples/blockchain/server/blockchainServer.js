@@ -69,6 +69,7 @@ export class BlockchainServer {
     async getEvents(from, limit) {
         console.log(`Received getEvents request with from = ${from} limit = ${limit}`)
         const count = await EventModel.count()
+        console.log("Event count", count)
         const events = await EventModel.find(undefined, undefined, { skip: from, limit, sort: { "blockNumber": -1, "logIndex": -1 } })
 
         return {

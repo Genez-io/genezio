@@ -4,7 +4,7 @@ export class CronExample {
      * 
      * To change the frequency with which the request is made, change the cronString in genezio.yaml configuration file.
      */
-    sayHiEveryMinuteeee() {
+    sayHiEveryMinute() {
         console.log("Hi!")
     }
 }
