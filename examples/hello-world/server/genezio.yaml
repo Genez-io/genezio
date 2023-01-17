@@ -1,0 +1,10 @@
+name: hello-world
+region: eu-central-1
+sdk:
+  language: js
+  options:
+    runtime: node
+  path: ../client/sdk/
+classes:
+  - path: ./hello.js
+    type: jsonrpc

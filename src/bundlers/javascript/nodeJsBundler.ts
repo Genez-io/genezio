@@ -6,6 +6,7 @@ import {
   createTemporaryFolder,
   getAllFilesFromCurrentPath,
   getFileDetails,
+  readUTF8File,
   writeToFile
 } from "../../utils/file";
 import {
@@ -82,6 +83,7 @@ export class NodeJsBundler implements BundlerInterface {
   async #copyNonJsFiles(tempFolderPath: string) {
     const allNonJsFilesPaths = (await getAllFilesFromCurrentPath()).filter(
       (file: FileDetails) => {
+        
         // filter js files, node_modules and folders
         return (
           file.extension !== ".js" &&

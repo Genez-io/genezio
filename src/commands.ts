@@ -31,6 +31,11 @@ import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBin
 import { NodeTsBinaryDependenciesBundler } from "./bundlers/typescript/nodeTsBinaryDepenciesBundler";
 import { languages } from "./utils/languages";
 import { saveAuthToken } from "./utils/accounts";
+import { getPresignedURL } from "./requests/getPresignedURL";
+import { uploadContentToS3 } from "./requests/uploadContentToS3";
+import moment from "moment";
+import { Spinner } from "cli-spinner";
+import { info } from "console";
 
 export async function addNewClass(classPath: string, classType: string) {
   if (classType === undefined) {
@@ -87,10 +92,41 @@ export async function addNewClass(classPath: string, classType: string) {
   log.info("\x1b[36m%s\x1b[0m", "Class added successfully.");
 }
 
+export async function lsHandler(identifier: string, l: boolean) {
+  // show prompt if no project id is selected
+  const spinner = new Spinner("%s  ");
+  spinner.setSpinnerString("|/-\\");
+  spinner.start();
+  let projectsJson = await listProjects();
+  spinner.stop();
+  log.info("");
+  if (projectsJson.length == 0) {
+    log.info("There are no currently deployed projects.");
+      return;
+  }
+  if (identifier.trim().length !== 0) {
+    projectsJson = projectsJson.filter(project => project.name === identifier || project.id === identifier);
+    if (projectsJson.length == 0) {
+      log.info("There is no project with this identifier.");
+        return;
+    }
+  }
+  const projects = projectsJson.forEach(function(project : any, index : any) {
+    if (l) {
+      log.info(`[${1 + index}]: Project name: ${project.name},\n\tRegion: ${project.region},\n\tID: ${project.id},\n\tCreated: ${moment.unix(project.createdAt).format()},\n\tUpdated: ${moment.unix(project.updatedAt).format()}`);
+    } else {
+      log.info(`[${1 + index}]: Project name: ${project.name}, Region: ${project.region}, Updated: ${moment.unix(project.updatedAt).format()}`);
+    }
+  });
+}
+
 export async function deleteProjectHandler(projectId: string, forced: boolean) {
   // show prompt if no project id is selected
   if (typeof projectId === "string" && projectId.trim().length === 0) {
-    const projects = await listProjects();
+    const projectsJson = await listProjects();
+    const projects = projectsJson.map(function(project : any, index : any) {
+      return `[${1 + index}]: Project name: ${project.name}, Region: ${project.region}, ID: ${project.id}`;
+    })
     if (projects.length === 0) {
       log.info("There are no currently deployed projects.");
       return false;
@@ -115,7 +151,8 @@ export async function deleteProjectHandler(projectId: string, forced: boolean) {
       return false;
     } else {
       forced = false;
-      projectId = projects[selectionNum - 1].split(":")[3].trim();
+      // get the project id from the selection
+      projectId = projects[selectionNum - 1].split(":")[4].trim();
     }
   }
 
@@ -183,11 +220,21 @@ export async function deployClasses() {
           );
           await zipDirectory(output.path, archivePath);
 
+          const resultPresignedUrl = await getPresignedURL(
+            configuration.region,
+            'genezioDeploy.zip',
+            configuration.name,
+            output.extra?.className
+          )
+
+          await uploadContentToS3(resultPresignedUrl.presignedURL, archivePath)
+
           const prom = deployClass(
             element,
             archivePath,
             configuration.name,
-            output.extra?.className
+            output.extra?.className,
+            configuration.region
           ).then((result) => {
             functionUrlForFilePath[path.parse(element.path).name] =
               result.functionUrl;
@@ -222,13 +269,24 @@ export async function deployClasses() {
             await createTemporaryFolder("genezio-"),
             `genezioDeploy.zip`
           );
+
           await zipDirectory(output.path, archivePath);
+
+          const resultPresignedUrl = await getPresignedURL(
+            configuration.region,
+            'genezioDeploy.zip',
+            configuration.name,
+            output.extra?.className
+          )
+
+          await uploadContentToS3(resultPresignedUrl.presignedURL, archivePath)
 
           const prom = deployClass(
             element,
             archivePath,
             configuration.name,
-            output.extra?.className
+            output.extra?.className,
+            configuration.region
           ).then((result) => {
             functionUrlForFilePath[path.parse(element.path).name] =
               result.functionUrl;
@@ -256,7 +314,6 @@ export async function deployClasses() {
   await Promise.all(promisesDeploy);
 
   await generateSdks(functionUrlForFilePath).catch((error) => {
-    console.log("Generate sdk", error);
     throw error;
   });
 
@@ -314,7 +371,7 @@ export async function generateSdks(urlMap: any) {
   // check if the output path exists
   if (await fileExists(outputPath)) {
     // delete the output path
-    fs.rmSync(outputPath, { recursive: true, force: true });
+    fs.rmSync(outputPath, { recursive: true, force: true }); 
   }
 
   const sdk = await generateSdk(configuration, urlMap).catch((error) => {
@@ -322,11 +379,14 @@ export async function generateSdks(urlMap: any) {
   });
 
   if (sdk.remoteFile) {
-    await writeToFile(outputPath, "remote.js", sdk.remoteFile, true).catch(
-      (error) => {
-        log.error(error.toString());
-      }
-    );
+    await writeToFile(
+      outputPath,
+      `remote.${language}`,
+      sdk.remoteFile,
+      true
+    ).catch((error) => {
+      log.error(error.toString());
+    });
   }
 
   await Promise.all(
@@ -349,21 +409,21 @@ export async function init() {
       log.error("The project name can't be empty.");
     }
   }
-  const sdk: any = { name: projectName, sdk: {}, classes: [] };
+  const configFile: any = { name: projectName, region: "us-east-1", sdk: { options: {} }, classes: [] };
 
-  const language = await askQuestion(
-    `In what programming language do you want your SDK? (js or ts) [default value: js]: `,
+  const sdkLanguage = await askQuestion(
+    `In what programming language do you want your SDK? (js, ts or swift) [default value: js]: `,
     "js"
   );
 
-  if (!languages.includes(language)) {
+  if (!languages.includes(sdkLanguage)) {
     throw Error(
-      `We don't currently support the ${language} language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`
+      `We don't currently support the ${sdkLanguage} language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`
     );
   }
-  sdk.sdk.language = language;
+  configFile.sdk.language = sdkLanguage;
 
-  if (language === "js" || language === "ts") {
+  if (sdkLanguage === "js" || sdkLanguage === "ts") {
     const runtime = await askQuestion(
       `What runtime will you use? Options: "node" or "browser". [default value: node]: `,
       "node"
@@ -372,25 +432,27 @@ export async function init() {
       throw Error(`We don't currently support this JS runtime ${runtime}.`);
     }
 
-    sdk.sdk.runtime = runtime;
+    configFile.sdk.options.runtime = runtime;
   }
 
   const path = await askQuestion(
     `Where do you want to save your SDK? [default value: ./sdk/]: `,
     "./sdk/"
   );
-  sdk.sdk.path = path;
+  configFile.sdk.path = path;
 
-  const doc = new Document(sdk);
+  const doc = new Document(configFile);
   doc.commentBefore = `File that configures what classes will be deployed in Genezio Infrastructure.
 Add the paths to classes that you want to deploy in "classes".
 
 Example:
 
 name: hello-world
+region: us-east-1
 sdk:
   language: js
-  runtime: node
+  options:
+    runtime: node
   path: ./sdk/
 classes:
   - path: ./hello.js
@@ -438,7 +500,7 @@ export async function handleLogin(accessToken: string) {
         const token = params.get("/?token")!;
 
         saveAuthToken(token).then(() => {
-          log.info(`Welcome! You can now start using genez.io.`);
+          log.info(`Welcome! You can now start using genezio.`);
           res.setHeader("Access-Control-Allow-Origin", "*");
           res.setHeader("Access-Control-Allow-Headers", "Content-Type");
           res.setHeader("Access-Control-Allow-Methods", "POST");

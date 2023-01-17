@@ -1,1 +1,2 @@
-frontend/src/sdk
+client/src/sdk
+node_modules

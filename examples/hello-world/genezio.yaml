@@ -1,8 +1,0 @@
-name: hello-world
-sdk:
-  language: js
-  runtime: node
-  path: ./sdk/
-classes:
-  - path: ./hello.js
-    type: jsonrpc
