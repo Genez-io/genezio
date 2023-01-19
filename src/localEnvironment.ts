@@ -14,6 +14,8 @@ import { exit } from "process";
 import bodyParser from 'body-parser'
 import url from "url"
 import { genezioRequestParser } from "./utils/genezioRequestParser";
+import { debugLogger } from "./utils/logging";
+import { BundlerInterface } from "./bundlers/bundler.interface";
 
 export function getEventObjectFromRequest(request: any) {
   const urlDetails = url.parse(request.url, true)
@@ -21,7 +23,7 @@ export function getEventObjectFromRequest(request: any) {
   return {
     headers: request.headers,
     rawQueryString: urlDetails.search ? urlDetails.search?.slice(1) : '',
-    queryStringParameters: urlDetails.search ? Object.assign({},urlDetails.query) : undefined,
+    queryStringParameters: urlDetails.search ? Object.assign({}, urlDetails.query) : undefined,
     timeEpoch: Date.now(),
     body: request.body,
     isBase64Encoded: request.isBase64Encoded,
@@ -70,7 +72,7 @@ export function handleResponseforHttp(res: any, httpResponse: any) {
     res.end(Buffer.from(httpResponse.body, "base64"))
   } else {
     if (Buffer.isBuffer(httpResponse.body)) {
-      res.end(JSON.stringify(httpResponse.body.toJSON()));  
+      res.end(JSON.stringify(httpResponse.body.toJSON()));
     } else {
       res.end(httpResponse.body ? httpResponse.body : "");
     }
@@ -156,7 +158,7 @@ export async function startServer(
 ) {
   const app = express();
   app.use(cors());
-  app.use(bodyParser.raw( { type: () => true }))
+  app.use(bodyParser.raw({ type: () => true }))
   app.use(genezioRequestParser);
 
   app.all(`/:className`, async (req: any, res: any) => {
@@ -231,64 +233,15 @@ export async function prepareForLocalEnvironment(
       exit(1);
     }
 
+    let bundler: BundlerInterface
     switch (element.language) {
       case ".ts": {
-        const bundler = new NodeTsBundler();
-
-        const prom = bundler
-          .bundle({
-            configuration: element,
-            path: element.path,
-            extra: { mode: "development" }
-          })
-          .then((output) => {
-            const className = output.extra?.className;
-            const handlerPath = path.join(output.path, "index.js");
-            const baseurl = `http://127.0.0.1:${port}/`;
-            const functionUrl = `${baseurl}${className}`;
-            functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
-
-            classesInfo.push({
-              className: output.extra?.className,
-              methodNames: output.extra?.methodNames,
-              path: element.path,
-              functionUrl: baseurl
-            });
-
-            handlers[className] = {
-              path: handlerPath
-            };
-          });
-        return prom;
+        bundler = new NodeTsBundler();
+        break
       }
       case ".js": {
-        const bundler = new NodeJsBundler();
-
-        const prom = bundler
-          .bundle({
-            configuration: element,
-            path: element.path,
-            extra: { mode: "development" }
-          })
-          .then((output) => {
-            const className = output.extra?.className;
-            const handlerPath = path.join(output.path, "index.js");
-            const baseurl = `http://127.0.0.1:${port}/`;
-            const functionUrl = `${baseurl}${className}`;
-            functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
-
-            classesInfo.push({
-              className: output.extra?.className,
-              methodNames: output.extra?.methodNames,
-              path: element.path,
-              functionUrl: baseurl
-            });
-
-            handlers[className] = {
-              path: handlerPath
-            };
-          });
-        return prom;
+        bundler = new NodeJsBundler();
+        break
       }
       default: {
         log.error(
@@ -297,6 +250,33 @@ export async function prepareForLocalEnvironment(
         return Promise.resolve();
       }
     }
+
+    debugLogger.debug(`The bundling process has started for file ${element.path}...`)
+    return bundler
+      .bundle({
+        configuration: element,
+        path: element.path,
+        extra: { mode: "development" }
+      })
+      .then((output) => {
+        debugLogger.debug("The bundling process finished successfully.")
+        const className = output.extra?.className;
+        const handlerPath = path.join(output.path, "index.js");
+        const baseurl = `http://127.0.0.1:${port}/`;
+        const functionUrl = `${baseurl}${className}`;
+        functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
+
+        classesInfo.push({
+          className: output.extra?.className,
+          methodNames: output.extra?.methodNames,
+          path: element.path,
+          functionUrl: baseurl
+        });
+
+        handlers[className] = {
+          path: handlerPath
+        };
+      });
   });
 
   await Promise.all(promises);

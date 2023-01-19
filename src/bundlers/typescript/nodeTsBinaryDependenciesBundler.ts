@@ -3,6 +3,7 @@ import fs from 'fs'
 import util from "util";
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface"
 import { fileExists } from '../../utils/file';
+import { debugLogger } from '../../utils/logging';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const exec = util.promisify(require("child_process").exec);
 
@@ -86,8 +87,10 @@ export class NodeTsBinaryDependenciesBundler implements BundlerInterface {
             return Promise.resolve(input)
         }
 
+        debugLogger.debug(`[NodeTSBinaryDependenciesBundler] Redownload binary dependencies if necessary for file ${input.path}...`)
         // 4. Redownload binary dependencies if necessary
         this.#handleBinaryDependencies(input.extra.dependenciesInfo, input.path)
+        debugLogger.debug(`[NodeTSBinaryDependenciesBundler] Redownload binary dependencies done for file ${input.path}.`)
 
         return Promise.resolve(input)
     }

@@ -27,15 +27,17 @@ import { AddressInfo } from "net";
 import open from "open";
 import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import { NodeTsBundler } from "./bundlers/typescript/nodeTsBundler";
-import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBinaryDepenciesBundler";
-import { NodeTsBinaryDependenciesBundler } from "./bundlers/typescript/nodeTsBinaryDepenciesBundler";
+import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBinaryDependenciesBundler";
+import { NodeTsBinaryDependenciesBundler } from "./bundlers/typescript/nodeTsBinaryDependenciesBundler";
 import { languages } from "./utils/languages";
 import { saveAuthToken } from "./utils/accounts";
 import { getPresignedURL } from "./requests/getPresignedURL";
 import { uploadContentToS3 } from "./requests/uploadContentToS3";
 import moment from "moment";
 import { Spinner } from "cli-spinner";
-import { info } from "console";
+import { debugLogger } from "./utils/logging";
+import { BundlerComposer } from "./bundlers/bundlerComposer";
+import { BundlerInterface } from "./bundlers/bundler.interface";
 
 export async function addNewClass(classPath: string, classType: string) {
   if (classType === undefined) {
@@ -199,114 +201,76 @@ export async function deployClasses() {
         exit(1);
       }
 
+      let bundler: BundlerInterface
       switch (element.language) {
         case ".ts": {
-          const bundler = new NodeTsBundler();
+          const standardBundler = new NodeTsBundler();
           const binaryDepBundler = new NodeTsBinaryDependenciesBundler();
-
-          let output = await bundler.bundle({
-            configuration: element,
-            path: element.path,
-            extra: {
-              mode: "production"
-            }
-          });
-
-          output = await binaryDepBundler.bundle(output);
-
-          const archivePath = path.join(
-            await createTemporaryFolder("genezio-"),
-            `genezioDeploy.zip`
-          );
-          await zipDirectory(output.path, archivePath);
-
-          const resultPresignedUrl = await getPresignedURL(
-            configuration.region,
-            'genezioDeploy.zip',
-            configuration.name,
-            output.extra?.className
-          )
-
-          await uploadContentToS3(resultPresignedUrl.presignedURL, archivePath)
-
-          const prom = deployClass(
-            element,
-            archivePath,
-            configuration.name,
-            output.extra?.className,
-            configuration.region
-          ).then((result) => {
-            functionUrlForFilePath[path.parse(element.path).name] =
-              result.functionUrl;
-
-            classesInfo.push({
-              className: output.extra?.className,
-              methodNames: output.extra?.methodNames,
-              path: element.path,
-              functionUrl: result.functionUrl,
-              projectId: result.class.ProjectID
-            });
-
-            fs.promises.unlink(archivePath);
-          });
-          return prom;
+          bundler = new BundlerComposer([standardBundler, binaryDepBundler])
+          break
         }
         case ".js": {
-          const bundler = new NodeJsBundler();
+          const standardBundler = new NodeJsBundler();
           const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
-
-          let output = await bundler.bundle({
-            configuration: element,
-            path: element.path,
-            extra: {
-              mode: "development"
-            }
-          });
-
-          output = await binaryDepBundler.bundle(output);
-
-          const archivePath = path.join(
-            await createTemporaryFolder("genezio-"),
-            `genezioDeploy.zip`
-          );
-
-          await zipDirectory(output.path, archivePath);
-
-          const resultPresignedUrl = await getPresignedURL(
-            configuration.region,
-            'genezioDeploy.zip',
-            configuration.name,
-            output.extra?.className
-          )
-
-          await uploadContentToS3(resultPresignedUrl.presignedURL, archivePath)
-
-          const prom = deployClass(
-            element,
-            archivePath,
-            configuration.name,
-            output.extra?.className,
-            configuration.region
-          ).then((result) => {
-            functionUrlForFilePath[path.parse(element.path).name] =
-              result.functionUrl;
-
-            classesInfo.push({
-              className: output.extra?.className,
-              methodNames: output.extra?.methodNames,
-              path: element.path,
-              functionUrl: result.functionUrl,
-              projectId: result.class.ProjectID
-            });
-
-            fs.promises.unlink(archivePath);
-          });
-          return prom;
+          bundler = new BundlerComposer([standardBundler, binaryDepBundler])
+          break
         }
         default:
           log.error(`Unsupported ${element.language}`);
           return Promise.resolve();
       }
+
+      debugLogger.debug(`The bundling process has started for file ${element.path}...`)
+      const output = await bundler.bundle({
+        configuration: element,
+        path: element.path,
+        extra: {
+          mode: "production"
+        }
+      });
+      debugLogger.debug(`The bundling process finished successfully for file ${element.path}.`)
+
+      const archivePath = path.join(
+        await createTemporaryFolder("genezio-"),
+        `genezioDeploy.zip`
+      );
+
+      debugLogger.debug(`Zip the directory ${output.path}.`)
+      await zipDirectory(output.path, archivePath);
+
+      debugLogger.debug(`Get the presigned URL for class name ${output.extra?.className}.`)
+      const resultPresignedUrl = await getPresignedURL(
+        configuration.region,
+        'genezioDeploy.zip',
+        configuration.name,
+        output.extra?.className
+      )
+
+      debugLogger.debug(`Upload the content to S3 for file ${element.path}.`)
+      await uploadContentToS3(resultPresignedUrl.presignedURL, archivePath)
+
+      debugLogger.debug(`Deploy class with name ${output.extra?.className}.`)
+      return deployClass(
+        element,
+        archivePath,
+        configuration.name,
+        output.extra?.className,
+        configuration.region
+      ).then((result) => {
+        functionUrlForFilePath[path.parse(element.path).name] =
+          result.functionUrl;
+
+        classesInfo.push({
+          className: output.extra?.className,
+          methodNames: output.extra?.methodNames,
+          path: element.path,
+          functionUrl: result.functionUrl,
+          projectId: result.class.ProjectID
+        });
+
+        debugLogger.debug(`Class with name ${output.extra?.className} was successfully deployed.`)
+        fs.promises.unlink(archivePath);
+      });
     }
   );
 
@@ -374,10 +338,14 @@ export async function generateSdks(urlMap: any) {
     fs.rmSync(outputPath, { recursive: true, force: true }); 
   }
 
+  debugLogger.debug("Starting the request to generateSDK API...")
   const sdk = await generateSdk(configuration, urlMap).catch((error) => {
+    debugLogger.debug("An error occurred while generating the API", error)
     throw error;
   });
+  debugLogger.debug(`Response received ${JSON.stringify(sdk)}.`)
 
+  debugLogger.debug("Writing the SDK to files...")
   if (sdk.remoteFile) {
     await writeToFile(
       outputPath,
@@ -399,6 +367,7 @@ export async function generateSdks(urlMap: any) {
       );
     })
   );
+  debugLogger.debug("The SDK was successfully written to files.")
 }
 
 export async function init() {

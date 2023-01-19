@@ -1,7 +1,9 @@
-import log from 'loglevel';
+import log, { LogLevelDesc } from 'loglevel';
 
-export async function setLogLevel(verbose: boolean): Promise<void> {
-    if (verbose) {
-        log.setLevel("trace");
-    }
+export const debugLogger = log.getLogger("debuggingLogger")
+
+export function setDebuggingLoggerLogLevel(logLevel?: string) {
+    if (!logLevel) return;
+
+    debugLogger.setLevel(logLevel as LogLevelDesc)
 }
