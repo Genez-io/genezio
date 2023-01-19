@@ -11,11 +11,11 @@ import {
   handleLogin,
   lsHandler
 } from "./commands";
-import { debugLogger, setDebuggingLoggerLogLevel } from "./utils/logging";
+import { setDebuggingLoggerLogLevel } from "./utils/logging";
 import { asciiCapybara } from "./utils/strings";
 import { exit } from "process";
 import { AxiosError } from "axios";
-import { PORT_LOCAL_ENVIRONMENT } from "./variables";
+import { PORT_LOCAL_ENVIRONMENT, ENABLE_DEBUG_LOGS_BY_DEFAULT } from "./variables";
 import {
   listenForChanges,
   prepareForLocalEnvironment,
@@ -46,6 +46,10 @@ prefix.apply(log.getLogger('debuggingLogger'), {
     return date.toISOString();
   },
 });
+
+if (ENABLE_DEBUG_LOGS_BY_DEFAULT) {
+  setDebuggingLoggerLogLevel("debug")
+}
 
 program
   .name("genezio")
