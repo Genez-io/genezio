@@ -3,6 +3,7 @@ import os from "os";
 import path from "path";
 import log from "loglevel";
 import fs from "fs";
+import { debugLogger } from "./logging";
 
 export async function getAuthToken(): Promise<string|undefined> {
     const homeDirectory = os.homedir();
@@ -11,7 +12,7 @@ export async function getAuthToken(): Promise<string|undefined> {
         const result = await readUTF8File(loginConfigFilePath)
         return result.trim();
     } catch(error) {
-        log.debug(error);
+        debugLogger.debug(`An error occured during getAuthToken ${error}`)
         return undefined;
     }
 }

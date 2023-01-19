@@ -11,7 +11,7 @@ import {
   handleLogin,
   lsHandler
 } from "./commands";
-import { setLogLevel } from "./utils/logging";
+import { debugLogger, setDebuggingLoggerLogLevel } from "./utils/logging";
 import { asciiCapybara } from "./utils/strings";
 import { exit } from "process";
 import { AxiosError } from "axios";
@@ -25,6 +25,7 @@ import { getProjectConfiguration } from "./utils/configuration";
 import log from "loglevel";
 import { getAuthToken, removeAuthToken } from "./utils/accounts";
 import { Spinner } from "cli-spinner";
+import prefix from 'loglevel-plugin-prefix';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
@@ -32,6 +33,19 @@ const pjson = require("../package.json");
 const program = new Command();
 
 log.setDefaultLevel("INFO");
+prefix.reg(log);
+prefix.apply(log.getLogger('debuggingLogger'), {
+  template: '[%t] %l:',
+  levelFormatter(level) {
+    return level.toUpperCase();
+  },
+  nameFormatter(name) {
+    return name || 'global';
+  },
+  timestampFormatter(date) {
+    return date.toISOString();
+  },
+});
 
 program
   .name("genezio")
@@ -47,10 +61,10 @@ program
 
 program
   .command("init")
-  .option("-v, --verbose", "Show debug logs to console.")
+  .option("-l, --logLevel <logLevel", "Show debug logs to console.")
   .description("Initialize a Genezio project.")
   .action(async (options: any) => {
-    setLogLevel(options.verbose);
+    setDebuggingLoggerLogLevel(options.logLevel)
     try {
       await init();
     } catch (error: any) {
@@ -61,10 +75,10 @@ program
 program
   .command("login")
   .argument("[accessToken]", "Personal access token.")
-  .option("-v, --verbose", "Show debug logs to console.")
+  .option("-l, --logLevel <logLevel", "Show debug logs to console.")
   .description("Authenticate with Genezio platform to deploy your code.")
   .action(async (accessToken = "", options: any) => {
-    setLogLevel(options.verbose);
+    setDebuggingLoggerLogLevel(options.logLevel)
     log.info(asciiCapybara);
 
     await handleLogin(accessToken);
@@ -72,13 +86,13 @@ program
 
 program
   .command("deploy")
-  .option("-v, --verbose", "Show debug logs to console.")
+  .option("-l, --logLevel <logLevel", "Show debug logs to console.")
   .description(
     "Deploy the functions mentioned in the genezio.yaml file to Genezio infrastructure."
   )
   .action(async (options: any) => {
     // check if user is logged in
-    setLogLevel(options.verbose);
+    setDebuggingLoggerLogLevel(options.logLevel)
     const authToken = await getAuthToken();
 
     if (!authToken) {
@@ -125,7 +139,7 @@ program
 
 program
   .command("addClass")
-  .option("-v, --verbose", "Show debug logs to console.")
+  .option("-l, --logLevel <logLevel", "Show debug logs to console.")
   .argument("<classPath>", "Path of the class you want to add.")
   .argument(
     "[<classType>]",
@@ -133,7 +147,7 @@ program
   )
   .description("Add a new class to the genezio.yaml file.")
   .action(async (classPath: string, classType: string, options: any) => {
-    setLogLevel(options.verbose);
+    setDebuggingLoggerLogLevel(options.logLevel)
 
     await addNewClass(classPath, classType).catch((error: Error) => {
       log.error(error.message);
@@ -143,7 +157,7 @@ program
 
 program
   .command("local")
-  .option("-v, --verbose", "Show debug logs to console.")
+  .option("-l, --logLevel <logLevel", "Show debug logs to console.")
   .option(
     "-p, --port <port>",
     "Set the port your local server will be running on.",
@@ -151,7 +165,7 @@ program
   )
   .description("Run a local environment for your functions.")
   .action(async (options: any) => {
-    setLogLevel(options.verbose);
+    setDebuggingLoggerLogLevel(options.logLevel)
 
     const authToken = await getAuthToken();
 
@@ -238,10 +252,10 @@ program
 
 program
   .command("logout")
-  .option("-v, --verbose", "Show debug logs to console.")
+  .option("-l, --logLevel <logLevel", "Show debug logs to console.")
   .description("Logout from Genezio platform.")
   .action(async (options: any) => {
-    setLogLevel(options.verbose);
+    setDebuggingLoggerLogLevel(options.logLevel)
     await removeAuthToken()
       .then(() => {
         log.info("You are now logged out!");
@@ -253,10 +267,10 @@ program
 
 program
   .command("account")
-  .option("-v, --verbose", "Show debug logs to console.")
+  .option("-l, --logLevel <logLevel>", "Show debug logs to console.")
   .description("Display information about the current account.")
   .action(async (options: any) => {
-    setLogLevel(options.verbose);
+    setDebuggingLoggerLogLevel(options.logLevel)
     const authToken = await getAuthToken();
 
     if (!authToken) {
@@ -271,11 +285,13 @@ program
 program
   .command("ls")
   .argument("[identifier]", "Name or ID of the project you want to display.")
+  .option("-l, --logLevel <logLevel>", "Show debug logs to console.")
   .option("-l, --long-listed", "List more details for each project")
   .description(
     "Display details of your projects. You can view them all at once or display a particular one by providing its name or ID."
   )
   .action(async (identifier = "", options: any) => {
+    setDebuggingLoggerLogLevel(options.logLevel)
     // check if user is logged in
     const authToken = await getAuthToken();
 
@@ -303,11 +319,13 @@ program
 program
   .command("delete")
   .argument("[projectId]", "ID of the project you want to delete.")
+  .option("-l, --logLevel <logLevel>", "Show debug logs to console.")
   .option("-f, --force", "Skip confirmation prompt for deletion.", false)
   .description(
     "Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs."
   )
   .action(async (projectId = "", options: any) => {
+    setDebuggingLoggerLogLevel(options.logLevel)
     // check if user is logged in
     const authToken = await getAuthToken();
 

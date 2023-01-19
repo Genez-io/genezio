@@ -22,6 +22,7 @@ import log from "loglevel";
 import { exit } from "process";
 import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import { bundle } from "../../utils/webpack";
+import { debugLogger } from "../../utils/logging";
 
 export class NodeJsBundler implements BundlerInterface {
   async #getNodeModulesJs(
@@ -215,6 +216,7 @@ export class NodeJsBundler implements BundlerInterface {
       (input.extra ? input.extra["mode"] : undefined) || "production";
 
     // 1. Run webpack to get dependenciesInfo and the packed file
+    debugLogger.debug(`[NodeJSBundler] Get the list of node modules and bundling the javascript code for file ${input.path}.`)
     const [dependenciesInfo, _] = await Promise.all([
       this.#getNodeModulesJs(input.path, mode),
       this.#bundleJavascriptCode(
@@ -224,12 +226,14 @@ export class NodeJsBundler implements BundlerInterface {
       )
     ]);
 
+    debugLogger.debug(`[NodeJSBundler] Copy non js files and node_modules for file ${input.path}.`)
     // 2. Copy non js files and node_modules
     await Promise.all([
       this.#copyNonJsFiles(temporaryFolder),
       this.#copyDependencies(dependenciesInfo, temporaryFolder)
     ]);
 
+    debugLogger.debug(`[NodeJSBundler] Get the class details for file ${input.path}.`)
     // 3. Get class name
     const classDetails = this.#getClassDetails(input.path, temporaryFolder);
 

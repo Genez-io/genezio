@@ -22,6 +22,7 @@ import log from "loglevel";
 import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import { AccessDependenciesPlugin } from "../bundler.interface";
 import { bundle } from "../../utils/webpack";
+import { debugLogger } from "../../utils/logging";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const exec = util.promisify(require("child_process").exec);
 
@@ -290,6 +291,7 @@ export class NodeTsBundler implements BundlerInterface {
         // 1. Create auxiliary folder and copy the entire project
         this.#generateTsconfigJson();
 
+        debugLogger.debug(`[NodeTSBundler] Get the list of node modules and bundling the javascript code for file ${input.path}.`)
         // 2. Run webpack to get dependenciesInfo and the packed file
         const [dependenciesInfo, _] = await Promise.all([
             this.#getNodeModulesTs(input.path, mode),
@@ -303,12 +305,14 @@ export class NodeTsBundler implements BundlerInterface {
         // 3. Remove auxiliary folder
         // fs.rmSync(auxFolder, { recursive: true, force: true });
 
+        debugLogger.debug(`[NodeTSBundler] Copy non TS files and node_modules for file ${input.path}.`)
         // 4. Copy non js files and node_modules
         await Promise.all([
             this.#copyNonTsFiles(temporaryFolder),
             this.#copyDependencies(dependenciesInfo, temporaryFolder)
         ]);
 
+        debugLogger.debug(`[NodeTSBundler] Get the class details for file ${input.path}.`)
         // 5. Get class name
         const classDetails = await this.#getClassDetails(input.path, temporaryFolder);
 
