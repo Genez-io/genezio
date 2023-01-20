@@ -300,9 +300,19 @@ export async function deployClasses() {
   // wait for all promises to finish
   await Promise.all(promisesDeploy);
 
-  await generateSdks(functionUrlForFilePath).catch((error) => {
+  const astSummary = await generateSdks(functionUrlForFilePath).catch((error) => {
     throw error;
   });
+
+  console.log("Deploying your project to the cloud...", astSummary);
+
+  debugLogger.debug("Starting the request to POST AST API...");
+  const resp = await sendProjectAst(
+    configuration.name,
+    configuration.region,
+    astSummary
+  );
+  debugLogger.debug(`Response received ${JSON.stringify(resp)}.`);
 
   reportSuccess(classesInfo, configuration);
 
@@ -346,7 +356,7 @@ export function reportSuccess(
   }
 }
 
-export async function generateSdks(urlMap: any) {
+export async function generateSdks(urlMap: any): Promise<any> {
   const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
   const configurationFileContent = await parse(configurationFileContentUTF8);
   const configuration = await ProjectConfiguration.create(
@@ -368,13 +378,6 @@ export async function generateSdks(urlMap: any) {
   });
   debugLogger.debug(`Response received ${JSON.stringify(sdk)}.`);
 
-  debugLogger.debug("Starting the request to POST AST API...");
-  const resp = await sendProjectAst(
-    configuration.name,
-    configuration.region,
-    sdk.astSummary
-  );
-  debugLogger.debug(`Response received ${JSON.stringify(resp)}.`);
 
   debugLogger.debug("Writing the SDK to files...");
   if (sdk.remoteFile) {
@@ -400,6 +403,8 @@ export async function generateSdks(urlMap: any) {
   );
 
   debugLogger.debug("The SDK was successfully written to files.");
+
+  return sdk.astSummary;
 }
 
 export async function init() {

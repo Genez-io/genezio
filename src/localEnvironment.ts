@@ -154,12 +154,18 @@ export async function listenForChanges(sdkPathRelative: any, server: any) {
 
 export async function startServer(
   handlers: any,
+  astSummary: any,
   port = PORT_LOCAL_ENVIRONMENT
 ) {
   const app = express();
   app.use(cors());
   app.use(bodyParser.raw({ type: () => true }))
   app.use(genezioRequestParser);
+
+  app.get("/get-ast-summary", (req: any, res: any) => {
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify(astSummary));
+  });
 
   app.all(`/:className`, async (req: any, res: any) => {
     const reqToFunction = getEventObjectFromRequest(req);
@@ -208,7 +214,7 @@ export async function startServer(
   });
 
   return app.listen(port, () => {
-    log.info("Local Server Listening...");
+    log.info(`Server listening on port ${port}`);
   })
 }
 

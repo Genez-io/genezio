@@ -193,6 +193,7 @@ program
         let functionUrlForFilePath = undefined;
         let classesInfo = undefined;
         let handlers = undefined;
+        let astSummary = undefined;
         try {
           const localEnvInfo = await prepareForLocalEnvironment(
             projectConfiguration,
@@ -203,7 +204,7 @@ program
           classesInfo = localEnvInfo.classesInfo;
           handlers = localEnvInfo.handlers;
           if (Object.keys(functionUrlForFilePath).length > 0) {
-            await generateSdks(functionUrlForFilePath).catch((error: Error) => {
+            astSummary = await generateSdks(functionUrlForFilePath).catch((error: Error) => {
               if (error.message === "Unauthorized") {
                 log.error(
                   "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
@@ -227,7 +228,7 @@ program
         }
 
         if (handlers != undefined) {
-          server = await startServer(handlers, Number(options.port))
+          server = await startServer(handlers, astSummary, Number(options.port))
           server.on("error", (error: any) => {
             if (error.code === "EADDRINUSE") {
               log.error(
