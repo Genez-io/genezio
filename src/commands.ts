@@ -39,6 +39,7 @@ import { debugLogger } from "./utils/logging";
 import { BundlerComposer } from "./bundlers/bundlerComposer";
 import { BundlerInterface } from "./bundlers/bundler.interface";
 import { sendProjectAst } from "./requests/sendProjectAst";
+import { AstSummary } from "./models/astSummary";
 
 export async function addNewClass(classPath: string, classType: string) {
   if (classType === undefined) {
@@ -300,11 +301,11 @@ export async function deployClasses() {
   // wait for all promises to finish
   await Promise.all(promisesDeploy);
 
-  const astSummary = await generateSdks(functionUrlForFilePath).catch((error) => {
+  const astSummary: AstSummary = await generateSdks(
+    functionUrlForFilePath
+  ).catch((error) => {
     throw error;
   });
-
-  console.log("Deploying your project to the cloud...", astSummary);
 
   debugLogger.debug("Starting the request to POST AST API...");
   const resp = await sendProjectAst(
@@ -356,7 +357,7 @@ export function reportSuccess(
   }
 }
 
-export async function generateSdks(urlMap: any): Promise<any> {
+export async function generateSdks(urlMap: any): Promise<AstSummary> {
   const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
   const configurationFileContent = await parse(configurationFileContentUTF8);
   const configuration = await ProjectConfiguration.create(
@@ -377,7 +378,6 @@ export async function generateSdks(urlMap: any): Promise<any> {
     throw error;
   });
   debugLogger.debug(`Response received ${JSON.stringify(sdk)}.`);
-
 
   debugLogger.debug("Writing the SDK to files...");
   if (sdk.remoteFile) {

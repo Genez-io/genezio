@@ -15,7 +15,10 @@ import { setDebuggingLoggerLogLevel } from "./utils/logging";
 import { asciiCapybara } from "./utils/strings";
 import { exit } from "process";
 import { AxiosError } from "axios";
-import { PORT_LOCAL_ENVIRONMENT, ENABLE_DEBUG_LOGS_BY_DEFAULT } from "./variables";
+import {
+  PORT_LOCAL_ENVIRONMENT,
+  ENABLE_DEBUG_LOGS_BY_DEFAULT
+} from "./variables";
 import {
   listenForChanges,
   prepareForLocalEnvironment,
@@ -25,7 +28,8 @@ import { getProjectConfiguration } from "./utils/configuration";
 import log from "loglevel";
 import { getAuthToken, removeAuthToken } from "./utils/accounts";
 import { Spinner } from "cli-spinner";
-import prefix from 'loglevel-plugin-prefix';
+import prefix from "loglevel-plugin-prefix";
+import { AstSummary } from "./models/astSummary";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
@@ -34,21 +38,21 @@ const program = new Command();
 
 log.setDefaultLevel("INFO");
 prefix.reg(log);
-prefix.apply(log.getLogger('debuggingLogger'), {
-  template: '[%t] %l:',
+prefix.apply(log.getLogger("debuggingLogger"), {
+  template: "[%t] %l:",
   levelFormatter(level) {
     return level.toUpperCase();
   },
   nameFormatter(name) {
-    return name || 'global';
+    return name || "global";
   },
   timestampFormatter(date) {
     return date.toISOString();
-  },
+  }
 });
 
 if (ENABLE_DEBUG_LOGS_BY_DEFAULT) {
-  setDebuggingLoggerLogLevel("debug")
+  setDebuggingLoggerLogLevel("debug");
 }
 
 program
@@ -68,7 +72,7 @@ program
   .option("-l, --logLevel <logLevel", "Show debug logs to console.")
   .description("Initialize a Genezio project.")
   .action(async (options: any) => {
-    setDebuggingLoggerLogLevel(options.logLevel)
+    setDebuggingLoggerLogLevel(options.logLevel);
     try {
       await init();
     } catch (error: any) {
@@ -82,7 +86,7 @@ program
   .option("-l, --logLevel <logLevel", "Show debug logs to console.")
   .description("Authenticate with Genezio platform to deploy your code.")
   .action(async (accessToken = "", options: any) => {
-    setDebuggingLoggerLogLevel(options.logLevel)
+    setDebuggingLoggerLogLevel(options.logLevel);
     log.info(asciiCapybara);
 
     await handleLogin(accessToken);
@@ -96,7 +100,7 @@ program
   )
   .action(async (options: any) => {
     // check if user is logged in
-    setDebuggingLoggerLogLevel(options.logLevel)
+    setDebuggingLoggerLogLevel(options.logLevel);
     const authToken = await getAuthToken();
 
     if (!authToken) {
@@ -151,7 +155,7 @@ program
   )
   .description("Add a new class to the genezio.yaml file.")
   .action(async (classPath: string, classType: string, options: any) => {
-    setDebuggingLoggerLogLevel(options.logLevel)
+    setDebuggingLoggerLogLevel(options.logLevel);
 
     await addNewClass(classPath, classType).catch((error: Error) => {
       log.error(error.message);
@@ -169,7 +173,7 @@ program
   )
   .description("Run a local environment for your functions.")
   .action(async (options: any) => {
-    setDebuggingLoggerLogLevel(options.logLevel)
+    setDebuggingLoggerLogLevel(options.logLevel);
 
     const authToken = await getAuthToken();
 
@@ -193,7 +197,7 @@ program
         let functionUrlForFilePath = undefined;
         let classesInfo = undefined;
         let handlers = undefined;
-        let astSummary = undefined;
+        let astSummary: AstSummary | undefined = undefined;
         try {
           const localEnvInfo = await prepareForLocalEnvironment(
             projectConfiguration,
@@ -204,16 +208,18 @@ program
           classesInfo = localEnvInfo.classesInfo;
           handlers = localEnvInfo.handlers;
           if (Object.keys(functionUrlForFilePath).length > 0) {
-            astSummary = await generateSdks(functionUrlForFilePath).catch((error: Error) => {
-              if (error.message === "Unauthorized") {
-                log.error(
-                  "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
-                );
-              } else {
-                log.error(`${error.stack}`);
-                exit(1)
+            astSummary = (await generateSdks(functionUrlForFilePath).catch(
+              (error: Error) => {
+                if (error.message === "Unauthorized") {
+                  log.error(
+                    "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
+                  );
+                } else {
+                  log.error(`${error.stack}`);
+                  exit(1);
+                }
               }
-            });
+            )) as AstSummary;
 
             reportSuccess(classesInfo, projectConfiguration);
           }
@@ -222,13 +228,19 @@ program
           if (error.message) {
             log.error(`${error.message}`);
           } else {
-            log.error("An error occured while generating the SDK. Please try again!")
+            log.error(
+              "An error occured while generating the SDK. Please try again!"
+            );
           }
-          exit(1)
+          exit(1);
         }
 
         if (handlers != undefined) {
-          server = await startServer(handlers, astSummary, Number(options.port))
+          server = await startServer(
+            handlers,
+            astSummary,
+            Number(options.port)
+          );
           server.on("error", (error: any) => {
             if (error.code === "EADDRINUSE") {
               log.error(
@@ -237,17 +249,19 @@ program
             } else {
               log.error(`${error.message}`);
             }
-            exit(1)
+            exit(1);
           });
           spinner.stop(true);
         } else {
           log.info("\x1b[36m%s\x1b[0m", "Listening for changes...");
         }
 
-        await listenForChanges(projectConfiguration.sdk.path, server).catch((error: Error) => {
-          log.error(`${error.message}`);
-          exit(1)
-        });
+        await listenForChanges(projectConfiguration.sdk.path, server).catch(
+          (error: Error) => {
+            log.error(`${error.message}`);
+            exit(1);
+          }
+        );
       }
     } catch (error: any) {
       log.error(`${error.message}`);
@@ -260,7 +274,7 @@ program
   .option("-l, --logLevel <logLevel", "Show debug logs to console.")
   .description("Logout from Genezio platform.")
   .action(async (options: any) => {
-    setDebuggingLoggerLogLevel(options.logLevel)
+    setDebuggingLoggerLogLevel(options.logLevel);
     await removeAuthToken()
       .then(() => {
         log.info("You are now logged out!");
@@ -275,7 +289,7 @@ program
   .option("-l, --logLevel <logLevel>", "Show debug logs to console.")
   .description("Display information about the current account.")
   .action(async (options: any) => {
-    setDebuggingLoggerLogLevel(options.logLevel)
+    setDebuggingLoggerLogLevel(options.logLevel);
     const authToken = await getAuthToken();
 
     if (!authToken) {
@@ -296,7 +310,7 @@ program
     "Display details of your projects. You can view them all at once or display a particular one by providing its name or ID."
   )
   .action(async (identifier = "", options: any) => {
-    setDebuggingLoggerLogLevel(options.logLevel)
+    setDebuggingLoggerLogLevel(options.logLevel);
     // check if user is logged in
     const authToken = await getAuthToken();
 
@@ -319,7 +333,7 @@ program
         exit(1);
       }
     );
-  })
+  });
 
 program
   .command("delete")
@@ -330,7 +344,7 @@ program
     "Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs."
   )
   .action(async (projectId = "", options: any) => {
-    setDebuggingLoggerLogLevel(options.logLevel)
+    setDebuggingLoggerLogLevel(options.logLevel);
     // check if user is logged in
     const authToken = await getAuthToken();
 
