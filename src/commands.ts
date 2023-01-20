@@ -38,6 +38,8 @@ import { Spinner } from "cli-spinner";
 import { debugLogger } from "./utils/logging";
 import { BundlerComposer } from "./bundlers/bundlerComposer";
 import { BundlerInterface } from "./bundlers/bundler.interface";
+import { sendProjectAst } from "./requests/sendProjectAst";
+import { AstSummary } from "./models/astSummary";
 
 export async function addNewClass(classPath: string, classType: string) {
   if (classType === undefined) {
@@ -104,20 +106,32 @@ export async function lsHandler(identifier: string, l: boolean) {
   log.info("");
   if (projectsJson.length == 0) {
     log.info("There are no currently deployed projects.");
-      return;
+    return;
   }
   if (identifier.trim().length !== 0) {
-    projectsJson = projectsJson.filter(project => project.name === identifier || project.id === identifier);
+    projectsJson = projectsJson.filter(
+      (project) => project.name === identifier || project.id === identifier
+    );
     if (projectsJson.length == 0) {
       log.info("There is no project with this identifier.");
-        return;
+      return;
     }
   }
-  const projects = projectsJson.forEach(function(project : any, index : any) {
+  const projects = projectsJson.forEach(function (project: any, index: any) {
     if (l) {
-      log.info(`[${1 + index}]: Project name: ${project.name},\n\tRegion: ${project.region},\n\tID: ${project.id},\n\tCreated: ${moment.unix(project.createdAt).format()},\n\tUpdated: ${moment.unix(project.updatedAt).format()}`);
+      log.info(
+        `[${1 + index}]: Project name: ${project.name},\n\tRegion: ${
+          project.region
+        },\n\tID: ${project.id},\n\tCreated: ${moment
+          .unix(project.createdAt)
+          .format()},\n\tUpdated: ${moment.unix(project.updatedAt).format()}`
+      );
     } else {
-      log.info(`[${1 + index}]: Project name: ${project.name}, Region: ${project.region}, Updated: ${moment.unix(project.updatedAt).format()}`);
+      log.info(
+        `[${1 + index}]: Project name: ${project.name}, Region: ${
+          project.region
+        }, Updated: ${moment.unix(project.updatedAt).format()}`
+      );
     }
   });
 }
@@ -126,9 +140,11 @@ export async function deleteProjectHandler(projectId: string, forced: boolean) {
   // show prompt if no project id is selected
   if (typeof projectId === "string" && projectId.trim().length === 0) {
     const projectsJson = await listProjects();
-    const projects = projectsJson.map(function(project : any, index : any) {
-      return `[${1 + index}]: Project name: ${project.name}, Region: ${project.region}, ID: ${project.id}`;
-    })
+    const projects = projectsJson.map(function (project: any, index: any) {
+      return `[${
+        1 + index
+      }]: Project name: ${project.name}, Region: ${project.region}, ID: ${project.id}`;
+    });
     if (projects.length === 0) {
       log.info("There are no currently deployed projects.");
       return false;
@@ -201,26 +217,28 @@ export async function deployClasses() {
         exit(1);
       }
 
-      let bundler: BundlerInterface
+      let bundler: BundlerInterface;
       switch (element.language) {
         case ".ts": {
           const standardBundler = new NodeTsBundler();
           const binaryDepBundler = new NodeTsBinaryDependenciesBundler();
-          bundler = new BundlerComposer([standardBundler, binaryDepBundler])
-          break
+          bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
+          break;
         }
         case ".js": {
           const standardBundler = new NodeJsBundler();
           const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
-          bundler = new BundlerComposer([standardBundler, binaryDepBundler])
-          break
+          bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
+          break;
         }
         default:
           log.error(`Unsupported ${element.language}`);
           return Promise.resolve();
       }
 
-      debugLogger.debug(`The bundling process has started for file ${element.path}...`)
+      debugLogger.debug(
+        `The bundling process has started for file ${element.path}...`
+      );
       const output = await bundler.bundle({
         configuration: element,
         path: element.path,
@@ -228,28 +246,32 @@ export async function deployClasses() {
           mode: "production"
         }
       });
-      debugLogger.debug(`The bundling process finished successfully for file ${element.path}.`)
+      debugLogger.debug(
+        `The bundling process finished successfully for file ${element.path}.`
+      );
 
       const archivePath = path.join(
         await createTemporaryFolder("genezio-"),
         `genezioDeploy.zip`
       );
 
-      debugLogger.debug(`Zip the directory ${output.path}.`)
+      debugLogger.debug(`Zip the directory ${output.path}.`);
       await zipDirectory(output.path, archivePath);
 
-      debugLogger.debug(`Get the presigned URL for class name ${output.extra?.className}.`)
+      debugLogger.debug(
+        `Get the presigned URL for class name ${output.extra?.className}.`
+      );
       const resultPresignedUrl = await getPresignedURL(
         configuration.region,
-        'genezioDeploy.zip',
+        "genezioDeploy.zip",
         configuration.name,
         output.extra?.className
-      )
+      );
 
-      debugLogger.debug(`Upload the content to S3 for file ${element.path}.`)
-      await uploadContentToS3(resultPresignedUrl.presignedURL, archivePath)
+      debugLogger.debug(`Upload the content to S3 for file ${element.path}.`);
+      await uploadContentToS3(resultPresignedUrl.presignedURL, archivePath);
 
-      debugLogger.debug(`Deploy class with name ${output.extra?.className}.`)
+      debugLogger.debug(`Deploy class with name ${output.extra?.className}.`);
       return deployClass(
         element,
         archivePath,
@@ -268,7 +290,9 @@ export async function deployClasses() {
           projectId: result.class.ProjectID
         });
 
-        debugLogger.debug(`Class with name ${output.extra?.className} was successfully deployed.`)
+        debugLogger.debug(
+          `Class with name ${output.extra?.className} was successfully deployed.`
+        );
         fs.promises.unlink(archivePath);
       });
     }
@@ -277,9 +301,19 @@ export async function deployClasses() {
   // wait for all promises to finish
   await Promise.all(promisesDeploy);
 
-  await generateSdks(functionUrlForFilePath).catch((error) => {
+  const astSummary: AstSummary = await generateSdks(
+    functionUrlForFilePath
+  ).catch((error) => {
     throw error;
   });
+
+  debugLogger.debug("Starting the request to POST AST API...");
+  const resp = await sendProjectAst(
+    configuration.name,
+    configuration.region,
+    astSummary
+  );
+  debugLogger.debug(`Response received ${JSON.stringify(resp)}.`);
 
   reportSuccess(classesInfo, configuration);
 
@@ -323,7 +357,7 @@ export function reportSuccess(
   }
 }
 
-export async function generateSdks(urlMap: any) {
+export async function generateSdks(urlMap: any): Promise<AstSummary> {
   const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
   const configurationFileContent = await parse(configurationFileContentUTF8);
   const configuration = await ProjectConfiguration.create(
@@ -335,17 +369,17 @@ export async function generateSdks(urlMap: any) {
   // check if the output path exists
   if (await fileExists(outputPath)) {
     // delete the output path
-    fs.rmSync(outputPath, { recursive: true, force: true }); 
+    fs.rmSync(outputPath, { recursive: true, force: true });
   }
 
-  debugLogger.debug("Starting the request to generateSDK API...")
+  debugLogger.debug("Starting the request to generateSDK API...");
   const sdk = await generateSdk(configuration, urlMap).catch((error) => {
-    debugLogger.debug("An error occurred while generating the API", error)
+    debugLogger.debug("An error occurred while generating the API", error);
     throw error;
   });
-  debugLogger.debug(`Response received ${JSON.stringify(sdk)}.`)
+  debugLogger.debug(`Response received ${JSON.stringify(sdk)}.`);
 
-  debugLogger.debug("Writing the SDK to files...")
+  debugLogger.debug("Writing the SDK to files...");
   if (sdk.remoteFile) {
     await writeToFile(
       outputPath,
@@ -367,7 +401,10 @@ export async function generateSdks(urlMap: any) {
       );
     })
   );
-  debugLogger.debug("The SDK was successfully written to files.")
+
+  debugLogger.debug("The SDK was successfully written to files.");
+
+  return sdk.astSummary;
 }
 
 export async function init() {
@@ -378,7 +415,12 @@ export async function init() {
       log.error("The project name can't be empty.");
     }
   }
-  const configFile: any = { name: projectName, region: "us-east-1", sdk: { options: {} }, classes: [] };
+  const configFile: any = {
+    name: projectName,
+    region: "us-east-1",
+    sdk: { options: {} },
+    classes: []
+  };
 
   const sdkLanguage = await askQuestion(
     `In what programming language do you want your SDK? (js, ts or swift) [default value: js]: `,
