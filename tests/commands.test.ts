@@ -6,7 +6,7 @@ import {
   Language,
   YamlProjectConfiguration,
   YamlSdkConfiguration
-} from "../src/models/projectConfiguration";
+} from "../src/models/yamlProjectConfiguration";
 
 jest.mock("../src/utils/file");
 jest.mock("../src/utils/configuration");

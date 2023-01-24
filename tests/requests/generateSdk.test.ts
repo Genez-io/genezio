@@ -7,8 +7,8 @@ import {
   YamlProjectConfiguration,
   YamlSdkConfiguration,
   TriggerType
-} from "../../src/models/projectConfiguration";
-import generateSdk from "../../src/requests/generateSdk";
+} from "../../src/models/yamlProjectConfiguration";
+import generateSdkRequest from "../../src/requests/generateSdk";
 import { getAuthToken } from "../../src/utils/accounts";
 
 jest.mock("axios");
@@ -44,7 +44,7 @@ test("should throw error if server returns error", async () => {
       config: {}
     });
 
-    await generateSdkRequest(projectConfiguration, {});
+    await generateSdkRequest(projectConfiguration);
   }).rejects.toThrowError();
 });
 
@@ -71,6 +71,6 @@ test("should return response.data if everything is ok", async () => {
     config: {}
   });
 
-  const result = await generateSdkRequest(projectConfiguration, {});
+  const result = await generateSdkRequest(projectConfiguration);
   expect(result).toBe(returnedObject);
 });

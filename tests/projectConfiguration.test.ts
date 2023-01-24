@@ -1,10 +1,9 @@
 import { describe, expect, test } from "@jest/globals";
 import {
-  Language,
   YamlProjectConfiguration,
   TriggerType
 } from "../src/models/yamlProjectConfiguration";
-import log from "loglevel";
+
 
 describe("project configuration", () => {
   test("missing name should throw error", async () => {

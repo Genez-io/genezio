@@ -30,6 +30,7 @@ export async function deployRequest(
     maxContentLength: Infinity,
     maxBodyLength: Infinity
   }).catch((error: Error) => {
+    debugLogger.debug("Error received", error)
     throw error;
   });
 
