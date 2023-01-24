@@ -1,4 +1,4 @@
-import { TriggerType } from "./projectConfiguration";
+import { TriggerType } from "./yamlProjectConfiguration";
 
 export type AstSummaryParam = {
   name: string;

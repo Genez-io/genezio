@@ -1,16 +1,16 @@
 import { describe, expect, test } from "@jest/globals";
 import {
   Language,
-  ProjectConfiguration,
+  YamlProjectConfiguration,
   TriggerType
-} from "../src/models/projectConfiguration";
+} from "../src/models/yamlProjectConfiguration";
 import log from "loglevel";
 
 describe("project configuration", () => {
   test("missing name should throw error", async () => {
     await expect(async () => {
       const yaml = {};
-      await ProjectConfiguration.create(yaml);
+      await YamlProjectConfiguration.create(yaml);
     }).rejects.toThrowError();
   });
 
@@ -19,7 +19,7 @@ describe("project configuration", () => {
       const yaml = {
         name: "test"
       };
-      await ProjectConfiguration.create(yaml);
+      await YamlProjectConfiguration.create(yaml);
     }).rejects.toThrowError();
   });
 
@@ -31,7 +31,7 @@ describe("project configuration", () => {
           path: "/"
         }
       };
-      await ProjectConfiguration.create(yaml);
+      await YamlProjectConfiguration.create(yaml);
     }).rejects.toThrowError();
   });
 
@@ -51,7 +51,7 @@ describe("project configuration", () => {
                     }
                 ]
             }
-            await ProjectConfiguration.create(yaml)
+            await YamlProjectConfiguration.create(yaml)
         }).rejects.toThrowError()
     });
 
@@ -70,7 +70,7 @@ describe("project configuration", () => {
                 }
             ]
         }
-        const configuration = await ProjectConfiguration.create(yaml)
+        const configuration = await YamlProjectConfiguration.create(yaml)
         expect(configuration.region).toEqual("us-east-1")
     });
 
@@ -82,7 +82,7 @@ describe("project configuration", () => {
                     path: "/"
                 }
             }
-            await ProjectConfiguration.create(yaml)
+            await YamlProjectConfiguration.create(yaml)
         }).rejects.toThrowError()
     });
 
@@ -95,7 +95,7 @@ describe("project configuration", () => {
                     language: "nothing"
                 }
             }
-            await ProjectConfiguration.create(yaml)
+            await YamlProjectConfiguration.create(yaml)
         }).rejects.toThrowError()
     });
 
@@ -109,7 +109,7 @@ describe("project configuration", () => {
                     runtime: "node"
                 }
             }
-            await ProjectConfiguration.create(yaml)
+            await YamlProjectConfiguration.create(yaml)
         }).rejects.toThrowError()
     });
 
@@ -129,7 +129,7 @@ describe("project configuration", () => {
                     }
                 ]
             }
-            await ProjectConfiguration.create(yaml)
+            await YamlProjectConfiguration.create(yaml)
         }).rejects.toThrowError()
     });
 
@@ -152,7 +152,7 @@ describe("project configuration", () => {
                     }
                 ]
             }
-            await ProjectConfiguration.create(yaml)
+            await YamlProjectConfiguration.create(yaml)
         }).rejects.toThrowError()
     });
 
@@ -173,7 +173,7 @@ describe("project configuration", () => {
                     }
                 ]
             }
-            await ProjectConfiguration.create(yaml)
+            await YamlProjectConfiguration.create(yaml)
         }).rejects.toThrowError()
     });
 
@@ -192,7 +192,7 @@ describe("project configuration", () => {
                     }
                 ]
             }
-            await ProjectConfiguration.create(yaml)
+            await YamlProjectConfiguration.create(yaml)
             return {}
         }).not.toThrowError()
     });
@@ -206,7 +206,7 @@ describe("project configuration", () => {
           language: "nothing"
         }
       };
-      await ProjectConfiguration.create(yaml);
+      await YamlProjectConfiguration.create(yaml);
     }).rejects.toThrowError();
   });
 
@@ -222,7 +222,7 @@ describe("project configuration", () => {
           }
         }
       };
-      await ProjectConfiguration.create(yaml);
+      await YamlProjectConfiguration.create(yaml);
     }).rejects.toThrowError();
   });
     test('create a class with a cron method', async () => {
@@ -249,7 +249,7 @@ describe("project configuration", () => {
                 }
             ]
         }
-        const configuration = await ProjectConfiguration.create(yaml)
+        const configuration = await YamlProjectConfiguration.create(yaml)
         expect(configuration.classes[0].methods[0].name).toEqual("cronMethod")
         expect(configuration.classes[0].methods[0].type).toEqual(TriggerType.cron)
         expect(configuration.classes[0].methods[0].cronString).toEqual("0/5 8-17 ? * MON-FRI *")
@@ -281,7 +281,7 @@ describe("project configuration", () => {
                 }
             ]
         }
-        const configuration = await ProjectConfiguration.create(yaml)
+        const configuration = await YamlProjectConfiguration.create(yaml)
         expect(configuration.classes[0].methods[0].name).toEqual("cronMethod")
         expect(configuration.classes[0].methods[0].type).toEqual(TriggerType.cron)
         expect(configuration.classes[0].methods[0].cronString).toEqual("* * * * ? *")
@@ -319,7 +319,7 @@ describe("project configuration", () => {
                 }
             ]
         }
-        await ProjectConfiguration.create(yaml);
+        await YamlProjectConfiguration.create(yaml);
     }).rejects.toThrowError();
   });
 
@@ -341,7 +341,7 @@ describe("project configuration", () => {
           }
         ]
       };
-      await ProjectConfiguration.create(yaml);
+      await YamlProjectConfiguration.create(yaml);
     }).rejects.toThrowError();
   });
 
@@ -362,7 +362,7 @@ describe("project configuration", () => {
           }
         ]
       };
-      await ProjectConfiguration.create(yaml);
+      await YamlProjectConfiguration.create(yaml);
       return {};
     }).not.toThrowError();
   });
@@ -384,7 +384,7 @@ describe("project configuration", () => {
         }
       ]
     };
-    const configuration = await ProjectConfiguration.create(yaml);
+    const configuration = await YamlProjectConfiguration.create(yaml);
     expect(configuration.classes[0].type).toEqual(TriggerType.http);
   });
 
@@ -418,7 +418,7 @@ describe("project configuration", () => {
         }
       ]
     };
-    const configuration = await ProjectConfiguration.create(yaml);
+    const configuration = await YamlProjectConfiguration.create(yaml);
     expect(configuration.classes[0].methods[0].type).toEqual(TriggerType.http);
     expect(configuration.classes[0].methods[0].name).toEqual("method1");
     expect(configuration.classes[0].methods[1].type).toEqual(TriggerType.http);

@@ -1,22 +1,21 @@
 import path from "path";
-import { deployClass } from "./requests/deployCode";
-import generateSdk from "./requests/generateSdk";
+import { deployRequest } from "./requests/deployCode";
+import generateSdkRequest from "./requests/generateSdk";
 import listProjects from "./requests/listProjects";
 import deleteProject from "./requests/deleteProject";
 import {
   createTemporaryFolder,
   fileExists,
-  readUTF8File,
   writeToFile,
   zipDirectory
 } from "./utils/file";
 import { askQuestion } from "./utils/prompt";
-import { parse, Document } from "yaml";
-import fs from "fs";
+import { Document } from "yaml";
 import {
-  ProjectConfiguration,
+  Language,
+  YamlProjectConfiguration,
   TriggerType
-} from "./models/projectConfiguration";
+} from "./models/yamlProjectConfiguration";
 import { getProjectConfiguration } from "./utils/configuration";
 import { REACT_APP_BASE_URL } from "./variables";
 import log from "loglevel";
@@ -40,6 +39,9 @@ import { BundlerComposer } from "./bundlers/bundlerComposer";
 import { BundlerInterface } from "./bundlers/bundler.interface";
 import { sendProjectAst } from "./requests/sendProjectAst";
 import { AstSummary } from "./models/astSummary";
+import { ProjectConfiguration } from "./models/projectConfiguration";
+import { replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
+
 
 export async function addNewClass(classPath: string, classType: string) {
   if (classType === undefined) {
@@ -117,7 +119,7 @@ export async function lsHandler(identifier: string, l: boolean) {
       return;
     }
   }
-  const projects = projectsJson.forEach(function (project: any, index: any) {
+  projectsJson.forEach(function (project: any, index: any) {
     if (l) {
       log.info(
         `[${1 + index}]: Project name: ${project.name},\n\tRegion: ${
@@ -141,10 +143,9 @@ export async function deleteProjectHandler(projectId: string, forced: boolean) {
   if (typeof projectId === "string" && projectId.trim().length === 0) {
     const projectsJson = await listProjects();
     const projects = projectsJson.map(function (project: any, index: any) {
-      return `[${
-        1 + index
-      }]: Project name: ${project.name}, Region: ${project.region}, ID: ${project.id}`;
-    });
+      return `[${1 + index}]: Project name: ${project.name}, Region: ${project.region}, ID: ${project.id}`;
+    })
+
     if (projects.length === 0) {
       log.info("There are no currently deployed projects.");
       return false;
@@ -199,17 +200,13 @@ export async function deployClasses() {
     );
   }
 
-  const functionUrlForFilePath: { [id: string]: string } = {};
-  const classesInfo: {
-    className: any;
-    methodNames: any;
-    path: string;
-    functionUrl: any;
-    projectId: string;
-  }[] = [];
+  const sdkResponse = await generateSdkRequest(configuration).catch((error) => {
+    throw error;
+  });
+  const projectConfiguration = new ProjectConfiguration(configuration, sdkResponse.astSummary);
 
-  const promisesDeploy: any = configuration.classes.map(
-    async (element: any) => {
+  const promisesDeploy: any = projectConfiguration.classes.map(
+    async (element) => {
       if (!(await fileExists(element.path))) {
         log.error(
           `\`${element.path}\` file does not exist at the indicated path.`
@@ -258,64 +255,44 @@ export async function deployClasses() {
       debugLogger.debug(`Zip the directory ${output.path}.`);
       await zipDirectory(output.path, archivePath);
 
-      debugLogger.debug(
-        `Get the presigned URL for class name ${output.extra?.className}.`
-      );
+      debugLogger.debug(`Get the presigned URL for class name ${element.name}.`)
+
       const resultPresignedUrl = await getPresignedURL(
         configuration.region,
         "genezioDeploy.zip",
         configuration.name,
-        output.extra?.className
-      );
+        element.name
+      )
 
-      debugLogger.debug(`Upload the content to S3 for file ${element.path}.`);
-      await uploadContentToS3(resultPresignedUrl.presignedURL, archivePath);
-
-      debugLogger.debug(`Deploy class with name ${output.extra?.className}.`);
-      return deployClass(
-        element,
-        archivePath,
-        configuration.name,
-        output.extra?.className,
-        configuration.region
-      ).then((result) => {
-        functionUrlForFilePath[path.parse(element.path).name] =
-          result.functionUrl;
-
-        classesInfo.push({
-          className: output.extra?.className,
-          methodNames: output.extra?.methodNames,
-          path: element.path,
-          functionUrl: result.functionUrl,
-          projectId: result.class.ProjectID
-        });
-
-        debugLogger.debug(
-          `Class with name ${output.extra?.className} was successfully deployed.`
-        );
-        fs.promises.unlink(archivePath);
-      });
+      debugLogger.debug(`Upload the content to S3 for file ${element.path}.`)
+      await uploadContentToS3(resultPresignedUrl.presignedURL, archivePath)
     }
   );
 
   // wait for all promises to finish
   await Promise.all(promisesDeploy);
 
-  const astSummary: AstSummary = await generateSdks(
-    functionUrlForFilePath
-  ).catch((error) => {
-    throw error;
-  });
+  const response = await deployRequest(projectConfiguration)
+
+  const classesInfo = response.classes.map((c) => ({
+    className: c.name,
+    methods: c.methods,
+    functionUrl: c.cloudUrl,
+    projectId: response.projectId
+  }));
 
   debugLogger.debug("Starting the request to POST AST API...");
   const resp = await sendProjectAst(
     configuration.name,
     configuration.region,
-    astSummary
+    sdkResponse.astSummary
   );
   debugLogger.debug(`Response received ${JSON.stringify(resp)}.`);
 
   reportSuccess(classesInfo, configuration);
+
+  await replaceUrlsInSdk(sdkResponse, response.classes)
+  await writeSdkToDisk(sdkResponse, configuration.sdk.language, configuration.sdk.path)
 
   const projectId = classesInfo[0].projectId;
   console.log(
@@ -325,7 +302,7 @@ export async function deployClasses() {
 
 export function reportSuccess(
   classesInfo: any,
-  projectConfiguration: ProjectConfiguration
+  projectConfiguration: YamlProjectConfiguration
 ) {
   log.info(
     "\x1b[36m%s\x1b[0m",
@@ -336,15 +313,10 @@ export function reportSuccess(
   let printHttpString = "";
 
   classesInfo.forEach((classInfo: any) => {
-    classInfo.methodNames.forEach((methodName: any) => {
-      const type = projectConfiguration.getMethodType(
-        classInfo.path,
-        methodName
-      );
-
-      if (type === TriggerType.http) {
+    classInfo.methods.forEach((method: any) => {
+      if (method.type === TriggerType.http) {
         printHttpString +=
-          `  - ${classInfo.className}.${methodName}: ${classInfo.functionUrl}${classInfo.className}/${methodName}` +
+          `  - ${classInfo.className}.${method.name}: ${classInfo.functionUrl}${classInfo.className}/${method.name}` +
           "\n";
       }
     });
@@ -355,56 +327,6 @@ export function reportSuccess(
     log.info("HTTP Methods Deployed:");
     log.info(printHttpString);
   }
-}
-
-export async function generateSdks(urlMap: any): Promise<AstSummary> {
-  const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
-  const configurationFileContent = await parse(configurationFileContentUTF8);
-  const configuration = await ProjectConfiguration.create(
-    configurationFileContent
-  );
-  const outputPath = configuration.sdk.path;
-  const language = configuration.sdk.language;
-
-  // check if the output path exists
-  if (await fileExists(outputPath)) {
-    // delete the output path
-    fs.rmSync(outputPath, { recursive: true, force: true });
-  }
-
-  debugLogger.debug("Starting the request to generateSDK API...");
-  const sdk = await generateSdk(configuration, urlMap).catch((error) => {
-    debugLogger.debug("An error occurred while generating the API", error);
-    throw error;
-  });
-  debugLogger.debug(`Response received ${JSON.stringify(sdk)}.`);
-
-  debugLogger.debug("Writing the SDK to files...");
-  if (sdk.remoteFile) {
-    await writeToFile(
-      outputPath,
-      `remote.${language}`,
-      sdk.remoteFile,
-      true
-    ).catch((error) => {
-      log.error(error.toString());
-    });
-  }
-
-  await Promise.all(
-    sdk.classFiles.map((classFile: any) => {
-      return writeToFile(
-        outputPath,
-        `${classFile.filename}.sdk.${language}`,
-        classFile.implementation,
-        true
-      );
-    })
-  );
-
-  debugLogger.debug("The SDK was successfully written to files.");
-
-  return sdk.astSummary;
 }
 
 export async function init() {

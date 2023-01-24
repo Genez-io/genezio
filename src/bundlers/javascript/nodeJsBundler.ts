@@ -1,4 +1,3 @@
-import { webpack } from "webpack";
 import path from "path";
 import fs from "fs";
 import webpackNodeExternals from "webpack-node-externals";
@@ -233,16 +232,11 @@ export class NodeJsBundler implements BundlerInterface {
       this.#copyDependencies(dependenciesInfo, temporaryFolder)
     ]);
 
-    debugLogger.debug(`[NodeJSBundler] Get the class details for file ${input.path}.`)
-    // 3. Get class name
-    const classDetails = this.#getClassDetails(input.path, temporaryFolder);
 
     return {
       ...input,
       path: temporaryFolder,
       extra: {
-        className: classDetails.className,
-        methodNames: classDetails.methodNames,
         dependenciesInfo
       }
     };

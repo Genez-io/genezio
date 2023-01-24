@@ -1,19 +1,26 @@
 import FormData from "form-data";
 import fs from "fs";
-import axios, { AxiosError } from "axios";
-import { getFileDetails } from "../utils/file";
+import axios from "axios";
+import { fileExists } from "../utils/file";
 import { GENERATE_SDK_API_URL } from "../variables";
 import {
-  ClassConfiguration,
-  ProjectConfiguration
-} from "../models/projectConfiguration";
+  YamlClassConfiguration,
+  YamlProjectConfiguration
+} from "../models/yamlProjectConfiguration";
 import { getAuthToken } from "../utils/accounts";
+import { GenerateSdkResponse } from "../models/generateSdkResponse";
 
-export default async function generateSdk(
-  configuration: ProjectConfiguration,
-  urlMap?: any
-) {
+export default async function generateSdkRequest(
+  configuration: YamlProjectConfiguration
+): Promise<GenerateSdkResponse> {
   const classes = configuration.classes;
+  const sdkOutputPath = configuration.sdk.path 
+
+  // check if the output path exists
+  if (await fileExists(configuration.sdk.path)) {
+    // delete the output path
+    fs.rmSync(sdkOutputPath, { recursive: true, force: true });
+  }
 
   const form = new FormData();
   form.append("projectConfiguration", JSON.stringify(configuration));
@@ -26,15 +33,10 @@ export default async function generateSdk(
     );
   }
 
-  if (urlMap) {
-    form.append("urlMap", JSON.stringify(urlMap));
-  }
-
-  classes.forEach((classElem: ClassConfiguration) => {
+  classes.forEach((classElem: YamlClassConfiguration) => {
     const filePath = classElem.path;
-    const { name, extension } = getFileDetails(filePath);
 
-    form.append(name + extension, fs.createReadStream(filePath));
+    form.append(filePath, fs.createReadStream(filePath));
   });
 
   const response: any = await axios({

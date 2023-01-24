@@ -1,5 +1,5 @@
+import { NormalModule } from "webpack";
 import { ClassConfiguration } from "../models/projectConfiguration";
-import webpack, { NormalModule } from "webpack";
 
 /**
  * The input that goes into the bundler.

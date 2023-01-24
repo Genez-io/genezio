@@ -1,9 +1,9 @@
 import axios from "axios";
 import { getAuthToken } from "../../src/utils/accounts";
 import {
-  ClassConfiguration,
+  YamlClassConfiguration,
   TriggerType
-} from "../../src/models/projectConfiguration";
+} from "../../src/models/yamlProjectConfiguration";
 import { deployClass } from "../../src/requests/deployCode";
 
 jest.mock("axios");
@@ -18,7 +18,7 @@ beforeEach(() => {
 
 test("should throw error if server returns error", async () => {
   await expect(async () => {
-    const classConfiguration = new ClassConfiguration(
+    const classConfiguration = new YamlClassConfiguration(
       "./test",
       TriggerType.cron,
       "js",
@@ -39,7 +39,7 @@ test("should throw error if server returns error", async () => {
 
 test("should throw error if server returns data.error object", async () => {
   await expect(async () => {
-    const classConfiguration = new ClassConfiguration(
+    const classConfiguration = new YamlClassConfiguration(
       "./test",
       TriggerType.cron,
       "js",
@@ -60,7 +60,7 @@ test("should throw error if server returns data.error object", async () => {
 
 test("should return response.data if everything is ok", async () => {
   const someObject = { someData: "data" };
-  const classConfiguration = new ClassConfiguration(
+  const classConfiguration = new YamlClassConfiguration(
     "./test",
     TriggerType.cron,
     "js",
@@ -87,7 +87,7 @@ test("should return response.data if everything is ok", async () => {
 
 test("should read token and pass it to headers", async () => {
   const someObject = { someData: "data" };
-  const classConfiguration = new ClassConfiguration(
+  const classConfiguration = new YamlClassConfiguration(
     "./test",
     TriggerType.cron,
     "js",

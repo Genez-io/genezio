@@ -1,4 +1,3 @@
-import { webpack } from "webpack";
 import path from "path";
 import fs from "fs";
 import util from "util";
@@ -17,7 +16,7 @@ import {
 import FileDetails from "../../models/fileDetails";
 import { default as fsExtra } from "fs-extra";
 import { lambdaHandler } from "../../utils/lambdaHander";
-import { tsconfig, packagejson } from "../../utils/configs";
+import { tsconfig } from "../../utils/configs";
 import log from "loglevel";
 import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import { AccessDependenciesPlugin } from "../bundler.interface";
@@ -312,16 +311,10 @@ export class NodeTsBundler implements BundlerInterface {
             this.#copyDependencies(dependenciesInfo, temporaryFolder)
         ]);
 
-        debugLogger.debug(`[NodeTSBundler] Get the class details for file ${input.path}.`)
-        // 5. Get class name
-        const classDetails = await this.#getClassDetails(input.path, temporaryFolder);
-
         return {
             ...input,
             path: temporaryFolder,
             extra: {
-                className: classDetails.className,
-                methodNames: classDetails.methodNames,
                 dependenciesInfo
             }
         };

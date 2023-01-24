@@ -1,4 +1,4 @@
-import { HelloWorldService } from "./sdk/hello.sdk.js"
+import { HelloWorldService } from "./sdk/helloWorldService.sdk.js"
 
 /**
  * Client that makes requests to the HelloWorldService deployed on genezio.

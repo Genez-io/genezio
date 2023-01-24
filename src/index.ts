@@ -3,7 +3,6 @@
 import { Command, CommanderError } from "commander";
 import {
   deleteProjectHandler,
-  generateSdks,
   init,
   addNewClass,
   deployClasses,
@@ -28,8 +27,12 @@ import { getProjectConfiguration } from "./utils/configuration";
 import log from "loglevel";
 import { getAuthToken, removeAuthToken } from "./utils/accounts";
 import { Spinner } from "cli-spinner";
-import prefix from "loglevel-plugin-prefix";
+
 import { AstSummary } from "./models/astSummary";
+
+import prefix from 'loglevel-plugin-prefix';
+import generateSdkRequest from "./requests/generateSdk";
+import { replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
@@ -199,33 +202,29 @@ program
         let handlers = undefined;
         let astSummary: AstSummary | undefined = undefined;
         try {
+          const sdk = await generateSdkRequest(projectConfiguration)
+          astSummary = sdk.astSummary
           const localEnvInfo = await prepareForLocalEnvironment(
             projectConfiguration,
+            sdk.astSummary,
             Number(options.port)
           );
 
           functionUrlForFilePath = localEnvInfo.functionUrlForFilePath;
           classesInfo = localEnvInfo.classesInfo;
           handlers = localEnvInfo.handlers;
-          if (Object.keys(functionUrlForFilePath).length > 0) {
-            astSummary = (await generateSdks(functionUrlForFilePath).catch(
-              (error: Error) => {
-                if (error.message === "Unauthorized") {
-                  log.error(
-                    "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
-                  );
-                } else {
-                  log.error(`${error.stack}`);
-                  exit(1);
-                }
-              }
-            )) as AstSummary;
 
-            reportSuccess(classesInfo, projectConfiguration);
-          }
+          console.log(handlers)
+          await replaceUrlsInSdk(sdk, sdk.classFiles.map((c) => ({ name: c.name, cloudUrl: `http://127.0.0.1:${options.port}/${c.name}` })))
+          await writeSdkToDisk(sdk, projectConfiguration.sdk.language, projectConfiguration.sdk.path)
+          reportSuccess(classesInfo, projectConfiguration);
           // eslint-disable-next-line no-empty
         } catch (error: any) {
-          if (error.message) {
+          if (error.message === "Unauthorized") {
+            log.error(
+              "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
+            );
+          } else if (error.message) {
             log.error(`${error.message}`);
           } else {
             log.error(

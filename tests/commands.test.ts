@@ -4,8 +4,8 @@ import { getProjectConfiguration } from "../src/utils/configuration";
 import {
   JsRuntime,
   Language,
-  ProjectConfiguration,
-  SdkConfiguration
+  YamlProjectConfiguration,
+  YamlSdkConfiguration
 } from "../src/models/projectConfiguration";
 
 jest.mock("../src/utils/file");
@@ -31,10 +31,10 @@ describe("addNewClass", () => {
     const mockedGetProjectConfiguration = jest.mocked(getProjectConfiguration, {
       shallow: true
     });
-    const projectConfiguration = new ProjectConfiguration(
+    const projectConfiguration = new YamlProjectConfiguration(
       "test",
       "us-east-1",
-      new SdkConfiguration(Language.js, JsRuntime.browser, "./test.js"),
+      new YamlSdkConfiguration(Language.js, JsRuntime.browser, "./test.js"),
       []
     );
     projectConfiguration.addClass = jest.fn();
@@ -59,10 +59,10 @@ describe("addNewClass", () => {
     const mockedGetProjectConfiguration = jest.mocked(getProjectConfiguration, {
       shallow: true
     });
-    const projectConfiguration = new ProjectConfiguration(
+    const projectConfiguration = new YamlProjectConfiguration(
       "test",
       "us-east-1",
-      new SdkConfiguration(Language.js, JsRuntime.browser, "./test.js"),
+      new YamlSdkConfiguration(Language.js, JsRuntime.browser, "./test.js"),
       []
     );
     projectConfiguration.addClass = jest.fn();

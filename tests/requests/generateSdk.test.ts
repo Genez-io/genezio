@@ -1,11 +1,11 @@
 import axios from "axios";
 import {
-  ClassConfiguration,
+  YamlClassConfiguration,
   JsRuntime,
   Language,
-  MethodConfiguration,
-  ProjectConfiguration,
-  SdkConfiguration,
+  YamlMethodConfiguration,
+  YamlProjectConfiguration,
+  YamlSdkConfiguration,
   TriggerType
 } from "../../src/models/projectConfiguration";
 import generateSdk from "../../src/requests/generateSdk";
@@ -23,13 +23,13 @@ beforeEach(() => {
 
 test("should throw error if server returns error", async () => {
   await expect(async () => {
-    const projectConfiguration = new ProjectConfiguration(
+    const projectConfiguration = new YamlProjectConfiguration(
       "my_test",
       "us-east-1",
-      new SdkConfiguration(Language.js, JsRuntime.browser, "./path"),
+      new YamlSdkConfiguration(Language.js, JsRuntime.browser, "./path"),
       [
-        new ClassConfiguration("./method.js", TriggerType.jsonrpc, "js", [
-          new MethodConfiguration("myTest", TriggerType.jsonrpc)
+        new YamlClassConfiguration("./method.js", TriggerType.jsonrpc, "js", [
+          new YamlMethodConfiguration("myTest", TriggerType.jsonrpc)
         ])
       ]
     );
@@ -44,19 +44,19 @@ test("should throw error if server returns error", async () => {
       config: {}
     });
 
-    await generateSdk(projectConfiguration, {});
+    await generateSdkRequest(projectConfiguration, {});
   }).rejects.toThrowError();
 });
 
 test("should return response.data if everything is ok", async () => {
   const returnedObject = { someObjectValue: "value" };
-  const projectConfiguration = new ProjectConfiguration(
+  const projectConfiguration = new YamlProjectConfiguration(
     "my_test",
     "us-east-1",
-    new SdkConfiguration(Language.js, JsRuntime.browser, "./path"),
+    new YamlSdkConfiguration(Language.js, JsRuntime.browser, "./path"),
     [
-      new ClassConfiguration("./method.js", TriggerType.jsonrpc, "js", [
-        new MethodConfiguration("myTest", TriggerType.jsonrpc)
+      new YamlClassConfiguration("./method.js", TriggerType.jsonrpc, "js", [
+        new YamlMethodConfiguration("myTest", TriggerType.jsonrpc)
       ])
     ]
   );
@@ -71,6 +71,6 @@ test("should return response.data if everything is ok", async () => {
     config: {}
   });
 
-  const result = await generateSdk(projectConfiguration, {});
+  const result = await generateSdkRequest(projectConfiguration, {});
   expect(result).toBe(returnedObject);
 });

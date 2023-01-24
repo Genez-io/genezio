@@ -1,10 +1,9 @@
-import querystring from "querystring";
 import path from "path";
 import chokidar from "chokidar";
 import express from "express";
 import cors from "cors";
 import { PORT_LOCAL_ENVIRONMENT } from "./variables";
-import { ProjectConfiguration } from "./models/projectConfiguration";
+import { YamlProjectConfiguration } from "./models/yamlProjectConfiguration";
 import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import { NodeTsBundler } from "./bundlers/typescript/nodeTsBundler";
 import LocalEnvInputParameters from "./models/localEnvInputParams";
@@ -16,6 +15,7 @@ import url from "url"
 import { genezioRequestParser } from "./utils/genezioRequestParser";
 import { debugLogger } from "./utils/logging";
 import { BundlerInterface } from "./bundlers/bundler.interface";
+import { AstSummary } from "./models/generateSdkResponse";
 
 export function getEventObjectFromRequest(request: any) {
   const urlDetails = url.parse(request.url, true)
@@ -219,14 +219,15 @@ export async function startServer(
 }
 
 export async function prepareForLocalEnvironment(
-  projectConfiguration: ProjectConfiguration,
+  projectConfiguration: YamlProjectConfiguration,
+  astSummary: AstSummary,
   port = PORT_LOCAL_ENVIRONMENT
 ): Promise<LocalEnvInputParameters> {
   const functionUrlForFilePath: any = {};
   const handlers: any = {};
   const classesInfo: {
     className: any;
-    methodNames: any;
+    methods: any;
     path: string;
     functionUrl: string;
   }[] = [];
@@ -237,6 +238,14 @@ export async function prepareForLocalEnvironment(
         `\`${element.path}\` file does not exist at the indicated path.`
       );
       exit(1);
+    }
+    const astClassSummary = astSummary.classes.find((c) => c.path === element.path)
+
+    if (!astClassSummary) {
+      debugLogger.debug(
+        `Could not find astClassSummary for element ${element}`
+      );
+      return Promise.resolve();
     }
 
     let bundler: BundlerInterface
@@ -266,15 +275,15 @@ export async function prepareForLocalEnvironment(
       })
       .then((output) => {
         debugLogger.debug("The bundling process finished successfully.")
-        const className = output.extra?.className;
+        const className = astClassSummary.name;
         const handlerPath = path.join(output.path, "index.js");
         const baseurl = `http://127.0.0.1:${port}/`;
         const functionUrl = `${baseurl}${className}`;
         functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
 
         classesInfo.push({
-          className: output.extra?.className,
-          methodNames: output.extra?.methodNames,
+          className: className,
+          methods: astClassSummary?.methods,
           path: element.path,
           functionUrl: baseurl
         });
