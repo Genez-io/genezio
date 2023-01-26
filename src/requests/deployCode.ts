@@ -1,20 +1,13 @@
-import path from "path";
 import axios from "axios";
 import { BACKEND_ENDPOINT } from "../variables";
-import { ClassConfiguration } from "../models/projectConfiguration";
 import { getAuthToken } from "../utils/accounts";
+import { debugLogger } from "../utils/logging";
+import { DeployCodeResponse } from "../models/deployCodeResponse";
+import { ProjectConfiguration } from "../models/projectConfiguration";
 
-export async function deployClass(
-  classConfiguration: ClassConfiguration,
-  archivePath: string,
-  projectName: string,
-  className: string,
-  region: string
-) {
-  if (!archivePath || !projectName || !className) {
-    throw new Error("Missing required parameters");
-  }
-
+export async function deployRequest(
+  projectConfiguration: ProjectConfiguration,
+): Promise<DeployCodeResponse> {
   // auth token
   const authToken = await getAuthToken();
   if (!authToken) {
@@ -24,12 +17,9 @@ export async function deployClass(
     }
 
   const json = JSON.stringify({
-    configurationClassContent: JSON.stringify(classConfiguration),
-    archiveName : "genezioDeploy.zip",
-    filename : path.parse(classConfiguration.path).name,
-    projectName : projectName,
-    className : className,
-    region: region,
+    classes: projectConfiguration.classes,
+    projectName : projectConfiguration.name,
+    region: projectConfiguration.region,
   })
 
   const response: any = await axios({
@@ -40,8 +30,11 @@ export async function deployClass(
     maxContentLength: Infinity,
     maxBodyLength: Infinity
   }).catch((error: Error) => {
+    debugLogger.debug("Error received", error)
     throw error;
   });
+
+  debugLogger.debug("Response received", response.data)
 
   if (response.data.status === "error") {
     throw new Error(response.data.message);

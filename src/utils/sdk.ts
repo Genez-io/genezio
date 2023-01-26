@@ -1,0 +1,55 @@
+import { DeployCodeResponse } from "../models/deployCodeResponse"
+import { GenerateSdkResponse } from "../models/generateSdkResponse"
+import { Language } from "../models/yamlProjectConfiguration"
+import { writeToFile } from "./file"
+import { debugLogger } from "./logging"
+import log from "loglevel";
+
+type ClassUrlMap = {
+    name: string
+    cloudUrl: string
+}
+
+/**
+ * Replace the temporary markdowns from the SDK with actual URLs.
+ */
+export async function replaceUrlsInSdk(sdkResponse: GenerateSdkResponse, classUrlMap: ClassUrlMap[]) {
+    sdkResponse.classFiles.forEach((c) => {
+        const classContent = classUrlMap.find((classFile) => {
+            return classFile.name === c.name
+        })!
+
+        c.implementation = c.implementation.replace("%%%link_to_be_replace%%%", classContent.cloudUrl)
+    })
+}
+
+/**
+ * Write the SDK files to disk.
+ */
+export async function writeSdkToDisk(sdk: GenerateSdkResponse, language: Language, outputPath: string) {
+    debugLogger.debug("Writing the SDK to files...")
+    if (sdk.remoteFile) {
+        await writeToFile(
+            outputPath,
+            `remote.${language}`,
+            sdk.remoteFile,
+            true
+        ).catch((error) => {
+            log.error(error.toString());
+        });
+    }
+
+    await Promise.all(
+        sdk.classFiles.map((classFile: any) => {
+            let filename = `${classFile.name}.sdk.${language}`
+            filename = filename.charAt(0).toLowerCase() + filename.slice(1)
+            return writeToFile(
+                outputPath,
+                filename,
+                classFile.implementation,
+                true
+            );
+        })
+    );
+    debugLogger.debug("The SDK was successfully written to files.")
+}

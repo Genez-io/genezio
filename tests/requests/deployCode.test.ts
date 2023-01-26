@@ -1,10 +1,15 @@
 import axios from "axios";
 import { getAuthToken } from "../../src/utils/accounts";
 import {
-  ClassConfiguration,
-  TriggerType
-} from "../../src/models/projectConfiguration";
-import { deployClass } from "../../src/requests/deployCode";
+  YamlClassConfiguration,
+  TriggerType,
+  YamlProjectConfiguration,
+  YamlSdkConfiguration,
+  Language,
+  JsRuntime
+} from "../../src/models/yamlProjectConfiguration";
+import { deployRequest } from "../../src/requests/deployCode";
+import { ProjectConfiguration, SdkConfiguration, ClassConfiguration } from "../../src/models/projectConfiguration";
 
 jest.mock("axios");
 jest.mock("../../src/utils/accounts");
@@ -18,12 +23,13 @@ beforeEach(() => {
 
 test("should throw error if server returns error", async () => {
   await expect(async () => {
-    const classConfiguration = new ClassConfiguration(
-      "./test",
-      TriggerType.cron,
-      "js",
-      []
-    );
+    const projectConfiguration: ProjectConfiguration = {
+      name: "test",
+      region: "us-east-1",
+      sdk: new SdkConfiguration(Language.js, JsRuntime.browser, "./test"),
+      classes: [],
+    }
+
     mockedGetAuthToken.mockResolvedValue("token");
     mockedAxios.mockResolvedValue({
       data: { status: "error" },
@@ -33,18 +39,18 @@ test("should throw error if server returns error", async () => {
       config: {}
     });
 
-    await deployClass(classConfiguration, "test", "test", "test", "test");
+    await deployRequest(projectConfiguration);
   }).rejects.toThrowError();
 });
 
 test("should throw error if server returns data.error object", async () => {
   await expect(async () => {
-    const classConfiguration = new ClassConfiguration(
-      "./test",
-      TriggerType.cron,
-      "js",
-      []
-    );
+    const projectConfiguration: ProjectConfiguration = {
+      name: "test",
+      region: "us-east-1",
+      sdk: new SdkConfiguration(Language.js, JsRuntime.browser, "./test"),
+      classes: [],
+    }
     mockedGetAuthToken.mockResolvedValue("token");
     mockedAxios.mockResolvedValue({
       data: { error: { message: "error text" } },
@@ -54,18 +60,18 @@ test("should throw error if server returns data.error object", async () => {
       config: {}
     });
 
-    await deployClass(classConfiguration, "test", "test", "test", "test");
+    await deployRequest(projectConfiguration);
   }).rejects.toThrowError();
 });
 
 test("should return response.data if everything is ok", async () => {
   const someObject = { someData: "data" };
-  const classConfiguration = new ClassConfiguration(
-    "./test",
-    TriggerType.cron,
-    "js",
-    []
-  );
+  const projectConfiguration: ProjectConfiguration = {
+    name: "test",
+    region: "us-east-1",
+    sdk: new SdkConfiguration(Language.js, JsRuntime.browser, "./test"),
+    classes: [],
+  }
   mockedGetAuthToken.mockResolvedValue("token");
   mockedAxios.mockResolvedValue({
     data: someObject,
@@ -75,24 +81,18 @@ test("should return response.data if everything is ok", async () => {
     config: {}
   });
 
-  const response = await deployClass(
-    classConfiguration,
-    "test",
-    "test",
-    "test",
-    "us-east-1"
-  );
+  const response = await deployRequest(projectConfiguration);
   expect(response).toEqual(someObject);
 });
 
 test("should read token and pass it to headers", async () => {
   const someObject = { someData: "data" };
-  const classConfiguration = new ClassConfiguration(
-    "./test",
-    TriggerType.cron,
-    "js",
-    []
-  );
+  const projectConfiguration: ProjectConfiguration = {
+    name: "test",
+    region: "us-east-1",
+    sdk: new SdkConfiguration(Language.js, JsRuntime.browser, "./test"),
+    classes: [],
+  }
   mockedGetAuthToken.mockResolvedValue("token");
   mockedAxios.mockResolvedValue({
     data: someObject,
@@ -102,13 +102,7 @@ test("should read token and pass it to headers", async () => {
     config: {}
   });
 
-  const response = await deployClass(
-    classConfiguration,
-    "test",
-    "test",
-    "test",
-    "us-east-1"
-  );
+  const response = await deployRequest(projectConfiguration);
 
   expect(mockedGetAuthToken.mock.calls.length).toBe(1);
 

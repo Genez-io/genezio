@@ -16,7 +16,6 @@ export default async function deleteProject(
   const response: any = await axios({
     method: "DELETE",
     url: `${BACKEND_ENDPOINT}/projects/${projectId}`,
-    timeout: 15000,
     headers: { Authorization: `Bearer ${authToken}` }
   }).catch((error: Error) => {
     throw error;

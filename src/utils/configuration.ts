@@ -1,9 +1,9 @@
 import path from "path"
-import { ProjectConfiguration } from "../models/projectConfiguration"
+import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration"
 import { checkYamlFileExists, readUTF8File } from "./file"
 import { parse } from "yaml"
 
-export async function getProjectConfiguration(configurationFilePath = "./genezio.yaml"): Promise<ProjectConfiguration> {
+export async function getProjectConfiguration(configurationFilePath = "./genezio.yaml"): Promise<YamlProjectConfiguration> {
     if (!await checkYamlFileExists()) {
         throw new Error("The configuration file does not exist.");
       }
@@ -11,7 +11,7 @@ export async function getProjectConfiguration(configurationFilePath = "./genezio
     const genezioYamlPath = path.join(configurationFilePath);
     const configurationFileContentUTF8 = await readUTF8File(genezioYamlPath);
     const configurationFileContent = await parse(configurationFileContentUTF8);
-    const projectConfiguration = await ProjectConfiguration.create(configurationFileContent)
+    const projectConfiguration = await YamlProjectConfiguration.create(configurationFileContent)
 
     return projectConfiguration
 }
