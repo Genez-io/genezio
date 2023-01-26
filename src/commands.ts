@@ -141,7 +141,14 @@ export async function lsHandler(identifier: string, l: boolean) {
 export async function deleteProjectHandler(projectId: string, forced: boolean) {
   // show prompt if no project id is selected
   if (typeof projectId === "string" && projectId.trim().length === 0) {
+    const spinner = new Spinner("%s  ");
+    spinner.setSpinnerString("|/-\\");
+    spinner.start();
     const projectsJson = await listProjects();
+    spinner.stop();
+    // hack to add a newline  after the spinner
+    log.info("");
+
     const projects = projectsJson.map(function (project: any, index: any) {
       return `[${1 + index}]: Project name: ${project.name}, Region: ${project.region}, ID: ${project.id}`;
     })

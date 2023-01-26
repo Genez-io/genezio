@@ -11,7 +11,7 @@ import {
   lsHandler
 } from "./commands";
 import { setDebuggingLoggerLogLevel } from "./utils/logging";
-import { asciiCapybara } from "./utils/strings";
+import { asciiCapybara, GENEZIO_NOT_AUTH_ERROR_MSG } from "./utils/strings";
 import { exit } from "process";
 import { AxiosError } from "axios";
 import {
@@ -37,6 +37,9 @@ import { replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
 
+const spinner = new Spinner("%s  ");
+spinner.setSpinnerString("|/-\\");
+
 const program = new Command();
 
 log.setDefaultLevel("INFO");
@@ -60,20 +63,22 @@ if (ENABLE_DEBUG_LOGS_BY_DEFAULT) {
 
 program
   .name("genezio")
-  .description("CLI to interact with the Genezio infrastructure!")
+  .usage("[command]")
+  .description("CLI tool to interact with the genezio infrastructure!")
   .exitOverride((err: CommanderError) => {
-    if (err.code === "commander.help") {
+    if (err.code === "commander.help" || err.code === "commander.version" || err.code === "commander.helpDisplayed") {
       exit(0);
     } else {
-      console.log(`Type 'genezio --help'`);
+      console.log(`Type 'genezio --help' or 'genezio [command] --help'.`);
     }
   })
+  .addHelpText("afterAll", `\nUse 'genezio [command] --help' for more information about a command.`)
   .version(pjson.version);
 
 program
   .command("init")
   .option("-l, --logLevel <logLevel", "Show debug logs to console.")
-  .description("Initialize a Genezio project.")
+  .description("Create the initial configuration file for a genezio project.")
   .action(async (options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
     try {
@@ -87,34 +92,31 @@ program
   .command("login")
   .argument("[accessToken]", "Personal access token.")
   .option("-l, --logLevel <logLevel", "Show debug logs to console.")
-  .description("Authenticate with Genezio platform to deploy your code.")
+  .description("Authenticate with genezio platform to deploy your code.")
   .action(async (accessToken = "", options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
     log.info(asciiCapybara);
 
-    await handleLogin(accessToken);
+    await handleLogin(accessToken).catch((error: Error) => {
+      log.error(error.message);
+      exit(1);
+    });
   });
 
 program
   .command("deploy")
   .option("-l, --logLevel <logLevel", "Show debug logs to console.")
-  .description(
-    "Deploy the functions mentioned in the genezio.yaml file to Genezio infrastructure."
-  )
+  .description("Deploy your project to the genezio infrastructure.")
   .action(async (options: any) => {
-    // check if user is logged in
     setDebuggingLoggerLogLevel(options.logLevel);
-    const authToken = await getAuthToken();
 
+    // check if user is logged in
+    const authToken = await getAuthToken();
     if (!authToken) {
-      log.warn(
-        "You are not logged in. Run 'genezio login' before you deploy your function."
-      );
+      log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
       exit(1);
     }
 
-    const spinner = new Spinner("%s  ");
-    spinner.setSpinnerString("|/-\\");
     spinner.start();
 
     log.info("Deploying your project to genezio infrastructure...");
@@ -123,26 +125,29 @@ program
         spinner.stop(true);
       })
       .catch((error: AxiosError) => {
-        if (error.response?.status === 401) {
-          log.error(
-            "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
-          );
-        } else if (error.response?.status === 500) {
-          log.error(error.message);
-          if (error.response?.data) {
-            const data: any = error.response?.data;
-            log.error(data.error?.message);
-          }
-        } else if (error.response?.status === 400) {
-          log.error(error.message);
-          if (error.response?.data) {
-            const data: any = error.response?.data;
-            log.error(data.error?.message);
-          }
-        } else {
-          if (error.message) {
+        switch (error.response?.status) {
+          case 401:
+            log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
+            break;
+          case 500:
             log.error(error.message);
-          }
+            if (error.response?.data) {
+              const data: any = error.response?.data;
+              log.error(data.error?.message);
+            }
+            break;
+          case 400:
+            log.error(error.message);
+            if (error.response?.data) {
+              const data: any = error.response?.data;
+              log.error(data.error?.message);
+            }
+            break;
+          default:
+            if (error.message) {
+              log.error(error.message);
+            }
+            break;
         }
         exit(1);
       });
@@ -154,9 +159,9 @@ program
   .argument("<classPath>", "Path of the class you want to add.")
   .argument(
     "[<classType>]",
-    "The tipe of the class you want to add. [http, jsonrpc]"
+    "The type of the class you want to add. [http, jsonrpc, cron]"
   )
-  .description("Add a new class to the genezio.yaml file.")
+  .description("Add a new class to the 'genezio.yaml' file.")
   .action(async (classPath: string, classType: string, options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
 
@@ -179,16 +184,11 @@ program
     setDebuggingLoggerLogLevel(options.logLevel);
 
     const authToken = await getAuthToken();
-
     if (!authToken) {
-      log.warn(
-        "You are not logged in. Run 'genezio login' before you deploy your function."
-      );
+      log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
       exit(1);
     }
 
-    const spinner = new Spinner("%s  ");
-    spinner.setSpinnerString("|/-\\");
     spinner.start();
 
     try {
@@ -218,14 +218,11 @@ program
           await replaceUrlsInSdk(sdk, sdk.classFiles.map((c) => ({ name: c.name, cloudUrl: `http://127.0.0.1:${options.port}/${c.name}` })))
           await writeSdkToDisk(sdk, projectConfiguration.sdk.language, projectConfiguration.sdk.path)
           reportSuccess(classesInfo, projectConfiguration);
-          // eslint-disable-next-line no-empty
         } catch (error: any) {
           if (error.message === "Unauthorized") {
-            log.error(
-              "You are not logged in or your token is invalid. Please run `genezio login` before you deploy your function."
-            );
+            log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
           } else if (error.message) {
-            log.error(`${error.message}`);
+            log.error(error.message);
           } else {
             log.error(
               "An error occured while generating the SDK. Please try again!"
@@ -246,7 +243,7 @@ program
                 `The port ${error.port} is already in use. Please use a different port by specifying --port <port> to start your local server.`
               );
             } else {
-              log.error(`${error.message}`);
+              log.error(error.message);
             }
             exit(1);
           });
@@ -257,13 +254,13 @@ program
 
         await listenForChanges(projectConfiguration.sdk.path, server).catch(
           (error: Error) => {
-            log.error(`${error.message}`);
+            log.error(error.message);
             exit(1);
           }
         );
       }
     } catch (error: any) {
-      log.error(`${error.message}`);
+      log.error(error.message);
       exit(1);
     }
   });
@@ -278,8 +275,13 @@ program
       .then(() => {
         log.info("You are now logged out!");
       })
-      .catch(() => {
-        log.warn("Logout failed!");
+      .catch((error: any) => {
+        if (error.code === "ENOENT") {
+          log.error("You were already logged out.");
+        } else {
+          log.error("Logout failed!");
+        }
+        exit(1);
       });
   });
 
@@ -289,12 +291,11 @@ program
   .description("Display information about the current account.")
   .action(async (options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
-    const authToken = await getAuthToken();
 
+    const authToken = await getAuthToken();
     if (!authToken) {
-      log.info(
-        "You are not logged in. Run 'genezio login' before displaying account information."
-      );
+      log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
+      exit(1)
     } else {
       log.info("You are logged in.");
     }
@@ -310,22 +311,18 @@ program
   )
   .action(async (identifier = "", options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
+  
     // check if user is logged in
     const authToken = await getAuthToken();
-
     if (!authToken) {
-      log.info(
-        "You are not logged in. Run 'genezio login' before you delete your function."
-      );
+      log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
       exit(1);
     }
 
     await lsHandler(identifier, options.longListed).catch(
       (error: AxiosError) => {
-        if (error.response?.status == 401) {
-          log.info(
-            "You are not logged in or your token is invalid. Please run `genezio login` before you delete your function."
-          );
+        if (error.response?.status === 401) {
+          log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
         } else {
           log.error(error.message);
         }
@@ -344,22 +341,18 @@ program
   )
   .action(async (projectId = "", options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
+
     // check if user is logged in
     const authToken = await getAuthToken();
-
     if (!authToken) {
-      log.info(
-        "You are not logged in. Run 'genezio login' before you delete your function."
-      );
+      log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
       exit(1);
     }
 
     const result = await deleteProjectHandler(projectId, options.force).catch(
       (error: AxiosError) => {
         if (error.response?.status == 401) {
-          log.info(
-            "You are not logged in or your token is invalid. Please run `genezio login` before you delete your function."
-          );
+          log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
         } else {
           log.error(error.message);
         }
