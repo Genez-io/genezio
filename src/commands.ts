@@ -266,6 +266,7 @@ export async function deployClasses() {
 
       debugLogger.debug(`Upload the content to S3 for file ${element.path}.`)
       await uploadContentToS3(resultPresignedUrl.presignedURL, archivePath)
+      debugLogger.debug(`Done uploading the content to S3 for file ${element.path}.`)
     }
   );
 
