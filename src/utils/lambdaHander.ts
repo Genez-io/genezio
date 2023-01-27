@@ -45,7 +45,6 @@ exports.handler =  async function(event, context) {
             timeEpoch: event.requestContext.timeEpoch,
             body: event.isBase64Encoded ? Buffer.from(body, "base64") : body,
           }
-        console.log(req)
         if (!object[method]) {
           return { statusCode: 404, headers: { 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Method not found" }) };
         }
