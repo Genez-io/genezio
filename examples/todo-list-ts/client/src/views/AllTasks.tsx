@@ -12,9 +12,9 @@ import {
   ButtonGroup
 } from "reactstrap";
 import React, { useState, useEffect } from "react";
-import { TaskService, Task, GetTasksResponse } from "../sdk/task.sdk";
+import { TaskService, Task, GetTasksResponse } from "../sdk/taskService.sdk";
 import { useNavigate } from "react-router-dom";
-import { User } from "../sdk/user.sdk";
+import { User } from "../sdk/userService.sdk";
 
 
 export default () => {

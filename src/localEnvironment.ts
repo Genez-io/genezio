@@ -16,6 +16,7 @@ import { genezioRequestParser } from "./utils/genezioRequestParser";
 import { debugLogger } from "./utils/logging";
 import { BundlerInterface } from "./bundlers/bundler.interface";
 import { AstSummary } from "./models/generateSdkResponse";
+import { ProjectConfiguration } from "./models/projectConfiguration";
 
 export function getEventObjectFromRequest(request: any) {
   const urlDetails = url.parse(request.url, true)
@@ -219,7 +220,7 @@ export async function startServer(
 }
 
 export async function prepareForLocalEnvironment(
-  projectConfiguration: YamlProjectConfiguration,
+  yamlProjectConfiguration: YamlProjectConfiguration,
   astSummary: AstSummary,
   port = PORT_LOCAL_ENVIRONMENT
 ): Promise<LocalEnvInputParameters> {
@@ -231,6 +232,8 @@ export async function prepareForLocalEnvironment(
     path: string;
     functionUrl: string;
   }[] = [];
+
+  const projectConfiguration = new ProjectConfiguration(yamlProjectConfiguration, astSummary);
 
   const promises = projectConfiguration.classes.map(async (element: any) => {
     if (!(await fileExists(element.path))) {

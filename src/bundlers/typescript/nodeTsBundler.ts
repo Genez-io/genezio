@@ -236,50 +236,7 @@ export class NodeTsBundler implements BundlerInterface {
 
         //await writeToFile(tempFolderPath, "index.js", lambdaHandler);
     }
-
-    async #getClassDetails(filePath: string, tempFolderPath: string): Promise<any> {
-        const moduleJsPath = path.join(tempFolderPath, "module.js");
-
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const module = require(moduleJsPath);
-
-        const classes: string[] = [];
-
-        let className = "";
-
-        for (const name in module.genezio) {
-            if (typeof module.genezio[name] == 'function') {
-                classes.push(name);
-                className = name;
-            }
-        }
-        //console.log(typeof module.genezio["Directions"]);
-
-        if (classes.length > 1) {
-            log.warn(
-                "\x1b[33m",
-                `Warning: We found multiple classes exported from the ${filePath} file. For now, we support only one class per file.`
-            );
-            log.warn("\x1b[0m", "");
-        }
-
-        if (!className) {
-            throw new Error(
-                `No class was found in the ${filePath} file. Make sure you exported the class.`
-            );
-        }
-
-        await writeToFile(tempFolderPath, "index.js", lambdaHandler(`"${className}"`));
-
-        const methodNames = Object.getOwnPropertyNames(
-            module.genezio[className].prototype
-        ).filter((x) => x !== "constructor");
-
-        return {
-            className,
-            methodNames
-        };
-    }
+    
 
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
         // const auxFolder = await createTemporaryFolder();
@@ -301,8 +258,8 @@ export class NodeTsBundler implements BundlerInterface {
             )
         ]);
 
-        // 3. Remove auxiliary folder
-        // fs.rmSync(auxFolder, { recursive: true, force: true });
+        // 3. Write index.js file
+        await writeToFile(temporaryFolder, "index.js", lambdaHandler(`"${input.configuration.name}"`));
 
         debugLogger.debug(`[NodeTSBundler] Copy non TS files and node_modules for file ${input.path}.`)
         // 4. Copy non js files and node_modules

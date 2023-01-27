@@ -203,6 +203,7 @@ program
         let astSummary: AstSummary | undefined = undefined;
         try {
           const sdk = await generateSdkRequest(projectConfiguration)
+
           astSummary = sdk.astSummary
           const localEnvInfo = await prepareForLocalEnvironment(
             projectConfiguration,
