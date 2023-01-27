@@ -128,8 +128,6 @@ export class NodeTsBundler implements BundlerInterface {
                     file.extension !== ".js" &&
                     file.extension !== ".tsx" &&
                     file.extension !== ".jsx" &&
-                    path.basename(file.path) !== "package.json" &&
-                    path.basename(file.path) !== "package-lock.json" &&
                     !file.path.includes("node_modules") &&
                     !fs.lstatSync(file.path).isDirectory()
                 );
