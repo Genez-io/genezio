@@ -174,40 +174,8 @@ export class NodeJsBundler implements BundlerInterface {
       });
       throw "Compilation failed";
     }
-
-    await writeToFile(tempFolderPath, "index.js", lambdaHandler("Object.keys(handler.genezio)[0]"));
   }
 
-  #getClassDetails(filePath: string, tempFolderPath: string): any {
-    const moduleJsPath = path.join(tempFolderPath, "module.js");
-
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const module = require(moduleJsPath);
-    const className = Object.keys(module.genezio)[0];
-
-    if (Object.keys(module.genezio).length > 1) {
-      log.warn(
-        "\x1b[33m",
-        `Warning: We found multiple classes exported from the ${filePath} file. For now, we support only one class per file.`
-      );
-      log.warn("\x1b[0m", "");
-    }
-
-    if (!className) {
-      throw new Error(
-        `No class was found in the ${filePath} file. Make sure you exported the class.`
-      );
-    }
-
-    const methodNames = Object.getOwnPropertyNames(
-      module.genezio[className].prototype
-    ).filter((x) => x !== "constructor");
-
-    return {
-      className,
-      methodNames
-    };
-  }
 
   async bundle(input: BundlerInput): Promise<BundlerOutput> {
     const temporaryFolder = await createTemporaryFolder();
@@ -232,6 +200,8 @@ export class NodeJsBundler implements BundlerInterface {
       this.#copyDependencies(dependenciesInfo, temporaryFolder)
     ]);
 
+    // 3. Write index.js file
+    await writeToFile(temporaryFolder, "index.js", lambdaHandler(`"${input.configuration.name}"`));
 
     return {
       ...input,

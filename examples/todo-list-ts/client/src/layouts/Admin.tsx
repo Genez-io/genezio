@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { UserService } from "../sdk/user.sdk";
+import { UserService } from "../sdk/userService.sdk";
 
 export default (props: any) => {
   const navigate = useNavigate();
