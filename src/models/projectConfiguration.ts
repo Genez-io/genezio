@@ -1,15 +1,23 @@
 import { AstSummary } from "./generateSdkResponse";
 import { JsRuntime, JsSdkOptions, Language, TriggerType, YamlProjectConfiguration } from "./yamlProjectConfiguration";
 
+export class ParameterType {
+    name: string;
+
+    constructor(name: string) {
+        this.name = name
+    }
+}
+
 export class MethodConfiguration {
     name: string;
-    parameters: string[]
+    parameters: ParameterType[]
     cronString?: string;
     type: TriggerType;
 
     constructor(name: string, parameters: string[], type?: TriggerType, cronString?: string) {
         this.name = name;
-        this.parameters = parameters;
+        this.parameters = parameters.map((parameter) => new ParameterType(parameter));
         this.type = type ?? TriggerType.jsonrpc;
         this.cronString = cronString;
     }
@@ -76,7 +84,7 @@ export class ProjectConfiguration {
 
                 return {
                     name: m.name,
-                    parameters: m.params.map((p) => p.name),
+                    parameters: m.params.map((p) => new ParameterType(p.name)),
                     cronString: yamlMethod?.cronString,
                     type: yamlClass?.getMethodType(m.name)
                 }

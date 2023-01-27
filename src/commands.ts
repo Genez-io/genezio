@@ -37,8 +37,6 @@ import { Spinner } from "cli-spinner";
 import { debugLogger } from "./utils/logging";
 import { BundlerComposer } from "./bundlers/bundlerComposer";
 import { BundlerInterface } from "./bundlers/bundler.interface";
-import { sendProjectAst } from "./requests/sendProjectAst";
-import { AstSummary } from "./models/astSummary";
 import { ProjectConfiguration } from "./models/projectConfiguration";
 import { replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
 
@@ -288,14 +286,6 @@ export async function deployClasses() {
     functionUrl: c.cloudUrl,
     projectId: response.projectId
   }));
-
-  debugLogger.debug("Starting the request to POST AST API...");
-  const resp = await sendProjectAst(
-    configuration.name,
-    configuration.region,
-    sdkResponse.astSummary
-  );
-  debugLogger.debug(`Response received ${JSON.stringify(resp)}.`);
 
   reportSuccess(classesInfo, configuration);
 
