@@ -87,8 +87,6 @@ export class NodeJsBundler implements BundlerInterface {
         // filter js files, node_modules and folders
         return (
           file.extension !== ".js" &&
-          path.basename(file.path) !== "package.json" &&
-          path.basename(file.path) !== "package-lock.json" &&
           !file.path.includes("node_modules") &&
           !fs.lstatSync(file.path).isDirectory()
         );

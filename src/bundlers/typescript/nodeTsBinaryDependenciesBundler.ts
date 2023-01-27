@@ -69,11 +69,14 @@ export class NodeTsBinaryDependenciesBundler implements BundlerInterface {
         for (const dependency of binaryDependencies) {
             try {
                 const { stdout, stderr } = await exec(
-                    "npx node-pre-gyp --update-binary --fallback-to-build --target_arch=x64 --target_platform=linux --target_libc=glibc clean install " +
+                    "npx node-pre-gyp --update-binary --fallback-to-build --target_arch=arm64 --target_platform=linux --target_libc=glibc clean install " +
                     dependency.name,
                     { cwd: dependency.path }
                 );
+                debugLogger.debug("[BinaryDepStdOut]", stdout);
+                debugLogger.debug("[BinaryDepStdErr]", stderr);
             } catch (error) {
+                debugLogger.debug("[BinaryDepStdOut]", error);
                 console.error(
                     "An error has occured while installing binary dependecies."
                 );
@@ -82,14 +85,14 @@ export class NodeTsBinaryDependenciesBundler implements BundlerInterface {
         }
     }
 
-    bundle(input: BundlerInput): Promise<BundlerOutput> {
+    async bundle(input: BundlerInput): Promise<BundlerOutput> {
         if (!input.extra) {
             return Promise.resolve(input)
         }
 
         debugLogger.debug(`[NodeTSBinaryDependenciesBundler] Redownload binary dependencies if necessary for file ${input.path}...`)
         // 4. Redownload binary dependencies if necessary
-        this.#handleBinaryDependencies(input.extra.dependenciesInfo, input.path)
+        await this.#handleBinaryDependencies(input.extra.dependenciesInfo, input.path)
         debugLogger.debug(`[NodeTSBinaryDependenciesBundler] Redownload binary dependencies done for file ${input.path}.`)
 
         return Promise.resolve(input)
