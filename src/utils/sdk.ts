@@ -27,6 +27,11 @@ export async function replaceUrlsInSdk(sdkResponse: GenerateSdkResponse, classUr
  * Write the SDK files to disk.
  */
 export async function writeSdkToDisk(sdk: GenerateSdkResponse, language: Language, outputPath: string) {
+    if (sdk.classFiles.length == 0) {
+        debugLogger.debug("No SDK classes found...")
+        return 
+    }
+
     debugLogger.debug("Writing the SDK to files...")
     if (sdk.remoteFile) {
         await writeToFile(

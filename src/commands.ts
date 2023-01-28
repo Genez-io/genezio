@@ -12,8 +12,6 @@ import {
 import { askQuestion } from "./utils/prompt";
 import { Document } from "yaml";
 import {
-  Language,
-  YamlProjectConfiguration,
   TriggerType
 } from "./models/yamlProjectConfiguration";
 import { getProjectConfiguration } from "./utils/configuration";
@@ -39,6 +37,7 @@ import { BundlerComposer } from "./bundlers/bundlerComposer";
 import { BundlerInterface } from "./bundlers/bundler.interface";
 import { ProjectConfiguration } from "./models/projectConfiguration";
 import { replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
+import { GenerateSdkResponse } from "./models/generateSdkResponse"
 
 
 export async function addNewClass(classPath: string, classType: string) {
@@ -120,16 +119,14 @@ export async function lsHandler(identifier: string, l: boolean) {
   projectsJson.forEach(function (project: any, index: any) {
     if (l) {
       log.info(
-        `[${1 + index}]: Project name: ${project.name},\n\tRegion: ${
-          project.region
+        `[${1 + index}]: Project name: ${project.name},\n\tRegion: ${project.region
         },\n\tID: ${project.id},\n\tCreated: ${moment
           .unix(project.createdAt)
           .format()},\n\tUpdated: ${moment.unix(project.updatedAt).format()}`
       );
     } else {
       log.info(
-        `[${1 + index}]: Project name: ${project.name}, Region: ${
-          project.region
+        `[${1 + index}]: Project name: ${project.name}, Region: ${project.region
         }, Updated: ${moment.unix(project.updatedAt).format()}`
       );
     }
@@ -287,7 +284,7 @@ export async function deployClasses() {
     projectId: response.projectId
   }));
 
-  reportSuccess(classesInfo, configuration);
+  reportSuccess(classesInfo, sdkResponse);
 
   await replaceUrlsInSdk(sdkResponse, response.classes)
   await writeSdkToDisk(sdkResponse, configuration.sdk.language, configuration.sdk.path)
@@ -300,12 +297,19 @@ export async function deployClasses() {
 
 export function reportSuccess(
   classesInfo: any,
-  projectConfiguration: YamlProjectConfiguration
+  sdkResponse: GenerateSdkResponse,
 ) {
-  log.info(
-    "\x1b[36m%s\x1b[0m",
-    "Your code was deployed and the SDK was successfully generated!"
-  );
+  if (sdkResponse.classFiles.length > 0) {
+    log.info(
+      "\x1b[36m%s\x1b[0m",
+      "Your code was deployed and the SDK was successfully generated!"
+    );
+  } else {
+    log.info(
+      "\x1b[36m%s\x1b[0m",
+      "Your code was successfully deployed!"
+    );
+  }
 
   // print function urls
   let printHttpString = "";

@@ -218,7 +218,7 @@ program
           console.log(handlers)
           await replaceUrlsInSdk(sdk, sdk.classFiles.map((c) => ({ name: c.name, cloudUrl: `http://127.0.0.1:${options.port}/${c.name}` })))
           await writeSdkToDisk(sdk, projectConfiguration.sdk.language, projectConfiguration.sdk.path)
-          reportSuccess(classesInfo, projectConfiguration);
+          reportSuccess(classesInfo, sdk);
         } catch (error: any) {
           if (error.message === "Unauthorized") {
             log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
