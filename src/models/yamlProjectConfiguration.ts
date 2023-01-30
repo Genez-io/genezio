@@ -1,7 +1,8 @@
 import path from "path";
 import yaml from "yaml";
-import { fileExists, getFileDetails, writeToFile } from "../utils/file";
+import { getFileDetails, writeToFile } from "../utils/file";
 import { regions } from "../utils/configs";
+import { isValidCron } from 'cron-validator'
 
 export enum TriggerType {
   jsonrpc = "jsonrpc",
@@ -43,7 +44,6 @@ export type ParsedCronFields = {
   dayOfMonth: string;
   month: string;
   dayOfWeek: string;
-  year: string;
 }
 
 export class YamlMethodConfiguration {
@@ -82,9 +82,18 @@ export class YamlMethodConfiguration {
       throw new Error("The cron method is missing a cron string property.");
     }
 
-    // Check AWS 6 field format cron string
-    if (type == TriggerType.cron && !YamlMethodConfiguration.isCronStringValid(methodConfigurationYaml.cronString)) {
-      throw new Error("The cron string is not valid. Check AWS documentation for more details at this link https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions")
+    // Checkcron string format
+
+   
+    if (type == TriggerType.cron) {
+      if (!isValidCron(methodConfigurationYaml.cronString)) {
+        throw new Error("The cron string is not valid. Check https://crontab.guru/ for more information.");
+      }
+
+      const cronParts = methodConfigurationYaml.cronString.split(" ");
+      if (cronParts[2] != "*" && cronParts[4] != "*") {
+        throw new Error("The cron string is not valid. The day of the month and day of the week cannot be specified at the same time.");
+      }
     }
 
     return new YamlMethodConfiguration(
@@ -92,60 +101,6 @@ export class YamlMethodConfiguration {
       type,
       methodConfigurationYaml.cronString
     );
-  }
-
-  static isCronStringValid(unparsedCronString : string): boolean {
-    if (unparsedCronString === "* * * * * *") {
-      throw new Error("You cannot use * in both `dayOfWeek` and `dayOfMonth` fields." )
-    }
-    
-    const cronFields = unparsedCronString.split(' ');
-    if (cronFields.length != 6) {
-      throw new Error("Cron expression have six required fields with white space separator.")
-    }
-
-    const parsedCron : ParsedCronFields = {
-      minutes: cronFields[0],
-      hours: cronFields[1],
-      dayOfMonth: cronFields[2],
-      month: cronFields[3],
-      dayOfWeek: cronFields[4],
-      year: cronFields[5],
-    }
-
-    // See https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html#CronExpressions
-    const regexMinutes = new RegExp('([0-59])|(,)|(-)|(\\*)|(/)');
-    const regexHours = new RegExp('([0-23])|(,)|(-)|(\\*)|(/)');
-    const regexDayOfMonth = new RegExp('([1-31])|(,)|(-)|(\\*)|(/)|(\\?)|(L)|(W)');
-    const regexMonth = new RegExp('([1-12])|(,)|(-)|(\\*)|(/)|(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)');
-    const regexDayOfWeek = new RegExp('([1-7])|(,)|(-)|(\\*)|(/)|(\\?)|(L)|(#)|(SUN|MON|TUE|WED|THU|FRI|SAT)');
-    const regexYear = new RegExp('([1970-2199])|(,)|(-)|(\\*)|(/)');
-
-    if (!regexMinutes.test(parsedCron.minutes)) {
-      throw new Error("Cron field for `minutes` does not have a valid syntax.")
-    }
-
-    if (!regexHours.test(parsedCron.hours)) {
-      throw new Error("Cron field for `hours` does not have a valid syntax.")
-    }
-
-    if (!regexDayOfMonth.test(parsedCron.dayOfMonth)) {
-      throw new Error("Cron field for `dayOfMonth` does not have a valid syntax.")
-    }
-
-    if (!regexMonth.test(parsedCron.month)) {
-      throw new Error("Cron field for `month` does not have a valid syntax.")
-    }
-
-    if (!regexDayOfWeek.test(parsedCron.dayOfWeek)) {
-      throw new Error("Cron field for `dayOfWeek` does not have a valid syntax.")
-    }
-
-    if (!regexYear.test(parsedCron.year)) {
-      throw new Error("Cron field for `year` does not have a valid syntax.")
-    }
-
-    return true
   }
 }
 

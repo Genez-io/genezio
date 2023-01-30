@@ -17,4 +17,4 @@ classes:
     methods:
       - name: "deleteAllData"
         type: cron
-        cronString: "0 12 * * ? *"
+        cronString: "0 12 * * *"
