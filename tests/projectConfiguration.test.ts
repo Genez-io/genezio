@@ -132,7 +132,7 @@ describe("project configuration", () => {
         }).rejects.toThrowError()
     });
 
-    test('cronString with 5 fields should throw error', async () => {
+    test('cronString with 6 fields should throw error', async () => {
         await expect(async () => {
             const yaml = {
                 name: "test",
@@ -147,7 +147,7 @@ describe("project configuration", () => {
                     {
                         name: "method1",
                         type: "cron",
-                        cronString: "* * * * *"
+                        cronString: "* * * * * *"
                     }
                 ]
             }
@@ -242,7 +242,7 @@ describe("project configuration", () => {
                         {
                             name: "cronMethod",
                             type: "cron",
-                            cronString: "0/5 8-17 ? * MON-FRI *"
+                            cronString: "5 8-17 * * *"
                         }
                     ]
                 }
@@ -251,7 +251,7 @@ describe("project configuration", () => {
         const configuration = await YamlProjectConfiguration.create(yaml)
         expect(configuration.classes[0].methods[0].name).toEqual("cronMethod")
         expect(configuration.classes[0].methods[0].type).toEqual(TriggerType.cron)
-        expect(configuration.classes[0].methods[0].cronString).toEqual("0/5 8-17 ? * MON-FRI *")
+        expect(configuration.classes[0].methods[0].cronString).toEqual("5 8-17 * * *")
         return {}
     });
 
@@ -274,7 +274,7 @@ describe("project configuration", () => {
                         {
                             name: "cronMethod",
                             type: "cron",
-                            cronString: "* * * * ? *"
+                            cronString: "* * * * *"
                         }
                     ]
                 }
@@ -283,7 +283,7 @@ describe("project configuration", () => {
         const configuration = await YamlProjectConfiguration.create(yaml)
         expect(configuration.classes[0].methods[0].name).toEqual("cronMethod")
         expect(configuration.classes[0].methods[0].type).toEqual(TriggerType.cron)
-        expect(configuration.classes[0].methods[0].cronString).toEqual("* * * * ? *")
+        expect(configuration.classes[0].methods[0].cronString).toEqual("* * * * *")
         return {}
     });
 
@@ -312,7 +312,7 @@ describe("project configuration", () => {
                         {
                             name: "method3",
                             type: "cron",
-                            cronString: "* * * * * *"
+                            cronString: "* * 2 * 2"
                         }
                     ]
                 }
@@ -411,7 +411,7 @@ describe("project configuration", () => {
             {
               name: "method3",
               type: "cron",
-              cronString: "* * * * ? *"
+              cronString: "* * * * *"
             }
           ]
         }

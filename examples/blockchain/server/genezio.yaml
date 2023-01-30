@@ -26,10 +26,10 @@ classes:
     methods:
       - name: sync
         type: cron
-        cronString: "* * * * ? *"
+        cronString: "* * * * *"
   - path: ./cron.js
     type: jsonrpc
     methods:
       - name: "deleteAllData"
         type: cron
-        cronString: "* * * * ? *"
+        cronString: "* * * * *"
