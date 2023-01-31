@@ -33,6 +33,7 @@ import { AstSummary } from "./models/astSummary";
 import prefix from 'loglevel-plugin-prefix';
 import generateSdkRequest from "./requests/generateSdk";
 import { replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
+import { LocalEnvCronHandler, LocalEnvStartServerOutput } from "./models/localEnvInputParams";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
@@ -201,6 +202,7 @@ program
         let classesInfo = undefined;
         let handlers = undefined;
         let astSummary: AstSummary | undefined = undefined;
+        let cronHandlers: LocalEnvCronHandler[] = [];
         try {
           const sdk = await generateSdkRequest(projectConfiguration)
 
@@ -233,11 +235,17 @@ program
         }
 
         if (handlers != undefined) {
-          server = await startServer(
+          const startServerOutput: LocalEnvStartServerOutput = await startServer(
+            classesInfo,
             handlers,
             astSummary,
             Number(options.port)
           );
+
+          server = startServerOutput.server;
+          cronHandlers = startServerOutput.cronHandlers;
+
+
           server.on("error", (error: any) => {
             if (error.code === "EADDRINUSE") {
               log.error(
@@ -253,7 +261,7 @@ program
           log.info("\x1b[36m%s\x1b[0m", "Listening for changes...");
         }
 
-        await listenForChanges(projectConfiguration.sdk.path, server).catch(
+        await listenForChanges(projectConfiguration.sdk.path, server, cronHandlers).catch(
           (error: Error) => {
             log.error(error.message);
             exit(1);
