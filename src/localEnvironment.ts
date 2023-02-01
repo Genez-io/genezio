@@ -6,7 +6,7 @@ import { PORT_LOCAL_ENVIRONMENT } from "./variables";
 import { YamlProjectConfiguration } from "./models/yamlProjectConfiguration";
 import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import { NodeTsBundler } from "./bundlers/typescript/nodeTsBundler";
-import LocalEnvInputParameters from "./models/localEnvInputParams";
+import { LocalEnvInputParameters, LocalEnvCronHandler, LocalEnvStartServerOutput } from "./models/localEnvInputParams";
 import log from "loglevel";
 import { fileExists, readUTF8File } from "./utils/file";
 import { exit } from "process";
@@ -15,8 +15,9 @@ import url from "url"
 import { genezioRequestParser } from "./utils/genezioRequestParser";
 import { debugLogger } from "./utils/logging";
 import { BundlerInterface } from "./bundlers/bundler.interface";
-import { AstSummary } from "./models/generateSdkResponse";
+import { AstSummary, AstSummaryMethod } from "./models/generateSdkResponse";
 import { ProjectConfiguration } from "./models/projectConfiguration";
+import cron from 'node-cron';
 
 export function getEventObjectFromRequest(request: any) {
   const urlDetails = url.parse(request.url, true)
@@ -80,7 +81,7 @@ export function handleResponseforHttp(res: any, httpResponse: any) {
   }
 }
 
-export async function listenForChanges(sdkPathRelative: any, server: any) {
+export async function listenForChanges(sdkPathRelative: any, server: any, cronHandlers: LocalEnvCronHandler[]) {
   const cwd = process.cwd();
 
   let sdkPath = path.join(cwd, sdkPathRelative);
@@ -143,6 +144,7 @@ export async function listenForChanges(sdkPathRelative: any, server: any) {
           log.info("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
           if (server) {
             await server.close();
+            await stopCronJobs(cronHandlers);
           }
 
           watch.close();
@@ -153,15 +155,85 @@ export async function listenForChanges(sdkPathRelative: any, server: any) {
   });
 }
 
+export async function stopCronJobs(cronHandlers: LocalEnvCronHandler[]) {
+  for (const cronHandler of cronHandlers) {
+    if (cronHandler.cronObject) {
+      await cronHandler.cronObject.stop();
+    }
+  }
+}
+
+
+export async function prepareCronHandlers(
+  classesInfo: any,
+  handlers: any,
+) : Promise<LocalEnvCronHandler[]>
+{
+  const cronHandlers: LocalEnvCronHandler[] = [];
+  for (const classElement of classesInfo) {
+    const methods = classElement.methods;
+    for (const method of methods) {
+      if (method.type === "cron" && method.cronString) {
+        const cronHandler: LocalEnvCronHandler = {
+          className: classElement.className,
+          methodName: method.name,
+          cronString: method.cronString,
+          path: handlers[classElement.className].path,
+          cronObject: null
+        };
+        cronHandlers.push(cronHandler);
+      }
+    }
+  }
+  return cronHandlers;
+}
+
+export async function startCronHandlers(
+  cronHandlers: LocalEnvCronHandler[]
+): Promise<LocalEnvCronHandler[]> {
+
+  // create cron objects
+  for (const cronHandler of cronHandlers) {
+    cronHandler.cronObject = cron.schedule(cronHandler.cronString, async () => {
+      const reqToFunction = {
+        genezioEventType: "cron",
+        methodName: cronHandler.methodName,
+        cronString: cronHandler.cronString,
+      }
+
+      const path = cronHandler.path;
+
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const module = require(path);
+
+      await module.handler(reqToFunction);
+    }); 
+  }
+
+  // start cron jobs
+  for (const cronHandler of cronHandlers) {
+    cronHandler.cronObject.start();
+  }
+
+  return cronHandlers;
+}
+
+
 export async function startServer(
+  classesInfo: any,
   handlers: any,
   astSummary: any,
   port = PORT_LOCAL_ENVIRONMENT
-) {
+): Promise<LocalEnvStartServerOutput> {
   const app = express();
   app.use(cors());
   app.use(bodyParser.raw({ type: () => true }))
   app.use(genezioRequestParser);
+
+  let cronHandlers: LocalEnvCronHandler[] = await prepareCronHandlers(classesInfo, handlers);
+
+  cronHandlers = await startCronHandlers(cronHandlers);
+  
 
   app.get("/get-ast-summary", (req: any, res: any) => {
     res.setHeader("Content-Type", "application/json");
@@ -214,9 +286,14 @@ export async function startServer(
     handleResponseforHttp(res, response);
   });
 
-  return app.listen(port, () => {
+  const server = app.listen(port, () => {
     log.info(`Server listening on port ${port}`);
-  })
+  });
+
+  return {
+    cronHandlers,
+    server: server
+}
 }
 
 export async function prepareForLocalEnvironment(
@@ -284,9 +361,16 @@ export async function prepareForLocalEnvironment(
         const functionUrl = `${baseurl}${className}`;
         functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
 
+        const methods = astClassSummary?.methods.map((m: AstSummaryMethod) => {
+          return {
+            ...m,
+            cronString: element.methods.find((e: any) => e.name === m.name)?.cronString || null,
+          }
+        }) || [];
+
         classesInfo.push({
           className: className,
-          methods: astClassSummary?.methods,
+          methods: methods,
           path: element.path,
           functionUrl: baseurl
         });

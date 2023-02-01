@@ -1,4 +1,4 @@
-export default class LocalEnvInputParameters {
+export class LocalEnvInputParameters {
     // A map between file name and function URL
     functionUrlForFilePath: { [id: string]: string }
 
@@ -16,4 +16,17 @@ export default class LocalEnvInputParameters {
         this.handlers = handlers
         this.classesInfo = classesInfo
     }
+}
+
+export type LocalEnvCronHandler = {
+    className: string
+    methodName: string,
+    cronString: string,
+    path: string,
+    cronObject: any
+}
+
+export type LocalEnvStartServerOutput = {
+    server: any,
+    cronHandlers: LocalEnvCronHandler[]
 }
