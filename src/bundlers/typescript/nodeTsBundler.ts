@@ -55,7 +55,7 @@ export class NodeTsBundler implements BundlerInterface {
                         {
                             loader: "ts-loader",
                             options: {
-                                configFile: "./tsconfig.json",
+                                configFile: "tsconfig.json",
                                 onlyCompileBundledFiles: true
                             }
                         }
@@ -167,7 +167,7 @@ export class NodeTsBundler implements BundlerInterface {
                         {
                             loader: "ts-loader",
                             options: {
-                                configFile: "./tsconfig.json",
+                                configFile: "tsconfig.json",
                                 onlyCompileBundledFiles: true
                             }
                         }
