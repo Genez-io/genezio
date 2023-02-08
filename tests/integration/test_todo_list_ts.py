@@ -7,7 +7,7 @@ from utils import get_auth_token, get_project_id, read_config_file_to_json
 
 if __name__ == '__main__':
     print("Starting todo_list for Typescript test...")
-    os.chdir("../../examples/todo-list-ts/server/")
+    os.chdir("../../examples/typescript/todo-list/server/")
     configuration = read_config_file_to_json()
     print("Succesfully read `genezio.yaml`")
 

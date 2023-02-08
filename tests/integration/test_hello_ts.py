@@ -9,7 +9,7 @@ from utils import read_config_file_to_json, get_auth_token, get_project_id
 if __name__ == '__main__':
     print("Starting hello_world for Typescript test...")
 
-    os.chdir("../../examples/hello-world-ts/server/")
+    os.chdir("../../examples/typescript/hello-world/server/")
     configuration = read_config_file_to_json()
     print("Succesfully read `genezio.yaml`")
 
