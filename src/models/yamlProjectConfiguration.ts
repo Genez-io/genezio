@@ -187,14 +187,14 @@ export class YamlProjectConfiguration {
   region: string;
   sdk: YamlSdkConfiguration;
   classes: YamlClassConfiguration[];
-  frontend: YamlFrontend;
+  frontend?: YamlFrontend;
 
   constructor(
     name: string,
     region: string,
     sdk: YamlSdkConfiguration,
     classes: YamlClassConfiguration[],
-    frontend: YamlFrontend,
+    frontend: YamlFrontend|undefined = undefined,
   ) {
     this.name = name;
     this.region = region;
@@ -272,6 +272,15 @@ export class YamlProjectConfiguration {
         throw new Error(
           `The region is invalid. Please use a valid region.\n Region list: ${regions}`
         );
+      }
+    }
+
+    if (configurationFileContent.frontend) {
+      if (!configurationFileContent.frontend.path) {
+        throw new Error("The frontend.path value is not set.");
+      }
+      if (!configurationFileContent.frontend.subdomain) {
+        throw new Error("The frontend.subdomain value is not set.");
       }
     }
 
