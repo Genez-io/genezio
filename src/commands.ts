@@ -13,7 +13,7 @@ import {
 import { askQuestion } from "./utils/prompt";
 import { Document } from "yaml";
 import {
-  TriggerType
+  TriggerType, YamlProjectConfiguration
 } from "./models/yamlProjectConfiguration";
 import { getProjectConfiguration } from "./utils/configuration";
 import { REACT_APP_BASE_URL } from "./variables";
@@ -277,18 +277,6 @@ export async function deployClasses() {
   // wait for all promises to finish
   await Promise.all(promisesDeploy);
 
-  if (configuration.frontend) {
-    const result = await getFrontendPresignedURL(configuration.frontend.subdomain, configuration.name)
-    console.log(result)
-    const archivePath = path.join(
-      await createTemporaryFolder("genezio-"),
-      `${configuration.frontend.subdomain}.zip`
-    );
-    console.log(archivePath)
-    await zipDirectoryToDestinationPath(configuration.frontend.path, configuration.frontend.subdomain, archivePath)
-    await uploadContentToS3(result.presignedURL, archivePath, result.userId)
-  }
-
   const response = await deployRequest(projectConfiguration)
 
   const classesInfo = response.classes.map((c) => ({
@@ -307,6 +295,36 @@ export async function deployClasses() {
   console.log(
     `Your project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`
   );
+}
+
+export async function deployFrontend() {
+  const configuration = await getProjectConfiguration();
+
+  if (configuration.frontend) {
+    debugLogger.debug("Getting presigned URL...")
+    const result = await getFrontendPresignedURL(configuration.frontend.subdomain, configuration.name)
+
+    if (!result.presignedURL) {
+      throw new Error("An error occured (missing presignedUrl). Please try again!")
+    }
+
+    if (!result.userId) {
+      throw new Error("An error occured (missing userId). Please try again!")
+    }
+
+    const archivePath = path.join(
+      await createTemporaryFolder("genezio-"),
+      `${configuration.frontend.subdomain}.zip`
+    );
+    debugLogger.debug("Creating temporary folder", archivePath)
+
+    await zipDirectoryToDestinationPath(configuration.frontend.path, configuration.frontend.subdomain, archivePath)
+    debugLogger.debug("Content of the folder zipped. Uploading to S3.")
+    await uploadContentToS3(result.presignedURL, archivePath, result.userId)
+    debugLogger.debug("Uploaded to S3.")
+  } else {
+    throw new Error("No frontend entry in genezion configuration file.")
+  }
 }
 
 export function reportSuccess(

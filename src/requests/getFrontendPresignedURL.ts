@@ -32,10 +32,7 @@ export async function getFrontendPresignedURL (
         headers: {Authorization: `Bearer ${authToken}` },
         maxContentLength: Infinity,
         maxBodyLength: Infinity
-      }).catch((error: Error) => {
-        console.log("AICI!!", error)
-        throw error;
-      });
+      })
     
     if (response.data.status === "error") {
         throw new Error(response.data.message);
