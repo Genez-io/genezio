@@ -10,7 +10,7 @@ NODE_FILENAME = "../client/test-hello-sdk.js"
 if __name__ == '__main__':
     print("Starting hello_world for Javascript local test...")
 
-    os.chdir("../../examples/hello-world/server/")
+    os.chdir("../../examples/javascript/hello-world/server/")
     configuration = gnz_utils.read_config_file_to_json()
     print("Succesfully read `genezio.yaml`")
 

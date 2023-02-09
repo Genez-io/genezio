@@ -7,7 +7,7 @@ from utils import get_auth_token, get_project_id, read_config_file_to_json
 
 if __name__ == '__main__':
     print("Starting blockchain test...")
-    os.chdir("../../examples/blockchain/server/")
+    os.chdir("../../examples/javascript/blockchain/server/")
     configuration = read_config_file_to_json()
     print("Succesfully read `genezio.yaml`")
 

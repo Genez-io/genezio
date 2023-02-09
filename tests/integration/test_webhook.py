@@ -93,7 +93,7 @@ def testFailHandleMultipartDataRequest(deployed_urls):
 
 if __name__ == '__main__':
     # print("Starting webhook test...")
-    os.chdir("../../examples/webhook/server")
+    os.chdir("../../examples/javascript/webhook/server")
     configuration = read_config_file_to_json()
     print("Succesfully read `genezio.yaml`")
     

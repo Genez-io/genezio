@@ -1,0 +1,4 @@
+[submodule "genezio-examples"]
+	path = examples
+	url = https://github.com/Genez-io/genezio-examples
+	branch = "master"
