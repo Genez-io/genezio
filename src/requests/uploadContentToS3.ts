@@ -5,6 +5,7 @@ import { getAuthToken } from "../utils/accounts";
 export async function uploadContentToS3(
     presignedURL: string,
     archivePath: string,
+    userId?: string,
 ) {
     if(!presignedURL) {
         throw new Error("Missing presigned URL");
@@ -23,15 +24,21 @@ export async function uploadContentToS3(
     }
 
     const zipToUpload = fs.readFileSync(archivePath)
+    const headers: any = {"Content-Type": "application/octet-stream", }
 
+    if (userId) {
+        headers["x-amz-meta-userid"] = userId
+    }
+    
     const response: any = await axios({
         method: "PUT",
         url: presignedURL,
         data: zipToUpload,
-        headers: {"Content-Type": "application/octet-stream"},
+        headers: headers,
         maxContentLength: Infinity,
         maxBodyLength: Infinity    
     }).catch((error : Error) => {
+        console.log("AICI", error)
         throw error
     });
 

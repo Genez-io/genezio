@@ -1,5 +1,8 @@
 name: todo-list
 region: us-east-1
+frontend:
+  path: ../client/build
+  subdomain: todolistuu
 sdk:
   language: js
   options:

@@ -7,7 +7,8 @@ import {
   createTemporaryFolder,
   fileExists,
   writeToFile,
-  zipDirectory
+  zipDirectory,
+  zipDirectoryToDestinationPath
 } from "./utils/file";
 import { askQuestion } from "./utils/prompt";
 import { Document } from "yaml";
@@ -38,6 +39,7 @@ import { BundlerInterface } from "./bundlers/bundler.interface";
 import { ProjectConfiguration } from "./models/projectConfiguration";
 import { replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
 import { GenerateSdkResponse } from "./models/generateSdkResponse"
+import { getFrontendPresignedURL } from "./requests/getFrontendPresignedURL";
 
 
 export async function addNewClass(classPath: string, classType: string) {
@@ -274,6 +276,18 @@ export async function deployClasses() {
 
   // wait for all promises to finish
   await Promise.all(promisesDeploy);
+
+  if (configuration.frontend) {
+    const result = await getFrontendPresignedURL(configuration.frontend.subdomain, configuration.name)
+    console.log(result)
+    const archivePath = path.join(
+      await createTemporaryFolder("genezio-"),
+      `${configuration.frontend.subdomain}.zip`
+    );
+    console.log(archivePath)
+    await zipDirectoryToDestinationPath(configuration.frontend.path, configuration.frontend.subdomain, archivePath)
+    await uploadContentToS3(result.presignedURL, archivePath, result.userId)
+  }
 
   const response = await deployRequest(projectConfiguration)
 

@@ -174,6 +174,11 @@ export class YamlClassConfiguration {
   }
 }
 
+export type YamlFrontend = {
+  path: string,
+  subdomain: string,
+}
+
 /**
  * This class represents the model for the YAML configuration file.
  */
@@ -182,17 +187,20 @@ export class YamlProjectConfiguration {
   region: string;
   sdk: YamlSdkConfiguration;
   classes: YamlClassConfiguration[];
+  frontend: YamlFrontend;
 
   constructor(
     name: string,
     region: string,
     sdk: YamlSdkConfiguration,
-    classes: YamlClassConfiguration[]
+    classes: YamlClassConfiguration[],
+    frontend: YamlFrontend,
   ) {
     this.name = name;
     this.region = region;
     this.sdk = sdk;
     this.classes = classes;
+    this.frontend = frontend;
   }
 
   static async create(
@@ -271,7 +279,8 @@ export class YamlProjectConfiguration {
       configurationFileContent.name,
       configurationFileContent.region || "us-east-1",
       sdk,
-      classes
+      classes,
+      configurationFileContent.frontend
     );
   }
 

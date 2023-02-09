@@ -1,6 +1,6 @@
 import mongoose from "mongoose"
 import { reqAuth, MONGO_DB_URI } from "./helper"
-import { TaskModel } from "./models/task"
+import { TaskModel } from "../models/task"
 
 export type Task = {
   _id: string,

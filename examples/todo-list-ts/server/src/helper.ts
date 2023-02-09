@@ -1,4 +1,4 @@
-import { ActiveSession } from "./models/activeSession"
+import { ActiveSession } from "../models/activeSession"
 import bcrypt from "bcryptjs"
 
 export type AuthResponse = {
