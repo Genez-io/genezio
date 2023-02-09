@@ -6,13 +6,13 @@ sdk:
     runtime: browser
   path: ../client/src/sdk
 classes:
-  - path: ./src/task.ts
+  - path: ./task.ts
     type: jsonrpc
     methods: []
-  - path: ./src/user.ts
+  - path: ./user.ts
     type: jsonrpc
     methods: []
-  - path: ./src/cron.ts
+  - path: ./cron.ts
     type: jsonrpc
     methods:
       - name: "deleteAllData"

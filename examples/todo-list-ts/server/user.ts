@@ -1,7 +1,7 @@
 import mongoose from "mongoose"
 import jwt from "jsonwebtoken"
-import { UserModel } from "../models/user"
-import { ActiveSession } from "../models/activeSession"
+import { UserModel } from "./models/user"
+import { ActiveSession } from "./models/activeSession"
 import { MONGO_DB_URI, saltedPassword, validatePassword } from "./helper"
 
 export type CreateUserResponse = {

@@ -1,6 +1,6 @@
-import { TaskModel } from "../models/task"
-import { UserModel } from "../models/user"
-import { ActiveSession } from "../models/activeSession"
+import { TaskModel } from "./models/task"
+import { UserModel } from "./models/user"
+import { ActiveSession } from "./models/activeSession"
 import mongoose from "mongoose"
 import { MONGO_DB_URI } from "./helper"
 
