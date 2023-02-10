@@ -40,7 +40,7 @@ export class Cron {
 
     try {
       await UserModel.deleteMany({});
-      console.log("Users deleted");
+      console.log("Users   deleted");
     } catch (error) {
       console.log("Error deleting users", error);
     }

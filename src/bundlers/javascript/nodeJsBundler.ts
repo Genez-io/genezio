@@ -28,6 +28,11 @@ export class NodeJsBundler implements BundlerInterface {
     filePath: string,
     mode: "development" | "production"
   ): Promise<any> {
+
+    if (mode === "development") {
+      return null;
+    }
+
     const { name } = getFileDetails(filePath);
     const outputFile = `${name}-processed.js`;
     const temporaryFolder = await createTemporaryFolder();
@@ -69,8 +74,38 @@ export class NodeJsBundler implements BundlerInterface {
     return uniqueDependenciesInfo;
   }
 
-  async #copyDependencies(dependenciesInfo: any, tempFolderPath: string) {
+  async #copyDependencies(dependenciesInfo: any, tempFolderPath: string, mode: "development" | "production") {
     const nodeModulesPath = path.join(tempFolderPath, "node_modules");
+
+    if (mode === "development") {
+      // copy all dependencies to node_modules folder in tmp folder in the fastest way without using dependenciesInfo
+       
+      // // 1. get all folders in node_modules folder without dot folders
+      // const dependencies = fs
+      //   .readdirSync(path.join(process.cwd(), "node_modules"))
+      //   .filter((folder) => !folder.startsWith("."));
+
+      // // create node_modules folder in tmp folder
+      // fs.mkdirSync(nodeModulesPath, { recursive: true });
+        
+
+      // // 2. symlink all dependencies to node_modules folder in tmp folder
+      // await Promise.all(
+      //   dependencies.map((dependency: string) => {
+      //     const dependencyPath = path.join(nodeModulesPath, dependency);
+
+      //     return fs.promises.symlink(
+      //       path.join(process.cwd(), "node_modules", dependency),
+      //       dependencyPath
+      //     );
+      //   })
+      // );
+
+      return;
+
+    }
+
+
     // copy all dependencies to node_modules folder
     await Promise.all(
       dependenciesInfo.map((dependency: any) => {
@@ -192,14 +227,12 @@ export class NodeJsBundler implements BundlerInterface {
     ]);
 
     debugLogger.debug(`[NodeJSBundler] Copy non js files and node_modules for file ${input.path}.`)
-    // 2. Copy non js files and node_modules
+    // 2. Copy non js files and node_modules and write index.js file
     await Promise.all([
       this.#copyNonJsFiles(temporaryFolder),
-      this.#copyDependencies(dependenciesInfo, temporaryFolder)
+      this.#copyDependencies(dependenciesInfo, temporaryFolder, mode),
+      writeToFile(temporaryFolder, "index.js", lambdaHandler(`"${input.configuration.name}"`))
     ]);
-
-    // 3. Write index.js file
-    await writeToFile(temporaryFolder, "index.js", lambdaHandler(`"${input.configuration.name}"`));
 
     return {
       ...input,

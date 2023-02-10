@@ -6,26 +6,32 @@ import { PORT_LOCAL_ENVIRONMENT } from "./variables";
 import { YamlProjectConfiguration } from "./models/yamlProjectConfiguration";
 import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import { NodeTsBundler } from "./bundlers/typescript/nodeTsBundler";
-import { LocalEnvInputParameters, LocalEnvCronHandler, LocalEnvStartServerOutput } from "./models/localEnvInputParams";
+import {
+  LocalEnvInputParameters,
+  LocalEnvCronHandler,
+  LocalEnvStartServerOutput
+} from "./models/localEnvInputParams";
 import log from "loglevel";
 import { fileExists, readUTF8File } from "./utils/file";
 import { exit } from "process";
-import bodyParser from 'body-parser'
-import url from "url"
+import bodyParser from "body-parser";
+import url from "url";
 import { genezioRequestParser } from "./utils/genezioRequestParser";
 import { debugLogger } from "./utils/logging";
 import { BundlerInterface } from "./bundlers/bundler.interface";
 import { AstSummary, AstSummaryMethod } from "./models/generateSdkResponse";
 import { ProjectConfiguration } from "./models/projectConfiguration";
-import cron from 'node-cron';
+import cron from "node-cron";
 
 export function getEventObjectFromRequest(request: any) {
-  const urlDetails = url.parse(request.url, true)
+  const urlDetails = url.parse(request.url, true);
 
   return {
     headers: request.headers,
-    rawQueryString: urlDetails.search ? urlDetails.search?.slice(1) : '',
-    queryStringParameters: urlDetails.search ? Object.assign({}, urlDetails.query) : undefined,
+    rawQueryString: urlDetails.search ? urlDetails.search?.slice(1) : "",
+    queryStringParameters: urlDetails.search
+      ? Object.assign({}, urlDetails.query)
+      : undefined,
     timeEpoch: Date.now(),
     body: request.body,
     isBase64Encoded: request.isBase64Encoded,
@@ -57,13 +63,13 @@ export function handleResponseforHttp(res: any, httpResponse: any) {
       res.setHeader(header.toLowerCase(), httpResponse.headers[header]);
 
       if (header.toLowerCase() === "content-type") {
-        contentTypeHeader = httpResponse.headers[header]
+        contentTypeHeader = httpResponse.headers[header];
       }
     }
   }
 
   if (!contentTypeHeader) {
-    res.setHeader("content-type", "application/json")
+    res.setHeader("content-type", "application/json");
   }
 
   if (httpResponse.statusCode) {
@@ -71,7 +77,7 @@ export function handleResponseforHttp(res: any, httpResponse: any) {
   }
 
   if (httpResponse.isBase64Encoded === true) {
-    res.end(Buffer.from(httpResponse.body, "base64"))
+    res.end(Buffer.from(httpResponse.body, "base64"));
   } else {
     if (Buffer.isBuffer(httpResponse.body)) {
       res.end(JSON.stringify(httpResponse.body.toJSON()));
@@ -81,13 +87,16 @@ export function handleResponseforHttp(res: any, httpResponse: any) {
   }
 }
 
-export async function listenForChanges(sdkPathRelative: any, server: any, cronHandlers: LocalEnvCronHandler[]) {
+export async function listenForChanges(
+  sdkPathRelative: any,
+  server: any,
+  cronHandlers: LocalEnvCronHandler[]
+) {
   const cwd = process.cwd();
 
   let sdkPath = path.join(cwd, sdkPathRelative);
 
   let ignoredPathsFromGenezioIgnore: string[] = [];
-
 
   // check for .genezioignore file
   const ignoreFilePath = path.join(cwd, ".genezioignore");
@@ -99,7 +108,7 @@ export async function listenForChanges(sdkPathRelative: any, server: any, cronHa
     // remove empty lines
     const ignoreFileLinesWithoutEmptyLines = ignoreFileLines.filter(
       (line) => line !== "" && !line.startsWith("#")
-    )
+    );
 
     ignoredPathsFromGenezioIgnore = ignoreFileLinesWithoutEmptyLines.map(
       (line: string) => {
@@ -110,8 +119,6 @@ export async function listenForChanges(sdkPathRelative: any, server: any, cronHa
       }
     );
   }
-
-
 
   return new Promise((resolve) => {
     // delete / if sdkPath ends with /
@@ -143,8 +150,9 @@ export async function listenForChanges(sdkPathRelative: any, server: any, cronHa
           console.clear();
           log.info("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
           if (server) {
-            await server.close();
-            await stopCronJobs(cronHandlers);
+            // removed await for now for faster reloads
+            server.close();
+            stopCronJobs(cronHandlers);
           }
 
           watch.close();
@@ -163,12 +171,10 @@ export async function stopCronJobs(cronHandlers: LocalEnvCronHandler[]) {
   }
 }
 
-
 export async function prepareCronHandlers(
   classesInfo: any,
-  handlers: any,
-) : Promise<LocalEnvCronHandler[]>
-{
+  handlers: any
+): Promise<LocalEnvCronHandler[]> {
   const cronHandlers: LocalEnvCronHandler[] = [];
   for (const classElement of classesInfo) {
     const methods = classElement.methods;
@@ -191,23 +197,23 @@ export async function prepareCronHandlers(
 export async function startCronHandlers(
   cronHandlers: LocalEnvCronHandler[]
 ): Promise<LocalEnvCronHandler[]> {
-
   // create cron objects
   for (const cronHandler of cronHandlers) {
     cronHandler.cronObject = cron.schedule(cronHandler.cronString, async () => {
       const reqToFunction = {
         genezioEventType: "cron",
         methodName: cronHandler.methodName,
-        cronString: cronHandler.cronString,
-      }
+        cronString: cronHandler.cronString
+      };
 
-      const path = cronHandler.path;
+      const pathStr = cronHandler.path;
+ 
 
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const module = require(path);
+      const module = require(pathStr);
 
       await module.handler(reqToFunction);
-    }); 
+    });
   }
 
   // start cron jobs
@@ -218,7 +224,6 @@ export async function startCronHandlers(
   return cronHandlers;
 }
 
-
 export async function startServer(
   classesInfo: any,
   handlers: any,
@@ -227,13 +232,15 @@ export async function startServer(
 ): Promise<LocalEnvStartServerOutput> {
   const app = express();
   app.use(cors());
-  app.use(bodyParser.raw({ type: () => true }))
+  app.use(bodyParser.raw({ type: () => true }));
   app.use(genezioRequestParser);
 
-  let cronHandlers: LocalEnvCronHandler[] = await prepareCronHandlers(classesInfo, handlers);
+  let cronHandlers: LocalEnvCronHandler[] = await prepareCronHandlers(
+    classesInfo,
+    handlers
+  );
 
   cronHandlers = await startCronHandlers(cronHandlers);
-  
 
   app.get("/get-ast-summary", (req: any, res: any) => {
     res.setHeader("Content-Type", "application/json");
@@ -249,11 +256,18 @@ export async function startServer(
       return;
     }
 
-    const path = localHandler.path;
-    log.debug(`Request received for ${req.params.className}.`);
+    const pathStr = localHandler.path;
+    debugLogger.debug(`Request received for ${req.params.className}.`);
+
+    process.env.NODE_PATH = path.join(process.cwd(), "node_modules");
+
+    debugLogger.debug(`NODE_PATH: ${process.env.NODE_PATH}`);
 
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const module = require(path);
+    require("module").Module._initPaths();
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const module = await import(pathStr)
+
 
     const response = await module.handler(reqToFunction);
 
@@ -262,7 +276,7 @@ export async function startServer(
 
   app.all(`/:className/:methodName`, async (req: any, res: any) => {
     const reqToFunction = getEventObjectFromRequest(req);
-    log.debug(`HTTP Request received ${req.method} ${req.url}.`);
+    debugLogger.debug(`HTTP Request received ${req.method} ${req.url}.`);
 
     const handler = handlers[req.params.className];
     if (!handler) {
@@ -293,7 +307,7 @@ export async function startServer(
   return {
     cronHandlers,
     server: server
-}
+  };
 }
 
 export async function prepareForLocalEnvironment(
@@ -310,7 +324,10 @@ export async function prepareForLocalEnvironment(
     functionUrl: string;
   }[] = [];
 
-  const projectConfiguration = new ProjectConfiguration(yamlProjectConfiguration, astSummary);
+  const projectConfiguration = new ProjectConfiguration(
+    yamlProjectConfiguration,
+    astSummary
+  );
 
   const promises = projectConfiguration.classes.map(async (element: any) => {
     if (!(await fileExists(element.path))) {
@@ -319,7 +336,9 @@ export async function prepareForLocalEnvironment(
       );
       exit(1);
     }
-    const astClassSummary = astSummary.classes.find((c) => c.path === element.path)
+    const astClassSummary = astSummary.classes.find(
+      (c) => c.path === element.path
+    );
 
     if (!astClassSummary) {
       debugLogger.debug(
@@ -328,15 +347,15 @@ export async function prepareForLocalEnvironment(
       return Promise.resolve();
     }
 
-    let bundler: BundlerInterface
+    let bundler: BundlerInterface;
     switch (element.language) {
       case ".ts": {
         bundler = new NodeTsBundler();
-        break
+        break;
       }
       case ".js": {
         bundler = new NodeJsBundler();
-        break
+        break;
       }
       default: {
         log.error(
@@ -346,7 +365,9 @@ export async function prepareForLocalEnvironment(
       }
     }
 
-    debugLogger.debug(`The bundling process has started for file ${element.path}...`)
+    debugLogger.debug(
+      `The bundling process has started for file ${element.path}...`
+    );
     return bundler
       .bundle({
         configuration: element,
@@ -354,19 +375,22 @@ export async function prepareForLocalEnvironment(
         extra: { mode: "development" }
       })
       .then((output) => {
-        debugLogger.debug("The bundling process finished successfully.")
+        debugLogger.debug("The bundling process finished successfully.");
         const className = astClassSummary.name;
         const handlerPath = path.join(output.path, "index.js");
         const baseurl = `http://127.0.0.1:${port}/`;
         const functionUrl = `${baseurl}${className}`;
         functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
 
-        const methods = astClassSummary?.methods.map((m: AstSummaryMethod) => {
-          return {
-            ...m,
-            cronString: element.methods.find((e: any) => e.name === m.name)?.cronString || null,
-          }
-        }) || [];
+        const methods =
+          astClassSummary?.methods.map((m: AstSummaryMethod) => {
+            return {
+              ...m,
+              cronString:
+                element.methods.find((e: any) => e.name === m.name)
+                  ?.cronString || null
+            };
+          }) || [];
 
         classesInfo.push({
           className: className,
