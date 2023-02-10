@@ -313,7 +313,8 @@ export async function startServer(
 export async function prepareForLocalEnvironment(
   yamlProjectConfiguration: YamlProjectConfiguration,
   astSummary: AstSummary,
-  port = PORT_LOCAL_ENVIRONMENT
+  port = PORT_LOCAL_ENVIRONMENT,
+  firstRun: boolean
 ): Promise<LocalEnvInputParameters> {
   const functionUrlForFilePath: any = {};
   const handlers: any = {};
@@ -372,7 +373,7 @@ export async function prepareForLocalEnvironment(
       .bundle({
         configuration: element,
         path: element.path,
-        extra: { mode: "development" }
+        extra: { mode: "development", firstRun: firstRun, tmpFolder: tmpFolder }
       })
       .then((output) => {
         debugLogger.debug("The bundling process finished successfully.");

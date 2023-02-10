@@ -74,35 +74,16 @@ export class NodeJsBundler implements BundlerInterface {
     return uniqueDependenciesInfo;
   }
 
-  async #copyDependencies(dependenciesInfo: any, tempFolderPath: string, mode: "development" | "production") {
+  async #copyDependencies(dependenciesInfo: any, tempFolderPath: string, mode: "development" | "production", firstRun: boolean) {
     const nodeModulesPath = path.join(tempFolderPath, "node_modules");
 
     if (mode === "development") {
-      // copy all dependencies to node_modules folder in tmp folder in the fastest way without using dependenciesInfo
-       
-      // // 1. get all folders in node_modules folder without dot folders
-      // const dependencies = fs
-      //   .readdirSync(path.join(process.cwd(), "node_modules"))
-      //   .filter((folder) => !folder.startsWith("."));
-
-      // // create node_modules folder in tmp folder
-      // fs.mkdirSync(nodeModulesPath, { recursive: true });
-        
-
-      // // 2. symlink all dependencies to node_modules folder in tmp folder
-      // await Promise.all(
-      //   dependencies.map((dependency: string) => {
-      //     const dependencyPath = path.join(nodeModulesPath, dependency);
-
-      //     return fs.promises.symlink(
-      //       path.join(process.cwd(), "node_modules", dependency),
-      //       dependencyPath
-      //     );
-      //   })
-      // );
-
-      return;
-
+      if (firstRun) {
+        // copy complete node_modules folder
+        await fsExtra.copy(path.join(process.cwd(), "node_modules"), nodeModulesPath);
+        return;
+      }
+      return
     }
 
 
@@ -211,9 +192,18 @@ export class NodeJsBundler implements BundlerInterface {
 
 
   async bundle(input: BundlerInput): Promise<BundlerOutput> {
-    const temporaryFolder = await createTemporaryFolder();
     const mode =
       (input.extra ? input.extra["mode"] : undefined) || "production";
+    const firstRun =
+      (input.extra ? input.extra["firstRun"] : true) || true;
+    const tmpFolder = (input.extra ? input.extra["tmpFolder"] : undefined) || undefined;
+    
+    if (mode === "production" && !tmpFolder) {
+      throw new Error("tmpFolder is required in production mode.")
+    }
+
+      const temporaryFolder = mode === "production" ? await createTemporaryFolder() : tmpFolder;
+
 
     // 1. Run webpack to get dependenciesInfo and the packed file
     debugLogger.debug(`[NodeJSBundler] Get the list of node modules and bundling the javascript code for file ${input.path}.`)
@@ -230,7 +220,7 @@ export class NodeJsBundler implements BundlerInterface {
     // 2. Copy non js files and node_modules and write index.js file
     await Promise.all([
       this.#copyNonJsFiles(temporaryFolder),
-      this.#copyDependencies(dependenciesInfo, temporaryFolder, mode),
+      this.#copyDependencies(dependenciesInfo, temporaryFolder, mode, firstRun),
       writeToFile(temporaryFolder, "index.js", lambdaHandler(`"${input.configuration.name}"`))
     ]);
 

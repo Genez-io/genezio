@@ -192,6 +192,8 @@ program
 
     spinner.start();
 
+    let firstRun = true;
+
     try {
       // eslint-disable-next-line no-constant-condition
       while (true) {
@@ -210,8 +212,11 @@ program
           const localEnvInfo = await prepareForLocalEnvironment(
             projectConfiguration,
             sdk.astSummary,
-            Number(options.port)
+            Number(options.port),
+            firstRun
           );
+
+          firstRun = false;
 
           functionUrlForFilePath = localEnvInfo.functionUrlForFilePath;
           classesInfo = localEnvInfo.classesInfo;

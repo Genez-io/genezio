@@ -1,5 +1,5 @@
-// const mongoose = require('mongoose');
-import { mongoose } from "mongoose"
+const mongoose = require('mongoose');
+
 const activeSessionSchema = new mongoose.Schema({
   token: {
     type: String,
