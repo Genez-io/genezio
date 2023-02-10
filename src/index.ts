@@ -16,7 +16,8 @@ import { exit } from "process";
 import { AxiosError } from "axios";
 import {
   PORT_LOCAL_ENVIRONMENT,
-  ENABLE_DEBUG_LOGS_BY_DEFAULT
+  ENABLE_DEBUG_LOGS_BY_DEFAULT,
+  LOCAL_TEST_INTERFACE_URL
 } from "./variables";
 import {
   listenForChanges,
@@ -235,6 +236,7 @@ program
         }
 
         if (handlers != undefined) {
+          log.info(`Test your code at ${LOCAL_TEST_INTERFACE_URL}?port=${options.port}`);
           const startServerOutput: LocalEnvStartServerOutput = await startServer(
             classesInfo,
             handlers,
