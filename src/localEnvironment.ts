@@ -259,14 +259,8 @@ export async function startServer(
     const pathStr = localHandler.path;
     debugLogger.debug(`Request received for ${req.params.className}.`);
 
-    process.env.NODE_PATH = path.join(process.cwd(), "node_modules");
-
-    debugLogger.debug(`NODE_PATH: ${process.env.NODE_PATH}`);
-
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    require("module").Module._initPaths();
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const module = await import(pathStr)
+    const module = require(pathStr);
 
 
     const response = await module.handler(reqToFunction);
