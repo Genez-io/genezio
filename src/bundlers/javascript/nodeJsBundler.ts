@@ -74,14 +74,13 @@ export class NodeJsBundler implements BundlerInterface {
     return uniqueDependenciesInfo;
   }
 
-  async #copyDependencies(dependenciesInfo: any, tempFolderPath: string, mode: "development" | "production", firstRun: boolean) {
+  async #copyDependencies(dependenciesInfo: any, tempFolderPath: string, mode: "development" | "production") {
     const nodeModulesPath = path.join(tempFolderPath, "node_modules");
 
     if (mode === "development") {
-      if (firstRun) {
-        // copy complete node_modules folder
+      // copy node_modules folder to tmp folder if node_modules folder does not exist
+      if (!fs.existsSync(nodeModulesPath)) {
         await fsExtra.copy(path.join(process.cwd(), "node_modules"), nodeModulesPath);
-        return;
       }
       return
     }
@@ -194,15 +193,13 @@ export class NodeJsBundler implements BundlerInterface {
   async bundle(input: BundlerInput): Promise<BundlerOutput> {
     const mode =
       (input.extra ? input.extra["mode"] : undefined) || "production";
-    const firstRun =
-      (input.extra ? input.extra["firstRun"] : true) || true;
     const tmpFolder = (input.extra ? input.extra["tmpFolder"] : undefined) || undefined;
     
-    if (mode === "production" && !tmpFolder) {
-      throw new Error("tmpFolder is required in production mode.")
+    if (mode === "development" && !tmpFolder) {
+      throw new Error("tmpFolder is required in development mode.")
     }
 
-      const temporaryFolder = mode === "production" ? await createTemporaryFolder() : tmpFolder;
+    const temporaryFolder = mode === "production" ? await createTemporaryFolder() : tmpFolder;
 
 
     // 1. Run webpack to get dependenciesInfo and the packed file
@@ -213,14 +210,15 @@ export class NodeJsBundler implements BundlerInterface {
         input.configuration.path,
         temporaryFolder,
         mode
-      )
+      ),
+      mode === "development" ? this.#copyDependencies(null, temporaryFolder, mode) : Promise.resolve()
     ]);
 
     debugLogger.debug(`[NodeJSBundler] Copy non js files and node_modules for file ${input.path}.`)
     // 2. Copy non js files and node_modules and write index.js file
     await Promise.all([
       this.#copyNonJsFiles(temporaryFolder),
-      this.#copyDependencies(dependenciesInfo, temporaryFolder, mode, firstRun),
+      mode === "production" ? this.#copyDependencies(dependenciesInfo, temporaryFolder, mode) : Promise.resolve(),
       writeToFile(temporaryFolder, "index.js", lambdaHandler(`"${input.configuration.name}"`))
     ]);
 

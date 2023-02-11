@@ -12,7 +12,7 @@ import {
   LocalEnvStartServerOutput
 } from "./models/localEnvInputParams";
 import log from "loglevel";
-import { fileExists, readUTF8File } from "./utils/file";
+import { createTemporaryFolder, fileExists, readUTF8File } from "./utils/file";
 import { exit } from "process";
 import bodyParser from "body-parser";
 import url from "url";
@@ -20,7 +20,7 @@ import { genezioRequestParser } from "./utils/genezioRequestParser";
 import { debugLogger } from "./utils/logging";
 import { BundlerInterface } from "./bundlers/bundler.interface";
 import { AstSummary, AstSummaryMethod } from "./models/generateSdkResponse";
-import { ProjectConfiguration } from "./models/projectConfiguration";
+import { ClassConfiguration, ProjectConfiguration } from "./models/projectConfiguration";
 import cron from "node-cron";
 
 export function getEventObjectFromRequest(request: any) {
@@ -314,7 +314,13 @@ export async function prepareForLocalEnvironment(
   yamlProjectConfiguration: YamlProjectConfiguration,
   astSummary: AstSummary,
   port = PORT_LOCAL_ENVIRONMENT,
-  firstRun: boolean
+  classesInfoInput: {
+    className: any;
+    methods: any;
+    path: string;
+    functionUrl: string;
+    tmpFolder: string;
+  }[]
 ): Promise<LocalEnvInputParameters> {
   const functionUrlForFilePath: any = {};
   const handlers: any = {};
@@ -323,6 +329,7 @@ export async function prepareForLocalEnvironment(
     methods: any;
     path: string;
     functionUrl: string;
+    tmpFolder: string;
   }[] = [];
 
   const projectConfiguration = new ProjectConfiguration(
@@ -330,7 +337,7 @@ export async function prepareForLocalEnvironment(
     astSummary
   );
 
-  const promises = projectConfiguration.classes.map(async (element: any) => {
+  const promises = projectConfiguration.classes.map(async (element: ClassConfiguration) => {
     if (!(await fileExists(element.path))) {
       log.error(
         `\`${element.path}\` file does not exist at the indicated path.`
@@ -369,11 +376,12 @@ export async function prepareForLocalEnvironment(
     debugLogger.debug(
       `The bundling process has started for file ${element.path}...`
     );
+    const tmpFolder = classesInfoInput.find((c) => c.path === element.path)?.tmpFolder || await createTemporaryFolder();
     return bundler
       .bundle({
         configuration: element,
         path: element.path,
-        extra: { mode: "development", firstRun: firstRun, tmpFolder: tmpFolder }
+        extra: { mode: "development", tmpFolder: tmpFolder }
       })
       .then((output) => {
         debugLogger.debug("The bundling process finished successfully.");
@@ -397,7 +405,8 @@ export async function prepareForLocalEnvironment(
           className: className,
           methods: methods,
           path: element.path,
-          functionUrl: baseurl
+          functionUrl: baseurl,
+          tmpFolder: tmpFolder
         });
 
         handlers[className] = {

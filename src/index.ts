@@ -191,8 +191,7 @@ program
     }
 
     spinner.start();
-
-    let firstRun = true;
+    let classesInfo: { className: any; methods: any; path: string; functionUrl: string; tmpFolder: string }[] = [];
 
     try {
       // eslint-disable-next-line no-constant-condition
@@ -201,7 +200,6 @@ program
 
         let server: any = undefined;
         let functionUrlForFilePath = undefined;
-        let classesInfo = undefined;
         let handlers = undefined;
         let astSummary: AstSummary | undefined = undefined;
         let cronHandlers: LocalEnvCronHandler[] = [];
@@ -213,10 +211,9 @@ program
             projectConfiguration,
             sdk.astSummary,
             Number(options.port),
-            firstRun
+            classesInfo
           );
 
-          firstRun = false;
 
           functionUrlForFilePath = localEnvInfo.functionUrlForFilePath;
           classesInfo = localEnvInfo.classesInfo;
