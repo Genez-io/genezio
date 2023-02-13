@@ -8,7 +8,8 @@ import {
   deployClasses,
   reportSuccess,
   handleLogin,
-  lsHandler
+  lsHandler,
+  generateSdkHandler
 } from "./commands";
 import { setDebuggingLoggerLogLevel } from "./utils/logging";
 import { asciiCapybara, GENEZIO_NOT_AUTH_ERROR_MSG } from "./utils/strings";
@@ -374,6 +375,57 @@ program
     if (result) {
       log.info("Your project has been deleted");
     }
+  });
+
+program
+  .command("generateSdk")
+  .option("-l, --logLevel <logLevel>", "Show debug logs to console.")
+  .option("-lang, --language <language>", "Language of the SDK to generate.")
+  .option("-p, --path <path>", "Path to the directory where the SDK will be generated.")
+  .description("Generate an SDK for your project.")
+  .action(async (options: any) => {
+    setDebuggingLoggerLogLevel(options.logLevel);
+
+    spinner.start();
+
+    // check if user is logged in
+    const authToken = await getAuthToken();
+    if (!authToken) {
+      log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
+      exit(1);
+    }
+
+    const language = options.language;
+    const sdkPath = options.path;
+
+    if (!language) {
+      log.error("Please specify a language for the SDK to generate.");
+      exit(1);
+    }
+
+    // check if language is supported
+    if (language !== "ts" && language !== "js" && language !== "swift") {
+      log.error("The language you specified is not supported. Please use one of the following: ts, js, swift.");
+      exit(1);
+    }
+
+    if (!sdkPath) {
+      log.error("Please specify a path for the SDK to generate.");
+      exit(1);
+    }
+
+    await generateSdkHandler(language, sdkPath).catch((error: AxiosError) => {
+      if (error.response?.status == 401) {
+        log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
+      } else {
+        log.error(error.message);
+      }
+      exit(1);
+    });
+
+    console.log("Your SDK has been generated successfully in " + sdkPath + "");
+
+    spinner.stop(true);
   });
 
 program.parse();
