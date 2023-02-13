@@ -399,7 +399,7 @@ program
     const sdkPath = options.path;
 
     if (!language) {
-      log.error("Please specify a language for the SDK to generate.");
+      log.error("Please specify a language for the SDK to generate using --language <language>.");
       exit(1);
     }
 
@@ -410,7 +410,7 @@ program
     }
 
     if (!sdkPath) {
-      log.error("Please specify a path for the SDK to generate.");
+      log.error("Please specify a path for the SDK to generate using --path <path>.");
       exit(1);
     }
 
