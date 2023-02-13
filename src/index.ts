@@ -315,7 +315,7 @@ program
 program
   .command("ls")
   .argument("[identifier]", "Name or ID of the project you want to display.")
-  .option("-l, --logLevel <logLevel>", "Show debug logs to console.")
+  .option("--logLevel <logLevel>", "Show debug logs to console.")
   .option("-l, --long-listed", "List more details for each project")
   .description(
     "Display details of your projects. You can view them all at once or display a particular one by providing its name or ID."
