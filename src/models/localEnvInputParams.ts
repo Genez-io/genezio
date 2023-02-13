@@ -6,12 +6,12 @@ export class LocalEnvInputParameters {
     handlers: { [id: string]: string }
 
     // Info about the classes.
-    classesInfo: { className: any; methods: any; path: string; functionUrl: string; }[]
+    classesInfo: { className: any; methods: any; path: string; functionUrl: string; tmpFolder: string }[]
 
     constructor(
         functionurlForFilePath: { [id: string]: string },
         handlers: { [id: string]: string },
-        classesInfo: { className: any; methods: any; path: string; functionUrl: string; }[]) {
+        classesInfo: { className: any; methods: any; path: string; functionUrl: string; tmpFolder: string }[]) {
         this.functionUrlForFilePath = functionurlForFilePath
         this.handlers = handlers
         this.classesInfo = classesInfo
