@@ -7,15 +7,16 @@ import {
   createTemporaryFolder,
   fileExists,
   writeToFile,
-  zipDirectory
+  zipDirectory,
+  zipDirectoryToDestinationPath
 } from "./utils/file";
 import { askQuestion } from "./utils/prompt";
 import { Document } from "yaml";
 import {
-  TriggerType
+  TriggerType, Language,
 } from "./models/yamlProjectConfiguration";
 import { getProjectConfiguration } from "./utils/configuration";
-import { REACT_APP_BASE_URL } from "./variables";
+import { REACT_APP_BASE_URL, FRONTEND_DOMAIN } from "./variables";
 import log from "loglevel";
 import http from "http";
 import jsonBody from "body/json";
@@ -36,8 +37,10 @@ import { debugLogger } from "./utils/logging";
 import { BundlerComposer } from "./bundlers/bundlerComposer";
 import { BundlerInterface } from "./bundlers/bundler.interface";
 import { ProjectConfiguration } from "./models/projectConfiguration";
-import { replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
+import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
 import { GenerateSdkResponse } from "./models/generateSdkResponse"
+import { getFrontendPresignedURL } from "./requests/getFrontendPresignedURL";
+import getProjectInfo from "./requests/getProjectInfo";
 
 
 export async function addNewClass(classPath: string, classType: string) {
@@ -295,6 +298,38 @@ export async function deployClasses() {
   );
 }
 
+export async function deployFrontend(): Promise<string> {
+  const configuration = await getProjectConfiguration();
+
+  if (configuration.frontend) {
+    debugLogger.debug("Getting presigned URL...")
+    const result = await getFrontendPresignedURL(configuration.frontend.subdomain, configuration.name)
+
+    if (!result.presignedURL) {
+      throw new Error("An error occured (missing presignedUrl). Please try again!")
+    }
+
+    if (!result.userId) {
+      throw new Error("An error occured (missing userId). Please try again!")
+    }
+
+    const archivePath = path.join(
+      await createTemporaryFolder("genezio-"),
+      `${configuration.frontend.subdomain}.zip`
+    );
+    debugLogger.debug("Creating temporary folder", archivePath)
+
+    await zipDirectoryToDestinationPath(configuration.frontend.path, configuration.frontend.subdomain, archivePath)
+    debugLogger.debug("Content of the folder zipped. Uploading to S3.")
+    await uploadContentToS3(result.presignedURL, archivePath, result.userId)
+    debugLogger.debug("Uploaded to S3.")
+  } else {
+    throw new Error("No frontend entry in genezio configuration file.")
+  }
+
+  return `https://${configuration.frontend.subdomain}.${FRONTEND_DOMAIN}`
+}
+
 export function reportSuccess(
   classesInfo: any,
   sdkResponse: GenerateSdkResponse,
@@ -462,4 +497,61 @@ export async function handleLogin(accessToken: string) {
     const browserUrl = `${REACT_APP_BASE_URL}/cli/login?redirect_url=http://localhost:${port}/`;
     open(browserUrl);
   }
+}
+
+
+export async function generateSdkHandler(language: string, path: string) {
+  const configuration = await getProjectConfiguration();
+
+
+  configuration.sdk.language = language as Language;
+  configuration.sdk.path = path;
+
+  if (configuration.classes.length === 0) {
+    throw new Error(
+      "You don't have any class in specified in the genezio.yaml configuration file. Add a class with 'genezio addClass <className> <classType>'."
+    );
+  }
+
+  const sdkResponse = await generateSdkRequest(configuration).catch((error) => {
+    throw error;
+  });
+
+  // get all project classes
+  const projects = await listProjects(0).catch((error: any) => {
+    throw error;
+  });
+
+  // check if the project exists with the configuration project name, region
+  const project = projects.find(
+    (project: any) =>
+      project.name === configuration.name &&
+      project.region === configuration.region
+  );
+
+  if (!project) {
+    throw new Error(
+      `The project ${configuration.name} doesn't exist in the region ${configuration.region}. You must deploy it first with 'genezio deploy'.` 
+    );
+  }
+
+  // get project info
+  const completeProjectInfo = await getProjectInfo(project.id).catch(
+    (error: any) => {
+      throw error;
+    }
+  );
+
+  const classUrlMap: ClassUrlMap[] = [];
+
+  completeProjectInfo.classes.forEach((classInfo: any) => {
+    classUrlMap.push({
+      name: classInfo.name,
+      cloudUrl: classInfo.cloudUrl
+    });
+  });
+
+
+  await replaceUrlsInSdk(sdkResponse, classUrlMap)
+  await writeSdkToDisk(sdkResponse, configuration.sdk.language, configuration.sdk.path)
 }

@@ -8,7 +8,9 @@ import {
   deployClasses,
   reportSuccess,
   handleLogin,
-  lsHandler
+  lsHandler,
+  deployFrontend,
+  generateSdkHandler,
 } from "./commands";
 import { setDebuggingLoggerLogLevel } from "./utils/logging";
 import { asciiCapybara, GENEZIO_NOT_AUTH_ERROR_MSG } from "./utils/strings";
@@ -79,7 +81,7 @@ program
 
 program
   .command("init")
-  .option("-l, --logLevel <logLevel", "Show debug logs to console.")
+  .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .description("Create the initial configuration file for a genezio project.")
   .action(async (options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
@@ -93,7 +95,7 @@ program
 program
   .command("login")
   .argument("[accessToken]", "Personal access token.")
-  .option("-l, --logLevel <logLevel", "Show debug logs to console.")
+  .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .description("Authenticate with genezio platform to deploy your code.")
   .action(async (accessToken = "", options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
@@ -107,7 +109,8 @@ program
 
 program
   .command("deploy")
-  .option("-l, --logLevel <logLevel", "Show debug logs to console.")
+  .option("-f, --frontend", "Deploy the frontend application.")
+  .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .description("Deploy your project to the genezio infrastructure.")
   .action(async (options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
@@ -120,6 +123,21 @@ program
     }
 
     spinner.start();
+
+    if (options.frontend) {
+      log.info("Deploying your frontend to genezio infrastructure...");
+      let url;
+      try {
+        url = await deployFrontend()
+      } catch(error: any) {
+        log.error(error.message);
+        exit(1);
+      }
+      log.info(
+        "\x1b[36m%s\x1b[0m",
+        `Frontend successfully deployed at ${url}.`);
+      exit(0)
+    }
 
     log.info("Deploying your project to genezio infrastructure...");
     await deployClasses()
@@ -157,7 +175,7 @@ program
 
 program
   .command("addClass")
-  .option("-l, --logLevel <logLevel", "Show debug logs to console.")
+  .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .argument("<classPath>", "Path of the class you want to add.")
   .argument(
     "[<classType>]",
@@ -175,7 +193,7 @@ program
 
 program
   .command("local")
-  .option("-l, --logLevel <logLevel", "Show debug logs to console.")
+  .option("--logLevel <logLevel>", "Show debug logs to console.")
   .option(
     "-p, --port <port>",
     "Set the port your local server will be running on.",
@@ -192,6 +210,7 @@ program
     }
 
     spinner.start();
+    let classesInfo: { className: any; methods: any; path: string; functionUrl: string; tmpFolder: string }[] = [];
 
     try {
       // eslint-disable-next-line no-constant-condition
@@ -200,7 +219,6 @@ program
 
         let server: any = undefined;
         let functionUrlForFilePath = undefined;
-        let classesInfo = undefined;
         let handlers = undefined;
         let astSummary: AstSummary | undefined = undefined;
         let cronHandlers: LocalEnvCronHandler[] = [];
@@ -211,8 +229,10 @@ program
           const localEnvInfo = await prepareForLocalEnvironment(
             projectConfiguration,
             sdk.astSummary,
-            Number(options.port)
+            Number(options.port),
+            classesInfo
           );
+
 
           functionUrlForFilePath = localEnvInfo.functionUrlForFilePath;
           classesInfo = localEnvInfo.classesInfo;
@@ -278,7 +298,7 @@ program
 
 program
   .command("logout")
-  .option("-l, --logLevel <logLevel", "Show debug logs to console.")
+  .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .description("Logout from Genezio platform.")
   .action(async (options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
@@ -298,7 +318,7 @@ program
 
 program
   .command("account")
-  .option("-l, --logLevel <logLevel>", "Show debug logs to console.")
+  .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .description("Display information about the current account.")
   .action(async (options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
@@ -315,14 +335,14 @@ program
 program
   .command("ls")
   .argument("[identifier]", "Name or ID of the project you want to display.")
-  .option("--logLevel <logLevel>", "Show debug logs to console.")
+  .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .option("-l, --long-listed", "List more details for each project")
   .description(
     "Display details of your projects. You can view them all at once or display a particular one by providing its name or ID."
   )
   .action(async (identifier = "", options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
-  
+
     // check if user is logged in
     const authToken = await getAuthToken();
     if (!authToken) {
@@ -345,7 +365,7 @@ program
 program
   .command("delete")
   .argument("[projectId]", "ID of the project you want to delete.")
-  .option("-l, --logLevel <logLevel>", "Show debug logs to console.")
+  .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .option("-f, --force", "Skip confirmation prompt for deletion.", false)
   .description(
     "Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs."
@@ -374,6 +394,57 @@ program
     if (result) {
       log.info("Your project has been deleted");
     }
+  });
+
+program
+  .command("generateSdk")
+  .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
+  .option("-lang, --language <language>", "Language of the SDK to generate.")
+  .option("-p, --path <path>", "Path to the directory where the SDK will be generated.")
+  .description("Generate an SDK for your project.")
+  .action(async (options: any) => {
+    setDebuggingLoggerLogLevel(options.logLevel);
+
+    spinner.start();
+
+    // check if user is logged in
+    const authToken = await getAuthToken();
+    if (!authToken) {
+      log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
+      exit(1);
+    }
+
+    const language = options.language;
+    const sdkPath = options.path;
+
+    if (!language) {
+      log.error("Please specify a language for the SDK to generate using --language <language>.");
+      exit(1);
+    }
+
+    // check if language is supported
+    if (language !== "ts" && language !== "js" && language !== "swift") {
+      log.error("The language you specified is not supported. Please use one of the following: ts, js, swift.");
+      exit(1);
+    }
+
+    if (!sdkPath) {
+      log.error("Please specify a path for the SDK to generate using --path <path>.");
+      exit(1);
+    }
+
+    await generateSdkHandler(language, sdkPath).catch((error: AxiosError) => {
+      if (error.response?.status == 401) {
+        log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
+      } else {
+        log.error(error.message);
+      }
+      exit(1);
+    });
+
+    console.log("Your SDK has been generated successfully in " + sdkPath + "");
+
+    spinner.stop(true);
   });
 
 program.parse();
