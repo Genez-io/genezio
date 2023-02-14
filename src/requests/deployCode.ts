@@ -1,9 +1,11 @@
-import axios from "axios";
+import axios from "./axios";
 import { BACKEND_ENDPOINT } from "../variables";
 import { getAuthToken } from "../utils/accounts";
 import { debugLogger } from "../utils/logging";
 import { DeployCodeResponse } from "../models/deployCodeResponse";
 import { ProjectConfiguration } from "../models/projectConfiguration";
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const pjson = require("../../package.json");
 
 export async function deployRequest(
   projectConfiguration: ProjectConfiguration,
@@ -26,7 +28,10 @@ export async function deployRequest(
     method: "PUT",
     url: `${BACKEND_ENDPOINT}/core/deployment`,
     data: json,
-    headers: { Authorization: `Bearer ${authToken}` },
+    headers: {
+      Authorization: `Bearer ${authToken}`,
+      "Accept-Version": `genezio-cli/${pjson.version}`
+    },
     maxContentLength: Infinity,
     maxBodyLength: Infinity
   }).catch((error: Error) => {

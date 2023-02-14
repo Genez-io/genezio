@@ -1,6 +1,8 @@
-import axios from "axios";
+import axios from "./axios";
 import { getAuthToken } from "../utils/accounts";
 import { BACKEND_ENDPOINT } from "../variables";
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const pjson = require("../../package.json");
 
 export default async function listProjects(
   index = 0,
@@ -19,7 +21,10 @@ export default async function listProjects(
     method: "GET",
     url: `${BACKEND_ENDPOINT}/projects?startIndex=${index}&projectsLimit=${limit}`,
     timeout: 15000,
-    headers: { Authorization: `Bearer ${authToken}` }
+    headers: {
+      Authorization: `Bearer ${authToken}`,
+      "Accept-Version": pjson.version
+    }
   }).catch((error: Error) => {
     throw error;
   });
