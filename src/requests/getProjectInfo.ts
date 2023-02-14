@@ -1,6 +1,8 @@
-import axios from "axios";
+import axios from "./axios";
 import { getAuthToken } from "../utils/accounts";
 import { BACKEND_ENDPOINT } from "../variables";
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const pjson = require("../../package.json");
 
 export default async function getProjectInfo(
   projectId: string,
@@ -16,7 +18,10 @@ export default async function getProjectInfo(
   const response: any = await axios({
     method: "GET",
     url: `${BACKEND_ENDPOINT}/projects/${projectId}`,
-    headers: { Authorization: `Bearer ${authToken}` }
+    headers: {
+      Authorization: `Bearer ${authToken}`,
+      "Accept-Version": `genezio-cli/${pjson.version}`
+    }
   }).catch((error: Error) => {
     throw error;
   });

@@ -1,6 +1,8 @@
-import axios from "axios";
+import axios from "./axios";
 import { getAuthToken } from "../utils/accounts";
 import { BACKEND_ENDPOINT } from "../variables";
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const pjson = require("../../package.json");
 
 export async function getPresignedURL (
     region = "us-east-1",
@@ -31,7 +33,10 @@ export async function getPresignedURL (
         method: "GET",
         url: `${BACKEND_ENDPOINT}/core/deployment-url`, 
         data: json,
-        headers: {Authorization: `Bearer ${authToken}`},
+        headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Accept-Version": `genezio-cli/${pjson.version}`
+        },
         maxContentLength: Infinity,
         maxBodyLength: Infinity
       }).catch((error: Error) => {
@@ -45,6 +50,8 @@ export async function getPresignedURL (
     if (response.data?.error?.message) {
         throw new Error(response.data.error.message);
     }
+
+    console.log(response.data)
 
     return response.data;
 }

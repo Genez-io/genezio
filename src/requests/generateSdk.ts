@@ -1,6 +1,6 @@
 import FormData from "form-data";
 import fs from "fs";
-import axios from "axios";
+import axios from "./axios";
 import { fileExists } from "../utils/file";
 import { GENERATE_SDK_API_URL } from "../variables";
 import {
@@ -9,6 +9,8 @@ import {
 } from "../models/yamlProjectConfiguration";
 import { getAuthToken } from "../utils/accounts";
 import { GenerateSdkResponse } from "../models/generateSdkResponse";
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const pjson = require("../../package.json");
 
 export default async function generateSdkRequest(
   configuration: YamlProjectConfiguration
@@ -44,7 +46,11 @@ export default async function generateSdkRequest(
     url: `${GENERATE_SDK_API_URL}/js/generateSdk`,
     data: form,
     timeout: 100000,
-    headers: { ...form.getHeaders(), Authorization: `Bearer ${authToken}` }
+    headers: {
+      ...form.getHeaders(),
+      Authorization: `Bearer ${authToken}`,
+      "Accept-Version": `genezio-cli/${pjson.version}`
+    }
   }).catch((error: Error) => {
     throw error;
   });
