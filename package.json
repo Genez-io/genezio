@@ -57,6 +57,7 @@
     "path": "^0.12.7",
     "ts-loader": "^9.4.1",
     "typescript": "^4.8.4",
+    "unique-names-generator": "^4.7.1",
     "web3": "^1.8.0",
     "webpack": "^5.74.0",
     "webpack-node-externals": "^3.0.0",

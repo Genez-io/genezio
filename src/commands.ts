@@ -41,6 +41,7 @@ import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
 import { GenerateSdkResponse } from "./models/generateSdkResponse"
 import { getFrontendPresignedURL } from "./requests/getFrontendPresignedURL";
 import getProjectInfo from "./requests/getProjectInfo";
+import { generateRandomSubdomain } from "./utils/yaml";
 
 
 export async function addNewClass(classPath: string, classType: string) {
@@ -302,6 +303,15 @@ export async function deployFrontend(): Promise<string> {
   const configuration = await getProjectConfiguration();
 
   if (configuration.frontend) {
+    if (!configuration.frontend.subdomain) {
+      log.info("No subdomain specified in the genezio.yaml configuration file. We will provide a random one for you.")
+      configuration.frontend.subdomain = generateRandomSubdomain()
+
+      // write the configuration in yaml file
+      await configuration.addSubdomain(configuration.frontend.subdomain)
+    }
+
+
     debugLogger.debug("Getting presigned URL...")
     const result = await getFrontendPresignedURL(configuration.frontend.subdomain, configuration.name)
 
