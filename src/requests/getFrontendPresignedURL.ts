@@ -1,5 +1,6 @@
 import axios from "axios";
 import { getAuthToken } from "../utils/accounts";
+import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../utils/strings";
 import { BACKEND_ENDPOINT } from "../variables";
 
 export async function getFrontendPresignedURL (
@@ -14,9 +15,7 @@ export async function getFrontendPresignedURL (
     // Check if user is authenticated
     const authToken = await getAuthToken()
     if (!authToken) {
-        throw new Error(
-            "You are not logged in. Run 'genezio login' before you deploy your function."
-        );
+        throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
 
     const json = JSON.stringify({

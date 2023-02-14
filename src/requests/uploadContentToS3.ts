@@ -38,7 +38,6 @@ export async function uploadContentToS3(
         maxContentLength: Infinity,
         maxBodyLength: Infinity    
     }).catch((error : Error) => {
-        console.log("AICI", error)
         throw error
     });
 
