@@ -81,7 +81,7 @@ program
 
 program
   .command("init")
-  .option("-l, --logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
+  .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .description("Create the initial configuration file for a genezio project.")
   .action(async (options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
@@ -95,7 +95,7 @@ program
 program
   .command("login")
   .argument("[accessToken]", "Personal access token.")
-  .option("-l, --logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
+  .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .description("Authenticate with genezio platform to deploy your code.")
   .action(async (accessToken = "", options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
@@ -110,7 +110,7 @@ program
 program
   .command("deploy")
   .option("-f, --frontend", "Deploy the frontend application.")
-  .option("-l, --logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
+  .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .description("Deploy your project to the genezio infrastructure.")
   .action(async (options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
@@ -175,7 +175,7 @@ program
 
 program
   .command("addClass")
-  .option("-l, --logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
+  .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .argument("<classPath>", "Path of the class you want to add.")
   .argument(
     "[<classType>]",
@@ -193,7 +193,7 @@ program
 
 program
   .command("local")
-  .option("-l, --logLevel <logLevel>", "Show debug logs to console.")
+  .option("--logLevel <logLevel>", "Show debug logs to console.")
   .option(
     "-p, --port <port>",
     "Set the port your local server will be running on.",
@@ -298,7 +298,7 @@ program
 
 program
   .command("logout")
-  .option("-l, --logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
+  .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .description("Logout from Genezio platform.")
   .action(async (options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
@@ -318,7 +318,7 @@ program
 
 program
   .command("account")
-  .option("-l, --logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
+  .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .description("Display information about the current account.")
   .action(async (options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
@@ -335,7 +335,7 @@ program
 program
   .command("ls")
   .argument("[identifier]", "Name or ID of the project you want to display.")
-  .option("-l, --logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
+  .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .option("-l, --long-listed", "List more details for each project")
   .description(
     "Display details of your projects. You can view them all at once or display a particular one by providing its name or ID."
@@ -365,7 +365,7 @@ program
 program
   .command("delete")
   .argument("[projectId]", "ID of the project you want to delete.")
-  .option("-l, --logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
+  .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .option("-f, --force", "Skip confirmation prompt for deletion.", false)
   .description(
     "Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs."
@@ -398,7 +398,7 @@ program
 
 program
   .command("generateSdk")
-  .option("-l, --logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
+  .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .option("-lang, --language <language>", "Language of the SDK to generate.")
   .option("-p, --path <path>", "Path to the directory where the SDK will be generated.")
   .description("Generate an SDK for your project.")
