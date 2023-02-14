@@ -43,6 +43,11 @@ export class NodeTsBundler implements BundlerInterface {
         filePath: string,
         mode: "development" | "production"
     ): Promise<any> {
+
+        if (mode === "development") {
+            return null;
+          }
+
         const dependencies: string[] = [];
         const { name } = getFileDetails(filePath);
         const outputFile = `${name}-processed.js`;
@@ -55,7 +60,7 @@ export class NodeTsBundler implements BundlerInterface {
                         {
                             loader: "ts-loader",
                             options: {
-                                configFile: "./tsconfig.json",
+                                configFile: "tsconfig.json",
                                 onlyCompileBundledFiles: true
                             }
                         }
@@ -108,8 +113,17 @@ export class NodeTsBundler implements BundlerInterface {
 
         return uniqueDependenciesInfo;
     }
-    async #copyDependencies(dependenciesInfo: any, tempFolderPath: string) {
+    async #copyDependencies(dependenciesInfo: any, tempFolderPath: string, mode: "development" | "production") {
         const nodeModulesPath = path.join(tempFolderPath, "node_modules");
+
+        if (mode === "development") {
+            // copy node_modules folder to tmp folder if node_modules folder does not exist
+            if (!fs.existsSync(nodeModulesPath)) {
+              await fsExtra.copy(path.join(process.cwd(), "node_modules"), nodeModulesPath);
+            }
+            return
+          }
+
         // copy all dependencies to node_modules folder
         await Promise.all(
             dependenciesInfo.map((dependency: any) => {
@@ -167,7 +181,7 @@ export class NodeTsBundler implements BundlerInterface {
                         {
                             loader: "ts-loader",
                             options: {
-                                configFile: "./tsconfig.json",
+                                configFile: "tsconfig.json",
                                 onlyCompileBundledFiles: true
                             }
                         }
@@ -237,11 +251,16 @@ export class NodeTsBundler implements BundlerInterface {
     
 
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
-        // const auxFolder = await createTemporaryFolder();
-        const temporaryFolder = await createTemporaryFolder();
         const mode =
             (input.extra ? input.extra["mode"] : undefined) || "production";
-
+        const tmpFolder = (input.extra ? input.extra["tmpFolder"] : undefined) || undefined;
+        
+        if (mode === "development" && !tmpFolder) {
+            throw new Error("tmpFolder is required in development mode.")
+        }
+    
+      const temporaryFolder = mode === "production" ? await createTemporaryFolder() : tmpFolder;
+  
         // 1. Create auxiliary folder and copy the entire project
         this.#generateTsconfigJson();
 
@@ -253,17 +272,17 @@ export class NodeTsBundler implements BundlerInterface {
                 input.configuration.path,
                 temporaryFolder,
                 mode
-            )
+            ),
+            mode === "development" ? this.#copyDependencies(null, temporaryFolder, mode) : Promise.resolve()
         ]);
 
-        // 3. Write index.js file
-        await writeToFile(temporaryFolder, "index.js", lambdaHandler(`"${input.configuration.name}"`));
-
         debugLogger.debug(`[NodeTSBundler] Copy non TS files and node_modules for file ${input.path}.`)
-        // 4. Copy non js files and node_modules
+        
+        // 2. Copy non js files and node_modules and write index.js file
         await Promise.all([
             this.#copyNonTsFiles(temporaryFolder),
-            this.#copyDependencies(dependenciesInfo, temporaryFolder)
+            mode === "production" ? this.#copyDependencies(dependenciesInfo, temporaryFolder, mode) : Promise.resolve(),
+            writeToFile(temporaryFolder, "index.js", lambdaHandler(`"${input.configuration.name}"`))
         ]);
 
         return {

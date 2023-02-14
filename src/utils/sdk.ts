@@ -5,7 +5,7 @@ import { writeToFile } from "./file"
 import { debugLogger } from "./logging"
 import log from "loglevel";
 
-type ClassUrlMap = {
+export type ClassUrlMap = {
     name: string
     cloudUrl: string
 }
@@ -15,6 +15,7 @@ type ClassUrlMap = {
  */
 export async function replaceUrlsInSdk(sdkResponse: GenerateSdkResponse, classUrlMap: ClassUrlMap[]) {
     sdkResponse.classFiles.forEach((c) => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const classContent = classUrlMap.find((classFile) => {
             return classFile.name === c.name
         })!
