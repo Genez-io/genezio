@@ -9,7 +9,8 @@ import {
   reportSuccess,
   handleLogin,
   lsHandler,
-  generateSdkHandler
+  deployFrontend,
+  generateSdkHandler,
 } from "./commands";
 import { setDebuggingLoggerLogLevel } from "./utils/logging";
 import { asciiCapybara, GENEZIO_NOT_AUTH_ERROR_MSG } from "./utils/strings";
@@ -108,6 +109,7 @@ program
 
 program
   .command("deploy")
+  .option("-f, --frontend", "Deploy the frontend application.")
   .option("-l, --logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .description("Deploy your project to the genezio infrastructure.")
   .action(async (options: any) => {
@@ -121,6 +123,21 @@ program
     }
 
     spinner.start();
+
+    if (options.frontend) {
+      log.info("Deploying your frontend to genezio infrastructure...");
+      let url;
+      try {
+        url = await deployFrontend()
+      } catch(error: any) {
+        log.error(error.message);
+        exit(1);
+      }
+      log.info(
+        "\x1b[36m%s\x1b[0m",
+        `Frontend successfully deployed at ${url}.`);
+      exit(0)
+    }
 
     log.info("Deploying your project to genezio infrastructure...");
     await deployClasses()
@@ -176,7 +193,7 @@ program
 
 program
   .command("local")
-  .option("-l, --logLevel <logLevel", "Show debug logs to console.")
+  .option("-l, --logLevel <logLevel>", "Show debug logs to console.")
   .option(
     "-p, --port <port>",
     "Set the port your local server will be running on.",
