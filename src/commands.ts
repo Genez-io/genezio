@@ -16,7 +16,7 @@ import {
   TriggerType, YamlProjectConfiguration
 } from "./models/yamlProjectConfiguration";
 import { getProjectConfiguration } from "./utils/configuration";
-import { REACT_APP_BASE_URL } from "./variables";
+import { REACT_APP_BASE_URL, FRONTEND_DOMAIN } from "./variables";
 import log from "loglevel";
 import http from "http";
 import jsonBody from "body/json";
@@ -297,7 +297,7 @@ export async function deployClasses() {
   );
 }
 
-export async function deployFrontend() {
+export async function deployFrontend(): Promise<string> {
   const configuration = await getProjectConfiguration();
 
   if (configuration.frontend) {
@@ -323,8 +323,10 @@ export async function deployFrontend() {
     await uploadContentToS3(result.presignedURL, archivePath, result.userId)
     debugLogger.debug("Uploaded to S3.")
   } else {
-    throw new Error("No frontend entry in genezion configuration file.")
+    throw new Error("No frontend entry in genezio configuration file.")
   }
+
+  return `https://${configuration.frontend.subdomain}.${FRONTEND_DOMAIN}`
 }
 
 export function reportSuccess(

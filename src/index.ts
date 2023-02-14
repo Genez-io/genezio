@@ -124,16 +124,17 @@ program
 
     if (options.frontend) {
       log.info("Deploying your frontend to genezio infrastructure...");
+      let url;
       try {
-        await deployFrontend()
+        url = await deployFrontend()
       } catch(error: any) {
         log.error(error.message);
-        exit(0);
+        exit(1);
       }
       log.info(
         "\x1b[36m%s\x1b[0m",
-        "Frontend successfully deployed!");
-      exit(1)
+        `Frontend successfully deployed at ${url}.`);
+      exit(0)
     }
 
     log.info("Deploying your project to genezio infrastructure...");
