@@ -279,9 +279,6 @@ export class YamlProjectConfiguration {
       if (!configurationFileContent.frontend.path) {
         throw new Error("The frontend.path value is not set.");
       }
-      if (!configurationFileContent.frontend.subdomain) {
-        throw new Error("The frontend.subdomain value is not set.");
-      }
     }
 
     return new YamlProjectConfiguration(
@@ -324,6 +321,10 @@ export class YamlProjectConfiguration {
         },
         path: this.sdk.path
       },
+      frontend: {
+        path: this.frontend?.path,
+        subdomain: this.frontend?.subdomain
+      },
       classes: this.classes.map((c) => ({
         path: c.path,
         type: c.type,
@@ -347,5 +348,13 @@ export class YamlProjectConfiguration {
         console.error(error.toString());
       }
     );
+  }
+
+  async addSubdomain(subdomain: string) {
+    this.frontend = {
+      path: this.frontend?.path || "./frontend/build",
+      subdomain: subdomain
+    };
+    await this.writeToFile();
   }
 }
