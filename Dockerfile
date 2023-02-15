@@ -22,9 +22,9 @@ RUN python3 -m pip install termcolor requests pyyaml
 FROM base AS test
 
 # Prepare examples for testing
-RUN cd examples/todo-list/server && npm install
-RUN cd examples/todo-list/client && npm install
-RUN cd examples/todo-list-ts/server && npm install
-RUN cd examples/todo-list-ts/client && npm install
-RUN cd examples/blockchain/server && npm install
-RUN cd examples/blockchain/client && npm install
+RUN cd examples/javascript/todo-list/server && npm install
+RUN cd examples/javascript/todo-list/client && npm install
+RUN cd examples/typescript/todo-list/server && npm install
+RUN cd examples/typescript/todo-list/client && npm install
+RUN cd examples/javascript/blockchain/server && npm install
+RUN cd examples/javascript/blockchain/client && npm install
