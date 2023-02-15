@@ -16,6 +16,7 @@ import {
   TriggerType, Language,
 } from "./models/yamlProjectConfiguration";
 import { getProjectConfiguration } from "./utils/configuration";
+import { printUninformativeLog } from "./utils/logging";
 import { REACT_APP_BASE_URL, FRONTEND_DOMAIN } from "./variables";
 import log from "loglevel";
 import http from "http";
@@ -239,6 +240,7 @@ export async function deployClasses() {
           return Promise.resolve();
       }
 
+      log.info(`Bundling your code for ${element.path} nicely`);
       debugLogger.debug(
         `The bundling process has started for file ${element.path}...`
       );
@@ -279,6 +281,7 @@ export async function deployClasses() {
   // wait for all promises to finish
   await Promise.all(promisesDeploy);
 
+  printUninformativeLog()
   const response = await deployRequest(projectConfiguration)
 
   const classesInfo = response.classes.map((c) => ({
@@ -541,7 +544,7 @@ export async function generateSdkHandler(language: string, path: string) {
 
   if (!project) {
     throw new Error(
-      `The project ${configuration.name} doesn't exist in the region ${configuration.region}. You must deploy it first with 'genezio deploy'.` 
+      `The project ${configuration.name} doesn't exist in the region ${configuration.region}. You must deploy it first with 'genezio deploy'.`
     );
   }
 
