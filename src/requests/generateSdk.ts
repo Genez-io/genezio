@@ -7,6 +7,8 @@ import {
   YamlClassConfiguration,
   YamlProjectConfiguration
 } from "../models/yamlProjectConfiguration";
+import { printAdaptiveLog } from "../utils/logging"
+import log from "loglevel";
 import { getAuthToken } from "../utils/accounts";
 import { GenerateSdkResponse } from "../models/generateSdkResponse";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -16,7 +18,7 @@ export default async function generateSdkRequest(
   configuration: YamlProjectConfiguration
 ): Promise<GenerateSdkResponse> {
   const classes = configuration.classes;
-  const sdkOutputPath = configuration.sdk.path 
+  const sdkOutputPath = configuration.sdk.path
 
   // check if the output path exists
   if (await fileExists(configuration.sdk.path)) {
@@ -41,6 +43,8 @@ export default async function generateSdkRequest(
     form.append(filePath, fs.createReadStream(filePath));
   });
 
+  const sectionMessage = "Generating your SDK";
+  printAdaptiveLog(sectionMessage, "start");
   const response: any = await axios({
     method: "post",
     url: `${GENERATE_SDK_API_URL}/js/generateSdk`,
@@ -52,8 +56,11 @@ export default async function generateSdkRequest(
       "Accept-Version": `genezio-cli/${pjson.version}`
     }
   }).catch((error: Error) => {
+    printAdaptiveLog(sectionMessage, "error");
     throw error;
   });
+
+  printAdaptiveLog(sectionMessage, "end");
 
   if (response.data?.error?.message) {
     throw new Error(response.data.error.message);

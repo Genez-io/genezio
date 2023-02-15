@@ -34,7 +34,6 @@ export default async function listProjects(
   }
 
   if (response.data.status !== 'ok') {
-    console.log(response);
     throw new Error('Unknown error in `list projects` response from server.');
   }
 
