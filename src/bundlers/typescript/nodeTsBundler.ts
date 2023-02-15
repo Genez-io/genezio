@@ -1,4 +1,3 @@
-import { webpack } from "webpack";
 import path from "path";
 import fs from "fs";
 import util from "util";
@@ -17,11 +16,12 @@ import {
 import FileDetails from "../../models/fileDetails";
 import { default as fsExtra } from "fs-extra";
 import { lambdaHandler } from "../../utils/lambdaHander";
-import { tsconfig, packagejson } from "../../utils/configs";
+import { tsconfig } from "../../utils/configs";
 import log from "loglevel";
 import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import { AccessDependenciesPlugin } from "../bundler.interface";
 import { bundle } from "../../utils/webpack";
+import { debugLogger } from "../../utils/logging";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const exec = util.promisify(require("child_process").exec);
 
@@ -43,6 +43,11 @@ export class NodeTsBundler implements BundlerInterface {
         filePath: string,
         mode: "development" | "production"
     ): Promise<any> {
+
+        if (mode === "development") {
+            return null;
+          }
+
         const dependencies: string[] = [];
         const { name } = getFileDetails(filePath);
         const outputFile = `${name}-processed.js`;
@@ -55,7 +60,7 @@ export class NodeTsBundler implements BundlerInterface {
                         {
                             loader: "ts-loader",
                             options: {
-                                configFile: "./tsconfig.json",
+                                configFile: "tsconfig.json",
                                 onlyCompileBundledFiles: true
                             }
                         }
@@ -108,8 +113,17 @@ export class NodeTsBundler implements BundlerInterface {
 
         return uniqueDependenciesInfo;
     }
-    async #copyDependencies(dependenciesInfo: any, tempFolderPath: string) {
+    async #copyDependencies(dependenciesInfo: any, tempFolderPath: string, mode: "development" | "production") {
         const nodeModulesPath = path.join(tempFolderPath, "node_modules");
+
+        if (mode === "development") {
+            // copy node_modules folder to tmp folder if node_modules folder does not exist
+            if (!fs.existsSync(nodeModulesPath)) {
+              await fsExtra.copy(path.join(process.cwd(), "node_modules"), nodeModulesPath);
+            }
+            return
+          }
+
         // copy all dependencies to node_modules folder
         await Promise.all(
             dependenciesInfo.map((dependency: any) => {
@@ -128,8 +142,6 @@ export class NodeTsBundler implements BundlerInterface {
                     file.extension !== ".js" &&
                     file.extension !== ".tsx" &&
                     file.extension !== ".jsx" &&
-                    path.basename(file.path) !== "package.json" &&
-                    path.basename(file.path) !== "package-lock.json" &&
                     !file.path.includes("node_modules") &&
                     !fs.lstatSync(file.path).isDirectory()
                 );
@@ -169,7 +181,7 @@ export class NodeTsBundler implements BundlerInterface {
                         {
                             loader: "ts-loader",
                             options: {
-                                configFile: "./tsconfig.json",
+                                configFile: "tsconfig.json",
                                 onlyCompileBundledFiles: true
                             }
                         }
@@ -236,60 +248,23 @@ export class NodeTsBundler implements BundlerInterface {
 
         //await writeToFile(tempFolderPath, "index.js", lambdaHandler);
     }
-
-    async #getClassDetails(filePath: string, tempFolderPath: string): Promise<any> {
-        const moduleJsPath = path.join(tempFolderPath, "module.js");
-
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const module = require(moduleJsPath);
-
-        const classes: string[] = [];
-
-        let className = "";
-
-        for (const name in module.genezio) {
-            if (typeof module.genezio[name] == 'function') {
-                classes.push(name);
-                className = name;
-            }
-        }
-        //console.log(typeof module.genezio["Directions"]);
-
-        if (classes.length > 1) {
-            log.warn(
-                "\x1b[33m",
-                `Warning: We found multiple classes exported from the ${filePath} file. For now, we support only one class per file.`
-            );
-            log.warn("\x1b[0m", "");
-        }
-
-        if (!className) {
-            throw new Error(
-                `No class was found in the ${filePath} file. Make sure you exported the class.`
-            );
-        }
-
-        await writeToFile(tempFolderPath, "index.js", lambdaHandler(`"${className}"`));
-
-        const methodNames = Object.getOwnPropertyNames(
-            module.genezio[className].prototype
-        ).filter((x) => x !== "constructor");
-
-        return {
-            className,
-            methodNames
-        };
-    }
+    
 
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
-        // const auxFolder = await createTemporaryFolder();
-        const temporaryFolder = await createTemporaryFolder();
         const mode =
             (input.extra ? input.extra["mode"] : undefined) || "production";
-
+        const tmpFolder = (input.extra ? input.extra["tmpFolder"] : undefined) || undefined;
+        
+        if (mode === "development" && !tmpFolder) {
+            throw new Error("tmpFolder is required in development mode.")
+        }
+    
+      const temporaryFolder = mode === "production" ? await createTemporaryFolder() : tmpFolder;
+  
         // 1. Create auxiliary folder and copy the entire project
         this.#generateTsconfigJson();
 
+        debugLogger.debug(`[NodeTSBundler] Get the list of node modules and bundling the javascript code for file ${input.path}.`)
         // 2. Run webpack to get dependenciesInfo and the packed file
         const [dependenciesInfo, _] = await Promise.all([
             this.#getNodeModulesTs(input.path, mode),
@@ -297,27 +272,23 @@ export class NodeTsBundler implements BundlerInterface {
                 input.configuration.path,
                 temporaryFolder,
                 mode
-            )
+            ),
+            mode === "development" ? this.#copyDependencies(null, temporaryFolder, mode) : Promise.resolve()
         ]);
 
-        // 3. Remove auxiliary folder
-        // fs.rmSync(auxFolder, { recursive: true, force: true });
-
-        // 4. Copy non js files and node_modules
+        debugLogger.debug(`[NodeTSBundler] Copy non TS files and node_modules for file ${input.path}.`)
+        
+        // 2. Copy non js files and node_modules and write index.js file
         await Promise.all([
             this.#copyNonTsFiles(temporaryFolder),
-            this.#copyDependencies(dependenciesInfo, temporaryFolder)
+            mode === "production" ? this.#copyDependencies(dependenciesInfo, temporaryFolder, mode) : Promise.resolve(),
+            writeToFile(temporaryFolder, "index.js", lambdaHandler(`"${input.configuration.name}"`))
         ]);
-
-        // 5. Get class name
-        const classDetails = await this.#getClassDetails(input.path, temporaryFolder);
 
         return {
             ...input,
             path: temporaryFolder,
             extra: {
-                className: classDetails.className,
-                methodNames: classDetails.methodNames,
                 dependenciesInfo
             }
         };

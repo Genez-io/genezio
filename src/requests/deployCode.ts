@@ -1,47 +1,57 @@
-import path from "path";
-import axios from "axios";
+import axios from "./axios";
 import { BACKEND_ENDPOINT } from "../variables";
-import { ClassConfiguration } from "../models/projectConfiguration";
 import { getAuthToken } from "../utils/accounts";
+import { debugLogger } from "../utils/logging";
+import { DeployCodeResponse } from "../models/deployCodeResponse";
+import { ProjectConfiguration } from "../models/projectConfiguration";
+import { printUninformativeLog, printAdaptiveLog } from "../utils/logging";
+import { AbortController } from "node-abort-controller";
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const pjson = require("../../package.json");
 
-export async function deployClass(
-  classConfiguration: ClassConfiguration,
-  archivePath: string,
-  projectName: string,
-  className: string,
-  region: string
-) {
-  if (!archivePath || !projectName || !className) {
-    throw new Error("Missing required parameters");
-  }
-
+export async function deployRequest(
+  projectConfiguration: ProjectConfiguration,
+): Promise<DeployCodeResponse> {
   // auth token
+  printAdaptiveLog("Checking your credentials", "start");
   const authToken = await getAuthToken();
   if (!authToken) {
+    printAdaptiveLog("Checking your credentials", "error");
     throw new Error(
       "You are not logged in. Run 'genezio login' before you deploy your function."
       );
     }
+  printAdaptiveLog("Checking your credentials", "end");
 
   const json = JSON.stringify({
-    configurationClassContent: JSON.stringify(classConfiguration),
-    archiveName : "genezioDeploy.zip",
-    filename : path.parse(classConfiguration.path).name,
-    projectName : projectName,
-    className : className,
-    region: region,
+    classes: projectConfiguration.classes,
+    projectName : projectConfiguration.name,
+    region: projectConfiguration.region,
   })
 
+  const controller = new AbortController();
+  const messagePromise = printUninformativeLog(controller);
   const response: any = await axios({
     method: "PUT",
     url: `${BACKEND_ENDPOINT}/core/deployment`,
     data: json,
-    headers: { Authorization: `Bearer ${authToken}` },
+    headers: {
+      Authorization: `Bearer ${authToken}`,
+      "Accept-Version": `genezio-cli/${pjson.version}`
+    },
     maxContentLength: Infinity,
     maxBodyLength: Infinity
-  }).catch((error: Error) => {
+  }).catch(async (error: Error) => {
+    controller.abort();
+    printAdaptiveLog(await messagePromise, "error");
+    debugLogger.debug("Error received", error)
     throw error;
   });
+
+  controller.abort();
+  printAdaptiveLog(await messagePromise, "end");
+
+  debugLogger.debug("Response received", response.data)
 
   if (response.data.status === "error") {
     throw new Error(response.data.message);

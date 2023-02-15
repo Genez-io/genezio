@@ -1,4 +1,3 @@
-import { webpack } from "webpack";
 import path from "path";
 import fs from "fs";
 import webpackNodeExternals from "webpack-node-externals";
@@ -22,12 +21,18 @@ import log from "loglevel";
 import { exit } from "process";
 import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import { bundle } from "../../utils/webpack";
+import { debugLogger } from "../../utils/logging";
 
 export class NodeJsBundler implements BundlerInterface {
   async #getNodeModulesJs(
     filePath: string,
     mode: "development" | "production"
   ): Promise<any> {
+
+    if (mode === "development") {
+      return null;
+    }
+
     const { name } = getFileDetails(filePath);
     const outputFile = `${name}-processed.js`;
     const temporaryFolder = await createTemporaryFolder();
@@ -69,8 +74,18 @@ export class NodeJsBundler implements BundlerInterface {
     return uniqueDependenciesInfo;
   }
 
-  async #copyDependencies(dependenciesInfo: any, tempFolderPath: string) {
+  async #copyDependencies(dependenciesInfo: any, tempFolderPath: string, mode: "development" | "production") {
     const nodeModulesPath = path.join(tempFolderPath, "node_modules");
+
+    if (mode === "development") {
+      // copy node_modules folder to tmp folder if node_modules folder does not exist
+      if (!fs.existsSync(nodeModulesPath)) {
+        await fsExtra.copy(path.join(process.cwd(), "node_modules"), nodeModulesPath);
+      }
+      return
+    }
+
+
     // copy all dependencies to node_modules folder
     await Promise.all(
       dependenciesInfo.map((dependency: any) => {
@@ -87,8 +102,6 @@ export class NodeJsBundler implements BundlerInterface {
         // filter js files, node_modules and folders
         return (
           file.extension !== ".js" &&
-          path.basename(file.path) !== "package.json" &&
-          path.basename(file.path) !== "package-lock.json" &&
           !file.path.includes("node_modules") &&
           !fs.lstatSync(file.path).isDirectory()
         );
@@ -174,71 +187,45 @@ export class NodeJsBundler implements BundlerInterface {
       });
       throw "Compilation failed";
     }
-
-    await writeToFile(tempFolderPath, "index.js", lambdaHandler("Object.keys(handler.genezio)[0]"));
   }
 
-  #getClassDetails(filePath: string, tempFolderPath: string): any {
-    const moduleJsPath = path.join(tempFolderPath, "module.js");
-
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const module = require(moduleJsPath);
-    const className = Object.keys(module.genezio)[0];
-
-    if (Object.keys(module.genezio).length > 1) {
-      log.warn(
-        "\x1b[33m",
-        `Warning: We found multiple classes exported from the ${filePath} file. For now, we support only one class per file.`
-      );
-      log.warn("\x1b[0m", "");
-    }
-
-    if (!className) {
-      throw new Error(
-        `No class was found in the ${filePath} file. Make sure you exported the class.`
-      );
-    }
-
-    const methodNames = Object.getOwnPropertyNames(
-      module.genezio[className].prototype
-    ).filter((x) => x !== "constructor");
-
-    return {
-      className,
-      methodNames
-    };
-  }
 
   async bundle(input: BundlerInput): Promise<BundlerOutput> {
-    const temporaryFolder = await createTemporaryFolder();
     const mode =
       (input.extra ? input.extra["mode"] : undefined) || "production";
+    const tmpFolder = (input.extra ? input.extra["tmpFolder"] : undefined) || undefined;
+    
+    if (mode === "development" && !tmpFolder) {
+      throw new Error("tmpFolder is required in development mode.")
+    }
+
+    const temporaryFolder = mode === "production" ? await createTemporaryFolder() : tmpFolder;
+
 
     // 1. Run webpack to get dependenciesInfo and the packed file
+    debugLogger.debug(`[NodeJSBundler] Get the list of node modules and bundling the javascript code for file ${input.path}.`)
     const [dependenciesInfo, _] = await Promise.all([
       this.#getNodeModulesJs(input.path, mode),
       this.#bundleJavascriptCode(
         input.configuration.path,
         temporaryFolder,
         mode
-      )
+      ),
+      mode === "development" ? this.#copyDependencies(null, temporaryFolder, mode) : Promise.resolve()
     ]);
 
-    // 2. Copy non js files and node_modules
+    debugLogger.debug(`[NodeJSBundler] Copy non js files and node_modules for file ${input.path}.`)
+    // 2. Copy non js files and node_modules and write index.js file
     await Promise.all([
       this.#copyNonJsFiles(temporaryFolder),
-      this.#copyDependencies(dependenciesInfo, temporaryFolder)
+      mode === "production" ? this.#copyDependencies(dependenciesInfo, temporaryFolder, mode) : Promise.resolve(),
+      writeToFile(temporaryFolder, "index.js", lambdaHandler(`"${input.configuration.name}"`))
     ]);
-
-    // 3. Get class name
-    const classDetails = this.#getClassDetails(input.path, temporaryFolder);
 
     return {
       ...input,
       path: temporaryFolder,
       extra: {
-        className: classDetails.className,
-        methodNames: classDetails.methodNames,
         dependenciesInfo
       }
     };

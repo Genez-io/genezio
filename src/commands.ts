@@ -1,24 +1,23 @@
 import path from "path";
-import { deployClass } from "./requests/deployCode";
-import generateSdk from "./requests/generateSdk";
+import { deployRequest } from "./requests/deployCode";
+import generateSdkRequest from "./requests/generateSdk";
 import listProjects from "./requests/listProjects";
 import deleteProject from "./requests/deleteProject";
 import {
   createTemporaryFolder,
   fileExists,
-  readUTF8File,
   writeToFile,
-  zipDirectory
+  zipDirectory,
+  zipDirectoryToDestinationPath
 } from "./utils/file";
 import { askQuestion } from "./utils/prompt";
-import { parse, Document } from "yaml";
-import fs from "fs";
+import { Document } from "yaml";
 import {
-  ProjectConfiguration,
-  TriggerType
-} from "./models/projectConfiguration";
+  TriggerType, Language,
+} from "./models/yamlProjectConfiguration";
 import { getProjectConfiguration } from "./utils/configuration";
-import { REACT_APP_BASE_URL } from "./variables";
+import { printAdaptiveLog } from "./utils/logging";
+import { REACT_APP_BASE_URL, FRONTEND_DOMAIN } from "./variables";
 import log from "loglevel";
 import http from "http";
 import jsonBody from "body/json";
@@ -27,15 +26,24 @@ import { AddressInfo } from "net";
 import open from "open";
 import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
 import { NodeTsBundler } from "./bundlers/typescript/nodeTsBundler";
-import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBinaryDepenciesBundler";
-import { NodeTsBinaryDependenciesBundler } from "./bundlers/typescript/nodeTsBinaryDepenciesBundler";
+import { NodeJsBinaryDependenciesBundler } from "./bundlers/javascript/nodeJsBinaryDependenciesBundler";
+import { NodeTsBinaryDependenciesBundler } from "./bundlers/typescript/nodeTsBinaryDependenciesBundler";
 import { languages } from "./utils/languages";
 import { saveAuthToken } from "./utils/accounts";
 import { getPresignedURL } from "./requests/getPresignedURL";
 import { uploadContentToS3 } from "./requests/uploadContentToS3";
 import moment from "moment";
 import { Spinner } from "cli-spinner";
-import { info } from "console";
+import { debugLogger } from "./utils/logging";
+import { BundlerComposer } from "./bundlers/bundlerComposer";
+import { BundlerInterface } from "./bundlers/bundler.interface";
+import { ProjectConfiguration } from "./models/projectConfiguration";
+import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
+import { GenerateSdkResponse } from "./models/generateSdkResponse"
+import { getFrontendPresignedURL } from "./requests/getFrontendPresignedURL";
+import getProjectInfo from "./requests/getProjectInfo";
+import { generateRandomSubdomain } from "./utils/yaml";
+
 
 export async function addNewClass(classPath: string, classType: string) {
   if (classType === undefined) {
@@ -102,20 +110,30 @@ export async function lsHandler(identifier: string, l: boolean) {
   log.info("");
   if (projectsJson.length == 0) {
     log.info("There are no currently deployed projects.");
-      return;
+    return;
   }
   if (identifier.trim().length !== 0) {
-    projectsJson = projectsJson.filter(project => project.name === identifier || project.id === identifier);
+    projectsJson = projectsJson.filter(
+      (project) => project.name === identifier || project.id === identifier
+    );
     if (projectsJson.length == 0) {
       log.info("There is no project with this identifier.");
-        return;
+      return;
     }
   }
-  const projects = projectsJson.forEach(function(project : any, index : any) {
+  projectsJson.forEach(function (project: any, index: any) {
     if (l) {
-      log.info(`[${1 + index}]: Project name: ${project.name},\n\tRegion: ${project.region},\n\tID: ${project.id},\n\tCreated: ${moment.unix(project.createdAt).format()},\n\tUpdated: ${moment.unix(project.updatedAt).format()}`);
+      log.info(
+        `[${1 + index}]: Project name: ${project.name},\n\tRegion: ${project.region
+        },\n\tID: ${project.id},\n\tCreated: ${moment
+          .unix(project.createdAt)
+          .format()},\n\tUpdated: ${moment.unix(project.updatedAt).format()}`
+      );
     } else {
-      log.info(`[${1 + index}]: Project name: ${project.name}, Region: ${project.region}, Updated: ${moment.unix(project.updatedAt).format()}`);
+      log.info(
+        `[${1 + index}]: Project name: ${project.name}, Region: ${project.region
+        }, Updated: ${moment.unix(project.updatedAt).format()}`
+      );
     }
   });
 }
@@ -123,10 +141,18 @@ export async function lsHandler(identifier: string, l: boolean) {
 export async function deleteProjectHandler(projectId: string, forced: boolean) {
   // show prompt if no project id is selected
   if (typeof projectId === "string" && projectId.trim().length === 0) {
+    const spinner = new Spinner("%s  ");
+    spinner.setSpinnerString("|/-\\");
+    spinner.start();
     const projectsJson = await listProjects();
-    const projects = projectsJson.map(function(project : any, index : any) {
+    spinner.stop();
+    // hack to add a newline  after the spinner
+    log.info("");
+
+    const projects = projectsJson.map(function (project: any, index: any) {
       return `[${1 + index}]: Project name: ${project.name}, Region: ${project.region}, ID: ${project.id}`;
     })
+
     if (projects.length === 0) {
       log.info("There are no currently deployed projects.");
       return false;
@@ -181,143 +207,94 @@ export async function deployClasses() {
     );
   }
 
-  const functionUrlForFilePath: { [id: string]: string } = {};
-  const classesInfo: {
-    className: any;
-    methodNames: any;
-    path: string;
-    functionUrl: any;
-    projectId: string;
-  }[] = [];
+  const sdkResponse = await generateSdkRequest(configuration).catch((error) => {
+    throw error;
+  });
+  const projectConfiguration = new ProjectConfiguration(configuration, sdkResponse.astSummary);
 
-  const promisesDeploy: any = configuration.classes.map(
-    async (element: any) => {
+  printAdaptiveLog("Bundling your code and uploading it", "start");
+  const promisesDeploy: any = projectConfiguration.classes.map(
+    async (element) => {
       if (!(await fileExists(element.path))) {
+        printAdaptiveLog("Bundling your code and uploading it", "error");
         log.error(
           `\`${element.path}\` file does not exist at the indicated path.`
         );
         exit(1);
       }
 
+      let bundler: BundlerInterface;
       switch (element.language) {
         case ".ts": {
-          const bundler = new NodeTsBundler();
+          const standardBundler = new NodeTsBundler();
           const binaryDepBundler = new NodeTsBinaryDependenciesBundler();
-
-          let output = await bundler.bundle({
-            configuration: element,
-            path: element.path,
-            extra: {
-              mode: "production"
-            }
-          });
-
-          output = await binaryDepBundler.bundle(output);
-
-          const archivePath = path.join(
-            await createTemporaryFolder("genezio-"),
-            `genezioDeploy.zip`
-          );
-          await zipDirectory(output.path, archivePath);
-
-          const resultPresignedUrl = await getPresignedURL(
-            configuration.region,
-            'genezioDeploy.zip',
-            configuration.name,
-            output.extra?.className
-          )
-
-          await uploadContentToS3(resultPresignedUrl.presignedURL, archivePath)
-
-          const prom = deployClass(
-            element,
-            archivePath,
-            configuration.name,
-            output.extra?.className,
-            configuration.region
-          ).then((result) => {
-            functionUrlForFilePath[path.parse(element.path).name] =
-              result.functionUrl;
-
-            classesInfo.push({
-              className: output.extra?.className,
-              methodNames: output.extra?.methodNames,
-              path: element.path,
-              functionUrl: result.functionUrl,
-              projectId: result.class.ProjectID
-            });
-
-            fs.promises.unlink(archivePath);
-          });
-          return prom;
+          bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
+          break;
         }
         case ".js": {
-          const bundler = new NodeJsBundler();
+          const standardBundler = new NodeJsBundler();
           const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
-
-          let output = await bundler.bundle({
-            configuration: element,
-            path: element.path,
-            extra: {
-              mode: "development"
-            }
-          });
-
-          output = await binaryDepBundler.bundle(output);
-
-          const archivePath = path.join(
-            await createTemporaryFolder("genezio-"),
-            `genezioDeploy.zip`
-          );
-
-          await zipDirectory(output.path, archivePath);
-
-          const resultPresignedUrl = await getPresignedURL(
-            configuration.region,
-            'genezioDeploy.zip',
-            configuration.name,
-            output.extra?.className
-          )
-
-          await uploadContentToS3(resultPresignedUrl.presignedURL, archivePath)
-
-          const prom = deployClass(
-            element,
-            archivePath,
-            configuration.name,
-            output.extra?.className,
-            configuration.region
-          ).then((result) => {
-            functionUrlForFilePath[path.parse(element.path).name] =
-              result.functionUrl;
-
-            classesInfo.push({
-              className: output.extra?.className,
-              methodNames: output.extra?.methodNames,
-              path: element.path,
-              functionUrl: result.functionUrl,
-              projectId: result.class.ProjectID
-            });
-
-            fs.promises.unlink(archivePath);
-          });
-          return prom;
+          bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
+          break;
         }
         default:
           log.error(`Unsupported ${element.language}`);
           return Promise.resolve();
       }
+
+      debugLogger.debug(
+        `The bundling process has started for file ${element.path}...`
+      );
+      const output = await bundler.bundle({
+        configuration: element,
+        path: element.path,
+        extra: {
+          mode: "production"
+        }
+      });
+      debugLogger.debug(
+        `The bundling process finished successfully for file ${element.path}.`
+      );
+
+      const archivePath = path.join(
+        await createTemporaryFolder("genezio-"),
+        `genezioDeploy.zip`
+      );
+
+      debugLogger.debug(`Zip the directory ${output.path}.`);
+      await zipDirectory(output.path, archivePath);
+      debugLogger.debug(`Get the presigned URL for class name ${element.name}.`)
+
+      const resultPresignedUrl = await getPresignedURL(
+        configuration.region,
+        "genezioDeploy.zip",
+        configuration.name,
+        element.name
+      )
+
+      debugLogger.debug(`Upload the content to S3 for file ${element.path}.`)
+      await uploadContentToS3(resultPresignedUrl.presignedURL, archivePath)
+      debugLogger.debug(`Done uploading the content to S3 for file ${element.path}.`)
     }
   );
 
   // wait for all promises to finish
   await Promise.all(promisesDeploy);
+  printAdaptiveLog("Bundling your code and uploading it", "end");
 
-  await generateSdks(functionUrlForFilePath).catch((error) => {
-    throw error;
-  });
+  const response = await deployRequest(projectConfiguration)
 
-  reportSuccess(classesInfo, configuration);
+  const classesInfo = response.classes.map((c) => ({
+    className: c.name,
+    methods: c.methods,
+    functionUrl: c.cloudUrl,
+    projectId: response.projectId
+  }));
+
+  reportSuccess(classesInfo, sdkResponse);
+
+  await replaceUrlsInSdk(sdkResponse, response.classes)
+  await writeSdkToDisk(sdkResponse, configuration.sdk.language, configuration.sdk.path)
 
   const projectId = classesInfo[0].projectId;
   console.log(
@@ -325,28 +302,71 @@ export async function deployClasses() {
   );
 }
 
+export async function deployFrontend(): Promise<string> {
+  const configuration = await getProjectConfiguration();
+
+  if (configuration.frontend) {
+    if (!configuration.frontend.subdomain) {
+      log.info("No subdomain specified in the genezio.yaml configuration file. We will provide a random one for you.")
+      configuration.frontend.subdomain = generateRandomSubdomain()
+
+      // write the configuration in yaml file
+      await configuration.addSubdomain(configuration.frontend.subdomain)
+    }
+
+
+    debugLogger.debug("Getting presigned URL...")
+    const result = await getFrontendPresignedURL(configuration.frontend.subdomain, configuration.name)
+
+    if (!result.presignedURL) {
+      throw new Error("An error occured (missing presignedUrl). Please try again!")
+    }
+
+    if (!result.userId) {
+      throw new Error("An error occured (missing userId). Please try again!")
+    }
+
+    const archivePath = path.join(
+      await createTemporaryFolder("genezio-"),
+      `${configuration.frontend.subdomain}.zip`
+    );
+    debugLogger.debug("Creating temporary folder", archivePath)
+
+    await zipDirectoryToDestinationPath(configuration.frontend.path, configuration.frontend.subdomain, archivePath)
+    debugLogger.debug("Content of the folder zipped. Uploading to S3.")
+    await uploadContentToS3(result.presignedURL, archivePath, result.userId)
+    debugLogger.debug("Uploaded to S3.")
+  } else {
+    throw new Error("No frontend entry in genezio configuration file.")
+  }
+
+  return `https://${configuration.frontend.subdomain}.${FRONTEND_DOMAIN}`
+}
+
 export function reportSuccess(
   classesInfo: any,
-  projectConfiguration: ProjectConfiguration
+  sdkResponse: GenerateSdkResponse,
 ) {
-  log.info(
-    "\x1b[36m%s\x1b[0m",
-    "Your code was deployed and the SDK was successfully generated!"
-  );
+  if (sdkResponse.classFiles.length > 0) {
+    log.info(
+      "\x1b[36m%s\x1b[0m",
+      "Your code was deployed and the SDK was successfully generated!"
+    );
+  } else {
+    log.info(
+      "\x1b[36m%s\x1b[0m",
+      "Your code was successfully deployed!"
+    );
+  }
 
   // print function urls
   let printHttpString = "";
 
   classesInfo.forEach((classInfo: any) => {
-    classInfo.methodNames.forEach((methodName: any) => {
-      const type = projectConfiguration.getMethodType(
-        classInfo.path,
-        methodName
-      );
-
-      if (type === TriggerType.http) {
+    classInfo.methods.forEach((method: any) => {
+      if (method.type === TriggerType.http) {
         printHttpString +=
-          `  - ${classInfo.className}.${methodName}: ${classInfo.functionUrl}${classInfo.className}/${methodName}` +
+          `  - ${classInfo.className}.${method.name}: ${classInfo.functionUrl}${classInfo.className}/${method.name}` +
           "\n";
       }
     });
@@ -359,48 +379,6 @@ export function reportSuccess(
   }
 }
 
-export async function generateSdks(urlMap: any) {
-  const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
-  const configurationFileContent = await parse(configurationFileContentUTF8);
-  const configuration = await ProjectConfiguration.create(
-    configurationFileContent
-  );
-  const outputPath = configuration.sdk.path;
-  const language = configuration.sdk.language;
-
-  // check if the output path exists
-  if (await fileExists(outputPath)) {
-    // delete the output path
-    fs.rmSync(outputPath, { recursive: true, force: true }); 
-  }
-
-  const sdk = await generateSdk(configuration, urlMap).catch((error) => {
-    throw error;
-  });
-
-  if (sdk.remoteFile) {
-    await writeToFile(
-      outputPath,
-      `remote.${language}`,
-      sdk.remoteFile,
-      true
-    ).catch((error) => {
-      log.error(error.toString());
-    });
-  }
-
-  await Promise.all(
-    sdk.classFiles.map((classFile: any) => {
-      return writeToFile(
-        outputPath,
-        `${classFile.filename}.sdk.${language}`,
-        classFile.implementation,
-        true
-      );
-    })
-  );
-}
-
 export async function init() {
   let projectName = "";
   while (projectName.length === 0) {
@@ -409,7 +387,12 @@ export async function init() {
       log.error("The project name can't be empty.");
     }
   }
-  const configFile: any = { name: projectName, region: "us-east-1", sdk: { options: {} }, classes: [] };
+  const configFile: any = {
+    name: projectName,
+    region: "us-east-1",
+    sdk: { options: {} },
+    classes: []
+  };
 
   const sdkLanguage = await askQuestion(
     `In what programming language do you want your SDK? (js, ts or swift) [default value: js]: `,
@@ -527,4 +510,61 @@ export async function handleLogin(accessToken: string) {
     const browserUrl = `${REACT_APP_BASE_URL}/cli/login?redirect_url=http://localhost:${port}/`;
     open(browserUrl);
   }
+}
+
+
+export async function generateSdkHandler(language: string, path: string) {
+  const configuration = await getProjectConfiguration();
+
+
+  configuration.sdk.language = language as Language;
+  configuration.sdk.path = path;
+
+  if (configuration.classes.length === 0) {
+    throw new Error(
+      "You don't have any class in specified in the genezio.yaml configuration file. Add a class with 'genezio addClass <className> <classType>'."
+    );
+  }
+
+  const sdkResponse = await generateSdkRequest(configuration).catch((error) => {
+    throw error;
+  });
+
+  // get all project classes
+  const projects = await listProjects(0).catch((error: any) => {
+    throw error;
+  });
+
+  // check if the project exists with the configuration project name, region
+  const project = projects.find(
+    (project: any) =>
+      project.name === configuration.name &&
+      project.region === configuration.region
+  );
+
+  if (!project) {
+    throw new Error(
+      `The project ${configuration.name} doesn't exist in the region ${configuration.region}. You must deploy it first with 'genezio deploy'.`
+    );
+  }
+
+  // get project info
+  const completeProjectInfo = await getProjectInfo(project.id).catch(
+    (error: any) => {
+      throw error;
+    }
+  );
+
+  const classUrlMap: ClassUrlMap[] = [];
+
+  completeProjectInfo.classes.forEach((classInfo: any) => {
+    classUrlMap.push({
+      name: classInfo.name,
+      cloudUrl: classInfo.cloudUrl
+    });
+  });
+
+
+  await replaceUrlsInSdk(sdkResponse, classUrlMap)
+  await writeSdkToDisk(sdkResponse, configuration.sdk.language, configuration.sdk.path)
 }

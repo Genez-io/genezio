@@ -1,15 +1,6 @@
 import axios from "axios";
 import { getAuthToken } from "../../src/utils/accounts";
-import {
-  YamlClassConfiguration,
-  TriggerType,
-  YamlProjectConfiguration,
-  YamlSdkConfiguration,
-  Language,
-  JsRuntime
-} from "../../src/models/yamlProjectConfiguration";
-import { deployRequest } from "../../src/requests/deployCode";
-import { ProjectConfiguration, SdkConfiguration, ClassConfiguration } from "../../src/models/projectConfiguration";
+import { getPresignedURL } from "../../src/requests/getPresignedURL";
 
 jest.mock("axios");
 jest.mock("../../src/utils/accounts");
@@ -23,13 +14,6 @@ beforeEach(() => {
 
 test("should throw error if server returns error", async () => {
   await expect(async () => {
-    const projectConfiguration: ProjectConfiguration = {
-      name: "test",
-      region: "us-east-1",
-      sdk: new SdkConfiguration(Language.js, JsRuntime.browser, "./test"),
-      classes: [],
-    }
-
     mockedGetAuthToken.mockResolvedValue("token");
     mockedAxios.mockResolvedValue({
       data: { status: "error" },
@@ -39,18 +23,12 @@ test("should throw error if server returns error", async () => {
       config: {}
     });
 
-    await deployRequest(projectConfiguration);
+    await getPresignedURL("us-east-1","genezioDeploy.zip", "test", "test");
   }).rejects.toThrowError();
 });
 
 test("should throw error if server returns data.error object", async () => {
   await expect(async () => {
-    const projectConfiguration: ProjectConfiguration = {
-      name: "test",
-      region: "us-east-1",
-      sdk: new SdkConfiguration(Language.js, JsRuntime.browser, "./test"),
-      classes: [],
-    }
     mockedGetAuthToken.mockResolvedValue("token");
     mockedAxios.mockResolvedValue({
       data: { error: { message: "error text" } },
@@ -60,18 +38,21 @@ test("should throw error if server returns data.error object", async () => {
       config: {}
     });
 
-    await deployRequest(projectConfiguration);
+    await getPresignedURL("us-east-1","genezioDeploy.zip", "test", "test");
+  }).rejects.toThrowError();
+});
+
+test("should throw error if parameters are missing", async () => {
+  await expect(async () => {
+    mockedGetAuthToken.mockResolvedValue("token");
+
+    await getPresignedURL("us-east-1","genezioDeploy.zip", "", "");
   }).rejects.toThrowError();
 });
 
 test("should return response.data if everything is ok", async () => {
   const someObject = { someData: "data" };
-  const projectConfiguration: ProjectConfiguration = {
-    name: "test",
-    region: "us-east-1",
-    sdk: new SdkConfiguration(Language.js, JsRuntime.browser, "./test"),
-    classes: [],
-  }
+
   mockedGetAuthToken.mockResolvedValue("token");
   mockedAxios.mockResolvedValue({
     data: someObject,
@@ -81,18 +62,19 @@ test("should return response.data if everything is ok", async () => {
     config: {}
   });
 
-  const response = await deployRequest(projectConfiguration);
+  const response = await getPresignedURL(
+    "us-east-1",
+    "genezioDeploy.zip",
+    "test",
+    "test",
+  );
+
   expect(response).toEqual(someObject);
 });
 
 test("should read token and pass it to headers", async () => {
   const someObject = { someData: "data" };
-  const projectConfiguration: ProjectConfiguration = {
-    name: "test",
-    region: "us-east-1",
-    sdk: new SdkConfiguration(Language.js, JsRuntime.browser, "./test"),
-    classes: [],
-  }
+
   mockedGetAuthToken.mockResolvedValue("token");
   mockedAxios.mockResolvedValue({
     data: someObject,
@@ -102,9 +84,22 @@ test("should read token and pass it to headers", async () => {
     config: {}
   });
 
-  const response = await deployRequest(projectConfiguration);
+  const response = await getPresignedURL(
+    "us-east-1",
+    "genezioDeploy.zip",
+    "test",
+    "test",
+  );
 
   expect(mockedGetAuthToken.mock.calls.length).toBe(1);
 
   expect(response).toEqual(someObject);
+});
+
+test("should throw error if auth token is missing", async () => {
+  await expect(async () => {
+    mockedGetAuthToken.mockResolvedValue("");
+
+    await getPresignedURL("us-east-1", "genezioDeploy.zip", "test", "test");
+  }).rejects.toThrowError();
 });

@@ -3,12 +3,12 @@ import fs from 'fs'
 import util from "util";
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface"
 import { fileExists } from '../../utils/file';
-import log from "loglevel";
+import { debugLogger } from '../../utils/logging';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const exec = util.promisify(require("child_process").exec);
 
 
-export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
+export class NodeTsBinaryDependenciesBundler implements BundlerInterface {
     async #handleBinaryDependencies(dependenciesInfo: any, tempFolderPath: string) {
         // create node_modules folder in tmp folder
         const nodeModulesPath = path.join(tempFolderPath, "node_modules");
@@ -69,12 +69,15 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
         for (const dependency of binaryDependencies) {
             try {
                 const { stdout, stderr } = await exec(
-                    "npx node-pre-gyp --update-binary --fallback-to-build --target_arch=x64 --target_platform=linux --target_libc=glibc clean install " +
+                    "npx node-pre-gyp --update-binary --fallback-to-build --target_arch=arm64 --target_platform=linux --target_libc=glibc clean install " +
                     dependency.name,
                     { cwd: dependency.path }
                 );
+                debugLogger.debug("[BinaryDepStdOut]", stdout);
+                debugLogger.debug("[BinaryDepStdErr]", stderr);
             } catch (error) {
-                log.error(
+                debugLogger.debug("[BinaryDepStdOut]", error);
+                console.error(
                     "An error has occured while installing binary dependecies."
                 );
                 throw new Error("An error has occured while installing binary dependecies.")
@@ -82,13 +85,15 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
         }
     }
 
-    bundle(input: BundlerInput): Promise<BundlerOutput> {
+    async bundle(input: BundlerInput): Promise<BundlerOutput> {
         if (!input.extra) {
             return Promise.resolve(input)
         }
 
+        debugLogger.debug(`[NodeTSBinaryDependenciesBundler] Redownload binary dependencies if necessary for file ${input.path}...`)
         // 4. Redownload binary dependencies if necessary
-        this.#handleBinaryDependencies(input.extra.dependenciesInfo, input.path)
+        await this.#handleBinaryDependencies(input.extra.dependenciesInfo, input.path)
+        debugLogger.debug(`[NodeTSBinaryDependenciesBundler] Redownload binary dependencies done for file ${input.path}.`)
 
         return Promise.resolve(input)
     }

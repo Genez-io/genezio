@@ -7,7 +7,17 @@ delete process.env.AWS_SECRET_ACCESS_KEY
 delete process.env.AWS_REGION
 const handler = require("./module.js");
 
-const object = new handler.genezio[${className}]();
+const genezioClass = handler.genezio[${className}];
+
+if (!genezioClass) {
+  console.error('Error! No class found with name ${className}. Make sure you exported it from your file.')
+  exports.handler =  async function(event, context) {
+    return {"jsonrpc": "2.0", "error": {"code": -1, "message": 'Error! No class found with name ${className}. Make sure you exported it from your file.'}, "id": 0};
+  }
+  return;
+}
+
+const object = new genezioClass();
 
 exports.handler =  async function(event, context) {
     if (event.genezioEventType === "cron") {
@@ -45,7 +55,6 @@ exports.handler =  async function(event, context) {
             timeEpoch: event.requestContext.timeEpoch,
             body: event.isBase64Encoded ? Buffer.from(body, "base64") : body,
           }
-        console.log(req)
         if (!object[method]) {
           return { statusCode: 404, headers: { 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Method not found" }) };
         }
