@@ -27,7 +27,7 @@ git clone https://github.com/Genez-io/genezio-examples.git
 4. **Navigate to the project folder.** Copy the following command in your terminal to go to the "Hello World" project folder:
 
 ```bash
-cd ./genezio-examples/javascript/hello-world
+cd ./genezio-examples/javascript/hello-world/server/
 ```
 
 5. **Deploy your code.** Use the command below to deploy the code using genezio:
@@ -36,7 +36,7 @@ cd ./genezio-examples/javascript/hello-world
 genezio deploy
 ```
 
-6. **Test the code.** Run this command to test the code:
+6. **Test the code.**  Change the folder to `./genezio-examples/javascript/hello-world/client/` and run this command to test the code:
 
 ```bash
 node ./test-hello-sdk.js
