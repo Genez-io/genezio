@@ -16,6 +16,7 @@ import {
   TriggerType, Language,
 } from "./models/yamlProjectConfiguration";
 import { getProjectConfiguration } from "./utils/configuration";
+import { printAdaptiveLog } from "./utils/logging";
 import { REACT_APP_BASE_URL, FRONTEND_DOMAIN } from "./variables";
 import log from "loglevel";
 import http from "http";
@@ -211,9 +212,11 @@ export async function deployClasses() {
   });
   const projectConfiguration = new ProjectConfiguration(configuration, sdkResponse.astSummary);
 
+  printAdaptiveLog("Bundling your code and uploading it", "start");
   const promisesDeploy: any = projectConfiguration.classes.map(
     async (element) => {
       if (!(await fileExists(element.path))) {
+        printAdaptiveLog("Bundling your code and uploading it", "error");
         log.error(
           `\`${element.path}\` file does not exist at the indicated path.`
         );
@@ -260,7 +263,6 @@ export async function deployClasses() {
 
       debugLogger.debug(`Zip the directory ${output.path}.`);
       await zipDirectory(output.path, archivePath);
-
       debugLogger.debug(`Get the presigned URL for class name ${element.name}.`)
 
       const resultPresignedUrl = await getPresignedURL(
@@ -278,6 +280,7 @@ export async function deployClasses() {
 
   // wait for all promises to finish
   await Promise.all(promisesDeploy);
+  printAdaptiveLog("Bundling your code and uploading it", "end");
 
   const response = await deployRequest(projectConfiguration)
 
@@ -541,7 +544,7 @@ export async function generateSdkHandler(language: string, path: string) {
 
   if (!project) {
     throw new Error(
-      `The project ${configuration.name} doesn't exist in the region ${configuration.region}. You must deploy it first with 'genezio deploy'.` 
+      `The project ${configuration.name} doesn't exist in the region ${configuration.region}. You must deploy it first with 'genezio deploy'.`
     );
   }
 

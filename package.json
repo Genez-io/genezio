@@ -55,6 +55,7 @@
     "os": "^0.1.2",
     "parse-multipart-data": "^1.5.0",
     "path": "^0.12.7",
+    "terminal-overwrite": "^2.0.1",
     "ts-loader": "^9.4.1",
     "typescript": "^4.8.4",
     "unique-names-generator": "^4.7.1",

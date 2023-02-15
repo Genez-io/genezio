@@ -31,7 +31,7 @@ export async function getPresignedURL (
 
     const response: any = await axios({
         method: "GET",
-        url: `${BACKEND_ENDPOINT}/core/deployment-url`, 
+        url: `${BACKEND_ENDPOINT}/core/deployment-url`,
         data: json,
         headers: {
             Authorization: `Bearer ${authToken}`,
@@ -42,7 +42,7 @@ export async function getPresignedURL (
       }).catch((error: Error) => {
         throw error;
       });
-    
+
     if (response.data.status === "error") {
         throw new Error(response.data.message);
     }

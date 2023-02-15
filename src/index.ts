@@ -12,7 +12,7 @@ import {
   deployFrontend,
   generateSdkHandler,
 } from "./commands";
-import { setDebuggingLoggerLogLevel } from "./utils/logging";
+import { setDebuggingLoggerLogLevel, spinner } from "./utils/logging";
 import { asciiCapybara, GENEZIO_NOT_AUTH_ERROR_MSG } from "./utils/strings";
 import { exit } from "process";
 import { AxiosError } from "axios";
@@ -29,7 +29,6 @@ import {
 import { getProjectConfiguration } from "./utils/configuration";
 import log from "loglevel";
 import { getAuthToken, removeAuthToken } from "./utils/accounts";
-import { Spinner } from "cli-spinner";
 
 import { AstSummary } from "./models/astSummary";
 
@@ -40,9 +39,6 @@ import { LocalEnvCronHandler, LocalEnvStartServerOutput } from "./models/localEn
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
-
-const spinner = new Spinner("%s  ");
-spinner.setSpinnerString("|/-\\");
 
 const program = new Command();
 
@@ -122,8 +118,6 @@ program
       exit(1);
     }
 
-    spinner.start();
-
     if (options.frontend) {
       log.info("Deploying your frontend to genezio infrastructure...");
       let url;
@@ -142,7 +136,6 @@ program
     log.info("Deploying your project to genezio infrastructure...");
     await deployClasses()
       .then(() => {
-        spinner.stop(true);
       })
       .catch((error: AxiosError) => {
         switch (error.response?.status) {
