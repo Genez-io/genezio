@@ -79,7 +79,7 @@ export class NodeJsBundler implements BundlerInterface {
 
     if (mode === "development") {
       // copy node_modules folder to tmp folder if node_modules folder does not exist
-      if (!fs.existsSync(nodeModulesPath)) {
+      if (!fs.existsSync(nodeModulesPath) && fs.existsSync(path.join(process.cwd(), "node_modules"))) {
         await fsExtra.copy(path.join(process.cwd(), "node_modules"), nodeModulesPath);
       }
       return
