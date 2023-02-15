@@ -51,7 +51,5 @@ export async function getPresignedURL (
         throw new Error(response.data.error.message);
     }
 
-    console.log(response.data)
-
     return response.data;
 }

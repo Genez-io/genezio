@@ -23,7 +23,7 @@ export default async function listProjects(
     timeout: 15000,
     headers: {
       Authorization: `Bearer ${authToken}`,
-      "Accept-Version": pjson.version
+      "Accept-Version": `genezio-cli/${pjson.version}`
     }
   }).catch((error: Error) => {
     throw error;
