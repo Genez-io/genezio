@@ -7,6 +7,7 @@ import {
   YamlClassConfiguration,
   YamlProjectConfiguration
 } from "../models/yamlProjectConfiguration";
+import { printAdaptiveLog } from "../utils/logging"
 import log from "loglevel";
 import { getAuthToken } from "../utils/accounts";
 import { GenerateSdkResponse } from "../models/generateSdkResponse";
@@ -42,7 +43,8 @@ export default async function generateSdkRequest(
     form.append(filePath, fs.createReadStream(filePath));
   });
 
-  log.info("Generating your SDK");
+  const sectionMessage = "Generating your SDK";
+  printAdaptiveLog(sectionMessage, "start");
   const response: any = await axios({
     method: "post",
     url: `${GENERATE_SDK_API_URL}/js/generateSdk`,
@@ -54,8 +56,11 @@ export default async function generateSdkRequest(
       "Accept-Version": `genezio-cli/${pjson.version}`
     }
   }).catch((error: Error) => {
+    printAdaptiveLog(sectionMessage, "error");
     throw error;
   });
+
+  printAdaptiveLog(sectionMessage, "end");
 
   if (response.data?.error?.message) {
     throw new Error(response.data.error.message);
