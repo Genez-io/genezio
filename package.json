@@ -49,6 +49,7 @@
     "loglevel": "^1.8.1",
     "loglevel-plugin-prefix": "^0.8.4",
     "moment": "^2.29.4",
+    "node-abort-controller": "^3.1.1",
     "node-cron": "^3.0.2",
     "node-polyfill-webpack-plugin": "^2.0.1",
     "open": "^8.4.0",

@@ -5,6 +5,7 @@ import { debugLogger } from "../utils/logging";
 import { DeployCodeResponse } from "../models/deployCodeResponse";
 import { ProjectConfiguration } from "../models/projectConfiguration";
 import { printUninformativeLog, printAdaptiveLog } from "../utils/logging";
+import { AbortController } from "node-abort-controller";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../../package.json");
 
@@ -28,7 +29,7 @@ export async function deployRequest(
     region: projectConfiguration.region,
   })
 
-  let controller = new AbortController();
+  const controller = new AbortController();
   const messagePromise = printUninformativeLog(controller);
   const response: any = await axios({
     method: "PUT",
