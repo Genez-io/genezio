@@ -47,20 +47,20 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 export async function printUninformativeLog(controller: AbortController): Promise<string> {
     return new Promise(async (resolve, reject) => {
-        const finalmessage = "Doing the final touch-ups";
+        const finalMessage = "Doing the final touch-ups";
         var message = uninformativeMessages[Math.floor(Math.random() * uninformativeMessages.length)];
-        var exit_loop = false;
+        var exitLoop = false;
         var waiting = 0;
         var spinning = true;
         var firstMessage = false;
 
         controller.signal.addEventListener('abort', () => {
-            exit_loop = true;
+            exitLoop = true;
         });
 
         spinner.start();
 
-        while (!exit_loop) {
+        while (!exitLoop) {
             await delay(250);
             waiting += 250;
 
@@ -74,21 +74,21 @@ export async function printUninformativeLog(controller: AbortController): Promis
             if (waiting == 15000) {
                 printAdaptiveLog(message, "end");
                 firstMessage = false;
-                printAdaptiveLog(finalmessage, "start");
+                printAdaptiveLog(finalMessage, "start");
             }
         }
 
         if (spinning) {
             spinner.stop(true);
-            printAdaptiveLog(finalmessage, "start");
-            resolve(finalmessage);
+            printAdaptiveLog(finalMessage, "start");
+            resolve(finalMessage);
             return;
         }
 
         if (firstMessage) {
             resolve(message);
         } else {
-            resolve(finalmessage);
+            resolve(finalMessage);
         }
     })
 }
