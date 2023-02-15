@@ -14,12 +14,12 @@ export function setDebuggingLoggerLogLevel(logLevel?: string) {
     debugLogger.setLevel(logLevel as LogLevelDesc)
 }
 
-export function printAdaptiveLog(message: string, ended: string) {
-    if (ended == "end") {
+export function printAdaptiveLog(message: string, state: string) {
+    if (state == "end") {
         spinner.stop(true);
         terminalOverwrite(message + "...✅");
         log.info("");
-    } else if (ended == "start") {
+    } else if (state == "start") {
         terminalOverwrite(message + "...");
         spinner.start();
     } else {
@@ -29,7 +29,7 @@ export function printAdaptiveLog(message: string, ended: string) {
     }
 }
 
-const uninformative_messages = [
+const uninformativeMessages = [
     "Calling the API for witty loading messages",
     "Asking on StackOverflow how to deploy your project…",
     "Changing the plumbing of the pipeline",
@@ -48,7 +48,7 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 export async function printUninformativeLog(controller: AbortController): Promise<string> {
     return new Promise(async (resolve, reject) => {
         const finalmessage = "Doing the final touch-ups";
-        var message = uninformative_messages[Math.floor(Math.random() * uninformative_messages.length)];
+        var message = uninformativeMessages[Math.floor(Math.random() * uninformativeMessages.length)];
         var exit_loop = false;
         var waiting = 0;
         var spinning = true;
