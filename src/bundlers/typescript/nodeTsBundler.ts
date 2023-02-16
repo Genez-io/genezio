@@ -6,7 +6,8 @@ import {
     createTemporaryFolder,
     getAllFilesFromCurrentPath,
     getFileDetails,
-    writeToFile
+    writeToFile,
+    readUTF8File
 } from "../../utils/file";
 import {
     BundlerInput,
@@ -248,6 +249,26 @@ export class NodeTsBundler implements BundlerInterface {
 
         //await writeToFile(tempFolderPath, "index.js", lambdaHandler);
     }
+
+    async #deleteTypeModuleFromPackageJson(tempFolderPath: string) {
+        const packageJsonPath = path.join(tempFolderPath, "package.json");
+    
+        // check if package.json file exists
+        if (!fs.existsSync(packageJsonPath)) {
+          return;
+        }
+    
+        // read package.json file
+        const packageJson: any = JSON.parse(
+          await readUTF8File(packageJsonPath) || "{}"
+        );
+    
+        // delete type module from package.json
+        delete packageJson.type;
+    
+        // write package.json file
+        await writeToFile(tempFolderPath, "package.json", JSON.stringify(packageJson, null, 2));
+      }
     
 
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
@@ -284,6 +305,9 @@ export class NodeTsBundler implements BundlerInterface {
             mode === "production" ? this.#copyDependencies(dependenciesInfo, temporaryFolder, mode) : Promise.resolve(),
             writeToFile(temporaryFolder, "index.js", lambdaHandler(`"${input.configuration.name}"`))
         ]);
+
+        // 3. Delete type: module from package.json
+        await this.#deleteTypeModuleFromPackageJson(temporaryFolder);
 
         return {
             ...input,
