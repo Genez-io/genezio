@@ -135,8 +135,6 @@ program
 
     log.info("Deploying your project to genezio infrastructure...");
     await deployClasses()
-      .then(() => {
-      })
       .catch((error: AxiosError) => {
         switch (error.response?.status) {
           case 401:
@@ -202,8 +200,7 @@ program
       exit(1);
     }
 
-    spinner.start();
-    let classesInfo: { className: any; methods: any; path: string; functionUrl: string; tmpFolder: string }[] = [];
+     let classesInfo: { className: any; methods: any; path: string; functionUrl: string; tmpFolder: string }[] = [];
 
     try {
       // eslint-disable-next-line no-constant-condition
@@ -270,7 +267,6 @@ program
             }
             exit(1);
           });
-          spinner.stop(true);
         } else {
           log.info("\x1b[36m%s\x1b[0m", "Listening for changes...");
         }
