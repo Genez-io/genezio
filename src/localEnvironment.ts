@@ -386,7 +386,7 @@ export async function prepareForLocalEnvironment(
       .then((output) => {
         debugLogger.debug("The bundling process finished successfully.");
         const className = astClassSummary.name;
-        const handlerPath = path.join(output.path, "index");
+        const handlerPath = path.join(output.path, "index.js");
         const baseurl = `http://127.0.0.1:${port}/`;
         const functionUrl = `${baseurl}${className}`;
         functionUrlForFilePath[path.parse(element.path).name] = functionUrl;
