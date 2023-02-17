@@ -22,6 +22,7 @@ import { BundlerInterface } from "./bundlers/bundler.interface";
 import { AstSummary, AstSummaryMethod } from "./models/generateSdkResponse";
 import { ClassConfiguration, ProjectConfiguration } from "./models/projectConfiguration";
 import cron from "node-cron";
+import fs from "fs";
 
 export function getEventObjectFromRequest(request: any) {
   const urlDetails = url.parse(request.url, true);
@@ -224,6 +225,8 @@ export async function startCronHandlers(
   return cronHandlers;
 }
 
+
+
 export async function startServer(
   classesInfo: any,
   handlers: any,
@@ -259,6 +262,9 @@ export async function startServer(
     const pathStr = localHandler.path;
     debugLogger.debug(`Request received for ${req.params.className}.`);
 
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    delete require.cache[require.resolve(pathStr)]
+    delete require.cache[require.resolve(path.join(path.dirname(pathStr), "module.js"))]
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const module = require(pathStr);
 
@@ -380,7 +386,7 @@ export async function prepareForLocalEnvironment(
       .then((output) => {
         debugLogger.debug("The bundling process finished successfully.");
         const className = astClassSummary.name;
-        const handlerPath = path.join(output.path, "index.js");
+        const handlerPath = path.join(output.path, "index");
         const baseurl = `http://127.0.0.1:${port}/`;
         const functionUrl = `${baseurl}${className}`;
         functionUrlForFilePath[path.parse(element.path).name] = functionUrl;

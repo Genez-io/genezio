@@ -173,6 +173,9 @@ export class NodeTsBundler implements BundlerInterface {
         tempFolderPath: string,
         mode: "development" | "production"
     ): Promise<void> {
+
+
+
         // eslint-disable-next-line no-async-promise-executor
         const module = {
             rules: [
@@ -196,6 +199,11 @@ export class NodeTsBundler implements BundlerInterface {
             modules: [path.resolve(__dirname, "../../../", "node_modules")]
         };
         const outputFile = `module.js`;
+
+        // delete module.js file if it exists
+        if (fs.existsSync(path.join(tempFolderPath, outputFile))) {
+            fs.unlinkSync(path.join(tempFolderPath, outputFile));
+        }
 
         const output: any = await bundle(
             "./" + filePath,

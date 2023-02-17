@@ -134,6 +134,11 @@ export class NodeJsBundler implements BundlerInterface {
   ): Promise<void> {
     const outputFile = `module.js`;
 
+    // delete module.js file if it exists
+    if (fs.existsSync(path.join(tempFolderPath, outputFile))) {
+      fs.unlinkSync(path.join(tempFolderPath, outputFile));
+    }
+
     // eslint-disable-next-line no-async-promise-executor
     const output: any = await bundle(
       "./" + filePath,
