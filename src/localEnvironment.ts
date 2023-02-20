@@ -181,12 +181,17 @@ export async function prepareCronHandlers(
     const methods = classElement.methods;
     for (const method of methods) {
       if (method.type === "cron" && method.cronString) {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        delete require.cache[require.resolve(handlers[classElement.className].path)]
+        delete require.cache[require.resolve(path.join(path.dirname(handlers[classElement.className].path), "module.js"))]
+
         const cronHandler: LocalEnvCronHandler = {
           className: classElement.className,
           methodName: method.name,
           cronString: method.cronString,
           path: handlers[classElement.className].path,
-          cronObject: null
+          cronObject: null,
+          module: require(handlers[classElement.className].path)
         };
         cronHandlers.push(cronHandler);
       }
@@ -207,11 +212,7 @@ export async function startCronHandlers(
         cronString: cronHandler.cronString
       };
 
-      const pathStr = cronHandler.path;
- 
-
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const module = require(pathStr);
+      const module = cronHandler.module;
 
       await module.handler(reqToFunction);
     });
@@ -259,16 +260,9 @@ export async function startServer(
       return;
     }
 
-    const pathStr = localHandler.path;
     debugLogger.debug(`Request received for ${req.params.className}.`);
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    delete require.cache[require.resolve(pathStr)]
-    delete require.cache[require.resolve(path.join(path.dirname(pathStr), "module.js"))]
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const module = require(pathStr);
-
-
+    const module = localHandler.module;
     const response = await module.handler(reqToFunction);
 
     handleResponseForJsonRpc(res, response);
@@ -291,11 +285,7 @@ export async function startServer(
       return;
     }
 
-    const path = handler.path;
-
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const module = require(path);
-
+    const module = handler.module;
     const response = await module.handler(reqToFunction);
     handleResponseforHttp(res, response);
   });
@@ -409,8 +399,13 @@ export async function prepareForLocalEnvironment(
           tmpFolder: tmpFolder
         });
 
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        delete require.cache[require.resolve(handlerPath)]
+        delete require.cache[require.resolve(path.join(path.dirname(handlerPath), "module.js"))]
+
         handlers[className] = {
-          path: handlerPath
+          path: handlerPath,
+          module: require(handlerPath)
         };
       });
   });
