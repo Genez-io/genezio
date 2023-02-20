@@ -245,7 +245,10 @@ program
         }
 
         if (handlers != undefined) {
-          log.info(`Test your code at ${LOCAL_TEST_INTERFACE_URL}?port=${options.port}`);
+          log.info(
+            "\x1b[32m%s\x1b[0m",
+            `Test your code at ${LOCAL_TEST_INTERFACE_URL}?port=${options.port}`
+          );
           const startServerOutput: LocalEnvStartServerOutput = await startServer(
             classesInfo,
             handlers,
