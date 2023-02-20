@@ -321,10 +321,10 @@ export class YamlProjectConfiguration {
         },
         path: this.sdk.path
       },
-      frontend: {
+      frontend: this.frontend ? {
         path: this.frontend?.path,
         subdomain: this.frontend?.subdomain
-      },
+      } : undefined,
       classes: this.classes.map((c) => ({
         path: c.path,
         type: c.type,
