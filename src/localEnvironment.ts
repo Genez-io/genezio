@@ -91,11 +91,15 @@ export function handleResponseforHttp(res: any, httpResponse: any) {
 export async function listenForChanges(
   sdkPathRelative: any,
   server: any,
-  cronHandlers: LocalEnvCronHandler[]
+  cronHandlers: LocalEnvCronHandler[] | null
 ) {
   const cwd = process.cwd();
 
-  let sdkPath = path.join(cwd, sdkPathRelative);
+  let sdkPath: any = null;
+  
+  if (sdkPathRelative) {
+    sdkPath = path.join(cwd, sdkPathRelative);
+  }
 
   let ignoredPathsFromGenezioIgnore: string[] = [];
 
@@ -123,19 +127,25 @@ export async function listenForChanges(
 
   return new Promise((resolve) => {
     // delete / if sdkPath ends with /
-    if (sdkPath.endsWith("/")) {
+    if (sdkPath?.endsWith("/")) {
       sdkPath = sdkPath.slice(0, -1);
     }
 
     // Watch for changes in the classes and update the handlers
     const watchPaths = [path.join(cwd, "/**/*")];
-    const ignoredPaths = [
-      "**/node_modules/*",
-      // "**/node_modules/**/*",
-      sdkPath + "/**/*",
-      sdkPath + "/*",
-      ...ignoredPathsFromGenezioIgnore
-    ];
+    let ignoredPaths: string[] = [];
+
+    if (sdkPath) {
+      ignoredPaths = [
+        "**/node_modules/*",
+        // "**/node_modules/**/*",
+        sdkPath + "/**/*",
+        sdkPath + "/*",
+        ...ignoredPathsFromGenezioIgnore
+      ];
+    } else {
+      ignoredPaths = ["**/node_modules/*", ...ignoredPathsFromGenezioIgnore];
+    }
 
     const startWatching = () => {
       const watch = chokidar
@@ -144,13 +154,17 @@ export async function listenForChanges(
           ignoreInitial: true
         })
         .on("all", async (event: any, path: any) => {
-          if (path.includes(sdkPath)) {
-            return;
+          console.log("event", event);
+          console.log("path", path);
+          if (sdkPath) {
+            if (path.includes(sdkPath)) {
+              return;
+            }
           }
 
           console.clear();
           log.info("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
-          if (server) {
+          if (server && cronHandlers) {
             // removed await for now for faster reloads
             server.close();
             stopCronJobs(cronHandlers);
@@ -181,17 +195,13 @@ export async function prepareCronHandlers(
     const methods = classElement.methods;
     for (const method of methods) {
       if (method.type === "cron" && method.cronString) {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        delete require.cache[require.resolve(handlers[classElement.className].path)]
-        delete require.cache[require.resolve(path.join(path.dirname(handlers[classElement.className].path), "module.js"))]
-
         const cronHandler: LocalEnvCronHandler = {
           className: classElement.className,
           methodName: method.name,
           cronString: method.cronString,
           path: handlers[classElement.className].path,
           cronObject: null,
-          module: require(handlers[classElement.className].path)
+          module: handlers[classElement.className].module
         };
         cronHandlers.push(cronHandler);
       }
