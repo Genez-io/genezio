@@ -10,7 +10,14 @@ export async function getProjectConfiguration(configurationFilePath = "./genezio
 
     const genezioYamlPath = path.join(configurationFilePath);
     const configurationFileContentUTF8 = await readUTF8File(genezioYamlPath);
-    const configurationFileContent = await parse(configurationFileContentUTF8);
+    let configurationFileContent = null;
+    
+    try {
+      configurationFileContent = await parse(configurationFileContentUTF8);
+    }
+    catch (error) {
+      throw new Error(`The configuration yaml file is not valid.\n${error}`);
+    }
     const projectConfiguration = await YamlProjectConfiguration.create(configurationFileContent)
 
     return projectConfiguration
