@@ -23,7 +23,8 @@ export type LocalEnvCronHandler = {
     methodName: string,
     cronString: string,
     path: string,
-    cronObject: any
+    cronObject: any,
+    module: any
 }
 
 export type LocalEnvStartServerOutput = {

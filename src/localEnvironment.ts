@@ -23,6 +23,10 @@ import { AstSummary, AstSummaryMethod } from "./models/generateSdkResponse";
 import { ClassConfiguration, ProjectConfiguration } from "./models/projectConfiguration";
 import cron from "node-cron";
 import fs from "fs";
+import generateSdkRequest from "./requests/generateSdk";
+import { reportSuccess } from "./commands";
+import { getProjectConfiguration } from "./utils/configuration";
+import { replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
 
 export function getEventObjectFromRequest(request: any) {
   const urlDetails = url.parse(request.url, true);
@@ -91,11 +95,15 @@ export function handleResponseforHttp(res: any, httpResponse: any) {
 export async function listenForChanges(
   sdkPathRelative: any,
   server: any,
-  cronHandlers: LocalEnvCronHandler[]
+  cronHandlers: LocalEnvCronHandler[] | null
 ) {
   const cwd = process.cwd();
 
-  let sdkPath = path.join(cwd, sdkPathRelative);
+  let sdkPath: any = null;
+  
+  if (sdkPathRelative) {
+    sdkPath = path.join(cwd, sdkPathRelative);
+  }
 
   let ignoredPathsFromGenezioIgnore: string[] = [];
 
@@ -123,19 +131,25 @@ export async function listenForChanges(
 
   return new Promise((resolve) => {
     // delete / if sdkPath ends with /
-    if (sdkPath.endsWith("/")) {
+    if (sdkPath?.endsWith("/")) {
       sdkPath = sdkPath.slice(0, -1);
     }
 
     // Watch for changes in the classes and update the handlers
     const watchPaths = [path.join(cwd, "/**/*")];
-    const ignoredPaths = [
-      "**/node_modules/*",
-      // "**/node_modules/**/*",
-      sdkPath + "/**/*",
-      sdkPath + "/*",
-      ...ignoredPathsFromGenezioIgnore
-    ];
+    let ignoredPaths: string[] = [];
+
+    if (sdkPath) {
+      ignoredPaths = [
+        "**/node_modules/*",
+        // "**/node_modules/**/*",
+        sdkPath + "/**/*",
+        sdkPath + "/*",
+        ...ignoredPathsFromGenezioIgnore
+      ];
+    } else {
+      ignoredPaths = ["**/node_modules/*", ...ignoredPathsFromGenezioIgnore];
+    }
 
     const startWatching = () => {
       const watch = chokidar
@@ -144,13 +158,17 @@ export async function listenForChanges(
           ignoreInitial: true
         })
         .on("all", async (event: any, path: any) => {
-          if (path.includes(sdkPath)) {
-            return;
+          console.log("event", event);
+          console.log("path", path);
+          if (sdkPath) {
+            if (path.includes(sdkPath)) {
+              return;
+            }
           }
 
           console.clear();
           log.info("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
-          if (server) {
+          if (server && cronHandlers) {
             // removed await for now for faster reloads
             server.close();
             stopCronJobs(cronHandlers);
@@ -186,7 +204,8 @@ export async function prepareCronHandlers(
           methodName: method.name,
           cronString: method.cronString,
           path: handlers[classElement.className].path,
-          cronObject: null
+          cronObject: null,
+          module: handlers[classElement.className].module
         };
         cronHandlers.push(cronHandler);
       }
@@ -207,11 +226,7 @@ export async function startCronHandlers(
         cronString: cronHandler.cronString
       };
 
-      const pathStr = cronHandler.path;
- 
-
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const module = require(pathStr);
+      const module = cronHandler.module;
 
       await module.handler(reqToFunction);
     });
@@ -223,6 +238,37 @@ export async function startCronHandlers(
   }
 
   return cronHandlers;
+}
+
+export async function startLocalTesting(classesInfo: any, options: any): Promise<any> {
+    const projectConfiguration = await getProjectConfiguration();
+
+    let astSummary: AstSummary | undefined = undefined;
+
+    const sdk = await generateSdkRequest(projectConfiguration)
+
+    astSummary = sdk.astSummary
+
+    const localEnvInfo: any = await prepareForLocalEnvironment(
+      projectConfiguration,
+      sdk.astSummary,
+      Number(options.port),
+      classesInfo
+    );
+
+
+    classesInfo = localEnvInfo.classesInfo;
+    const handlers = localEnvInfo.handlers;
+
+    await replaceUrlsInSdk(sdk, sdk.classFiles.map((c) => ({ name: c.name, cloudUrl: `http://127.0.0.1:${options.port}/${c.name}` })))
+    await writeSdkToDisk(sdk, projectConfiguration.sdk.language, projectConfiguration.sdk.path)
+    reportSuccess(classesInfo, sdk);
+
+    return({
+      handlers,
+      classesInfo,
+      astSummary
+    });
 }
 
 
@@ -259,16 +305,9 @@ export async function startServer(
       return;
     }
 
-    const pathStr = localHandler.path;
     debugLogger.debug(`Request received for ${req.params.className}.`);
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    delete require.cache[require.resolve(pathStr)]
-    delete require.cache[require.resolve(path.join(path.dirname(pathStr), "module.js"))]
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const module = require(pathStr);
-
-
+    const module = localHandler.module;
     const response = await module.handler(reqToFunction);
 
     handleResponseForJsonRpc(res, response);
@@ -291,11 +330,7 @@ export async function startServer(
       return;
     }
 
-    const path = handler.path;
-
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const module = require(path);
-
+    const module = handler.module;
     const response = await module.handler(reqToFunction);
     handleResponseforHttp(res, response);
   });
@@ -409,8 +444,13 @@ export async function prepareForLocalEnvironment(
           tmpFolder: tmpFolder
         });
 
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        delete require.cache[require.resolve(handlerPath)]
+        delete require.cache[require.resolve(path.join(path.dirname(handlerPath), "module.js"))]
+
         handlers[className] = {
-          path: handlerPath
+          path: handlerPath,
+          module: require(handlerPath)
         };
       });
   });
