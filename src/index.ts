@@ -24,6 +24,7 @@ import {
 import {
   listenForChanges,
   prepareForLocalEnvironment,
+  startLocalTesting,
   startServer
 } from "./localEnvironment";
 import { getProjectConfiguration } from "./utils/configuration";
@@ -211,84 +212,68 @@ program
         let handlers = undefined;
         let astSummary: AstSummary | undefined = undefined;
         let cronHandlers: LocalEnvCronHandler[] = [];
-        let changeComingFromError = false;
-        try {
-          changeComingFromError = false;
-
-          const sdk = await generateSdkRequest(projectConfiguration)
-
-          astSummary = sdk.astSummary
-          const localEnvInfo = await prepareForLocalEnvironment(
-            projectConfiguration,
-            sdk.astSummary,
-            Number(options.port),
-            classesInfo
-          );
-
-
-          classesInfo = localEnvInfo.classesInfo;
-          handlers = localEnvInfo.handlers;
-
-          await replaceUrlsInSdk(sdk, sdk.classFiles.map((c) => ({ name: c.name, cloudUrl: `http://127.0.0.1:${options.port}/${c.name}` })))
-          await writeSdkToDisk(sdk, projectConfiguration.sdk.language, projectConfiguration.sdk.path)
-          reportSuccess(classesInfo, sdk);
-        } catch (error: any) {
-          if (error.message === "Unauthorized") {
-            log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-            exit(1);
-          }
-          log.error("\x1b[31m%s\x1b[0m", `Error while preparing for local environment:\n${error.message}`);
-          log.error(`Waiting for changes...`);
-
-          await listenForChanges(null, null, null).catch(
-            (error: Error) => {
-              log.error(error.message);
+        await startLocalTesting(classesInfo, options)
+          .catch(async (error: Error) => {
+            if (error.message === "Unauthorized") {
+              log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
               exit(1);
             }
-          );
-          changeComingFromError = true;
-        }
+            log.error("\x1b[31m%s\x1b[0m", `Error while preparing for local environment:\n${error.message}`);
+            log.error(`Waiting for changes...`);
 
-        if (!changeComingFromError) {
-          if (handlers != undefined) {
-            log.info(
-              "\x1b[32m%s\x1b[0m",
-              `Test your code at ${LOCAL_TEST_INTERFACE_URL}?port=${options.port}`
-            );
-            const startServerOutput: LocalEnvStartServerOutput = await startServer(
-              classesInfo,
-              handlers,
-              astSummary,
-              Number(options.port)
-            );
-
-            server = startServerOutput.server;
-            cronHandlers = startServerOutput.cronHandlers;
-
-
-            server.on("error", (error: any) => {
-              if (error.code === "EADDRINUSE") {
-                log.error(
-                  `The port ${error.port} is already in use. Please use a different port by specifying --port <port> to start your local server.`
-                );
-              } else {
+            await listenForChanges(null, null, null).catch(
+              (error: Error) => {
                 log.error(error.message);
+                exit(1);
               }
-              exit(1);
-            });
-          } else {
-            log.info("\x1b[36m%s\x1b[0m", "Listening for changes...");
-          }
-
-          await listenForChanges(projectConfiguration.sdk.path, server, cronHandlers).catch(
-            (error: Error) => {
-              log.error(error.message);
-              exit(1);
+            );
+            return null;
+          })
+          .then(async (responseStartLocal: any) => {
+            if (responseStartLocal === null) {
+              return;
             }
-          );
-        }
 
-        
+            handlers = responseStartLocal.handlers;
+            astSummary = responseStartLocal.astSummary;
+            classesInfo = responseStartLocal.classesInfo;
+            if (handlers != undefined) {
+              log.info(
+                "\x1b[32m%s\x1b[0m",
+                `Test your code at ${LOCAL_TEST_INTERFACE_URL}?port=${options.port}`
+              );
+              const startServerOutput: LocalEnvStartServerOutput = await startServer(
+                classesInfo,
+                handlers,
+                astSummary,
+                Number(options.port)
+              );
+
+              server = startServerOutput.server;
+              cronHandlers = startServerOutput.cronHandlers;
+
+
+              server.on("error", (error: any) => {
+                if (error.code === "EADDRINUSE") {
+                  log.error(
+                    `The port ${error.port} is already in use. Please use a different port by specifying --port <port> to start your local server.`
+                  );
+                } else {
+                  log.error(error.message);
+                }
+                exit(1);
+              });
+            } else {
+              log.info("\x1b[36m%s\x1b[0m", "Listening for changes...");
+            }
+
+            await listenForChanges(projectConfiguration.sdk.path, server, cronHandlers).catch(
+              (error: Error) => {
+                log.error(error.message);
+                exit(1);
+              }
+            );
+          })
       }
     } catch (error: any) {
       log.error(error.message);

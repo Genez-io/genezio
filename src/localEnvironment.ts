@@ -23,6 +23,10 @@ import { AstSummary, AstSummaryMethod } from "./models/generateSdkResponse";
 import { ClassConfiguration, ProjectConfiguration } from "./models/projectConfiguration";
 import cron from "node-cron";
 import fs from "fs";
+import generateSdkRequest from "./requests/generateSdk";
+import { reportSuccess } from "./commands";
+import { getProjectConfiguration } from "./utils/configuration";
+import { replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
 
 export function getEventObjectFromRequest(request: any) {
   const urlDetails = url.parse(request.url, true);
@@ -234,6 +238,37 @@ export async function startCronHandlers(
   }
 
   return cronHandlers;
+}
+
+export async function startLocalTesting(classesInfo: any, options: any): Promise<any> {
+    const projectConfiguration = await getProjectConfiguration();
+
+    let astSummary: AstSummary | undefined = undefined;
+
+    const sdk = await generateSdkRequest(projectConfiguration)
+
+    astSummary = sdk.astSummary
+
+    const localEnvInfo: any = await prepareForLocalEnvironment(
+      projectConfiguration,
+      sdk.astSummary,
+      Number(options.port),
+      classesInfo
+    );
+
+
+    classesInfo = localEnvInfo.classesInfo;
+    const handlers = localEnvInfo.handlers;
+
+    await replaceUrlsInSdk(sdk, sdk.classFiles.map((c) => ({ name: c.name, cloudUrl: `http://127.0.0.1:${options.port}/${c.name}` })))
+    await writeSdkToDisk(sdk, projectConfiguration.sdk.language, projectConfiguration.sdk.path)
+    reportSuccess(classesInfo, sdk);
+
+    return({
+      handlers,
+      classesInfo,
+      astSummary
+    });
 }
 
 
