@@ -298,7 +298,7 @@ export async function deployClasses() {
 
   const projectId = classesInfo[0].projectId;
   console.log(
-    `Your project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`
+    `Your backend project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`
   );
 }
 

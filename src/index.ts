@@ -134,7 +134,7 @@ program
       exit(0)
     }
 
-    log.info("Deploying your project to genezio infrastructure...");
+    log.info("Deploying your backend project to genezio infrastructure...");
     await deployClasses()
       .catch((error: AxiosError) => {
         switch (error.response?.status) {
