@@ -212,6 +212,12 @@ export class YamlProjectConfiguration {
       );
     }
 
+
+    const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
+    if (!nameRegex.test(configurationFileContent.name)) {
+      throw new Error("The method name is not valid. It must be [a-zA-Z][-a-zA-Z0-9]*");
+    }
+
     if (!configurationFileContent.sdk.path) {
       throw new Error(
         "The sdk.path property is missing from the configuration file."
