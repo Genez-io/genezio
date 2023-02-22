@@ -108,7 +108,7 @@ program
   .command("deploy")
   .option("--frontend", "Deploy the frontend application.")
   .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
-  .description("Deploy your project to the genezio infrastructure.")
+  .description("Deploy your project to the genezio infrastructure. Use --frontend to deploy the frontend application.")
   .action(async (options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
 
