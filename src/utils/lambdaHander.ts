@@ -110,12 +110,26 @@ exports.handler =  async function(event, context) {
 
 
         const requestId = body.id;
-        try {
-          const response = await object[method](...(body.params || []));
-          return {"jsonrpc": "2.0", "result": response, "error": null, "id": requestId};
-        } catch(error) {
-          return {"jsonrpc": "2.0", "error": {"code": -1, "message": error.toString()}, "id": requestId};
-        }
+        const errorPromise = new Promise((resolve) => {
+          process.on('uncaughtException', function(err) {
+            console.error(err);
+            resolve({"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId})
+          });
+        })
+        const response = object[method](...(body.params || [])).then((result) => {
+          return {"jsonrpc": "2.0", "result": result, "error": null, "id": requestId};
+        }).catch((err) => {
+          console.error(err);
+          return {"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId}
+        })
+
+        const result = await Promise.race([errorPromise, response])
+        process.removeAllListeners("uncaughtException")
+        return result;
     }
 }
+
+
+
+
 `;
