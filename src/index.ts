@@ -93,12 +93,16 @@ program
   .command("login")
   .argument("[accessToken]", "Personal access token.")
   .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
+  .option("--alt", "Start an alternative login process using puppeteer to open a chromium browser.", Boolean)
+  .option("--headless", "Start the login process using a headless browser. Only works with the alternative login process. You need to do at least one proper login using puppeteer before attempting this.", Boolean)
   .description("Authenticate with genezio platform to deploy your code.")
   .action(async (accessToken = "", options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
     log.info(asciiCapybara);
+    const isHeadless = options.headless === undefined ? false : true;
+    const alternativeLogin = options.alt === undefined ? false : true;
 
-    await handleLogin(accessToken).catch((error: Error) => {
+    await handleLogin(accessToken, alternativeLogin, isHeadless).catch((error: Error) => {
       log.error(error.message);
       exit(1);
     });

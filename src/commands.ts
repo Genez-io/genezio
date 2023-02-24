@@ -17,7 +17,7 @@ import {
 } from "./models/yamlProjectConfiguration";
 import { getProjectConfiguration } from "./utils/configuration";
 import { printAdaptiveLog } from "./utils/logging";
-import { REACT_APP_BASE_URL, FRONTEND_DOMAIN } from "./variables";
+import { REACT_APP_BASE_URL, FRONTEND_DOMAIN, PUPPETEER_DATA_DIR } from "./variables";
 import log from "loglevel";
 import http from "http";
 import jsonBody from "body/json";
@@ -43,7 +43,7 @@ import { GenerateSdkResponse } from "./models/generateSdkResponse"
 import { getFrontendPresignedURL } from "./requests/getFrontendPresignedURL";
 import getProjectInfo from "./requests/getProjectInfo";
 import { generateRandomSubdomain } from "./utils/yaml";
-
+import puppeteer from "puppeteer";
 
 export async function addNewClass(classPath: string, classType: string) {
   if (classType === undefined) {
@@ -464,7 +464,7 @@ classes:
   log.info("");
 }
 
-export async function handleLogin(accessToken: string) {
+export async function handleLogin(accessToken: string, alternative: boolean, isHeadless: boolean) {
   if (accessToken !== "") {
     saveAuthToken(accessToken);
   } else {
@@ -508,7 +508,24 @@ export async function handleLogin(accessToken: string) {
 
     const port = await promise;
     const browserUrl = `${REACT_APP_BASE_URL}/cli/login?redirect_url=http://localhost:${port}/`;
-    open(browserUrl);
+
+    if (alternative) {
+      const browserSession = `${PUPPETEER_DATA_DIR}`;
+      if (browserSession === undefined) {
+        log.info("No browser state provided. You need to login manually to the genezio app.")
+      }
+      (async () => {
+        const browser = await puppeteer.launch({headless: isHeadless, userDataDir: browserSession});
+        const page = await browser.newPage();
+        await page.goto(browserUrl);
+        if (isHeadless) {
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          await browser.close();
+        }
+      })();
+    } else {
+      open(browserUrl);
+    }
   }
 }
 
