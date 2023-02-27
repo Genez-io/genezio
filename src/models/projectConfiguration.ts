@@ -77,7 +77,7 @@ export class ProjectConfiguration {
         this.name = yamlConfiguration.name;
         this.region = yamlConfiguration.region;
         this.sdk = yamlConfiguration.sdk;
-        this.cloudProvider = yamlConfiguration.cloudProvider || "genezio";
+        this.cloudProvider = yamlConfiguration.cloudProvider || "aws";
 
         this.classes = astSummary.classes.map((c) => {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion

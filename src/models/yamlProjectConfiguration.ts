@@ -294,7 +294,7 @@ export class YamlProjectConfiguration {
       configurationFileContent.name,
       configurationFileContent.region || "us-east-1",
       sdk,
-      configurationFileContent.cloudProvider || "genezio",
+      configurationFileContent.cloudProvider || "aws",
       classes,
       configurationFileContent.frontend
     );
