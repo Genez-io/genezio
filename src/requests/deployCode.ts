@@ -30,8 +30,6 @@ export async function deployRequest(
     cloudProvider: projectConfiguration.cloudProvider,
   })
 
-  console.log(json)
-
   const controller = new AbortController();
   const messagePromise = printUninformativeLog(controller);
   const response: any = await axios({
