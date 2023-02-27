@@ -27,7 +27,10 @@ export async function deployRequest(
     classes: projectConfiguration.classes,
     projectName : projectConfiguration.name,
     region: projectConfiguration.region,
+    cloudProvider: projectConfiguration.cloudProvider,
   })
+
+  console.log(json)
 
   const controller = new AbortController();
   const messagePromise = printUninformativeLog(controller);

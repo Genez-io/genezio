@@ -186,6 +186,7 @@ export class YamlProjectConfiguration {
   name: string;
   region: string;
   sdk: YamlSdkConfiguration;
+  cloudProvider?: string;
   classes: YamlClassConfiguration[];
   frontend?: YamlFrontend;
 
@@ -193,12 +194,14 @@ export class YamlProjectConfiguration {
     name: string,
     region: string,
     sdk: YamlSdkConfiguration,
+    cloudProvider: string,
     classes: YamlClassConfiguration[],
     frontend: YamlFrontend|undefined = undefined,
   ) {
     this.name = name;
     this.region = region;
     this.sdk = sdk;
+    this.cloudProvider = cloudProvider;
     this.classes = classes;
     this.frontend = frontend;
   }
@@ -291,6 +294,7 @@ export class YamlProjectConfiguration {
       configurationFileContent.name,
       configurationFileContent.region || "us-east-1",
       sdk,
+      configurationFileContent.cloudProvider || "genezio",
       classes,
       configurationFileContent.frontend
     );
@@ -320,6 +324,7 @@ export class YamlProjectConfiguration {
     const content = {
       name: this.name,
       region: this.region,
+      cloudProvider: this.cloudProvider ? this.cloudProvider : undefined,
       sdk: {
         language: this.sdk.language,
         options: {
