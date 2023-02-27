@@ -35,6 +35,7 @@ describe("addNewClass", () => {
       "test",
       "us-east-1",
       new YamlSdkConfiguration(Language.js, JsRuntime.browser, "./test.js"),
+      "genezio",
       []
     );
     projectConfiguration.addClass = jest.fn();
@@ -63,6 +64,7 @@ describe("addNewClass", () => {
       "test",
       "us-east-1",
       new YamlSdkConfiguration(Language.js, JsRuntime.browser, "./test.js"),
+      "genezio",
       []
     );
     projectConfiguration.addClass = jest.fn();
