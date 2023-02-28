@@ -511,7 +511,7 @@ export async function handleLogin(accessToken: string, alternative: boolean, isH
 
     if (alternative) {
       const browserSession = `${PUPPETEER_DATA_DIR}`;
-      if (browserSession === undefined) {
+      if (browserSession === undefined || browserSession == "") {
         log.info("No browser state provided. You need to login manually to the genezio app.")
       }
       (async () => {
