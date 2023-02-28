@@ -390,8 +390,6 @@ program
   .action(async (options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
 
-    spinner.start();
-
     // check if user is logged in
     const authToken = await getAuthToken();
     if (!authToken) {
@@ -428,8 +426,6 @@ program
     });
 
     console.log("Your SDK has been generated successfully in " + sdkPath + "");
-
-    spinner.stop(true);
   });
 
 program.parse();
