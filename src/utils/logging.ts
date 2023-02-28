@@ -33,7 +33,7 @@ export function printAdaptiveLog(message: string, state: string) {
 
 const uninformativeMessages = [
     "Calling the API for witty loading messages",
-    "Asking on StackOverflow how to deploy your project…",
+    "Asking on StackOverflow how to deploy your project",
     "Changing the plumbing of the pipeline",
     "Rearranging the code randomly",
     "Calling the mothership for further instructions",
