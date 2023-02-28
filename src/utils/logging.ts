@@ -37,7 +37,7 @@ const uninformativeMessages = [
     "Changing the plumbing of the pipeline",
     "Rearranging the code randomly",
     "Calling the mothership for further instructions",
-    "Deploying…crossing our fingers",
+    "Deploying...crossing our fingers",
     "Doing a barrel roll",
     "*playing elevator music*",
     "Spraying your code with bug repellents",
