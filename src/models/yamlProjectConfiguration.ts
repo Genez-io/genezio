@@ -221,6 +221,10 @@ export class YamlProjectConfiguration {
       throw new Error("The method name is not valid. It must be [a-zA-Z][-a-zA-Z0-9]*");
     }
 
+    if (!configurationFileContent.sdk) {
+      throw new Error("The sdk property is missing from the configuration file.");
+    }
+
     if (!configurationFileContent.sdk.path) {
       throw new Error(
         "The sdk.path property is missing from the configuration file."
@@ -229,24 +233,27 @@ export class YamlProjectConfiguration {
 
     const language: string = configurationFileContent.sdk.language;
 
-    if (!language || !Language[language as keyof typeof Language]) {
+    if (!language) {
+      throw new Error("The sdk.language property is missing.");
+    }
+
+    if (!Language[language as keyof typeof Language]) {
       throw new Error("The sdk.language property is invalid.");
     }
 
-    if (
-      (Language[
-        configurationFileContent.sdk.language as keyof typeof Language
-      ] == Language.js ||
-        Language[
-          configurationFileContent.sdk.language as keyof typeof Language
-        ] == Language.ts) &&
-      configurationFileContent.sdk.options &&
-      !JsRuntime[
-        configurationFileContent.sdk.options
-          .runtime as keyof typeof JsRuntime
-      ]
-    ) {
-      throw new Error("The sdk.options.runtime property is invalid.");
+    if (Language[language as keyof typeof Language] == Language.js ||
+        Language[language as keyof typeof Language] == Language.ts) {
+      if (!configurationFileContent.sdk.options) {
+        throw new Error("The sdk.options property is missing from the configuration file.");
+      }
+
+      if (!configurationFileContent.sdk.options.runtime) {
+        throw new Error("The sdk.options.runtime property is missing from the configuration file.");
+      }
+
+      if (!JsRuntime[configurationFileContent.sdk.options.runtime as keyof typeof JsRuntime]) {
+        throw new Error("The sdk.options.runtime property is invalid.");
+      }
     }
 
     const jsRuntime: JsRuntime | null = configurationFileContent.sdk.options
