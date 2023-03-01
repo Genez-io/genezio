@@ -219,7 +219,7 @@ program
               exit(1);
             }
             log.error("\x1b[31m%s\x1b[0m", `Error while preparing for local environment:\n${error.message}`);
-            log.error(`Waiting for changes...`);
+            log.error(`Fix the errors and genezio local will restart automatically. Waiting for changes...`);
 
             await listenForChanges(null, null, null).catch(
               (error: Error) => {
