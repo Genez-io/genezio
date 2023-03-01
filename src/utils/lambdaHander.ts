@@ -116,6 +116,13 @@ exports.handler =  async function(event, context) {
             resolve({"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId})
           });
         })
+
+        if (object[method].constructor.name !== 'AsyncFunction') {
+          const result = object[method](...(body.params || []));
+          return {"jsonrpc": "2.0", "result": result, "error": null, "id": requestId};
+        }
+
+
         const response = object[method](...(body.params || [])).then((result) => {
           return {"jsonrpc": "2.0", "result": result, "error": null, "id": requestId};
         }).catch((err) => {
