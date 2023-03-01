@@ -214,7 +214,7 @@ program
         let cronHandlers: LocalEnvCronHandler[] = [];
         await startLocalTesting(classesInfo, options)
           .catch(async (error: Error) => {
-            if (error.message === "Unauthorized") {
+            if (error.message === "Unauthorized" || error.message.includes("401")) {
               log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
               exit(1);
             }
