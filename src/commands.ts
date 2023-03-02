@@ -207,6 +207,8 @@ export async function deployClasses() {
     );
   }
 
+  log.info("Deploying your backend project to genezio infrastructure...");
+
   const sdkResponse = await generateSdkRequest(configuration).catch((error) => {
     throw error;
   });
