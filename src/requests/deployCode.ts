@@ -29,6 +29,8 @@ export async function deployRequest(
     region: projectConfiguration.region,
   })
 
+  console.log("tralalaa", json)
+
   const controller = new AbortController();
   const messagePromise = printUninformativeLog(controller);
   const response: any = await axios({

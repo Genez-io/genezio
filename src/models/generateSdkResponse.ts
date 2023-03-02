@@ -1,5 +1,8 @@
+import { type } from "os";
+
 export type AstSummaryParam = {
     name: string;
+    type: string;
 };
 
 export enum TriggerType {
