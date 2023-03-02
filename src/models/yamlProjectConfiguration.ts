@@ -148,7 +148,7 @@ export class YamlClassConfiguration {
       !TriggerType[classConfigurationYaml.type as keyof typeof TriggerType]
     ) {
       const triggerTypes: string = Object.keys(TriggerType).join(", ");
-      throw new Error("Specified class type for " + classConfigurationYaml.path + " is incorrect. Possible values: " + triggerTypes + ".");
+      throw new Error("Specified class type for " + classConfigurationYaml.path + " is incorrect. Accepted values: " + triggerTypes + ".");
     }
 
     let triggerType = TriggerType.jsonrpc;
