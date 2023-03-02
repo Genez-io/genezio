@@ -6,13 +6,12 @@ import {
   init,
   addNewClass,
   deployClasses,
-  reportSuccess,
   handleLogin,
   lsHandler,
   deployFrontend,
   generateSdkHandler,
 } from "./commands";
-import { setDebuggingLoggerLogLevel, spinner } from "./utils/logging";
+import { setDebuggingLoggerLogLevel } from "./utils/logging";
 import { asciiCapybara, GENEZIO_NOT_AUTH_ERROR_MSG } from "./utils/strings";
 import { exit } from "process";
 import { AxiosError } from "axios";
@@ -23,7 +22,6 @@ import {
 } from "./variables";
 import {
   listenForChanges,
-  prepareForLocalEnvironment,
   startLocalTesting,
   startServer
 } from "./localEnvironment";
@@ -34,8 +32,6 @@ import { getAuthToken, removeAuthToken } from "./utils/accounts";
 import { AstSummary } from "./models/astSummary";
 
 import prefix from 'loglevel-plugin-prefix';
-import generateSdkRequest from "./requests/generateSdk";
-import { replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
 import { LocalEnvCronHandler, LocalEnvStartServerOutput } from "./models/localEnvInputParams";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -200,7 +196,7 @@ program
       exit(1);
     }
 
-     let classesInfo: { className: any; methods: any; path: string; functionUrl: string; tmpFolder: string }[] = [];
+    let classesInfo: { className: any; methods: any; path: string; functionUrl: string; tmpFolder: string }[] = [];
 
     try {
       // eslint-disable-next-line no-constant-condition
@@ -215,6 +211,9 @@ program
           .catch(async (error: Error) => {
             if (error.message === "Unauthorized" || error.message.includes("401")) {
               log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
+              exit(1);
+            } else if (error.message.includes("No classes found")) {
+              log.error(error.message);
               exit(1);
             }
             log.error("\x1b[31m%s\x1b[0m", `Error while preparing for local environment:\n${error.message}`);
