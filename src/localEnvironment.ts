@@ -243,6 +243,10 @@ export async function startCronHandlers(
 export async function startLocalTesting(classesInfo: any, options: any): Promise<any> {
     const projectConfiguration = await getProjectConfiguration();
 
+    if (projectConfiguration.classes.length === 0) {
+      throw new Error("No classes found in genezio.yaml");
+    }
+
     let astSummary: AstSummary | undefined = undefined;
 
     const sdk = await generateSdkRequest(projectConfiguration)
