@@ -386,7 +386,7 @@ program
   .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .option("-lang, --language <language>", "Language of the SDK to generate.")
   .option("-p, --path <path>", "Path to the directory where the SDK will be generated.")
-  .description("Generate an SDK for your project.")
+  .description("Generate an SDK corresponding to a deployed project.")
   .action(async (options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
 
@@ -401,7 +401,7 @@ program
     const sdkPath = options.path;
 
     if (!language) {
-      log.error("Please specify a language for the SDK to generate using --language <language>.");
+      log.error("Please specify a language for the SDK to generate using --language <language>. Please use one of the following: ts, js, swift.");
       exit(1);
     }
 
