@@ -3,9 +3,11 @@ import { JsRuntime, JsSdkOptions, Language, TriggerType, YamlProjectConfiguratio
 
 export class ParameterType {
     name: string;
+    type: string;
 
-    constructor(name: string) {
+    constructor(name: string, type: string) {
         this.name = name
+        this.type = type
     }
 }
 
@@ -17,7 +19,7 @@ export class MethodConfiguration {
 
     constructor(name: string, parameters: string[], type?: TriggerType, cronString?: string) {
         this.name = name;
-        this.parameters = parameters.map((parameter) => new ParameterType(parameter));
+        this.parameters = parameters.map((parameter) => new ParameterType(parameter, "any"));
         this.type = type ?? TriggerType.jsonrpc;
         this.cronString = cronString;
     }
@@ -87,7 +89,7 @@ export class ProjectConfiguration {
 
                 return {
                     name: m.name,
-                    parameters: m.params.map((p) => new ParameterType(p.name)),
+                    parameters: m.params.map((p) => new ParameterType(p.name, p.type)),
                     cronString: yamlMethod?.cronString,
                     type: yamlClass?.getMethodType(m.name)
                 }
