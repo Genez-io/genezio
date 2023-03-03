@@ -147,7 +147,8 @@ export class YamlClassConfiguration {
       classConfigurationYaml.type &&
       !TriggerType[classConfigurationYaml.type as keyof typeof TriggerType]
     ) {
-      throw new Error("The type is incorrect.");
+      const triggerTypes: string = Object.keys(TriggerType).join(", ");
+      throw new Error("Specified class type for " + classConfigurationYaml.path + " is incorrect. Accepted values: " + triggerTypes + ".");
     }
 
     let triggerType = TriggerType.jsonrpc;
@@ -186,6 +187,7 @@ export class YamlProjectConfiguration {
   name: string;
   region: string;
   sdk: YamlSdkConfiguration;
+  cloudProvider?: string;
   classes: YamlClassConfiguration[];
   frontend?: YamlFrontend;
 
@@ -193,12 +195,14 @@ export class YamlProjectConfiguration {
     name: string,
     region: string,
     sdk: YamlSdkConfiguration,
+    cloudProvider: string,
     classes: YamlClassConfiguration[],
     frontend: YamlFrontend|undefined = undefined,
   ) {
     this.name = name;
     this.region = region;
     this.sdk = sdk;
+    this.cloudProvider = cloudProvider;
     this.classes = classes;
     this.frontend = frontend;
   }
@@ -212,6 +216,16 @@ export class YamlProjectConfiguration {
       );
     }
 
+
+    const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
+    if (!nameRegex.test(configurationFileContent.name)) {
+      throw new Error("The method name is not valid. It must be [a-zA-Z][-a-zA-Z0-9]*");
+    }
+
+    if (!configurationFileContent.sdk) {
+      throw new Error("The sdk property is missing from the configuration file.");
+    }
+
     if (!configurationFileContent.sdk.path) {
       throw new Error(
         "The sdk.path property is missing from the configuration file."
@@ -220,24 +234,27 @@ export class YamlProjectConfiguration {
 
     const language: string = configurationFileContent.sdk.language;
 
-    if (!language || !Language[language as keyof typeof Language]) {
+    if (!language) {
+      throw new Error("The sdk.language property is missing.");
+    }
+
+    if (!Language[language as keyof typeof Language]) {
       throw new Error("The sdk.language property is invalid.");
     }
 
-    if (
-      (Language[
-        configurationFileContent.sdk.language as keyof typeof Language
-      ] == Language.js ||
-        Language[
-          configurationFileContent.sdk.language as keyof typeof Language
-        ] == Language.ts) &&
-      configurationFileContent.sdk.options &&
-      !JsRuntime[
-        configurationFileContent.sdk.options
-          .runtime as keyof typeof JsRuntime
-      ]
-    ) {
-      throw new Error("The sdk.options.runtime property is invalid.");
+    if (Language[language as keyof typeof Language] == Language.js ||
+        Language[language as keyof typeof Language] == Language.ts) {
+      if (!configurationFileContent.sdk.options) {
+        throw new Error("The sdk.options property is missing from the configuration file.");
+      }
+
+      if (!configurationFileContent.sdk.options.runtime) {
+        throw new Error("The sdk.options.runtime property is missing from the configuration file.");
+      }
+
+      if (!JsRuntime[configurationFileContent.sdk.options.runtime as keyof typeof JsRuntime]) {
+        throw new Error("The sdk.options.runtime property is invalid.");
+      }
     }
 
     const jsRuntime: JsRuntime | null = configurationFileContent.sdk.options
@@ -285,6 +302,7 @@ export class YamlProjectConfiguration {
       configurationFileContent.name,
       configurationFileContent.region || "us-east-1",
       sdk,
+      configurationFileContent.cloudProvider || "aws",
       classes,
       configurationFileContent.frontend
     );
@@ -314,6 +332,7 @@ export class YamlProjectConfiguration {
     const content = {
       name: this.name,
       region: this.region,
+      cloudProvider: this.cloudProvider ? this.cloudProvider : undefined,
       sdk: {
         language: this.sdk.language,
         options: {
@@ -321,10 +340,10 @@ export class YamlProjectConfiguration {
         },
         path: this.sdk.path
       },
-      frontend: {
+      frontend: this.frontend ? {
         path: this.frontend?.path,
         subdomain: this.frontend?.subdomain
-      },
+      } : undefined,
       classes: this.classes.map((c) => ({
         path: c.path,
         type: c.type,

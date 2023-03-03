@@ -27,6 +27,7 @@ test("should throw error if server returns error", async () => {
       "my_test",
       "us-east-1",
       new YamlSdkConfiguration(Language.js, JsRuntime.browser, "./path"),
+      "genezio",
       [
         new YamlClassConfiguration("./method.js", TriggerType.jsonrpc, "js", [
           new YamlMethodConfiguration("myTest", TriggerType.jsonrpc)
@@ -54,6 +55,7 @@ test("should return response.data if everything is ok", async () => {
     "my_test",
     "us-east-1",
     new YamlSdkConfiguration(Language.js, JsRuntime.browser, "./path"),
+    "genezio",
     [
       new YamlClassConfiguration("./method.js", TriggerType.jsonrpc, "js", [
         new YamlMethodConfiguration("myTest", TriggerType.jsonrpc)

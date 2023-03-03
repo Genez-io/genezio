@@ -6,6 +6,7 @@ import { DeployCodeResponse } from "../models/deployCodeResponse";
 import { ProjectConfiguration } from "../models/projectConfiguration";
 import { printUninformativeLog, printAdaptiveLog } from "../utils/logging";
 import { AbortController } from "node-abort-controller";
+import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../utils/strings";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../../package.json");
 
@@ -27,6 +28,7 @@ export async function deployRequest(
     classes: projectConfiguration.classes,
     projectName : projectConfiguration.name,
     region: projectConfiguration.region,
+    cloudProvider: projectConfiguration.cloudProvider,
   })
 
   const controller = new AbortController();
@@ -54,6 +56,9 @@ export async function deployRequest(
   debugLogger.debug("Response received", response.data)
 
   if (response.data.status === "error") {
+    if (response.data.message === "Unauthorized") {
+      throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG)
+    }
     throw new Error(response.data.message);
   }
 

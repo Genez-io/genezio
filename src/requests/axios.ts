@@ -17,9 +17,9 @@ axios.interceptors.response.use(function (response) {
     // Do something with response data
     return response;
 }, function (error) {
-    if (error.response.data?.error?.code === GenezioErrorCode.UpdateRequired) {
+    if (error.response?.data?.error?.code === GenezioErrorCode.UpdateRequired) {
         throw new Error("Please update your genezio CLI. Run 'npm update -g genezio'.")
-    } else if (error.response.data.error) {
+    } else if (error.response?.data?.error) {
 		debugLogger.debug(JSON.stringify(error.response.data.error))
 	} else {
 		debugLogger.debug(error)

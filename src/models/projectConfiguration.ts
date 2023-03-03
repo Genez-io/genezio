@@ -3,9 +3,11 @@ import { JsRuntime, JsSdkOptions, Language, TriggerType, YamlProjectConfiguratio
 
 export class ParameterType {
     name: string;
+    type: string;
 
-    constructor(name: string) {
+    constructor(name: string, type: string) {
         this.name = name
+        this.type = type
     }
 }
 
@@ -17,7 +19,7 @@ export class MethodConfiguration {
 
     constructor(name: string, parameters: string[], type?: TriggerType, cronString?: string) {
         this.name = name;
-        this.parameters = parameters.map((parameter) => new ParameterType(parameter));
+        this.parameters = parameters.map((parameter) => new ParameterType(parameter, "any"));
         this.type = type ?? TriggerType.jsonrpc;
         this.cronString = cronString;
     }
@@ -67,6 +69,7 @@ export class ProjectConfiguration {
     name: string;
     region: string;
     sdk: SdkConfiguration;
+    cloudProvider?: string;
     classes: ClassConfiguration[];
 
     constructor(
@@ -76,15 +79,17 @@ export class ProjectConfiguration {
         this.name = yamlConfiguration.name;
         this.region = yamlConfiguration.region;
         this.sdk = yamlConfiguration.sdk;
+        this.cloudProvider = yamlConfiguration.cloudProvider || "aws";
 
         this.classes = astSummary.classes.map((c) => {
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const yamlClass = yamlConfiguration.classes.find((yamlC) => yamlC.path === c.path)!;
             const methods = c?.methods.map((m) => {
                 const yamlMethod = yamlClass.methods.find((yamlM) => yamlM.name === m.name)
 
                 return {
                     name: m.name,
-                    parameters: m.params.map((p) => new ParameterType(p.name)),
+                    parameters: m.params.map((p) => new ParameterType(p.name, p.type)),
                     cronString: yamlMethod?.cronString,
                     type: yamlClass?.getMethodType(m.name)
                 }

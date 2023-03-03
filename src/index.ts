@@ -6,13 +6,12 @@ import {
   init,
   addNewClass,
   deployClasses,
-  reportSuccess,
   handleLogin,
   lsHandler,
   deployFrontend,
   generateSdkHandler,
 } from "./commands";
-import { setDebuggingLoggerLogLevel, spinner } from "./utils/logging";
+import { setDebuggingLoggerLogLevel } from "./utils/logging";
 import { asciiCapybara, GENEZIO_NOT_AUTH_ERROR_MSG } from "./utils/strings";
 import { exit } from "process";
 import { AxiosError } from "axios";
@@ -23,7 +22,7 @@ import {
 } from "./variables";
 import {
   listenForChanges,
-  prepareForLocalEnvironment,
+  startLocalTesting,
   startServer
 } from "./localEnvironment";
 import { getProjectConfiguration } from "./utils/configuration";
@@ -33,8 +32,6 @@ import { getAuthToken, removeAuthToken } from "./utils/accounts";
 import { AstSummary } from "./models/astSummary";
 
 import prefix from 'loglevel-plugin-prefix';
-import generateSdkRequest from "./requests/generateSdk";
-import { replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
 import { LocalEnvCronHandler, LocalEnvStartServerOutput } from "./models/localEnvInputParams";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -105,9 +102,9 @@ program
 
 program
   .command("deploy")
-  .option("-f, --frontend", "Deploy the frontend application.")
+  .option("--frontend", "Deploy the frontend application.")
   .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
-  .description("Deploy your project to the genezio infrastructure.")
+  .description("Deploy your project to the genezio infrastructure. Use --frontend to deploy the frontend application.")
   .action(async (options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
 
@@ -133,7 +130,6 @@ program
       exit(0)
     }
 
-    log.info("Deploying your project to genezio infrastructure...");
     await deployClasses()
       .catch((error: AxiosError) => {
         switch (error.response?.status) {
@@ -200,7 +196,7 @@ program
       exit(1);
     }
 
-     let classesInfo: { className: any; methods: any; path: string; functionUrl: string; tmpFolder: string }[] = [];
+    let classesInfo: { className: any; methods: any; path: string; functionUrl: string; tmpFolder: string }[] = [];
 
     try {
       // eslint-disable-next-line no-constant-condition
@@ -208,75 +204,74 @@ program
         const projectConfiguration = await getProjectConfiguration();
 
         let server: any = undefined;
-        let functionUrlForFilePath = undefined;
         let handlers = undefined;
         let astSummary: AstSummary | undefined = undefined;
         let cronHandlers: LocalEnvCronHandler[] = [];
-        try {
-          const sdk = await generateSdkRequest(projectConfiguration)
-
-          astSummary = sdk.astSummary
-          const localEnvInfo = await prepareForLocalEnvironment(
-            projectConfiguration,
-            sdk.astSummary,
-            Number(options.port),
-            classesInfo
-          );
-
-
-          functionUrlForFilePath = localEnvInfo.functionUrlForFilePath;
-          classesInfo = localEnvInfo.classesInfo;
-          handlers = localEnvInfo.handlers;
-
-          await replaceUrlsInSdk(sdk, sdk.classFiles.map((c) => ({ name: c.name, cloudUrl: `http://127.0.0.1:${options.port}/${c.name}` })))
-          await writeSdkToDisk(sdk, projectConfiguration.sdk.language, projectConfiguration.sdk.path)
-          reportSuccess(classesInfo, sdk);
-        } catch (error: any) {
-          if (error.message === "Unauthorized") {
-            log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-          } else if (error.message) {
-            log.error(error.message);
-          } else {
-            log.error(
-              "An error occured while generating the SDK. Please try again!"
-            );
-          }
-          exit(1);
-        }
-
-        if (handlers != undefined) {
-          log.info(`Test your code at ${LOCAL_TEST_INTERFACE_URL}?port=${options.port}`);
-          const startServerOutput: LocalEnvStartServerOutput = await startServer(
-            classesInfo,
-            handlers,
-            astSummary,
-            Number(options.port)
-          );
-
-          server = startServerOutput.server;
-          cronHandlers = startServerOutput.cronHandlers;
-
-
-          server.on("error", (error: any) => {
-            if (error.code === "EADDRINUSE") {
-              log.error(
-                `The port ${error.port} is already in use. Please use a different port by specifying --port <port> to start your local server.`
-              );
-            } else {
+        await startLocalTesting(classesInfo, options)
+          .catch(async (error: Error) => {
+            if (error.message === "Unauthorized" || error.message.includes("401")) {
+              log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
+              exit(1);
+            } else if (error.message.includes("No classes found")) {
               log.error(error.message);
+              exit(1);
             }
-            exit(1);
-          });
-        } else {
-          log.info("\x1b[36m%s\x1b[0m", "Listening for changes...");
-        }
+            log.error("\x1b[31m%s\x1b[0m", `Error while preparing for local environment:\n${error.message}`);
+            log.error(`Fix the errors and genezio local will restart automatically. Waiting for changes...`);
 
-        await listenForChanges(projectConfiguration.sdk.path, server, cronHandlers).catch(
-          (error: Error) => {
-            log.error(error.message);
-            exit(1);
-          }
-        );
+            await listenForChanges(null, null, null).catch(
+              (error: Error) => {
+                log.error(error.message);
+                exit(1);
+              }
+            );
+            return null;
+          })
+          .then(async (responseStartLocal: any) => {
+            if (responseStartLocal === null) {
+              return;
+            }
+
+            handlers = responseStartLocal.handlers;
+            astSummary = responseStartLocal.astSummary;
+            classesInfo = responseStartLocal.classesInfo;
+            if (handlers != undefined) {
+              log.info(
+                "\x1b[32m%s\x1b[0m",
+                `Test your code at ${LOCAL_TEST_INTERFACE_URL}?port=${options.port}`
+              );
+              const startServerOutput: LocalEnvStartServerOutput = await startServer(
+                classesInfo,
+                handlers,
+                astSummary,
+                Number(options.port)
+              );
+
+              server = startServerOutput.server;
+              cronHandlers = startServerOutput.cronHandlers;
+
+
+              server.on("error", (error: any) => {
+                if (error.code === "EADDRINUSE") {
+                  log.error(
+                    `The port ${error.port} is already in use. Please use a different port by specifying --port <port> to start your local server.`
+                  );
+                } else {
+                  log.error(error.message);
+                }
+                exit(1);
+              });
+            } else {
+              log.info("\x1b[36m%s\x1b[0m", "Listening for changes...");
+            }
+
+            await listenForChanges(projectConfiguration.sdk.path, server, cronHandlers).catch(
+              (error: Error) => {
+                log.error(error.message);
+                exit(1);
+              }
+            );
+          })
       }
     } catch (error: any) {
       log.error(error.message);
@@ -389,11 +384,9 @@ program
   .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .option("-lang, --language <language>", "Language of the SDK to generate.")
   .option("-p, --path <path>", "Path to the directory where the SDK will be generated.")
-  .description("Generate an SDK for your project.")
+  .description("Generate an SDK corresponding to a deployed project.")
   .action(async (options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
-
-    spinner.start();
 
     // check if user is logged in
     const authToken = await getAuthToken();
@@ -406,7 +399,7 @@ program
     const sdkPath = options.path;
 
     if (!language) {
-      log.error("Please specify a language for the SDK to generate using --language <language>.");
+      log.error("Please specify a language for the SDK to generate using --language <language>. Please use one of the following: ts, js, swift.");
       exit(1);
     }
 
@@ -431,8 +424,6 @@ program
     });
 
     console.log("Your SDK has been generated successfully in " + sdkPath + "");
-
-    spinner.stop(true);
   });
 
 program.parse();

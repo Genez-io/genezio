@@ -156,7 +156,15 @@ export async function checkYamlFileExists(yamlPath = "./genezio.yaml") {
 
 export async function validateYamlFile() {
   const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
-  const configurationFileContent = await parse(configurationFileContentUTF8);
+
+  let configurationFileContent = null;
+    
+  try {
+    configurationFileContent = await parse(configurationFileContentUTF8);
+  }
+  catch (error) {
+    throw new Error(`The configuration yaml file is not valid.\n${error}`);
+  }
 
   if (configurationFileContent.classes.length === 0) {
     log.info(

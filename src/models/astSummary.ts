@@ -2,6 +2,7 @@ import { TriggerType } from "./yamlProjectConfiguration";
 
 export type AstSummaryParam = {
   name: string;
+  type: string;
 };
 
 export type AstSummaryMethod = {
