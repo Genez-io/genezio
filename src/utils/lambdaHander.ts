@@ -118,7 +118,6 @@ exports.handler =  async function(event, context) {
         })
 
         const response = Promise.resolve(object[method](...(body.params || []))).then((result) => {
-          console.log(result);
           return {"jsonrpc": "2.0", "result": result, "error": null, "id": requestId};
         }).catch((err) => {
           console.error(err);
