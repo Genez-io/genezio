@@ -117,13 +117,7 @@ exports.handler =  async function(event, context) {
           });
         })
 
-        if (object[method].constructor.name !== 'AsyncFunction') {
-          const result = object[method](...(body.params || []));
-          return {"jsonrpc": "2.0", "result": result, "error": null, "id": requestId};
-        }
-
-
-        const response = object[method](...(body.params || [])).then((result) => {
+        const response = Promise.resolve(object[method](...(body.params || []))).then((result) => {
           return {"jsonrpc": "2.0", "result": result, "error": null, "id": requestId};
         }).catch((err) => {
           console.error(err);
