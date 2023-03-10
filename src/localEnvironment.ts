@@ -158,8 +158,6 @@ export async function listenForChanges(
           ignoreInitial: true
         })
         .on("all", async (event: any, path: any) => {
-          console.log("event", event);
-          console.log("path", path);
           if (sdkPath) {
             if (path.includes(sdkPath)) {
               return;
