@@ -191,7 +191,12 @@ export async function stopCronJobs(cronHandlers: LocalEnvCronHandler[]) {
 export function rectifyCronString(cronString: string): string {
   const parts = cronString.split(' ');
   const minutes = parts[0].replace(/^(\d+)\/(\d+)$/, '$1-59/$2');
-  return minutes + ' ' + parts.slice(1).join(' ');
+  const hours = parts[1].replace(/^(\d+)\/(\d+)$/, '$1-23/$2');
+  const dom = parts[2].replace(/^(\d+)\/(\d+)$/, '$1-31/$2');
+  const month = parts[3].replace(/^(\d+)\/(\d+)$/, '$1-12/$2');
+  const dow = parts[4].replace(/^(\d+)\/(\d+)$/, '$1-7/$2').replace('7', '0');
+
+  return `${minutes} ${hours} ${dom} ${month} ${dow}`;
 }
 
 export async function prepareCronHandlers(
