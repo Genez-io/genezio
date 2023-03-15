@@ -33,6 +33,7 @@ import { AstSummary } from "./models/astSummary";
 
 import prefix from 'loglevel-plugin-prefix';
 import { LocalEnvCronHandler, LocalEnvStartServerOutput } from "./models/localEnvInputParams";
+import { languages } from "./utils/languages";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
@@ -403,8 +404,8 @@ program
       exit(1);
     }
 
-    // check if language is supported
-    if (language !== "ts" && language !== "js" && language !== "swift" && language !== "python") {
+    // check if language is supported using languages array
+    if (!languages.includes(language)) {
       log.error("The language you specified is not supported. Please use one of the following: ts, js, swift, python.");
       exit(1);
     }

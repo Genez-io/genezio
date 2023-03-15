@@ -24,6 +24,21 @@ export async function replaceUrlsInSdk(sdkResponse: GenerateSdkResponse, classUr
     })
 }
 
+export function mapLanguageToExtension(language: Language): string {
+    switch (language) {
+        case Language.js:
+            return "js"
+        case Language.ts:
+            return "ts"
+        case Language.swift:
+            return "swift"
+        case Language.python:
+            return "py"
+        default:
+            throw new Error(`Unsupported language: ${language}`)
+    }
+}
+
 /**
  * Write the SDK files to disk.
  */
@@ -32,10 +47,7 @@ export async function writeSdkToDisk(sdk: GenerateSdkResponse, language: Languag
         debugLogger.debug("No SDK classes found...")
         return 
     }
-    let extension: string = language as string;
-    if (language === Language.python) {
-        extension = "py"
-    }
+    const extension: string = mapLanguageToExtension(language)
 
     debugLogger.debug("Writing the SDK to files...")
     if (sdk.remoteFile) {
