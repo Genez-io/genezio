@@ -89,10 +89,10 @@ exports.handler =  async function(event, context) {
         try {
           body = JSON.parse(event.body);
         } catch (error) {
-          return { statusCode: 400, headers: { 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Invalid JSON" }) };
+          return {"jsonrpc": "2.0", "error": {"code": -1, "message": "Invalid JSON-RPC request"}, "id": 0}
         }
-        if (!body || !body.method || !body.params || !body.id) {
-          return { statusCode: 400, headers: { 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Invalid JSON-RPC 2.0 request" }) };
+        if (!body || !body.method || !body.params || !Number.isInteger(body.id)) {
+          return {"jsonrpc": "2.0", "error": {"code": -1, "message": "Invalid JSON-RPC request"}, "id": 0}
         }
 
         let method = null;
@@ -100,37 +100,33 @@ exports.handler =  async function(event, context) {
           const methodElems = body.method.split(".");
           method = methodElems[1];
         } catch (error) {
-          return { statusCode: 400, headers: { 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Invalid JSON-RPC 2.0 request" }) };
+          return {"jsonrpc": "2.0", "error": {"code": -1, "message": "Invalid Genezio JSON-RPC request"}, "id": 0}
         }
 
         if (!object[method]) {
-          return { statusCode: 404, headers: { 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Method not found" }) };
+          return {"jsonrpc": "2.0", "error": {"code": -1, "message": "Method not found!"}, "id": 0}
         }
-
-
 
         const requestId = body.id;
         const errorPromise = new Promise((resolve) => {
           process.on('uncaughtException', function(err) {
-            console.error(err);
             resolve({"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId})
           });
         })
 
-        const response = Promise.resolve(object[method](...(body.params || []))).then((result) => {
-          return {"jsonrpc": "2.0", "result": result, "error": null, "id": requestId};
-        }).catch((err) => {
-          console.error(err);
-          return {"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId}
-        })
+        try {
+          const response = Promise.resolve(object[method](...(body.params || []))).then((result) => {
+            return {"jsonrpc": "2.0", "result": result, "error": null, "id": requestId};
+          }).catch((err) => {
+            return {"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId}
+          })
 
-        const result = await Promise.race([errorPromise, response])
-        process.removeAllListeners("uncaughtException")
-        return result;
+          const result = await Promise.race([errorPromise, response])
+          process.removeAllListeners("uncaughtException")
+          return result;
+        } catch (err) {
+          return {"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId}
+        }
     }
 }
-
-
-
-
 `;
