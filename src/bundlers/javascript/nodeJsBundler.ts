@@ -98,7 +98,7 @@ export class NodeJsBundler implements BundlerInterface {
   async #copyNonJsFiles(tempFolderPath: string) {
     const allNonJsFilesPaths = (await getAllFilesFromCurrentPath()).filter(
       (file: FileDetails) => {
-        
+
         // filter js files, node_modules and folders
         return (
           file.extension !== ".js" &&
@@ -112,7 +112,7 @@ export class NodeJsBundler implements BundlerInterface {
     await Promise.all(
       allNonJsFilesPaths.map((filePath: FileDetails) => {
         // get folders array
-        const folders = filePath.path.split(path.sep);
+        const folders = filePath.path.split('/');
         // remove file name from folders array
         folders.pop();
         // create folder structure in tmp folder
@@ -214,14 +214,14 @@ export class NodeJsBundler implements BundlerInterface {
     await writeToFile(tempFolderPath, "package.json", JSON.stringify(packageJson, null, 2));
   }
 
-    
+
 
 
   async bundle(input: BundlerInput): Promise<BundlerOutput> {
     const mode =
       (input.extra ? input.extra["mode"] : undefined) || "production";
     const tmpFolder = (input.extra ? input.extra["tmpFolder"] : undefined) || undefined;
-    
+
     if (mode === "development" && !tmpFolder) {
       throw new Error("tmpFolder is required in development mode.")
     }
