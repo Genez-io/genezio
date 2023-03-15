@@ -397,7 +397,7 @@ export async function init() {
   };
 
   const sdkLanguage = await askQuestion(
-    `In what programming language do you want your SDK? (js, ts or swift) [default value: js]: `,
+    `In what programming language do you want your SDK? (js, ts, swift or python) [default value: js]: `,
     "js"
   );
 

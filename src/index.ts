@@ -399,13 +399,13 @@ program
     const sdkPath = options.path;
 
     if (!language) {
-      log.error("Please specify a language for the SDK to generate using --language <language>. Please use one of the following: ts, js, swift.");
+      log.error("Please specify a language for the SDK to generate using --language <language>. Please use one of the following: ts, js, swift, python.");
       exit(1);
     }
 
     // check if language is supported
-    if (language !== "ts" && language !== "js" && language !== "swift") {
-      log.error("The language you specified is not supported. Please use one of the following: ts, js, swift.");
+    if (language !== "ts" && language !== "js" && language !== "swift" && language !== "python") {
+      log.error("The language you specified is not supported. Please use one of the following: ts, js, swift, python.");
       exit(1);
     }
 

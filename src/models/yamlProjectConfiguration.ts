@@ -18,7 +18,8 @@ export enum JsRuntime {
 export enum Language {
   js = "js",
   ts = "ts",
-  swift = "swift"
+  swift = "swift",
+  python = "python",
 }
 
 export type JsSdkOptions = {

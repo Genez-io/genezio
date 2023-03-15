@@ -97,7 +97,7 @@ You can also test your code locally by running the `genezio local` command. This
 ## Known issues
 
 - `genezio` currently has full support for JavaScript. TypeScript is deployed in a beta version. We will soon offer full support for TypeScript, Swift, Kotlin and many others.
-- `genezio` currently is able to generate an SDK in JavaScript (full), TypeScript (beta) and Swift (beta).
+- `genezio` currently is able to generate an SDK in JavaScript (full), TypeScript (beta) and Swift (beta) and Python(beta).
 - The execution time of the functions cannot exceed 10 seconds. This limitation will go away soon.
 
 ## How does Genezio work?

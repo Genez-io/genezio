@@ -32,12 +32,16 @@ export async function writeSdkToDisk(sdk: GenerateSdkResponse, language: Languag
         debugLogger.debug("No SDK classes found...")
         return 
     }
+    let extension: string = language as string;
+    if (language === Language.python) {
+        extension = "py"
+    }
 
     debugLogger.debug("Writing the SDK to files...")
     if (sdk.remoteFile) {
         await writeToFile(
             outputPath,
-            `remote.${language}`,
+            `remote.${extension}`,
             sdk.remoteFile,
             true
         ).catch((error) => {
@@ -47,7 +51,12 @@ export async function writeSdkToDisk(sdk: GenerateSdkResponse, language: Languag
 
     await Promise.all(
         sdk.classFiles.map((classFile: any) => {
-            let filename = `${classFile.name}.sdk.${language}`
+            let filename;
+            if (language === Language.python) {
+                filename = `${classFile.name}.${extension}`
+            } else {
+                filename = `${classFile.name}.sdk.${extension}`
+            }
             filename = filename.charAt(0).toLowerCase() + filename.slice(1)
             return writeToFile(
                 outputPath,
