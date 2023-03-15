@@ -100,7 +100,7 @@ export async function listenForChanges(
   const cwd = process.cwd();
 
   let sdkPath: any = null;
-  
+
   if (sdkPathRelative) {
     sdkPath = path.join(cwd, sdkPathRelative);
   }
@@ -188,6 +188,12 @@ export async function stopCronJobs(cronHandlers: LocalEnvCronHandler[]) {
   }
 }
 
+export function rectifyCronString(cronString: string): string {
+  const parts = cronString.split(' ');
+  const minutes = parts[0].replace(/^(\d+)\/(\d+)$/, '$1-59/$2');
+  return minutes + ' ' + parts.slice(1).join(' ');
+}
+
 export async function prepareCronHandlers(
   classesInfo: any,
   handlers: any
@@ -200,7 +206,7 @@ export async function prepareCronHandlers(
         const cronHandler: LocalEnvCronHandler = {
           className: classElement.className,
           methodName: method.name,
-          cronString: method.cronString,
+          cronString: rectifyCronString(method.cronString),
           path: handlers[classElement.className].path,
           cronObject: null,
           module: handlers[classElement.className].module
