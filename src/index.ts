@@ -121,7 +121,7 @@ Use --backend to deploy only the backend application.`)
 
     const configuration = await getProjectConfiguration();
 
-    if (!options.frontend || !options.backend) {
+    if (!options.frontend || options.backend) {
       if (configuration.scripts?.preBackendDeploy) {
         log.info("Running preBackendDeploy script...");
         log.info(configuration.scripts?.preBackendDeploy);
