@@ -170,6 +170,10 @@ If you've also built a project that you are proud of, let us know by [on Discord
 
 Brag to your friends that you are using `genezio` with this awesome badge -> [![deployed with: genezio](https://img.shields.io/badge/deployed_with-genezio-6742c1.svg?labelColor=62C353&style=flat-square)](https://github.com/genez-io/genezio)
 
+```md
+https://img.shields.io/badge/deployed_with-genezio-6742c1.svg?labelColor=62C353&style=flat-square
+```
+
 <!-- # Contributing -->
 
 <!-- # License -->
