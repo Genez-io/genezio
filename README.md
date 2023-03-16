@@ -15,6 +15,14 @@
 
 </div>
 
+<div align="center">
+
+[![npm-downloads](https://img.shields.io/npm/dm/genezio.svg?style=flat)](https://www.npmjs.com/package/genezio)
+[![npm-version](https://img.shields.io/npm/v/genezio.svg?style=flat)](https://www.npmjs.com/package/genezio)
+[![Discord](https://img.shields.io/discord/1024296197575422022)](https://discord.gg/uc9H5YKjXv)
+
+</div>
+
 # What is [genezio](https://genez.io)?
 
 [genezio](https://genez.io/) is a platform for developers to write, deploy and use a serverless API.
