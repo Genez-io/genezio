@@ -189,6 +189,9 @@ Use --backend to deploy only the backend application.`)
         url = await deployFrontend()
       } catch(error: any) {
         log.error(error.message);
+        if (error.message == "No frontend entry in genezio configuration file.") {
+          exit(0);
+        }
         exit(1);
       }
       log.info(
