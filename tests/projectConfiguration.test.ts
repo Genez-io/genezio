@@ -438,6 +438,6 @@ describe("project configuration", () => {
     expect(rectifyCronString("2/1 * * * *")).toEqual("2-59/1 * * * *");
     expect(rectifyCronString("1 * * * *")).toEqual("1 * * * *");
     expect(rectifyCronString("2-59/5 * * * *")).toEqual("2-59/5 * * * *");
-    expect(rectifyCronString("2/1 2/1 2/1 2/1 2/1")).toEqual("2-59/1 2-23/1 2-31/1 2-12/1 2-6/1");
+    expect(rectifyCronString("2/1 2/1 2/1 2/1 2/1")).toEqual("2-59/1 2-23/1 2-31/1 2-12/1 2,3,4,5,6,0/1");
   });
 });
