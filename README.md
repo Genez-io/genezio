@@ -1,4 +1,13 @@
-# What is (genezio)[https://genez.io]?
+<div align="center"> <a href="https://genez.io/">
+    <img
+      src="https://github.com/genez-io/graphics/raw/HEAD/Logo_Genezio_Black.svg"
+      width="650"
+      height="auto"
+    />
+  </a>
+</div>
+
+# What is [genezio](https://genez.io)?
 
 [genezio](https://genez.io/) is a platform for developers to write, deploy and use a serverless API.
 
@@ -110,15 +119,15 @@ A detailed list of all the examples is below:
   - [Chat-GPT Reprashing App](https://github.com/Genez-io/genezio-examples/tree/master/javascript/chatgpt-project) - an example on how to integrate with ChatGPT API.
   - [Smart Contract Indexer with Blast API](https://github.com/Genez-io/genezio-examples/tree/master/javascript/blockchain) - a Web3 example that queries smart contracts events periodically and saves them in a MongoDB using Blast API.
   - [Stripe example](https://github.com/Genez-io/genezio-examples/tree/master/javascript/stripe-js) - an example on how to integrate with Stripe for managing payments.
-  - [TODO List with React and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/javascript/todo-list) - an example of a todo application with users, auth and tasks.
-  - [TODO List with React and SQL](https://github.com/Genez-io/genezio-examples/tree/master/javascript/todo-list-sql) - an example of a todo application with users, auth and tasks.
-  - [TODO List with Vue and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/javascript/todo-list-vue) - an example of a todo application with users, auth and tasks.
+  - [Todo List with React and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/javascript/todo-list) - an example of a todo application with users, auth and tasks.
+  - [Todo List with React and SQL](https://github.com/Genez-io/genezio-examples/tree/master/javascript/todo-list-sql) - an example of a todo application with users, auth and tasks.
+  - [Todo List with Vue and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/javascript/todo-list-vue) - an example of a todo application with users, auth and tasks.
   - [Webhooks](https://github.com/Genez-io/genezio-examples/tree/master/javascript/webhook) - an example on how to use webhooks with genezio.
   - [Crons](https://github.com/Genez-io/genezio-examples/tree/master/javascript/cron) - a simple class that has a method that will be called every minute.
 
 - Typescript
-  - [TODO List with React and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/typescript/todo-list) - an example of a todo application with users, auth and tasks.
-  - [TODO List with Angular and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/typescript/todo-list-angular) - an example of a todo application with users.
+  - [Todo List with React and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/typescript/todo-list) - an example of a todo application with users, auth and tasks.
+  - [Todo List with Angular and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/typescript/todo-list-angular) - an example of a todo application with users.
   - [MultiversX](https://github.com/Genez-io/genezio-examples/tree/master/typescript/multiversx) - an example on an integration with the MultiversX blockchain. The application queries the balance of an existing account.
 
 <!-- # Features -->
