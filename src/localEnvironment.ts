@@ -200,7 +200,7 @@ export function rectifyCronString(cronString: string): string {
   // the holistic approach would be to convert it into a comma separated list of days, as a range
   // representation would be a bit heavy
   const dow = parts[4].replace(/^(\d+)\/(\d+)$/, (_, start, step) => {
-    const end = 7; s// set the end value to 6 for weekday fields
+    const end = 7; // set the end value to 6 for weekday fields
     const range = [];
     for (let i = parseInt(start); i <= end; i += parseInt(step)) {
       range.push(i);
