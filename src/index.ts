@@ -34,6 +34,7 @@ import { AstSummary } from "./models/astSummary";
 import prefix from 'loglevel-plugin-prefix';
 import { LocalEnvCronHandler, LocalEnvStartServerOutput } from "./models/localEnvInputParams";
 import { languages } from "./utils/languages";
+import { runNewProcess } from "./utils/process";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
@@ -103,9 +104,11 @@ program
 
 program
   .command("deploy")
-  .option("--frontend", "Deploy the frontend application.")
+  .option("--backend", "Deploy only the backend application.")
+  .option("--frontend", "Deploy only the frontend application.")
   .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
-  .description("Deploy your project to the genezio infrastructure. Use --frontend to deploy the frontend application.")
+  .description(`Deploy your project to the genezio infrastructure. Use --frontend to deploy only the frontend application. 
+Use --backend to deploy only the backend application.`)
   .action(async (options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
 
@@ -116,7 +119,70 @@ program
       exit(1);
     }
 
-    if (options.frontend) {
+    const configuration = await getProjectConfiguration();
+
+    if (!options.frontend || !options.backend) {
+      if (configuration.scripts?.preBackendDeploy) {
+        log.info("Running preBackendDeploy script...");
+        log.info(configuration.scripts?.preBackendDeploy);
+        const output = await runNewProcess(configuration.scripts?.preBackendDeploy);
+        if (!output) {
+          log.error("preBackendDeploy script failed.");
+          exit(1);
+        }
+      }
+
+      await deployClasses()
+        .catch((error: AxiosError) => {
+          switch (error.response?.status) {
+            case 401:
+              log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
+              break;
+            case 500:
+              log.error(error.message);
+              if (error.response?.data) {
+                const data: any = error.response?.data;
+                log.error(data.error?.message);
+              }
+              break;
+            case 400:
+              log.error(error.message);
+              if (error.response?.data) {
+                const data: any = error.response?.data;
+                log.error(data.error?.message);
+              }
+              break;
+            default:
+              if (error.message) {
+                log.error(error.message);
+              }
+              break;
+          }
+          exit(1);
+        });
+
+      if (configuration.scripts?.postBackendDeploy) {
+        log.info("Running postBackendDeploy script...");
+        log.info(configuration.scripts?.postBackendDeploy);
+        const output = await runNewProcess(configuration.scripts?.postBackendDeploy);
+        if (!output) {
+          log.error("postBackendDeploy script failed.");
+          exit(1);
+        }
+      }
+    }
+
+    if (!options.backend || options.frontend) {
+      if (configuration.scripts?.preFrontendDeploy) {
+        log.info("Running preFrontendDeploy script...");
+        log.info(configuration.scripts?.preFrontendDeploy);
+        const output = await runNewProcess(configuration.scripts?.preFrontendDeploy);
+        if (!output) {
+          log.error("preFrontendDeploy script failed.");
+          exit(1);
+        }
+      }
+
       log.info("Deploying your frontend to genezio infrastructure...");
       let url;
       try {
@@ -128,37 +194,17 @@ program
       log.info(
         "\x1b[36m%s\x1b[0m",
         `Frontend successfully deployed at ${url}.`);
-      exit(0)
-    }
-
-    await deployClasses()
-      .catch((error: AxiosError) => {
-        switch (error.response?.status) {
-          case 401:
-            log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-            break;
-          case 500:
-            log.error(error.message);
-            if (error.response?.data) {
-              const data: any = error.response?.data;
-              log.error(data.error?.message);
-            }
-            break;
-          case 400:
-            log.error(error.message);
-            if (error.response?.data) {
-              const data: any = error.response?.data;
-              log.error(data.error?.message);
-            }
-            break;
-          default:
-            if (error.message) {
-              log.error(error.message);
-            }
-            break;
+      
+      if (configuration.scripts?.postFrontendDeploy) {
+        log.info("Running postFrontendDeploy script...");
+        log.info(configuration.scripts?.postFrontendDeploy);
+        const output = await runNewProcess(configuration.scripts?.postFrontendDeploy);
+        if (!output) {
+          log.error("postFrontendDeploy script failed.");
+          exit(1);
         }
-        exit(1);
-      });
+      }
+    }
   });
 
 program

@@ -33,6 +33,7 @@
     "axios": "^0.27.2",
     "body": "^5.1.0",
     "body-parser": "^1.20.1",
+    "child_process": "^1.0.2",
     "chokidar": "^3.5.3",
     "cli-spinner": "^0.2.10",
     "command-line-args": "^5.2.1",

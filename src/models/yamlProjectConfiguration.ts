@@ -181,6 +181,25 @@ export type YamlFrontend = {
   subdomain: string,
 }
 
+export class YamlScriptsConfiguration {
+  preBackendDeploy?: string;
+  postBackendDeploy?: string;
+  postFrontendDeploy?: string;
+  preFrontendDeploy?: string;
+
+  constructor(
+    preBackendDeploy: string,
+    postBackendDeploy: string,
+    postFrontendDeploy: string,
+    preFrontendDeploy: string
+  ) {
+    this.preBackendDeploy = preBackendDeploy;
+    this.postBackendDeploy = postBackendDeploy;
+    this.postFrontendDeploy = postFrontendDeploy;
+    this.preFrontendDeploy = preFrontendDeploy;
+  }
+}
+
 /**
  * This class represents the model for the YAML configuration file.
  */
@@ -191,6 +210,7 @@ export class YamlProjectConfiguration {
   cloudProvider?: string;
   classes: YamlClassConfiguration[];
   frontend?: YamlFrontend;
+  scripts?: YamlScriptsConfiguration;
 
   constructor(
     name: string,
@@ -199,6 +219,7 @@ export class YamlProjectConfiguration {
     cloudProvider: string,
     classes: YamlClassConfiguration[],
     frontend: YamlFrontend|undefined = undefined,
+    scripts: YamlScriptsConfiguration | undefined = undefined
   ) {
     this.name = name;
     this.region = region;
@@ -206,6 +227,7 @@ export class YamlProjectConfiguration {
     this.cloudProvider = cloudProvider;
     this.classes = classes;
     this.frontend = frontend;
+    this.scripts = scripts;
   }
 
   static async create(
@@ -299,13 +321,16 @@ export class YamlProjectConfiguration {
       }
     }
 
+    const scripts: YamlScriptsConfiguration | undefined = configurationFileContent.scripts;
+
     return new YamlProjectConfiguration(
       configurationFileContent.name,
       configurationFileContent.region || "us-east-1",
       sdk,
       configurationFileContent.cloudProvider || "aws",
       classes,
-      configurationFileContent.frontend
+      configurationFileContent.frontend,
+      scripts
     );
   }
 
@@ -341,6 +366,11 @@ export class YamlProjectConfiguration {
         },
         path: this.sdk.path
       },
+      scripts: this.scripts ? {
+        preBackendDeploy: this.scripts?.preBackendDeploy,
+        postBackendDeploy: this.scripts?.postBackendDeploy,
+        postFrontendDeploy: this.scripts?.postFrontendDeploy
+      } : undefined,
       frontend: this.frontend ? {
         path: this.frontend?.path,
         subdomain: this.frontend?.subdomain
