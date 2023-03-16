@@ -188,6 +188,8 @@ export async function stopCronJobs(cronHandlers: LocalEnvCronHandler[]) {
   }
 }
 
+// Converts non-standard cron strings of the type X/Y * * * * to standard X-59/Y * * * *,
+// applied to all fields.
 export function rectifyCronString(cronString: string): string {
   const parts = cronString.split(' ');
   const minutes = parts[0].replace(/^(\d+)\/(\d+)$/, '$1-59/$2');
