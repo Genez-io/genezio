@@ -7,6 +7,14 @@
   </a>
 </div>
 
+<div align="center">
+
+[![unit-tests](https://github.com/Genez-io/genezio/actions/workflows/unit-test.yaml/badge.svg)](https://github.com/Genez-io/genezio/actions/workflows/unit-test.yaml)
+[![integration-tests-prod](https://github.com/Genez-io/genezio-tests/actions/workflows/integration-prod.yml/badge.svg)](https://github.com/Genez-io/genezio-tests/actions/workflows/integration-prod.yml)
+[![integration-tests-dev](https://github.com/Genez-io/genezio-tests/actions/workflows/integration-dev.yml/badge.svg)](https://github.com/Genez-io/genezio-tests/actions/workflows/integration-dev.yml)
+
+</div>
+
 # What is [genezio](https://genez.io)?
 
 [genezio](https://genez.io/) is a platform for developers to write, deploy and use a serverless API.
