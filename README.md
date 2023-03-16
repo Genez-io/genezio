@@ -17,9 +17,9 @@
 
 <div align="center">
 
-[![npm-downloads](https://img.shields.io/npm/dm/genezio.svg?style=flat)](https://www.npmjs.com/package/genezio)
-[![npm-version](https://img.shields.io/npm/v/genezio.svg?style=flat)](https://www.npmjs.com/package/genezio)
-[![Discord](https://img.shields.io/discord/1024296197575422022)](https://discord.gg/uc9H5YKjXv)
+[![npm-downloads](https://img.shields.io/npm/dm/genezio.svg?style=flat&label=npm-downloads&color=62C353)](https://www.npmjs.com/package/genezio)
+[![npm-version](https://img.shields.io/npm/v/genezio.svg?style=flat&label=npm-package-version&color=6742c1)](https://www.npmjs.com/package/genezio)
+[![discord](https://img.shields.io/discord/1024296197575422022?label=discord&color=62C353)](https://discord.gg/uc9H5YKjXv)
 
 </div>
 
