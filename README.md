@@ -15,13 +15,25 @@ You just write your backend logic in classes using your preferred programming la
 The code will be deployed in a scalable and production-ready infrastructure.
 An SDK is generated and you can use it to remotely call the methods of your class in a very natural way.
 
-For more details on how to use `genezio`, you can check out the official [documentation](https://docs.genezio).
+For more details on how to use `genezio`, you can check out the official [documentation](https://genez.io/docs).
 
 # Contents
 
-# Quickstart
+- [Getting Started](#getting-started)
+- [Create Your First Project From Scratch](#create-your-first-project-from-scratch)
+- [Test Your Code Locally](#test-your-code-locally)
+- [Debug Using the Test Interface](#debug-using-the-test-interface)
+- [Examples deployed with genezio](#examples)
+- [How does genezio work?](#how-does-genezio-work-)
+- [Official Documentation](#documentation)
+- [Support](#support)
+- [Troubleshooting](#troubleshooting)
+- [Ecosystem](#ecosystem)
+- [Hall Of Fame](#hall-of-fame)
+- [Badge](#badge)
+- [Known issues](#known-issues)
 
-## Getting started
+# Getting Started
 
 1. **Install `genezio`.** Use the command below to install genezio:
 
@@ -61,7 +73,7 @@ node ./test-hello-sdk.js
 
 For more details about the `genezio` CLI command, run `genezio help`.
 
-## Create your first project from scratch
+# Create Your First Project From Scratch
 
 1. Run `genezio login`.
 
@@ -101,9 +113,11 @@ import { HelloWorldClass } from "./sdk/hello.sdk.js";
 })();
 ```
 
-For more details, check our [examples](https://github.com/Genez-io/genezio/tree/master/examples)!
+5. For more details, check our [examples](https://github.com/Genez-io/genezio/tree/master/examples)!
 
-## Test your code locally
+# Debug Using the Test Interface
+
+# Test Your Code Locally
 
 You can also test your code locally by running the `genezio local` command. This will spawn a local server that can be used for testing. You can switch back to production environment by running `genezio deploy`.
 
@@ -131,6 +145,10 @@ A detailed list of all the examples is below:
   - [MultiversX](https://github.com/Genez-io/genezio-examples/tree/master/typescript/multiversx) - an example on an integration with the MultiversX blockchain. The application queries the balance of an existing account.
 
 <!-- # Features -->
+
+# How does Genezio work?
+
+Genezio is using JSON RPC 2.0 to facilitate the communication between SDK and your class. Your functions are deployed in the Genezio infrastructure. The functions are not executed on a long lasting Virtual Machine. Instead, our system uses a serverless approach. Whenever a request is received, your code is loaded and executed. This is more cost and energy efficient. However, the developer needs to take into account the following - the values of the global variables are not persistent between runs.
 
 # Documentation
 
@@ -182,7 +200,3 @@ Brag to your friends that you are using `genezio` with this awesome badge [![dep
 - `genezio` currently has full support for JavaScript. TypeScript is deployed in a beta version. We will soon offer full support for TypeScript, Swift, Kotlin and many others.
 - `genezio` currently is able to generate an SDK in JavaScript (full), TypeScript (beta) and Swift (beta).
 - The execution time of the functions cannot exceed 10 seconds. This limitation will go away soon.
-
-# How does Genezio work?
-
-Genezio is using JSON RPC 2.0 to facilitate the communication between SDK and your class. Your functions are deployed in the Genezio infrastructure. The functions are not executed on a long lasting Virtual Machine. Instead, our system uses a serverless approach. Whenever a request is received, your code is loaded and executed. This is more cost and energy efficient. However, the developer needs to take into account the following - the values of the global variables are not persistent between runs.
