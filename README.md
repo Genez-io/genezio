@@ -138,7 +138,7 @@ If you cannot find what you are looking for in the docs, don't hesitate to drop 
 # Getting support
 
 We want you to get your project up and running in no-time.
-If you find yourself in a pickle using `genezio`, [start a discussion with us on Discord](https://discord.gg/uc9H5YKjXv) or drop us an email at [contact@genezio.io](contact@genezio.io).
+If you find yourself in a pickle using `genezio`, drop us a [Github issue](https://github.com/Genez-io/genezio/issues), [start a discussion with us on Discord](https://discord.gg/uc9H5YKjXv) or drop us an email at [contact@genezio.io](contact@genezio.io).
 
 # Troubleshooting
 
@@ -164,7 +164,10 @@ Below you can find projects build by the community and deployed with `genezio`.
 
 Check them out for inspiration:
 
-If you've also built a project that you are proud of, let us know by [on Discord](https://discord.gg/uc9H5YKjXv).
+- [Serverless Wordpress](https://github.com/andreia-oca/serverless-wordpress) - deploy your own wordpress blog on a serverless infrastructure.
+- [Ode to my Other Half](https://github.com/vladiulianbogdan/ode-to-my-other-half) - send recurrent poems to your loved one using ChatGPT and Twilio.
+
+If you've also built a project that you are proud of, please add a Pull Request adding it or let us know [on Discord](https://discord.gg/uc9H5YKjXv).
 
 # Badge
 
