@@ -35,6 +35,7 @@ For more details on how to use `genezio`, you can check out the official [docume
 
 # Contents
 
+- [Features](#features)
 - [Getting Started](#getting-started)
 - [Test your project using the Test Interface](#test-your-project-using-the-test-interface)
 - [Examples deployed with `genezio`](#examples-deployed-with--genezio-)
@@ -46,7 +47,13 @@ For more details on how to use `genezio`, you can check out the official [docume
 - [Hall Of Fame](#hall-of-fame)
 - [Badge](#badge)
 
-<!-- # Features -->
+# Features
+
+- 🪛&nbsp; Deploy your backend in no-time on a serverless infrastructure.
+- 🖼️&nbsp; Host your frontend on the genezio infrastructure.
+- 🪄&nbsp; A magically-generated SDK to call your server functions from the client.
+- 👀&nbsp; A handful of examples to start from at [genezio-examples](https://github.com/Genez-io/genezio-examples/).
+- 🔨&nbsp; A dedicated GitHub Action to integrate in your CI/CD at [genezio-github-action](https://github.com/Genez-io/genezio-github-action).
 
 # Getting Started
 
@@ -90,9 +97,16 @@ For more details about the `genezio` CLI commands, run `genezio help` or `genezi
 
 # Test your project using the Test Interface
 
-You can also test your code locally by running the `genezio local` command. This will spawn a local server that can be used for testing. You can switch back to production environment by running `genezio deploy`.
+You can also test your code locally by running the following command in the `server` directory.
 
-Start a local server using `genezio local`. Now. you can navigate to the [Test Interface](https://app.genez.io/test-interface/local?port=8083) and test your project from GUI.
+```bash
+genezio local
+```
+
+This will spawn a local server that can be used for testing.
+Now, you can navigate to the [Test Interface](https://app.genez.io/test-interface/local?port=8083) and test your project locally from GUI.
+
+Once you are happy with your project, you can deploy it in a production environment by running: `genezio deploy`.
 
 # Examples deployed with `genezio`
 
@@ -121,11 +135,11 @@ A detailed list of all the examples is below:
 
 ## How does `genezio` work?
 
-Genezio is using JSON RPC 2.0 to facilitate the communication between SDK and your class. Your functions are deployed in the Genezio infrastructure. The functions are not executed on a long lasting Virtual Machine. Instead, our system uses a serverless approach. Whenever a request is received, your code is loaded and executed. This is more cost and energy efficient. However, the developer needs to take into account the following - the values of the global variables are not persistent between runs.
+`genezio` is using JSON RPC 2.0 to facilitate the communication between SDK and your class. Your functions are deployed in the Genezio infrastructure. The functions are not executed on a long lasting Virtual Machine. Instead, our system uses a serverless approach. Whenever a request is received, your code is loaded and executed. This is more cost and energy efficient. However, the developer needs to take into account the following - the values of the global variables are not persistent between runs.
 
 ## Detailed documentation
 
-To find more details on how to use genezio, check out our [Documentation](https://genez.io/docs):
+To find more details on how to use `genezio`, check out the official [documentation](https://genez.io/docs):
 
 - [Getting started](https://docs.genez.io/genezio-documentation/getting-started)
 - [Project Structure](https://docs.genez.io/genezio-documentation/project-structure)
@@ -138,19 +152,20 @@ If you cannot find what you are looking for in the docs, don't hesitate to drop 
 # Getting support
 
 We want you to get your project up and running in no-time.
-If you find yourself in a pickle using `genezio`, drop us a [Github issue](https://github.com/Genez-io/genezio/issues), [start a discussion with us on Discord](https://discord.gg/uc9H5YKjXv) or drop us an email at [contact@genezio.io](contact@genezio.io).
+
+If you find yourself in a pickle using `genezio`, drop us a [GitHub issue](https://github.com/Genez-io/genezio/issues), [start a discussion with us on Discord](https://discord.gg/uc9H5YKjXv) or drop us an email at [contact@genezio.io](contact@genezio.io).
 
 # Troubleshooting
 
-For the most common issues that our users have dealt with, we created a [Troubleshooting](https://docs.genez.io/genezio-documentation/troubleshooting) section.
+For the most common issues that our users have dealt with, we created a [Troubleshooting](https://docs.genez.io/genezio-documentation/troubleshooting) section in the documentation.
 
-If you don't find the guidance there, drop us a [Github issue](https://github.com/Genez-io/genezio/issues). We are more than happy to help you!
+If you don't find the guidance there, drop us a [GitHub issue](https://github.com/Genez-io/genezio/issues). We are more than happy to help you!
 
 # Known issues
 
-- `genezio` currently has full support for JavaScript. TypeScript is deployed in a beta version. We will soon offer full support for TypeScript, Swift, Kotlin and many others.
-- `genezio` currently is able to generate an SDK in JavaScript (full), TypeScript (beta) and Swift (beta).
-- The execution time of the functions cannot exceed 10 seconds. This limitation will go away soon.
+- `genezio` currently has full backend support for JavaScript and TypeScript. We will soon offer full support for Swift, Dart (Flutter), Kotlin and many others.
+- `genezio` currently is able to generate an SDK in JavaScript (full), TypeScript (full) and Swift (beta). We are planning to launch an Python SDK, Dart SDK, Kotlin SDK and many others.
+- The execution time of the backend functions cannot exceed 10 seconds.
 
 # Ecosystem
 
@@ -166,15 +181,16 @@ Check them out for inspiration:
 
 - [Serverless Wordpress](https://github.com/andreia-oca/serverless-wordpress) - deploy your own wordpress blog on a serverless infrastructure.
 - [Ode to my Other Half](https://github.com/vladiulianbogdan/ode-to-my-other-half) - send recurrent poems to your loved one using ChatGPT and Twilio.
+- [FusionSolar Energy Optimizer](https://github.com/bogdanripa/fusionsolar-energy-optimizer) - match the energy that a Huawei FusionSolar inverter generates from solar panels to a Tesla to charge it without using more energy than generated by the solar panels.
 
-If you've also built a project that you are proud of, please add a Pull Request adding it or let us know [on Discord](https://discord.gg/uc9H5YKjXv).
+If you've also built a project that you are proud of, please open a [Pull Request](https://github.com/Genez-io/genezio/pulls) adding it or let us know [on Discord](https://discord.gg/uc9H5YKjXv).
 
 # Badge
 
 Brag to your friends that you are using `genezio` with this awesome badge -> [![deployed with: genezio](https://img.shields.io/badge/deployed_with-genezio-6742c1.svg?labelColor=62C353&style=flat-square)](https://github.com/genez-io/genezio)
 
 ```md
-https://img.shields.io/badge/deployed_with-genezio-6742c1.svg?labelColor=62C353&style=flat-square
+[![deployed with: genezio](https://img.shields.io/badge/deployed_with-genezio-6742c1.svg?labelColor=62C353&style=flat-square)](https://github.com/genez-io/genezio)
 ```
 
 <!-- # Contributing -->
