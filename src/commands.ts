@@ -1,6 +1,5 @@
 import path from "path";
 import { deployRequest } from "./requests/deployCode";
-import generateSdkRequest from "./requests/generateSdk";
 import listProjects from "./requests/listProjects";
 import deleteProject from "./requests/deleteProject";
 import {
@@ -39,10 +38,11 @@ import { BundlerComposer } from "./bundlers/bundlerComposer";
 import { BundlerInterface } from "./bundlers/bundler.interface";
 import { ProjectConfiguration } from "./models/projectConfiguration";
 import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
-import { GenerateSdkResponse } from "./models/generateSdkResponse"
+import { SdkGeneratorResponse } from "./models/SdkGeneratorResponse"
 import { getFrontendPresignedURL } from "./requests/getFrontendPresignedURL";
 import getProjectInfo from "./requests/getProjectInfo";
 import { generateRandomSubdomain } from "./utils/yaml";
+import { sdkGeneratorApiHandler } from "./generate-sdk/generateSdkApi";
 
 
 export async function addNewClass(classPath: string, classType: string) {
@@ -209,7 +209,7 @@ export async function deployClasses() {
 
   log.info("Deploying your backend project to genezio infrastructure...");
 
-  const sdkResponse = await generateSdkRequest(configuration).catch((error) => {
+  const sdkResponse = await sdkGeneratorApiHandler(configuration).catch((error) => {
     throw error;
   });
   const projectConfiguration = new ProjectConfiguration(configuration, sdkResponse.astSummary);
@@ -347,9 +347,9 @@ export async function deployFrontend(): Promise<string> {
 
 export function reportSuccess(
   classesInfo: any,
-  sdkResponse: GenerateSdkResponse,
+  sdkResponse: SdkGeneratorResponse,
 ) {
-  if (sdkResponse.classFiles.length > 0) {
+  if (sdkResponse.files.length > 0) {
     log.info(
       "\x1b[36m%s\x1b[0m",
       "Your code was deployed and the SDK was successfully generated!"
@@ -528,7 +528,7 @@ export async function generateSdkHandler(language: string, path: string) {
     );
   }
 
-  const sdkResponse = await generateSdkRequest(configuration).catch((error) => {
+  const sdkResponse = await sdkGeneratorApiHandler(configuration).catch((error) => {
     throw error;
   });
 

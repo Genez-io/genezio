@@ -1,5 +1,5 @@
 import path from "path";
-import File, { Program } from "../../models/genezio-models";
+import { File, Program } from "../../models/genezio-models";
 import JsAstGenerator from "./JsAstGenerator";
 import TsAstGenerator from "./TsAstGenerator";
 
@@ -7,7 +7,7 @@ export async function generateAst(
   file: File,
   plugins: string[] | undefined,
 ): Promise<Program> {
-  const extension = path.extname(file.path);
+  const extension = path.extname(file.path).replace(".", "");
   let pluginsImported: any = [];
   
 

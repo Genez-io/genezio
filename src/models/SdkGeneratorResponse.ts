@@ -1,3 +1,5 @@
+import { File } from "./genezio-models";
+
 export type AstSummaryParam = {
     name: string;
     type: string;
@@ -26,13 +28,7 @@ export type AstSummary = {
     classes: AstSummaryClass[];
 };
 
-export type GenerateSdkResponse = {
-    status: string,
-    classFiles: {
-        filename: string;
-        name: string;
-        implementation: string;
-    }[],
-    remoteFile: string,
+export type SdkGeneratorResponse = {
+    files: File[],
     astSummary: AstSummary
   };

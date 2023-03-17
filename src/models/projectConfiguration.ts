@@ -1,4 +1,4 @@
-import { AstSummary } from "./generateSdkResponse";
+import { AstSummary } from "./SdkGeneratorResponse";
 import { JsRuntime, JsSdkOptions, Language, TriggerType, YamlProjectConfiguration } from "./yamlProjectConfiguration";
 
 export class ParameterType {

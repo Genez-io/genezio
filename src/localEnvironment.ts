@@ -19,14 +19,14 @@ import url from "url";
 import { genezioRequestParser } from "./utils/genezioRequestParser";
 import { debugLogger } from "./utils/logging";
 import { BundlerInterface } from "./bundlers/bundler.interface";
-import { AstSummary, AstSummaryMethod } from "./models/generateSdkResponse";
+import { AstSummary, AstSummaryMethod, SdkGeneratorResponse } from "./models/SdkGeneratorResponse";
 import { ClassConfiguration, ProjectConfiguration } from "./models/projectConfiguration";
 import cron from "node-cron";
-import fs from "fs";
-import generateSdkRequest from "./requests/generateSdk";
 import { reportSuccess } from "./commands";
 import { getProjectConfiguration } from "./utils/configuration";
 import { replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
+import { sdkGeneratorApiHandler } from "./generate-sdk/generateSdkApi";
+import { File } from "./models/genezio-models";
 
 export function getEventObjectFromRequest(request: any) {
   const urlDetails = url.parse(request.url, true);
@@ -247,7 +247,7 @@ export async function startLocalTesting(classesInfo: any, options: any): Promise
 
     let astSummary: AstSummary | undefined = undefined;
 
-    const sdk = await generateSdkRequest(projectConfiguration)
+    const sdk: SdkGeneratorResponse = await sdkGeneratorApiHandler(projectConfiguration)
 
     astSummary = sdk.astSummary
 
@@ -262,7 +262,9 @@ export async function startLocalTesting(classesInfo: any, options: any): Promise
     classesInfo = localEnvInfo.classesInfo;
     const handlers = localEnvInfo.handlers;
 
-    await replaceUrlsInSdk(sdk, sdk.classFiles.map((c) => ({ name: c.name, cloudUrl: `http://127.0.0.1:${options.port}/${c.name}` })))
+    console.log("-----------------------------------------")
+
+    await replaceUrlsInSdk(sdk, sdk.files.map((c: File) => ({ name: c.path, cloudUrl: `http://127.0.0.1:${options.port}/${path.basename(c.path)}` })))
     await writeSdkToDisk(sdk, projectConfiguration.sdk.language, projectConfiguration.sdk.path)
     reportSuccess(classesInfo, sdk);
 

@@ -1,8 +1,6 @@
 import { Program } from "../../models/genezio-models";
-import {
-  TriggerType,
-  YamlMethodConfiguration
-} from "./yamlProjectConfiguration.model";
+import { YamlMethodConfiguration, TriggerType } from "../../models/yamlProjectConfiguration";
+
 
 export type AstSummaryInfo = {
   program: Program;

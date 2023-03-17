@@ -10,13 +10,13 @@ import {
 import { printAdaptiveLog } from "../utils/logging"
 import log from "loglevel";
 import { getAuthToken } from "../utils/accounts";
-import { GenerateSdkResponse } from "../models/generateSdkResponse";
+import { SdkGeneratorResponse } from "../models/SdkGeneratorResponse";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../../package.json");
 
 export default async function generateSdkRequest(
   configuration: YamlProjectConfiguration
-): Promise<GenerateSdkResponse> {
+): Promise<SdkGeneratorResponse> {
   const classes = configuration.classes;
   const sdkOutputPath = configuration.sdk.path
 

@@ -1,7 +1,7 @@
 import { YamlClassConfiguration, YamlMethodConfiguration } from "./yamlProjectConfiguration";
 
 
-export default class File {
+export class File {
   path: string
   data: string
 

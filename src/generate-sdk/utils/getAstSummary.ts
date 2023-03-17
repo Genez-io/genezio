@@ -1,26 +1,22 @@
 import {
   ClassDefinition,
-  PropertyDefinition,
   MethodDefinition,
-  ParameterDefinition
-} from "../astGenerator/astGenerator.interface";
+  ParameterDefinition,
+  PropertyDefinition,
+  SdkGeneratorClassesInfoInput
+} from "../../models/genezio-models";
 import {
   AstSummaryClass,
-  AstSummaryInfo,
   AstSummaryMethod,
   AstSummaryParam
 } from "../models/astSummary";
-import {
-  ClassConfiguration,
-  ProjectConfiguration
-} from "../models/projectConfiguration.model";
+
 
 export function getAstSummary(
-  projectConfiguration: ProjectConfiguration
+  classesInfo: SdkGeneratorClassesInfoInput[]
 ): AstSummaryClass[] {
-  const classes: AstSummaryClass[] = projectConfiguration
-    .getAllClasses()
-    .filter((classConfiguration: ClassConfiguration) => {
+  const classes: AstSummaryClass[] = classesInfo
+    .filter((classConfiguration: SdkGeneratorClassesInfoInput) => {
       const body: [ClassDefinition | PropertyDefinition] | undefined =
         classConfiguration.program.body;
       // filter if body is undefined
@@ -29,7 +25,7 @@ export function getAstSummary(
       }
       return true;
     })
-    .map((classConfiguration: ClassConfiguration) => {
+    .map((classConfiguration: SdkGeneratorClassesInfoInput) => {
       const body: [ClassDefinition | PropertyDefinition] | undefined =
         classConfiguration.program.body;
 
@@ -51,10 +47,7 @@ export function getAstSummary(
 
           const methodInfo: AstSummaryMethod = {
             name: method.name,
-            type: projectConfiguration.getMethodType(
-              classConfiguration.path,
-              method.name
-            ),
+            type: classConfiguration.classConfiguration.getMethodType(method.name),
             params: params
           };
           return methodInfo;
@@ -63,7 +56,7 @@ export function getAstSummary(
 
       const classInfo: AstSummaryClass = {
         name: classElem.name,
-        path: classConfiguration.path,
+        path: classConfiguration.classConfiguration.path,
         methods: methods
       };
       return classInfo;

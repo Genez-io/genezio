@@ -1,9 +1,8 @@
-import { DeployCodeResponse } from "../models/deployCodeResponse"
-import { GenerateSdkResponse } from "../models/generateSdkResponse"
+import { SdkGeneratorResponse } from "../models/SdkGeneratorResponse"
 import { Language } from "../models/yamlProjectConfiguration"
 import { writeToFile } from "./file"
 import { debugLogger } from "./logging"
-import log from "loglevel";
+import { File } from "../models/genezio-models"
 
 export type ClassUrlMap = {
     name: string
@@ -13,67 +12,36 @@ export type ClassUrlMap = {
 /**
  * Replace the temporary markdowns from the SDK with actual URLs.
  */
-export async function replaceUrlsInSdk(sdkResponse: GenerateSdkResponse, classUrlMap: ClassUrlMap[]) {
-    sdkResponse.classFiles.forEach((c) => {
+export async function replaceUrlsInSdk(sdkResponse: SdkGeneratorResponse, classUrlMap: ClassUrlMap[]) {
+    sdkResponse.files.forEach((c : File) => {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const classContent = classUrlMap.find((classFile) => {
-            return classFile.name === c.name
+            return classFile.name === c.path
         })!
 
-        c.implementation = c.implementation.replace("%%%link_to_be_replace%%%", classContent.cloudUrl)
+        c.data = c.data.replace("%%%link_to_be_replace%%%", classContent.cloudUrl)
     })
-}
-
-export function mapLanguageToExtension(language: Language): string {
-    switch (language) {
-        case Language.js:
-            return "js"
-        case Language.ts:
-            return "ts"
-        case Language.swift:
-            return "swift"
-        case Language.python:
-            return "py"
-        default:
-            throw new Error(`Unsupported language: ${language}`)
-    }
 }
 
 /**
  * Write the SDK files to disk.
  */
-export async function writeSdkToDisk(sdk: GenerateSdkResponse, language: Language, outputPath: string) {
-    if (sdk.classFiles.length == 0) {
+export async function writeSdkToDisk(sdk: SdkGeneratorResponse, language: Language, outputPath: string) {
+    if (sdk.files.length == 0) {
         debugLogger.debug("No SDK classes found...")
         return 
     }
-    const extension: string = mapLanguageToExtension(language)
 
     debugLogger.debug("Writing the SDK to files...")
-    if (sdk.remoteFile) {
-        await writeToFile(
-            outputPath,
-            `remote.${extension}`,
-            sdk.remoteFile,
-            true
-        ).catch((error) => {
-            log.error(error.toString());
-        });
-    }
-
     await Promise.all(
-        sdk.classFiles.map((classFile: any) => {
-            let filename;
-            if (language === Language.python) {
-                filename = `${classFile.name}.${extension}`
-            } else {
-                filename = `${classFile.name}.sdk.${extension}`
-            }
-            filename = filename.charAt(0).toLowerCase() + filename.slice(1)
+        sdk.files.map((file: File) => {
+            console.log(file.path)
+            console.log(file.data)
+            
             return writeToFile(
                 outputPath,
-                filename,
-                classFile.implementation,
+                file.path,
+                file.data,
                 true
             );
         })

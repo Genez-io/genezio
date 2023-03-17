@@ -1,10 +1,6 @@
-import { ClassDefinition, AstNodeType } from "../../models/genezio-models";
-import { TriggerType } from "../models/yamlProjectConfiguration.model";
-import {
-  GenerateSdkInput,
-  SdkClassFile,
-  SdkGeneratorInterface
-} from "./sdkGenerator.interface";
+import { ClassDefinition, AstNodeType, SdkGeneratorInterface } from "../../models/genezio-models";
+import { TriggerType } from "../../models/yamlProjectConfiguration";
+
 
 const PYTHON_RESERVED_WORDS = [
   "False",
@@ -45,9 +41,9 @@ const PYTHON_RESERVED_WORDS = [
 ];
 
 export class PythonSdkGenerator implements SdkGeneratorInterface {
-  async generateClassSdk(
-    sdkGeneratorInfo: GenerateSdkInput
-  ): Promise<SdkClassFile | undefined> {
+  async generateSdk(
+    sdkGeneratorInput: SdkGeneratorInput
+  ): Promise<SdkGeneratorOutput> {
     const _url = "%%%link_to_be_replace%%%";
     const classConfiguration = sdkGeneratorInfo.classConfiguration;
     const methodsMap = sdkGeneratorInfo.methodsMap;

@@ -1,9 +1,6 @@
-import path from "path";
-import { Program } from "../astGenerator/astGenerator.interface";
-import {
-  TriggerType,
-  YamlProjectConfiguration
-} from "./yamlProjectConfiguration.model";
+import { Program } from "typescript";
+import { TriggerType, YamlProjectConfiguration } from "../../models/yamlProjectConfiguration";
+
 
 export class MethodConfiguration {
   name: string;

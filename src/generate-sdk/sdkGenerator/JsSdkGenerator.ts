@@ -1,5 +1,4 @@
-import { runtime } from "webpack";
-import { TriggerType } from "../../models/generateSdkResponse";
+import { TriggerType } from "../../models/SdkGeneratorResponse";
 import {
   SdkGeneratorInterface,
   ClassDefinition,
@@ -9,9 +8,46 @@ import {
 } from "../../models/genezio-models";
 import { browserSdkJs } from "../templates/browserSdkJs";
 import { nodeSdkJs } from "../templates/nodeSdkJs";
+import Mustache from "mustache";
 
 
-export class JsSdkGenerator implements SdkGeneratorInterface {
+// example of view
+// const view = {
+//   "className": "HelloWorldService",
+//   "_url": "http://localhost:8080",
+//   "methods": [{
+//       "name": "hello",
+//       "parameters": [{
+//         "name": "name",
+//       },
+//     {
+//       "name": "age",
+//       last: true
+//     }],
+//       "methodCaller": '"Task.deleteTask", '
+//   }]
+// }
+
+const template = `/**
+* This is an auto generated code. This code should not be modified since the file can be overwriten 
+* if new genezio commands are executed.
+*/
+  
+import { Remote } from "./remote.js"
+
+export class {{{className}}} {
+  static remote = new Remote("{{{_url}}}")
+
+  {{#methods}}
+  static async {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) {
+    return {{{className}}}.remote.call({{{methodCaller}}}{{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}})
+  }
+
+  {{/methods}}
+}
+`;
+
+class SdkGenerator implements SdkGeneratorInterface {
   async generateSdk(
     sdkGeneratorInput: SdkGeneratorInput
   ): Promise<SdkGeneratorOutput> {
@@ -40,74 +76,47 @@ export class JsSdkGenerator implements SdkGeneratorInterface {
       if (classDefinition === undefined) {
         continue;
       }
-      let classImplementation = `/**
-* This is an auto generated code. This code should not be modified since the file can be overwriten 
-* if new genezio commands are executed.
-*/
-  
-import { Remote } from "./remote.js"
 
-export class ${classDefinition.name} {
-    static remote = new Remote("${_url}")
-
-    %%%func%%%
-}
-
-export { Remote };
-  `;
+      const view: any = {
+        className: classDefinition.name,
+        _url: _url,
+        methods: []
+      };
 
       let exportClassChecker = false;
 
       for (const methodDefinition of classDefinition.methods) {
-        let func;
         const methodConfigurationType = classConfiguration.getMethodType(methodDefinition.name);
 
-        if (
-          methodConfigurationType !== TriggerType.jsonrpc
+        if (methodConfigurationType !== TriggerType.jsonrpc
+            || classConfiguration.type !== TriggerType.jsonrpc
         ) {
-          continue;
-        }
-
-        if (classConfiguration.type !== TriggerType.jsonrpc) {
           continue;
         }
 
         exportClassChecker = true;
 
-        if (methodDefinition.params.length === 0) {
-          func = `static async ${methodDefinition.name}(${methodDefinition.params
-            .map((e) => e.name)
-            .join(", ")}) {
-            return ${classDefinition.name}.remote.call("${classDefinition.name}.${
-            methodDefinition.name
-          }")  
-        }
-        
-        %%%func%%%`;
-        } else {
-          func = `static async ${methodDefinition.name}(${methodDefinition.params
-            .map(
-              (e) =>
-                e.name +
-                (e.defaultValue
-                  ? " = " +
-                    ((typeof e.defaultValue === "string" ? '"' : "") +
-                      e.defaultValue.toString()) +
-                    (typeof e.defaultValue === "string" ? '"' : "")
-                  : "")
-            )
-            .join(", ")}) {
-            return ${classDefinition.name}.remote.call("${classDefinition.name}.${
-            methodDefinition.name
-          }", ${methodDefinition.params.map((e) => e.name).join(", ")})  
-        }
-    
-        %%%func%%%`;
-        }
-        classImplementation = classImplementation.replace("%%%func%%%", func);
-      }
+        const methodView: any = {
+          name: methodDefinition.name,
+          parameters: [],
+          methodCaller: methodDefinition.params.length === 0 ?
+            `"${classDefinition.name}.${methodDefinition.name}"`
+            : `"${classDefinition.name}.${methodDefinition.name}", `
+        };
 
-      classImplementation = classImplementation.replace("%%%func%%%", "");
+        methodView.parameters = methodDefinition.params.map((e) => {
+          return {
+            name: e.name,
+            last: false
+          }
+        });
+
+        if (methodView.parameters.length > 0) {
+          methodView.parameters[methodView.parameters.length - 1].last = true;
+        }
+
+        view.methods.push(methodView);
+      }
 
       if (!exportClassChecker) {
         continue;
@@ -115,7 +124,7 @@ export { Remote };
 
       generateSdkOutput.files.push({
         path: classInfo.fileName,
-        data: classImplementation
+        data: Mustache.render(template, view)
       });
     }
 
@@ -129,3 +138,8 @@ export { Remote };
     return generateSdkOutput;
   }
 }
+
+const supportedLanguages = ["js"];
+
+
+export default { SdkGenerator, supportedLanguages }
