@@ -200,6 +200,17 @@ export class YamlScriptsConfiguration {
   }
 }
 
+export class YamlPluginsConfiguration {
+  astGenerator: string[];
+  sdkGenerator: string[];
+
+  constructor(astGenerator: string[], sdkGenerator: string[]) {
+    this.astGenerator = astGenerator;
+    this.sdkGenerator = sdkGenerator;
+  }
+}
+
+
 /**
  * This class represents the model for the YAML configuration file.
  */
@@ -211,6 +222,7 @@ export class YamlProjectConfiguration {
   classes: YamlClassConfiguration[];
   frontend?: YamlFrontend;
   scripts?: YamlScriptsConfiguration;
+  plugins?: YamlPluginsConfiguration;
 
   constructor(
     name: string,
@@ -219,7 +231,8 @@ export class YamlProjectConfiguration {
     cloudProvider: string,
     classes: YamlClassConfiguration[],
     frontend: YamlFrontend|undefined = undefined,
-    scripts: YamlScriptsConfiguration | undefined = undefined
+    scripts: YamlScriptsConfiguration | undefined = undefined,
+    plugins: YamlPluginsConfiguration | undefined = undefined
   ) {
     this.name = name;
     this.region = region;
@@ -228,6 +241,19 @@ export class YamlProjectConfiguration {
     this.classes = classes;
     this.frontend = frontend;
     this.scripts = scripts;
+    this.plugins = plugins;
+  }
+
+  getClassConfiguration(path: string): YamlClassConfiguration {
+    const classConfiguration = this.classes.find(
+      (classConfiguration) => classConfiguration.path === path
+    );
+
+    if (!classConfiguration) {
+      throw new Error("Class configuration not found for path " + path);
+    }
+
+    return classConfiguration;
   }
 
   static async create(
@@ -322,6 +348,7 @@ export class YamlProjectConfiguration {
     }
 
     const scripts: YamlScriptsConfiguration | undefined = configurationFileContent.scripts;
+    const plugins: YamlPluginsConfiguration | undefined = configurationFileContent.plugins;
 
     return new YamlProjectConfiguration(
       configurationFileContent.name,
@@ -330,7 +357,8 @@ export class YamlProjectConfiguration {
       configurationFileContent.cloudProvider || "aws",
       classes,
       configurationFileContent.frontend,
-      scripts
+      scripts,
+      plugins
     );
   }
 
