@@ -26,5 +26,25 @@ export const asciiCapybara = `        ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡀
         ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠋⠁⢰⣿⡽⢛⡧⢠⡇⠀⠀⠀⠉⠉⠙⠓⠒⠒⠚⠉⠁⠀⠉⠑⠒⠒⠉⠉⠁⠀⠀⠀⠀
         ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⠛⠒⣿⣤⠞⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀`;
 
+// Comment template for genezio.yaml
+export const GENEZIO_YAML_COMMENT = `File that configures what classes will be deployed in Genezio Infrastructure.
+ Add the paths to classes that you want to deploy in "classes".
+
+Example:
+
+name: hello-world
+region: us-east-1
+sdk:
+language: js
+options:
+runtime: node
+path: ../client/sdk/
+classes:
+- path: ./hello.js
+type: jsonrpc
+methods:
+- name: hello
+        type: http`;
+
 // Constant strings used for output/error messages
 export const GENEZIO_NOT_AUTH_ERROR_MSG = "You are not logged in or your token is invalid. Please run `genezio login` before running this command."

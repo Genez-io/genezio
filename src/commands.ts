@@ -43,6 +43,8 @@ import { GenerateSdkResponse } from "./models/generateSdkResponse"
 import { getFrontendPresignedURL } from "./requests/getFrontendPresignedURL";
 import getProjectInfo from "./requests/getProjectInfo";
 import { generateRandomSubdomain } from "./utils/yaml";
+import { regions } from "./utils/configs";
+import { GENEZIO_YAML_COMMENT } from "./utils/strings";
 
 
 export async function addNewClass(classPath: string, classType: string) {
@@ -391,10 +393,22 @@ export async function init() {
   }
   const configFile: any = {
     name: projectName,
-    region: "us-east-1",
+    region: "",
     sdk: { options: {} },
     classes: []
   };
+
+  const region = await askQuestion(
+    `What region do you want to deploy your project to? [default value: us-east-1]: `,
+    "us-east-1"
+  );
+
+  if (!regions.includes(region)) {
+    throw Error(
+      `The region is invalid. Please use a valid region.\n Region list: ${regions}`
+    )
+  }
+  configFile.region = region;
 
   const sdkLanguage = await askQuestion(
     `In what programming language do you want your SDK? (js, ts, swift or python) [default value: js]: `,
@@ -414,37 +428,20 @@ export async function init() {
       "node"
     );
     if (runtime !== "node" && runtime !== "browser") {
-      throw Error(`We don't currently support this JS runtime ${runtime}.`);
+      throw Error(`We don't currently support this JS/TS runtime ${runtime}.`);
     }
 
     configFile.sdk.options.runtime = runtime;
   }
 
   const path = await askQuestion(
-    `Where do you want to save your SDK? [default value: ./sdk/]: `,
-    "./sdk/"
+    `Where do you want to save your SDK? [default value: ../client/sdk/]: `,
+    "../client/sdk/"
   );
   configFile.sdk.path = path;
 
   const doc = new Document(configFile);
-  doc.commentBefore = `File that configures what classes will be deployed in Genezio Infrastructure.
-Add the paths to classes that you want to deploy in "classes".
-
-Example:
-
-name: hello-world
-region: us-east-1
-sdk:
-  language: js
-  options:
-    runtime: node
-  path: ./sdk/
-classes:
-  - path: ./hello.js
-    type: jsonrpc
-    methods:
-      - name: hello
-        type: http`;
+  doc.commentBefore = GENEZIO_YAML_COMMENT
 
   const yamlConfigurationFileContent = doc.toString();
 
