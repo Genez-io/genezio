@@ -1,5 +1,11 @@
+import { Document } from "yaml";
+
 import { addNewClass } from "../src/commands";
+import { init } from "../src/commands";
+
 import { fileExists, writeToFile } from "../src/utils/file";
+import { askQuestion } from "../src/utils/prompt";
+import { GENEZIO_YAML_COMMENT } from "../src/utils/strings";
 import { getProjectConfiguration } from "../src/utils/configuration";
 import {
   JsRuntime,
@@ -7,13 +13,101 @@ import {
   YamlProjectConfiguration,
   YamlSdkConfiguration
 } from "../src/models/yamlProjectConfiguration";
+import { regions } from "../src/utils/configs";
 
 jest.mock("../src/utils/file");
 jest.mock("../src/utils/configuration");
+jest.mock("../src/utils/prompt");
 
 beforeEach(() => {
   jest.clearAllMocks();
 });
+
+describe("init", () => {
+  test("create genezio.yaml succesfully", async () => {
+    const mockedAskQuestion = jest.mocked(askQuestion, { shallow: true });
+    mockedAskQuestion
+    .mockResolvedValueOnce("project-name")
+    .mockResolvedValueOnce("us-east-1")
+    .mockResolvedValueOnce("js")
+    .mockResolvedValueOnce("node")
+    .mockResolvedValueOnce("../client/sdk/")
+
+    const mockedWriteToFile = jest.mocked(writeToFile, { shallow: true });
+    mockedWriteToFile.mockResolvedValue();
+
+    const configFile : any = {
+      name: "project-name",
+      region: "us-east-1",
+      sdk: { options: { runtime: "node"}, language: "js", path: "../client/sdk/" },
+      classes: []
+    };
+
+    const doc = new Document(configFile);
+    doc.commentBefore = GENEZIO_YAML_COMMENT
+
+    const yamlConfigurationFileContent = doc.toString();
+
+    await expect(init()).resolves.toBeUndefined();
+
+    expect(mockedWriteToFile).toBeCalledTimes(1);
+    expect(mockedAskQuestion).toBeCalledTimes(5);
+    expect(mockedWriteToFile).toBeCalledWith(".", "genezio.yaml", yamlConfigurationFileContent)
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `In what programming language do you want your SDK? (js, ts, swift or python) [default value: js]: `, "js")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(4, `What runtime will you use? Options: "node" or "browser". [default value: node]: `, "node")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(5, `Where do you want to save your SDK? [default value: ../client/sdk/]: `, "../client/sdk/")
+  });
+
+  test("throws error if region is not supported", async () => {
+    const notSupportedRegion = "not-supported";
+    const mockedAskQuestion = jest.mocked(askQuestion, { shallow: true });
+    mockedAskQuestion
+    .mockResolvedValueOnce("project-name")
+    .mockResolvedValueOnce(notSupportedRegion)
+
+    await expect(init()).rejects.toThrowError(`The region is invalid. Please use a valid region.\n Region list: ${regions}`);
+
+    expect(mockedAskQuestion).toBeCalledTimes(2);
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
+  });
+
+  test("throws error if language is not supported", async () => {
+    const notSupportedLanguage = "not-supported";
+    const mockedAskQuestion = jest.mocked(askQuestion, { shallow: true });
+    mockedAskQuestion
+    .mockResolvedValueOnce("project-name")
+    .mockResolvedValueOnce("us-east-1")
+    .mockResolvedValueOnce(notSupportedLanguage)
+
+    await expect(init()).rejects.toThrowError(`We don't currently support the ${notSupportedLanguage} language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`);
+
+    expect(mockedAskQuestion).toBeCalledTimes(3);
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `In what programming language do you want your SDK? (js, ts, swift or python) [default value: js]: `, "js")
+  });
+
+  test("throws error if runtime is not supported", async () => {
+    const notSupportedRuntime = "not-supported"
+    const mockedAskQuestion = jest.mocked(askQuestion, { shallow: true });
+    mockedAskQuestion
+    .mockResolvedValueOnce("project-name")
+    .mockResolvedValueOnce("us-east-1")
+    .mockResolvedValueOnce("js")
+    .mockResolvedValueOnce(notSupportedRuntime)
+
+    await expect(init()).rejects.toThrowError(`We don't currently support this JS/TS runtime ${notSupportedRuntime}.`);
+
+    expect(mockedAskQuestion).toBeCalledTimes(4);
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `In what programming language do you want your SDK? (js, ts, swift or python) [default value: js]: `, "js")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(4, `What runtime will you use? Options: "node" or "browser". [default value: node]: `, "node")
+  });
+})
 
 describe("addNewClass", () => {
   test("throws error if class type is not supported", async () => {
