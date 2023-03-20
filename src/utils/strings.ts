@@ -38,7 +38,7 @@ sdk:
 language: js
 options:
 runtime: node
-path: ../client/sdk/
+path: ./sdk/
 classes:
 - path: ./hello.js
 type: jsonrpc

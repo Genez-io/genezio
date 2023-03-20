@@ -31,7 +31,7 @@ describe("init", () => {
     .mockResolvedValueOnce("us-east-1")
     .mockResolvedValueOnce("js")
     .mockResolvedValueOnce("node")
-    .mockResolvedValueOnce("../client/sdk/")
+    .mockResolvedValueOnce("./sdk/")
 
     const mockedWriteToFile = jest.mocked(writeToFile, { shallow: true });
     mockedWriteToFile.mockResolvedValue();
@@ -39,7 +39,7 @@ describe("init", () => {
     const configFile : any = {
       name: "project-name",
       region: "us-east-1",
-      sdk: { options: { runtime: "node"}, language: "js", path: "../client/sdk/" },
+      sdk: { options: { runtime: "node"}, language: "js", path: "./sdk/" },
       classes: []
     };
 
@@ -57,7 +57,7 @@ describe("init", () => {
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `In what programming language do you want your SDK? (js, ts, swift or python) [default value: js]: `, "js")
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(4, `What runtime will you use? Options: "node" or "browser". [default value: node]: `, "node")
-    expect(mockedAskQuestion).toHaveBeenNthCalledWith(5, `Where do you want to save your SDK? [default value: ../client/sdk/]: `, "../client/sdk/")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(5, `Where do you want to save your SDK? [default value: ./sdk/]: `, "./sdk/")
   });
 
   test("throws error if region is not supported", async () => {

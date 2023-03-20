@@ -435,8 +435,8 @@ export async function init() {
   }
 
   const path = await askQuestion(
-    `Where do you want to save your SDK? [default value: ../client/sdk/]: `,
-    "../client/sdk/"
+    `Where do you want to save your SDK? [default value: ./sdk/]: `,
+    "./sdk/"
   );
   configFile.sdk.path = path;
 
