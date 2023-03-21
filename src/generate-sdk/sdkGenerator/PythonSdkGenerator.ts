@@ -1,15 +1,46 @@
-import { TriggerType } from "../../models/SdkGeneratorResponse";
-import {
-  SdkGeneratorInterface,
-  ClassDefinition,
-  AstNodeType,
-  SdkGeneratorInput,
-  SdkGeneratorOutput
-} from "../../models/genezio-models";
-import { browserSdkJs } from "../templates/browserSdkJs";
-import { nodeSdkJs } from "../templates/nodeSdkJs";
 import Mustache from "mustache";
+import { ClassDefinition, AstNodeType, SdkGeneratorInterface, SdkGeneratorInput, SdkGeneratorOutput } from "../../models/genezio-models";
+import { TriggerType } from "../../models/yamlProjectConfiguration";
+import { pythonSdk } from "../templates/pythonSdk";
 
+
+const PYTHON_RESERVED_WORDS = [
+  "False",
+  "class",
+  "from",
+  "or",
+  "None",
+  "continue",
+  "global",
+  "pass",
+  "True",
+  "def",
+  "if",
+  "raise",
+  "and",
+  "del",
+  "import",
+  "return",
+  "as",
+  "elif",
+  "in",
+  "try",
+  "assert",
+  "else",
+  "is",
+  "while",
+  "async",
+  "except",
+  "lambda",
+  "with",
+  "await",
+  "finally",
+  "nonlocal",
+  "yield",
+  "break",
+  "for",
+  "not"
+];
 
 // example of view
 // const view = {
@@ -20,6 +51,9 @@ import Mustache from "mustache";
 //       "parameters": [{
 //         "name": "name",
 //       },
+//       "sendParameters": [{
+//         "name": "name",
+//       },
 //     {
 //       "name": "age",
 //       last: true
@@ -28,32 +62,25 @@ import Mustache from "mustache";
 //   }]
 // }
 
-const template = `/**
-* This is an auto generated code. This code should not be modified since the file can be overwriten 
-* if new genezio commands are executed.
-*/
+const template = `# This is an auto generated code. This code should not be modified since the file can be overwriten 
+# if new genezio commands are executed.
   
-import { Remote } from "./remote.js"
+from .remote import Remote
 
-export class {{{className}}} {
-  static remote = new Remote("{{{_url}}}")
+class {{{className}}}:
+  remote = Remote("{{{_url}}}")
 
   {{#methods}}
-  static async {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) {
-    return {{{className}}}.remote.call({{{methodCaller}}}{{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}})
-  }
+  def {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}):
+    return {{{className}}}.remote.call({{{methodCaller}}}{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}})
 
   {{/methods}}
-}
 `;
 
 class SdkGenerator implements SdkGeneratorInterface {
   async generateSdk(
     sdkGeneratorInput: SdkGeneratorInput
   ): Promise<SdkGeneratorOutput> {
-
-    const options = sdkGeneratorInput.sdk.options;
-    const nodeRuntime = options.runtime;
 
     const generateSdkOutput: SdkGeneratorOutput = {
       files: []
@@ -107,7 +134,7 @@ class SdkGenerator implements SdkGeneratorInterface {
 
         methodView.parameters = methodDefinition.params.map((e) => {
           return {
-            name: e.name,
+            name: PYTHON_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name,
             last: false
           }
         });
@@ -116,6 +143,13 @@ class SdkGenerator implements SdkGeneratorInterface {
           methodView.parameters[methodView.parameters.length - 1].last = true;
         }
 
+        methodView.sendParameters = [...methodView.parameters];
+
+        methodView.parameters.unshift({
+          name: "self",
+          last: false
+        })
+
         view.methods.push(methodView);
       }
 
@@ -123,7 +157,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         continue;
       }
 
-      const rawSdkClassName = `${classDefinition.name}.sdk.js`;
+      const rawSdkClassName = `${classDefinition.name}.py`;
       const sdkClassName = rawSdkClassName.charAt(0).toLowerCase() + rawSdkClassName.slice(1)
 
       generateSdkOutput.files.push({
@@ -136,16 +170,15 @@ class SdkGenerator implements SdkGeneratorInterface {
     // generate remote.js
     generateSdkOutput.files.push({
       className: "Remote",
-      path: "remote.js",
-      data: nodeRuntime === "node" ? nodeSdkJs.replace("%%%url%%%", "undefined")
-      : browserSdkJs.replace("%%%url%%%", "undefined")
+      path: "remote.py",
+      data: pythonSdk
     });
 
     return generateSdkOutput;
   }
 }
 
-const supportedLanguages = ["js"];
+const supportedLanguages = ["py", "python"];
 
 
 export default { SdkGenerator, supportedLanguages }

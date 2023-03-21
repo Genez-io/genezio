@@ -6,7 +6,7 @@ import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration";
 import { getFiles } from "./utils/getFiles";
 import { exit } from "process";
 import log from "loglevel";
-import { File, Program, SdkGeneratorInput, SdkGeneratorOutput } from "../models/genezio-models";
+import { AstGeneratorOutput, File, Program, SdkGeneratorInput, SdkGeneratorOutput } from "../models/genezio-models";
 import path from "path";
 import { SdkGeneratorResponse } from "../models/SdkGeneratorResponse";
 
@@ -25,9 +25,9 @@ export async function sdkGeneratorApiHandler(projectConfiguration: YamlProjectCo
   // iterate over each class file
   for (const file of files) {
     // Generate genezio AST from file
-    let programOutput: Program;
+    let astGeneratorOutput: AstGeneratorOutput;
     try { 
-      programOutput = await generateAst(file, projectConfiguration.plugins?.astGenerator);
+      astGeneratorOutput = await generateAst(file, projectConfiguration.plugins?.astGenerator);
     } catch (err: any) {
       log.error(err);
       exit(1);
@@ -35,7 +35,7 @@ export async function sdkGeneratorApiHandler(projectConfiguration: YamlProjectCo
 
     // prepare input for sdkGenerator
     sdkGeneratorInput.classesInfo.push({
-      program: programOutput,
+      program: astGeneratorOutput.program,
       classConfiguration: projectConfiguration.getClassConfiguration(file.path),
       fileName: path.basename(file.path)
     });

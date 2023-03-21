@@ -239,19 +239,6 @@ describe("project configuration", () => {
         }).not.toThrowError()
     });
 
-  test("wrong sdk.language should throw error", async () => {
-    await expect(async () => {
-      const yaml = {
-        name: "test",
-        sdk: {
-          path: "/",
-          language: "nothing"
-        }
-      };
-      await YamlProjectConfiguration.create(yaml);
-    }).rejects.toThrowError("The sdk.language property is invalid.");
-  });
-
     test('create a class with a cron method', async () => {
         const yaml = {
             name: "test",

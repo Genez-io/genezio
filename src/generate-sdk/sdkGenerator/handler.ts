@@ -1,7 +1,7 @@
 import JsSdkGenerator from "./JsSdkGenerator";
-// import { TsSdkGenerator } from "./TsSdkGenerator";
-// import { SwiftSdkGenerator } from "./SwiftSdkGenerator.xx";
-// import { PythonSdkGenerator } from "./PythonSdkGenerator";
+import TsSdkGenerator from "./TsSdkGenerator";
+import SwiftSdkGenerator from "./SwiftSdkGenerator";
+import PythonSdkGenerator from "./PythonSdkGenerator";
 import { SdkGeneratorInput, SdkGeneratorOutput } from "../../models/genezio-models";
 
 export async function generateSdk(
@@ -17,9 +17,9 @@ export async function generateSdk(
   }
 
   pluginsImported.push(JsSdkGenerator);
-  // pluginsImported.push(TsSdkGenerator);
-  // pluginsImported.push(SwiftSdkGenerator);
-  // pluginsImported.push(PythonSdkGenerator);
+  pluginsImported.push(TsSdkGenerator);
+  pluginsImported.push(SwiftSdkGenerator);
+  pluginsImported.push(PythonSdkGenerator);
 
   const sdkGeneratorElem = pluginsImported.find((plugin: any) => {
     return plugin.supportedLanguages.includes(sdkGeneratorInput.sdk.language);
@@ -33,47 +33,3 @@ export async function generateSdk(
 
   return await sdkGeneratorClass.generateSdk(sdkGeneratorInput);
 }
-
-
-
-
-
-//   switch (generateSdkHandlerInput.sdkLanguage) {
-//     case SdkLanguage.ts:
-//       sdkGenerator = new TsSdkGenerator();
-
-//       generateSdkOutput.remoteFile =
-//         generateSdkHandlerInput.sdkOptions.runtime === "node"
-//           ? nodeSdkTs.replace("%%%url%%%", "undefined")
-//           : browserSdkTs.replace("%%%url%%%", "undefined");
-//       break;
-//     case SdkLanguage.swift:
-//       sdkGenerator = new SwiftSdkGenerator();
-//       generateSdkOutput.remoteFile = swiftSdk;
-//       break;
-//     case SdkLanguage.python:
-//       sdkGenerator = new PythonSdkGenerator();
-//       generateSdkOutput.remoteFile = pythonSdk;
-//       break;
-//     default:
-//       sdkGenerator = undefined;
-//       break;
-//   }
-
-//   if (!sdkGenerator) {
-//     throw new Error(
-//       `Sdk language(${generateSdkHandlerInput.sdkLanguage}) not supported`
-//     );
-//   }
-
-//   for (let sdkGeneratorInfo of generateSdkHandlerInput.sdkGeneratorInfos) {
-//     const classFile: SdkClassFile | undefined =
-//       await sdkGenerator.generateClassSdk(sdkGeneratorInfo);
-
-//     if (classFile !== undefined) {
-//       generateSdkOutput.classFiles.push(classFile);
-//     }
-//   }
-
-//   return generateSdkOutput;
-// }

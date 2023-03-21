@@ -1,35 +1,41 @@
 
-import { AstNodeType, ClassDefinition, MethodDefinition, NativeType, ParameterDefinition, TypeAlias, TypeDefinition } from "../../models/genezio-models";
-import {
-  GenerateSdkInput,
-  SdkClassFile,
-  SdkGeneratorInterface
-} from "./sdkGenerator.interface";
+import { AstNodeType, ClassDefinition, MethodDefinition, NativeType, ParameterDefinition, SdkGeneratorInput, SdkGeneratorInterface, SdkGeneratorOutput, TypeAlias, TypeDefinition } from "../../models/genezio-models";
+import { TriggerType } from "../../models/yamlProjectConfiguration";
+import { browserSdkTs } from "../templates/browserSdkTs";
+import { nodeSdkTs } from "../templates/nodeSdkTs";
 
-export class TsSdkGenerator implements SdkGeneratorInterface {
-  externalTypes: TypeDefinition[] = [];
-  classImplementation = "";
 
-  async generateClassSdk(
-    sdkGeneratorInfo: GenerateSdkInput
-  ): Promise<SdkClassFile | undefined> {
+class SdkGenerator implements SdkGeneratorInterface {
+    externalTypes: TypeDefinition[] = [];
+    classImplementation = "";
+
+  async generateSdk(
+      sdkGeneratorInput: SdkGeneratorInput
+    ): Promise<SdkGeneratorOutput> {
+  const options = sdkGeneratorInput.sdk.options;
+  const nodeRuntime = options.runtime;
+  const generateSdkOutput: SdkGeneratorOutput = {
+    files: []
+  };
+  for (const classInfo of sdkGeneratorInput.classesInfo) {
+    this.externalTypes = [];
+    this.classImplementation = "";  
     const _url = "%%%link_to_be_replace%%%";
-    const classConfiguration = sdkGeneratorInfo.classConfiguration;
-    const methodsMap = sdkGeneratorInfo.methodsMap;
+    const classConfiguration = classInfo.classConfiguration
 
     let classDefinition: ClassDefinition | undefined = undefined;
 
-    if (sdkGeneratorInfo.program.body === undefined) {
-      return undefined;
+    if (classInfo.program.body === undefined) {
+      continue;
     }
-    for (const elem of sdkGeneratorInfo.program.body) {
+    for (const elem of classInfo.program.body) {
       if (elem.type === AstNodeType.ClassDefinition) {
         classDefinition = elem;
       }
     }
 
     if (classDefinition === undefined) {
-      return undefined;
+      continue;
     }
     this.classImplementation = `/**
 * This is an auto generated code. This code should not be modified since the file can be overwriten 
@@ -67,11 +73,10 @@ export { Remote };
     }
 
     for (const methodDefinition of classDefinition.methods) {
-      const methodConfiguration = methodsMap[methodDefinition.name];
+      const methodConfiguration = classInfo.classConfiguration.getMethodType(methodDefinition.name);
 
       if (
-        methodConfiguration &&
-        methodConfiguration.type !== TriggerType.jsonrpc
+        methodConfiguration !== TriggerType.jsonrpc
       ) {
         continue;
       }
@@ -94,14 +99,28 @@ export { Remote };
       .replace("%%%type%%%", "");
 
     if (!exportClassChecker) {
-      return undefined;
+      continue;
     }
 
-    return {
-      filename: sdkGeneratorInfo.fileName,
-      name: classDefinition.name,
-      implementation: this.classImplementation
-    };
+    const rawSdkClassName = `${classDefinition.name}.sdk.ts`;
+    const sdkClassName = rawSdkClassName.charAt(0).toLowerCase() + rawSdkClassName.slice(1)
+
+    generateSdkOutput.files.push({
+      path: sdkClassName,
+      data: this.classImplementation,
+      className: classDefinition.name
+    });
+  }
+
+    // generate remote.js
+    generateSdkOutput.files.push({
+      className: "Remote",
+      path: "remote.ts",
+      data: nodeRuntime === "node" ? nodeSdkTs.replace("%%%url%%%", "undefined")
+      : browserSdkTs.replace("%%%url%%%", "undefined")
+    });
+
+    return generateSdkOutput;
   }
 
   async generateExternalTypes(type: TypeDefinition) {
@@ -224,3 +243,9 @@ export { Remote };
     return "any";
   }
 }
+
+
+const supportedLanguages = ["ts", "typescript"];
+
+
+export default { SdkGenerator, supportedLanguages }

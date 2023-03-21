@@ -11,6 +11,18 @@ export class File {
   }
 }
 
+export class SdkFileClass {
+  path: string
+  data: string
+  className: string
+
+  constructor(path: string, data: string, className: string) {
+    this.path = path
+    this.data = data
+    this.className = className
+  }
+}
+
 export enum AstNodeType {
   ConstType = "ConstType",
   NativeType = "NativeType",
@@ -138,7 +150,7 @@ export interface PropertyDefinition extends Node {
   exported: boolean;
 }
 
-export interface Program {
+export type Program = {
   originalLanguage: string;
   sourceType: SourceType;
   body: [ClassDefinition | PropertyDefinition] | undefined;
@@ -169,7 +181,7 @@ export type SdkGeneratorInput = {
 };
 
 export type SdkGeneratorOutput = {
-  files: File[];
+  files: SdkFileClass[];
 }
 
 

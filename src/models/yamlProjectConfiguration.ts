@@ -3,6 +3,7 @@ import yaml from "yaml";
 import { getFileDetails, writeToFile } from "../utils/file";
 import { regions } from "../utils/configs";
 import { isValidCron } from 'cron-validator'
+import log from "loglevel";
 
 export enum TriggerType {
   jsonrpc = "jsonrpc",
@@ -288,7 +289,7 @@ export class YamlProjectConfiguration {
     }
 
     if (!Language[language as keyof typeof Language]) {
-      throw new Error("The sdk.language property is invalid.");
+      log.info("This sdk.language is not supported by default. It will be treated as a custom language.");
     }
 
     if (Language[language as keyof typeof Language] == Language.js ||

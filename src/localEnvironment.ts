@@ -26,7 +26,7 @@ import { reportSuccess } from "./commands";
 import { getProjectConfiguration } from "./utils/configuration";
 import { replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
 import { sdkGeneratorApiHandler } from "./generate-sdk/generateSdkApi";
-import { File } from "./models/genezio-models";
+import { SdkFileClass } from "./models/genezio-models";
 
 export function getEventObjectFromRequest(request: any) {
   const urlDetails = url.parse(request.url, true);
@@ -262,9 +262,7 @@ export async function startLocalTesting(classesInfo: any, options: any): Promise
     classesInfo = localEnvInfo.classesInfo;
     const handlers = localEnvInfo.handlers;
 
-    console.log("-----------------------------------------")
-
-    await replaceUrlsInSdk(sdk, sdk.files.map((c: File) => ({ name: c.path, cloudUrl: `http://127.0.0.1:${options.port}/${path.basename(c.path)}` })))
+    await replaceUrlsInSdk(sdk, sdk.files.map((c: SdkFileClass) => ({ name: c.path, cloudUrl: `http://127.0.0.1:${options.port}/${c.className}` })))
     await writeSdkToDisk(sdk, projectConfiguration.sdk.language, projectConfiguration.sdk.path)
     reportSuccess(classesInfo, sdk);
 

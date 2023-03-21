@@ -29,7 +29,6 @@ class AstGenerator implements AstGeneratorInterface {
     });
 
     let classDefinition: ClassDefinition | undefined = undefined;
-    console.log(JSON.stringify(result));
 
     await traverse.default(result, {
       enter(path: any) {
@@ -107,7 +106,7 @@ class AstGenerator implements AstGeneratorInterface {
       }
     });
 
-    if (classDefinition === undefined) {
+    if (classDefinition == undefined) {
       throw new Error("No class definition found");
     } else {
       return {
