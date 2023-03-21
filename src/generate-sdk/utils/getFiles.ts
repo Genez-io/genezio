@@ -1,6 +1,6 @@
 import { YamlProjectConfiguration } from "../../models/yamlProjectConfiguration";
 import fs from 'fs';
-import { File } from "../../models/genezio-models";
+import { File } from "../../models/genezioModels";
 
 export function getFiles(projectConfiguration: YamlProjectConfiguration) {
   const files: File[] = [];

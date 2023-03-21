@@ -1,5 +1,5 @@
 import Mustache from "mustache";
-import { ClassDefinition, AstNodeType, SdkGeneratorInterface, SdkGeneratorInput, SdkGeneratorOutput, NativeType, NativeTypeEnum, TypeAlias, TypeDefinition } from "../../models/genezio-models";
+import { ClassDefinition, AstNodeType, SdkGeneratorInterface, SdkGeneratorInput, SdkGeneratorOutput, NativeType, NativeTypeEnum, TypeAlias, TypeDefinition } from "../../models/genezioModels";
 import { TriggerType } from "../../models/yamlProjectConfiguration";
 import { swiftSdk } from "../templates/swiftSdk";
 

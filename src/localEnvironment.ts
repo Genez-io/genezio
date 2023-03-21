@@ -19,14 +19,14 @@ import url from "url";
 import { genezioRequestParser } from "./utils/genezioRequestParser";
 import { debugLogger } from "./utils/logging";
 import { BundlerInterface } from "./bundlers/bundler.interface";
-import { AstSummary, AstSummaryMethod, SdkGeneratorResponse } from "./models/SdkGeneratorResponse";
+import { AstSummary, AstSummaryMethod, SdkGeneratorResponse } from "./models/sdkGeneratorResponse";
 import { ClassConfiguration, ProjectConfiguration } from "./models/projectConfiguration";
 import cron from "node-cron";
 import { reportSuccess } from "./commands";
 import { getProjectConfiguration } from "./utils/configuration";
 import { replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
 import { sdkGeneratorApiHandler } from "./generate-sdk/generateSdkApi";
-import { SdkFileClass } from "./models/genezio-models";
+import { SdkFileClass } from "./models/genezioModels";
 
 export function getEventObjectFromRequest(request: any) {
   const urlDetails = url.parse(request.url, true);

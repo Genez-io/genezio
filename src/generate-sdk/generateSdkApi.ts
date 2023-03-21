@@ -6,9 +6,9 @@ import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration";
 import { getFiles } from "./utils/getFiles";
 import { exit } from "process";
 import log from "loglevel";
-import { AstGeneratorOutput, File, Program, SdkGeneratorInput, SdkGeneratorOutput } from "../models/genezio-models";
+import { AstGeneratorOutput, File, SdkGeneratorInput, SdkGeneratorOutput } from "../models/genezioModels";
 import path from "path";
-import { SdkGeneratorResponse } from "../models/SdkGeneratorResponse";
+import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
 
 export async function sdkGeneratorApiHandler(projectConfiguration: YamlProjectConfiguration): Promise<SdkGeneratorResponse> {
   const sdkLanguage = projectConfiguration.sdk.language;

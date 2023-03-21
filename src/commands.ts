@@ -38,7 +38,7 @@ import { BundlerComposer } from "./bundlers/bundlerComposer";
 import { BundlerInterface } from "./bundlers/bundler.interface";
 import { ProjectConfiguration } from "./models/projectConfiguration";
 import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
-import { SdkGeneratorResponse } from "./models/SdkGeneratorResponse"
+import { SdkGeneratorResponse } from "./models/sdkGeneratorResponse"
 import { getFrontendPresignedURL } from "./requests/getFrontendPresignedURL";
 import getProjectInfo from "./requests/getProjectInfo";
 import { generateRandomSubdomain } from "./utils/yaml";

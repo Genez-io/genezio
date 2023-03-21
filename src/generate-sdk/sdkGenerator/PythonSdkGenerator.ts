@@ -1,5 +1,5 @@
 import Mustache from "mustache";
-import { ClassDefinition, AstNodeType, SdkGeneratorInterface, SdkGeneratorInput, SdkGeneratorOutput } from "../../models/genezio-models";
+import { ClassDefinition, AstNodeType, SdkGeneratorInterface, SdkGeneratorInput, SdkGeneratorOutput } from "../../models/genezioModels";
 import { TriggerType } from "../../models/yamlProjectConfiguration";
 import { pythonSdk } from "../templates/pythonSdk";
 

@@ -1,11 +1,11 @@
-import { TriggerType } from "../../models/SdkGeneratorResponse";
+import { TriggerType } from "../../models/sdkGeneratorResponse";
 import {
   SdkGeneratorInterface,
   ClassDefinition,
   AstNodeType,
   SdkGeneratorInput,
   SdkGeneratorOutput
-} from "../../models/genezio-models";
+} from "../../models/genezioModels";
 import { browserSdkJs } from "../templates/browserSdkJs";
 import { nodeSdkJs } from "../templates/nodeSdkJs";
 import Mustache from "mustache";

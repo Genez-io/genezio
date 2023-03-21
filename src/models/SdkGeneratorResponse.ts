@@ -1,4 +1,4 @@
-import { SdkFileClass } from "./genezio-models";
+import { SdkFileClass } from "./genezioModels";
 
 export type AstSummaryParam = {
     name: string;

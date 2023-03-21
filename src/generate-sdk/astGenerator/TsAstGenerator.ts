@@ -12,7 +12,7 @@ import {
   SourceType,
   AstGeneratorOutput,
   TypeDefinition
-} from "../../models/genezio-models";
+} from "../../models/genezioModels";
 
 export class AstGenerator implements AstGeneratorInterface {
   mapTypesToParamType(type: string): NativeTypeEnum | string {

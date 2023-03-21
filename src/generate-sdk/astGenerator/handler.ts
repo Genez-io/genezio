@@ -1,5 +1,5 @@
 import path from "path";
-import { AstGeneratorOutput, File, Program } from "../../models/genezio-models";
+import { AstGeneratorOutput, File, Program } from "../../models/genezioModels";
 import JsAstGenerator from "./JsAstGenerator";
 import TsAstGenerator from "./TsAstGenerator";
 
@@ -20,15 +20,15 @@ export async function generateAst(
   pluginsImported.push(JsAstGenerator);
   pluginsImported.push(TsAstGenerator);
 
-  const astGeneratorElem = pluginsImported.find((plugin: any) => {
+  const plugin = pluginsImported.find((plugin: any) => {
     return plugin.supportedExtensions.includes(extension);
   });
 
-  if (!astGeneratorElem) {
+  if (!plugin) {
     throw new Error(`Class language(${extension}) not supported`);
   }
 
-  const astGeneratorClass = new astGeneratorElem.AstGenerator();
+  const astGeneratorClass = new plugin.AstGenerator();
 
   return await astGeneratorClass.generateAst({
     file: file,

@@ -4,7 +4,7 @@ import {
   ParameterDefinition,
   PropertyDefinition,
   SdkGeneratorClassesInfoInput
-} from "../../models/genezio-models";
+} from "../../models/genezioModels";
 import {
   AstSummaryClass,
   AstSummaryMethod,

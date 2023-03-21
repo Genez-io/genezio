@@ -1,4 +1,4 @@
-import { Program } from "../../models/genezio-models";
+import { Program } from "../../models/genezioModels";
 import { YamlMethodConfiguration, TriggerType } from "../../models/yamlProjectConfiguration";
 
 

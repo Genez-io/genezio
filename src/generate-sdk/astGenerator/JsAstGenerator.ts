@@ -10,7 +10,7 @@ import {
   NativeTypeEnum,
   ParameterDefinition,
   SourceType
-} from "../../models/genezio-models";
+} from "../../models/genezioModels";
 const parser = require("@babel/parser");
 const traverse = require("@babel/traverse");
 

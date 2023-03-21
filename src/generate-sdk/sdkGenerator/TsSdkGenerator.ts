@@ -1,5 +1,5 @@
 
-import { AstNodeType, ClassDefinition, MethodDefinition, NativeType, ParameterDefinition, SdkGeneratorInput, SdkGeneratorInterface, SdkGeneratorOutput, TypeAlias, TypeDefinition } from "../../models/genezio-models";
+import { AstNodeType, ClassDefinition, MethodDefinition, NativeType, ParameterDefinition, SdkGeneratorInput, SdkGeneratorInterface, SdkGeneratorOutput, TypeAlias, TypeDefinition } from "../../models/genezioModels";
 import { TriggerType } from "../../models/yamlProjectConfiguration";
 import { browserSdkTs } from "../templates/browserSdkTs";
 import { nodeSdkTs } from "../templates/nodeSdkTs";

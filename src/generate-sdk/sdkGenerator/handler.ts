@@ -2,7 +2,7 @@ import JsSdkGenerator from "./JsSdkGenerator";
 import TsSdkGenerator from "./TsSdkGenerator";
 import SwiftSdkGenerator from "./SwiftSdkGenerator";
 import PythonSdkGenerator from "./PythonSdkGenerator";
-import { SdkGeneratorInput, SdkGeneratorOutput } from "../../models/genezio-models";
+import { SdkGeneratorInput, SdkGeneratorOutput } from "../../models/genezioModels";
 
 export async function generateSdk(
   sdkGeneratorInput: SdkGeneratorInput,
