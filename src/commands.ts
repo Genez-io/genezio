@@ -43,6 +43,8 @@ import { getFrontendPresignedURL } from "./requests/getFrontendPresignedURL";
 import getProjectInfo from "./requests/getProjectInfo";
 import { generateRandomSubdomain } from "./utils/yaml";
 import { sdkGeneratorApiHandler } from "./generate-sdk/generateSdkApi";
+import { GENEZIO_YAML_COMMENT } from "./utils/strings";
+import { regions } from "./utils/configs";
 
 
 export async function addNewClass(classPath: string, classType: string) {
