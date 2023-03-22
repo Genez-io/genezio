@@ -42,26 +42,6 @@ const PYTHON_RESERVED_WORDS = [
   "not"
 ];
 
-// example of view
-// const view = {
-//   "className": "HelloWorldService",
-//   "_url": "http://localhost:8080",
-//   "methods": [{
-//       "name": "hello",
-//       "parameters": [{
-//         "name": "name",
-//       },
-//       "sendParameters": [{
-//         "name": "name",
-//       },
-//     {
-//       "name": "age",
-//       last: true
-//     }],
-//       "methodCaller": '"Task.deleteTask", '
-//   }]
-// }
-
 const template = `# This is an auto generated code. This code should not be modified since the file can be overwriten 
 # if new genezio commands are executed.
   

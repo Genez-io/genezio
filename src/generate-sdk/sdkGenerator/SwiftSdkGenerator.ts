@@ -33,26 +33,6 @@ const SWIFT_RESERVED_WORDS = [
   "willSet"
 ];
 
-// example of view
-// const view = {
-//   "className": "HelloWorldService",
-//   "_url": "http://localhost:8080",
-//   "methods": [{
-//       "name": "hello",
-//       "parameters": [{
-//         "name": "name",
-//       },
-//       "sendParameters": [{
-//         "name": "name",
-//       },
-//     {
-//       "name": "age",
-//       last: true
-//     }],
-//       "methodCaller": '"Task.deleteTask", args:'
-//   }]
-// }
-
 const template = `/**
 * This is an auto generated code. This code should not be modified since the file can be overwriten 
 * if new genezio commands are executed.
@@ -195,7 +175,7 @@ class SdkGenerator implements SdkGeneratorInterface {
           return "Any";
       }
     } else if (elem.type === AstNodeType.TypeAlias) {
-      // TODO
+      // TODO: create types for all external types
       const localElem: TypeAlias = elem as TypeAlias;
       //this.generateExternalTypes(localElem);
 
@@ -206,8 +186,8 @@ class SdkGenerator implements SdkGeneratorInterface {
   }
 
 
-  // TOOD
-  async generateExternalTypes(type: TypeDefinition) {
+    // TODO: create types for all external types
+    async generateExternalTypes(type: TypeDefinition) {
     // check if type is already in externalTypes
     if (
       this.externalTypes.find((e: TypeDefinition) => {
