@@ -1,4 +1,3 @@
-
 import { AstNodeType, ClassDefinition, MethodDefinition, NativeType, ParameterDefinition, SdkGeneratorInput, SdkGeneratorInterface, SdkGeneratorOutput, TypeAlias, TypeDefinition } from "../../models/genezioModels";
 import { TriggerType } from "../../models/yamlProjectConfiguration";
 import { browserSdkTs } from "../templates/browserSdkTs";
@@ -221,21 +220,8 @@ export { Remote };
     if (elem.type === AstNodeType.NativeType) {
       const localElem: NativeType = elem as NativeType;
       return localElem.paramType;
-      // switch (localElem.paramType) {
-      //   case NativeTypeEnum.string:
-      //     return "String";
-      //   case NativeTypeEnum.number:
-      //     return "Double";
-      //   case NativeTypeEnum.boolean:
-      //     return "Bool";
-      //   case NativeTypeEnum.any:
-      //     return "Any";
-      //   default:
-      //     return "Any";
-      // }
     } else if (elem.type === AstNodeType.TypeAlias) {
       const localElem: TypeAlias = elem as TypeAlias;
-      // this.generateExternalTypes(localElem);
 
       return localElem.name;
     }

@@ -222,14 +222,8 @@ class SdkGenerator implements SdkGeneratorInterface {
     const externalType = "";
     if (type.type === AstNodeType.TypeAlias) {
       const localType: TypeAlias = type as TypeAlias;
-      //       externalType = `struct ${localType.name} = {
-      // ${localType.params
-      //   .map((e: TypeDefinition) => e.name + ": " + this.getParamType(e))
-      //   .join("\n")}
-      // }`;
     }
 
-    // return externalType;
   }
 }
 
