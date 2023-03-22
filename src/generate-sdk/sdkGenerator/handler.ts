@@ -3,6 +3,8 @@ import TsSdkGenerator from "./TsSdkGenerator";
 import SwiftSdkGenerator from "./SwiftSdkGenerator";
 import PythonSdkGenerator from "./PythonSdkGenerator";
 import { SdkGeneratorInput, SdkGeneratorOutput } from "../../models/genezioModels";
+import log from "loglevel";
+import { exit } from "process";
 
 export async function generateSdk(
   sdkGeneratorInput: SdkGeneratorInput,
@@ -12,7 +14,10 @@ export async function generateSdk(
 
   if (plugins) {
     pluginsImported = plugins?.map(plugin => {
-      return require(plugin);
+      return import(plugin).catch((err: any) => {
+        log.error(`Plugin(${plugin}) not found. Install it with npm install ${plugin}`);
+        exit(1);
+      });
     });
   }
 

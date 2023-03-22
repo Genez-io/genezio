@@ -349,6 +349,12 @@ export class YamlProjectConfiguration {
     }
 
     const scripts: YamlScriptsConfiguration | undefined = configurationFileContent.scripts;
+    if (configurationFileContent.plugins?.astGenerator && !Array.isArray(configurationFileContent.plugins?.astGenerator)) {
+      throw new Error("astGenerator must be an array");
+    }
+    if (configurationFileContent.plugins?.sdkGenerator && !Array.isArray(configurationFileContent.plugins?.sdkGenerator)) {
+      throw new Error("sdkGenerator must be an array");
+    }
     const plugins: YamlPluginsConfiguration | undefined = configurationFileContent.plugins;
 
     return new YamlProjectConfiguration(

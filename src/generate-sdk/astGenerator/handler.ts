@@ -1,7 +1,9 @@
+import log from "loglevel";
 import path from "path";
-import { AstGeneratorOutput, File, Program } from "../../models/genezioModels";
+import { AstGeneratorOutput, File } from "../../models/genezioModels";
 import JsAstGenerator from "./JsAstGenerator";
 import TsAstGenerator from "./TsAstGenerator";
+import { exit } from "process";
 
 export async function generateAst(
   file: File,
@@ -13,7 +15,10 @@ export async function generateAst(
 
   if (plugins) {
     pluginsImported = plugins?.map(plugin => {
-      return require(plugin);
+      return import(plugin).catch((err: any) => {
+        log.error(`Plugin(${plugin}) not found. Install it with npm install ${plugin}`);
+        exit(1);
+      });
     });
   }
 
