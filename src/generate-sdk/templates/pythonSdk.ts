@@ -29,7 +29,6 @@ class Remote:
             "id": 3
         }
         response = makeRequest(requestContent, self.url)
-        
         if (response.get('error') != None):
             return response['error']['message']
         else:

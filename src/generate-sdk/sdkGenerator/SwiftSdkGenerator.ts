@@ -177,9 +177,6 @@ class SdkGenerator implements SdkGeneratorInterface {
     } else if (elem.type === AstNodeType.TypeAlias) {
       // TODO: create types for all external types
       const localElem: TypeAlias = elem as TypeAlias;
-      //this.generateExternalTypes(localElem);
-
-      //return localElem.name;
     }
 
     return "Any";
@@ -205,14 +202,8 @@ class SdkGenerator implements SdkGeneratorInterface {
     const externalType = "";
     if (type.type === AstNodeType.TypeAlias) {
       const localType: TypeAlias = type as TypeAlias;
-      //       externalType = `struct ${localType.name} = {
-      // ${localType.params
-      //   .map((e: TypeDefinition) => e.name + ": " + this.getParamType(e))
-      //   .join("\n")}
-      // }`;
     }
 
-    // return externalType;
   }
 }
 

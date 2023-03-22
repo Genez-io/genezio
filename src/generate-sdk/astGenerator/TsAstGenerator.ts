@@ -66,10 +66,6 @@ export class AstGenerator implements AstGeneratorInterface {
       }
 
       if (!declaration.methods || declaration.methods?.length == 0) {
-        // const parameters: Parameter[] = [];
-        // for (const parameter of declaration.properties) {
-        //   parameters.push(new Parameter(parameter.name, parameter.type));
-        // }
         const definition = fileData
           .toString()
           .substring(declaration.start, declaration.end);
