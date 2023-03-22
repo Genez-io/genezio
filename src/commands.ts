@@ -211,7 +211,7 @@ export async function deployClasses() {
 
   log.info("Deploying your backend project to genezio infrastructure...");
 
-  const sdkResponse = await sdkGeneratorApiHandler(configuration).catch((error) => {
+  const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(configuration).catch((error) => {
     throw error;
   });
   const projectConfiguration = new ProjectConfiguration(configuration, sdkResponse.astSummary);
@@ -297,7 +297,10 @@ export async function deployClasses() {
 
   reportSuccess(classesInfo, sdkResponse);
 
-  await replaceUrlsInSdk(sdkResponse, response.classes)
+  await replaceUrlsInSdk(sdkResponse, response.classes.map((c) => ({
+    name: c.name,
+    cloudUrl: c.cloudUrl
+  })));
   await writeSdkToDisk(sdkResponse, configuration.sdk.language, configuration.sdk.path)
 
   const projectId = classesInfo[0].projectId;

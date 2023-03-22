@@ -284,7 +284,7 @@ export async function startLocalTesting(classesInfo: any, options: any): Promise
     classesInfo = localEnvInfo.classesInfo;
     const handlers = localEnvInfo.handlers;
 
-    await replaceUrlsInSdk(sdk, sdk.files.map((c: SdkFileClass) => ({ name: c.path, cloudUrl: `http://127.0.0.1:${options.port}/${c.className}` })))
+    await replaceUrlsInSdk(sdk, sdk.files.map((c: SdkFileClass) => ({ name: c.className, cloudUrl: `http://127.0.0.1:${options.port}/${c.className}` })))
     await writeSdkToDisk(sdk, projectConfiguration.sdk.language, projectConfiguration.sdk.path)
     reportSuccess(classesInfo, sdk);
 

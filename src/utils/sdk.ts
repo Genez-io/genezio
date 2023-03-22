@@ -2,7 +2,7 @@ import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse"
 import { Language } from "../models/yamlProjectConfiguration"
 import { writeToFile } from "./file"
 import { debugLogger } from "./logging"
-import { File } from "../models/genezioModels"
+import { File, SdkFileClass } from "../models/genezioModels"
 
 export type ClassUrlMap = {
     name: string
@@ -13,13 +13,18 @@ export type ClassUrlMap = {
  * Replace the temporary markdowns from the SDK with actual URLs.
  */
 export async function replaceUrlsInSdk(sdkResponse: SdkGeneratorResponse, classUrlMap: ClassUrlMap[]) {
-    sdkResponse.files.forEach((c : File) => {
+    console.log("Replacing the temporary markdowns with actual URLs...")
+    console.log("sdkResponse", sdkResponse)
+    console.log("classUrlMap", classUrlMap)
+    sdkResponse.files.forEach((c : SdkFileClass) => {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const classContent = classUrlMap.find((classFile) => {
-            return classFile.name === c.path
+            return classFile.name === c.className
         })!
 
-        c.data = c.data.replace("%%%link_to_be_replace%%%", classContent.cloudUrl)
+        if (classContent) {
+            c.data = c.data.replace("%%%link_to_be_replace%%%", classContent.cloudUrl)
+        }
     })
 }
 
