@@ -197,9 +197,6 @@ class SdkGenerator implements SdkGeneratorInterface {
     } else if (elem.type === AstNodeType.TypeAlias) {
       // TODO
       const localElem: TypeAlias = elem as TypeAlias;
-      //this.generateExternalTypes(localElem);
-
-      //return localElem.name;
     }
 
     return "Any";
