@@ -14,8 +14,8 @@ export async function generateAst(
   
 
   if (plugins) {
-    pluginsImported = plugins?.map(plugin => {
-      return import(plugin).catch((err: any) => {
+    pluginsImported = plugins?.map(async plugin => {
+      return await import(plugin).catch((err: any) => {
         log.error(`Plugin(${plugin}) not found. Install it with npm install ${plugin}`);
         exit(1);
       });
