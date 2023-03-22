@@ -1,3 +1,4 @@
+import { AstSummaryClass, AstSummaryMethod, AstSummaryParam } from "../../models/astSummary";
 import {
   ClassDefinition,
   MethodDefinition,
@@ -5,11 +6,7 @@ import {
   PropertyDefinition,
   SdkGeneratorClassesInfoInput
 } from "../../models/genezioModels";
-import {
-  AstSummaryClass,
-  AstSummaryMethod,
-  AstSummaryParam
-} from "../models/astSummary";
+
 
 
 export function getAstSummary(

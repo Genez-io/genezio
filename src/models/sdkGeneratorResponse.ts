@@ -1,3 +1,4 @@
+import { AstSummary } from "./astSummary";
 import { SdkFileClass } from "./genezioModels";
 
 export type AstSummaryParam = {
@@ -10,23 +11,6 @@ export enum TriggerType {
     cron = "cron",
     http = "http"
   }
-
-export type AstSummaryMethod = {
-    name: string;
-    type: TriggerType;
-    params: AstSummaryParam[];
-};
-
-export type AstSummaryClass = {
-    name: string;
-    path: string;
-    methods: AstSummaryMethod[];
-};
-
-export type AstSummary = {
-    version: string;
-    classes: AstSummaryClass[];
-};
 
 export type SdkGeneratorResponse = {
     files: SdkFileClass[],

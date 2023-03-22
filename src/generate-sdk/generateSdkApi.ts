@@ -1,7 +1,6 @@
 import { generateAst } from "./astGenerator/handler";
 import { generateSdk } from "./sdkGenerator/handler";
 import { getAstSummary } from "./utils/getAstSummary";
-import { AstSummary } from "./models/astSummary";
 import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration";
 import { getFiles } from "./utils/getFiles";
 import { exit } from "process";
@@ -9,6 +8,7 @@ import log from "loglevel";
 import { AstGeneratorOutput, File, SdkGeneratorInput, SdkGeneratorOutput } from "../models/genezioModels";
 import path from "path";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
+import { AstSummary } from "../models/astSummary";
 
 export async function sdkGeneratorApiHandler(projectConfiguration: YamlProjectConfiguration): Promise<SdkGeneratorResponse> {
   const sdkLanguage = projectConfiguration.sdk.language;
