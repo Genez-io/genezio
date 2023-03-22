@@ -301,7 +301,8 @@ export async function startServer(
   classesInfo: any,
   handlers: any,
   astSummary: any,
-  port = PORT_LOCAL_ENVIRONMENT
+  port = PORT_LOCAL_ENVIRONMENT,
+  projectName: string
 ): Promise<LocalEnvStartServerOutput> {
   const app = express();
   app.use(cors());
@@ -317,7 +318,7 @@ export async function startServer(
 
   app.get("/get-ast-summary", (req: any, res: any) => {
     res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify(astSummary));
+    res.end(JSON.stringify({...astSummary, name: projectName}));
   });
 
   app.all(`/:className`, async (req: any, res: any) => {

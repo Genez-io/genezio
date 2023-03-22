@@ -294,7 +294,8 @@ program
                 classesInfo,
                 handlers,
                 astSummary,
-                Number(options.port)
+                Number(options.port),
+                projectConfiguration.name
               );
 
               server = startServerOutput.server;
