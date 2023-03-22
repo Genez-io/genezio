@@ -5,6 +5,15 @@ import JsAstGenerator from "./JsAstGenerator";
 import TsAstGenerator from "./TsAstGenerator";
 import { exit } from "process";
 
+
+/**
+ * Asynchronously generates an abstract syntax tree (AST) from a file using specified plugins.
+ *
+ * @param {File} file - The file to generate an AST from.
+ * @param {string[]|undefined} plugins - An optional array of plugins to use for generating the AST.
+ * @returns {Promise<AstGeneratorOutput>} A Promise that resolves with the generated AST.
+ * @throws {Error} If there was an error generating the AST.
+ */
 export async function generateAst(
   file: File,
   plugins: string[] | undefined,

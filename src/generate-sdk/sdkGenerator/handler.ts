@@ -6,6 +6,14 @@ import { SdkGeneratorInput, SdkGeneratorOutput } from "../../models/genezioModel
 import log from "loglevel";
 import { exit } from "process";
 
+/**
+ * Asynchronously generates an SDK from a given AST array using specified plugins.
+ *
+ * @param {SdkGeneratorInput} sdkGeneratorInput - The input parameters for generating the SDK.
+ * @param {string[]|undefined} plugins - An optional array of plugins to use for generating the SDK.
+ * @returns {Promise<SdkGeneratorOutput>} A Promise that resolves with the generated SDK.
+ * @throws {Error} If there was an error generating the SDK.
+ */
 export async function generateSdk(
   sdkGeneratorInput: SdkGeneratorInput,
   plugins: string[] | undefined,
