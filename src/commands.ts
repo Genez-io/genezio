@@ -1,6 +1,5 @@
 import path from "path";
 import { deployRequest } from "./requests/deployCode";
-import generateSdkRequest from "./requests/generateSdk";
 import listProjects from "./requests/listProjects";
 import deleteProject from "./requests/deleteProject";
 import {
@@ -39,12 +38,13 @@ import { BundlerComposer } from "./bundlers/bundlerComposer";
 import { BundlerInterface } from "./bundlers/bundler.interface";
 import { ProjectConfiguration } from "./models/projectConfiguration";
 import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
-import { GenerateSdkResponse } from "./models/generateSdkResponse"
+import { SdkGeneratorResponse } from "./models/sdkGeneratorResponse"
 import { getFrontendPresignedURL } from "./requests/getFrontendPresignedURL";
 import getProjectInfo from "./requests/getProjectInfo";
 import { generateRandomSubdomain } from "./utils/yaml";
-import { regions } from "./utils/configs";
+import { sdkGeneratorApiHandler } from "./generate-sdk/generateSdkApi";
 import { GENEZIO_YAML_COMMENT } from "./utils/strings";
+import { regions } from "./utils/configs";
 
 
 export async function addNewClass(classPath: string, classType: string) {
@@ -211,7 +211,7 @@ export async function deployClasses() {
 
   log.info("Deploying your backend project to genezio infrastructure...");
 
-  const sdkResponse = await generateSdkRequest(configuration).catch((error) => {
+  const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(configuration).catch((error) => {
     throw error;
   });
   const projectConfiguration = new ProjectConfiguration(configuration, sdkResponse.astSummary);
@@ -297,7 +297,10 @@ export async function deployClasses() {
 
   reportSuccess(classesInfo, sdkResponse);
 
-  await replaceUrlsInSdk(sdkResponse, response.classes)
+  await replaceUrlsInSdk(sdkResponse, response.classes.map((c) => ({
+    name: c.name,
+    cloudUrl: c.cloudUrl
+  })));
   await writeSdkToDisk(sdkResponse, configuration.sdk.language, configuration.sdk.path)
 
   const projectId = classesInfo[0].projectId;
@@ -349,9 +352,9 @@ export async function deployFrontend(): Promise<string> {
 
 export function reportSuccess(
   classesInfo: any,
-  sdkResponse: GenerateSdkResponse,
+  sdkResponse: SdkGeneratorResponse,
 ) {
-  if (sdkResponse.classFiles.length > 0) {
+  if (sdkResponse.files.length > 0) {
     log.info(
       "\x1b[36m%s\x1b[0m",
       "Your code was deployed and the SDK was successfully generated!"
@@ -525,7 +528,7 @@ export async function generateSdkHandler(language: string, path: string) {
     );
   }
 
-  const sdkResponse = await generateSdkRequest(configuration).catch((error) => {
+  const sdkResponse = await sdkGeneratorApiHandler(configuration).catch((error) => {
     throw error;
   });
 
