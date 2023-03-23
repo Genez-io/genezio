@@ -1,6 +1,6 @@
 import axios from "./axios";
 import { getAuthToken } from "../utils/accounts";
-import { BACKEND_ENDPOINT } from "../variables";
+import { BACKEND_ENDPOINT } from "../constants";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../../package.json");
 

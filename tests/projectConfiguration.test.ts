@@ -3,7 +3,7 @@ import {
   YamlProjectConfiguration,
   TriggerType
 } from "../src/models/yamlProjectConfiguration";
-import { rectifyCronString } from "../src/localEnvironment";
+import { rectifyCronString } from "../src/utils/rectifyCronString";
 
 describe("project configuration", () => {
   test("missing name should throw error", async () => {

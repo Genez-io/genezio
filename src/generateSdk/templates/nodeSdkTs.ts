@@ -1,4 +1,4 @@
-export const nodeSdkJs = `/**
+export const nodeSdkTs = `/**
  * This is an auto generated code. This code should not be modified since the file can be overwriten 
  * if new genezio commands are executed.
  */
@@ -6,15 +6,15 @@ export const nodeSdkJs = `/**
 import https from 'https';
 import http from 'http';
 
-async function makeRequest(request, url, agent) {
+async function makeRequest(request: any, url: any, agent: any) {
 
     const data = JSON.stringify(request);
     const hostUrl = new URL(url);
 
     const options = {
         hostname: hostUrl.hostname,
+        path: hostUrl.search ? hostUrl.pathname + hostUrl.search : hostUrl.pathname,
         port: hostUrl.port,
-        path: hostUrl.pathname,
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -51,18 +51,18 @@ async function makeRequest(request, url, agent) {
  * The class through which all request to the Genezio backend will be passed.
  */
 export class Remote {
-    url = undefined;
-    agent = undefined;
+    url: any = undefined;
+    agent: any = undefined;
 
-    constructor(url) {
+    constructor(url: string) {
         this.url = url;
         const client = url.includes("https") ? https : http;
         this.agent = new client.Agent({ keepAlive: true });
     }
 
-    async call(method, ...args) {
+    async call(method: any, ...args: any[]) {
         const requestContent = {"jsonrpc": "2.0", "method": method, "params": args, "id": 3};
-        const response = await makeRequest(requestContent, this.url, this.agent);
+        const response: any = await makeRequest(requestContent, this.url, this.agent);
 
         if (response.error) {
             return response.error.message;

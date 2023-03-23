@@ -1,5 +1,5 @@
-import { generateAst } from "./astGenerator/handler";
-import { generateSdk } from "./sdkGenerator/handler";
+import { generateAst } from "./astGeneratorHandler";
+import { generateSdk } from "./sdkGeneratorHandler";
 import { getAstSummary } from "./utils/getAstSummary";
 import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration";
 import { getFiles } from "./utils/getFiles";
