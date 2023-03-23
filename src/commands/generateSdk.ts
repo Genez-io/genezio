@@ -1,7 +1,7 @@
 import { AxiosError } from "axios";
 import log from "loglevel";
 import { exit } from "process";
-import { languages } from "unique-names-generator";
+import { languages } from "../utils/languages";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors";
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi";
 import { Language } from "../models/yamlProjectConfiguration";
