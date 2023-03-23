@@ -98,7 +98,7 @@ describe("init", () => {
     .mockResolvedValueOnce("js")
     .mockResolvedValueOnce(notSupportedRuntime)
 
-    await expect(initCommand()).rejects.toThrowError(`We don't currently support the not-supported language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`);
+    await expect(initCommand()).rejects.toThrowError(`We don't currently support this JS/TS runtime ${notSupportedRuntime}.`);
 
     expect(mockedAskQuestion).toBeCalledTimes(4);
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)

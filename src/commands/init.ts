@@ -1,8 +1,8 @@
 import log from "loglevel";
-import { languages } from "unique-names-generator";
 import { Document } from "yaml";
 import { regions } from "../utils/configs";
 import { writeToFile } from "../utils/file";
+import { languages } from "../utils/languages";
 import { askQuestion } from "../utils/prompt";
 import { GENEZIO_YAML_COMMENT } from "../utils/strings";
 
