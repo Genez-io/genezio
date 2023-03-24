@@ -59,10 +59,10 @@ export class NodeTsBundler implements BundlerInterface {
                     test: /\.tsx?$/,
                     use: [
                         {
-                            loader: "ts-loader",
+                            loader: "esbuild-loader",
                             options: {
-                                configFile: "tsconfig.json",
-                                onlyCompileBundledFiles: true
+                                tsconfig: "tsconfig.json",
+                                target: "es2015",
                             }
                         }
                     ],
@@ -183,10 +183,10 @@ export class NodeTsBundler implements BundlerInterface {
                     test: /\.tsx?$/,
                     use: [
                         {
-                            loader: "ts-loader",
+                            loader: "esbuild-loader",
                             options: {
-                                configFile: "tsconfig.json",
-                                onlyCompileBundledFiles: true
+                                tsconfig: "tsconfig.json",
+                                target: "es2015",
                             }
                         }
                     ],
@@ -221,36 +221,37 @@ export class NodeTsBundler implements BundlerInterface {
             output.forEach((error: any) => {
                 // log error red
                 log.error("\x1b[31m", "Syntax error:");
-                if (error.details?.includes("ts-loader-default")) {
-                    log.info(error.message)
-                } else {
-                    if (error.moduleIdentifier?.includes("|")) {
-                        log.info(
-                            "\x1b[37m",
-                            "file: " +
-                            error.moduleIdentifier?.split("|")[1] +
-                            ":" +
-                            error.loc?.split(":")[0]
-                        );
-                    } else {
-                        log.info(
-                            "file: " + error.moduleIdentifier + ":" + error.loc?.split(":")[0]
-                        );
-                    }
+                log.error(error);
+                // if (error.details?.includes("ts-loader-default")) {
+                //     log.info(error.message)
+                // } else {
+                //     if (error.moduleIdentifier?.includes("|")) {
+                //         log.info(
+                //             "\x1b[37m",
+                //             "file: " +
+                //             error.moduleIdentifier?.split("|")[1] +
+                //             ":" +
+                //             error.loc?.split(":")[0]
+                //         );
+                //     } else {
+                //         log.info(
+                //             "file: " + error.moduleIdentifier + ":" + error.loc?.split(":")[0]
+                //         );
+                //     }
 
-                    // get first line of error
-                    const firstLine = error.message.split("\n")[0];
-                    log.info(firstLine);
+                //     // get first line of error
+                //     const firstLine = error.message.split("\n")[0];
+                //     log.info(firstLine);
 
-                    //get message line that contains '>' first character
-                    const messageLine: string = error.message
-                        .split("\n")
-                        .filter((line: any) => line.startsWith(">") || line.startsWith("|"))
-                        .join("\n");
-                    if (messageLine) {
-                        log.info(messageLine);
-                    }
-                }
+                //     //get message line that contains '>' first character
+                //     const messageLine: string = error.message
+                //         .split("\n")
+                //         .filter((line: any) => line.startsWith(">") || line.startsWith("|"))
+                //         .join("\n");
+                //     if (messageLine) {
+                //         log.info(messageLine);
+                //     }
+                // }
             });
             throw "Compilation failed";
         }
