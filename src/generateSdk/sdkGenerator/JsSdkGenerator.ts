@@ -1,4 +1,5 @@
-import { TriggerType } from "../../models/sdkGeneratorResponse";
+
+import { TriggerType } from "../../models/yamlProjectConfiguration";
 import {
   SdkGeneratorInterface,
   ClassDefinition,
@@ -12,10 +13,10 @@ import Mustache from "mustache";
 
 
 const template = `/**
-* This is an auto generated code. This code should not be modified since the file can be overwriten 
+* This is an auto generated code. This code should not be modified since the file can be overwriten
 * if new genezio commands are executed.
 */
-  
+
 import { Remote } from "./remote.js"
 
 export class {{{className}}} {

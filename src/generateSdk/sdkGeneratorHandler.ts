@@ -2,6 +2,7 @@ import JsSdkGenerator from "./sdkGenerator/JsSdkGenerator";
 import TsSdkGenerator from "./sdkGenerator/TsSdkGenerator";
 import SwiftSdkGenerator from "./sdkGenerator/SwiftSdkGenerator";
 import PythonSdkGenerator from "./sdkGenerator/PythonSdkGenerator";
+import DartSdkGenerator from "./sdkGenerator/DartSdkGenerator";
 import { SdkGeneratorInput, SdkGeneratorOutput } from "../models/genezioModels";
 import log from "loglevel";
 import { exit } from "process";
@@ -33,6 +34,7 @@ export async function generateSdk(
   pluginsImported.push(TsSdkGenerator);
   pluginsImported.push(SwiftSdkGenerator);
   pluginsImported.push(PythonSdkGenerator);
+  pluginsImported.push(DartSdkGenerator);
 
   const sdkGeneratorElem = pluginsImported.find((plugin: any) => {
     return plugin.supportedLanguages.includes(sdkGeneratorInput.sdk.language);

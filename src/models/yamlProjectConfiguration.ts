@@ -21,6 +21,7 @@ export enum Language {
   ts = "ts",
   swift = "swift",
   python = "python",
+  dart = "dart"
 }
 
 export type JsSdkOptions = {
@@ -86,7 +87,7 @@ export class YamlMethodConfiguration {
 
     // Checkcron string format
 
-   
+
     if (type == TriggerType.cron) {
       if (!isValidCron(methodConfigurationYaml.cronString)) {
         throw new Error("The cron string is not valid. Check https://crontab.guru/ for more information.");
