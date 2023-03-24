@@ -1,8 +1,8 @@
-import JsSdkGenerator from "./JsSdkGenerator";
-import TsSdkGenerator from "./TsSdkGenerator";
-import SwiftSdkGenerator from "./SwiftSdkGenerator";
-import PythonSdkGenerator from "./PythonSdkGenerator";
-import { SdkGeneratorInput, SdkGeneratorOutput } from "../../models/genezioModels";
+import JsSdkGenerator from "./sdkGenerator/JsSdkGenerator";
+import TsSdkGenerator from "./sdkGenerator/TsSdkGenerator";
+import SwiftSdkGenerator from "./sdkGenerator/SwiftSdkGenerator";
+import PythonSdkGenerator from "./sdkGenerator/PythonSdkGenerator";
+import { SdkGeneratorInput, SdkGeneratorOutput } from "../models/genezioModels";
 import log from "loglevel";
 import { exit } from "process";
 
