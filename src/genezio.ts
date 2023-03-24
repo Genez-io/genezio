@@ -175,7 +175,7 @@ program
   .action(async (identifier = "", options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
 
-    await lsCommand(identifier, options.longListed);
+    await lsCommand(identifier, options);
   });
 
 
@@ -191,7 +191,7 @@ program
   .action(async (projectId = "", options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
 
-    await deleteCommand(projectId, options.force);
+    await deleteCommand(projectId, options);
   });
 
 // genezio generateSdk command
