@@ -130,6 +130,11 @@ class SdkGenerator implements SdkGeneratorInterface {
           last: false
         })
 
+
+        if (methodView.parameters.length == 1) {
+          methodView.parameters[methodView.parameters.length - 1].last = true;
+        }
+
         view.methods.push(methodView);
       }
 

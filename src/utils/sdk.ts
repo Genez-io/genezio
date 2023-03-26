@@ -13,7 +13,6 @@ export type ClassUrlMap = {
  * Replace the temporary markdowns from the SDK with actual URLs.
  */
 export async function replaceUrlsInSdk(sdkResponse: SdkGeneratorResponse, classUrlMap: ClassUrlMap[]) {
-    console.log("Replacing the temporary markdowns with actual URLs...")
     sdkResponse.files.forEach((c : SdkFileClass) => {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const classContent = classUrlMap.find((classFile) => {
