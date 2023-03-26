@@ -33,13 +33,7 @@ export async function sdkGeneratorApiHandler(projectConfiguration: YamlProjectCo
   // iterate over each class file
   for (const file of files) {
     // Generate genezio AST from file
-    let astGeneratorOutput: AstGeneratorOutput;
-    try { 
-      astGeneratorOutput = await generateAst(file, projectConfiguration.plugins?.astGenerator);
-    } catch (err: any) {
-      log.error(err);
-      exit(1);
-    }
+    const astGeneratorOutput = await generateAst(file, projectConfiguration.plugins?.astGenerator);
 
     // prepare input for sdkGenerator
     sdkGeneratorInput.classesInfo.push({
