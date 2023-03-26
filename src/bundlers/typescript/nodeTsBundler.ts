@@ -23,6 +23,7 @@ import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import { AccessDependenciesPlugin } from "../bundler.interface";
 import { bundle } from "../../utils/webpack";
 import { debugLogger } from "../../utils/logging";
+import { exit } from "process";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const exec = util.promisify(require("child_process").exec);
 
@@ -59,10 +60,10 @@ export class NodeTsBundler implements BundlerInterface {
                     test: /\.tsx?$/,
                     use: [
                         {
-                            loader: "ts-loader",
+                            loader: "esbuild-loader",
                             options: {
-                                configFile: "tsconfig.json",
-                                onlyCompileBundledFiles: true
+                                tsconfig: "tsconfig.json",
+                                target: "es2015",
                             }
                         }
                     ],
@@ -183,10 +184,10 @@ export class NodeTsBundler implements BundlerInterface {
                     test: /\.tsx?$/,
                     use: [
                         {
-                            loader: "ts-loader",
+                            loader: "esbuild-loader",
                             options: {
-                                configFile: "tsconfig.json",
-                                onlyCompileBundledFiles: true
+                                tsconfig: "tsconfig.json",
+                                target: "es2015",
                             }
                         }
                     ],
@@ -221,41 +222,13 @@ export class NodeTsBundler implements BundlerInterface {
             output.forEach((error: any) => {
                 // log error red
                 log.error("\x1b[31m", "Syntax error:");
-                if (error.details?.includes("ts-loader-default")) {
-                    log.info(error.message)
-                } else {
-                    if (error.moduleIdentifier?.includes("|")) {
-                        log.info(
-                            "\x1b[37m",
-                            "file: " +
-                            error.moduleIdentifier?.split("|")[1] +
-                            ":" +
-                            error.loc?.split(":")[0]
-                        );
-                    } else {
-                        log.info(
-                            "file: " + error.moduleIdentifier + ":" + error.loc?.split(":")[0]
-                        );
-                    }
-
-                    // get first line of error
-                    const firstLine = error.message.split("\n")[0];
-                    log.info(firstLine);
-
-                    //get message line that contains '>' first character
-                    const messageLine: string = error.message
-                        .split("\n")
-                        .filter((line: any) => line.startsWith(">") || line.startsWith("|"))
-                        .join("\n");
-                    if (messageLine) {
-                        log.info(messageLine);
-                    }
-                }
+                const errorLines = error.stack?.split("\n")[2];
+                log.error(errorLines);
+                exit(1);
             });
             throw "Compilation failed";
         }
 
-        //await writeToFile(tempFolderPath, "index.js", lambdaHandler);
     }
 
     async #deleteTypeModuleFromPackageJson(tempFolderPath: string) {
