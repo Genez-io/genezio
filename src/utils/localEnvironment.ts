@@ -2,31 +2,33 @@ import path from "path";
 import chokidar from "chokidar";
 import express from "express";
 import cors from "cors";
-import { PORT_LOCAL_ENVIRONMENT } from "./variables";
-import { YamlProjectConfiguration } from "./models/yamlProjectConfiguration";
-import { NodeJsBundler } from "./bundlers/javascript/nodeJsBundler";
-import { NodeTsBundler } from "./bundlers/typescript/nodeTsBundler";
+import { PORT_LOCAL_ENVIRONMENT } from "../constants";
+import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration";
+import { NodeJsBundler } from "../bundlers/javascript/nodeJsBundler";
+import { NodeTsBundler } from "../bundlers/typescript/nodeTsBundler";
 import {
   LocalEnvInputParameters,
   LocalEnvCronHandler,
   LocalEnvStartServerOutput
-} from "./models/localEnvInputParams";
+} from "../models/localEnvInputParams";
 import log from "loglevel";
-import { createTemporaryFolder, fileExists, readUTF8File } from "./utils/file";
+import { createTemporaryFolder, fileExists, readUTF8File } from "./file";
 import { exit } from "process";
 import bodyParser from "body-parser";
 import url from "url";
-import { genezioRequestParser } from "./utils/genezioRequestParser";
-import { debugLogger } from "./utils/logging";
-import { BundlerInterface } from "./bundlers/bundler.interface";
-import { AstSummary, AstSummaryMethod } from "./models/generateSdkResponse";
-import { ClassConfiguration, ProjectConfiguration } from "./models/projectConfiguration";
+import { genezioRequestParser } from "./genezioRequestParser";
+import { debugLogger } from "./logging";
+import { BundlerInterface } from "../bundlers/bundler.interface";
+import { ClassConfiguration, ProjectConfiguration } from "../models/projectConfiguration";
 import cron from "node-cron";
-import fs from "fs";
-import generateSdkRequest from "./requests/generateSdk";
-import { reportSuccess } from "./commands";
-import { getProjectConfiguration } from "./utils/configuration";
-import { replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk";
+import { getProjectConfiguration } from "./configuration";
+import { replaceUrlsInSdk, writeSdkToDisk } from "./sdk";
+import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi";
+import { SdkFileClass } from "../models/genezioModels";
+import { AstSummary, AstSummaryMethod } from "../models/astSummary";
+import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
+import { reportSuccess } from "./reporter";
+import { rectifyCronString } from "./rectifyCronString";
 
 export function getEventObjectFromRequest(request: any) {
   const urlDetails = url.parse(request.url, true);
@@ -188,28 +190,6 @@ export async function stopCronJobs(cronHandlers: LocalEnvCronHandler[]) {
   }
 }
 
-// Converts non-standard cron strings of the type X/Y * * * * to standard X-59/Y * * * *,
-// applied to all fields.
-export function rectifyCronString(cronString: string): string {
-  const parts = cronString.split(' ');
-  const minutes = parts[0].replace(/^(\d+)\/(\d+)$/, '$1-59/$2');
-  const hours = parts[1].replace(/^(\d+)\/(\d+)$/, '$1-23/$2');
-  const dom = parts[2].replace(/^(\d+)\/(\d+)$/, '$1-31/$2');
-  const month = parts[3].replace(/^(\d+)\/(\d+)$/, '$1-12/$2');
-  // for the day-of-week field, since 0 is Sunday, and strings like 2/1 go from Tuesday to Sunday
-  // the holistic approach would be to convert it into a comma separated list of days, as a range
-  // representation would be a bit heavy
-  const dow = parts[4].replace(/^(\d+)\/(\d+)$/, (_, start, step) => {
-    const end = 7; // set the end value to 6 for weekday fields
-    const range = [];
-    for (let i = parseInt(start); i <= end; i += parseInt(step)) {
-      range.push(i);
-    }
-    return range.join(',') + '/' + step;
-  }).replace('7', '0');
-  return `${minutes} ${hours} ${dom} ${month} ${dow}`;
-}
-
 export async function prepareCronHandlers(
   classesInfo: any,
   handlers: any
@@ -269,7 +249,7 @@ export async function startLocalTesting(classesInfo: any, options: any): Promise
 
     let astSummary: AstSummary | undefined = undefined;
 
-    const sdk = await generateSdkRequest(projectConfiguration)
+    const sdk: SdkGeneratorResponse = await sdkGeneratorApiHandler(projectConfiguration)
 
     astSummary = sdk.astSummary
 
@@ -284,7 +264,7 @@ export async function startLocalTesting(classesInfo: any, options: any): Promise
     classesInfo = localEnvInfo.classesInfo;
     const handlers = localEnvInfo.handlers;
 
-    await replaceUrlsInSdk(sdk, sdk.classFiles.map((c) => ({ name: c.name, cloudUrl: `http://127.0.0.1:${options.port}/${c.name}` })))
+    await replaceUrlsInSdk(sdk, sdk.files.map((c: SdkFileClass) => ({ name: c.className, cloudUrl: `http://127.0.0.1:${options.port}/${c.className}` })))
     await writeSdkToDisk(sdk, projectConfiguration.sdk.language, projectConfiguration.sdk.path)
     reportSuccess(classesInfo, sdk);
 
@@ -301,7 +281,8 @@ export async function startServer(
   classesInfo: any,
   handlers: any,
   astSummary: any,
-  port = PORT_LOCAL_ENVIRONMENT
+  port = PORT_LOCAL_ENVIRONMENT,
+  projectName: string
 ): Promise<LocalEnvStartServerOutput> {
   const app = express();
   app.use(cors());
@@ -317,7 +298,7 @@ export async function startServer(
 
   app.get("/get-ast-summary", (req: any, res: any) => {
     res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify(astSummary));
+    res.end(JSON.stringify({...astSummary, name: projectName}));
   });
 
   app.all(`/:className`, async (req: any, res: any) => {

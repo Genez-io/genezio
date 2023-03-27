@@ -1,8 +1,5 @@
 import { Document } from "yaml";
 
-import { addNewClass } from "../src/commands";
-import { init } from "../src/commands";
-
 import { fileExists, writeToFile } from "../src/utils/file";
 import { askQuestion } from "../src/utils/prompt";
 import { GENEZIO_YAML_COMMENT } from "../src/utils/strings";
@@ -16,6 +13,8 @@ import {
   YamlSdkConfiguration
 } from "../src/models/yamlProjectConfiguration";
 import { regions } from "../src/utils/configs";
+import { initCommand } from "../src/commands/init";
+import { addClassCommand } from "../src/commands/addClass";
 
 jest.mock("../src/utils/file");
 jest.mock("../src/utils/configuration");
@@ -50,7 +49,7 @@ describe("init", () => {
 
     const yamlConfigurationFileContent = doc.toString();
 
-    await expect(init()).resolves.toBeUndefined();
+    await expect(initCommand()).resolves.toBeUndefined();
 
     expect(mockedWriteToFile).toBeCalledTimes(1);
     expect(mockedAskQuestion).toBeCalledTimes(5);
@@ -69,7 +68,7 @@ describe("init", () => {
     .mockResolvedValueOnce("project-name")
     .mockResolvedValueOnce(notSupportedRegion)
 
-    await expect(init()).rejects.toThrowError(`The region is invalid. Please use a valid region.\n Region list: ${regions}`);
+    await expect(initCommand()).rejects.toThrowError(`The region is invalid. Please use a valid region.\n Region list: ${regions}`);
 
     expect(mockedAskQuestion).toBeCalledTimes(2);
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
@@ -84,7 +83,7 @@ describe("init", () => {
     .mockResolvedValueOnce("us-east-1")
     .mockResolvedValueOnce(notSupportedLanguage)
 
-    await expect(init()).rejects.toThrowError(`We don't currently support the ${notSupportedLanguage} language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`);
+    await expect(initCommand()).rejects.toThrowError(`We don't currently support the ${notSupportedLanguage} language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`);
 
     expect(mockedAskQuestion).toBeCalledTimes(3);
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
@@ -101,7 +100,7 @@ describe("init", () => {
     .mockResolvedValueOnce("js")
     .mockResolvedValueOnce(notSupportedRuntime)
 
-    await expect(init()).rejects.toThrowError(`We don't currently support this JS/TS runtime ${notSupportedRuntime}.`);
+    await expect(initCommand()).rejects.toThrowError(`We don't currently support this JS/TS runtime ${notSupportedRuntime}.`);
 
     expect(mockedAskQuestion).toBeCalledTimes(4);
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
@@ -111,18 +110,18 @@ describe("init", () => {
   });
 })
 
-describe("addNewClass", () => {
+describe("addClassCommand", () => {
   test("throws error if class type is not supported", async () => {
-    await expect(addNewClass("./test.js", "grpc")).rejects.toThrowError("Invalid class type. Valid class types are 'http' and 'jsonrpc'.");
-    await expect(addNewClass("./test.js", "cron")).rejects.toThrowError("Invalid class type. Valid class types are 'http' and 'jsonrpc'.");
+    await expect(addClassCommand("./test.js", "grpc")).rejects.toThrowError("Invalid class type. Valid class types are 'http' and 'jsonrpc'.");
+    await expect(addClassCommand("./test.js", "cron")).rejects.toThrowError("Invalid class type. Valid class types are 'http' and 'jsonrpc'.");
   });
 
   test("throws error if path is not provided", async () => {
-    await expect(addNewClass("", "jsonrpc")).rejects.toThrowError("Please provide a path to the class you want to add.");
+    await expect(addClassCommand("", "jsonrpc")).rejects.toThrowError("Please provide a path to the class you want to add.");
   });
 
   test("throws if extension is not supported", async () => {
-    await expect(addNewClass("./test", "jsonrpc")).rejects.toThrowError("Please provide a class name with a valid class extension.");
+    await expect(addClassCommand("./test", "jsonrpc")).rejects.toThrowError("Please provide a class name with a valid class extension.");
   });
 
   test("throws if class already exists", async () => {
@@ -146,7 +145,7 @@ describe("addNewClass", () => {
     projectConfiguration.writeToFile = jest.fn();
     mockedGetProjectConfiguration.mockResolvedValue(projectConfiguration);
 
-    await expect(addNewClass("./test.js", "jsonrpc")).rejects.toThrowError("Class already exists.");
+    await expect(addClassCommand("./test.js", "jsonrpc")).rejects.toThrowError("Class already exists.");
 
     expect(mockedFileExists).toBeCalledTimes(0);
     expect(mockedWriteToFile).toBeCalledTimes(0);
@@ -175,7 +174,7 @@ describe("addNewClass", () => {
     projectConfiguration.writeToFile = jest.fn();
     mockedGetProjectConfiguration.mockResolvedValue(projectConfiguration);
 
-    await expect(addNewClass("./test.js", "jsonrpc")).resolves.toBeUndefined();
+    await expect(addClassCommand("./test.js", "jsonrpc")).resolves.toBeUndefined();
 
     expect(mockedFileExists).toBeCalledTimes(1);
     expect(mockedWriteToFile).toBeCalledTimes(1);
@@ -204,7 +203,7 @@ describe("addNewClass", () => {
     projectConfiguration.writeToFile = jest.fn();
     mockedGetProjectConfiguration.mockResolvedValue(projectConfiguration);
 
-    await expect(addNewClass("./test.js", "jsonrpc")).resolves.toBeUndefined();
+    await expect(addClassCommand("./test.js", "jsonrpc")).resolves.toBeUndefined();
 
     expect(mockedFileExists).toBeCalledTimes(1);
     expect(mockedWriteToFile).toBeCalledTimes(0);

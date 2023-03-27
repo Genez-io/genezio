@@ -13,6 +13,7 @@ export type AstSummaryMethod = {
 
 export type AstSummaryClass = {
   name: string;
+  path: string;
   methods: AstSummaryMethod[];
 };
 

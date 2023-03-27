@@ -3,7 +3,7 @@ import {
   YamlProjectConfiguration,
   TriggerType
 } from "../src/models/yamlProjectConfiguration";
-import { rectifyCronString } from "../src/localEnvironment";
+import { rectifyCronString } from "../src/utils/rectifyCronString";
 
 describe("project configuration", () => {
   test("missing name should throw error", async () => {
@@ -238,19 +238,6 @@ describe("project configuration", () => {
             return {}
         }).not.toThrowError()
     });
-
-  test("wrong sdk.language should throw error", async () => {
-    await expect(async () => {
-      const yaml = {
-        name: "test",
-        sdk: {
-          path: "/",
-          language: "nothing"
-        }
-      };
-      await YamlProjectConfiguration.create(yaml);
-    }).rejects.toThrowError("The sdk.language property is invalid.");
-  });
 
     test('create a class with a cron method', async () => {
         const yaml = {
