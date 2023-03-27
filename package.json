@@ -62,7 +62,7 @@
     "path": "^0.12.7",
     "terminal-overwrite": "^2.0.1",
     "ts-loader": "^9.4.1",
-    "typescript": "^4.8.4",
+    "typescript": "^5.0.2",
     "typescript-parser": "^2.6.1",
     "unique-names-generator": "^4.7.1",
     "web3": "^1.8.0",
