@@ -7,6 +7,8 @@ import { getProjectConfiguration } from "../src/utils/configuration";
 import {
   JsRuntime,
   Language,
+  TriggerType,
+  YamlClassConfiguration,
   YamlProjectConfiguration,
   YamlSdkConfiguration
 } from "../src/models/yamlProjectConfiguration";
@@ -110,8 +112,45 @@ describe("init", () => {
 
 describe("addClassCommand", () => {
   test("throws error if class type is not supported", async () => {
-    await expect(addClassCommand("./test.js", "grpc")).rejects.toThrowError();
-    await expect(addClassCommand("./test.js", "cron")).rejects.toThrowError();
+    await expect(addClassCommand("./test.js", "grpc")).rejects.toThrowError("Invalid class type. Valid class types are 'http' and 'jsonrpc'.");
+    await expect(addClassCommand("./test.js", "cron")).rejects.toThrowError("Invalid class type. Valid class types are 'http' and 'jsonrpc'.");
+  });
+
+  test("throws error if path is not provided", async () => {
+    await expect(addClassCommand("", "jsonrpc")).rejects.toThrowError("Please provide a path to the class you want to add.");
+  });
+
+  test("throws if extension is not supported", async () => {
+    await expect(addClassCommand("./test", "jsonrpc")).rejects.toThrowError("Please provide a class name with a valid class extension.");
+  });
+
+  test("throws if class already exists", async () => {
+    const mockedFileExists = jest.mocked(fileExists, { shallow: true });
+    mockedFileExists.mockResolvedValue(true);
+
+    const mockedWriteToFile = jest.mocked(writeToFile, { shallow: true });
+    mockedWriteToFile.mockResolvedValue();
+
+    const mockedGetProjectConfiguration = jest.mocked(getProjectConfiguration, {
+      shallow: true
+    });
+    const projectConfiguration = new YamlProjectConfiguration(
+      "test",
+      "us-east-1",
+      new YamlSdkConfiguration(Language.js, JsRuntime.browser, "./test.js"),
+      "genezio",
+      [new YamlClassConfiguration("./test.js", TriggerType.jsonrpc, Language.js, [])] as YamlClassConfiguration[],
+    );
+    projectConfiguration.addClass = jest.fn();
+    projectConfiguration.writeToFile = jest.fn();
+    mockedGetProjectConfiguration.mockResolvedValue(projectConfiguration);
+
+    await expect(addClassCommand("./test.js", "jsonrpc")).rejects.toThrowError("Class already exists.");
+
+    expect(mockedFileExists).toBeCalledTimes(0);
+    expect(mockedWriteToFile).toBeCalledTimes(0);
+    expect(projectConfiguration.addClass).toBeCalledTimes(0);
+    expect(projectConfiguration.writeToFile).toBeCalledTimes(0);
   });
 
   test("create class with non existing file", async () => {

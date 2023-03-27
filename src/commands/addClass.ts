@@ -14,8 +14,7 @@ export async function addClassCommand(classPath: string, classType: string) {
   }
 
   if (classPath === undefined || classPath === "") {
-    log.error("Please provide a path to the class you want to add.");
-    return;
+    throw new Error("Please provide a path to the class you want to add.");
   }
 
   const projectConfiguration = await getProjectConfiguration();
@@ -23,14 +22,12 @@ export async function addClassCommand(classPath: string, classType: string) {
   const className = classPath.split(path.sep).pop();
 
   if (!className) {
-    log.error("Invalid class path.");
-    return;
+    throw new Error("Please provide a valid class path.");
   }
 
   const classExtension = className.split(".").pop();
   if (!classExtension || className.split(".").length < 2) {
-    log.error("Invalid class extension.");
-    return;
+    throw new Error("Please provide a class name with a valid class extension.");
   }
 
   // check if class already exists
@@ -40,8 +37,7 @@ export async function addClassCommand(classPath: string, classType: string) {
         .map((c) => c.path.split(path.sep).pop())
         .includes(className)
     ) {
-      log.error("Class already exists.");
-      return;
+      throw new Error("Class already exists.");
     }
   }
 
