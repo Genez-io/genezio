@@ -34,7 +34,7 @@ export async function initCommand() {
   configFile.region = region;
 
   const sdkLanguage = await askQuestion(
-    `In what programming language do you want your SDK? (js, ts, swift or python) [default value: js]: `,
+    `In what programming language do you want your SDK? (${languages}) [default value: js]: `,
     "js"
   );
 

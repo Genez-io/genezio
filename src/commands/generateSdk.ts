@@ -24,13 +24,13 @@ export async function generateSdkCommand(options: any) {
   const sdkPath = options.path;
 
   if (!language) {
-    log.error("Please specify a language for the SDK to generate using --language <language>. Please use one of the following: ts, js, swift, python.");
+    log.error(`Please specify a language for the SDK to generate using --language <language>. Please use one of the following: ${languages}.`);
     exit(1);
   }
 
   // check if language is supported using languages array
   if (!languages.includes(language)) {
-    log.error("The language you specified is not supported. Please use one of the following: ts, js, swift, python.");
+    log.error(`The language you specified is not supported. Please use one of the following: ${languages}.`);
     exit(1);
   }
 

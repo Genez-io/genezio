@@ -15,6 +15,7 @@ import {
 import { regions } from "../src/utils/configs";
 import { initCommand } from "../src/commands/init";
 import { addClassCommand } from "../src/commands/addClass";
+import { languages } from "../src/utils/languages";
 
 jest.mock("../src/utils/file");
 jest.mock("../src/utils/configuration");
@@ -56,7 +57,7 @@ describe("init", () => {
     expect(mockedWriteToFile).toBeCalledWith(".", "genezio.yaml", yamlConfigurationFileContent)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
-    expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `In what programming language do you want your SDK? (js, ts, swift or python) [default value: js]: `, "js")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `In what programming language do you want your SDK? (${languages}) [default value: js]: `, "js")
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(4, `What runtime will you use? Options: "node" or "browser". [default value: node]: `, "node")
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(5, `Where do you want to save your SDK? [default value: ./sdk/]: `, "./sdk/")
   });
@@ -88,7 +89,7 @@ describe("init", () => {
     expect(mockedAskQuestion).toBeCalledTimes(3);
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
-    expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `In what programming language do you want your SDK? (js, ts, swift or python) [default value: js]: `, "js")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `In what programming language do you want your SDK? (${languages}) [default value: js]: `, "js")
   });
 
   test("throws error if runtime is not supported", async () => {
@@ -105,7 +106,7 @@ describe("init", () => {
     expect(mockedAskQuestion).toBeCalledTimes(4);
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
-    expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `In what programming language do you want your SDK? (js, ts, swift or python) [default value: js]: `, "js")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `In what programming language do you want your SDK? (${languages}) [default value: js]: `, "js")
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(4, `What runtime will you use? Options: "node" or "browser". [default value: node]: `, "node")
   });
 })
