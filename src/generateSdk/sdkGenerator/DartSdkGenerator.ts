@@ -131,7 +131,7 @@ class SdkGenerator implements SdkGeneratorInterface {
             if (methodConfigurationType !== TriggerType.jsonrpc
                 || classConfiguration.type !== TriggerType.jsonrpc
             ) {
-            continue;
+               continue;
             }
 
             exportClassChecker = true;
