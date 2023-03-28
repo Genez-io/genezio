@@ -1,11 +1,20 @@
 <div align="center"> <a href="https://genez.io/">
-    <img
-      src="https://github.com/genez-io/graphics/raw/HEAD/Logo_Genezio_Black.svg"
-      width="650"
-      height="auto"
-    />
-  </a>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/genez-io/graphics/raw/HEAD/Logo_Genezio_White.svg">
+  <source media="(prefers-color-scheme: light)" srcset="https://github.com/genez-io/graphics/raw/HEAD/Logo_Genezio_Black.svg">
+  <img alt="genezio logo" src="https://github.com/genez-io/graphics/raw/HEAD/Logo_Genezio_Black.svg">
+</picture>
+
 </div>
+
+<br>
+
+<div align="center">
+<h2>The Coolest Way to Write, Deploy and Use a Serverless API</h2>
+</div>
+
+<br>
 
 <div align="center">
 
@@ -18,8 +27,15 @@
 <div align="center">
 
 [![npm-downloads](https://img.shields.io/npm/dm/genezio.svg?style=flat&label=npm-downloads&color=62C353)](https://www.npmjs.com/package/genezio)
-[![npm-version](https://img.shields.io/npm/v/genezio.svg?style=flat&label=npm-package-version&color=6742c1)](https://www.npmjs.com/package/genezio)
-[![discord](https://img.shields.io/discord/1024296197575422022?label=discord&color=62C353)](https://discord.gg/uc9H5YKjXv)
+[![npm-version](https://img.shields.io/npm/v/genezio.svg?style=flat&label=npm-package-version&color=62C353)](https://www.npmjs.com/package/genezio)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat&color=62C353)](https://github.com/Genez-io/genezio/blob/master/CONTRIBUTING.md)
+
+</div>
+
+<div align="center">
+
+[![Join our community](https://img.shields.io/discord/1024296197575422022?style=social&label=Join%20our%20community%20&logo=discord&labelColor=6A7EC2)](https://discord.gg/uc9H5YKjXv)
+[![Follow @geneziodev](https://img.shields.io/twitter/url/https/twitter.com/geneziodev.svg?style=social&label=Follow%20%40geneziodev)](https://twitter.com/geneziodev)
 
 </div>
 
@@ -27,11 +43,17 @@
 
 [genezio](https://genez.io/) is a platform for developers to write, deploy and use a serverless API.
 
-You just write your backend logic in classes using your preferred programming language then call `genezio deploy`.
-The code will be deployed in a scalable and production-ready infrastructure.
-An SDK is generated and you can use it to remotely call the methods of your class in a very natural way.
+You are writing your backend logic in classes and design your frontend using your preferred programming language.
+By calling `genezio deploy`, we are deploying your backend classes in a serverless infrastructure.
+
+To make it easy to call your backend logic from the client, an SDK is generated.
+You can use it to remotely call the methods of your class in a very natural way.
 
 For more details on how to use `genezio`, you can check out the official [documentation](https://genez.io/docs).
+
+<div align="center">
+<h3> :star: If you want to support the genezio community, give us a star on this repo :star: </h3>
+</div>
 
 # Contents
 
@@ -41,11 +63,14 @@ For more details on how to use `genezio`, you can check out the official [docume
 - [Examples deployed with `genezio`](#examples-deployed-with--genezio-)
 - [Official documentation](#official-documentation)
 - [Getting support](#getting-support)
+- [System requirements](#system-requirements)
 - [Troubleshooting](#troubleshooting)
 - [Known issues](#known-issues)
+- [Contributing](#contributing)
 - [Ecosystem](#ecosystem)
 - [Hall Of Fame](#hall-of-fame)
 - [Badge](#badge)
+- [License](#license)
 
 # Features
 
@@ -106,6 +131,10 @@ genezio local
 This will spawn a local server that can be used for testing.
 Now, you can navigate to the [Test Interface](https://app.genez.io/test-interface/local?port=8083) and test your project locally from GUI.
 
+<div align="center">
+<img src="https://github.com/Genez-io/graphics/blob/main/demo_screenshots/ss_test_interface.png" alt="Test Interface" style="height: auto; width:700px;"/>
+</div>
+
 Once you are happy with your project, you can deploy it in a production environment by running: `genezio deploy`.
 
 # Examples deployed with `genezio`
@@ -119,7 +148,7 @@ A detailed list of all the examples is below:
   - [Getting Starting](https://github.com/Genez-io/genezio-examples/tree/master/javascript/getting-started) - an example for brand new users of `genezio`.
   - [Chat-GPT Reprashing App](https://github.com/Genez-io/genezio-examples/tree/master/javascript/chatgpt-project) - an example on how to integrate with ChatGPT API.
   - [Smart Contract Indexer with Blast API](https://github.com/Genez-io/genezio-examples/tree/master/javascript/blockchain) - a Web3 example that queries smart contracts events periodically and saves them in a MongoDB using Blast API.
-  - [Stripe example](https://github.com/Genez-io/genezio-examples/tree/master/javascript/stripe-js) - an example on how to integrate with Stripe for managing payments.
+  - [Integrate with Stripe](https://github.com/Genez-io/genezio-examples/tree/master/javascript/stripe-js) - an example on how to integrate with Stripe for managing payments.
   - [Todo List with React and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/javascript/todo-list) - an example of a todo application with users, auth and tasks.
   - [Todo List with React and SQL](https://github.com/Genez-io/genezio-examples/tree/master/javascript/todo-list-sql) - an example of a todo application with users, auth and tasks.
   - [Todo List with Vue and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/javascript/todo-list-vue) - an example of a todo application with users, auth and tasks.
@@ -155,11 +184,22 @@ We want you to get your project up and running in no-time.
 
 If you find yourself in a pickle using `genezio`, drop us a [GitHub issue](https://github.com/Genez-io/genezio/issues), [start a discussion with us on Discord](https://discord.gg/uc9H5YKjXv) or drop us an email at [contact@genezio.io](contact@genezio.io).
 
+# System requirements
+
+- `genezio` can be installed and used on macOS, Linux-based distributions and Windows.
+- A version of `node` >= 14.0.0 should be installed on your machine.
+
 # Troubleshooting
 
 For the most common issues that our users have dealt with, we created a [Troubleshooting](https://docs.genez.io/genezio-documentation/troubleshooting) section in the documentation.
 
 If you don't find the guidance there, drop us a [GitHub issue](https://github.com/Genez-io/genezio/issues). We are more than happy to help you!
+
+# Contributing
+
+Contributions are welcome! Please see our [Contributing Guide](contributing.md) for more details.
+
+Show your support by giving us a star :star:, to help others discover `genezio` and become part of our community!
 
 # Known issues
 
@@ -188,12 +228,12 @@ If you've also built a project that you are proud of, please open a [Pull Reques
 
 # Badge
 
-Brag to your friends that you are using `genezio` with this awesome badge -> [![deployed with: genezio](https://img.shields.io/badge/deployed_with-genezio-6742c1.svg?labelColor=62C353&style=flat-square)](https://github.com/genez-io/genezio)
+Brag to your friends that you are using `genezio` with this awesome badge -> [![deployed with: genezio](https://img.shields.io/badge/deployed_with-genezio-6742c1.svg?labelColor=62C353&style=flat)](https://github.com/genez-io/genezio)
 
 ```md
-[![deployed with: genezio](https://img.shields.io/badge/deployed_with-genezio-6742c1.svg?labelColor=62C353&style=flat-square)](https://github.com/genez-io/genezio)
+[![deployed with: genezio](https://img.shields.io/badge/deployed_with-genezio-6742c1.svg?labelColor=62C353&style=flat)](https://github.com/genez-io/genezio)
 ```
 
-<!-- # Contributing -->
+# License
 
-<!-- # License -->
+`genezio` is licensed under `GNU General Public License v3.0`. For more information, please refer to [LICENSE](LICENSE).
