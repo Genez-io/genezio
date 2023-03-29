@@ -49,7 +49,6 @@ export class NodeJsBundler implements BundlerInterface {
       {
         conditionNames: ["require"]
       }
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
     );
 
     const dependenciesInfo = dependencies.map((dependency) => {

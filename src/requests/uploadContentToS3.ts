@@ -1,17 +1,19 @@
 import axios from "axios";
 import fs from "fs";
 import { getAuthToken } from "../utils/accounts";
+import https from "https";
 
 export async function uploadContentToS3(
     presignedURL: string,
     archivePath: string,
+    progress?: (percentage: number) => void,
     userId?: string,
 ) {
-    if(!presignedURL) {
+    if (!presignedURL) {
         throw new Error("Missing presigned URL");
     }
 
-    if(!archivePath) {
+    if (!archivePath) {
         throw new Error("Missing required parameters");
     }
 
@@ -22,32 +24,50 @@ export async function uploadContentToS3(
             "You are not logged in. Run 'genezio login' before you deploy your function."
         );
     }
+    const url = new URL(presignedURL);
 
-    const zipToUpload = fs.readFileSync(archivePath)
-    const headers: any = {"Content-Type": "application/octet-stream", }
 
+    const headers: any = {
+        'Content-Type': 'application/octet-stream',
+        'Content-Length': fs.statSync(archivePath).size
+    }
     if (userId) {
         headers["x-amz-meta-userid"] = userId
     }
+
+    const options = {
+        hostname: url.hostname,
+        path: url.href,
+        port: 443,
+        method: 'PUT',
+        headers: headers
+    };
+
+    return await new Promise<void>((resolve, reject) => {
+        const req = https.request(options, (res) => {
+            // If we don't consume the data, the "end" event will not fire
+            // eslint-disable-next-line @typescript-eslint/no-empty-function
+            res.on('data', () => {});
+
+            res.on('end', () => {
+                resolve()
+            });
+        });
+
+        req.on('error', (error) => {
+            reject(error);
+        });
     
-    const response: any = await axios({
-        method: "PUT",
-        url: presignedURL,
-        data: zipToUpload,
-        headers: headers,
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity    
-    }).catch((error : Error) => {
-        throw error
-    });
+        const { size } = fs.statSync(archivePath);
+        const fileStream = fs.createReadStream(archivePath);
+        let total = 0;
+        fileStream
+            .on('data', (data) => {
+                total += data.length;
+                if (progress)
+                    progress(total / size)
+            })
+            .pipe(req);
+    })
 
-    if (response.data.status === "error") {
-        throw new Error(response.data.message);
-    }
-
-    if (response.data?.error?.message) {
-        throw new Error(response.data.error.message);
-    }
-
-    return response.data
 }

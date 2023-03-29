@@ -25,6 +25,7 @@ import { runNewProcess } from "../utils/process";
 import { reportSuccess } from "../utils/reporter";
 import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk";
 import { generateRandomSubdomain } from "../utils/yaml";
+import cliProgress from 'cli-progress';
 
 
 export async function deployCommand(options: any) {
@@ -144,8 +145,14 @@ export async function deployClasses() {
   });
   const projectConfiguration = new ProjectConfiguration(configuration, sdkResponse.astSummary);
 
-  printAdaptiveLog("Bundling your code and uploading it", "start");
-  const promisesDeploy: any = projectConfiguration.classes.map(
+  const multibar = new cliProgress.MultiBar({
+    clearOnComplete: false,
+    hideCursor: true,
+    format: 'Uploading {filename}: {bar} | {value}% | {eta_formatted}',
+}, cliProgress.Presets.shades_grey);
+
+  printAdaptiveLog("Bundling your code", "start");
+  const bundlerResult: any = projectConfiguration.classes.map(
     async (element) => {
       if (!(await fileExists(element.path))) {
         printAdaptiveLog("Bundling your code and uploading it", "error");
@@ -197,6 +204,14 @@ export async function deployClasses() {
       await zipDirectory(output.path, archivePath);
       debugLogger.debug(`Get the presigned URL for class name ${element.name}.`)
 
+      return { name: element.name, archivePath: archivePath, path: element.path };
+    }); 
+
+    const bundlerResultArray = await Promise.all(bundlerResult);
+
+    printAdaptiveLog("Bundling your code", "end");
+
+    const promisesDeploy = bundlerResultArray.map(async (element) => {
       const resultPresignedUrl = await getPresignedURL(
         configuration.region,
         "genezioDeploy.zip",
@@ -204,15 +219,24 @@ export async function deployClasses() {
         element.name
       )
 
+      const bar = multibar.create(100, 0, { filename: element.name });
       debugLogger.debug(`Upload the content to S3 for file ${element.path}.`)
-      await uploadContentToS3(resultPresignedUrl.presignedURL, archivePath)
+      await uploadContentToS3(resultPresignedUrl.presignedURL, element.archivePath, (percentage) => {
+        bar.update(parseFloat((percentage * 100).toFixed(2)), {filename: element.name});
+
+        if (percentage == 1) {
+          bar.stop();
+        }
+      })
+
       debugLogger.debug(`Done uploading the content to S3 for file ${element.path}.`)
     }
   );
 
   // wait for all promises to finish
   await Promise.all(promisesDeploy);
-  printAdaptiveLog("Bundling your code and uploading it", "end");
+  multibar.stop()
+  log.info("")
 
   const response = await deployRequest(projectConfiguration)
 
@@ -269,7 +293,7 @@ export async function deployFrontend(): Promise<string> {
 
     await zipDirectoryToDestinationPath(configuration.frontend.path, configuration.frontend.subdomain, archivePath)
     debugLogger.debug("Content of the folder zipped. Uploading to S3.")
-    await uploadContentToS3(result.presignedURL, archivePath, result.userId)
+    await uploadContentToS3(result.presignedURL, archivePath, undefined, result.userId)
     debugLogger.debug("Uploaded to S3.")
   } else {
     throw new Error("No frontend entry in genezio configuration file.")
