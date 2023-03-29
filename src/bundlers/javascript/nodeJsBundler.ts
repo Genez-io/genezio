@@ -214,9 +214,6 @@ export class NodeJsBundler implements BundlerInterface {
     await writeToFile(tempFolderPath, "package.json", JSON.stringify(packageJson, null, 2));
   }
 
-
-
-
   async bundle(input: BundlerInput): Promise<BundlerOutput> {
     const mode =
       (input.extra ? input.extra["mode"] : undefined) || "production";

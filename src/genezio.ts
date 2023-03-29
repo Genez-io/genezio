@@ -15,10 +15,11 @@ import { deleteCommand } from "./commands/delete";
 import { deployCommand } from "./commands/deploy";
 import { generateSdkCommand } from "./commands/generateSdk";
 import { initCommand } from "./commands/init";
-import { localCommand } from "./commands/local";
+import { startLocalEnvironment } from "./commands/local";
 import { loginCommand } from "./commands/login";
 import { logoutCommand } from "./commands/logout";
 import { lsCommand } from "./commands/ls";
+import { GenezioLocalOptions } from "./models/commandOptions";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
@@ -135,10 +136,15 @@ program
     String(PORT_LOCAL_ENVIRONMENT)
   )
   .description("Run a local environment for your functions.")
-  .action(async (options: any) => {
+  .action(async (options: GenezioLocalOptions) => {
     setDebuggingLoggerLogLevel(options.logLevel);
 
-    await localCommand(options);
+    await startLocalEnvironment(options).catch((error: any) => {
+      if (error.message) {
+        log.error(error.message);
+      }
+      exit(1);
+    });
   });
 
 // genezio login command
