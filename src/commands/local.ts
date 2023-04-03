@@ -105,6 +105,7 @@ async function startProcesses(projectConfiguration: ProjectConfiguration): Promi
     // TODO: Is it worth the extra complexity of maintaining the folder?
     return createTemporaryFolder().then((tmpFolder) => {
       return bundler.bundle({
+        projectConfiguration,
         path: classInfo.path,
         configuration: classInfo,
         extra: { mode: "development", tmpFolder: tmpFolder }

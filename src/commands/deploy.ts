@@ -4,6 +4,7 @@ import path from "path";
 import { exit } from "process";
 import { BundlerInterface } from "../bundlers/bundler.interface";
 import { BundlerComposer } from "../bundlers/bundlerComposer";
+import { DartBundler } from "../bundlers/dart/dartBundler";
 import { NodeJsBinaryDependenciesBundler } from "../bundlers/javascript/nodeJsBinaryDependenciesBundler";
 import { NodeJsBundler } from "../bundlers/javascript/nodeJsBundler";
 import { NodeTsBinaryDependenciesBundler } from "../bundlers/typescript/nodeTsBinaryDependenciesBundler";
@@ -143,8 +144,9 @@ export async function deployClasses() {
     throw error;
   });
   const projectConfiguration = new ProjectConfiguration(configuration, sdkResponse.astSummary);
+  console.log(JSON.stringify(projectConfiguration))
 
-  printAdaptiveLog("Bundling your code and uploading it", "start");
+  // printAdaptiveLog("Bundling your code and uploading it", "start");
   const promisesDeploy: any = projectConfiguration.classes.map(
     async (element) => {
       if (!(await fileExists(element.path))) {
@@ -156,6 +158,7 @@ export async function deployClasses() {
       }
 
       let bundler: BundlerInterface;
+      console.log(element.language)
       switch (element.language) {
         case ".ts": {
           const standardBundler = new NodeTsBundler();
@@ -169,6 +172,11 @@ export async function deployClasses() {
           bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
           break;
         }
+        case ".dart": {
+          console.log("INTRA AICI!!!!")
+          bundler = new DartBundler();
+          break;
+        }
         default:
           log.error(`Unsupported ${element.language}`);
           return Promise.resolve();
@@ -178,6 +186,7 @@ export async function deployClasses() {
         `The bundling process has started for file ${element.path}...`
       );
       const output = await bundler.bundle({
+        projectConfiguration: projectConfiguration,
         configuration: element,
         path: element.path,
         extra: {
@@ -212,7 +221,7 @@ export async function deployClasses() {
 
   // wait for all promises to finish
   await Promise.all(promisesDeploy);
-  printAdaptiveLog("Bundling your code and uploading it", "end");
+  // printAdaptiveLog("Bundling your code and uploading it", "end");
 
   const response = await deployRequest(projectConfiguration)
 

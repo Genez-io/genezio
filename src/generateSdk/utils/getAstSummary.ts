@@ -51,9 +51,11 @@ export function getAstSummary(
         }
       );
 
+      console.log("AICI AI LANGUAGE?", classConfiguration.classConfiguration.language)
       const classInfo: AstSummaryClass = {
         name: classElem.name,
         path: classConfiguration.classConfiguration.path,
+        language: classConfiguration.classConfiguration.language,
         methods: methods
       };
       return classInfo;

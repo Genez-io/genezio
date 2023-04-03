@@ -91,6 +91,7 @@ export class ProjectConfiguration {
                     name: m.name,
                     parameters: m.params.map((p) => new ParameterType(p.name, p.type)),
                     cronString: yamlMethod?.cronString,
+                    language: c.language,
                     type: yamlClass?.getMethodType(m.name)
                 }
             })

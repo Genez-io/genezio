@@ -82,6 +82,7 @@ export async function zipDirectoryToDestinationPath(
 export async function fileExists(filePath: string): Promise<boolean> {
   return new Promise((resolve) => {
     fs.stat(filePath, (exists) => {
+      console.log(exists);
       if (exists == null) {
         return resolve(true);
       } else if (exists.code === "ENOENT") {
