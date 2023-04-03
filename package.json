@@ -27,7 +27,7 @@
   "license": "GPL-3",
   "dependencies": {
     "@types/body": "^5.1.1",
-    "@types/webpack-node-externals": "^2.5.3",
+    "@types/webpack-node-externals": "^3.0.0",
     "archiver": "^5.3.1",
     "aws-cron-parser": "^1.1.12",
     "axios": "^0.27.2",
