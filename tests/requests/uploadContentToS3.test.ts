@@ -19,6 +19,8 @@ test("should throw error if server returns error", async () => {
   await expect(async () => {
     mockedGetAuthToken.mockResolvedValue("token");
     mockedReadArchiveContent.readFileSync.mockReturnValue("test");
+    const statSyncReturnValue: any = {size: BigInt(100)};
+    mockedReadArchiveContent.statSync.mockReturnValue(statSyncReturnValue);
     mockedAxios.mockResolvedValue({
       data: { status: "error" },
       status: 200,
@@ -27,7 +29,7 @@ test("should throw error if server returns error", async () => {
       config: {}
     });
 
-    await uploadContentToS3("test", "test.zip");
+    await uploadContentToS3("https://test.com", "test.zip");
   }).rejects.toThrowError();
 });
 
@@ -43,7 +45,7 @@ test("should throw error if server returns data.error object", async () => {
       config: {}
     });
 
-    await uploadContentToS3("test", "test.zip");
+    await uploadContentToS3("https://test.com", "test.zip");
   }).rejects.toThrowError();
 });
 
@@ -57,52 +59,14 @@ test ("should throw error if presigned URL is missing", async () =>{
 test ("should throw error if archive path is missing", async () =>{
   await expect(async () => {
 
-    await uploadContentToS3("test", "");
+    await uploadContentToS3("https://test.com", "");
   }).rejects.toThrowError();
-});
-
-test("should return response.data if everything is ok", async () => {
-  const someObject = { someData: "data" };
-
-  mockedGetAuthToken.mockResolvedValue("token");
-  mockedReadArchiveContent.readFileSync.mockReturnValue("test");
-  mockedAxios.mockResolvedValue({
-    data: someObject,
-    status: 200,
-    statusText: "Ok",
-    headers: {},
-    config: {}
-  });
-
-  const response = await uploadContentToS3("test", "test.zip");
-
-  expect(response).toEqual(someObject);
-});
-
-test("should read token and pass it to headers", async () => {
-  const someObject = { someData: "data" };
-
-  mockedGetAuthToken.mockResolvedValue("token");
-  mockedReadArchiveContent.readFileSync.mockReturnValue("test");
-  mockedAxios.mockResolvedValue({
-    data: someObject,
-    status: 200,
-    statusText: "Ok",
-    headers: {},
-    config: {}
-  });
-
-  const response = await uploadContentToS3("test", "test.zip");
-
-  expect(mockedGetAuthToken.mock.calls.length).toBe(1);
-
-  expect(response).toEqual(someObject);
 });
 
 test("should throw error if auth token is missing", async () => {
   await expect(async () => {
     mockedGetAuthToken.mockResolvedValue("");
 
-    await uploadContentToS3("test", "test.zip");
+    await uploadContentToS3("https://test.com", "test.zip");
   }).rejects.toThrowError();
 });

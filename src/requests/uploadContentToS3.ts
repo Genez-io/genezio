@@ -26,7 +26,6 @@ export async function uploadContentToS3(
     }
     const url = new URL(presignedURL);
 
-
     const headers: any = {
         'Content-Type': 'application/octet-stream',
         'Content-Length': fs.statSync(archivePath).size
@@ -60,6 +59,7 @@ export async function uploadContentToS3(
     
         const { size } = fs.statSync(archivePath);
         const fileStream = fs.createReadStream(archivePath);
+
         let total = 0;
         fileStream
             .on('data', (data) => {
