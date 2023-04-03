@@ -1,9 +1,9 @@
 <div align="center"> <a href="https://genez.io/">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/genez-io/graphics/raw/HEAD/Logo_Genezio_White.svg">
-  <source media="(prefers-color-scheme: light)" srcset="https://github.com/genez-io/graphics/raw/HEAD/Logo_Genezio_Black.svg">
-  <img alt="genezio logo" src="https://github.com/genez-io/graphics/raw/HEAD/Logo_Genezio_Black.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/genez-io/graphics/raw/HEAD/svg/Logo_Genezio_White.svg">
+  <source media="(prefers-color-scheme: light)" srcset="https://github.com/genez-io/graphics/raw/HEAD/svg/Logo_Genezio_Black.svg">
+  <img alt="genezio logo" src="https://github.com/genez-io/graphics/raw/HEAD/svg/Logo_Genezio_Black.svg">
 </picture>
 
 </div>
