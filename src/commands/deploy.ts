@@ -236,6 +236,8 @@ export async function deployClasses() {
   // wait for all promises to finish
   await Promise.all(promisesDeploy);
   multibar.stop()
+  // The loading spinner is removing lines and with this we avoid clearing a progress bar.
+  // This can be removed only if we find a way to avoid clearing lines.
   log.info("")
 
   const response = await deployRequest(projectConfiguration)
