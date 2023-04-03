@@ -1,6 +1,7 @@
 import axios from "axios";
 import fs from "fs";
 import path from "path";
+import Mustache from "mustache";
 import { getCompileDartPresignedURL } from "../../requests/getCompileDartPresignedURL";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3";
 import decompress from "decompress";
@@ -8,6 +9,8 @@ import { createTemporaryFolder, zipDirectory } from "../../utils/file";
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface";
 import { getDartSdkVersion, isDartInstalled } from "../../utils/dart";
 import { debugLogger } from "../../utils/logging";
+import { ClassConfiguration } from "../../models/projectConfiguration";
+import { template } from "./dartMain";
 
 export class DartBundler implements BundlerInterface {
     async #getDartCompilePresignedUrl(archiveName: string): Promise<string> {
@@ -70,6 +73,67 @@ export class DartBundler implements BundlerInterface {
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
         // TODO: I have to populate the class with a main.dart that does the routing.
         // input.projectConfiguration.classes.
+        const userClass = input.projectConfiguration.classes.find((c: ClassConfiguration) => c.path == input.path)!;
+
+        // TODO check if method parameter is Map or List or Enum => throw error.
+        // TODO check if return type is Enum => throw error.
+
+        console.log(JSON.stringify(userClass));
+        const moustacheViewForMain = {
+            classFileName: path.basename(input.path, path.extname(input.path)),
+            className: userClass.name,
+            methods: userClass.methods.map((m) => ({
+                name: m.name,
+                parameters: m.parameters.map((p, index) => ({
+                    index,
+                    isNative: p.type == "String" || p.type == "int" || p.type == "double" || p.type == "bool",
+                    last: index == m.parameters.length - 1
+                })),
+            })),
+        }
+
+        console.log(Mustache.render(template, moustacheViewForMain));
+        // Moustache viewer for main
+        /**
+         * {
+  "classFileName": "helloWorld",
+  "className": "HelloWorld",
+  "methods": [
+    { 
+       "name": "helloWorld"
+    },
+    { 
+       "name": "helloWorldWithClassParameters",
+       "parameters": [
+        {
+           "index": 0
+        },
+        {
+           "index": 1,
+           "last": true
+        }
+       ]
+    },
+    {
+       "name": "helloWorldWithParams",
+       "parameters": [
+       {
+           "index": 0,
+           "isNative": true
+        },
+        {
+           "index": 1,
+           "isNative": true
+        }, {
+           "index": 2,
+           "isNative": true,
+           "last": true
+        }
+       ]
+    }
+  ]
+}
+         */
 
         const dartIsInstalled = isDartInstalled();
 
