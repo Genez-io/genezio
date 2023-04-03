@@ -404,6 +404,7 @@ export class YamlProjectConfiguration {
       },
       scripts: this.scripts ? {
         preBackendDeploy: this.scripts?.preBackendDeploy,
+        preFrontendDeploy: this.scripts?.preFrontendDeploy,
         postBackendDeploy: this.scripts?.postBackendDeploy,
         postFrontendDeploy: this.scripts?.postFrontendDeploy
       } : undefined,
