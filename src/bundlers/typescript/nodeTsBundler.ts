@@ -48,22 +48,23 @@ export class NodeTsBundler implements BundlerInterface {
 
         if (mode === "development") {
             return null;
-          }
+        }
 
         const dependencies: string[] = [];
         const { name } = getFileDetails(filePath);
         const outputFile = `${name}-processed.js`;
         const temporaryFolder = await createTemporaryFolder();
+
         const module = {
             rules: [
                 {
                     test: /\.tsx?$/,
                     use: [
                         {
-                            loader: "esbuild-loader",
+                            loader: "ts-loader",
                             options: {
-                                tsconfig: "tsconfig.json",
-                                target: "es2015",
+                                configFile: "tsconfig.json",
+                                onlyCompileBundledFiles: true
                             }
                         }
                     ],
@@ -176,6 +177,25 @@ export class NodeTsBundler implements BundlerInterface {
     ): Promise<void> {
 
 
+        let loader = {};
+
+        if (mode === "development") {
+            loader = {
+                loader: "esbuild-loader",
+                options: {
+                    tsconfig: "tsconfig.json",
+                    target: "es2015",
+                }
+            };
+        } else {
+            loader = {
+                loader: "ts-loader",
+                options: {
+                    configFile: "tsconfig.json",
+                    onlyCompileBundledFiles: true
+                }
+            }
+        }
 
         // eslint-disable-next-line no-async-promise-executor
         const module = {
@@ -183,13 +203,7 @@ export class NodeTsBundler implements BundlerInterface {
                 {
                     test: /\.tsx?$/,
                     use: [
-                        {
-                            loader: "esbuild-loader",
-                            options: {
-                                tsconfig: "tsconfig.json",
-                                target: "es2015",
-                            }
-                        }
+                        loader
                     ],
                     exclude: /really\.html/
                 }
