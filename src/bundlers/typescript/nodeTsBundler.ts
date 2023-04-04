@@ -48,22 +48,23 @@ export class NodeTsBundler implements BundlerInterface {
 
         if (mode === "development") {
             return null;
-          }
+        }
 
         const dependencies: string[] = [];
         const { name } = getFileDetails(filePath);
         const outputFile = `${name}-processed.js`;
         const temporaryFolder = await createTemporaryFolder();
+
         const module = {
             rules: [
                 {
                     test: /\.tsx?$/,
                     use: [
                         {
-                            loader: "esbuild-loader",
+                            loader: "ts-loader",
                             options: {
-                                tsconfig: "tsconfig.json",
-                                target: "es2015",
+                                configFile: "tsconfig.json",
+                                onlyCompileBundledFiles: true
                             }
                         }
                     ],
@@ -124,7 +125,7 @@ export class NodeTsBundler implements BundlerInterface {
                 await fsExtra.copy(path.join(process.cwd(), "node_modules"), nodeModulesPath);
             }
             return
-          }
+        }
 
         // copy all dependencies to node_modules folder
         await Promise.all(
@@ -176,6 +177,25 @@ export class NodeTsBundler implements BundlerInterface {
     ): Promise<void> {
 
 
+        let loader = {};
+
+        if (mode === "development") {
+            loader = {
+                loader: "esbuild-loader",
+                options: {
+                    tsconfig: "tsconfig.json",
+                    target: "es2015",
+                }
+            };
+        } else {
+            loader = {
+                loader: "ts-loader",
+                options: {
+                    configFile: "tsconfig.json",
+                    onlyCompileBundledFiles: true
+                }
+            }
+        }
 
         // eslint-disable-next-line no-async-promise-executor
         const module = {
@@ -183,13 +203,7 @@ export class NodeTsBundler implements BundlerInterface {
                 {
                     test: /\.tsx?$/,
                     use: [
-                        {
-                            loader: "esbuild-loader",
-                            options: {
-                                tsconfig: "tsconfig.json",
-                                target: "es2015",
-                            }
-                        }
+                        loader
                     ],
                     exclude: /really\.html/
                 }
@@ -220,49 +234,44 @@ export class NodeTsBundler implements BundlerInterface {
 
         if (output != undefined) {
             output.forEach((error: any) => {
-                // log error red
-                log.error("\x1b[31m", "Syntax error:");
-                const errorLines = error.stack?.split("\n")[2];
-                log.error(errorLines);
-                exit(1);
+                log.info(error.message);
             });
             throw "Compilation failed";
         }
-
     }
 
     async #deleteTypeModuleFromPackageJson(tempFolderPath: string) {
         const packageJsonPath = path.join(tempFolderPath, "package.json");
-    
+
         // check if package.json file exists
         if (!fs.existsSync(packageJsonPath)) {
-          return;
+            return;
         }
-    
+
         // read package.json file
         const packageJson: any = JSON.parse(
-          await readUTF8File(packageJsonPath) || "{}"
+            await readUTF8File(packageJsonPath) || "{}"
         );
-    
+
         // delete type module from package.json
         delete packageJson.type;
-    
+
         // write package.json file
         await writeToFile(tempFolderPath, "package.json", JSON.stringify(packageJson, null, 2));
-      }
-    
+    }
+
 
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
         const mode =
             (input.extra ? input.extra["mode"] : undefined) || "production";
         const tmpFolder = (input.extra ? input.extra["tmpFolder"] : undefined) || undefined;
-        
+
         if (mode === "development" && !tmpFolder) {
             throw new Error("tmpFolder is required in development mode.")
         }
-    
-      const temporaryFolder = mode === "production" ? await createTemporaryFolder() : tmpFolder;
-  
+
+        const temporaryFolder = mode === "production" ? await createTemporaryFolder() : tmpFolder;
+
         // 1. Create auxiliary folder and copy the entire project
         this.#generateTsconfigJson();
 
@@ -279,7 +288,7 @@ export class NodeTsBundler implements BundlerInterface {
         ]);
 
         debugLogger.debug(`[NodeTSBundler] Copy non TS files and node_modules for file ${input.path}.`)
-        
+
         // 2. Copy non js files and node_modules and write index.js file
         await Promise.all([
             this.#copyNonTsFiles(temporaryFolder),
