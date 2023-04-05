@@ -141,8 +141,17 @@ export async function deployClasses() {
   log.info("Deploying your backend project to genezio infrastructure...");
 
   const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(configuration).catch((error) => {
+    // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
+    if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
+      log.error("Syntax error:");
+      log.error(`Reason Code: ${error.reasonCode}`)
+      log.error(`File: ${error.path}:${error.loc.line}:${error.loc.column}`);
+
+      throw error;
+    }
+
     throw error;
-  });
+  })
   const projectConfiguration = new ProjectConfiguration(configuration, sdkResponse.astSummary);
 
   const multibar = new cliProgress.MultiBar({

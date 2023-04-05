@@ -23,7 +23,8 @@ import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import { AccessDependenciesPlugin } from "../bundler.interface";
 import { bundle } from "../../utils/webpack";
 import { debugLogger } from "../../utils/logging";
-import { exit } from "process";
+import ForkTsCheckerWebpackPlugin from "fork-ts-checker-webpack-plugin";
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const exec = util.promisify(require("child_process").exec);
 
@@ -177,33 +178,19 @@ export class NodeTsBundler implements BundlerInterface {
     ): Promise<void> {
 
 
-        let loader = {};
-
-        if (mode === "development") {
-            loader = {
-                loader: "esbuild-loader",
-                options: {
-                    tsconfig: "tsconfig.json",
-                    target: "es2015",
-                }
-            };
-        } else {
-            loader = {
-                loader: "ts-loader",
-                options: {
-                    configFile: "tsconfig.json",
-                    onlyCompileBundledFiles: true
-                }
-            }
-        }
-
         // eslint-disable-next-line no-async-promise-executor
         const module = {
             rules: [
                 {
                     test: /\.tsx?$/,
                     use: [
-                        loader
+                        {
+                            loader: "esbuild-loader",
+                            options: {
+                                tsconfig: "tsconfig.json",
+                                target: "es2015",
+                            }
+                        }
                     ],
                     exclude: /really\.html/
                 }
@@ -225,7 +212,7 @@ export class NodeTsBundler implements BundlerInterface {
             mode,
             [webpackNodeExternals()],
             module,
-            undefined,
+            mode === "development" ? undefined : [new ForkTsCheckerWebpackPlugin()],
             tempFolderPath,
             outputFile,
             resolve,
@@ -233,9 +220,17 @@ export class NodeTsBundler implements BundlerInterface {
         );
 
         if (output != undefined) {
-            output.forEach((error: any) => {
-                log.info(error.message);
-            });
+            if (mode === "development") {
+                output.forEach((error: any) => {
+                    log.info(error.message);
+                });
+            } else {
+                output.forEach((error: any) => {
+                    log.error(error.message);
+                    log.error(error.file);
+                });
+            }
+
             throw "Compilation failed";
         }
     }
