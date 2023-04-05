@@ -156,7 +156,7 @@ export class NodeTsBundler implements BundlerInterface {
         await Promise.all(
             allNonJsFilesPaths.map((filePath: FileDetails) => {
                 // get folders array
-                const folders = filePath.path.split(path.sep);
+                const folders = filePath.path.split('/');
                 // remove file name from folders array
                 folders.pop();
                 // create folder structure in tmp folder
