@@ -1,6 +1,6 @@
 {
   "name": "genezio",
-  "version": "0.3.6",
+  "version": "0.3.8",
   "description": "Command line utility to interact with Genezio infrastructure.",
   "main": "index.js",
   "scripts": {
@@ -26,6 +26,7 @@
   "author": "Genezio",
   "license": "GPL-3",
   "dependencies": {
+    "@babel/parser": "^7.21.4",
     "@types/body": "^5.1.1",
     "@types/webpack-node-externals": "^2.5.3",
     "archiver": "^5.3.1",

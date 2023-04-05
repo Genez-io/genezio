@@ -201,7 +201,7 @@ Show your support by giving us a star :star:, to help others discover `genezio` 
 # Known issues
 
 - `genezio` currently has full backend support for JavaScript and TypeScript. We will soon offer full support for Swift, Dart (Flutter), Kotlin and many others.
-- `genezio` currently is able to generate an SDK in JavaScript (full), TypeScript (full) and Swift (beta). We are planning to launch an Python SDK, Dart SDK, Kotlin SDK and many others.
+- `genezio` currently is able to generate an SDK in JavaScript (full), TypeScript (full) and Swift, Dart, Python (beta).
 - The execution time of the backend functions cannot exceed 10 seconds.
 
 # Ecosystem
