@@ -262,7 +262,6 @@ async function stopCronJobs(cronHandlers: LocalEnvCronHandler[]) {
 
 function getEventObjectFromRequest(request: any) {
   const urlDetails = url.parse(request.url, true);
-  console.log(request.body, request.isBase64Encoded)
 
   return {
     id: Math.random(),
