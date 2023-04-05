@@ -71,9 +71,10 @@ For more details on how to use `genezio`, you can check out the official [docume
 
 # Features
 
+- 👩‍💻&nbsp; Write your backend code in Javascript or Typescript.
 - 🪛&nbsp; Deploy your backend in no-time on a serverless infrastructure.
 - 🖼️&nbsp; Host your frontend on the genezio infrastructure.
-- 🪄&nbsp; A magically-generated SDK to call your server functions from the client.
+- 🪄&nbsp; A magically-generated SDK to call your server functions from the client (supported languages: JS, TS, Swift, Python, Dart).
 - 👀&nbsp; A handful of examples to start from at [genezio-examples](https://github.com/Genez-io/genezio-examples/).
 - 🔨&nbsp; A dedicated GitHub Action to integrate in your CI/CD at [genezio-github-action](https://github.com/Genez-io/genezio-github-action).
 
@@ -197,12 +198,6 @@ If you don't find the guidance there, drop us a [GitHub issue](https://github.co
 Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) for more details.
 
 Show your support by giving us a star :star:, to help others discover `genezio` and become part of our community!
-
-# Known issues
-
-- `genezio` currently has full backend support for JavaScript and TypeScript. We will soon offer full support for Swift, Dart (Flutter), Kotlin and many others.
-- `genezio` currently is able to generate an SDK in JavaScript (full), TypeScript (full) and Swift, Dart, Python (beta).
-- The execution time of the backend functions cannot exceed 10 seconds.
 
 # Ecosystem
 
