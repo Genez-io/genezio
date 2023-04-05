@@ -1,9 +1,8 @@
-import { DeployCodeResponse } from "../models/deployCodeResponse"
-import { GenerateSdkResponse } from "../models/generateSdkResponse"
+import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse"
 import { Language } from "../models/yamlProjectConfiguration"
 import { writeToFile } from "./file"
 import { debugLogger } from "./logging"
-import log from "loglevel";
+import { File, SdkFileClass } from "../models/genezioModels"
 
 export type ClassUrlMap = {
     name: string
@@ -13,46 +12,35 @@ export type ClassUrlMap = {
 /**
  * Replace the temporary markdowns from the SDK with actual URLs.
  */
-export async function replaceUrlsInSdk(sdkResponse: GenerateSdkResponse, classUrlMap: ClassUrlMap[]) {
-    sdkResponse.classFiles.forEach((c) => {
+export async function replaceUrlsInSdk(sdkResponse: SdkGeneratorResponse, classUrlMap: ClassUrlMap[]) {
+    sdkResponse.files.forEach((c : SdkFileClass) => {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const classContent = classUrlMap.find((classFile) => {
-            return classFile.name === c.name
+            return classFile.name === c.className
         })!
 
-        c.implementation = c.implementation.replace("%%%link_to_be_replace%%%", classContent.cloudUrl)
+        if (classContent) {
+            c.data = c.data.replace("%%%link_to_be_replace%%%", classContent.cloudUrl)
+        }
     })
 }
 
 /**
  * Write the SDK files to disk.
  */
-export async function writeSdkToDisk(sdk: GenerateSdkResponse, language: Language, outputPath: string) {
-    if (sdk.classFiles.length == 0) {
+export async function writeSdkToDisk(sdk: SdkGeneratorResponse, language: Language, outputPath: string) {
+    if (sdk.files.length == 0) {
         debugLogger.debug("No SDK classes found...")
         return 
     }
 
     debugLogger.debug("Writing the SDK to files...")
-    if (sdk.remoteFile) {
-        await writeToFile(
-            outputPath,
-            `remote.${language}`,
-            sdk.remoteFile,
-            true
-        ).catch((error) => {
-            log.error(error.toString());
-        });
-    }
-
     await Promise.all(
-        sdk.classFiles.map((classFile: any) => {
-            let filename = `${classFile.name}.sdk.${language}`
-            filename = filename.charAt(0).toLowerCase() + filename.slice(1)
+        sdk.files.map((file: File) => {
             return writeToFile(
                 outputPath,
-                filename,
-                classFile.implementation,
+                file.path,
+                file.data,
                 true
             );
         })

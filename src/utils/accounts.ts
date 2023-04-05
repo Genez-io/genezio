@@ -1,7 +1,6 @@
 import { readUTF8File, writeToFile } from "./file";
 import os from "os";
 import path from "path";
-import log from "loglevel";
 import fs from "fs";
 import { debugLogger } from "./logging";
 

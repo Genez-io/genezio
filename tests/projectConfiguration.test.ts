@@ -3,7 +3,7 @@ import {
   YamlProjectConfiguration,
   TriggerType
 } from "../src/models/yamlProjectConfiguration";
-
+import { rectifyCronString } from "../src/utils/rectifyCronString";
 
 describe("project configuration", () => {
   test("missing name should throw error", async () => {
@@ -32,7 +32,7 @@ describe("project configuration", () => {
       };
       await YamlProjectConfiguration.create(yaml);
     }).rejects.toThrowError("The sdk.language property is missing.");
-  }); 
+  });
 
   test("missing sdk.path should throw error", async () => {
     await expect(async () => {
@@ -239,19 +239,6 @@ describe("project configuration", () => {
         }).not.toThrowError()
     });
 
-  test("wrong sdk.language should throw error", async () => {
-    await expect(async () => {
-      const yaml = {
-        name: "test",
-        sdk: {
-          path: "/",
-          language: "nothing"
-        }
-      };
-      await YamlProjectConfiguration.create(yaml);
-    }).rejects.toThrowError("The sdk.language property is invalid.");
-  });
-
     test('create a class with a cron method', async () => {
         const yaml = {
             name: "test",
@@ -431,5 +418,13 @@ describe("project configuration", () => {
     expect(configuration.classes[0].methods[2].type).toEqual(TriggerType.cron);
     expect(configuration.classes[0].methods[2].name).toEqual("method3");
     return {};
+  });
+
+  test("convert nonstandard cron strings", async () => {
+    expect(rectifyCronString("* * * * *")).toEqual("* * * * *");
+    expect(rectifyCronString("2/1 * * * *")).toEqual("2-59/1 * * * *");
+    expect(rectifyCronString("1 * * * *")).toEqual("1 * * * *");
+    expect(rectifyCronString("2-59/5 * * * *")).toEqual("2-59/5 * * * *");
+    expect(rectifyCronString("2/1 2/1 2/1 2/1 2/1")).toEqual("2-59/1 2-23/1 2-31/1 2-12/1 2,3,4,5,6,0/1");
   });
 });

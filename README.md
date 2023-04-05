@@ -26,6 +26,7 @@
 <div align="center">
 
 [![npm-downloads](https://img.shields.io/npm/dm/genezio.svg?style=flat&label=npm-downloads&color=62C353)](https://www.npmjs.com/package/genezio)
+
 [![npm-version](https://img.shields.io/npm/v/genezio.svg?style=flat&label=npm-package-version&color=62C353)](https://www.npmjs.com/package/genezio)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat&color=62C353)](https://github.com/Genez-io/genezio/blob/master/CONTRIBUTING.md)
 
@@ -59,17 +60,14 @@ For more details on how to use `genezio`, you can check out the official [docume
 - [Features](#features)
 - [Getting Started](#getting-started)
 - [Test your project using the Test Interface](#test-your-project-using-the-test-interface)
-- [Examples deployed with `genezio`](#examples-deployed-with-genezio)
+- [Examples deployed with `genezio`](#examples-deployed-with--genezio-)
 - [Official documentation](#official-documentation)
 - [Getting support](#getting-support)
-- [System requirements](#system-requirements)
 - [Troubleshooting](#troubleshooting)
 - [Known issues](#known-issues)
-- [Contributing](#contributing)
 - [Ecosystem](#ecosystem)
 - [Hall Of Fame](#hall-of-fame)
 - [Badge](#badge)
-- [License](#license)
 
 # Features
 
