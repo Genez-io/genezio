@@ -1,34 +1,30 @@
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+import MIMETypeParser from "whatwg-mimetype";
+
 /**
  * Check if the body is of type binary.
  * @param contentType The content type of the request
  * @returns True if the body is binary, false otherwise.
- */
-function bodyIsBinary(contentType: string) {
-    if (!contentType) {
+*/
+function bodyIsBinary(rawContentType: string) {
+    if (!rawContentType) {
         return true
     }
+    const contentType = new MIMETypeParser(rawContentType);
 
-    const components = contentType.split("/")
-
-    if (components.length != 2) {
-        return true
-    }
-
-    const [mimeType, subType] = components
-
-    if (mimeType === "text") {
+    if (contentType.type === "text") {
         return false
-    } else if (mimeType !== "application") {
+    } else if (contentType.type !== "application") {
         return true
-    } else return !["json", "ld+json", "x-httpd-php", "x-sh", "x-csh", "xhtml+xml", "xml"].includes(subType)
+    } else return !["json", "ld+json", "x-httpd-php", "x-sh", "x-csh", "xhtml+xml", "xml"].includes(contentType.subtype)
 }
 
 /**
  * Express JS middleware that parses the request similar to how AWS API Gateway does it.
- * 
- * @param request 
- * @param response 
- * @param next 
+ *
+ * @param request
+ * @param response
+ * @param next
  */
 export function genezioRequestParser(request: any, response: any, next: any) {
     const headers = request.headers
