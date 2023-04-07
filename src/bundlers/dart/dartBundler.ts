@@ -5,12 +5,13 @@ import Mustache from "mustache";
 import { getCompileDartPresignedURL } from "../../requests/getCompileDartPresignedURL";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3";
 import decompress from "decompress";
-import { createTemporaryFolder, zipDirectory } from "../../utils/file";
+import { createTemporaryFolder, writeToFile, zipDirectory } from "../../utils/file";
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface";
 import { getDartSdkVersion, isDartInstalled } from "../../utils/dart";
 import { debugLogger } from "../../utils/logging";
 import { ClassConfiguration } from "../../models/projectConfiguration";
 import { template } from "./dartMain";
+import { default as fsExtra } from "fs-extra";
 
 export class DartBundler implements BundlerInterface {
     async #getDartCompilePresignedUrl(archiveName: string): Promise<string> {
@@ -50,20 +51,6 @@ export class DartBundler implements BundlerInterface {
             responseType: 'arraybuffer'
         }).then(response => {
             fs.writeFileSync(compiledZip, response.data)
-            // const dest = fs.createWriteStream(compiledZip);
-            // response.data.pipe(dest);
-
-            // return new Promise<void>((resolve, reject) => {
-            //     dest.on('error', err => {
-            //         debugLogger.error(err);
-            //         dest.close();
-            //         reject(err);
-            //       });
-
-            //     dest.on('close', () => {
-            //         resolve()
-            //     });
-            // })
         }).then((async () => {
             await decompress(compiledZip, temporaryFolder)
             fs.unlinkSync(compiledZip)
@@ -71,6 +58,10 @@ export class DartBundler implements BundlerInterface {
     }
 
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
+        const folderPath = input.genezioConfigurationFilePath;
+        const inputTemporaryFolder = await createTemporaryFolder()
+        await fsExtra.copy(folderPath, inputTemporaryFolder);
+
         // TODO: I have to populate the class with a main.dart that does the routing.
         // input.projectConfiguration.classes.
         const userClass = input.projectConfiguration.classes.find((c: ClassConfiguration) => c.path == input.path)!;
@@ -87,53 +78,15 @@ export class DartBundler implements BundlerInterface {
                 parameters: m.parameters.map((p, index) => ({
                     index,
                     isNative: p.type == "String" || p.type == "int" || p.type == "double" || p.type == "bool",
-                    last: index == m.parameters.length - 1
+                    last: index == m.parameters.length - 1,
+                    type: p.type,
                 })),
             })),
         }
 
-        console.log(Mustache.render(template, moustacheViewForMain));
-        // Moustache viewer for main
-        /**
-         * {
-  "classFileName": "helloWorld",
-  "className": "HelloWorld",
-  "methods": [
-    { 
-       "name": "helloWorld"
-    },
-    { 
-       "name": "helloWorldWithClassParameters",
-       "parameters": [
-        {
-           "index": 0
-        },
-        {
-           "index": 1,
-           "last": true
-        }
-       ]
-    },
-    {
-       "name": "helloWorldWithParams",
-       "parameters": [
-       {
-           "index": 0,
-           "isNative": true
-        },
-        {
-           "index": 1,
-           "isNative": true
-        }, {
-           "index": 2,
-           "isNative": true,
-           "last": true
-        }
-       ]
-    }
-  ]
-}
-         */
+        const routerFileContent = Mustache.render(template, moustacheViewForMain);
+        await writeToFile(inputTemporaryFolder, "main.dart", routerFileContent);
+        console.log("PATH", input.path, inputTemporaryFolder);
 
         const dartIsInstalled = isDartInstalled();
 
@@ -142,12 +95,14 @@ export class DartBundler implements BundlerInterface {
         }
 
         const random = Math.random().toString(36).substring(2);
-        const folderPath = path.dirname(input.path);
         const archiveName = `${input.projectConfiguration.name}${input.configuration.name}${random}.zip`;
-        const inputTemporaryFolder = await createTemporaryFolder()
-        const archivePath = path.join(inputTemporaryFolder, archiveName);
 
-        await zipDirectory(folderPath, archivePath);
+        const archiveDirectoryOutput = await createTemporaryFolder();
+        const archivePath = path.join(archiveDirectoryOutput, archiveName);
+
+        console.log("Zip ",inputTemporaryFolder, "to", archivePath);
+        
+        await zipDirectory(inputTemporaryFolder, archivePath);
 
         const presignedUrlResult: any = await this.#getDartCompilePresignedUrl(archiveName)
 

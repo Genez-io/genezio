@@ -27,6 +27,7 @@ import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk";
 import { reportSuccess as _reportSuccess } from "../utils/reporter";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
 import { GenezioLocalOptions } from "../models/commandOptions";
+import { DartBundler } from "../bundlers/dart/dartBundler";
 
 
 // Function that starts the local environment.
@@ -46,6 +47,8 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 
           return undefined;
         }
+
+        console.log(error);
 
         throw error;
       })
@@ -107,6 +110,7 @@ async function startProcesses(projectConfiguration: ProjectConfiguration): Promi
       return bundler.bundle({
         projectConfiguration,
         path: classInfo.path,
+        genezioConfigurationFilePath: process.cwd(),
         configuration: classInfo,
         extra: { mode: "development", tmpFolder: tmpFolder }
       })
@@ -139,6 +143,9 @@ function getBundler(classConfiguration: ClassConfiguration): BundlerInterface | 
       const localBundler = new NodeJsLocalBundler();
       bundler = new BundlerComposer([nodeJsBundler, localBundler])
       break;
+    }
+    case ".dart": {
+      bundler = new DartBundler();
     }
     default: {
       log.error(

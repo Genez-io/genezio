@@ -9,6 +9,7 @@ export type BundlerInput = {
     configuration: ClassConfiguration
     // The path to the source code file that should be bundled.
     path: string
+    genezioConfigurationFilePath: string,
     extra?: { [id: string]: any; }
 }
 
@@ -20,6 +21,7 @@ export type BundlerOutput = {
     configuration: ClassConfiguration
     // Path to a folder containing the source code bundled.
     path: string
+    genezioConfigurationFilePath: string,
     extra?: { [id: string]: any; }
 }
 

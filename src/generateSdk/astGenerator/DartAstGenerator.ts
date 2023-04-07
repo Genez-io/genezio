@@ -3,54 +3,34 @@ import path from "path";
 import { TypescriptParser } from "typescript-parser";
 import {
   AstGeneratorInterface,
-  NativeTypeEnum,
   AstGeneratorInput,
   ClassDefinition,
   TypeAlias,
   AstNodeType,
   ParameterDefinition,
-  NativeType,
   MethodKindEnum,
   SourceType,
   AstGeneratorOutput,
-  TypeDefinition
-} from "../../models/genezioModels";
+  StructLiteral,
+  Node,
+} from "../../models/genezioAst";
 import { isDartInstalled } from "../../utils/dart";
 import { createTemporaryFolder, fileExists } from "../../utils/file";
 import { runNewProcess, runNewProcessWithResult } from "../../utils/process";
 
 export class AstGenerator implements AstGeneratorInterface {
-  mapTypesToParamType(type: string): NativeTypeEnum | string {
+  mapTypesToParamType(type: string): AstNodeType {
     switch (type) {
-      case "string":
-        return NativeTypeEnum.string;
-      case "number":
-        return NativeTypeEnum.number;
-      case "boolean":
-        return NativeTypeEnum.boolean;
       case "String":
-        return NativeTypeEnum.string;
-      case "Number":
-        return NativeTypeEnum.number;
-      case "Boolean":
-        return NativeTypeEnum.boolean;
-      //case arrays
-      case "string[]":
-        return NativeTypeEnum.stringArray;
-      case "number[]":
-        return NativeTypeEnum.numberArray;
-      case "boolean[]":
-        return NativeTypeEnum.booleanArray;
-      case "String[]":
-        return NativeTypeEnum.stringArray;
-      case "Number[]":
-        return NativeTypeEnum.numberArray;
-      case "Boolean[]":
-        return NativeTypeEnum.booleanArray;
-      case "any":
-        return NativeTypeEnum.any;
+        return AstNodeType.StringLiteral;
+      case "int":
+        return AstNodeType.IntegerLiteral;
+      case "double":
+        return AstNodeType.DoubleLiteral;
+      case "bool":
+        return AstNodeType.BooleanLiteral;
       default:
-        return type;
+        return AstNodeType.AnyLiteral;
     }
   }
 
@@ -79,64 +59,65 @@ export class AstGenerator implements AstGeneratorInterface {
       console.log("INPUT", absfilePath)
       const result = await runNewProcessWithResult(`dartaotruntime ${os.homedir()}/.dart_ast_generator/genezioDartAstGenerator.aot ${absfilePath}`)
       const ast = JSON.parse(result);
-      console.log("RESULT: ", JSON.parse(result))
+      console.log("RESULT: ", result);
 
-      const classes = ast.classes.filter((c: any) => c.methods > 0);
-      if (classes.length > 1) {
+      const mainClasses = ast.classes.filter((c: any) => c.methods.length > 1);
+      if (mainClasses.length > 1) {
         // TODO handle error
       }
+      const otherClasses = ast.classes.filter((c: any) => c.methods.length === 1);
 
-      // const classToDeploy = classes[0];
+      const classToDeploy = mainClasses[0];
+      console.log({classToDeploy})
 
-      // const genezioClass: ClassDefinition = {
-      //   type: AstNodeType.ClassDefinition,
-      //   name: classToDeploy.name,
-      //   methods: classToDeploy.methods.map((m: any) => {
-      //     return {
-      //       name: m.name,
-      //       parameters: m.parameters.map((p: any) => {
-      //         return {
-      //           name: p.name,
-      //           type: this.mapTypesToParamType(p.type),
-      //           rawType: p.type,
-      //         };
-      //       }),
-      //       returnType: {
-      //         type: this.mapTypesToParamType(m.returnType),
-      //       },
-      //       kind: MethodKindEnum.method,
-      //     };
-      //   }),
-      // }
-      
-      // const enums = ast.enums.map((e: any) => {
-      //   return {
-      //     type: AstNodeType.Enum,
-      //     name: e.name,
-      //     params: {
-      //       name: e.name,
-      //     }
-      //   }
-      // });
+      const genezioClass: ClassDefinition = {
+        type: AstNodeType.ClassDefinition,
+        name: classToDeploy.name,
+        methods: classToDeploy.methods.map((m: any) => {
+          return {
+            type: AstNodeType.MethodDefinition,
+            name: m.name,
+            params: m.parameters.map((p: any) => {
+              return {
+                type: AstNodeType.ParameterDefinition,
+                name: p.name,
+                paramType: this.mapTypesToParamType(p.type),
+                rawType: p.type,
+              };
+            }),
+            returnType: {
+              type: this.mapTypesToParamType(m.returnType),
+            },
+            kind: MethodKindEnum.method,
+          };
+        }),
+      }
 
-      // const typeAliases = ast.enums.map((e: any) => {
-      //   return {
-      //     type: AstNodeType.TypeAlias,
-      //     name: e.name,
-      //     params: {
-      //       name: e.name,
-      //     },
-      //     definition: `typedef ${e.name} = ${e.type};}`
-      //   }
-      // });
+      const body: [Node] = [genezioClass];
+
+      otherClasses.forEach((c: any) => {
+        const genezioClass: StructLiteral = {
+          type: AstNodeType.StructLiteral,
+          name: c.name,
+          typeLiteral: {
+            type: AstNodeType.TypeLiteral,
+            properties: c.fields.map((p: any) => {
+              return {
+                name: p.name,
+                type: this.mapTypesToParamType(p.type),
+                rawType: p.type,
+              };
+            }),
+          }
+        }
+        body.push(genezioClass);
+      });
+
+      console.log(JSON.stringify(body));
 
       return {
         program: {
-          body: [{
-            type: AstNodeType.ClassDefinition,
-            name: "HelloWorldService",
-            methods: [],
-          }],
+          body: body,
           originalLanguage: "dart",
           sourceType: SourceType.module
         }

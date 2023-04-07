@@ -187,6 +187,7 @@ export async function deployClasses() {
       );
       const output = await bundler.bundle({
         projectConfiguration: projectConfiguration,
+        genezioConfigurationFilePath: process.cwd(),
         configuration: element,
         path: element.path,
         extra: {

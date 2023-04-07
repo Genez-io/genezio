@@ -7,7 +7,7 @@ export const template = `
 import 'package:aws_lambda_dart_runtime/aws_lambda_dart_runtime.dart';
 import 'dart:convert';
 
-import 'lib/{{classFileName}}.dart';
+import './lib/{{classFileName}}.dart';
 
 void main() async {
   final service = {{className}}();
@@ -31,7 +31,7 @@ void main() async {
 
     switch(method) {
     {{#methods}}
-    case "{{name}}":
+    case "{{name}}": {
       {{#parameters}}
         {{#isNative}}
           final param{{index}} = params[{{index}}];
@@ -47,7 +47,7 @@ void main() async {
       break;
     }
     {{/methods}}
-
+  };
     return response;
   };
 
