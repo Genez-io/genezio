@@ -1,5 +1,5 @@
 import Mustache from "mustache";
-import { AstNodeType, ClassDefinition, NativeType, NativeTypeEnum, SdkGeneratorInput, SdkGeneratorInterface, SdkGeneratorOutput, TypeAlias, TypeDefinition } from "../../models/genezioModels";
+import { AstNodeType, ClassDefinition, CustomNodeType, Node, SdkGeneratorInput, SdkGeneratorInterface, SdkGeneratorOutput, StructLiteral, TypeAlias } from "../../models/genezioAst";
 import { TriggerType } from "../../models/yamlProjectConfiguration";
 import { dartSdk } from "../templates/dartSdk";
 
@@ -75,6 +75,34 @@ const template = `/**
 
 import 'remote.dart';
 
+{{#otherClasses}}
+
+class {{name}} {
+    {{#fields}}
+        {{{type}}} {{fieldName}};
+    {{/fields}}
+  
+    {{name}}({{#fields}}this.{{fieldName}},{{/fields}});
+
+    factory {{name}}.fromJson(Map<String, dynamic> json) {
+        return {{name}}(
+            {{#fields}}
+                json['{{fieldName}}'] as {{{type}}},
+            {{/fields}}
+          );
+      }
+    
+      Map<String, dynamic> toJson() {
+        return <String, dynamic>{
+            {{#fields}}
+                '{{fieldName}}': this.{{fieldName}},
+            {{/fields}}
+        };
+      }
+}
+
+{{/otherClasses}}
+
 class {{{className}}} {
   static final remote = Remote("{{{_url}}}");
 
@@ -88,11 +116,9 @@ class {{{className}}} {
 `;
 
 class SdkGenerator implements SdkGeneratorInterface {
-    externalTypes: TypeDefinition[] = [];
-
     async generateSdk(
         sdkGeneratorInput: SdkGeneratorInput
-      ): Promise<SdkGeneratorOutput> {
+    ): Promise<SdkGeneratorOutput> {
 
         const generateSdkOutput: SdkGeneratorOutput = {
             files: []
@@ -107,66 +133,74 @@ class SdkGenerator implements SdkGeneratorInterface {
             if (classInfo.program.body === undefined) {
                 continue;
             }
+
+            const view: any = {
+                otherClasses: [],
+                className: undefined,
+                _url: _url,
+                methods: []
+            };
+
+            let exportClassChecker = false;
+
             for (const elem of classInfo.program.body) {
                 if (elem.type === AstNodeType.ClassDefinition) {
-                  classDefinition = elem;
+                    classDefinition = elem as ClassDefinition;
+                    view.className = classDefinition.name;
+                    for (const methodDefinition of classDefinition.methods) {
+                        const methodConfigurationType = classConfiguration.getMethodType(methodDefinition.name);
+
+                        if (methodConfigurationType !== TriggerType.jsonrpc
+                            || classConfiguration.type !== TriggerType.jsonrpc
+                        ) {
+                            continue;
+                        }
+
+                        exportClassChecker = true;
+
+                        const methodView: any = {
+                            name: methodDefinition.name,
+                            parameters: [],
+                            methodCaller: methodDefinition.params.length === 0 ?
+                                `"${classDefinition.name}.${methodDefinition.name}"`
+                                : `"${classDefinition.name}.${methodDefinition.name}"`
+                        };
+
+                        methodView.parameters = methodDefinition.params.map((e) => {
+                            return {
+                                name: this.getParamType(e.paramType) + " " + (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
+                                last: false
+                            }
+                        });
+
+                        if (methodView.parameters.length > 0) {
+                            methodView.parameters[methodView.parameters.length - 1].last = true;
+                        }
+
+                        methodView.sendParameters = methodDefinition.params.map((e) => {
+                            return {
+                                name: (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
+                                last: false
+                            }
+                        });
+
+                        if (methodView.sendParameters.length > 0) {
+                            methodView.sendParameters[methodView.parameters.length - 1].last = true;
+                        }
+
+                        view.methods.push(methodView);
+                    }
+                } else if (elem.type === AstNodeType.StructLiteral) {
+                    const structLiteral = elem as StructLiteral;
+                    view.otherClasses.push({
+                        name: structLiteral.name,
+                        fields: structLiteral.typeLiteral.properties.map((e) => ({ type: this.getParamType(e.type), fieldName: e.name })),
+                    });
                 }
             }
 
             if (classDefinition === undefined) {
                 continue;
-            }
-
-            const view: any = {
-            className: classDefinition.name,
-            _url: _url,
-            methods: []
-        };
-
-        let exportClassChecker = false;
-
-        for (const methodDefinition of classDefinition.methods) {
-            const methodConfigurationType = classConfiguration.getMethodType(methodDefinition.name);
-
-            if (methodConfigurationType !== TriggerType.jsonrpc
-                || classConfiguration.type !== TriggerType.jsonrpc
-            ) {
-               continue;
-            }
-
-            exportClassChecker = true;
-
-            const methodView: any = {
-            name: methodDefinition.name,
-            parameters: [],
-            methodCaller: methodDefinition.params.length === 0 ?
-                `"${classDefinition.name}.${methodDefinition.name}"`
-                : `"${classDefinition.name}.${methodDefinition.name}"`
-            };
-
-            methodView.parameters = methodDefinition.params.map((e) => {
-                return {
-                    name: this.getParamType(e.paramType) + " " + (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
-                    last: false
-                }
-            });
-
-            if (methodView.parameters.length > 0) {
-                methodView.parameters[methodView.parameters.length - 1].last = true;
-            }
-
-            methodView.sendParameters = methodDefinition.params.map((e) => {
-                return {
-                    name: (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
-                    last: false
-                }
-            });
-
-            if (methodView.sendParameters.length > 0) {
-                methodView.sendParameters[methodView.parameters.length - 1].last = true;
-            }
-
-            view.methods.push(methodView);
             }
 
             if (!exportClassChecker) {
@@ -193,47 +227,22 @@ class SdkGenerator implements SdkGeneratorInterface {
         return generateSdkOutput;
     }
 
-    getParamType(elem: TypeDefinition): string {
-        if (elem.type === AstNodeType.NativeType) {
-          const localElem: NativeType = elem as NativeType;
-          switch (localElem.paramType) {
-            case NativeTypeEnum.string:
-              return "String";
-            case NativeTypeEnum.number:
-              return "double";
-            case NativeTypeEnum.boolean:
-              return "bool";
-            case NativeTypeEnum.any:
-              return "Object";
+    getParamType(elem: Node): string {
+        switch (elem.type) {
+            case AstNodeType.StringLiteral:
+                return "String";
+            case AstNodeType.DoubleLiteral:
+                return "double";
+            case AstNodeType.BooleanLiteral:
+                return "bool";
+            case AstNodeType.IntegerLiteral:
+                return "int";
+            case AstNodeType.AnyLiteral:
+                return "Object";
+            case AstNodeType.CustomNodeLiteral:
+                return (elem as CustomNodeType).rawValue;
             default:
-              return "Object";
-          }
-        } else if (elem.type === AstNodeType.TypeAlias) {
-          // TODO: create types for all external types
-          const localElem: TypeAlias = elem as TypeAlias;
-        }
-
-        return "Object";
-    }
-
-    // TODO: create types for all external types
-    async generateExternalTypes(type: TypeDefinition) {
-        // check if type is already in externalTypes
-        if (
-            this.externalTypes.find((e: TypeDefinition) => {
-            if (e.type === AstNodeType.TypeAlias) {
-                return (e as TypeAlias).name === (type as TypeAlias).name;
-            }
-            return false;
-            })
-        ) {
-            return;
-        }
-
-        this.externalTypes.push(type);
-        const externalType = "";
-        if (type.type === AstNodeType.TypeAlias) {
-            const localType: TypeAlias = type as TypeAlias;
+                return "Object";
         }
     }
 }

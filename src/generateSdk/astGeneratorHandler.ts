@@ -1,6 +1,7 @@
 import log from "loglevel";
 import path from "path";
 import { AstGeneratorOutput, File } from "../models/genezioModels";
+import { AstGeneratorInput } from "../models/genezioAst";
 import JsAstGenerator from "./astGenerator/JsAstGenerator";
 import TsAstGenerator from "./astGenerator/TsAstGenerator";
 import { exit } from "process";
@@ -16,10 +17,10 @@ import DartAstGenerator from "./astGenerator/DartAstGenerator";
  * @throws {Error} If there was an error generating the AST.
  */
 export async function generateAst(
-  file: File,
+  input: AstGeneratorInput,
   plugins: string[] | undefined,
 ): Promise<AstGeneratorOutput> {
-  const extension = path.extname(file.path).replace(".", "");
+  const extension = path.extname(input.class.path).replace(".", "");
   let pluginsImported: any = [];
   
 
@@ -46,7 +47,5 @@ export async function generateAst(
 
   const astGeneratorClass = new plugin.AstGenerator();
 
-  return await astGeneratorClass.generateAst({
-    file: file,
-  })
+  return await astGeneratorClass.generateAst(input)
 }

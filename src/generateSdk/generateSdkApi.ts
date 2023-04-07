@@ -2,13 +2,12 @@ import { generateAst } from "./astGeneratorHandler";
 import { generateSdk } from "./sdkGeneratorHandler";
 import { getAstSummary } from "./utils/getAstSummary";
 import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration";
-import { getFiles } from "./utils/getFiles";
-import { exit } from "process";
-import log from "loglevel";
-import { AstGeneratorOutput, File, SdkGeneratorInput, SdkGeneratorOutput } from "../models/genezioModels";
+import { getGenerateAstInputs } from "./utils/getFiles";
+import { SdkGeneratorInput, SdkGeneratorOutput } from "../models/genezioModels";
 import path from "path";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
 import { AstSummary } from "../models/astSummary";
+import { AstGeneratorInput } from "../models/genezioAst";
 
 
 /**
@@ -20,7 +19,7 @@ import { AstSummary } from "../models/astSummary";
  */
 export async function sdkGeneratorApiHandler(projectConfiguration: YamlProjectConfiguration): Promise<SdkGeneratorResponse> {
   const sdkLanguage = projectConfiguration.sdk.language;
-  const files: File[] = getFiles(projectConfiguration);
+  const inputs: AstGeneratorInput[] = getGenerateAstInputs(projectConfiguration);
 
   const sdkGeneratorInput: SdkGeneratorInput = {
     classesInfo: [],
@@ -31,15 +30,15 @@ export async function sdkGeneratorApiHandler(projectConfiguration: YamlProjectCo
   };
 
   // iterate over each class file
-  for (const file of files) {
+  for (const input of inputs) {
     // Generate genezio AST from file
-    const astGeneratorOutput = await generateAst(file, projectConfiguration.plugins?.astGenerator);
+    const astGeneratorOutput = await generateAst(input, projectConfiguration.plugins?.astGenerator);
 
     // prepare input for sdkGenerator
     sdkGeneratorInput.classesInfo.push({
       program: astGeneratorOutput.program,
-      classConfiguration: projectConfiguration.getClassConfiguration(file.path),
-      fileName: path.basename(file.path)
+      classConfiguration: projectConfiguration.getClassConfiguration(input.class.path),
+      fileName: path.basename(input.class.path)
     });
   }
 

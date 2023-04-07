@@ -7,11 +7,12 @@ import { uploadContentToS3 } from "../../requests/uploadContentToS3";
 import decompress from "decompress";
 import { createTemporaryFolder, writeToFile, zipDirectory } from "../../utils/file";
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface";
-import { getDartSdkVersion, isDartInstalled } from "../../utils/dart";
+import { isDartInstalled } from "../../utils/dart";
 import { debugLogger } from "../../utils/logging";
-import { ClassConfiguration } from "../../models/projectConfiguration";
+import { ClassConfiguration, ProjectConfiguration } from "../../models/projectConfiguration";
 import { template } from "./dartMain";
 import { default as fsExtra } from "fs-extra";
+import { DART_COMPILATION_ENDPOINT } from "../../constants";
 
 export class DartBundler implements BundlerInterface {
     async #getDartCompilePresignedUrl(archiveName: string): Promise<string> {
@@ -19,7 +20,7 @@ export class DartBundler implements BundlerInterface {
     }
 
     async #compile(archiveName: string): Promise<string> {
-        const url = "https://ns3o2vemuslucddgnznrcrowfu0exevc.lambda-url.us-east-1.on.aws"
+        const url = DART_COMPILATION_ENDPOINT;
 
         const response: any = await axios({
             method: "PUT",
@@ -44,7 +45,6 @@ export class DartBundler implements BundlerInterface {
 
     async #downloadAndUnzipFromS3ToFolder(s3ZipUrl: string, temporaryFolder: string): Promise<void> {
         const compiledZip = path.join(temporaryFolder, "compiled.zip")
-        console.log(s3ZipUrl);
 
         return await axios({
             url: s3ZipUrl,
@@ -57,23 +57,11 @@ export class DartBundler implements BundlerInterface {
         })).catch(err => console.error(err));
     }
 
-    async bundle(input: BundlerInput): Promise<BundlerOutput> {
-        const folderPath = input.genezioConfigurationFilePath;
-        const inputTemporaryFolder = await createTemporaryFolder()
-        await fsExtra.copy(folderPath, inputTemporaryFolder);
-
-        // TODO: I have to populate the class with a main.dart that does the routing.
-        // input.projectConfiguration.classes.
-        const userClass = input.projectConfiguration.classes.find((c: ClassConfiguration) => c.path == input.path)!;
-
-        // TODO check if method parameter is Map or List or Enum => throw error.
-        // TODO check if return type is Enum => throw error.
-
-        console.log(JSON.stringify(userClass));
+    async #createRouterFileForClass(classConfiguration: ClassConfiguration, folderPath: string): Promise<void> {
         const moustacheViewForMain = {
-            classFileName: path.basename(input.path, path.extname(input.path)),
-            className: userClass.name,
-            methods: userClass.methods.map((m) => ({
+            classFileName: path.basename(classConfiguration.path, path.extname(classConfiguration.path)),
+            className: classConfiguration.name,
+            methods: classConfiguration.methods.map((m) => ({
                 name: m.name,
                 parameters: m.parameters.map((p, index) => ({
                     index,
@@ -85,41 +73,55 @@ export class DartBundler implements BundlerInterface {
         }
 
         const routerFileContent = Mustache.render(template, moustacheViewForMain);
-        await writeToFile(inputTemporaryFolder, "main.dart", routerFileContent);
-        console.log("PATH", input.path, inputTemporaryFolder);
+        await writeToFile(folderPath, "main.dart", routerFileContent);
+    }
 
-        const dartIsInstalled = isDartInstalled();
-
-        if (!dartIsInstalled) {
-            throw new Error("Dart is not installed.")
-        }
-
+    async #uploadUserCodeToS3(projectName: string, className: string, userCodeFolderPath: string): Promise<string> {
         const random = Math.random().toString(36).substring(2);
-        const archiveName = `${input.projectConfiguration.name}${input.configuration.name}${random}.zip`;
+        const archiveName = `${projectName}${className}${random}.zip`;
+        const presignedUrlResult: any = await this.#getDartCompilePresignedUrl(archiveName)
 
         const archiveDirectoryOutput = await createTemporaryFolder();
         const archivePath = path.join(archiveDirectoryOutput, archiveName);
 
-        console.log("Zip ",inputTemporaryFolder, "to", archivePath);
-        
-        await zipDirectory(inputTemporaryFolder, archivePath);
-
-        const presignedUrlResult: any = await this.#getDartCompilePresignedUrl(archiveName)
-
+        await zipDirectory(userCodeFolderPath, archivePath);
         await uploadContentToS3(presignedUrlResult.presignedURL, archivePath)
 
+        return archiveName;
+    }
+
+    async bundle(input: BundlerInput): Promise<BundlerOutput> {
+        // Create a temporary folder were we copy user code to prepare everything.
+        const folderPath = input.genezioConfigurationFilePath;
+        const inputTemporaryFolder = await createTemporaryFolder()
+        await fsExtra.copy(folderPath, inputTemporaryFolder);
+
+        // Create the router class
+        const userClass = input.projectConfiguration.classes.find((c: ClassConfiguration) => c.path == input.path)!;
+        this.#createRouterFileForClass(userClass, inputTemporaryFolder);
+
+        // Check if dart is installed
+        const dartIsInstalled = isDartInstalled();
+        if (!dartIsInstalled) {
+            // TODO write a better error message
+            throw new Error("Dart is not installed.")
+        }
+
+        const archiveName = await this.#uploadUserCodeToS3(input.projectConfiguration.name, userClass.name, inputTemporaryFolder);
+
+        // Compile the Dart code on the server
         debugLogger.info("Compiling Dart...")
         const s3Zip: any = await this.#compile(archiveName)
         debugLogger.info("Compiling Dart finished.")
 
         if (s3Zip.success === false) {
-            // TODO cry
+            throw new Error("Failed to upload code for compiling.");
         }
 
         const temporaryFolder = await createTemporaryFolder()
         debugLogger.info("Downloading compiled code...")
         await this.#downloadAndUnzipFromS3ToFolder(s3Zip.downloadUrl, temporaryFolder)
-        debugLogger.info("Finished downloading...")
+        debugLogger.info("Finished downloading compiled code...")
 
         return {
             ...input,

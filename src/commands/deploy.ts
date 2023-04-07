@@ -41,7 +41,6 @@ export async function deployCommand(options: any) {
   if (!options.frontend || options.backend) {
     if (configuration.scripts?.preBackendDeploy) {
       log.info("Running preBackendDeploy script...");
-      log.info(configuration.scripts?.preBackendDeploy);
       const output = await runNewProcess(configuration.scripts?.preBackendDeploy);
       if (!output) {
         log.error("preBackendDeploy script failed.");
@@ -144,7 +143,6 @@ export async function deployClasses() {
     throw error;
   });
   const projectConfiguration = new ProjectConfiguration(configuration, sdkResponse.astSummary);
-  console.log(JSON.stringify(projectConfiguration))
 
   // printAdaptiveLog("Bundling your code and uploading it", "start");
   const promisesDeploy: any = projectConfiguration.classes.map(
@@ -158,7 +156,7 @@ export async function deployClasses() {
       }
 
       let bundler: BundlerInterface;
-      console.log(element.language)
+
       switch (element.language) {
         case ".ts": {
           const standardBundler = new NodeTsBundler();
@@ -173,7 +171,6 @@ export async function deployClasses() {
           break;
         }
         case ".dart": {
-          console.log("INTRA AICI!!!!")
           bundler = new DartBundler();
           break;
         }

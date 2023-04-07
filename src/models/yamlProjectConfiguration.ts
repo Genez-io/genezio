@@ -111,18 +111,21 @@ export class YamlClassConfiguration {
   path: string;
   type: TriggerType;
   language: string;
+  name?: string;
   methods: YamlMethodConfiguration[];
 
   constructor(
     path: string,
     type: TriggerType,
     language: string,
-    methods: YamlMethodConfiguration[]
+    methods: YamlMethodConfiguration[],
+    name?: string,
   ) {
     this.path = path;
     this.type = type;
     this.methods = methods;
     this.language = language;
+    this.name = name;
   }
 
   getMethodType(methodName: string): TriggerType {
@@ -173,7 +176,8 @@ export class YamlClassConfiguration {
       classConfigurationYaml.path,
       triggerType,
       language,
-      methods
+      methods,
+      classConfigurationYaml.name
     );
   }
 }
@@ -266,7 +270,6 @@ export class YamlProjectConfiguration {
         "The name property is missing from the configuration file."
       );
     }
-
 
     const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
     if (!nameRegex.test(configurationFileContent.name)) {

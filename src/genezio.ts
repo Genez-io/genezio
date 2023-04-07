@@ -101,7 +101,6 @@ program
   .description(`Deploy your project to the genezio infrastructure. Use --frontend to deploy only the frontend application. 
 Use --backend to deploy only the backend application.`)
   .action(async (options: any) => {
-    console.log(options)
     setDebuggingLoggerLogLevel(options.logLevel);
 
     await deployCommand(options);

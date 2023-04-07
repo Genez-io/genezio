@@ -13,118 +13,135 @@ import {
   AstGeneratorOutput,
   StructLiteral,
   Node,
+  MethodDefinition,
+  DoubleType,
+  IntegerType,
+  StringType,
+  BooleanType,
+  FloatType,
+  AnyType,
+  CustomNodeType,
 } from "../../models/genezioAst";
 import { isDartInstalled } from "../../utils/dart";
 import { createTemporaryFolder, fileExists } from "../../utils/file";
 import { runNewProcess, runNewProcessWithResult } from "../../utils/process";
 
 export class AstGenerator implements AstGeneratorInterface {
-  mapTypesToParamType(type: string): AstNodeType {
+  #mapTypesToParamType(type: string): DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | CustomNodeType {
     switch (type) {
       case "String":
-        return AstNodeType.StringLiteral;
+        return {
+          type: AstNodeType.StringLiteral,
+        }
       case "int":
-        return AstNodeType.IntegerLiteral;
+        return {
+          type: AstNodeType.IntegerLiteral,
+        }
       case "double":
-        return AstNodeType.DoubleLiteral;
+        return { 
+          type: AstNodeType.DoubleLiteral,
+        }
       case "bool":
-        return AstNodeType.BooleanLiteral;
+        return {
+          type: AstNodeType.BooleanLiteral,
+        }
+      case "Object":
+        return {
+          type: AstNodeType.AnyLiteral,
+        };
       default:
-        return AstNodeType.AnyLiteral;
+        return {
+          type: AstNodeType.CustomNodeLiteral,
+          rawValue: type,
+        }
     }
   }
 
+  async #compileGenezioDartAstExtractor() {
+    const folder = await createTemporaryFolder();
+    await runNewProcess("git clone https://github.com/Genez-io/dart-ast.git .", folder)
+    await runNewProcess("dart pub get", folder)
+    await runNewProcess("mkdir ~/.dart_ast_generator/", folder)
+    await runNewProcess(`dart compile aot-snapshot main.dart -o ${os.homedir()}/.dart_ast_generator/genezioDartAstGenerator.aot`, folder)
+  }
+
   async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
-      const dartIsInstalled = isDartInstalled()
+    // Check if dart is installed.
+    const dartIsInstalled = isDartInstalled()
+    if (!dartIsInstalled) {
+      throw new Error("Dart is not installed.")
+    }
 
-      console.log("GENERATE AST FROM DART!");
+    // Check if the dart ast extractor is compiled and installed in home.
+    const compiled = await fileExists(os.homedir() + "/.dart_ast_generator/genezioDartAstGenerator.aot");
+    if (!compiled) {
+      this.#compileGenezioDartAstExtractor();
+    }
 
-      if (!dartIsInstalled) {
-        throw new Error("Dart is not installed.")
-      }
+    const classAbsolutePath = path.resolve(input.class.path);
+    const result = await runNewProcessWithResult(`dartaotruntime ${os.homedir()}/.dart_ast_generator/genezioDartAstGenerator.aot ${classAbsolutePath}`)
+    const ast = JSON.parse(result);
 
-      const compiled = await fileExists(os.homedir() + "/.dart_ast_generator/genezioDartAstGenerator.aot");
-      console.log("FILE EXISTS?", compiled);
-      if (!compiled) {
-        console.log("STAART!");
-        const folder = await createTemporaryFolder();
-        await runNewProcess("git clone https://github.com/Genez-io/dart-ast.git .", folder)
-        await runNewProcess("dart pub get", folder)
-        await runNewProcess("mkdir ~/.dart_ast_generator/", folder)
-        await runNewProcess(`dart compile aot-snapshot main.dart -o ${os.homedir()}/.dart_ast_generator/genezioDartAstGenerator.aot`, folder)
-        console.log("Dart AST Generator compiled!")
-      }
+    const mainClasses = ast.classes.filter((c: any) => c.name === input.class.name );
+    if (mainClasses.length > 1) {
+      throw new Error(`No ${input.class.name} found.`);
+    }
 
-      const absfilePath = path.resolve(input.file.path);
-      console.log("INPUT", absfilePath)
-      const result = await runNewProcessWithResult(`dartaotruntime ${os.homedir()}/.dart_ast_generator/genezioDartAstGenerator.aot ${absfilePath}`)
-      const ast = JSON.parse(result);
-      console.log("RESULT: ", result);
+    const classToDeploy = mainClasses[0];
 
-      const mainClasses = ast.classes.filter((c: any) => c.methods.length > 1);
-      if (mainClasses.length > 1) {
-        // TODO handle error
-      }
-      const otherClasses = ast.classes.filter((c: any) => c.methods.length === 1);
+    const genezioClass: ClassDefinition = {
+      type: AstNodeType.ClassDefinition,
+      name: classToDeploy.name,
+      methods: classToDeploy.methods.map((m: any) => {
+        return {
+          type: AstNodeType.MethodDefinition,
+          name: m.name,
+          params: m.parameters.map((p: any) => {
+            return {
+              type: AstNodeType.ParameterDefinition,
+              name: p.name,
+              paramType: this.#mapTypesToParamType(p.type),
+              rawType: p.type,
+            };
+          }),
+          returnType: this.#mapTypesToParamType(m.returnType),
+          static: false,
+          kind: MethodKindEnum.method,
+        } as MethodDefinition;
+      }),
+    }
 
-      const classToDeploy = mainClasses[0];
-      console.log({classToDeploy})
+    const body: [Node] = [genezioClass];
 
-      const genezioClass: ClassDefinition = {
-        type: AstNodeType.ClassDefinition,
-        name: classToDeploy.name,
-        methods: classToDeploy.methods.map((m: any) => {
-          return {
-            type: AstNodeType.MethodDefinition,
-            name: m.name,
-            params: m.parameters.map((p: any) => {
-              return {
-                type: AstNodeType.ParameterDefinition,
-                name: p.name,
-                paramType: this.mapTypesToParamType(p.type),
-                rawType: p.type,
-              };
-            }),
-            returnType: {
-              type: this.mapTypesToParamType(m.returnType),
-            },
-            kind: MethodKindEnum.method,
-          };
-        }),
-      }
-
-      const body: [Node] = [genezioClass];
-
-      otherClasses.forEach((c: any) => {
-        const genezioClass: StructLiteral = {
-          type: AstNodeType.StructLiteral,
-          name: c.name,
-          typeLiteral: {
-            type: AstNodeType.TypeLiteral,
-            properties: c.fields.map((p: any) => {
-              return {
-                name: p.name,
-                type: this.mapTypesToParamType(p.type),
-                rawType: p.type,
-              };
-            }),
-          }
+    const otherClasses = ast.classes.filter((c: any) => c.name !== input.class.name );
+    otherClasses.forEach((c: any) => {
+      const genezioClass: StructLiteral = {
+        type: AstNodeType.StructLiteral,
+        name: c.name,
+        typeLiteral: {
+          type: AstNodeType.TypeLiteral,
+          properties: c.fields.map((p: any) => {
+            return {
+              name: p.name,
+              type: this.#mapTypesToParamType(p.type),
+              rawType: p.type,
+            };
+          }),
         }
-        body.push(genezioClass);
-      });
+      }
+      body.push(genezioClass);
+    });
 
-      console.log(JSON.stringify(body));
-
-      return {
-        program: {
-          body: body,
-          originalLanguage: "dart",
-          sourceType: SourceType.module
-        }
-      };
+    return {
+      program: {
+        body: body,
+        originalLanguage: "dart",
+        sourceType: SourceType.module
+      }
+    };
   }
 }
 
 const supportedExtensions = ["dart"]
 
-export default {supportedExtensions, AstGenerator}
+export default { supportedExtensions, AstGenerator }

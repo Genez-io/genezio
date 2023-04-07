@@ -34,7 +34,6 @@ export function getAstSummary(
 
       const methods: AstSummaryMethod[] = classElem.methods.map(
         (method: MethodDefinition) => {
-          console.log({method});
           const params: AstSummaryParam[] = method.params.map(
             (param: ParameterDefinition) => {
               return {
@@ -53,7 +52,6 @@ export function getAstSummary(
         }
       );
 
-      console.log("AICI AI LANGUAGE?", classConfiguration.classConfiguration.language)
       const classInfo: AstSummaryClass = {
         name: classElem.name,
         path: classConfiguration.classConfiguration.path,

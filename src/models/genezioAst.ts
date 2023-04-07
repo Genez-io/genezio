@@ -43,10 +43,9 @@ export enum AstNodeType {
   ParameterDefinition = "ParameterDefinition",
   MethodDefinition = "MethodDefinition",
   ClassDefinition = "ClassDefinition",
-  PropertyDefinition = "PropertyDefinition"
+  PropertyDefinition = "PropertyDefinition",
+  CustomNodeLiteral = "CustomNodeLiteral"
 }
-
-type CustomAstNodeType = string;
 
 export enum SourceType {
   script = "script",
@@ -64,7 +63,11 @@ export enum MethodKindEnum {
  * The input that goes into the astGenerator.
  */
 export type AstGeneratorInput = {
-  file: File;
+  class: {
+    path: string;
+    data: string;
+    name?: string;
+  };
 };
 
 export type AstGeneratorOutput = {
@@ -77,6 +80,11 @@ export interface Node {
 
 // DONE native types, enums, type alias, union type - type | type
 // TODO next steps - array(multi level), map
+
+export interface CustomNodeType extends Node {
+  type: AstNodeType.CustomNodeLiteral;
+  rawValue: string;
+} 
 
 export interface ConstType extends Node {
   type: AstNodeType.ConstType;
@@ -125,7 +133,7 @@ export interface Enum extends Node {
 
 export interface PropertyDefinition {
   name: string;
-  type: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | TypeLiteral | CustomAstNodeType;
+  type: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | TypeLiteral | CustomNodeType;
   rawType: string;
 }
 
@@ -155,7 +163,7 @@ export interface ParameterDefinition extends Node {
   type: AstNodeType.ParameterDefinition;
   name: string;
   rawType: string;
-  paramType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | CustomAstNodeType;
+  paramType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | CustomNodeType;
   optional: boolean;
   defaultValue?: string;
 }
@@ -166,7 +174,7 @@ export interface MethodDefinition extends Node {
   params: ParameterDefinition[];
   kind: MethodKindEnum;
   static: boolean;
-  returnType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | CustomAstNodeType;
+  returnType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | CustomNodeType;
 }
 
 export interface ClassDefinition extends Node {

@@ -33,6 +33,7 @@ import { DartBundler } from "../bundlers/dart/dartBundler";
 // Function that starts the local environment.
 // It also monitors for changes in the user's code and restarts the environment when changes are detected.
 export async function startLocalEnvironment(options: GenezioLocalOptions) {
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     // Read the project configuration everytime because it might change
     const yamlProjectConfiguration = await getProjectConfiguration();
@@ -146,6 +147,7 @@ function getBundler(classConfiguration: ClassConfiguration): BundlerInterface | 
     }
     case ".dart": {
       bundler = new DartBundler();
+      break;
     }
     default: {
       log.error(
@@ -266,7 +268,6 @@ async function stopCronJobs(cronHandlers: LocalEnvCronHandler[]) {
 
 function getEventObjectFromRequest(request: any) {
   const urlDetails = url.parse(request.url, true);
-  console.log(request.body, request.isBase64Encoded)
 
   return {
     id: Math.random(),
