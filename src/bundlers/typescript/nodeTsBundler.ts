@@ -23,7 +23,8 @@ import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import { AccessDependenciesPlugin } from "../bundler.interface";
 import { bundle } from "../../utils/webpack";
 import { debugLogger } from "../../utils/logging";
-import { exit } from "process";
+import ForkTsCheckerWebpackPlugin from "fork-ts-checker-webpack-plugin";
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const exec = util.promisify(require("child_process").exec);
 
@@ -48,22 +49,23 @@ export class NodeTsBundler implements BundlerInterface {
 
         if (mode === "development") {
             return null;
-          }
+        }
 
         const dependencies: string[] = [];
         const { name } = getFileDetails(filePath);
         const outputFile = `${name}-processed.js`;
         const temporaryFolder = await createTemporaryFolder();
+
         const module = {
             rules: [
                 {
                     test: /\.tsx?$/,
                     use: [
                         {
-                            loader: "esbuild-loader",
+                            loader: "ts-loader",
                             options: {
-                                tsconfig: "tsconfig.json",
-                                target: "es2015",
+                                configFile: "tsconfig.json",
+                                onlyCompileBundledFiles: true
                             }
                         }
                     ],
@@ -124,7 +126,7 @@ export class NodeTsBundler implements BundlerInterface {
                 await fsExtra.copy(path.join(process.cwd(), "node_modules"), nodeModulesPath);
             }
             return
-          }
+        }
 
         // copy all dependencies to node_modules folder
         await Promise.all(
@@ -154,7 +156,7 @@ export class NodeTsBundler implements BundlerInterface {
         await Promise.all(
             allNonJsFilesPaths.map((filePath: FileDetails) => {
                 // get folders array
-                const folders = filePath.path.split(path.sep);
+                const folders = filePath.path.split('/');
                 // remove file name from folders array
                 folders.pop();
                 // create folder structure in tmp folder
@@ -174,7 +176,6 @@ export class NodeTsBundler implements BundlerInterface {
         tempFolderPath: string,
         mode: "development" | "production"
     ): Promise<void> {
-
 
 
         // eslint-disable-next-line no-async-promise-executor
@@ -211,7 +212,7 @@ export class NodeTsBundler implements BundlerInterface {
             mode,
             [webpackNodeExternals()],
             module,
-            undefined,
+            mode === "development" ? undefined : [new ForkTsCheckerWebpackPlugin()],
             tempFolderPath,
             outputFile,
             resolve,
@@ -219,50 +220,53 @@ export class NodeTsBundler implements BundlerInterface {
         );
 
         if (output != undefined) {
-            output.forEach((error: any) => {
-                // log error red
-                log.error("\x1b[31m", "Syntax error:");
-                const errorLines = error.stack?.split("\n")[2];
-                log.error(errorLines);
-                exit(1);
-            });
+            if (mode === "development") {
+                output.forEach((error: any) => {
+                    log.info(error.message);
+                });
+            } else {
+                output.forEach((error: any) => {
+                    log.error(error.message);
+                    log.error(error.file);
+                });
+            }
+
             throw "Compilation failed";
         }
-
     }
 
     async #deleteTypeModuleFromPackageJson(tempFolderPath: string) {
         const packageJsonPath = path.join(tempFolderPath, "package.json");
-    
+
         // check if package.json file exists
         if (!fs.existsSync(packageJsonPath)) {
-          return;
+            return;
         }
-    
+
         // read package.json file
         const packageJson: any = JSON.parse(
-          await readUTF8File(packageJsonPath) || "{}"
+            await readUTF8File(packageJsonPath) || "{}"
         );
-    
+
         // delete type module from package.json
         delete packageJson.type;
-    
+
         // write package.json file
         await writeToFile(tempFolderPath, "package.json", JSON.stringify(packageJson, null, 2));
-      }
-    
+    }
+
 
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
         const mode =
             (input.extra ? input.extra["mode"] : undefined) || "production";
         const tmpFolder = (input.extra ? input.extra["tmpFolder"] : undefined) || undefined;
-        
+
         if (mode === "development" && !tmpFolder) {
             throw new Error("tmpFolder is required in development mode.")
         }
-    
-      const temporaryFolder = mode === "production" ? await createTemporaryFolder() : tmpFolder;
-  
+
+        const temporaryFolder = mode === "production" ? await createTemporaryFolder() : tmpFolder;
+
         // 1. Create auxiliary folder and copy the entire project
         this.#generateTsconfigJson();
 
@@ -279,7 +283,7 @@ export class NodeTsBundler implements BundlerInterface {
         ]);
 
         debugLogger.debug(`[NodeTSBundler] Copy non TS files and node_modules for file ${input.path}.`)
-        
+
         // 2. Copy non js files and node_modules and write index.js file
         await Promise.all([
             this.#copyNonTsFiles(temporaryFolder),

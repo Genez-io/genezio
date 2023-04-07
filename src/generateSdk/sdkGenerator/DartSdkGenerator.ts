@@ -68,10 +68,8 @@ const DART_RESERVED_WORDS = [
     "yield",
 ];
 
-const template = `/**
-* This is an auto generated code. This code should not be modified since the file can be overwriten
-* if new genezio commands are executed.
-*/
+const template = `/// This is an auto generated code. This code should not be modified since the file can be overwritten
+/// if new genezio commands are executed.
 
 import 'remote.dart';
 

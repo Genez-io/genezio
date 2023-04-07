@@ -37,39 +37,40 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
   while (true) {
     // Read the project configuration everytime because it might change
     const yamlProjectConfiguration = await getProjectConfiguration();
-    const sdk = await sdkGeneratorApiHandler(yamlProjectConfiguration)
-      .catch((error) => {
-        // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
-        if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
-          log.error("There is a syntax error in your code.");
-          log.error(`Reason Code: ${error.reasonCode}`)
-          log.error(`Position: line ${error.loc.line}, column ${error.loc.column}, index ${error.loc.index}`);
-          log.error(`Fix the errors and genezio local will restart automatically. Waiting for changes...`);
+    let sdk;
+    let processForClasses;
+    let projectConfiguration;
+    try {
+      sdk = await sdkGeneratorApiHandler(yamlProjectConfiguration)
+        .catch((error) => {
+          // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
+          if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
+            log.error("Syntax error:");
+            log.error(`Reason Code: ${error.reasonCode}`)
+            log.error(`File: ${error.path}:${error.loc.line}:${error.loc.column}`);
 
-          return undefined;
-        }
+            throw error;
+          }
 
-        console.log(error);
+          throw error;
+        });
 
-        throw error;
-      })
+      projectConfiguration = new ProjectConfiguration(
+        yamlProjectConfiguration,
+        sdk.astSummary
+      );
 
-    // If there was an error generating the SDK, wait for changes and try again
-    if (!sdk) {
+      if (projectConfiguration.classes.length === 0) {
+        throw new Error(GENEZIO_NO_CLASSES_FOUND);
+      }
+
+      processForClasses = await startProcesses(projectConfiguration)
+    } catch (error) {
+      log.error(`Fix the errors and genezio local will restart automatically. Waiting for changes...`);
+      // If there was an error generating the SDK, wait for changes and try again.
       await listenForChanges(undefined)
       continue;
     }
-
-    const projectConfiguration = new ProjectConfiguration(
-      yamlProjectConfiguration,
-      sdk.astSummary
-    );
-
-    if (projectConfiguration.classes.length === 0) {
-      throw new Error(GENEZIO_NO_CLASSES_FOUND);
-    }
-
-    const processForClasses = await startProcesses(projectConfiguration)
 
     // Start HTTP Server
     const server = await startServerHttp(options.port, sdk.astSummary, yamlProjectConfiguration.name, processForClasses)
@@ -118,7 +119,7 @@ async function startProcesses(projectConfiguration: ProjectConfiguration): Promi
     });
   })
 
-  const bundlersOutput = await Promise.all(bundlersOutputPromise);
+  const bundlersOutput = await Promise.all(bundlersOutputPromise)
 
   for (const bundlerOutput of bundlersOutput) {
     // Start a new process for thsi class and save it in the map
@@ -331,7 +332,7 @@ function handleResponseforHttp(res: any, httpResponse: any) {
   }
 }
 
-async function listenForChanges(sdkPathRelative: any|undefined) {
+async function listenForChanges(sdkPathRelative: any | undefined) {
   const cwd = process.cwd();
 
   let sdkPath: any = null;

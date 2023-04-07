@@ -48,4 +48,7 @@ export async function generateAst(
   const astGeneratorClass = new plugin.AstGenerator();
 
   return await astGeneratorClass.generateAst(input)
+    .catch((err: any) => {
+      throw {...err, path: input.class.path};
+    });
 }
