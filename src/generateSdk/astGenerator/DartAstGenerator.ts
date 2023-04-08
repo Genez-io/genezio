@@ -21,13 +21,24 @@ import {
   FloatType,
   AnyType,
   CustomNodeType,
+  ArrayType,
 } from "../../models/genezioAst";
 import { isDartInstalled } from "../../utils/dart";
 import { createTemporaryFolder, fileExists } from "../../utils/file";
 import { runNewProcess, runNewProcessWithResult } from "../../utils/process";
 
 export class AstGenerator implements AstGeneratorInterface {
-  #mapTypesToParamType(type: string): DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | CustomNodeType {
+  #mapTypesToParamType(type: string): DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | CustomNodeType {
+    if (type.startsWith("List<")) {
+      return {
+        type: AstNodeType.AnyLiteral,
+      };
+    } else if (type.startsWith("Map<")) {
+      return {
+        type: AstNodeType.AnyLiteral,
+      };
+    }
+
     switch (type) {
       case "String":
         return {

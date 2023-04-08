@@ -105,8 +105,15 @@ class {{{className}}} {
   static final remote = Remote("{{{_url}}}");
 
   {{#methods}}
-  static Future<dynamic> {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) async {
-    return remote.call({{{methodCaller}}}, [{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}}]);
+  static Future<{{returnType}}> {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) async {
+    final response = await remote.call({{{methodCaller}}}, [{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}}]);
+
+    {{#returnTypeJsonParser}}
+        return {{returnType}}.fromJson(response);
+    {{/returnTypeJsonParser}}
+    {{^returnTypeJsonParser}}
+        return response as {{{returnType}}};
+    {{/returnTypeJsonParser}}
   }
 
   {{/methods}}
@@ -163,6 +170,13 @@ class SdkGenerator implements SdkGeneratorInterface {
                                 `"${classDefinition.name}.${methodDefinition.name}"`
                                 : `"${classDefinition.name}.${methodDefinition.name}"`
                         };
+
+                        if (methodDefinition.returnType.type === AstNodeType.CustomNodeLiteral) {
+                            methodView.returnTypeJsonParser = true;
+                            methodView.returnType = methodDefinition.returnType.rawValue;
+                        } else {
+                            methodView.returnType = this.getParamType(methodDefinition.returnType);
+                        }
 
                         methodView.parameters = methodDefinition.params.map((e) => {
                             return {

@@ -34,7 +34,7 @@ void main() async {
     case "{{name}}": {
       {{#parameters}}
         {{#isNative}}
-          final param{{index}} = params[{{index}}];
+          final param{{index}} = params[{{index}}]{{#cast}}{{cast}}{{/cast}};
         {{/isNative}}
         {{^isNative}}
           Map<String, dynamic> _dict{{index}} = params[{{index}}];

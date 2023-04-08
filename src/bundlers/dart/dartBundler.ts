@@ -68,6 +68,7 @@ export class DartBundler implements BundlerInterface {
                     isNative: p.type == "String" || p.type == "int" || p.type == "double" || p.type == "bool",
                     last: index == m.parameters.length - 1,
                     type: p.type,
+                    cast: p.type == "double" ? ".toDouble()" : p.type == "int" ? ".toInt()" : undefined,
                 })),
             })),
         }
