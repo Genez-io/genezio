@@ -18,7 +18,6 @@ import { AstGeneratorInput } from "../models/genezioAst";
  * @throws {Error} If there was an error generating the SDK.
  */
 export async function sdkGeneratorApiHandler(projectConfiguration: YamlProjectConfiguration): Promise<SdkGeneratorResponse> {
-  console.log("qwewqeqe");
   const sdkLanguage = projectConfiguration.sdk.language;
   const inputs: AstGeneratorInput[] = getGenerateAstInputs(projectConfiguration);
 
@@ -43,12 +42,10 @@ export async function sdkGeneratorApiHandler(projectConfiguration: YamlProjectCo
     });
   }
 
-  console.log("qwewqeqe2");
   // Generate SDK
   const sdkOutput: SdkGeneratorOutput = await generateSdk(
     sdkGeneratorInput, projectConfiguration.plugins?.sdkGenerator
   );
-  console.log("qwewqeqe3");
 
   // Generate AST Summary
   const astSummary: AstSummary = {

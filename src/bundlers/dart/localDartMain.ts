@@ -4,58 +4,61 @@ export const template = `
 * if new genezio commands are executed.
 */
 
-import 'package:aws_lambda_dart_runtime/aws_lambda_dart_runtime.dart';
 import 'dart:convert';
+import 'dart:io';
 
 import './lib/{{classFileName}}.dart';
 
-void main() async {
+void main(List<String> args) async {
+  final port = int.tryParse(args.isNotEmpty ? args[0] : '') ?? 3000;
   final service = {{className}}();
+  var response;
 
-  /// This demo's handling an ALB request.
-  final Handler<AwsALBEvent> handler = (context, event) async {
-    var response;
-    var body = event.body;
+  print('Listening on port $port...');
+  final server = await HttpServer.bind(InternetAddress.anyIPv4, port);
 
-    if (body == null) {
-      return AwsALBResponse(
-        statusCode: 400,
-        body: "No body",
-      );
+  await for (HttpRequest req in server) {
+    if (req.method == 'POST') {
+      final body = await utf8.decoder.bind(req).join();
+
+      Map<String, dynamic> map = jsonDecode(body);
+
+      final jsonRpcRequest = jsonDecode(map["body"]);
+      final method = (jsonRpcRequest["method"] as String).split(".")[1];
+      final params = jsonRpcRequest["params"];
+    
+      switch(method) {
+      {{#methods}}
+        case "{{name}}": {
+          {{#parameters}}
+            {{#isNative}}
+              final param{{index}} = params[{{index}}]{{#cast}}{{cast}}{{/cast}};
+            {{/isNative}}
+            {{^isNative}}
+              Map<String, dynamic> _dict{{index}} = params[{{index}}];
+              final param{{index}} = {{{type}}}.fromJson(_dict{{index}});
+            {{/isNative}}
+          {{/parameters}}
+          final result = service.{{name}}({{#parameters}}param{{index}}{{^last}},{{/last}}{{/parameters}});
+          final json = jsonEncode(result);
+          response = '{"jsonrpc": "2.0", "result": $json, "id": 0}';
+          break;
+        }
+      {{/methods}}
+      };
+
+      req.response
+        ..headers.contentType = ContentType.json
+        ..write(response);
+    } else {
+      req.response
+        ..statusCode = HttpStatus.notFound
+        ..write('404 Not Found');
     }
+    await req.response.close();
+  }
 
-    Map<String, dynamic> map = jsonDecode(body);
-
-    final method = (map["method"] as String).split(".")[1];
-    final params = map["params"];
-
-    switch(method) {
-    {{#methods}}
-    case "{{name}}": {
-      {{#parameters}}
-        {{#isNative}}
-          final param{{index}} = params[{{index}}]{{#cast}}{{cast}}{{/cast}};
-        {{/isNative}}
-        {{^isNative}}
-          Map<String, dynamic> _dict{{index}} = params[{{index}}];
-          final param{{index}} = {{{type}}}.fromJson(_dict{{index}});
-        {{/isNative}}
-      {{/parameters}}
-      final result = service.{{name}}({{#parameters}}param{{index}}{{^last}},{{/last}}{{/parameters}});
-      final json = jsonEncode(result);
-      response = '{"jsonrpc": "2.0", "result": $json, "id": 0}';
-      break;
-    }
-    {{/methods}}
-  };
-    return response;
-  };
-
-  /// The Runtime is a singleton.
-  /// You can define the handlers as you wish.
-  Runtime()
-    ..registerHandler<AwsALBEvent>("index.handler", handler)
-    ..invoke();
+  print('End!');
 }
 
 `;

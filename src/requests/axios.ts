@@ -22,7 +22,7 @@ axios.interceptors.response.use(function (response) {
     } else if (error.response?.data?.error) {
 		debugLogger.debug(JSON.stringify(error.response.data.error))
 	} else {
-		debugLogger.debug(error)
+		// debugLogger.debug(error)
 	}
     // Do something with response error
     return Promise.reject(error);

@@ -27,13 +27,15 @@ import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk";
 import { reportSuccess as _reportSuccess } from "../utils/reporter";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
 import { GenezioLocalOptions } from "../models/commandOptions";
-import { DartBundler } from "../bundlers/dart/dartBundler";
+import { DartBundler } from "../bundlers/dart/localDartBundler";
 import axios from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort";
 
 
 type ClassProcess = {
   process: ChildProcess,
+  startingCommand: string,
+  parameters: string[],
   listeningPort: number,
 }
 
@@ -133,13 +135,7 @@ async function startProcesses(projectConfiguration: ProjectConfiguration): Promi
   const bundlersOutput = await Promise.all(bundlersOutputPromise)
 
   for (const bundlerOutput of bundlersOutput) {
-    // Start a new process for thsi class and save it in the map
-    const availablePort = await findAvailablePort();
-    const classProcess = spawn("node", [path.resolve(bundlerOutput.path, 'local.js'), availablePort.toString()]);
-    processForClasses.set(bundlerOutput.configuration.name, {
-      process: classProcess,
-      listeningPort: availablePort,
-    });
+    await startClassProcess(path.resolve(bundlerOutput.path, 'main.exe'), [], bundlerOutput.configuration.name, processForClasses);
   }
 
   return processForClasses
@@ -196,7 +192,18 @@ async function startServerHttp(port: number, astSummary: AstSummary, projectName
       return;
     }
 
-    const response = await axios.post(`http://127.0.0.1:${localProcess?.listeningPort}`, reqToFunction);
+    let response;
+    try {
+      response = await axios.post(`http://127.0.0.1:${localProcess?.listeningPort}`, reqToFunction);
+    } catch(error: any) {
+      if (error.code === "ECONNRESET" || error.code === "ECONNREFUSED") {
+        await startClassProcess(localProcess.startingCommand, localProcess.parameters, req.params.className, processForClasses);
+      }
+
+      handleResponseForJsonRpc(res, { "jsonrpc": "2.0", "id": 0, "error": { "code": -32000, "message": "Internal error" } });
+      return;
+    }
+
     handleResponseForJsonRpc(res, response.data);
   });
 
@@ -447,4 +454,19 @@ async function clearAllResources(server: http.Server, processForClasses: Map<str
   processForClasses.forEach((classProcess) => {
     classProcess.process.kill();
   })
+}
+
+async function startClassProcess(startingCommand: string, parameters: string[], className: string, processForClasses: Map<string, ClassProcess>) {
+  const availablePort = await findAvailablePort();
+  const processParameters = [...parameters.slice(0, -1), availablePort.toString()];
+  const classProcess = spawn(startingCommand, processParameters, { stdio: ['pipe', 'pipe', 'pipe']});
+  classProcess.stdout.pipe(process.stdout);
+  classProcess.stderr.pipe(process.stderr);
+
+  processForClasses.set(className, {
+    process: classProcess,
+    listeningPort: availablePort,
+    startingCommand: startingCommand,
+    parameters: processParameters
+  });
 }
