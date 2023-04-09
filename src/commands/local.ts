@@ -28,7 +28,7 @@ import { reportSuccess as _reportSuccess } from "../utils/reporter";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
 import { GenezioLocalOptions } from "../models/commandOptions";
 import { DartBundler } from "../bundlers/dart/localDartBundler";
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort";
 
 
@@ -192,19 +192,14 @@ async function startServerHttp(port: number, astSummary: AstSummary, projectName
       return;
     }
 
-    let response;
     try {
-      response = await axios.post(`http://127.0.0.1:${localProcess?.listeningPort}`, reqToFunction);
+      const response = await communicateWithProcess(localProcess, req.params.className, reqToFunction, processForClasses);
+      handleResponseForJsonRpc(res, response.data);
     } catch(error: any) {
-      if (error.code === "ECONNRESET" || error.code === "ECONNREFUSED") {
-        await startClassProcess(localProcess.startingCommand, localProcess.parameters, req.params.className, processForClasses);
-      }
 
       handleResponseForJsonRpc(res, { "jsonrpc": "2.0", "id": 0, "error": { "code": -32000, "message": "Internal error" } });
       return;
     }
-
-    handleResponseForJsonRpc(res, response.data);
   });
 
   app.all(`/:className/:methodName`, async (req: any, res: any) => {
@@ -217,7 +212,8 @@ async function startServerHttp(port: number, astSummary: AstSummary, projectName
       return;
     }
 
-    const response = await axios.post(`http://127.0.0.1:${localProcess?.listeningPort}`, reqToFunction);
+    // const response = await axios.post(`http://127.0.0.1:${localProcess?.listeningPort}`, reqToFunction);
+    const response = await communicateWithProcess(localProcess, req.params.className, reqToFunction, processForClasses);
     handleResponseforHttp(res, response.data);
   });
 
@@ -242,12 +238,12 @@ export type LocalEnvCronHandler = {
   methodName: string,
   cronString: string,
   cronObject: any,
-  process: any
+  process: ClassProcess
 }
 
 async function startCronJobs(
   projectConfiguration: ProjectConfiguration,
-  processForClasses: Map<string, any>
+  processForClasses: Map<string, ClassProcess>
 ): Promise<LocalEnvCronHandler[]> {
   const cronHandlers: LocalEnvCronHandler[] = [];
   for (const classElement of projectConfiguration.classes) {
@@ -259,7 +255,7 @@ async function startCronJobs(
           methodName: method.name,
           cronString: rectifyCronString(method.cronString),
           cronObject: null,
-          process: processForClasses.get(classElement.name)
+          process: processForClasses.get(classElement.name)!
         };
 
         cronHandler.cronObject = cron.schedule(cronHandler.cronString, async () => {
@@ -269,7 +265,7 @@ async function startCronJobs(
             cronString: cronHandler.cronString
           };
 
-          cronHandler.process.send(JSON.stringify(reqToFunction))
+          communicateWithProcess(cronHandler.process, cronHandler.className, reqToFunction, processForClasses);
         });
 
         cronHandler.cronObject.start();
@@ -469,4 +465,15 @@ async function startClassProcess(startingCommand: string, parameters: string[], 
     startingCommand: startingCommand,
     parameters: processParameters
   });
+}
+
+async function communicateWithProcess(localProcess: ClassProcess, className: string, data: any, processForClasses: Map<string, ClassProcess>): Promise<AxiosResponse> {
+  try {
+    return await axios.post(`http://127.0.0.1:${localProcess?.listeningPort}`, data);
+  } catch(error: any) {
+    if (error.code === "ECONNRESET" || error.code === "ECONNREFUSED") {
+      await startClassProcess(localProcess.startingCommand, localProcess.parameters, className, processForClasses);
+    }
+    throw error;
+  }
 }

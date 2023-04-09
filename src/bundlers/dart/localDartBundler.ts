@@ -8,6 +8,7 @@ import { ClassConfiguration } from "../../models/projectConfiguration";
 import { template } from "./localDartMain";
 import { default as fsExtra } from "fs-extra";
 import { execSync } from 'child_process';
+import { TriggerType } from "../../models/yamlProjectConfiguration";
 
 export class DartBundler implements BundlerInterface {
 
@@ -15,16 +16,42 @@ export class DartBundler implements BundlerInterface {
         const moustacheViewForMain = {
             classFileName: path.basename(classConfiguration.path, path.extname(classConfiguration.path)),
             className: classConfiguration.name,
-            methods: classConfiguration.methods.map((m) => ({
-                name: m.name,
-                parameters: m.parameters.map((p, index) => ({
-                    index,
-                    isNative: p.type == "String" || p.type == "int" || p.type == "double" || p.type == "bool",
-                    last: index == m.parameters.length - 1,
-                    type: p.type,
-                    cast: p.type == "double" ? ".toDouble()" : p.type == "int" ? ".toInt()" : undefined,
+            jsonRpcMethods: classConfiguration.methods
+                .filter((m) => m.type === TriggerType.jsonrpc)
+                .map((m) => ({
+                    name: m.name,
+                    parameters: m.parameters.map((p, index) => ({
+                        index,
+                        isNative: p.type == "String" || p.type == "int" || p.type == "double" || p.type == "bool",
+                        last: index == m.parameters.length - 1,
+                        type: p.type,
+                        cast: p.type == "double" ? ".toDouble()" : p.type == "int" ? ".toInt()" : undefined,
+                    })),
                 })),
-            })),
+            cronMethods: classConfiguration.methods
+                .filter((m) => m.type === TriggerType.cron)
+                .map((m) => ({
+                    name: m.name,
+                    parameters: m.parameters.map((p, index) => ({
+                        index,
+                        isNative: p.type == "String" || p.type == "int" || p.type == "double" || p.type == "bool",
+                        last: index == m.parameters.length - 1,
+                        type: p.type,
+                        cast: p.type == "double" ? ".toDouble()" : p.type == "int" ? ".toInt()" : undefined,
+                    })),
+                })),
+            httpMethods: classConfiguration.methods
+                .filter((m) => m.type === TriggerType.http)
+                .map((m) => ({
+                    name: m.name,
+                    parameters: m.parameters.map((p, index) => ({
+                        index,
+                        isNative: p.type == "String" || p.type == "int" || p.type == "double" || p.type == "bool",
+                        last: index == m.parameters.length - 1,
+                        type: p.type,
+                        cast: p.type == "double" ? ".toDouble()" : p.type == "int" ? ".toInt()" : undefined,
+                    })),
+                })),
         }
 
         const routerFileContent = Mustache.render(template, moustacheViewForMain);
@@ -41,6 +68,7 @@ export class DartBundler implements BundlerInterface {
         const folderPath = input.genezioConfigurationFilePath;
         const inputTemporaryFolder = await createTemporaryFolder()
         await fsExtra.copy(folderPath, inputTemporaryFolder);
+        console.log(inputTemporaryFolder);
 
         // Create the router class
         const userClass = input.projectConfiguration.classes.find((c: ClassConfiguration) => c.path == input.path)!;
