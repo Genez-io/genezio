@@ -49,6 +49,7 @@ export async function generateAst(
 
   return await astGeneratorClass.generateAst(input)
     .catch((err: any) => {
+      console.log(err);
       throw {...err, path: input.class.path};
     });
 }

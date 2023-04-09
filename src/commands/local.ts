@@ -5,7 +5,7 @@ import express from "express";
 import chokidar from "chokidar";
 import cors from "cors";
 import bodyParser from "body-parser";
-import { ChildProcess, fork } from "child_process"
+import { ChildProcess, fork, spawn } from "child_process"
 import path from "path";
 import url from "url";
 import * as http from 'http';
@@ -28,6 +28,14 @@ import { reportSuccess as _reportSuccess } from "../utils/reporter";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
 import { GenezioLocalOptions } from "../models/commandOptions";
 import { DartBundler } from "../bundlers/dart/dartBundler";
+import axios from "axios";
+import { findAvailablePort } from "../utils/findAvailablePort";
+
+
+type ClassProcess = {
+  process: ChildProcess,
+  listeningPort: number,
+}
 
 
 // Function that starts the local environment.
@@ -43,6 +51,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     try {
       sdk = await sdkGeneratorApiHandler(yamlProjectConfiguration)
         .catch((error) => {
+          console.log(error);
           // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
           if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
             log.error("Syntax error:");
@@ -66,6 +75,8 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 
       processForClasses = await startProcesses(projectConfiguration)
     } catch (error) {
+      // TODO FIX!!!!!!;
+      log.error(error);
       log.error(`Fix the errors and genezio local will restart automatically. Waiting for changes...`);
       // If there was an error generating the SDK, wait for changes and try again.
       await listenForChanges(undefined)
@@ -94,9 +105,9 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 /**
  * Bundle each class and start a new process for it.
  */
-async function startProcesses(projectConfiguration: ProjectConfiguration): Promise<Map<string, ChildProcess>> {
+async function startProcesses(projectConfiguration: ProjectConfiguration): Promise<Map<string, ClassProcess>> {
   const classes = projectConfiguration.classes
-  const processForClasses = new Map<string, any>();
+  const processForClasses = new Map<string, ClassProcess>();
 
   // Bundle each class and start a new process for it
   const bundlersOutputPromise = classes.map((classInfo) => {
@@ -123,8 +134,12 @@ async function startProcesses(projectConfiguration: ProjectConfiguration): Promi
 
   for (const bundlerOutput of bundlersOutput) {
     // Start a new process for thsi class and save it in the map
-    const classProcess = fork(path.resolve(bundlerOutput.path, 'local.js'))
-    processForClasses.set(bundlerOutput.configuration.name, classProcess)
+    const availablePort = await findAvailablePort();
+    const classProcess = spawn("node", [path.resolve(bundlerOutput.path, 'local.js'), availablePort.toString()]);
+    processForClasses.set(bundlerOutput.configuration.name, {
+      process: classProcess,
+      listeningPort: availablePort,
+    });
   }
 
   return processForClasses
@@ -160,7 +175,7 @@ function getBundler(classConfiguration: ClassConfiguration): BundlerInterface | 
   return bundler;
 }
 
-async function startServerHttp(port: number, astSummary: AstSummary, projectName: string, processForClasses: Map<string, any>): Promise<http.Server> {
+async function startServerHttp(port: number, astSummary: AstSummary, projectName: string, processForClasses: Map<string, ClassProcess>): Promise<http.Server> {
   const app = express();
   app.use(cors());
   app.use(bodyParser.raw({ type: () => true }));
@@ -174,29 +189,29 @@ async function startServerHttp(port: number, astSummary: AstSummary, projectName
   app.all(`/:className`, async (req: any, res: any) => {
     const reqToFunction = getEventObjectFromRequest(req);
 
-    const process = processForClasses.get(req.params.className);
-    process.on('message', (msg: string) => {
-      const msgParsed = JSON.parse(msg)
-      if (msgParsed.id === reqToFunction.id) {
-        handleResponseForJsonRpc(res, msgParsed.response);
-      }
-    })
+    const localProcess = processForClasses.get(req.params.className);
 
-    process.send(JSON.stringify(reqToFunction))
+    if (!localProcess) {
+      res.status(404).send(`Class ${req.params.className} not found.`); // TODO proper json rpc error
+      return;
+    }
+
+    const response = await axios.post(`http://127.0.0.1:${localProcess?.listeningPort}`, reqToFunction);
+    handleResponseForJsonRpc(res, response.data);
   });
 
   app.all(`/:className/:methodName`, async (req: any, res: any) => {
     const reqToFunction = getEventObjectFromRequest(req);
 
-    const process = processForClasses.get(req.params.className);
-    process.on('message', (msg: string) => {
-      const msgParsed = JSON.parse(msg)
-      if (msgParsed.id === reqToFunction.id) {
-        handleResponseforHttp(res, msgParsed.response);
-      }
-    })
+    const localProcess = processForClasses.get(req.params.className);
 
-    process.send(JSON.stringify(reqToFunction))
+    if (!localProcess) {
+      res.status(404).send(`Class ${req.params.className} not found.`); // TODO proper json rpc error
+      return;
+    }
+
+    const response = await axios.post(`http://127.0.0.1:${localProcess?.listeningPort}`, reqToFunction);
+    handleResponseforHttp(res, response.data);
   });
 
   return await new Promise((resolve, reject) => {
@@ -271,7 +286,6 @@ function getEventObjectFromRequest(request: any) {
   const urlDetails = url.parse(request.url, true);
 
   return {
-    id: Math.random(),
     headers: request.headers,
     rawQueryString: urlDetails.search ? urlDetails.search?.slice(1) : "",
     queryStringParameters: urlDetails.search
@@ -426,11 +440,11 @@ function reportSuccess(projectConfiguration: ProjectConfiguration, sdk: SdkGener
   );
 }
 
-async function clearAllResources(server: http.Server, processForClasses: Map<string, ChildProcess>, crons: LocalEnvCronHandler[]) {
+async function clearAllResources(server: http.Server, processForClasses: Map<string, ClassProcess>, crons: LocalEnvCronHandler[]) {
   server.close();
   await stopCronJobs(crons);
 
-  processForClasses.forEach((process) => {
-    process.kill();
+  processForClasses.forEach((classProcess) => {
+    classProcess.process.kill();
   })
 }
