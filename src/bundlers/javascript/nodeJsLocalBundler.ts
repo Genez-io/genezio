@@ -1,4 +1,5 @@
 import { writeToFile } from "../../utils/file";
+import path from "path";
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface";
 
 // This file is the wrapper that is used to run the user's code in a separate process.
@@ -39,6 +40,13 @@ export class NodeJsLocalBundler implements BundlerInterface {
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
         await writeToFile(input.path, "local.js", localWrapperCode, true)
 
-        return input
+        return {
+            ...input,
+            extra: {
+                ...input.extra,
+                startingCommand: "node",
+                commandParameters: [path.resolve(input.path, 'local.js')],
+            }
+        }
     }
 }

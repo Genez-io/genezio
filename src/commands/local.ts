@@ -135,7 +135,17 @@ async function startProcesses(projectConfiguration: ProjectConfiguration): Promi
   const bundlersOutput = await Promise.all(bundlersOutputPromise)
 
   for (const bundlerOutput of bundlersOutput) {
-    await startClassProcess(path.resolve(bundlerOutput.path, 'main.exe'), [], bundlerOutput.configuration.name, processForClasses);
+    const extra = bundlerOutput.extra;
+
+    if (!extra) {
+      throw new Error("Bundler output is missing extra field.");
+    }
+
+    if (!extra["startingCommand"]) {
+      throw new Error("No starting command found for this language.");
+    }
+
+    await startClassProcess(extra["startingCommand"], extra["commandParameters"], bundlerOutput.configuration.name, processForClasses);
   }
 
   return processForClasses
@@ -454,7 +464,7 @@ async function clearAllResources(server: http.Server, processForClasses: Map<str
 
 async function startClassProcess(startingCommand: string, parameters: string[], className: string, processForClasses: Map<string, ClassProcess>) {
   const availablePort = await findAvailablePort();
-  const processParameters = [...parameters.slice(0, -1), availablePort.toString()];
+  const processParameters = [...parameters, availablePort.toString()];
   const classProcess = spawn(startingCommand, processParameters, { stdio: ['pipe', 'pipe', 'pipe']});
   classProcess.stdout.pipe(process.stdout);
   classProcess.stderr.pipe(process.stderr);
@@ -463,7 +473,7 @@ async function startClassProcess(startingCommand: string, parameters: string[], 
     process: classProcess,
     listeningPort: availablePort,
     startingCommand: startingCommand,
-    parameters: processParameters
+    parameters: parameters
   });
 }
 

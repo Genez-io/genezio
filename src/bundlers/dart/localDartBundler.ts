@@ -89,6 +89,10 @@ export class DartBundler implements BundlerInterface {
         return {
             ...input,
             path: inputTemporaryFolder,
+            extra: {
+                startingCommand: path.join(inputTemporaryFolder, "main.exe"),
+                commandParameters: [],
+            }
         };
     }
 }
