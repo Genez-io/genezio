@@ -2,14 +2,13 @@ import path from "path";
 import Mustache from "mustache";
 import { createTemporaryFolder, writeToFile, zipDirectory } from "../../utils/file";
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface";
-import { isDartInstalled } from "../../utils/dart";
+import { checkIfDartIsInstalled } from "../../utils/dart";
 import { debugLogger } from "../../utils/logging";
 import { ClassConfiguration } from "../../models/projectConfiguration";
 import { template } from "./localDartMain";
 import { default as fsExtra } from "fs-extra";
-import { execSync, spawnSync } from 'child_process';
+import { spawnSync } from 'child_process';
 import { TriggerType } from "../../models/yamlProjectConfiguration";
-import { GENEZIO_DART_NOT_FOUND } from "../../errors";
 import log from "loglevel";
 
 export class DartBundler implements BundlerInterface {
@@ -90,10 +89,7 @@ export class DartBundler implements BundlerInterface {
         await this.#createRouterFileForClass(userClass, inputTemporaryFolder);
 
         // Check if dart is installed
-        const dartIsInstalled = isDartInstalled();
-        if (!dartIsInstalled) {
-            throw new Error(GENEZIO_DART_NOT_FOUND);
-        }
+        await checkIfDartIsInstalled();
 
         // Compile the Dart code on the server
         debugLogger.info("Compiling Dart...")

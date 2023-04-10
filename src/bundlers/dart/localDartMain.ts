@@ -12,7 +12,13 @@ import './lib/{{classFileName}}.dart';
 
 void main(List<String> args) async {
   final port = int.tryParse(args.isNotEmpty ? args[0] : '') ?? 3000;
-  final service = {{className}}();
+  var service;
+  try {
+    service = {{className}}();
+  } catch(e, s) {
+    print(e);
+    print(s);
+  }
   var response;
 
   final server = await HttpServer.bind(InternetAddress.anyIPv4, port);
@@ -28,9 +34,20 @@ void main(List<String> args) async {
           {{#cronMethods}}
           case "{{name}}":
             {
-              final result = await service.{{name}}();
-              final json = jsonEncode(result);
-              response = '{"jsonrpc": "2.0", "result": $json, "id": 0}';
+              try {
+                if (service == null) {
+                  response = '{"jsonrpc": "2.0", "result": "{{className}} could not be instantiated. Check logs for more information.", "id": 0}';
+                  break;
+                }
+  
+                final result = await service.{{name}}();
+                final json = jsonEncode(result);
+                response = '{"jsonrpc": "2.0", "result": $json, "id": 0}';
+              } catch(e, s) {
+                print(e);
+                print(s);
+                response = '{"jsonrpc": "2.0", "result": "\${e.toString()}", "id": 0}';
+              }
               break;
             }
           {{/cronMethods}}
@@ -63,12 +80,23 @@ void main(List<String> args) async {
           {{#httpMethods}}
           case "{{name}}":
             {
-              httpResponse = await service.{{name}}(req);
+              if (service == null) {
+                response = {"statusCode": 500, "body": "{{className}} could not be instantiated. Check logs for more information."};
+                break;
+              }
+              
+              try {
+                httpResponse = await service.{{name}}(req);
+              } catch(e, s) {
+                print(e);
+                print(s);
+                httpResponse = {"statusCode": 500, "body": "\${e.toString()}"};
+              }
               break;
             }
           {{/httpMethods}}
           default:
-            response = '{"jsonrpc": "2.0", "result": "No http method found.", "id": 0}';
+            response = {"statusCode": 404, "body": "No HTTP method found."};
           break;
         }
   
@@ -86,8 +114,10 @@ void main(List<String> args) async {
             httpResponse["body"] = jsonEncode(httpResponse["body"]);
           } catch (error) {}
         }
-        } catch (e) {
+        } catch (e, s) {
           print(e);
+          print(s);
+          httpResponse = {"statusCode": 500, "body": "\${e.toString()}"};
         }
   
         response = jsonEncode(httpResponse);
@@ -101,6 +131,12 @@ void main(List<String> args) async {
       switch(method) {
       {{#jsonRpcMethods}}
       case "{{name}}": {
+        if (service == null) {
+          response = '{"jsonrpc": "2.0", "result": "{{className}} could not be instantiated. Check logs for more information.", "id": 0}';
+          break;
+        }
+  
+        try {
         {{#parameters}}
           {{#isNative}}
             final param{{index}} = params[{{index}}]{{#cast}}{{cast}}{{/cast}};
@@ -113,6 +149,11 @@ void main(List<String> args) async {
         final result = await service.{{name}}({{#parameters}}param{{index}}{{^last}},{{/last}}{{/parameters}});
         final json = jsonEncode(result);
         response = '{"jsonrpc": "2.0", "result": $json, "id": 0}';
+        } catch(e, s) {
+          print(e);
+          print(s);
+          response = '{"jsonrpc": "2.0", "result": "\${e.toString()}", "id": 0}';
+        }
         break;
       }
       {{/jsonRpcMethods}}
