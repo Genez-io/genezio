@@ -1,0 +1,51 @@
+name: 🐞 Bug Report
+description: Create an bug report about unexpected behavior
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this report!
+
+        For questions, concerns or help with running genezio, please check out our additional resources:
+
+        * [genezio documentation](https://genez.io/docs)
+        * [genezio official examples](https://github.com/Genez-io/genezio-examples)
+        * [genezio Troubleshooting section](https://docs.genez.io/genezio-documentation/troubleshooting)
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Describe your bug
+      description: Describe your bug here, including as many details as necessary to reproduce it.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: genezio Version
+      description: What version of `genezio`` are you running? You can run `genezio --version` to find out.
+      placeholder: 0.3.11
+  - type: textarea
+    id: configuration
+    attributes:
+      label: genezio Configuration File
+      description: If it's relevant, please paste here the contents of your `genezio.yaml.
+      render: YAML
+  - type: dropdown
+    id: browsers
+    attributes:
+      label: What browsers are you seeing the problem on?
+      multiple: true
+      options:
+        - Firefox
+        - Chrome
+        - Safari
+        - Microsoft Edge
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Please paste here any relevant log output.
+      render: bash
