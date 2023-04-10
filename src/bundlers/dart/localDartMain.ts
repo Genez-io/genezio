@@ -29,7 +29,7 @@ void main(List<String> args) async {
           {{#cronMethods}}
           case "{{name}}":
             {
-              final result = service.{{name}}();
+              final result = await service.{{name}}();
               final json = jsonEncode(result);
               response = '{"jsonrpc": "2.0", "result": $json, "id": 0}';
               break;
@@ -64,7 +64,7 @@ void main(List<String> args) async {
           {{#httpMethods}}
           case "{{name}}":
             {
-              httpResponse = service.{{name}}(req);
+              httpResponse = await service.{{name}}(req);
               break;
             }
           {{/httpMethods}}
@@ -111,7 +111,7 @@ void main(List<String> args) async {
             final param{{index}} = {{{type}}}.fromJson(_dict{{index}});
           {{/isNative}}
         {{/parameters}}
-        final result = service.{{name}}({{#parameters}}param{{index}}{{^last}},{{/last}}{{/parameters}});
+        final result = await service.{{name}}({{#parameters}}param{{index}}{{^last}},{{/last}}{{/parameters}});
         final json = jsonEncode(result);
         response = '{"jsonrpc": "2.0", "result": $json, "id": 0}';
         break;
