@@ -22,13 +22,14 @@ import {
   AnyType,
   CustomNodeType,
   ArrayType,
+  PromiseType,
 } from "../../models/genezioAst";
 import { isDartInstalled } from "../../utils/dart";
 import { createTemporaryFolder, fileExists } from "../../utils/file";
 import { runNewProcess, runNewProcessWithResult } from "../../utils/process";
 
 export class AstGenerator implements AstGeneratorInterface {
-  #mapTypesToParamType(type: string): DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | CustomNodeType {
+  #mapTypesToParamType(type: string): DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | PromiseType | CustomNodeType {
     if (type.startsWith("List<")) {
       return {
         type: AstNodeType.AnyLiteral,
@@ -37,6 +38,17 @@ export class AstGenerator implements AstGeneratorInterface {
       return {
         type: AstNodeType.AnyLiteral,
       };
+    }
+
+    const regex =/Future<(.+?)>/;
+
+    const match = type.match(regex);
+    if (match && match.length >= 2) {
+      const extractedString = match[1];
+      return {
+        type: AstNodeType.PromiseLiteral,
+        rawType: this.#mapTypesToParamType(extractedString),
+      }
     }
 
     switch (type) {
@@ -49,7 +61,7 @@ export class AstGenerator implements AstGeneratorInterface {
           type: AstNodeType.IntegerLiteral,
         }
       case "double":
-        return { 
+        return {
           type: AstNodeType.DoubleLiteral,
         }
       case "bool":
@@ -93,7 +105,7 @@ export class AstGenerator implements AstGeneratorInterface {
     const result = await runNewProcessWithResult(`dartaotruntime ${os.homedir()}/.dart_ast_generator/genezioDartAstGenerator.aot ${classAbsolutePath}`)
     const ast = JSON.parse(result);
 
-    const mainClasses = ast.classes.filter((c: any) => c.name === input.class.name );
+    const mainClasses = ast.classes.filter((c: any) => c.name === input.class.name);
     if (mainClasses.length > 1) {
       throw new Error(`No ${input.class.name} found.`);
     }
@@ -124,7 +136,7 @@ export class AstGenerator implements AstGeneratorInterface {
 
     const body: [Node] = [genezioClass];
 
-    const otherClasses = ast.classes.filter((c: any) => c.name !== input.class.name );
+    const otherClasses = ast.classes.filter((c: any) => c.name !== input.class.name);
     otherClasses.forEach((c: any) => {
       const genezioClass: StructLiteral = {
         type: AstNodeType.StructLiteral,

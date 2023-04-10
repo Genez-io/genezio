@@ -1,5 +1,5 @@
 import Mustache from "mustache";
-import { AstNodeType, ClassDefinition, CustomNodeType, Node, SdkGeneratorInput, SdkGeneratorInterface, SdkGeneratorOutput, StructLiteral, TypeAlias } from "../../models/genezioAst";
+import { AstNodeType, ClassDefinition, CustomNodeType, Node, PromiseType, SdkGeneratorInput, SdkGeneratorInterface, SdkGeneratorOutput, StructLiteral, TypeAlias } from "../../models/genezioAst";
 import { TriggerType } from "../../models/yamlProjectConfiguration";
 import { dartSdk } from "../templates/dartSdk";
 
@@ -105,14 +105,14 @@ class {{{className}}} {
   static final remote = Remote("{{{_url}}}");
 
   {{#methods}}
-  static Future<{{returnType}}> {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) async {
+  static Future<{{{returnType}}}> {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) async {
     final response = await remote.call({{{methodCaller}}}, [{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}}]);
 
     {{#returnTypeJsonParser}}
-        return {{returnType}}.fromJson(response);
+    return {{returnType}}.fromJson(response);
     {{/returnTypeJsonParser}}
     {{^returnTypeJsonParser}}
-        return response as {{{returnType}}};
+    return response as {{{returnType}}};
     {{/returnTypeJsonParser}}
   }
 
@@ -253,6 +253,8 @@ class SdkGenerator implements SdkGeneratorInterface {
                 return "Object";
             case AstNodeType.CustomNodeLiteral:
                 return (elem as CustomNodeType).rawValue;
+            case AstNodeType.PromiseLiteral:
+                return this.getParamType((elem as PromiseType).rawType);
             default:
                 return "Object";
         }
