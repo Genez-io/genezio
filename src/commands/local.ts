@@ -53,7 +53,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     try {
       sdk = await sdkGeneratorApiHandler(yamlProjectConfiguration)
         .catch((error) => {
-          console.log(error);
           // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
           if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
             log.error("Syntax error:");
@@ -77,8 +76,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 
       processForClasses = await startProcesses(projectConfiguration)
     } catch (error) {
-      // TODO FIX!!!!!!;
-      log.error(error);
       log.error(`Fix the errors and genezio local will restart automatically. Waiting for changes...`);
       // If there was an error generating the SDK, wait for changes and try again.
       await listenForChanges(undefined)
@@ -198,7 +195,7 @@ async function startServerHttp(port: number, astSummary: AstSummary, projectName
     const localProcess = processForClasses.get(req.params.className);
 
     if (!localProcess) {
-      res.status(404).send(`Class ${req.params.className} not found.`); // TODO proper json rpc error
+      handleResponseForJsonRpc(res, { "jsonrpc": "2.0", "id": 0, "error": { "code": -32000, "message": "Class not found!" } });
       return;
     }
 
@@ -218,7 +215,7 @@ async function startServerHttp(port: number, astSummary: AstSummary, projectName
     const localProcess = processForClasses.get(req.params.className);
 
     if (!localProcess) {
-      res.status(404).send(`Class ${req.params.className} not found.`); // TODO proper json rpc error
+      res.status(404).send(`Class ${req.params.className} not found.`);
       return;
     }
 

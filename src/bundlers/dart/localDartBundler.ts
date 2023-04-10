@@ -7,8 +7,10 @@ import { debugLogger } from "../../utils/logging";
 import { ClassConfiguration } from "../../models/projectConfiguration";
 import { template } from "./localDartMain";
 import { default as fsExtra } from "fs-extra";
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 import { TriggerType } from "../../models/yamlProjectConfiguration";
+import { GENEZIO_DART_NOT_FOUND } from "../../errors";
+import log from "loglevel";
 
 export class DartBundler implements BundlerInterface {
 
@@ -58,9 +60,22 @@ export class DartBundler implements BundlerInterface {
         await writeToFile(folderPath, "main.dart", routerFileContent);
     }
 
+    async #analyze(path: string) {
+        const result = spawnSync("dart", ["analyze"], { cwd: path });
+
+        if (result.status != 0) {
+            log.info(result.stdout.toString().split("\n").slice(1).join("\n"));
+            throw new Error("Compilation error! Please check your code and try again.");
+        }
+    }
+
     async #compile(folderPath: string) {
-        const output = execSync("dart compile exe main.dart", { cwd: folderPath });
-        console.log(output.toString());
+        const result = spawnSync("dart", ["compile", "exe", "main.dart"], { cwd: folderPath });
+        if (result.status != 0) {
+            log.info(result.stderr.toString());
+            log.info(result.stdout.toString());
+            throw new Error("Compilation error! Please check your code and try again.");
+        }
     }
 
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
@@ -68,7 +83,7 @@ export class DartBundler implements BundlerInterface {
         const folderPath = input.genezioConfigurationFilePath;
         const inputTemporaryFolder = await createTemporaryFolder()
         await fsExtra.copy(folderPath, inputTemporaryFolder);
-        console.log(inputTemporaryFolder);
+        debugLogger.info(`Copy files in temp folder ${inputTemporaryFolder}`);
 
         // Create the router class
         const userClass = input.projectConfiguration.classes.find((c: ClassConfiguration) => c.path == input.path)!;
@@ -77,8 +92,7 @@ export class DartBundler implements BundlerInterface {
         // Check if dart is installed
         const dartIsInstalled = isDartInstalled();
         if (!dartIsInstalled) {
-            // TODO write a better error message
-            throw new Error("Dart is not installed.")
+            throw new Error(GENEZIO_DART_NOT_FOUND);
         }
 
         // Compile the Dart code on the server

@@ -14,10 +14,23 @@ import { template } from "./dartMain";
 import { default as fsExtra } from "fs-extra";
 import { DART_COMPILATION_ENDPOINT } from "../../constants";
 import { TriggerType } from "../../models/yamlProjectConfiguration";
+import { GENEZIO_DART_NOT_FOUND } from "../../errors";
+import { execSync } from "child_process";
+import { spawnSync } from "child_process";
+import log from "loglevel";
 
 export class DartBundler implements BundlerInterface {
     async #getDartCompilePresignedUrl(archiveName: string): Promise<string> {
         return await getCompileDartPresignedURL(archiveName)
+    }
+
+    async #analyze(path: string) {
+        const result = spawnSync("dart", ["analyze"], { cwd: path });
+
+        if (result.status != 0) {
+            log.info(result.stdout.toString().split("\n").slice(1).join("\n"));
+            throw new Error("Compilation error! Please check your code and try again.");
+        }
     }
 
     async #compile(archiveName: string): Promise<string> {
@@ -123,7 +136,7 @@ export class DartBundler implements BundlerInterface {
         const folderPath = input.genezioConfigurationFilePath;
         const inputTemporaryFolder = await createTemporaryFolder()
         await fsExtra.copy(folderPath, inputTemporaryFolder);
-        console.log(inputTemporaryFolder);
+        debugLogger.info(`Copy files in temp folder ${inputTemporaryFolder}`);
 
         // Create the router class
         const userClass = input.projectConfiguration.classes.find((c: ClassConfiguration) => c.path == input.path)!;
@@ -132,9 +145,10 @@ export class DartBundler implements BundlerInterface {
         // Check if dart is installed
         const dartIsInstalled = isDartInstalled();
         if (!dartIsInstalled) {
-            // TODO write a better error message
-            throw new Error("Dart is not installed.")
+            throw new Error(GENEZIO_DART_NOT_FOUND);
         }
+
+        await this.#analyze(inputTemporaryFolder);
 
         const archiveName = await this.#uploadUserCodeToS3(input.projectConfiguration.name, userClass.name, inputTemporaryFolder);
 
