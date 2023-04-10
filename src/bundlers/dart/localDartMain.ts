@@ -15,7 +15,6 @@ void main(List<String> args) async {
   final service = {{className}}();
   var response;
 
-  print('Listening on port $port...');
   final server = await HttpServer.bind(InternetAddress.anyIPv4, port);
 
   await for (HttpRequest req in server) {
