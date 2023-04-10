@@ -1,5 +1,20 @@
 import Mustache from "mustache";
-import { ClassDefinition, AstNodeType, SdkGeneratorInterface, SdkGeneratorInput, SdkGeneratorOutput, NativeType, NativeTypeEnum, TypeAlias, TypeDefinition } from "../../models/genezioModels";
+import {
+  ClassDefinition,
+  AstNodeType,
+  SdkGeneratorInterface,
+  SdkGeneratorInput,
+  SdkGeneratorOutput,
+  TypeAlias,
+  Node,
+  CustomAstNodeType,
+  StructLiteral,
+  Enum,
+  PropertyDefinition,
+  TypeLiteral,
+  ArrayType,
+  PromiseType
+} from "../../models/genezioModels";
 import { TriggerType } from "../../models/yamlProjectConfiguration";
 import { swiftSdk } from "../templates/swiftSdk";
 
@@ -40,13 +55,16 @@ const template = `/**
    
 import Foundation
 
+{{#externalTypes}}
+{{{type}}}
+{{/externalTypes}}
 
 class {{{className}}} {
   public static let remote = Remote(url: "{{{_url}}}")
 
   {{#methods}}
   static func {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) async -> {{{returnType}}} {
-    return await {{{className}}}.remote.call(method: {{{methodCaller}}}{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}})
+    return await {{{className}}}.remote.call(method: {{{methodCaller}}}{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}}) as! {{{returnType}}}
   }
 
   {{/methods}}
@@ -55,7 +73,7 @@ class {{{className}}} {
 
 
 class SdkGenerator implements SdkGeneratorInterface {
-  externalTypes: TypeDefinition[] = [];
+  externalTypes: Node[] = [];
 
   async generateSdk(
     sdkGeneratorInput: SdkGeneratorInput
@@ -76,7 +94,9 @@ class SdkGenerator implements SdkGeneratorInterface {
       }
       for (const elem of classInfo.program.body) {
         if (elem.type === AstNodeType.ClassDefinition) {
-          classDefinition = elem;
+          classDefinition = elem as ClassDefinition;
+        } else {
+          this.externalTypes.push(elem as TypeAlias);
         }
       }
 
@@ -87,7 +107,8 @@ class SdkGenerator implements SdkGeneratorInterface {
       const view: any = {
         className: classDefinition.name,
         _url: _url,
-        methods: []
+        methods: [],
+        externalTypes: []
       };
 
       let exportClassChecker = false;
@@ -96,7 +117,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         const methodConfigurationType = classConfiguration.getMethodType(methodDefinition.name);
 
         if (methodConfigurationType !== TriggerType.jsonrpc
-            || classConfiguration.type !== TriggerType.jsonrpc
+          || classConfiguration.type !== TriggerType.jsonrpc
         ) {
           continue;
         }
@@ -106,7 +127,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         const methodView: any = {
           name: methodDefinition.name,
           parameters: [],
-          returnType: this.getParamType(methodDefinition.returnType),
+          returnType: this.getReturnType(methodDefinition.returnType),
           methodCaller: methodDefinition.params.length === 0 ?
             `"${classDefinition.name}.${methodDefinition.name}"`
             : `"${classDefinition.name}.${methodDefinition.name}", args:`
@@ -134,6 +155,10 @@ class SdkGenerator implements SdkGeneratorInterface {
         view.methods.push(methodView);
       }
 
+      for (const externalType of this.externalTypes) {
+        view.externalTypes.push({type: this.generateExternalType(externalType)});
+      }
+
       if (!exportClassChecker) {
         continue;
       }
@@ -159,51 +184,55 @@ class SdkGenerator implements SdkGeneratorInterface {
   }
 
 
-  getParamType(elem: TypeDefinition): string {
-    if (elem.type === AstNodeType.NativeType) {
-      const localElem: NativeType = elem as NativeType;
-      switch (localElem.paramType) {
-        case NativeTypeEnum.string:
-          return "String";
-        case NativeTypeEnum.number:
-          return "Double";
-        case NativeTypeEnum.boolean:
-          return "Bool";
-        case NativeTypeEnum.any:
-          return "Any";
-        default:
-          return "Any";
-      }
-    } else if (elem.type === AstNodeType.TypeAlias) {
-      // TODO: create types for all external types
-      const localElem: TypeAlias = elem as TypeAlias;
+  getParamType(elem: Node): string {
+    if (elem.type === AstNodeType.CustomNodeLiteral) {
+      return (elem as CustomAstNodeType).rawValue;
+    } else if (elem.type === AstNodeType.StringLiteral) {
+      return "String";
+    } else if (elem.type === AstNodeType.IntegerLiteral) {
+      return "Int";
+    } else if (elem.type === AstNodeType.DoubleLiteral) {
+      return "Double";
+    } else if (elem.type === AstNodeType.FloatLiteral) {
+      return "Float";
+    } else if (elem.type === AstNodeType.BooleanLiteral) {
+      return "Bool";
+    } else if (elem.type === AstNodeType.AnyLiteral) {
+      return "Any";
+    } else if (elem.type === AstNodeType.ArrayType) {
+      return `[${this.getParamType((elem as ArrayType).generic)}]`;
+    } else if (elem.type === AstNodeType.TypeLiteral) {
+      return `{\n\t${(elem as TypeLiteral).properties.map((e: PropertyDefinition) => `var ${e.name}: ${this.getParamType(e.type)}`).join("\n\t")}\n}`;
+    } else if (elem.type === AstNodeType.PromiseType) {
+      return `${this.getParamType((elem as PromiseType).generic)}`;
     }
-
     return "Any";
   }
 
-
-    // TODO: create types for all external types
-    async generateExternalTypes(type: TypeDefinition) {
-    // check if type is already in externalTypes
-    if (
-      this.externalTypes.find((e: TypeDefinition) => {
-        if (e.type === AstNodeType.TypeAlias) {
-          return (e as TypeAlias).name === (type as TypeAlias).name;
-        }
-        return false;
-      })
-    ) {
-      return;
+  getReturnType(returnType: Node): string {
+    if (!returnType || returnType.type === AstNodeType.AnyLiteral) {
+      return "Any";
     }
 
-    this.externalTypes.push(type);
+    const value = this.getParamType(returnType);
 
-    const externalType = "";
+    return `${value}`;
+  }
+
+
+  // TODO: create types for all external types
+  generateExternalType(type: Node): string {
     if (type.type === AstNodeType.TypeAlias) {
-      const localType: TypeAlias = type as TypeAlias;
+      const typeAlias = type as TypeAlias;
+      return `typealias ${typeAlias.name} = ${this.getParamType(typeAlias.aliasType)};`;
+    } else if (type.type === AstNodeType.Enum) {
+      const enumType = type as Enum;
+      return `enum ${enumType.name}: Int, Codable { case ${enumType.cases.join(", ")} }`;
+    } else if (type.type === AstNodeType.StructLiteral) {
+      const typeAlias = type as StructLiteral;
+      return `struct ${typeAlias.name}: Codable ${this.getParamType(typeAlias.typeLiteral)};`;
     }
-
+    return "";
   }
 }
 
