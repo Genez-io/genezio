@@ -55,16 +55,12 @@ const template = `/**
    
 import Foundation
 
-{{#externalTypes}}
-{{{type}}}
-{{/externalTypes}}
-
 class {{{className}}} {
   public static let remote = Remote(url: "{{{_url}}}")
 
   {{#methods}}
-  static func {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) async -> {{{returnType}}} {
-    return await {{{className}}}.remote.call(method: {{{methodCaller}}}{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}}) as! {{{returnType}}}
+  static func {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) async -> Any {
+    return await {{{className}}}.remote.call(method: {{{methodCaller}}}{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}})
   }
 
   {{/methods}}
@@ -73,7 +69,7 @@ class {{{className}}} {
 
 
 class SdkGenerator implements SdkGeneratorInterface {
-  externalTypes: Node[] = [];
+  //externalTypes: Node[] = [];
 
   async generateSdk(
     sdkGeneratorInput: SdkGeneratorInput
@@ -95,8 +91,6 @@ class SdkGenerator implements SdkGeneratorInterface {
       for (const elem of classInfo.program.body) {
         if (elem.type === AstNodeType.ClassDefinition) {
           classDefinition = elem as ClassDefinition;
-        } else {
-          this.externalTypes.push(elem as TypeAlias);
         }
       }
 
@@ -127,7 +121,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         const methodView: any = {
           name: methodDefinition.name,
           parameters: [],
-          returnType: this.getReturnType(methodDefinition.returnType),
+          //returnType: this.getReturnType(methodDefinition.returnType),
           methodCaller: methodDefinition.params.length === 0 ?
             `"${classDefinition.name}.${methodDefinition.name}"`
             : `"${classDefinition.name}.${methodDefinition.name}", args:`
@@ -155,9 +149,9 @@ class SdkGenerator implements SdkGeneratorInterface {
         view.methods.push(methodView);
       }
 
-      for (const externalType of this.externalTypes) {
-        view.externalTypes.push({type: this.generateExternalType(externalType)});
-      }
+      // for (const externalType of this.externalTypes) {
+      //   view.externalTypes.push({type: this.generateExternalType(externalType)});
+      // }
 
       if (!exportClassChecker) {
         continue;
@@ -186,7 +180,7 @@ class SdkGenerator implements SdkGeneratorInterface {
 
   getParamType(elem: Node): string {
     if (elem.type === AstNodeType.CustomNodeLiteral) {
-      return (elem as CustomAstNodeType).rawValue;
+      return "Any";
     } else if (elem.type === AstNodeType.StringLiteral) {
       return "String";
     } else if (elem.type === AstNodeType.IntegerLiteral) {
@@ -201,39 +195,37 @@ class SdkGenerator implements SdkGeneratorInterface {
       return "Any";
     } else if (elem.type === AstNodeType.ArrayType) {
       return `[${this.getParamType((elem as ArrayType).generic)}]`;
-    } else if (elem.type === AstNodeType.TypeLiteral) {
-      return `{\n\t${(elem as TypeLiteral).properties.map((e: PropertyDefinition) => `var ${e.name}: ${this.getParamType(e.type)}`).join("\n\t")}\n}`;
     } else if (elem.type === AstNodeType.PromiseType) {
       return `${this.getParamType((elem as PromiseType).generic)}`;
     }
     return "Any";
   }
 
-  getReturnType(returnType: Node): string {
-    if (!returnType || returnType.type === AstNodeType.AnyLiteral) {
-      return "Any";
-    }
+  // getReturnType(returnType: Node): string {
+  //   if (!returnType || returnType.type === AstNodeType.AnyLiteral) {
+  //     return "Any";
+  //   }
 
-    const value = this.getParamType(returnType);
+  //   const value = this.getParamType(returnType);
 
-    return `${value}`;
-  }
+  //   return `${value}`;
+  // }
 
 
   // TODO: create types for all external types
-  generateExternalType(type: Node): string {
-    if (type.type === AstNodeType.TypeAlias) {
-      const typeAlias = type as TypeAlias;
-      return `typealias ${typeAlias.name} = ${this.getParamType(typeAlias.aliasType)};`;
-    } else if (type.type === AstNodeType.Enum) {
-      const enumType = type as Enum;
-      return `enum ${enumType.name}: Int, Codable { case ${enumType.cases.join(", ")} }`;
-    } else if (type.type === AstNodeType.StructLiteral) {
-      const typeAlias = type as StructLiteral;
-      return `struct ${typeAlias.name}: Codable ${this.getParamType(typeAlias.typeLiteral)};`;
-    }
-    return "";
-  }
+  // generateExternalType(type: Node): string {
+  //   if (type.type === AstNodeType.TypeAlias) {
+  //     const typeAlias = type as TypeAlias;
+  //     return `typealias ${typeAlias.name} = ${this.getParamType(typeAlias.aliasType)};`;
+  //   } else if (type.type === AstNodeType.Enum) {
+  //     const enumType = type as Enum;
+  //     return `enum ${enumType.name}: Int, Codable { case ${enumType.cases.join(", ")} }`;
+  //   } else if (type.type === AstNodeType.StructLiteral) {
+  //     const typeAlias = type as StructLiteral;
+  //     return `struct ${typeAlias.name}: Codable {\n\t${typeAlias.typeLiteral.properties.map((e: PropertyDefinition) => `var ${e.name}: ${this.getParamType(e.type)}`).join("\n\t")}\n};`;
+  //   }
+  //   return "";
+  // }
 }
 
 const supportedLanguages = ["swift"];

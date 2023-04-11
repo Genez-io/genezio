@@ -43,7 +43,7 @@ class Remote {
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
 
         do {
-            request.httpBody = try JSONEncoder().encode(requestContent)
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestContent, options: .prettyPrinted)
         } catch let error {
             return ResponseContent(error: error.localizedDescription)
         }

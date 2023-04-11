@@ -223,8 +223,6 @@ class SdkGenerator implements SdkGeneratorInterface {
       return (elem as UnionType).params
         .map((e: Node) => this.getParamType(e))
         .join(" | ")
-    } else if (elem.type === AstNodeType.TypeLiteral) {
-      return `(self, ${(elem as TypeLiteral).properties.map((e: PropertyDefinition) => `${e.name}: ${this.getParamType(e.type)}`).join(", ")}):\n\t\t${(elem as TypeLiteral).properties.map((e: PropertyDefinition) => `self.${e.name} = ${e.name}`).join("\n\t\t")}`;
     }
     return "Any";
   }
@@ -238,7 +236,7 @@ class SdkGenerator implements SdkGeneratorInterface {
       return `class ${enumType.name}(IntEnum):\n\t${enumType.cases.map((e: string, i: number) => `${e} = ${i}`).join("\n\t")}`;
     } else if (type.type === AstNodeType.StructLiteral) {
       const typeAlias = type as StructLiteral;
-      return `class ${typeAlias.name}:\n\tdef __init__${this.getParamType(typeAlias.typeLiteral)}`;
+      return `class ${typeAlias.name}:\n\tdef __init__(self, ${typeAlias.typeLiteral.properties.map((e: PropertyDefinition) => `${e.name}: ${this.getParamType(e.type)}`).join(", ")}):\n\t\t${typeAlias.typeLiteral.properties.map((e: PropertyDefinition) => `self.${e.name} = ${e.name}`).join("\n\t\t")}`;
     }
     return "";
   }
