@@ -59,7 +59,7 @@ class {{{className}}} {
   public static let remote = Remote(url: "{{{_url}}}")
 
   {{#methods}}
-  static func {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) async -> Any {
+  static func {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) async -> {{{returnType}}}}} {
     return await {{{className}}}.remote.call(method: {{{methodCaller}}}{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}})
   }
 
@@ -121,7 +121,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         const methodView: any = {
           name: methodDefinition.name,
           parameters: [],
-          //returnType: this.getReturnType(methodDefinition.returnType),
+          returnType: this.getParamType(methodDefinition.returnType),
           methodCaller: methodDefinition.params.length === 0 ?
             `"${classDefinition.name}.${methodDefinition.name}"`
             : `"${classDefinition.name}.${methodDefinition.name}", args:`
