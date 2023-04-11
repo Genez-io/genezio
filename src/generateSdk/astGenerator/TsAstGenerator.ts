@@ -82,18 +82,13 @@ export class AstGenerator implements AstGeneratorInterface {
 
   parseClassDeclaration(classDeclaration: typescript.Node): ClassDefinition | undefined {
     const copy: any = { ...classDeclaration };
-    delete copy.parent;
-    delete copy.name.parent;
     if (copy.modifiers) {
-      delete copy.modifiers.parent;
       for (const modifier of copy.modifiers) {
-        delete modifier.parent;
         if (modifier.kind === typescript.SyntaxKind.ExportKeyword) {
           const methods: MethodDefinition[] = [];
           for (const member of copy.members) {
             if (typescript.isMethodDeclaration(member)) {
               const memberCopy: any = { ...member };
-              delete memberCopy.parent;
               const method = this.parseMethodSignature(memberCopy);
               methods.push(method);
             }
@@ -112,24 +107,9 @@ export class AstGenerator implements AstGeneratorInterface {
   parseMethodSignature(methodSignature: typescript.Node): MethodDefinition {
     const parameters: ParameterDefinition[] = [];
     const methodSignatureCopy: any = { ...methodSignature };
-    delete methodSignatureCopy.parent;
-    delete methodSignatureCopy.name.parent;
-    if (methodSignatureCopy.modifiers) {
-      delete methodSignatureCopy.modifiers.parent;
-      for (const modifier of methodSignatureCopy.modifiers) {
-        delete modifier.parent;
-      }
-    }
-    if (methodSignatureCopy.type) {
-      delete methodSignatureCopy.type.parent;
-    }
     if (methodSignatureCopy.parameters) {
-      delete methodSignatureCopy.parameters.parent;
       for (const parameter of methodSignatureCopy.parameters) {
-        delete parameter.parent;
-        delete parameter.name.parent;
         if (parameter.type) {
-          delete parameter.type.parent;
           const param: ParameterDefinition = {
             type: AstNodeType.ParameterDefinition,
             name: parameter.name.escapedText,
@@ -142,7 +122,6 @@ export class AstGenerator implements AstGeneratorInterface {
         }
       }
     }
-    //console.log("METHOD SIGNATURE:", methodSignatureCopy);
     return {
       type: AstNodeType.MethodDefinition,
       name: methodSignatureCopy.name.escapedText,
@@ -155,22 +134,6 @@ export class AstGenerator implements AstGeneratorInterface {
 
   parseEnumDeclaration(enumDeclaration: typescript.Node): Enum {
     const enumDeclarationCopy: any = { ...enumDeclaration };
-    delete enumDeclarationCopy.parent;
-    delete enumDeclarationCopy.name.parent;
-    if (enumDeclarationCopy.modifiers) {
-      delete enumDeclarationCopy.modifiers.parent;
-      for (const modifier of enumDeclarationCopy.modifiers) {
-        delete modifier.parent;
-      }
-    }
-    if (enumDeclarationCopy.members) {
-      delete enumDeclarationCopy.members.parent;
-      for (const member of enumDeclarationCopy.members) {
-        delete member.parent;
-        delete member.name.parent;
-      }
-    }
-    //console.log("ENUM DECLARATION:", enumDeclarationCopy);
     return {
       type: AstNodeType.Enum,
       name: enumDeclarationCopy.name.escapedText,
@@ -180,17 +143,6 @@ export class AstGenerator implements AstGeneratorInterface {
 
   parseTypeAliasDeclaration(typeAliasDeclaration: typescript.Node): StructLiteral | TypeAlias {
     const typeAliasDeclarationCopy: any = { ...typeAliasDeclaration };
-    delete typeAliasDeclarationCopy.parent;
-    delete typeAliasDeclarationCopy.name.parent;
-    if (typeAliasDeclarationCopy.modifiers) {
-      delete typeAliasDeclarationCopy.modifiers.parent;
-      for (const modifier of typeAliasDeclarationCopy.modifiers) {
-        delete modifier.parent;
-      }
-    }
-    if (typeAliasDeclarationCopy.type) {
-      delete typeAliasDeclarationCopy.type.parent;
-    }
     if (typeAliasDeclarationCopy.type.kind === typescript.SyntaxKind.TypeLiteral) {
       const structLiteral: StructLiteral = {
         type: AstNodeType.StructLiteral,
@@ -201,10 +153,7 @@ export class AstGenerator implements AstGeneratorInterface {
         }
       }
       for (const member of typeAliasDeclarationCopy.type.members) {
-        delete member.parent;
-        delete member.name.parent;
         if (member.type) {
-          delete member.type.parent;
           const field: PropertyDefinition = {
             name: member.name.escapedText,
             type: this.mapTypesToParamType(member.type),
