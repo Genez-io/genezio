@@ -16,6 +16,7 @@ import { DART_COMPILATION_ENDPOINT } from "../../constants";
 import { TriggerType } from "../../models/yamlProjectConfiguration";
 import { spawnSync } from "child_process";
 import log from "loglevel";
+import { runNewProcess } from "../../utils/process";
 
 export class DartBundler implements BundlerInterface {
     async #getDartCompilePresignedUrl(archiveName: string): Promise<string> {
@@ -129,10 +130,18 @@ export class DartBundler implements BundlerInterface {
         return archiveName;
     }
 
+    async #addLambdaRuntimeDepenendecy(path: string) {
+        const success = await runNewProcess("dart pub add aws_lambda_dart_runtime:'^1.0.3+2'", path, false);
+
+        if (!success) {
+            throw new Error("Error while adding aws_lambda_dart_runtime dependency");
+        }
+    }
+
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
         // Create a temporary folder were we copy user code to prepare everything.
         const folderPath = input.genezioConfigurationFilePath;
-        const inputTemporaryFolder = await createTemporaryFolder()
+        const inputTemporaryFolder = await createTemporaryFolder(input.configuration.name);
         await fsExtra.copy(folderPath, inputTemporaryFolder);
         debugLogger.info(`Copy files in temp folder ${inputTemporaryFolder}`);
 
@@ -142,6 +151,8 @@ export class DartBundler implements BundlerInterface {
 
         // Check if dart is installed
         await checkIfDartIsInstalled();
+
+        await this.#addLambdaRuntimeDepenendecy(inputTemporaryFolder);
 
         await this.#analyze(inputTemporaryFolder);
 
