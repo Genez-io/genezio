@@ -14,7 +14,7 @@
     "lint": "./scripts/lint",
     "checkChangesInVariables": "./scripts/checkConstants",
     "release": "npm run build && npm publish",
-    "test": "jest"
+    "test": "jest --testPathPattern tests"
   },
   "files": [
     "/build"
