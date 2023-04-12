@@ -61,7 +61,7 @@
     "node-abort-controller": "^3.1.1",
     "node-cron": "^3.0.2",
     "node-polyfill-webpack-plugin": "^2.0.1",
-    "open": "^9.1.0",
+    "open": "^8.4.0",
     "os": "^0.1.2",
     "parse-multipart-data": "^1.5.0",
     "path": "^0.12.7",
