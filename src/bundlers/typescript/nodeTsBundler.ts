@@ -16,7 +16,7 @@ import {
 } from "../bundler.interface";
 import FileDetails from "../../models/fileDetails";
 import { default as fsExtra } from "fs-extra";
-import { lambdaHandler } from "../../utils/lambdaHander";
+import { lambdaHandler } from "../javascript/lambdaHander";
 import { tsconfig } from "../../utils/configs";
 import log from "loglevel";
 import NodePolyfillPlugin from "node-polyfill-webpack-plugin";

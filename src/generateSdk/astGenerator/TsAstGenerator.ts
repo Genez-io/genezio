@@ -177,7 +177,7 @@ export class AstGenerator implements AstGeneratorInterface {
   }
 
   async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
-    const fileData = input.file.data;
+    const fileData = input.class.data;
 
     const node = typescript.createSourceFile('test.ts', fileData.toString(), typescript.ScriptTarget.ES2015, true, typescript.ScriptKind.TS);
     let classDefinition: ClassDefinition | undefined = undefined;

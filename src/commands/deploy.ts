@@ -4,6 +4,7 @@ import path from "path";
 import { exit } from "process";
 import { BundlerInterface } from "../bundlers/bundler.interface";
 import { BundlerComposer } from "../bundlers/bundlerComposer";
+import { DartBundler } from "../bundlers/dart/dartBundler";
 import { NodeJsBinaryDependenciesBundler } from "../bundlers/javascript/nodeJsBinaryDependenciesBundler";
 import { NodeJsBundler } from "../bundlers/javascript/nodeJsBundler";
 import { NodeTsBinaryDependenciesBundler } from "../bundlers/typescript/nodeTsBinaryDependenciesBundler";
@@ -41,7 +42,6 @@ export async function deployCommand(options: any) {
   if (!options.frontend || options.backend) {
     if (configuration.scripts?.preBackendDeploy) {
       log.info("Running preBackendDeploy script...");
-      log.info(configuration.scripts?.preBackendDeploy);
       const output = await runNewProcess(configuration.scripts?.preBackendDeploy);
       if (!output) {
         log.error("preBackendDeploy script failed.");
@@ -172,6 +172,7 @@ export async function deployClasses() {
       }
 
       let bundler: BundlerInterface;
+
       switch (element.language) {
         case ".ts": {
           const standardBundler = new NodeTsBundler();
@@ -185,6 +186,10 @@ export async function deployClasses() {
           bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
           break;
         }
+        case ".dart": {
+          bundler = new DartBundler();
+          break;
+        }
         default:
           log.error(`Unsupported ${element.language}`);
           return Promise.resolve();
@@ -194,6 +199,8 @@ export async function deployClasses() {
         `The bundling process has started for file ${element.path}...`
       );
       const output = await bundler.bundle({
+        projectConfiguration: projectConfiguration,
+        genezioConfigurationFilePath: process.cwd(),
         configuration: element,
         path: element.path,
         extra: {

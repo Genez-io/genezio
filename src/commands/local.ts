@@ -5,7 +5,7 @@ import express from "express";
 import chokidar from "chokidar";
 import cors from "cors";
 import bodyParser from "body-parser";
-import { ChildProcess, fork } from "child_process"
+import { ChildProcess, fork, spawn } from "child_process"
 import path from "path";
 import url from "url";
 import * as http from 'http';
@@ -27,6 +27,17 @@ import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk";
 import { reportSuccess as _reportSuccess } from "../utils/reporter";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
 import { GenezioLocalOptions } from "../models/commandOptions";
+import { DartBundler } from "../bundlers/dart/localDartBundler";
+import axios, { AxiosResponse } from "axios";
+import { findAvailablePort } from "../utils/findAvailablePort";
+
+
+type ClassProcess = {
+  process: ChildProcess,
+  startingCommand: string,
+  parameters: string[],
+  listeningPort: number,
+}
 
 
 // Function that starts the local environment.
@@ -52,7 +63,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
           }
 
           throw error;
-        })
+        });
 
       projectConfiguration = new ProjectConfiguration(
         yamlProjectConfiguration,
@@ -93,9 +104,9 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 /**
  * Bundle each class and start a new process for it.
  */
-async function startProcesses(projectConfiguration: ProjectConfiguration): Promise<Map<string, ChildProcess>> {
+async function startProcesses(projectConfiguration: ProjectConfiguration): Promise<Map<string, ClassProcess>> {
   const classes = projectConfiguration.classes
-  const processForClasses = new Map<string, any>();
+  const processForClasses = new Map<string, ClassProcess>();
 
   // Bundle each class and start a new process for it
   const bundlersOutputPromise = classes.map((classInfo) => {
@@ -109,7 +120,9 @@ async function startProcesses(projectConfiguration: ProjectConfiguration): Promi
     // TODO: Is it worth the extra complexity of maintaining the folder?
     return createTemporaryFolder().then((tmpFolder) => {
       return bundler.bundle({
+        projectConfiguration,
         path: classInfo.path,
+        genezioConfigurationFilePath: process.cwd(),
         configuration: classInfo,
         extra: { mode: "development", tmpFolder: tmpFolder }
       })
@@ -119,9 +132,17 @@ async function startProcesses(projectConfiguration: ProjectConfiguration): Promi
   const bundlersOutput = await Promise.all(bundlersOutputPromise)
 
   for (const bundlerOutput of bundlersOutput) {
-    // Start a new process for thsi class and save it in the map
-    const classProcess = fork(path.resolve(bundlerOutput.path, 'local.js'))
-    processForClasses.set(bundlerOutput.configuration.name, classProcess)
+    const extra = bundlerOutput.extra;
+
+    if (!extra) {
+      throw new Error("Bundler output is missing extra field.");
+    }
+
+    if (!extra["startingCommand"]) {
+      throw new Error("No starting command found for this language.");
+    }
+
+    await startClassProcess(extra["startingCommand"], extra["commandParameters"], bundlerOutput.configuration.name, processForClasses);
   }
 
   return processForClasses
@@ -143,6 +164,10 @@ function getBundler(classConfiguration: ClassConfiguration): BundlerInterface | 
       bundler = new BundlerComposer([nodeJsBundler, localBundler])
       break;
     }
+    case ".dart": {
+      bundler = new DartBundler();
+      break;
+    }
     default: {
       log.error(
         `Unsupported language ${classConfiguration.language}. Skipping class `
@@ -153,7 +178,7 @@ function getBundler(classConfiguration: ClassConfiguration): BundlerInterface | 
   return bundler;
 }
 
-async function startServerHttp(port: number, astSummary: AstSummary, projectName: string, processForClasses: Map<string, any>): Promise<http.Server> {
+async function startServerHttp(port: number, astSummary: AstSummary, projectName: string, processForClasses: Map<string, ClassProcess>): Promise<http.Server> {
   const app = express();
   app.use(cors());
   app.use(bodyParser.raw({ type: () => true }));
@@ -167,29 +192,36 @@ async function startServerHttp(port: number, astSummary: AstSummary, projectName
   app.all(`/:className`, async (req: any, res: any) => {
     const reqToFunction = getEventObjectFromRequest(req);
 
-    const process = processForClasses.get(req.params.className);
-    process.on('message', (msg: string) => {
-      const msgParsed = JSON.parse(msg)
-      if (msgParsed.id === reqToFunction.id) {
-        handleResponseForJsonRpc(res, msgParsed.response);
-      }
-    })
+    const localProcess = processForClasses.get(req.params.className);
 
-    process.send(JSON.stringify(reqToFunction))
+    if (!localProcess) {
+      handleResponseForJsonRpc(res, { "jsonrpc": "2.0", "id": 0, "error": { "code": -32000, "message": "Class not found!" } });
+      return;
+    }
+
+    try {
+      const response = await communicateWithProcess(localProcess, req.params.className, reqToFunction, processForClasses);
+      handleResponseForJsonRpc(res, response.data);
+    } catch(error: any) {
+
+      handleResponseForJsonRpc(res, { "jsonrpc": "2.0", "id": 0, "error": { "code": -32000, "message": "Internal error" } });
+      return;
+    }
   });
 
   app.all(`/:className/:methodName`, async (req: any, res: any) => {
     const reqToFunction = getEventObjectFromRequest(req);
 
-    const process = processForClasses.get(req.params.className);
-    process.on('message', (msg: string) => {
-      const msgParsed = JSON.parse(msg)
-      if (msgParsed.id === reqToFunction.id) {
-        handleResponseforHttp(res, msgParsed.response);
-      }
-    })
+    const localProcess = processForClasses.get(req.params.className);
 
-    process.send(JSON.stringify(reqToFunction))
+    if (!localProcess) {
+      res.status(404).send(`Class ${req.params.className} not found.`);
+      return;
+    }
+
+    // const response = await axios.post(`http://127.0.0.1:${localProcess?.listeningPort}`, reqToFunction);
+    const response = await communicateWithProcess(localProcess, req.params.className, reqToFunction, processForClasses);
+    handleResponseforHttp(res, response.data);
   });
 
   return await new Promise((resolve, reject) => {
@@ -213,12 +245,12 @@ export type LocalEnvCronHandler = {
   methodName: string,
   cronString: string,
   cronObject: any,
-  process: any
+  process: ClassProcess
 }
 
 async function startCronJobs(
   projectConfiguration: ProjectConfiguration,
-  processForClasses: Map<string, any>
+  processForClasses: Map<string, ClassProcess>
 ): Promise<LocalEnvCronHandler[]> {
   const cronHandlers: LocalEnvCronHandler[] = [];
   for (const classElement of projectConfiguration.classes) {
@@ -230,7 +262,7 @@ async function startCronJobs(
           methodName: method.name,
           cronString: rectifyCronString(method.cronString),
           cronObject: null,
-          process: processForClasses.get(classElement.name)
+          process: processForClasses.get(classElement.name)!
         };
 
         cronHandler.cronObject = cron.schedule(cronHandler.cronString, async () => {
@@ -240,7 +272,7 @@ async function startCronJobs(
             cronString: cronHandler.cronString
           };
 
-          cronHandler.process.send(JSON.stringify(reqToFunction))
+          communicateWithProcess(cronHandler.process, cronHandler.className, reqToFunction, processForClasses);
         });
 
         cronHandler.cronObject.start();
@@ -264,7 +296,6 @@ function getEventObjectFromRequest(request: any) {
   const urlDetails = url.parse(request.url, true);
 
   return {
-    id: Math.random(),
     headers: request.headers,
     rawQueryString: urlDetails.search ? urlDetails.search?.slice(1) : "",
     queryStringParameters: urlDetails.search
@@ -419,11 +450,37 @@ function reportSuccess(projectConfiguration: ProjectConfiguration, sdk: SdkGener
   );
 }
 
-async function clearAllResources(server: http.Server, processForClasses: Map<string, ChildProcess>, crons: LocalEnvCronHandler[]) {
+async function clearAllResources(server: http.Server, processForClasses: Map<string, ClassProcess>, crons: LocalEnvCronHandler[]) {
   server.close();
   await stopCronJobs(crons);
 
-  processForClasses.forEach((process) => {
-    process.kill();
+  processForClasses.forEach((classProcess) => {
+    classProcess.process.kill();
   })
+}
+
+async function startClassProcess(startingCommand: string, parameters: string[], className: string, processForClasses: Map<string, ClassProcess>) {
+  const availablePort = await findAvailablePort();
+  const processParameters = [...parameters, availablePort.toString()];
+  const classProcess = spawn(startingCommand, processParameters, { stdio: ['pipe', 'pipe', 'pipe']});
+  classProcess.stdout.pipe(process.stdout);
+  classProcess.stderr.pipe(process.stderr);
+
+  processForClasses.set(className, {
+    process: classProcess,
+    listeningPort: availablePort,
+    startingCommand: startingCommand,
+    parameters: parameters
+  });
+}
+
+async function communicateWithProcess(localProcess: ClassProcess, className: string, data: any, processForClasses: Map<string, ClassProcess>): Promise<AxiosResponse> {
+  try {
+    return await axios.post(`http://127.0.0.1:${localProcess?.listeningPort}`, data);
+  } catch(error: any) {
+    if (error.code === "ECONNRESET" || error.code === "ECONNREFUSED") {
+      await startClassProcess(localProcess.startingCommand, localProcess.parameters, className, processForClasses);
+    }
+    throw error;
+  }
 }

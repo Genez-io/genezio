@@ -69,7 +69,11 @@ export enum MethodKindEnum {
  * The input that goes into the astGenerator.
  */
 export type AstGeneratorInput = {
-  file: File;
+  class: {
+    path: string;
+    data: string;
+    name?: string;
+  };
 };
 
 export type AstGeneratorOutput = {

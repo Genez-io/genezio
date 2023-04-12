@@ -2,8 +2,8 @@ import { AstSummaryClass, AstSummaryMethod, AstSummaryParam } from "../../models
 import {
   ClassDefinition,
   MethodDefinition,
-  ParameterDefinition,
   Node,
+  ParameterDefinition,
   SdkGeneratorClassesInfoInput
 } from "../../models/genezioModels";
 
@@ -54,6 +54,7 @@ export function getAstSummary(
       const classInfo: AstSummaryClass = {
         name: classElem.name,
         path: classConfiguration.classConfiguration.path,
+        language: classConfiguration.classConfiguration.language,
         methods: methods
       };
       return classInfo;

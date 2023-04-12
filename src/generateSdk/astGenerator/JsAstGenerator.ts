@@ -15,7 +15,7 @@ const traverse = require("@babel/traverse");
 
 class AstGenerator implements AstGeneratorInterface {
   async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
-    const fileData = input.file.data;
+    const fileData = input.class.data;
     const result = parser.parse(fileData.toString(), {
       // parse in strict mode and allow module declarations
       sourceType: "module",

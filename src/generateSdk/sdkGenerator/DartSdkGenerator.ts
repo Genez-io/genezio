@@ -5,15 +5,10 @@ import {
     SdkGeneratorInput,
     SdkGeneratorInterface,
     SdkGeneratorOutput,
-    TypeAlias,
-    StringType,
-    IntegerType,
-    DoubleType,
-    BooleanType,
+    StructLiteral,
+    CustomAstNodeType,
+    PromiseType,
     Node,
-    AnyType,
-    FloatType,
-    CustomAstNodeType
 } from "../../models/genezioModels";
 import { TriggerType } from "../../models/yamlProjectConfiguration";
 import { dartSdk } from "../templates/dartSdk";
@@ -88,12 +83,47 @@ const template = `/// This is an auto generated code. This code should not be mo
 
 import 'remote.dart';
 
+{{#otherClasses}}
+
+class {{name}} {
+    {{#fields}}
+        {{{type}}} {{fieldName}};
+    {{/fields}}
+  
+    {{name}}({{#fields}}this.{{fieldName}},{{/fields}});
+
+    factory {{name}}.fromJson(Map<String, dynamic> json) {
+        return {{name}}(
+            {{#fields}}
+                json['{{fieldName}}'] as {{{type}}},
+            {{/fields}}
+          );
+      }
+    
+      Map<String, dynamic> toJson() {
+        return <String, dynamic>{
+            {{#fields}}
+                '{{fieldName}}': this.{{fieldName}},
+            {{/fields}}
+        };
+      }
+}
+
+{{/otherClasses}}
+
 class {{{className}}} {
   static final remote = Remote("{{{_url}}}");
 
   {{#methods}}
-  static Future<dynamic> {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) async {
-    return remote.call({{{methodCaller}}}, [{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}}]);
+  static Future<{{{returnType}}}> {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) async {
+    final response = await remote.call({{{methodCaller}}}, [{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}}]);
+
+    {{#returnTypeJsonParser}}
+    return {{returnType}}.fromJson(response);
+    {{/returnTypeJsonParser}}
+    {{^returnTypeJsonParser}}
+    return response as {{{returnType}}};
+    {{/returnTypeJsonParser}}
   }
 
   {{/methods}}
@@ -101,11 +131,9 @@ class {{{className}}} {
 `;
 
 class SdkGenerator implements SdkGeneratorInterface {
-    externalTypes: Node[] = [];
-
     async generateSdk(
         sdkGeneratorInput: SdkGeneratorInput
-      ): Promise<SdkGeneratorOutput> {
+    ): Promise<SdkGeneratorOutput> {
 
         const generateSdkOutput: SdkGeneratorOutput = {
             files: []
@@ -120,66 +148,81 @@ class SdkGenerator implements SdkGeneratorInterface {
             if (classInfo.program.body === undefined) {
                 continue;
             }
+
+            const view: any = {
+                otherClasses: [],
+                className: undefined,
+                _url: _url,
+                methods: []
+            };
+
+            let exportClassChecker = false;
+
             for (const elem of classInfo.program.body) {
                 if (elem.type === AstNodeType.ClassDefinition) {
-                  classDefinition = elem as ClassDefinition;
+                    classDefinition = elem as ClassDefinition;
+                    view.className = classDefinition.name;
+                    for (const methodDefinition of classDefinition.methods) {
+                        const methodConfigurationType = classConfiguration.getMethodType(methodDefinition.name);
+
+                        if (methodConfigurationType !== TriggerType.jsonrpc
+                            || classConfiguration.type !== TriggerType.jsonrpc
+                        ) {
+                            continue;
+                        }
+
+                        exportClassChecker = true;
+
+                        const methodView: any = {
+                            name: methodDefinition.name,
+                            parameters: [],
+                            methodCaller: methodDefinition.params.length === 0 ?
+                                `"${classDefinition.name}.${methodDefinition.name}"`
+                                : `"${classDefinition.name}.${methodDefinition.name}"`
+                        };
+
+                        if (methodDefinition.returnType.type === AstNodeType.CustomNodeLiteral) {
+                            methodView.returnTypeJsonParser = true;
+                            methodView.returnType = methodDefinition.returnType.rawValue;
+                        } else {
+                            methodView.returnType = this.getParamType(methodDefinition.returnType);
+                        }
+
+                        methodView.parameters = methodDefinition.params.map((e) => {
+                            return {
+                                name: this.getParamType(e.paramType) + " " + (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
+                                last: false
+                            }
+                        });
+
+                        if (methodView.parameters.length > 0) {
+                            methodView.parameters[methodView.parameters.length - 1].last = true;
+                        }
+
+                        methodView.sendParameters = methodDefinition.params.map((e) => {
+                            return {
+                                name: (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
+                                last: false
+                            }
+                        });
+
+                        if (methodView.sendParameters.length > 0) {
+                            methodView.sendParameters[methodView.parameters.length - 1].last = true;
+                        }
+
+                        view.methods.push(methodView);
+                    }
+                } else if (elem.type === AstNodeType.StructLiteral) {
+                    const structLiteral = elem as StructLiteral;
+                    view.otherClasses.push({
+                        name: structLiteral.name,
+                        fields: structLiteral.typeLiteral.properties.map((e) => ({ type: this.getParamType(e.type), fieldName: e.name })),
+                    });
                 }
             }
 
             if (classDefinition === undefined) {
                 continue;
-            }
-
-            const view: any = {
-            className: classDefinition.name,
-            _url: _url,
-            methods: []
-        };
-
-        let exportClassChecker = false;
-
-        for (const methodDefinition of classDefinition.methods) {
-            const methodConfigurationType = classConfiguration.getMethodType(methodDefinition.name);
-
-            if (methodConfigurationType !== TriggerType.jsonrpc
-                || classConfiguration.type !== TriggerType.jsonrpc
-            ) {
-               continue;
-            }
-
-            exportClassChecker = true;
-
-            const methodView: any = {
-            name: methodDefinition.name,
-            parameters: [],
-            methodCaller: methodDefinition.params.length === 0 ?
-                `"${classDefinition.name}.${methodDefinition.name}"`
-                : `"${classDefinition.name}.${methodDefinition.name}"`
-            };
-
-            methodView.parameters = methodDefinition.params.map((e) => {
-                return {
-                    name: this.getParamType(e.paramType) + " " + (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
-                    last: false
-                }
-            });
-
-            if (methodView.parameters.length > 0) {
-                methodView.parameters[methodView.parameters.length - 1].last = true;
-            }
-
-            methodView.sendParameters = methodDefinition.params.map((e) => {
-                return {
-                    name: (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
-                    last: false
-                }
-            });
-
-            if (methodView.sendParameters.length > 0) {
-                methodView.sendParameters[methodView.parameters.length - 1].last = true;
-            }
-
-            view.methods.push(methodView);
             }
 
             if (!exportClassChecker) {
@@ -207,40 +250,23 @@ class SdkGenerator implements SdkGeneratorInterface {
     }
 
     getParamType(elem: Node): string {
-        if (elem.type === AstNodeType.CustomNodeLiteral) {
-            return (elem as CustomAstNodeType).rawValue;
-        } else if (elem.type === AstNodeType.StringLiteral) {
-          return "String";
-        } else if (elem.type === AstNodeType.IntegerLiteral) {
-          return "int";
-        } else if (elem.type === AstNodeType.DoubleLiteral) {
-          return "double";
-        } else if (elem.type === AstNodeType.BooleanLiteral) {
-          return "bool";
-        } else if (elem.type === AstNodeType.AnyLiteral) {
-          return "Object";
-        }
-        return "Object";
-    }
-
-    // TODO: create types for all external types
-    async generateExternalTypes(type: Node) {
-        // check if type is already in externalTypes
-        if (
-            this.externalTypes.find((e: Node) => {
-            if (e.type === AstNodeType.TypeAlias) {
-                return (e as TypeAlias).name === (type as TypeAlias).name;
-            }
-            return false;
-            })
-        ) {
-            return;
-        }
-
-        this.externalTypes.push(type);
-        const externalType = "";
-        if (type.type === AstNodeType.TypeAlias) {
-            const localType: TypeAlias = type as TypeAlias;
+        switch (elem.type) {
+            case AstNodeType.StringLiteral:
+                return "String";
+            case AstNodeType.DoubleLiteral:
+                return "double";
+            case AstNodeType.BooleanLiteral:
+                return "bool";
+            case AstNodeType.IntegerLiteral:
+                return "int";
+            case AstNodeType.AnyLiteral:
+                return "Object";
+            case AstNodeType.CustomNodeLiteral:
+                return (elem as CustomAstNodeType).rawValue;
+            case AstNodeType.PromiseType:
+                return this.getParamType((elem as PromiseType).generic);
+            default:
+                return "Object";
         }
     }
 }
