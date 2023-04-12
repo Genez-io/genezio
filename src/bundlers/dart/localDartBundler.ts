@@ -1,6 +1,6 @@
 import path from "path";
 import Mustache from "mustache";
-import { createTemporaryFolder, writeToFile, zipDirectory } from "../../utils/file";
+import { createTemporaryFolder, writeToFile } from "../../utils/file";
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface";
 import { checkIfDartIsInstalled } from "../../utils/dart";
 import { debugLogger } from "../../utils/logging";
@@ -23,7 +23,7 @@ export class DartBundler implements BundlerInterface {
                     name: m.name,
                     parameters: m.parameters.map((p, index) => ({
                         index,
-                        isNative: p.type == "String" || p.type == "int" || p.type == "double" || p.type == "bool",
+                        isNative: this.#isParameterNative(p.type),
                         last: index == m.parameters.length - 1,
                         type: p.type,
                         cast: p.type == "double" ? ".toDouble()" : p.type == "int" ? ".toInt()" : undefined,
@@ -35,7 +35,7 @@ export class DartBundler implements BundlerInterface {
                     name: m.name,
                     parameters: m.parameters.map((p, index) => ({
                         index,
-                        isNative: p.type == "String" || p.type == "int" || p.type == "double" || p.type == "bool",
+                        isNative: this.#isParameterNative(p.type),
                         last: index == m.parameters.length - 1,
                         type: p.type,
                         cast: p.type == "double" ? ".toDouble()" : p.type == "int" ? ".toInt()" : undefined,
@@ -47,7 +47,7 @@ export class DartBundler implements BundlerInterface {
                     name: m.name,
                     parameters: m.parameters.map((p, index) => ({
                         index,
-                        isNative: p.type == "String" || p.type == "int" || p.type == "double" || p.type == "bool",
+                        isNative: this.#isParameterNative(p.type),
                         last: index == m.parameters.length - 1,
                         type: p.type,
                         cast: p.type == "double" ? ".toDouble()" : p.type == "int" ? ".toInt()" : undefined,
@@ -59,13 +59,8 @@ export class DartBundler implements BundlerInterface {
         await writeToFile(folderPath, "main.dart", routerFileContent);
     }
 
-    async #analyze(path: string) {
-        const result = spawnSync("dart", ["analyze"], { cwd: path });
-
-        if (result.status != 0) {
-            log.info(result.stdout.toString().split("\n").slice(1).join("\n"));
-            throw new Error("Compilation error! Please check your code and try again.");
-        }
+    #isParameterNative(type: string): boolean {
+        return type == "String" || type == "int" || type == "double" || type == "bool";
     }
 
     async #compile(folderPath: string) {

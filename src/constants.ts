@@ -11,7 +11,7 @@ let ENABLE_DEBUG_LOGS_BY_DEFAULT: boolean;
 if (environment === "dev") {
     REACT_APP_BASE_URL = "https://dev.app.genez.io";
     FRONTEND_DOMAIN = "dev.app.genez.io";
-    BACKEND_ENDPOINT = "http://127.0.0.1:8080";
+    BACKEND_ENDPOINT = "https://dev.api.genez.io";
     LOCAL_TEST_INTERFACE_URL = "https://dev.app.genez.io/test-interface/local";
     PORT_LOCAL_ENVIRONMENT = 8083;
     ENABLE_DEBUG_LOGS_BY_DEFAULT = true;

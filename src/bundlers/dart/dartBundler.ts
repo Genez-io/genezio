@@ -32,6 +32,10 @@ export class DartBundler implements BundlerInterface {
         }
     }
 
+    #isParameterNative(type: string): boolean {
+        return type == "String" || type == "int" || type == "double" || type == "bool";
+    }
+
     async #compile(archiveName: string): Promise<string> {
         const url = DART_COMPILATION_ENDPOINT;
 
@@ -80,7 +84,7 @@ export class DartBundler implements BundlerInterface {
                     name: m.name,
                     parameters: m.parameters.map((p, index) => ({
                         index,
-                        isNative: p.type == "String" || p.type == "int" || p.type == "double" || p.type == "bool",
+                        isNative: this.#isParameterNative(p.type),
                         last: index == m.parameters.length - 1,
                         type: p.type,
                         cast: p.type == "double" ? ".toDouble()" : p.type == "int" ? ".toInt()" : undefined,
@@ -92,7 +96,7 @@ export class DartBundler implements BundlerInterface {
                     name: m.name,
                     parameters: m.parameters.map((p, index) => ({
                         index,
-                        isNative: p.type == "String" || p.type == "int" || p.type == "double" || p.type == "bool",
+                        isNative: this.#isParameterNative(p.type),
                         last: index == m.parameters.length - 1,
                         type: p.type,
                         cast: p.type == "double" ? ".toDouble()" : p.type == "int" ? ".toInt()" : undefined,
@@ -104,7 +108,7 @@ export class DartBundler implements BundlerInterface {
                     name: m.name,
                     parameters: m.parameters.map((p, index) => ({
                         index,
-                        isNative: p.type == "String" || p.type == "int" || p.type == "double" || p.type == "bool",
+                        isNative: this.#isParameterNative(p.type),
                         last: index == m.parameters.length - 1,
                         type: p.type,
                         cast: p.type == "double" ? ".toDouble()" : p.type == "int" ? ".toInt()" : undefined,
