@@ -61,7 +61,7 @@ const PYTHON_RESERVED_WORDS = [
 const template = `# This is an auto generated code. This code should not be modified since the file can be overwriten 
 # if new genezio commands are executed.
   
-import remote
+from .remote import Remote
 from typing import Any, List
 from enum import IntEnum
 
