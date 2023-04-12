@@ -61,7 +61,7 @@ const PYTHON_RESERVED_WORDS = [
 const template = `# This is an auto generated code. This code should not be modified since the file can be overwriten 
 # if new genezio commands are executed.
   
-from .remote import Remote
+import remote
 from typing import Any, List
 from enum import IntEnum
 
@@ -202,7 +202,11 @@ class SdkGenerator implements SdkGeneratorInterface {
 
   getParamType(elem: Node): string {
     if (elem.type === AstNodeType.CustomNodeLiteral) {
-      return (elem as CustomAstNodeType).rawValue;
+      const customAstNodeType = elem as CustomAstNodeType;
+      if (customAstNodeType.rawValue === "Date") {
+        return "Any";
+      }
+      return customAstNodeType.rawValue;
     } else if (elem.type === AstNodeType.StringLiteral) {
       return "str";
     } else if (elem.type === AstNodeType.IntegerLiteral) {

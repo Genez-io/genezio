@@ -90,7 +90,9 @@ export class AstGenerator implements AstGeneratorInterface {
             if (typescript.isMethodDeclaration(member)) {
               const memberCopy: any = { ...member };
               const method = this.parseMethodSignature(memberCopy);
-              methods.push(method);
+              if (method) {
+                methods.push(method);
+              }
             }
           }
           return {
@@ -104,9 +106,12 @@ export class AstGenerator implements AstGeneratorInterface {
     return undefined;
   }
 
-  parseMethodSignature(methodSignature: typescript.Node): MethodDefinition {
+  parseMethodSignature(methodSignature: typescript.Node): MethodDefinition | undefined {
     const parameters: ParameterDefinition[] = [];
     const methodSignatureCopy: any = { ...methodSignature };
+    if (methodSignatureCopy.name.kind === typescript.SyntaxKind.PrivateIdentifier) {
+      return undefined;
+    }
     if (methodSignatureCopy.parameters) {
       for (const parameter of methodSignatureCopy.parameters) {
         if (parameter.type) {
