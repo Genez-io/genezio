@@ -1,5 +1,20 @@
 import Mustache from "mustache";
-import { AstNodeType, ClassDefinition, NativeType, NativeTypeEnum, SdkGeneratorInput, SdkGeneratorInterface, SdkGeneratorOutput, TypeAlias, TypeDefinition } from "../../models/genezioModels";
+import { 
+    AstNodeType,
+    ClassDefinition,
+    SdkGeneratorInput,
+    SdkGeneratorInterface,
+    SdkGeneratorOutput,
+    TypeAlias,
+    StringType,
+    IntegerType,
+    DoubleType,
+    BooleanType,
+    Node,
+    AnyType,
+    FloatType,
+    CustomAstNodeType
+} from "../../models/genezioModels";
 import { TriggerType } from "../../models/yamlProjectConfiguration";
 import { dartSdk } from "../templates/dartSdk";
 
@@ -86,7 +101,7 @@ class {{{className}}} {
 `;
 
 class SdkGenerator implements SdkGeneratorInterface {
-    externalTypes: TypeDefinition[] = [];
+    externalTypes: Node[] = [];
 
     async generateSdk(
         sdkGeneratorInput: SdkGeneratorInput
@@ -107,7 +122,7 @@ class SdkGenerator implements SdkGeneratorInterface {
             }
             for (const elem of classInfo.program.body) {
                 if (elem.type === AstNodeType.ClassDefinition) {
-                  classDefinition = elem;
+                  classDefinition = elem as ClassDefinition;
                 }
             }
 
@@ -191,34 +206,28 @@ class SdkGenerator implements SdkGeneratorInterface {
         return generateSdkOutput;
     }
 
-    getParamType(elem: TypeDefinition): string {
-        if (elem.type === AstNodeType.NativeType) {
-          const localElem: NativeType = elem as NativeType;
-          switch (localElem.paramType) {
-            case NativeTypeEnum.string:
-              return "String";
-            case NativeTypeEnum.number:
-              return "double";
-            case NativeTypeEnum.boolean:
-              return "bool";
-            case NativeTypeEnum.any:
-              return "Object";
-            default:
-              return "Object";
-          }
-        } else if (elem.type === AstNodeType.TypeAlias) {
-          // TODO: create types for all external types
-          const localElem: TypeAlias = elem as TypeAlias;
+    getParamType(elem: Node): string {
+        if (elem.type === AstNodeType.CustomNodeLiteral) {
+            return (elem as CustomAstNodeType).rawValue;
+        } else if (elem.type === AstNodeType.StringLiteral) {
+          return "String";
+        } else if (elem.type === AstNodeType.IntegerLiteral) {
+          return "int";
+        } else if (elem.type === AstNodeType.DoubleLiteral) {
+          return "double";
+        } else if (elem.type === AstNodeType.BooleanLiteral) {
+          return "bool";
+        } else if (elem.type === AstNodeType.AnyLiteral) {
+          return "Object";
         }
-
         return "Object";
     }
 
     // TODO: create types for all external types
-    async generateExternalTypes(type: TypeDefinition) {
+    async generateExternalTypes(type: Node) {
         // check if type is already in externalTypes
         if (
-            this.externalTypes.find((e: TypeDefinition) => {
+            this.externalTypes.find((e: Node) => {
             if (e.type === AstNodeType.TypeAlias) {
                 return (e as TypeAlias).name === (type as TypeAlias).name;
             }

@@ -6,8 +6,7 @@ import {
   AstNodeType,
   ClassDefinition,
   MethodKindEnum,
-  NativeType,
-  NativeTypeEnum,
+  AnyType,
   ParameterDefinition,
   SourceType
 } from "../../models/genezioModels";
@@ -43,9 +42,8 @@ class AstGenerator implements AstGeneratorInterface {
           path.type === "ClassMethod" &&
           path.node.kind !== "constructor"
         ) {
-          const returnType: NativeType = {
-            type: AstNodeType.NativeType,
-            paramType: NativeTypeEnum.any
+          const returnType: AnyType = {
+            type: AstNodeType.AnyLiteral,
           };
           classDefinition?.methods.push({
             type: AstNodeType.MethodDefinition,
@@ -54,9 +52,8 @@ class AstGenerator implements AstGeneratorInterface {
             kind: MethodKindEnum.method,
             returnType: returnType,
             params: path.node.params.map(function (param: any) {
-              const astType: NativeType = {
-                type: AstNodeType.NativeType,
-                paramType: NativeTypeEnum.any
+              const astType: AnyType = {
+                type: AstNodeType.AnyLiteral,
               };
               const astParam: ParameterDefinition = {
                 type: AstNodeType.ParameterDefinition,
@@ -75,9 +72,8 @@ class AstGenerator implements AstGeneratorInterface {
           path.type === "ClassProperty" &&
           path.node?.value?.type === "ArrowFunctionExpression"
         ) {
-          const returnType: NativeType = {
-            type: AstNodeType.NativeType,
-            paramType: NativeTypeEnum.any
+          const returnType: AnyType = {
+            type: AstNodeType.AnyLiteral,
           };
           classDefinition?.methods.push({
             type: AstNodeType.MethodDefinition,
@@ -86,9 +82,8 @@ class AstGenerator implements AstGeneratorInterface {
             kind: MethodKindEnum.method,
             returnType: returnType,
             params: path.node.value.params.map(function (param: any) {
-              const astType: NativeType = {
-                type: AstNodeType.NativeType,
-                paramType: NativeTypeEnum.any
+              const astType: AnyType = {
+                type: AstNodeType.AnyLiteral,
               };
               const astParam: ParameterDefinition = {
                 type: AstNodeType.ParameterDefinition,

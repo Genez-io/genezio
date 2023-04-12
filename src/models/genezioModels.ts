@@ -1,4 +1,4 @@
-import { YamlClassConfiguration, YamlMethodConfiguration } from "./yamlProjectConfiguration";
+import { YamlClassConfiguration } from "./yamlProjectConfiguration";
 
 
 export class File {
@@ -24,16 +24,33 @@ export class SdkFileClass {
 }
 
 export enum AstNodeType {
+  StringLiteral = "StringLiteral",
+  IntegerLiteral = "IntegerLiteral",
+  BooleanLiteral = "BooleanLiteral",
+  FloatLiteral = "FloatLiteral",
+  NullLiteral = "NullLiteral",
+  DoubleLiteral = "DoubleLiteral",
+  AnyLiteral = "AnyLiteral",
+  ArrayType = "ArrayType",
+  PromiseType = "PromiseType",
   ConstType = "ConstType",
   NativeType = "NativeType",
   ParamType = "ParamType",
+  CustomNodeLiteral = "CustomNodeLiteral",
   Enum = "Enum",
   TypeAlias = "TypeAlias",
+  TypeLiteral = "TypeLiteral",
+  StructLiteral = "StructLiteral",
   UnionType = "UnionType",
   ParameterDefinition = "ParameterDefinition",
   MethodDefinition = "MethodDefinition",
   ClassDefinition = "ClassDefinition",
   PropertyDefinition = "PropertyDefinition"
+}
+
+export interface CustomAstNodeType extends Node {
+  type: AstNodeType.CustomNodeLiteral;
+  rawValue: string;
 }
 
 export enum SourceType {
@@ -48,23 +65,6 @@ export enum MethodKindEnum {
   set = "set"
 }
 
-export enum NativeTypeEnum {
-  string = "string",
-  number = "number",
-  boolean = "boolean",
-  any = "any",
-  unknown = "unknown",
-  never = "never",
-  null = "null",
-  undefined = "undefined",
-  stringArray = "string[]",
-  numberArray = "number[]",
-  booleanArray = "boolean[]",
-  anyArray = "any[]",
-  unknownArray = "unknown[]",
-  neverArray = "never[]"
-}
-
 /**
  * The input that goes into the astGenerator.
  */
@@ -77,53 +77,99 @@ export type AstGeneratorOutput = {
 };
 
 export interface Node {
-  type: string;
+  type: AstNodeType;
 }
 
 // DONE native types, enums, type alias, union type - type | type
 // TODO next steps - array(multi level), map
 
-export interface TypeDefinition {
-  name?: string;
-  type: string;
-}
-
-export interface ConstType extends TypeDefinition {
+export interface ConstType extends Node {
   type: AstNodeType.ConstType;
   name: string;
   value: string;
 }
 
-export interface NativeType extends TypeDefinition {
-  type: AstNodeType.NativeType; // this is the type of definition
-  paramType: NativeTypeEnum | string; // this is the type of the native type
+export interface StringType extends Node {
+  type: AstNodeType.StringLiteral;
 }
 
-export interface Enum extends TypeDefinition {
+export interface IntegerType extends Node {
+  type: AstNodeType.IntegerLiteral;
+}
+
+export interface BooleanType extends Node {
+  type: AstNodeType.BooleanLiteral;
+}
+
+export interface FloatType extends Node {
+  type: AstNodeType.FloatLiteral;
+}
+
+export interface DoubleType extends Node {
+  type: AstNodeType.DoubleLiteral;
+}
+
+export interface NullType extends Node {
+  type: AstNodeType.NullLiteral;
+}
+
+export interface AnyType extends Node {
+  type: AstNodeType.AnyLiteral;
+}
+
+export interface ArrayType extends Node {
+  type: AstNodeType.ArrayType;
+  generic: Node;
+}
+
+export interface PromiseType extends Node {
+  type: AstNodeType.PromiseType;
+  generic: Node;
+}
+
+export interface Enum extends Node {
   type: AstNodeType.Enum;
   name: string;
-  params: TypeDefinition[];
+  cases: string[];
 }
 
-export interface TypeAlias extends TypeDefinition {
+export interface PropertyDefinition {
+  name: string;
+  type: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | TypeLiteral | CustomAstNodeType | ArrayType | UnionType | PromiseType;
+}
+
+export interface TypeLiteral extends Node {
+  type: AstNodeType.TypeLiteral;
+  properties: PropertyDefinition[];
+}
+
+export interface StructLiteral extends Node {
+  type: AstNodeType.StructLiteral;
+  name: string;
+  typeLiteral: TypeLiteral;
+}
+
+export interface TypeAlias extends Node {
   type: AstNodeType.TypeAlias;
   name: string;
-  params?: TypeDefinition[];
-  definition: string;
+  aliasType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | CustomAstNodeType | ArrayType | TypeLiteral | UnionType | PromiseType;
 }
 
-export interface UnionType extends TypeDefinition {
+export interface UnionType extends Node {
   type: AstNodeType.UnionType;
-  params: TypeDefinition[];
+  params: Node[];
 }
 
 export interface ParameterDefinition extends Node {
   type: AstNodeType.ParameterDefinition;
   name: string;
   rawType: string;
-  paramType: TypeDefinition;
+  paramType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType;
   optional: boolean;
-  defaultValue?: any;
+  defaultValue?: {
+    value: string;
+    type: AstNodeType;
+  };
 }
 
 export interface MethodDefinition extends Node {
@@ -132,28 +178,19 @@ export interface MethodDefinition extends Node {
   params: ParameterDefinition[];
   kind: MethodKindEnum;
   static: boolean;
-  returnType: TypeDefinition;
+  returnType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType;
 }
 
 export interface ClassDefinition extends Node {
   type: AstNodeType.ClassDefinition;
   name: string;
   methods: MethodDefinition[];
-  typeDefinitions?: TypeAlias[];
-}
-
-export interface PropertyDefinition extends Node {
-  type: AstNodeType.PropertyDefinition;
-  name: string;
-  params: TypeDefinition[];
-  static: boolean;
-  exported: boolean;
 }
 
 export type Program = {
   originalLanguage: string;
   sourceType: SourceType;
-  body: [ClassDefinition | PropertyDefinition] | undefined;
+  body: (ClassDefinition | Node)[] | undefined;
 }
 
 /**
@@ -162,7 +199,6 @@ export type Program = {
 export interface AstGeneratorInterface {
   generateAst: (input: AstGeneratorInput) => Promise<AstGeneratorOutput>;
 }
-
 
 
 // types for SDK Generator

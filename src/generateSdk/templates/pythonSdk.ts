@@ -5,7 +5,7 @@ import urllib.request
 import json
 
 def makeRequest(requestContent, url):
-    data = json.dumps(requestContent).encode('utf8')
+    data = json.dumps(requestContent, default=lambda o: o.__dict__).encode('utf8')
     req = urllib.request.Request(url, data=data,
                                  headers={'content-type': 'application/json'})
     response = urllib.request.urlopen(req)
