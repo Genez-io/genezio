@@ -14,3 +14,13 @@ updates:
       day: "monday"
       time: "10:00"
       timezone: Europe/Bucharest
+  - package-ecosystem: "gitsubmodule"
+    target-branch: "master"
+    directory: "/"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "gitsubmodule"
+    target-branch: "dev"
+    directory: "/"
+    schedule:
+      interval: "daily"
