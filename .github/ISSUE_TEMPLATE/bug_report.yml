@@ -24,13 +24,13 @@ body:
   - type: input
     id: version
     attributes:
-      label: `genezio` version
+      label: genezio version
       description: What version of `genezio` are you running? You can run `genezio --version` to find out.
       placeholder: 0.3.11
   - type: textarea
     id: configuration
     attributes:
-      label: `genezio` configuration file
+      label: genezio configuration file
       description: If it's relevant, please paste here the contents of your `genezio.yaml`.
       render: YAML
   - type: dropdown
