@@ -24,14 +24,14 @@ body:
   - type: input
     id: version
     attributes:
-      label: genezio Version
-      description: What version of `genezio`` are you running? You can run `genezio --version` to find out.
+      label: `genezio` version
+      description: What version of `genezio` are you running? You can run `genezio --version` to find out.
       placeholder: 0.3.11
   - type: textarea
     id: configuration
     attributes:
-      label: genezio Configuration File
-      description: If it's relevant, please paste here the contents of your `genezio.yaml.
+      label: `genezio` configuration file
+      description: If it's relevant, please paste here the contents of your `genezio.yaml`.
       render: YAML
   - type: dropdown
     id: browsers
