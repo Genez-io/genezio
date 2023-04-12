@@ -1,7 +1,6 @@
 import { YamlProjectConfiguration } from "../../models/yamlProjectConfiguration";
 import fs from 'fs';
-import { File } from "../../models/genezioModels";
-import { AstGeneratorInput } from "../../models/genezioAst";
+import { AstGeneratorInput } from "../../models/genezioModels";
 
 export function getGenerateAstInputs(projectConfiguration: YamlProjectConfiguration): AstGeneratorInput[] {
   const getGenerateAstInputs: AstGeneratorInput[] = [];

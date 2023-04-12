@@ -1,7 +1,7 @@
 import log from "loglevel";
 import path from "path";
 import { AstGeneratorOutput, File } from "../models/genezioModels";
-import { AstGeneratorInput } from "../models/genezioAst";
+import { AstGeneratorInput } from "../models/genezioModels";
 import JsAstGenerator from "./astGenerator/JsAstGenerator";
 import TsAstGenerator from "./astGenerator/TsAstGenerator";
 import { exit } from "process";

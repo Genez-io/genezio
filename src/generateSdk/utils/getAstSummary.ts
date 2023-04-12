@@ -4,9 +4,8 @@ import {
   MethodDefinition,
   Node,
   ParameterDefinition,
-  PropertyDefinition,
   SdkGeneratorClassesInfoInput
-} from "../../models/genezioAst";
+} from "../../models/genezioModels";
 
 
 
@@ -15,7 +14,7 @@ export function getAstSummary(
 ): AstSummaryClass[] {
   const classes: AstSummaryClass[] = classesInfo
     .filter((classConfiguration: SdkGeneratorClassesInfoInput) => {
-      const body: [ClassDefinition | Node] | undefined =
+      const body: (ClassDefinition | Node)[] | undefined =
         classConfiguration.program.body;
       // filter if body is undefined
       if (body === undefined) {
@@ -24,7 +23,7 @@ export function getAstSummary(
       return true;
     })
     .map((classConfiguration: SdkGeneratorClassesInfoInput) => {
-      const body: [ClassDefinition | Node] | undefined =
+      const body: (ClassDefinition | Node)[] | undefined =
         classConfiguration.program.body;
 
       // get the class definition

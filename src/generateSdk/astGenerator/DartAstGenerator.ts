@@ -18,16 +18,16 @@ import {
   BooleanType,
   FloatType,
   AnyType,
-  CustomNodeType,
+  CustomAstNodeType,
   ArrayType,
   PromiseType,
-} from "../../models/genezioAst";
+} from "../../models/genezioModels";
 import { checkIfDartIsInstalled } from "../../utils/dart";
 import { createTemporaryFolder, fileExists } from "../../utils/file";
 import { runNewProcess, runNewProcessWithResult } from "../../utils/process";
 
 export class AstGenerator implements AstGeneratorInterface {
-  #mapTypesToParamType(type: string): DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | PromiseType | CustomNodeType {
+  #mapTypesToParamType(type: string): DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | PromiseType | CustomAstNodeType {
     if (type.startsWith("List<")) {
       return {
         type: AstNodeType.AnyLiteral,
@@ -44,8 +44,8 @@ export class AstGenerator implements AstGeneratorInterface {
     if (match && match.length >= 2) {
       const extractedString = match[1];
       return {
-        type: AstNodeType.PromiseLiteral,
-        rawType: this.#mapTypesToParamType(extractedString),
+        type: AstNodeType.PromiseType,
+        generic: this.#mapTypesToParamType(extractedString),
       }
     }
 

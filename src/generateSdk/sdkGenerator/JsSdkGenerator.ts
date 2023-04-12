@@ -54,7 +54,7 @@ class SdkGenerator implements SdkGeneratorInterface {
       }
       for (const elem of classInfo.program.body) {
         if (elem.type === AstNodeType.ClassDefinition) {
-          classDefinition = elem;
+          classDefinition = elem as ClassDefinition;
         }
       }
 

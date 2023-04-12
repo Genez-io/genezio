@@ -7,7 +7,7 @@ import { SdkGeneratorInput, SdkGeneratorOutput } from "../models/genezioModels";
 import path from "path";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
 import { AstSummary } from "../models/astSummary";
-import { AstGeneratorInput } from "../models/genezioAst";
+import { AstGeneratorInput } from "../models/genezioModels";
 
 
 /**

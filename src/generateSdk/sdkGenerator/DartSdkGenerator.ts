@@ -1,5 +1,15 @@
 import Mustache from "mustache";
-import { AstNodeType, ClassDefinition, CustomNodeType, Node, PromiseType, SdkGeneratorInput, SdkGeneratorInterface, SdkGeneratorOutput, StructLiteral, TypeAlias } from "../../models/genezioAst";
+import { 
+    AstNodeType,
+    ClassDefinition,
+    SdkGeneratorInput,
+    SdkGeneratorInterface,
+    SdkGeneratorOutput,
+    StructLiteral,
+    CustomAstNodeType,
+    PromiseType,
+    Node,
+} from "../../models/genezioModels";
 import { TriggerType } from "../../models/yamlProjectConfiguration";
 import { dartSdk } from "../templates/dartSdk";
 
@@ -252,9 +262,9 @@ class SdkGenerator implements SdkGeneratorInterface {
             case AstNodeType.AnyLiteral:
                 return "Object";
             case AstNodeType.CustomNodeLiteral:
-                return (elem as CustomNodeType).rawValue;
-            case AstNodeType.PromiseLiteral:
-                return this.getParamType((elem as PromiseType).rawType);
+                return (elem as CustomAstNodeType).rawValue;
+            case AstNodeType.PromiseType:
+                return this.getParamType((elem as PromiseType).generic);
             default:
                 return "Object";
         }
