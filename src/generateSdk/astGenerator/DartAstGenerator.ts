@@ -21,32 +21,65 @@ import {
   CustomAstNodeType,
   ArrayType,
   PromiseType,
+  MapType,
 } from "../../models/genezioModels";
 import { checkIfDartIsInstalled } from "../../utils/dart";
 import { createTemporaryFolder, fileExists } from "../../utils/file";
 import { runNewProcess, runNewProcessWithResult } from "../../utils/process";
 
 export class AstGenerator implements AstGeneratorInterface {
-  #mapTypesToParamType(type: string): DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | PromiseType | CustomAstNodeType {
+  #parseList(type: string): ArrayType|undefined {
     if (type.startsWith("List<")) {
+      const extractedString = type.substring(5, type.length - 1);
       return {
-        type: AstNodeType.AnyLiteral,
-      };
-    } else if (type.startsWith("Map<")) {
-      return {
-        type: AstNodeType.AnyLiteral,
-      };
+        type: AstNodeType.ArrayType,
+        generic: this.#mapTypesToParamType(extractedString),
+      }
+    } else {
+      return undefined;
     }
+  }
 
-    const regex =/Future<(.+?)>/;
+  #parseMap(type: string): MapType|undefined {
+    if (type.startsWith("Map<")) {
+      const cleanedType = type.replace(" ", "");
+      const extractedString = cleanedType.substring(4, cleanedType.length - 1);
+      const components = extractedString.split(",");
+      const key = components[0];
+      const value = components.slice(1).join(",");
 
-    const match = type.match(regex);
-    if (match && match.length >= 2) {
-      const extractedString = match[1];
+      return {
+        type: AstNodeType.MapType,
+        genericKey: this.#mapTypesToParamType(key),
+        genericValue: this.#mapTypesToParamType(value),
+      }
+    }
+  }
+
+  #parsePromise(type: string): PromiseType|undefined {
+    if (type.startsWith("Future<")) {
+      const extractedString = type.substring(7, type.length - 1);
       return {
         type: AstNodeType.PromiseType,
         generic: this.#mapTypesToParamType(extractedString),
       }
+    }
+  }
+
+  #mapTypesToParamType(type: string): DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | MapType | PromiseType | CustomAstNodeType {
+    const list = this.#parseList(type)
+    if (list) {
+      return list;
+    }
+
+    const map = this.#parseMap(type)
+    if (map) {
+      return map;
+    }
+
+    const promise = this.#parsePromise(type)
+    if (promise) {
+      return promise;
     }
 
     switch (type) {
