@@ -2,7 +2,8 @@
 
 # Check for console.* statements in the git diff
 if git diff | grep '\bconsole\.'; then
-  echo "ERROR: Found console.* statements in the git diff. Please remove them before committing."
+  # echo in red
+  echo "\033[31mERROR: Found console.* statements in the git diff. Please remove them before committing.\033[0m"
   exit 1
 fi
 
