@@ -77,7 +77,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 
       processForClasses = await startProcesses(projectConfiguration)
     } catch (error) {
-      console.log("AICI", error);
       log.error(`Fix the errors and genezio local will restart automatically. Waiting for changes...`);
       // If there was an error generating the SDK, wait for changes and try again.
       await listenForChanges(undefined)

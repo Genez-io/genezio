@@ -129,8 +129,6 @@ class SdkGenerator implements SdkGeneratorInterface {
             files: []
         };
 
-        console.log("Generating Dart SDK...", JSON.stringify(sdkGeneratorInput));
-
         for (const classInfo of sdkGeneratorInput.classesInfo) {
             const _url = "%%%link_to_be_replace%%%";
             const classConfiguration = classInfo.classConfiguration;
