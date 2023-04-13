@@ -12,7 +12,6 @@ import {
   ArrayType,
   PropertyDefinition,
   Enum,
-  TypeLiteral,
   StructLiteral,
   PromiseType
 } from "../../models/genezioModels";
@@ -64,6 +63,7 @@ const template = `# This is an auto generated code. This code should not be modi
 from .remote import Remote
 from typing import Any, List
 from enum import IntEnum
+from collections.abc import Mapping
 
 {{#externalTypes}}
 {{{type}}}
@@ -74,7 +74,7 @@ class {{{className}}}:
 
   {{#methods}}
   def {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) -> {{{returnType}}}:
-    return {{{className}}}.remote.call({{{methodCaller}}}{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}})
+    return {{#mapToObject}}{{{returnType}}}(**({{/mapToObject}}{{{className}}}.remote.call({{{methodCaller}}}{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}}){{#mapToObject}})){{/mapToObject}}
 
   {{/methods}}
 `;
@@ -135,6 +135,7 @@ class SdkGenerator implements SdkGeneratorInterface {
           name: methodDefinition.name,
           parameters: [],
           returnType: this.getParamType(methodDefinition.returnType),
+          mapToObject: methodDefinition.returnType.type === AstNodeType.CustomNodeLiteral,
           methodCaller: methodDefinition.params.length === 0 ?
             `"${classDefinition.name}.${methodDefinition.name}"`
             : `"${classDefinition.name}.${methodDefinition.name}", `
@@ -142,7 +143,7 @@ class SdkGenerator implements SdkGeneratorInterface {
 
         methodView.parameters = methodDefinition.params.map((e) => {
           return {
-            name: (PYTHON_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name) + (e.optional ? "?" : "") + ": " + this.getParamType(e.paramType) + (e.defaultValue ? " = " + (e.defaultValue.type === AstNodeType.StringLiteral ? "'" + e.defaultValue.value + "'" : e.defaultValue.value) : ""),
+            name: (PYTHON_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name) + ": " + this.getParamType(e.paramType) + (e.optional ? " = None" : (e.defaultValue ? " = " + (e.defaultValue.type === AstNodeType.StringLiteral ? "'" + e.defaultValue.value + "'" : e.defaultValue.value) : "")),
             last: false
           }
         });
@@ -240,7 +241,9 @@ class SdkGenerator implements SdkGeneratorInterface {
       return `class ${enumType.name}(IntEnum):\n\t${enumType.cases.map((e: string, i: number) => `${e} = ${i}`).join("\n\t")}`;
     } else if (type.type === AstNodeType.StructLiteral) {
       const typeAlias = type as StructLiteral;
-      return `class ${typeAlias.name}:\n\tdef __init__(self, ${typeAlias.typeLiteral.properties.map((e: PropertyDefinition) => `${e.name}: ${this.getParamType(e.type)}`).join(", ")}):\n\t\t${typeAlias.typeLiteral.properties.map((e: PropertyDefinition) => `self.${e.name} = ${e.name}`).join("\n\t\t")}`;
+      typeAlias.typeLiteral.properties.sort((a: PropertyDefinition, b: PropertyDefinition) => a.optional === b.optional ? 0 : a.optional ? 1 : -1);
+      return `class ${typeAlias.name}:\n\tdef __init__(self, ${typeAlias.typeLiteral.properties.map((e: PropertyDefinition) => `${e.name}: ${this.getParamType(e.type)}${e.optional ? ' = None' : ''}`).join(", ")}):\n\t\t` // header
+        + `${typeAlias.typeLiteral.properties.map((e: PropertyDefinition) => `${e.optional ? `if ${e.name} is not None:\n\t\t\t` : ''}${e.type.type === AstNodeType.CustomNodeLiteral ? `if isinstance(${e.name}, Mapping):\n\t\t\t${e.optional ? '\t' : ''}self.${e.name} = ${this.getParamType(e.type)}(**${e.name})\n\t\t${e.optional ? '\t' : ''}else:\n\t\t\t${e.optional ? '\t' : ''}self.${e.name} = ${e.name}` : `self.${e.name} = ${e.name}`}`).join("\n\t\t")}`;
     }
     return "";
   }

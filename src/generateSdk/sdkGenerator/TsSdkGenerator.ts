@@ -272,7 +272,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         .map((e: Node) => this.getParamType(e))
         .join(" | ");
     } else if (elem.type === AstNodeType.TypeLiteral) {
-      return `{${(elem as TypeLiteral).properties.map((e: PropertyDefinition) => `${e.name}: ${this.getParamType(e.type)}`).join(", ")}}`;
+      return `{${(elem as TypeLiteral).properties.map((e: PropertyDefinition) => `${e.name}${e.optional ? '?' : ''}: ${this.getParamType(e.type)}`).join(", ")}}`;
     }
     return "any";
   }
