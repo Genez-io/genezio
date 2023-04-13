@@ -13,6 +13,7 @@
     "build-dev": "npx tsc && node solveEnvVariables.js build/constants.js -- dev",
     "lint": "./scripts/lint",
     "checkChangesInVariables": "./scripts/checkConstants",
+    "checkUnwantedLogs": "./scripts/checkUnwantedLogs",
     "release": "npm run build && npm publish",
     "test": "jest"
   },
@@ -21,7 +22,8 @@
   ],
   "pre-commit": [
     "lint",
-    "checkChangesInVariables"
+    "checkChangesInVariables",
+    "checkUnwantedLogs"
   ],
   "author": "Genezio",
   "license": "GPL-3",
