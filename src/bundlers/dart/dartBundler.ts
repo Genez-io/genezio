@@ -17,6 +17,8 @@ import { TriggerType } from "../../models/yamlProjectConfiguration";
 import { spawnSync } from "child_process";
 import log from "loglevel";
 import { runNewProcess } from "../../utils/process";
+import { getAllFilesFromCurrentPath } from "../../utils/file";
+import FileDetails from "../../models/fileDetails";
 
 export class DartBundler implements BundlerInterface {
     async #getDartCompilePresignedUrl(archiveName: string): Promise<string> {
@@ -142,6 +144,36 @@ export class DartBundler implements BundlerInterface {
         }
     }
 
+    async #copyNonDartFiles(tempFolderPath: string) {
+        const allNonJsFilesPaths = (await getAllFilesFromCurrentPath()).filter(
+          (file: FileDetails) => {
+            // filter js files, node_modules and folders
+            return (
+              file.extension !== ".dart" &&
+              !fs.lstatSync(file.path).isDirectory()
+            );
+          }
+        );
+    
+        // iterare over all non dart files and copy them to tmp folder
+        await Promise.all(
+          allNonJsFilesPaths.map((filePath: FileDetails) => {
+            // get folders array
+            const folders = filePath.path.split('/');
+            // remove file name from folders array
+            folders.pop();
+            // create folder structure in tmp folder
+            const folderPath = path.join(tempFolderPath, ...folders);
+            if (!fs.existsSync(folderPath)) {
+              fs.mkdirSync(folderPath, { recursive: true });
+            }
+            // copy file to tmp folder
+            const fileDestinationPath = path.join(tempFolderPath, filePath.path);
+            return fs.promises.copyFile(filePath.path, fileDestinationPath);
+          })
+        );
+      }
+
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
         // Create a temporary folder were we copy user code to prepare everything.
         const folderPath = input.genezioConfigurationFilePath;
@@ -172,6 +204,11 @@ export class DartBundler implements BundlerInterface {
         }
 
         const temporaryFolder = await createTemporaryFolder()
+
+        debugLogger.info(`Copy all non dart files to folder ${temporaryFolder}...`);
+        await this.#copyNonDartFiles(temporaryFolder);
+        debugLogger.info("Copy all non dart files to folder done.");
+
         debugLogger.info("Downloading compiled code...")
         await this.#downloadAndUnzipFromS3ToFolder(s3Zip.downloadUrl, temporaryFolder)
         debugLogger.info("Finished downloading compiled code...")
