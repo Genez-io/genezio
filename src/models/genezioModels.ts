@@ -30,6 +30,7 @@ export enum AstNodeType {
   FloatLiteral = "FloatLiteral",
   NullLiteral = "NullLiteral",
   DoubleLiteral = "DoubleLiteral",
+  VoidLiteral = "VoidLiteral",
   AnyLiteral = "AnyLiteral",
   ArrayType = "ArrayType",
   MapType = "MapType",
@@ -114,6 +115,10 @@ export interface DoubleType extends Node {
   type: AstNodeType.DoubleLiteral;
 }
 
+export interface VoidType extends Node {
+  type: AstNodeType.VoidLiteral;
+}
+
 export interface NullType extends Node {
   type: AstNodeType.NullLiteral;
 }
@@ -189,7 +194,7 @@ export interface MethodDefinition extends Node {
   params: ParameterDefinition[];
   kind: MethodKindEnum;
   static: boolean;
-  returnType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType;
+  returnType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType | VoidType;
 }
 
 export interface ClassDefinition extends Node {
