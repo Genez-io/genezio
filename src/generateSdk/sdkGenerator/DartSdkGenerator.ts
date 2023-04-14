@@ -89,7 +89,7 @@ import 'remote.dart';
 
 class {{name}} {
     {{#fields}}
-        {{{type}}} {{fieldName}};
+    {{{type}}} {{fieldName}};
     {{/fields}}
   
     {{name}}({{#fields}}this.{{fieldName}},{{/fields}});
@@ -105,8 +105,14 @@ class {{{className}}} {
   static final remote = Remote("{{{_url}}}");
 
   {{#methods}}
-  static Future<{{{returnType}}}> {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) async {
+  static Future<{{#returnType}}{{{returnType}}}{{/returnType}}{{^returnType}}void{{/returnType}}> {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) async {
+    {{#returnType}}
     final response = await remote.call({{{methodCaller}}}, [{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}}]);
+    {{/returnType}}
+    {{^returnType}}
+    await remote.call({{{methodCaller}}}, [{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}}]);
+    {{/returnType}}
+    {{#returnType}}
 
     {{#returnTypeJsonParser}}
     return {{returnType}}.fromJson(response);
@@ -114,6 +120,7 @@ class {{{className}}} {
     {{^returnTypeJsonParser}}
     return response as {{{returnType}}};
     {{/returnTypeJsonParser}}
+    {{/returnType}}
   }
 
   {{/methods}}
@@ -171,7 +178,9 @@ class SdkGenerator implements SdkGeneratorInterface {
                                 : `"${classDefinition.name}.${methodDefinition.name}"`
                         };
 
-                        if (methodDefinition.returnType.type === AstNodeType.PromiseType) {
+                        if (methodDefinition.returnType.type === AstNodeType.VoidLiteral) {
+                            methodView.returnType = undefined;
+                        } else if (methodDefinition.returnType.type === AstNodeType.PromiseType) {
                             methodView.returnType = this.getParamType(methodDefinition.returnType);
 
                             if ((methodDefinition.returnType as PromiseType).generic.type === AstNodeType.CustomNodeLiteral) {
@@ -295,7 +304,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                 implementation += `json['${name}'] as int,`;
                 break;
             case AstNodeType.CustomNodeLiteral:
-                implementation += `${(node as CustomAstNodeType).rawValue}.fromJson(json as Map<String, dynamic>),`;
+                implementation += `${(node as CustomAstNodeType).rawValue}.fromJson(json['${name}'] as Map<String, dynamic>),`;
                 break;
             case AstNodeType.ArrayType:
                 implementation += this.generateFromJsonImplementationForArrayInitial(node as ArrayType, name);
@@ -351,7 +360,7 @@ class SdkGenerator implements SdkGeneratorInterface {
 
         implementation += `(json['${name}'] as List<dynamic>).map((e) => `;
         implementation += this.generateFromJsonImplementationForNode(arrayType.generic);
-        implementation += `).toList()`;
+        implementation += `).toList(),`;
 
         return implementation;
     }
