@@ -32,6 +32,7 @@ export enum AstNodeType {
   DoubleLiteral = "DoubleLiteral",
   AnyLiteral = "AnyLiteral",
   ArrayType = "ArrayType",
+  MapType = "MapType",
   PromiseType = "PromiseType",
   ConstType = "ConstType",
   NativeType = "NativeType",
@@ -124,6 +125,12 @@ export interface AnyType extends Node {
 export interface ArrayType extends Node {
   type: AstNodeType.ArrayType;
   generic: Node;
+}
+
+export interface MapType extends Node {
+  type: AstNodeType.MapType;
+  genericKey: Node;
+  genericValue: Node;
 }
 
 export interface PromiseType extends Node {

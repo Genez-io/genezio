@@ -53,6 +53,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     try {
       sdk = await sdkGeneratorApiHandler(yamlProjectConfiguration)
         .catch((error) => {
+          debugLogger.log("An error occured", error);
           // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
           if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
             log.error("Syntax error:");

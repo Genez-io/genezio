@@ -6,6 +6,7 @@ import JsAstGenerator from "./astGenerator/JsAstGenerator";
 import TsAstGenerator from "./astGenerator/TsAstGenerator";
 import { exit } from "process";
 import DartAstGenerator from "./astGenerator/DartAstGenerator";
+import { debugLogger } from "../utils/logging";
 
 
 /**
@@ -49,6 +50,7 @@ export async function generateAst(
 
   return await astGeneratorClass.generateAst(input)
     .catch((err: any) => {
+      debugLogger.log("An error has occured", err);
       throw {...err, path: input.class.path};
     });
 }

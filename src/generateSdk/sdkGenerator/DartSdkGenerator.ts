@@ -9,9 +9,11 @@ import {
     CustomAstNodeType,
     PromiseType,
     Node,
+    MapType,
 } from "../../models/genezioModels";
 import { TriggerType } from "../../models/yamlProjectConfiguration";
 import { dartSdk } from "../templates/dartSdk";
+import { ArrayType } from "../../models/genezioModels";
 
 // https://dart.dev/language/keywords
 const DART_RESERVED_WORDS = [
@@ -92,21 +94,9 @@ class {{name}} {
   
     {{name}}({{#fields}}this.{{fieldName}},{{/fields}});
 
-    factory {{name}}.fromJson(Map<String, dynamic> json) {
-        return {{name}}(
-            {{#fields}}
-                json['{{fieldName}}'] as {{{type}}},
-            {{/fields}}
-          );
-      }
+    {{{fromJson}}}
     
-      Map<String, dynamic> toJson() {
-        return <String, dynamic>{
-            {{#fields}}
-                '{{fieldName}}': this.{{fieldName}},
-            {{/fields}}
-        };
-      }
+    {{{toJson}}}
 }
 
 {{/otherClasses}}
@@ -181,7 +171,16 @@ class SdkGenerator implements SdkGeneratorInterface {
                                 : `"${classDefinition.name}.${methodDefinition.name}"`
                         };
 
-                        if (methodDefinition.returnType.type === AstNodeType.CustomNodeLiteral) {
+                        if (methodDefinition.returnType.type === AstNodeType.PromiseType) {
+                            methodView.returnType = this.getParamType(methodDefinition.returnType);
+
+                            if ((methodDefinition.returnType as PromiseType).generic.type === AstNodeType.CustomNodeLiteral) {
+                                methodView.returnTypeJsonParser = true;
+                                methodView.returnType = ((methodDefinition.returnType as PromiseType).generic as CustomAstNodeType).rawValue;
+                            } else {
+                                methodView.returnType = this.getParamType(methodDefinition.returnType);
+                            }
+                        } else if (methodDefinition.returnType.type === AstNodeType.CustomNodeLiteral) {
                             methodView.returnTypeJsonParser = true;
                             methodView.returnType = methodDefinition.returnType.rawValue;
                         } else {
@@ -214,9 +213,13 @@ class SdkGenerator implements SdkGeneratorInterface {
                     }
                 } else if (elem.type === AstNodeType.StructLiteral) {
                     const structLiteral = elem as StructLiteral;
+                    const fromJson = this.generateFromJsonImplementationForClass(structLiteral);
+                    const toJson = this.generateToJsonImplementationForClass(structLiteral);
                     view.otherClasses.push({
                         name: structLiteral.name,
                         fields: structLiteral.typeLiteral.properties.map((e) => ({ type: this.getParamType(e.type), fieldName: e.name })),
+                        fromJson: fromJson,
+                        toJson: toJson
                     });
                 }
             }
@@ -249,6 +252,130 @@ class SdkGenerator implements SdkGeneratorInterface {
         return generateSdkOutput;
     }
 
+    generateFromJsonImplementationForClass(elem: StructLiteral): string {
+        let implementation = "";
+        implementation += `factory ${elem.name}.fromJson(Map<String, dynamic> json) => `;
+        implementation += `${elem.name}(`;
+
+        console.log(JSON.stringify(elem));
+
+        elem.typeLiteral.properties.forEach((e) => {
+            implementation += this.generateFromJsonImplementation(e.type, e.name);
+        });
+
+        implementation += `);`;
+
+        return implementation;
+    }
+
+    generateToJsonImplementationForClass(elem: StructLiteral): string {
+        let implementation = "Map<String, dynamic> toJson() => <String, dynamic>{";
+        elem.typeLiteral.properties.forEach((e) => {
+            implementation += `"${e.name}": ${e.name},`;
+        });
+        implementation += "};";
+
+        return implementation;
+    }
+
+    generateFromJsonImplementation(node: Node, name: string): string {
+        let implementation = "";
+
+        switch (node.type) {
+            case AstNodeType.StringLiteral:
+                implementation += `json['${name}'] as String,`;
+                break;
+            case AstNodeType.DoubleLiteral:
+                implementation += `json['${name}'] as double,`;
+                break;
+            case AstNodeType.BooleanLiteral:
+                implementation += `json['${name}'] as bool,`;
+                break;
+            case AstNodeType.IntegerLiteral:
+                implementation += `json['${name}'] as int,`;
+                break;
+            case AstNodeType.CustomNodeLiteral:
+                implementation += `{{${(node as CustomAstNodeType).rawValue}}}.fromJson(json as Map<String, dynamic>),`;
+                break;
+            case AstNodeType.ArrayType:
+                implementation += this.generateFromJsonImplementationForArrayInitial(node as ArrayType, name);
+                break;
+            case AstNodeType.MapType:
+                implementation += this.generateFromJsonImplementationForMapInitial(node as MapType, name);
+        }
+
+        return implementation;
+    }
+
+    generateFromJsonImplementationForNode(node: Node): string {
+        let implementation = "";
+
+        switch (node.type) {
+            case AstNodeType.StringLiteral:
+                implementation += `e as String`;
+                break;
+            case AstNodeType.DoubleLiteral:
+                implementation += `e as double`;
+                break;
+            case AstNodeType.BooleanLiteral:
+                implementation += `e as bool`;
+                break;
+            case AstNodeType.IntegerLiteral:
+                implementation += `e as int`;
+                break;
+            case AstNodeType.CustomNodeLiteral:
+                implementation += `${(node as CustomAstNodeType).rawValue}.fromJson(e as Map<String, dynamic>),`;
+                break;
+            case AstNodeType.ArrayType:
+                implementation += this.generateFromJsonImplementationForArray((node as ArrayType).generic);
+                break;
+            case AstNodeType.MapType:
+                implementation += this.generateFromJsonImplementationForMap((node as MapType).genericValue);
+
+        }
+
+        return implementation;
+    }
+
+    generateFromJsonImplementationForMapInitial(mapType: MapType, name: string): string {
+        let implementation = "";
+        implementation += `(json['${name}'] as Map<${this.getParamType(mapType.genericKey)}, dynamic>).map((k, e) => MapEntry(k,`;
+        implementation += this.generateFromJsonImplementationForNode(mapType.genericValue);
+        implementation += `)),`;
+
+        return implementation;
+    }
+
+    generateFromJsonImplementationForArrayInitial(arrayType: ArrayType, name: string): string {
+        let implementation = "";
+
+        implementation += `(json['${name}'] as List<dynamic>).map((e) => `;
+        implementation += this.generateFromJsonImplementationForNode(arrayType.generic);
+        implementation += `).toList()`;
+
+        return implementation;
+    }
+
+    generateFromJsonImplementationForArray(node: Node): string {
+        let implementation = "";
+
+        implementation += '(e as List<dynamic>).map((e) =>';
+        implementation += this.generateFromJsonImplementationForNode(node)
+        implementation += ').toList()';
+
+        return implementation;
+    }
+
+    generateFromJsonImplementationForMap(node: Node): string {
+        let implementation = "";
+
+        implementation += '(e as Map<String, dynamic>).map((k, e) => MapEntry(k,';
+        implementation += this.generateFromJsonImplementationForNode(node)
+        implementation += '))';
+
+        return implementation;
+    }
+
     getParamType(elem: Node): string {
         switch (elem.type) {
             case AstNodeType.StringLiteral:
@@ -261,6 +388,10 @@ class SdkGenerator implements SdkGeneratorInterface {
                 return "int";
             case AstNodeType.AnyLiteral:
                 return "Object";
+            case AstNodeType.ArrayType:
+                return `List<${this.getParamType((elem as ArrayType).generic)}>`;
+            case AstNodeType.MapType:
+                return `Map<${this.getParamType((elem as MapType).genericKey)}, ${this.getParamType((elem as MapType).genericValue)}>`;
             case AstNodeType.CustomNodeLiteral:
                 return (elem as CustomAstNodeType).rawValue;
             case AstNodeType.PromiseType:
