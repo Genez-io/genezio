@@ -29,8 +29,9 @@ import { runNewProcess, runNewProcessWithResult } from "../../utils/process";
 
 export class AstGenerator implements AstGeneratorInterface {
   #parseList(type: string): ArrayType|undefined {
-    if (type.startsWith("List<")) {
-      const extractedString = type.substring(5, type.length - 1);
+    const listToken = "List<";
+    if (type.startsWith(listToken)) {
+      const extractedString = type.substring(listToken.length, type.length - 1);
       return {
         type: AstNodeType.ArrayType,
         generic: this.#mapTypesToParamType(extractedString),
@@ -41,9 +42,10 @@ export class AstGenerator implements AstGeneratorInterface {
   }
 
   #parseMap(type: string): MapType|undefined {
-    if (type.startsWith("Map<")) {
+    const mapToken = "Map<";
+    if (type.startsWith(mapToken)) {
       const cleanedType = type.replace(" ", "");
-      const extractedString = cleanedType.substring(4, cleanedType.length - 1);
+      const extractedString = cleanedType.substring(mapToken.length, cleanedType.length - 1);
       const components = extractedString.split(",");
       const key = components[0];
       const value = components.slice(1).join(",");
@@ -57,8 +59,9 @@ export class AstGenerator implements AstGeneratorInterface {
   }
 
   #parsePromise(type: string): PromiseType|undefined {
-    if (type.startsWith("Future<")) {
-      const extractedString = type.substring(7, type.length - 1);
+    const promiseToken = "Future<";
+    if (type.startsWith(promiseToken)) {
+      const extractedString = type.substring(promiseToken.length, type.length - 1);
       return {
         type: AstNodeType.PromiseType,
         generic: this.#mapTypesToParamType(extractedString),
