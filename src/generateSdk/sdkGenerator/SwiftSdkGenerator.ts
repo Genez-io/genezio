@@ -69,8 +69,6 @@ class {{{className}}} {
 
 
 class SdkGenerator implements SdkGeneratorInterface {
-  //externalTypes: Node[] = [];
-
   async generateSdk(
     sdkGeneratorInput: SdkGeneratorInput
   ): Promise<SdkGeneratorOutput> {
@@ -80,6 +78,7 @@ class SdkGenerator implements SdkGeneratorInterface {
     };
 
     for (const classInfo of sdkGeneratorInput.classesInfo) {
+      // const externalTypes: Node[] = [];
       const _url = "%%%link_to_be_replace%%%";
       const classConfiguration = classInfo.classConfiguration;
 
@@ -149,7 +148,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         view.methods.push(methodView);
       }
 
-      // for (const externalType of this.externalTypes) {
+      // for (const externalType of externalTypes) {
       //   view.externalTypes.push({type: this.generateExternalType(externalType)});
       // }
 
