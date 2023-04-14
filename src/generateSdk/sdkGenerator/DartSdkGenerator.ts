@@ -295,7 +295,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                 implementation += `json['${name}'] as int,`;
                 break;
             case AstNodeType.CustomNodeLiteral:
-                implementation += `{{${(node as CustomAstNodeType).rawValue}}}.fromJson(json as Map<String, dynamic>),`;
+                implementation += `${(node as CustomAstNodeType).rawValue}.fromJson(json as Map<String, dynamic>),`;
                 break;
             case AstNodeType.ArrayType:
                 implementation += this.generateFromJsonImplementationForArrayInitial(node as ArrayType, name);

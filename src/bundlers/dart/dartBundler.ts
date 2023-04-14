@@ -179,7 +179,7 @@ export class DartBundler implements BundlerInterface {
         const folderPath = input.genezioConfigurationFilePath;
         const inputTemporaryFolder = await createTemporaryFolder(input.configuration.name);
         await fsExtra.copy(folderPath, inputTemporaryFolder);
-        debugLogger.info(`Copy files in temp folder ${inputTemporaryFolder}`);
+        debugLogger.debug(`Copy files in temp folder ${inputTemporaryFolder}`);
 
         // Create the router class
         const userClass = input.projectConfiguration.classes.find((c: ClassConfiguration) => c.path == input.path)!;
@@ -195,9 +195,9 @@ export class DartBundler implements BundlerInterface {
         const archiveName = await this.#uploadUserCodeToS3(input.projectConfiguration.name, userClass.name, inputTemporaryFolder);
 
         // Compile the Dart code on the server
-        debugLogger.info("Compiling Dart...")
+        debugLogger.debug("Compiling Dart...")
         const s3Zip: any = await this.#compile(archiveName)
-        debugLogger.info("Compiling Dart finished.")
+        debugLogger.debug("Compiling Dart finished.")
 
         if (s3Zip.success === false) {
             throw new Error("Failed to upload code for compiling.");
@@ -205,13 +205,14 @@ export class DartBundler implements BundlerInterface {
 
         const temporaryFolder = await createTemporaryFolder()
 
-        debugLogger.info(`Copy all non dart files to folder ${temporaryFolder}...`);
+        debugLogger.debug(`Copy all non dart files to folder ${temporaryFolder}...`);
         await this.#copyNonDartFiles(temporaryFolder);
-        debugLogger.info("Copy all non dart files to folder done.");
+        debugLogger.debug("Copy all non dart files to folder done.");
 
-        debugLogger.info("Downloading compiled code...")
+
+        debugLogger.debug("Downloading compiled code...")
         await this.#downloadAndUnzipFromS3ToFolder(s3Zip.downloadUrl, temporaryFolder)
-        debugLogger.info("Finished downloading compiled code...")
+        debugLogger.debug("Finished downloading compiled code...")
 
         return {
             ...input,
