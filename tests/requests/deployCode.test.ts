@@ -26,6 +26,10 @@ test("should throw error if server returns error", async () => {
     const projectConfiguration: ProjectConfiguration = {
       name: "test",
       region: "us-east-1",
+      astSummary: {
+        classes: [],
+        version: "1.0.0",
+      },
       sdk: new SdkConfiguration(Language.js, JsRuntime.browser, "./test"),
       classes: [],
     }
@@ -48,6 +52,10 @@ test("should throw error if server returns data.error object", async () => {
     const projectConfiguration: ProjectConfiguration = {
       name: "test",
       region: "us-east-1",
+      astSummary: {
+        classes: [],
+        version: "1.0.0",
+      },
       sdk: new SdkConfiguration(Language.js, JsRuntime.browser, "./test"),
       classes: [],
     }
@@ -69,6 +77,10 @@ test("should return response.data if everything is ok", async () => {
   const projectConfiguration: ProjectConfiguration = {
     name: "test",
     region: "us-east-1",
+    astSummary: {
+      classes: [],
+      version: "1.0.0",
+    },
     sdk: new SdkConfiguration(Language.js, JsRuntime.browser, "./test"),
     classes: [],
   }
@@ -90,6 +102,10 @@ test("should read token and pass it to headers", async () => {
   const projectConfiguration: ProjectConfiguration = {
     name: "test",
     region: "us-east-1",
+    astSummary: {
+      classes: [],
+      version: "1.0.0",
+    },
     sdk: new SdkConfiguration(Language.js, JsRuntime.browser, "./test"),
     classes: [],
   }
