@@ -1,4 +1,6 @@
+import { getAstSummary } from "../generateSdk/utils/getAstSummary";
 import { AstSummary } from "./astSummary";
+import { SdkGeneratorResponse } from "./sdkGeneratorResponse";
 import { JsRuntime, JsSdkOptions, Language, TriggerType, YamlProjectConfiguration } from "./yamlProjectConfiguration";
 
 export class ParameterType {
@@ -70,18 +72,26 @@ export class ProjectConfiguration {
     region: string;
     sdk: SdkConfiguration;
     cloudProvider?: string;
+    astSummary: AstSummary;
     classes: ClassConfiguration[];
 
     constructor(
         yamlConfiguration: YamlProjectConfiguration,
-        astSummary: AstSummary,
+        sdkGeneratorResponse: SdkGeneratorResponse,
     ) {
         this.name = yamlConfiguration.name;
         this.region = yamlConfiguration.region;
         this.sdk = yamlConfiguration.sdk;
         this.cloudProvider = yamlConfiguration.cloudProvider || "aws";
 
-        this.classes = astSummary.classes.map((c) => {
+
+        // Generate AST Summary
+        this.astSummary = {
+            version: "1.0.0",
+            classes: getAstSummary(sdkGeneratorResponse.sdkGeneratorInput.classesInfo)
+        };
+
+        this.classes = this.astSummary.classes.map((c) => {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const yamlClass = yamlConfiguration.classes.find((yamlC) => yamlC.path === c.path)!;
             const methods = c?.methods.map((m) => {

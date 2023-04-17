@@ -47,7 +47,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
   while (true) {
     // Read the project configuration everytime because it might change
     const yamlProjectConfiguration = await getProjectConfiguration();
-    let sdk;
+    let sdk: SdkGeneratorResponse;
     let processForClasses;
     let projectConfiguration;
     try {
@@ -68,14 +68,14 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 
       projectConfiguration = new ProjectConfiguration(
         yamlProjectConfiguration,
-        sdk.astSummary
+        sdk,
       );
 
       if (projectConfiguration.classes.length === 0) {
         throw new Error(GENEZIO_NO_CLASSES_FOUND);
       }
 
-      processForClasses = await startProcesses(projectConfiguration)
+      processForClasses = await startProcesses(projectConfiguration, sdk)
     } catch (error) {
       log.error(`Fix the errors and genezio local will restart automatically. Waiting for changes...`);
       // If there was an error generating the SDK, wait for changes and try again.
@@ -84,7 +84,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     }
 
     // Start HTTP Server
-    const server = await startServerHttp(options.port, sdk.astSummary, yamlProjectConfiguration.name, processForClasses)
+    const server = await startServerHttp(options.port, projectConfiguration.astSummary, yamlProjectConfiguration.name, processForClasses)
 
     // Start cron jobs
     const crons = await startCronJobs(projectConfiguration, processForClasses)
@@ -105,7 +105,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 /**
  * Bundle each class and start a new process for it.
  */
-async function startProcesses(projectConfiguration: ProjectConfiguration): Promise<Map<string, ClassProcess>> {
+async function startProcesses(projectConfiguration: ProjectConfiguration, sdk: SdkGeneratorResponse): Promise<Map<string, ClassProcess>> {
   const classes = projectConfiguration.classes
   const processForClasses = new Map<string, ClassProcess>();
 
@@ -117,12 +117,15 @@ async function startProcesses(projectConfiguration: ProjectConfiguration): Promi
       throw new Error("Unsupported language ${classConfiguration.language}.")
     }
 
+    const ast = sdk.sdkGeneratorInput.classesInfo.find((classInfo) => classInfo.classConfiguration.path === classInfo.classConfiguration.path)!.program;
+
     debugLogger.log("Start bundling...")
     // TODO: Is it worth the extra complexity of maintaining the folder?
     return createTemporaryFolder().then((tmpFolder) => {
       return bundler.bundle({
         projectConfiguration,
         path: classInfo.path,
+        ast: ast,
         genezioConfigurationFilePath: process.cwd(),
         configuration: classInfo,
         extra: { mode: "development", tmpFolder: tmpFolder }

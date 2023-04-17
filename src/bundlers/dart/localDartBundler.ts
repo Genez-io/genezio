@@ -4,16 +4,59 @@ import { createTemporaryFolder, writeToFile } from "../../utils/file";
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface";
 import { checkIfDartIsInstalled } from "../../utils/dart";
 import { debugLogger } from "../../utils/logging";
-import { ClassConfiguration } from "../../models/projectConfiguration";
+import { ClassConfiguration, MethodConfiguration, ParameterType } from "../../models/projectConfiguration";
 import { template } from "./localDartMain";
 import { default as fsExtra } from "fs-extra";
 import { spawnSync } from 'child_process';
 import { TriggerType } from "../../models/yamlProjectConfiguration";
 import log from "loglevel";
+import { ArrayType, AstNodeType, ClassDefinition, CustomAstNodeType, MapType, Node, Program, PromiseType } from "../../models/genezioModels";
+import { castArrayRecursivelyInitial, castMapRecursivelyInitial } from "../../utils/dartAstCasting";
 
 export class DartBundler implements BundlerInterface {
 
-    async #createRouterFileForClass(classConfiguration: ClassConfiguration, folderPath: string): Promise<void> {
+    #castParameterToPropertyType(node: Node, variableName: string): string {
+        let implementation = "";
+
+        switch (node.type) {
+            case AstNodeType.StringLiteral:
+                implementation += `${variableName} as String`;
+                break;
+            case AstNodeType.DoubleLiteral:
+                implementation += `${variableName} as double`;
+                break;
+            case AstNodeType.BooleanLiteral:
+                implementation += `${variableName} as bool`;
+                break;
+            case AstNodeType.IntegerLiteral:
+                implementation += `${variableName} as int`;
+                break;
+            case AstNodeType.PromiseType:
+                implementation += this.#castParameterToPropertyType((node as PromiseType).generic, variableName);
+                break;
+            case AstNodeType.CustomNodeLiteral:
+                implementation += `${(node as CustomAstNodeType).rawValue}.fromJson(${variableName} as Map<String, dynamic>)`;
+                break;
+            case AstNodeType.ArrayType:
+                implementation += castArrayRecursivelyInitial(node as ArrayType, variableName);
+                break;
+            case AstNodeType.MapType:
+                implementation += castMapRecursivelyInitial(node as MapType, variableName);
+        }
+
+        return implementation;
+    }
+
+    #getProperCast(mainClass: ClassDefinition, method: MethodConfiguration, parameterType: ParameterType, index: number): string {
+        const type = mainClass.methods.find((m) => m.name == method.name)!.params.find((p) => p.name == parameterType.name)
+        return `${this.#castParameterToPropertyType(type!.paramType, `params[${index}]`)}`
+    }
+
+    async #createRouterFileForClass(classConfiguration: ClassConfiguration, ast: Program, folderPath: string): Promise<void> {
+        const mainClass = ast.body?.find((element) => {
+            return element.type === AstNodeType.ClassDefinition
+        }) as ClassDefinition;
+
         const moustacheViewForMain = {
             classFileName: path.basename(classConfiguration.path, path.extname(classConfiguration.path)),
             className: classConfiguration.name,
@@ -23,10 +66,7 @@ export class DartBundler implements BundlerInterface {
                     name: m.name,
                     parameters: m.parameters.map((p, index) => ({
                         index,
-                        isNative: this.#isParameterNative(p.type),
-                        last: index == m.parameters.length - 1,
-                        type: p.type,
-                        cast: p.type == "double" ? ".toDouble()" : p.type == "int" ? ".toInt()" : undefined,
+                        cast: this.#getProperCast(mainClass, m, p, index),
                     })),
                 })),
             cronMethods: classConfiguration.methods
@@ -81,7 +121,7 @@ export class DartBundler implements BundlerInterface {
 
         // Create the router class
         const userClass = input.projectConfiguration.classes.find((c: ClassConfiguration) => c.path == input.path)!;
-        await this.#createRouterFileForClass(userClass, inputTemporaryFolder);
+        await this.#createRouterFileForClass(userClass, input.ast, inputTemporaryFolder);
 
         // Check if dart is installed
         await checkIfDartIsInstalled();

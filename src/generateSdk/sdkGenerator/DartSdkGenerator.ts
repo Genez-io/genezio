@@ -14,6 +14,7 @@ import {
 import { TriggerType } from "../../models/yamlProjectConfiguration";
 import { dartSdk } from "../templates/dartSdk";
 import { ArrayType } from "../../models/genezioModels";
+import { castArrayRecursivelyInitial, castMapRecursivelyInitial, getParamType } from "../../utils/dartAstCasting";
 
 // https://dart.dev/language/keywords
 const DART_RESERVED_WORDS = [
@@ -183,7 +184,7 @@ class SdkGenerator implements SdkGeneratorInterface {
 
                         methodView.parameters = methodDefinition.params.map((e) => {
                             return {
-                                name: this.getParamType(e.paramType) + " " + (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
+                                name: getParamType(e.paramType) + " " + (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
                                 last: false
                             }
                         });
@@ -211,7 +212,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                     const toJson = this.generateToJsonImplementationForClass(structLiteral);
                     view.otherClasses.push({
                         name: structLiteral.name,
-                        fields: structLiteral.typeLiteral.properties.map((e) => ({ type: this.getParamType(e.type), fieldName: e.name })),
+                        fields: structLiteral.typeLiteral.properties.map((e) => ({ type: getParamType(e.type), fieldName: e.name })),
                         fromJson: fromJson,
                         toJson: toJson
                     });
@@ -295,10 +296,10 @@ class SdkGenerator implements SdkGeneratorInterface {
                 implementation += `${(node as CustomAstNodeType).rawValue}.fromJson(${variableName} as Map<String, dynamic>)`;
                 break;
             case AstNodeType.ArrayType:
-                implementation += this.castArrayRecursivelyInitial(node as ArrayType, variableName);
+                implementation += castArrayRecursivelyInitial(node as ArrayType, variableName);
                 break;
             case AstNodeType.MapType:
-                implementation += this.castMapRecursivelyInitial(node as MapType, variableName);
+                implementation += castMapRecursivelyInitial(node as MapType, variableName);
         }
 
         return implementation;
@@ -324,80 +325,11 @@ class SdkGenerator implements SdkGeneratorInterface {
                 implementation += `${(node as CustomAstNodeType).rawValue}.fromJson(json['${name}'] as Map<String, dynamic>),`;
                 break;
             case AstNodeType.ArrayType:
-                implementation += this.castArrayRecursivelyInitial(node as ArrayType, `json['${name}']`) + ",";
+                implementation += castArrayRecursivelyInitial(node as ArrayType, `json['${name}']`) + ",";
                 break;
             case AstNodeType.MapType:
-                implementation += this.castMapRecursivelyInitial(node as MapType, `json['${name}']`) + ",";
+                implementation += castMapRecursivelyInitial(node as MapType, `json['${name}']`) + ",";
         }
-
-        return implementation;
-    }
-
-    castNodeRecursively(node: Node): string {
-        let implementation = "";
-
-        switch (node.type) {
-            case AstNodeType.StringLiteral:
-                implementation += `e as String`;
-                break;
-            case AstNodeType.DoubleLiteral:
-                implementation += `e as double`;
-                break;
-            case AstNodeType.BooleanLiteral:
-                implementation += `e as bool`;
-                break;
-            case AstNodeType.IntegerLiteral:
-                implementation += `e as int`;
-                break;
-            case AstNodeType.CustomNodeLiteral:
-                implementation += `${(node as CustomAstNodeType).rawValue}.fromJson(e as Map<String, dynamic>),`;
-                break;
-            case AstNodeType.ArrayType:
-                implementation += this.castArrayRecursively((node as ArrayType).generic);
-                break;
-            case AstNodeType.MapType:
-                implementation += this.castMapRecursively((node as MapType).genericValue);
-
-        }
-
-        return implementation;
-    }
-
-    castMapRecursivelyInitial(mapType: MapType, name: string): string {
-        let implementation = "";
-        implementation += `(${name} as Map<${this.getParamType(mapType.genericKey)}, dynamic>).map((k, e) => MapEntry(k,`;
-        implementation += this.castNodeRecursively(mapType.genericValue);
-        implementation += `))`;
-
-        return implementation;
-    }
-
-    castArrayRecursivelyInitial(arrayType: ArrayType, name: string): string {
-        let implementation = "";
-
-        implementation += `(${name} as List<dynamic>).map((e) => `;
-        implementation += this.castNodeRecursively(arrayType.generic);
-        implementation += `).toList()`;
-
-        return implementation;
-    }
-
-    castArrayRecursively(node: Node): string {
-        let implementation = "";
-
-        implementation += '(e as List<dynamic>).map((e) =>';
-        implementation += this.castNodeRecursively(node)
-        implementation += ').toList()';
-
-        return implementation;
-    }
-
-    castMapRecursively(node: Node): string {
-        let implementation = "";
-
-        implementation += '(e as Map<String, dynamic>).map((k, e) => MapEntry(k,';
-        implementation += this.castNodeRecursively(node)
-        implementation += '))';
 
         return implementation;
     }
@@ -417,40 +349,15 @@ class SdkGenerator implements SdkGeneratorInterface {
             case AstNodeType.VoidLiteral:
                 return "Future<void>";
             case AstNodeType.PromiseType:
-                return `Future<${this.getParamType((elem as PromiseType).generic)}>`;
+                return `Future<${getParamType((elem as PromiseType).generic)}>`;
             case AstNodeType.ArrayType:
-                return `Future<List<${this.getParamType((elem as ArrayType).generic)}>>`;
+                return `Future<List<${getParamType((elem as ArrayType).generic)}>>`;
             case AstNodeType.MapType:
-                return `Future<Map<${this.getParamType((elem as MapType).genericKey)}, ${this.getParamType((elem as MapType).genericValue)}>>`;
+                return `Future<Map<${getParamType((elem as MapType).genericKey)}, ${getParamType((elem as MapType).genericValue)}>>`;
             case AstNodeType.CustomNodeLiteral:
                 return `Future<${(elem as CustomAstNodeType).rawValue}>`;
             default:
                 return "Future<Object>";
-        }
-    }
-
-    getParamType(elem: Node): string {
-        switch (elem.type) {
-            case AstNodeType.StringLiteral:
-                return "String";
-            case AstNodeType.DoubleLiteral:
-                return "double";
-            case AstNodeType.BooleanLiteral:
-                return "bool";
-            case AstNodeType.IntegerLiteral:
-                return "int";
-            case AstNodeType.AnyLiteral:
-                return "Object";
-            case AstNodeType.ArrayType:
-                return `List<${this.getParamType((elem as ArrayType).generic)}>`;
-            case AstNodeType.MapType:
-                return `Map<${this.getParamType((elem as MapType).genericKey)}, ${this.getParamType((elem as MapType).genericValue)}>`;
-            case AstNodeType.CustomNodeLiteral:
-                return (elem as CustomAstNodeType).rawValue;
-            case AstNodeType.PromiseType:
-                return this.getParamType((elem as PromiseType).generic);
-            default:
-                return "Object";
         }
     }
 }

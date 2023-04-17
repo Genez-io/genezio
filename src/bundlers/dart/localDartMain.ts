@@ -138,13 +138,7 @@ void main(List<String> args) async {
   
         try {
         {{#parameters}}
-          {{#isNative}}
-            final param{{index}} = params[{{index}}]{{#cast}}{{cast}}{{/cast}};
-          {{/isNative}}
-          {{^isNative}}
-            Map<String, dynamic> _dict{{index}} = params[{{index}}];
-            final param{{index}} = {{{type}}}.fromJson(_dict{{index}});
-          {{/isNative}}
+          final param{{index}} = {{{cast}}};
         {{/parameters}}
         final result = await service.{{name}}({{#parameters}}param{{index}}{{^last}},{{/last}}{{/parameters}});
         final json = jsonEncode(result);

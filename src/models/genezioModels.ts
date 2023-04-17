@@ -180,7 +180,7 @@ export interface ParameterDefinition extends Node {
   type: AstNodeType.ParameterDefinition;
   name: string;
   rawType: string;
-  paramType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType;
+  paramType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | MapType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType;
   optional: boolean;
   defaultValue?: {
     value: string;
@@ -194,7 +194,7 @@ export interface MethodDefinition extends Node {
   params: ParameterDefinition[];
   kind: MethodKindEnum;
   static: boolean;
-  returnType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType | VoidType;
+  returnType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | MapType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType | VoidType;
 }
 
 export interface ClassDefinition extends Node {

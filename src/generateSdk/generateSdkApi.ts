@@ -47,15 +47,8 @@ export async function sdkGeneratorApiHandler(projectConfiguration: YamlProjectCo
     sdkGeneratorInput, projectConfiguration.plugins?.sdkGenerator
   );
 
-  // Generate AST Summary
-  const astSummary: AstSummary = {
-    version: "1.0.0",
-    classes: getAstSummary(sdkGeneratorInput.classesInfo)
-  };
-  
-
   return {
     files: sdkOutput.files,
-    astSummary: astSummary
+    sdkGeneratorInput: sdkGeneratorInput,
   };
 }
