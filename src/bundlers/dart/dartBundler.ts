@@ -9,7 +9,7 @@ import { createTemporaryFolder, writeToFile, zipDirectory } from "../../utils/fi
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface";
 import { checkIfDartIsInstalled } from "../../utils/dart";
 import { debugLogger } from "../../utils/logging";
-import { ClassConfiguration } from "../../models/projectConfiguration";
+import { ClassConfiguration, MethodConfiguration, ParameterType } from "../../models/projectConfiguration";
 import { template } from "./dartMain";
 import { default as fsExtra } from "fs-extra";
 import { DART_COMPILATION_ENDPOINT } from "../../constants";
@@ -19,6 +19,8 @@ import log from "loglevel";
 import { runNewProcess } from "../../utils/process";
 import { getAllFilesFromCurrentPath } from "../../utils/file";
 import FileDetails from "../../models/fileDetails";
+import { ArrayType, AstNodeType, ClassDefinition, CustomAstNodeType, MapType, Node, Program, PromiseType } from "../../models/genezioModels";
+import { castArrayRecursivelyInitial, castMapRecursivelyInitial } from "../../utils/dartAstCasting";
 
 export class DartBundler implements BundlerInterface {
     async #getDartCompilePresignedUrl(archiveName: string): Promise<string> {
@@ -32,10 +34,6 @@ export class DartBundler implements BundlerInterface {
             log.info(result.stdout.toString().split("\n").slice(1).join("\n"));
             throw new Error("Compilation error! Please check your code and try again.");
         }
-    }
-
-    #isParameterNative(type: string): boolean {
-        return type == "String" || type == "int" || type == "double" || type == "bool";
     }
 
     async #compile(archiveName: string): Promise<string> {
@@ -76,7 +74,48 @@ export class DartBundler implements BundlerInterface {
         })).catch(err => console.error(err));
     }
 
-    async #createRouterFileForClass(classConfiguration: ClassConfiguration, folderPath: string): Promise<void> {
+    #castParameterToPropertyType(node: Node, variableName: string): string {
+        let implementation = "";
+
+        switch (node.type) {
+            case AstNodeType.StringLiteral:
+                implementation += `${variableName} as String`;
+                break;
+            case AstNodeType.DoubleLiteral:
+                implementation += `${variableName} as double`;
+                break;
+            case AstNodeType.BooleanLiteral:
+                implementation += `${variableName} as bool`;
+                break;
+            case AstNodeType.IntegerLiteral:
+                implementation += `${variableName} as int`;
+                break;
+            case AstNodeType.PromiseType:
+                implementation += this.#castParameterToPropertyType((node as PromiseType).generic, variableName);
+                break;
+            case AstNodeType.CustomNodeLiteral:
+                implementation += `${(node as CustomAstNodeType).rawValue}.fromJson(${variableName} as Map<String, dynamic>)`;
+                break;
+            case AstNodeType.ArrayType:
+                implementation += castArrayRecursivelyInitial(node as ArrayType, variableName);
+                break;
+            case AstNodeType.MapType:
+                implementation += castMapRecursivelyInitial(node as MapType, variableName);
+        }
+
+        return implementation;
+    }
+
+    #getProperCast(mainClass: ClassDefinition, method: MethodConfiguration, parameterType: ParameterType, index: number): string {
+        const type = mainClass.methods.find((m) => m.name == method.name)!.params.find((p) => p.name == parameterType.name)
+        return `${this.#castParameterToPropertyType(type!.paramType, `params[${index}]`)}`
+    }
+
+    async #createRouterFileForClass(classConfiguration: ClassConfiguration, ast: Program, folderPath: string): Promise<void> {
+        const mainClass = ast.body?.find((element) => {
+            return element.type === AstNodeType.ClassDefinition
+        }) as ClassDefinition;
+
         const moustacheViewForMain = {
             classFileName: path.basename(classConfiguration.path, path.extname(classConfiguration.path)),
             className: classConfiguration.name,
@@ -86,35 +125,18 @@ export class DartBundler implements BundlerInterface {
                     name: m.name,
                     parameters: m.parameters.map((p, index) => ({
                         index,
-                        isNative: this.#isParameterNative(p.type),
-                        last: index == m.parameters.length - 1,
-                        type: p.type,
-                        cast: p.type == "double" ? ".toDouble()" : p.type == "int" ? ".toInt()" : undefined,
+                        cast: this.#getProperCast(mainClass, m, p, index),
                     })),
                 })),
             cronMethods: classConfiguration.methods
                 .filter((m) => m.type === TriggerType.cron)
                 .map((m) => ({
                     name: m.name,
-                    parameters: m.parameters.map((p, index) => ({
-                        index,
-                        isNative: this.#isParameterNative(p.type),
-                        last: index == m.parameters.length - 1,
-                        type: p.type,
-                        cast: p.type == "double" ? ".toDouble()" : p.type == "int" ? ".toInt()" : undefined,
-                    })),
                 })),
             httpMethods: classConfiguration.methods
                 .filter((m) => m.type === TriggerType.http)
                 .map((m) => ({
                     name: m.name,
-                    parameters: m.parameters.map((p, index) => ({
-                        index,
-                        isNative: this.#isParameterNative(p.type),
-                        last: index == m.parameters.length - 1,
-                        type: p.type,
-                        cast: p.type == "double" ? ".toDouble()" : p.type == "int" ? ".toInt()" : undefined,
-                    })),
                 })),
         }
 
@@ -146,33 +168,33 @@ export class DartBundler implements BundlerInterface {
 
     async #copyNonDartFiles(tempFolderPath: string) {
         const allNonJsFilesPaths = (await getAllFilesFromCurrentPath()).filter(
-          (file: FileDetails) => {
-            // filter js files, node_modules and folders
-            return (
-              file.extension !== ".dart" &&
-              !fs.lstatSync(file.path).isDirectory()
-            );
-          }
+            (file: FileDetails) => {
+                // filter js files, node_modules and folders
+                return (
+                    file.extension !== ".dart" &&
+                    !fs.lstatSync(file.path).isDirectory()
+                );
+            }
         );
-    
+
         // iterare over all non dart files and copy them to tmp folder
         await Promise.all(
-          allNonJsFilesPaths.map((filePath: FileDetails) => {
-            // get folders array
-            const folders = filePath.path.split('/');
-            // remove file name from folders array
-            folders.pop();
-            // create folder structure in tmp folder
-            const folderPath = path.join(tempFolderPath, ...folders);
-            if (!fs.existsSync(folderPath)) {
-              fs.mkdirSync(folderPath, { recursive: true });
-            }
-            // copy file to tmp folder
-            const fileDestinationPath = path.join(tempFolderPath, filePath.path);
-            return fs.promises.copyFile(filePath.path, fileDestinationPath);
-          })
+            allNonJsFilesPaths.map((filePath: FileDetails) => {
+                // get folders array
+                const folders = filePath.path.split('/');
+                // remove file name from folders array
+                folders.pop();
+                // create folder structure in tmp folder
+                const folderPath = path.join(tempFolderPath, ...folders);
+                if (!fs.existsSync(folderPath)) {
+                    fs.mkdirSync(folderPath, { recursive: true });
+                }
+                // copy file to tmp folder
+                const fileDestinationPath = path.join(tempFolderPath, filePath.path);
+                return fs.promises.copyFile(filePath.path, fileDestinationPath);
+            })
         );
-      }
+    }
 
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
         // Create a temporary folder were we copy user code to prepare everything.
@@ -183,7 +205,7 @@ export class DartBundler implements BundlerInterface {
 
         // Create the router class
         const userClass = input.projectConfiguration.classes.find((c: ClassConfiguration) => c.path == input.path)!;
-        this.#createRouterFileForClass(userClass, inputTemporaryFolder);
+        this.#createRouterFileForClass(userClass, input.ast, inputTemporaryFolder);
 
         // Check if dart is installed
         await checkIfDartIsInstalled();

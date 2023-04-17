@@ -152,7 +152,7 @@ export async function deployClasses() {
 
     throw error;
   })
-  const projectConfiguration = new ProjectConfiguration(configuration, sdkResponse.astSummary);
+  const projectConfiguration = new ProjectConfiguration(configuration, sdkResponse);
 
   const multibar = new cliProgress.MultiBar({
     clearOnComplete: false,
@@ -198,9 +198,13 @@ export async function deployClasses() {
       debugLogger.debug(
         `The bundling process has started for file ${element.path}...`
       );
+
+      const ast = sdkResponse.sdkGeneratorInput.classesInfo.find((classInfo) => classInfo.classConfiguration.path === element.path)!.program;
+
       const output = await bundler.bundle({
         projectConfiguration: projectConfiguration,
         genezioConfigurationFilePath: process.cwd(),
+        ast: ast,
         configuration: element,
         path: element.path,
         extra: {
