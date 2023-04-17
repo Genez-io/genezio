@@ -73,34 +73,16 @@ export class DartBundler implements BundlerInterface {
                 .filter((m) => m.type === TriggerType.cron)
                 .map((m) => ({
                     name: m.name,
-                    parameters: m.parameters.map((p, index) => ({
-                        index,
-                        isNative: this.#isParameterNative(p.type),
-                        last: index == m.parameters.length - 1,
-                        type: p.type,
-                        cast: p.type == "double" ? ".toDouble()" : p.type == "int" ? ".toInt()" : undefined,
-                    })),
                 })),
             httpMethods: classConfiguration.methods
                 .filter((m) => m.type === TriggerType.http)
                 .map((m) => ({
                     name: m.name,
-                    parameters: m.parameters.map((p, index) => ({
-                        index,
-                        isNative: this.#isParameterNative(p.type),
-                        last: index == m.parameters.length - 1,
-                        type: p.type,
-                        cast: p.type == "double" ? ".toDouble()" : p.type == "int" ? ".toInt()" : undefined,
-                    })),
                 })),
         }
 
         const routerFileContent = Mustache.render(template, moustacheViewForMain);
         await writeToFile(folderPath, "main.dart", routerFileContent);
-    }
-
-    #isParameterNative(type: string): boolean {
-        return type == "String" || type == "int" || type == "double" || type == "bool" || type.startsWith("List<") || type.startsWith("Map<");
     }
 
     async #compile(folderPath: string) {
