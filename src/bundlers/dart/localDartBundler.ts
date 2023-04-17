@@ -60,7 +60,7 @@ export class DartBundler implements BundlerInterface {
     }
 
     #isParameterNative(type: string): boolean {
-        return type == "String" || type == "int" || type == "double" || type == "bool";
+        return type == "String" || type == "int" || type == "double" || type == "bool" || type.startsWith("List<") || type.startsWith("Map<");
     }
 
     async #compile(folderPath: string) {

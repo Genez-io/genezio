@@ -35,7 +35,7 @@ export class DartBundler implements BundlerInterface {
     }
 
     #isParameterNative(type: string): boolean {
-        return type == "String" || type == "int" || type == "double" || type == "bool";
+        return type == "String" || type == "int" || type == "double" || type == "bool" || type.startsWith("List<") || type.startsWith("Map<");
     }
 
     async #compile(archiveName: string): Promise<string> {
@@ -146,33 +146,33 @@ export class DartBundler implements BundlerInterface {
 
     async #copyNonDartFiles(tempFolderPath: string) {
         const allNonJsFilesPaths = (await getAllFilesFromCurrentPath()).filter(
-          (file: FileDetails) => {
-            // filter js files, node_modules and folders
-            return (
-              file.extension !== ".dart" &&
-              !fs.lstatSync(file.path).isDirectory()
-            );
-          }
+            (file: FileDetails) => {
+                // filter js files, node_modules and folders
+                return (
+                    file.extension !== ".dart" &&
+                    !fs.lstatSync(file.path).isDirectory()
+                );
+            }
         );
-    
+
         // iterare over all non dart files and copy them to tmp folder
         await Promise.all(
-          allNonJsFilesPaths.map((filePath: FileDetails) => {
-            // get folders array
-            const folders = filePath.path.split('/');
-            // remove file name from folders array
-            folders.pop();
-            // create folder structure in tmp folder
-            const folderPath = path.join(tempFolderPath, ...folders);
-            if (!fs.existsSync(folderPath)) {
-              fs.mkdirSync(folderPath, { recursive: true });
-            }
-            // copy file to tmp folder
-            const fileDestinationPath = path.join(tempFolderPath, filePath.path);
-            return fs.promises.copyFile(filePath.path, fileDestinationPath);
-          })
+            allNonJsFilesPaths.map((filePath: FileDetails) => {
+                // get folders array
+                const folders = filePath.path.split('/');
+                // remove file name from folders array
+                folders.pop();
+                // create folder structure in tmp folder
+                const folderPath = path.join(tempFolderPath, ...folders);
+                if (!fs.existsSync(folderPath)) {
+                    fs.mkdirSync(folderPath, { recursive: true });
+                }
+                // copy file to tmp folder
+                const fileDestinationPath = path.join(tempFolderPath, filePath.path);
+                return fs.promises.copyFile(filePath.path, fileDestinationPath);
+            })
         );
-      }
+    }
 
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
         // Create a temporary folder were we copy user code to prepare everything.
