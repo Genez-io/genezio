@@ -20,7 +20,7 @@ import { getPresignedURL } from "../requests/getPresignedURL";
 import { uploadContentToS3 } from "../requests/uploadContentToS3";
 import { getAuthToken } from "../utils/accounts";
 import { getProjectConfiguration } from "../utils/configuration";
-import { fileExists, createTemporaryFolder, zipDirectory, zipDirectoryToDestinationPath } from "../utils/file";
+import { fileExists, createTemporaryFolder, zipDirectory, zipDirectoryToDestinationPath, isDirectoryEmpty, ifDirectoryContainsHtmlFiles, ifDirectoryContainsIndexHtmlFile } from "../utils/file";
 import { printAdaptiveLog, debugLogger } from "../utils/logging";
 import { runNewProcess } from "../utils/process";
 import { reportSuccess } from "../utils/reporter";
@@ -287,8 +287,27 @@ export async function deployFrontend(): Promise<string> {
   const configuration = await getProjectConfiguration();
 
   if (configuration.frontend) {
+
+    // check if the build folder exists
+    if (!await fileExists(configuration.frontend.path)) {
+      throw new Error(`The build folder does not exist. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file`)
+    }
+
+    // hcheck if the build folder is empty
+    if (await isDirectoryEmpty(configuration.frontend.path)) {
+      throw new Error(`The build folder is empty. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file`)
+    }
+
+    // check if there are any .html files in the build folder
+    if (!await ifDirectoryContainsHtmlFiles(configuration.frontend.path)) {
+      log.info("WARNING: No .html files found in the build folder")
+    } else if (!await ifDirectoryContainsIndexHtmlFile(configuration.frontend.path)) {
+      // check if there is no index.html file in the build folder
+      log.info("WARNING: No index.html file found in the build folder")
+    }
+
     if (!configuration.frontend.subdomain) {
-      log.info("No subdomain specified in the genezio.yaml configuration file. We will provide a random one for you.")
+      log.info("No subdomain specified in the genezio.yaml configuration file. We will provide a random one for you")
       configuration.frontend.subdomain = generateRandomSubdomain()
 
       // write the configuration in yaml file
