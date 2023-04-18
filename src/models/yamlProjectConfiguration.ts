@@ -334,6 +334,11 @@ export class YamlProjectConfiguration {
       );
     }
 
+    // check if unparsedClasses is an array
+    if (!Array.isArray(unparsedClasses)) {
+      throw new Error("The classes property must be an array.");
+    }
+
     const classes = await Promise.all(
       unparsedClasses.map((c) => YamlClassConfiguration.create(c))
     );
