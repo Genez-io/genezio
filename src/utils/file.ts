@@ -103,7 +103,7 @@ export async function isDirectoryEmpty(directoryPath: string): Promise<boolean> 
   });
 }
 
-export async function ifDirectoryContainsHtmlFiles(directoryPath: string): Promise<boolean> {
+export async function directoryContainsHtmlFiles(directoryPath: string): Promise<boolean> {
   return new Promise((resolve) => {
     fs.readdir(directoryPath, (error, files) => {
       if (error) {
@@ -115,7 +115,7 @@ export async function ifDirectoryContainsHtmlFiles(directoryPath: string): Promi
   });
 }
 
-export async function ifDirectoryContainsIndexHtmlFile(directoryPath: string): Promise<boolean> {
+export async function directoryContainsIndexHtmlFiles(directoryPath: string): Promise<boolean> {
   return new Promise((resolve) => {
     fs.readdir(directoryPath, (error, files) => {
       if (error) {
