@@ -5,13 +5,7 @@ import {
   SdkGeneratorInterface,
   SdkGeneratorInput,
   SdkGeneratorOutput,
-  TypeAlias,
   Node,
-  CustomAstNodeType,
-  StructLiteral,
-  Enum,
-  PropertyDefinition,
-  TypeLiteral,
   ArrayType,
   PromiseType
 } from "../../models/genezioModels";
@@ -69,8 +63,6 @@ class {{{className}}} {
 
 
 class SdkGenerator implements SdkGeneratorInterface {
-  //externalTypes: Node[] = [];
-
   async generateSdk(
     sdkGeneratorInput: SdkGeneratorInput
   ): Promise<SdkGeneratorOutput> {
@@ -149,10 +141,6 @@ class SdkGenerator implements SdkGeneratorInterface {
         view.methods.push(methodView);
       }
 
-      // for (const externalType of this.externalTypes) {
-      //   view.externalTypes.push({type: this.generateExternalType(externalType)});
-      // }
-
       if (!exportClassChecker) {
         continue;
       }
@@ -200,32 +188,6 @@ class SdkGenerator implements SdkGeneratorInterface {
     }
     return "Any";
   }
-
-  // getReturnType(returnType: Node): string {
-  //   if (!returnType || returnType.type === AstNodeType.AnyLiteral) {
-  //     return "Any";
-  //   }
-
-  //   const value = this.getParamType(returnType);
-
-  //   return `${value}`;
-  // }
-
-
-  // TODO: create types for all external types
-  // generateExternalType(type: Node): string {
-  //   if (type.type === AstNodeType.TypeAlias) {
-  //     const typeAlias = type as TypeAlias;
-  //     return `typealias ${typeAlias.name} = ${this.getParamType(typeAlias.aliasType)};`;
-  //   } else if (type.type === AstNodeType.Enum) {
-  //     const enumType = type as Enum;
-  //     return `enum ${enumType.name}: Int, Codable { case ${enumType.cases.join(", ")} }`;
-  //   } else if (type.type === AstNodeType.StructLiteral) {
-  //     const typeAlias = type as StructLiteral;
-  //     return `struct ${typeAlias.name}: Codable {\n\t${typeAlias.typeLiteral.properties.map((e: PropertyDefinition) => `var ${e.name}: ${this.getParamType(e.type)}`).join("\n\t")}\n};`;
-  //   }
-  //   return "";
-  // }
 }
 
 const supportedLanguages = ["swift"];
