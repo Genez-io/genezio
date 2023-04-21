@@ -185,7 +185,7 @@ function getBundler(classConfiguration: ClassConfiguration): BundlerInterface | 
 async function startServerHttp(port: number, astSummary: AstSummary, projectName: string, processForClasses: Map<string, ClassProcess>): Promise<http.Server> {
   const app = express();
   app.use(cors());
-  app.use(bodyParser.raw({ type: () => true }));
+  app.use(bodyParser.raw({ type: () => true, limit: "1000mb" }));
   app.use(genezioRequestParser);
 
   app.get("/get-ast-summary", (req: any, res: any) => {
