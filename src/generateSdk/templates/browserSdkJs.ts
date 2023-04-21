@@ -5,7 +5,6 @@ export const browserSdkJs = `/**
 
 async function makeRequest(request, url) {
     const response = await fetch(\`\${url}\`, {
-        keepalive: true,
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
