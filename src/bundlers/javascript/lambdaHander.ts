@@ -46,8 +46,9 @@ exports.handler =  async function(event, context) {
     } catch (error) {
     }
 
-    if (event.requestContext.http.path.split("/").length > 2) {
-        const method = event.requestContext.http.path.split("/")[2]
+    const components = event.requestContext.http.path.split("/")
+    if (components.length > 2 && components[2].length > 0) {
+        const method = components.slice(-1)
         const req = {
             headers: event.headers,
             http: event.requestContext.http,

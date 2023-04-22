@@ -49,8 +49,8 @@ void main() async {
           response = '{"jsonrpc": "2.0", "result": "No cron method found.", "id": 0}';
         break;
       };
-    } else if (event["requestContext"]["http"]["path"].split("/").length > 2) {
-      final method = event["requestContext"]["http"]["path"].split("/")[2];
+    } else if (event["requestContext"]["http"]["path"].split("/").length > 2 && event["requestContext"]["http"]["path"].split("/")[2].length > 0) {
+      final method = event["requestContext"]["http"]["path"].split("/").last;
       Codec<String, String> stringToBase64 = utf8.fuse(base64);
 
       var body = event["body"];

@@ -221,7 +221,7 @@ export async function deployClasses() {
       await zipDirectory(output.path, archivePath);
       debugLogger.debug(`Get the presigned URL for class name ${element.name}.`)
 
-      return { name: element.name, archivePath: archivePath, filePath: element.path };
+      return { name: element.name, archivePath: archivePath, filePath: element.path, methods: element.methods };
     });
 
   const bundlerResultArray = await Promise.all(bundlerResult);
@@ -240,9 +240,11 @@ export async function deployClasses() {
   await writeSdkToDisk(sdkResponse, configuration.sdk.language, configuration.sdk.path)
 
   const projectId = result.classes[0].projectId;
-  console.log(
-    `Your backend project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`
-  );
+  if (projectId) {
+    console.log(
+      `Your backend project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`
+    );
+  }
 }
 
 export async function deployFrontend(): Promise<string> {
