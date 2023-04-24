@@ -19,7 +19,31 @@ if (!genezioClass) {
 
 const object = new genezioClass();
 
+function returnJsonRpcResponse(result, event) {
+  return {
+    statusCode: 200,
+    headers: {
+        "Access-Control-Allow-Origin": event.headers.origin,
+        "Content-Type": "application/json",
+    },
+    body: JSON.stringify(result),
+  };
+}
+
 exports.handler =  async function(event, context) {
+  if (event.requestContext.http.method === "OPTIONS") {
+      const response = {
+        statusCode: 200,
+        headers: {
+            "Access-Control-Allow-Headers" : "*",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "*"
+        },
+        body: JSON.stringify('Ok!'),
+    };
+    return response;
+  }
+
     if (event.genezioEventType === "cron") {
 
         const method = event.methodName;
@@ -47,7 +71,7 @@ exports.handler =  async function(event, context) {
     }
 
     const components = event.requestContext.http.path.split("/")
-    if (components.length > 2 && components[2].length > 0) {
+    if (!body || (body && body["jsonrpc"] !== "2.0")) {
         const method = components.slice(-1)
         const req = {
             headers: event.headers,
@@ -57,7 +81,7 @@ exports.handler =  async function(event, context) {
             body: event.isBase64Encoded ? Buffer.from(body, "base64") : body,
           }
         if (!object[method]) {
-          return { statusCode: 404, headers: { 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Method not found" }) };
+          return { statusCode: 404, headers: { "Access-Control-Allow-Origin": "*", 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Method not found" }) };
         }
 
         try {
@@ -80,6 +104,9 @@ exports.handler =  async function(event, context) {
               } catch (error) {}
             }
 
+            response.headers = {
+              "Access-Control-Allow-Origin": "*"
+            }
             return response;
         } catch(error) {
             console.error(error);
@@ -90,10 +117,10 @@ exports.handler =  async function(event, context) {
         try {
           body = JSON.parse(event.body);
         } catch (error) {
-          return {"jsonrpc": "2.0", "error": {"code": -1, "message": "Invalid JSON-RPC request"}, "id": 0}
+          return returnJsonRpcResponse({"jsonrpc": "2.0", "error": {"code": -1, "message": "Invalid JSON-RPC request"}, "id": 0}, event)
         }
         if (!body || !body.method || !body.params || !Number.isInteger(body.id)) {
-          return {"jsonrpc": "2.0", "error": {"code": -1, "message": "Invalid JSON-RPC request"}, "id": 0}
+          return returnJsonRpcResponse({"jsonrpc": "2.0", "error": {"code": -1, "message": "Invalid JSON-RPC request"}, "id": 0}, event)
         }
 
         let method = null;
@@ -101,11 +128,11 @@ exports.handler =  async function(event, context) {
           const methodElems = body.method.split(".");
           method = methodElems[1];
         } catch (error) {
-          return {"jsonrpc": "2.0", "error": {"code": -1, "message": "Invalid Genezio JSON-RPC request"}, "id": 0}
+          return returnJsonRpcResponse({"jsonrpc": "2.0", "error": {"code": -1, "message": "Invalid Genezio JSON-RPC request"}, "id": 0}, event)
         }
 
         if (!object[method]) {
-          return {"jsonrpc": "2.0", "error": {"code": -1, "message": "Method not found!"}, "id": 0}
+          return returnJsonRpcResponse({"jsonrpc": "2.0", "error": {"code": -1, "message": "Method not found!"}, "id": 0}, event)
         }
 
         const requestId = body.id;
@@ -124,9 +151,9 @@ exports.handler =  async function(event, context) {
 
           const result = await Promise.race([errorPromise, response])
           process.removeAllListeners("uncaughtException")
-          return result;
+          return returnJsonRpcResponse(result, event);
         } catch (err) {
-          return {"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId}
+          return returnJsonRpcResponse({"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId}, event)
         }
     }
 }
