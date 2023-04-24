@@ -19,9 +19,15 @@ class GenezioCloudFormationBuilder {
         [apiGatewayResourceName]: {
           "Type": "AWS::ApiGatewayV2::Api",
           "Properties": {
-            "Name": "${apiGatewayResource}",
+            "Name": apiGatewayResourceName,
             "ProtocolType": "HTTP",
-            "Description": "API Gateway for Genezio Project ${projectName}}"
+            "Description": `API Gateway for Genezio Project ${apiGatewayResourceName}}`,
+            "CorsConfiguration": {
+              "AllowOrigins": ["*"],
+              "AllowMethods": ["*"],
+              "AllowHeaders": ["*"],
+              "MaxAge": 10800
+            }
           }
         },
       },
