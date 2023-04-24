@@ -140,8 +140,6 @@ export async function deployClasses() {
     );
   }
 
-  log.info("Deploying your backend project to genezio infrastructure...");
-
   const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(configuration).catch((error) => {
     // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
     if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {

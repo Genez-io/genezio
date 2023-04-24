@@ -1,8 +1,9 @@
 import fs from "fs";
-import { ClassConfiguration, ProjectConfiguration } from "../models/projectConfiguration";
+import { ProjectConfiguration } from "../models/projectConfiguration";
 import { CloudAdapter, GenezioCloudInput, GenezioCloudOutput } from "./cloudAdapter";
 import { CloudFormationClient, CreateStackCommand, DescribeStacksCommand, CreateStackCommandInput, UpdateStackCommand, UpdateStackCommandOutput, DescribeStacksCommandOutput, waitUntilStackCreateComplete, waitUntilStackUpdateComplete, DeleteStackCommand, waitUntilStackDeleteComplete } from "@aws-sdk/client-cloudformation";
 import { CreateBucketCommand, HeadObjectCommand, PutBucketVersioningCommand, PutObjectCommand, S3, S3Client } from "@aws-sdk/client-s3";
+import AWS from "aws-sdk";
 import { debugLogger } from "../utils/logging";
 import log from "loglevel";
 
@@ -349,7 +350,6 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
   async #updateStack(cloudFormationClient: CloudFormationClient, createStackTemplate: string, stackName: string) {
     const { exists, status } = await this.#checkIfStackExists(cloudFormationClient, stackName);
 
-
     if (!exists) {
       await cloudFormationClient.send(new CreateStackCommand({
         StackName: stackName,
@@ -402,14 +402,16 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
     const cloudFormationClient = new CloudFormationClient({ region: projectConfiguration.region });
     const s3Client = new S3({ region: projectConfiguration.region });
     const bucketName = `bucket-${projectConfiguration.region}-${projectConfiguration.name}`;
-    const bucketResourceName = `Bucket${alphanumericString(projectConfiguration.name)}`;
     const stackName = `genezio-${projectConfiguration.name}`;
-
     const bucketExists = await this.#bucketForProjectExists(s3Client, bucketName);
+
+    if (!AWS.config.credentials) {
+      throw new Error("AWS credentials not found");
+    }
+    log.info(`Deploying your backend project to the account represented by access key ID ${AWS.config.credentials.accessKeyId}...`);
 
     if (!bucketExists) {
       // If bucket does not exist, create it
-      console.log(projectConfiguration.region)
       await s3Client.send(new CreateBucketCommand({
         Bucket: bucketName,
         CreateBucketConfiguration: {

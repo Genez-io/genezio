@@ -10,6 +10,7 @@ import { CloudAdapter, GenezioCloudInput, GenezioCloudOutput } from "./cloudAdap
 
 export class GenezioCloudAdapter implements CloudAdapter {
     async deploy(input: GenezioCloudInput[], projectConfiguration: ProjectConfiguration): Promise<GenezioCloudOutput> {
+        log.info("Deploying your backend project to genezio infrastructure...");
         const multibar = new cliProgress.MultiBar({
             clearOnComplete: false,
             hideCursor: true,
