@@ -90,195 +90,6 @@ class GenezioCloudFormationBuilder {
 }
 
 export class SelfHostedAwsAdapter implements CloudAdapter {
-  getS3CloudFormationTemplate(bucketName: string, bucketResourceName: string, projectName: string) {
-    return `{
-            "AWSTemplateFormatVersion": "2010-09-09",
-            "Resources": {
-              "${bucketResourceName}": {
-                "Type": "AWS::S3::Bucket",
-                "Properties": {
-                  "BucketName": "${bucketName}",
-                  "AccessControl": "Private",
-                  "VersioningConfiguration": {
-                    "Status": "Enabled"
-                  }
-                }
-              }
-            },
-          }`
-  }
-
-  getCloudFormationTemplate(bucketName: string, bucketKey: string, runtime: string, bucketResource: string, fileVersion: string, projectName: string, className: string, region: string) {
-    const functionResource = `Genezio${alphanumericString(projectName)}${alphanumericString(className)}`
-    const functionName = `genezio-${alphanumericString(projectName)}-${region}-${alphanumericString(className)}`
-    const apiGatewayResource = `Genezio${alphanumericString(projectName)}${alphanumericString(className)}ApiGateway`
-    const apiGatewayName = `genezio-${alphanumericString(projectName)}-${alphanumericString(className)}`
-
-    return `{
-      "AWSTemplateFormatVersion": "2010-09-09",
-      "Resources": {
-        "${bucketResource}": {
-          "Type": "AWS::S3::Bucket",
-          "Properties": {
-              "BucketName": "${bucketName}",
-              "AccessControl": "Private",
-              "VersioningConfiguration": {
-                  "Status": "Enabled"
-              }
-          }
-        },
-        "${functionResource}": {
-          "Type": "AWS::Lambda::Function",
-          "Properties": {
-            "FunctionName": "${functionName}",
-            "Handler": "index.handler",
-            "Architectures": ["arm64"],
-            "Runtime": "${runtime}",
-            "Role": {
-              "Fn::GetAtt": ["LambdaExecutionRole", "Arn"]
-            },
-            "Code": {
-              "S3Bucket": "${bucketName}",
-              "S3Key": "${bucketKey}",
-              "S3ObjectVersion": "${fileVersion}"
-            },
-            "MemorySize": 1024,
-            "Timeout": 10
-          }
-        },
-        "LambdaExecutionRole": {
-          "Type": "AWS::IAM::Role",
-          "Properties": {
-            "AssumeRolePolicyDocument": {
-              "Version": "2012-10-17",
-              "Statement": [
-                {
-                  "Effect": "Allow",
-                  "Principal": {
-                    "Service": ["lambda.amazonaws.com"]
-                  },
-                  "Action": ["sts:AssumeRole"]
-                }
-              ]
-            },
-            "Policies": [
-              {
-                "PolicyName": "LambdaExecutionPolicy",
-                "PolicyDocument": {
-                  "Version": "2012-10-17",
-                  "Statement": [
-                    {
-                      "Effect": "Allow",
-                      "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
-                      "Resource": "arn:aws:logs:*:*:*"
-                    }
-                  ]
-                }
-              }
-            ]
-          }
-        },
-        "${apiGatewayResource}": {
-          "Type": "AWS::ApiGatewayV2::Api",
-          "Properties": {
-            "Name": "${apiGatewayResource}",
-            "ProtocolType": "HTTP",
-            "Description": "API Gateway for Genezio Project ${projectName}}"
-          }
-        },
-
-    },
-        "${apiGatewayResource}Route": {
-          "Type": "AWS::ApiGatewayV2::Route",
-          "Properties": {
-            "ApiId": { "Ref": "${apiGatewayResource}" },
-            "RouteKey": "$default",
-            "Target": {
-              "Fn::Join": [
-                "/",
-                [
-                  "integrations",
-                  {
-                    "Ref": "${apiGatewayResource}Integration"
-                  }
-                ]
-              ]
-            }
-          }
-        },
-        "ApiDeployment": {
-          "Type": "AWS::ApiGatewayV2::Deployment",
-          "DependsOn": ["${apiGatewayResource}ProdStage", "${apiGatewayResource}Route", "${apiGatewayResource}Integration"],
-          "Properties": {
-            "ApiId": {
-              "Ref": "${apiGatewayResource}"
-            },
-            "StageName": "prod"
-          }
-        },
-        "${apiGatewayResource}ProdStage": {
-          "Type" : "AWS::ApiGatewayV2::Stage",
-          "Properties" : {
-              "ApiId" : {
-                "Ref": "${apiGatewayResource}"
-              },
-              "StageName" : "prod"
-            }
-        },
-        "LambdaInvokePermission": {
-          "Type": "AWS::Lambda::Permission",
-          "Properties": {
-            "Action": "lambda:InvokeFunction",
-            "FunctionName": {
-              "Fn::GetAtt": ["${functionResource}", "Arn"]
-            },
-            "Principal": "apigateway.amazonaws.com",
-            "SourceArn": {
-              "Fn::Join": [
-                "",
-                [
-                  "arn:aws:execute-api:",
-                  {
-                    "Ref": "AWS::Region"
-                  },
-                  ":",
-                  {
-                    "Ref": "AWS::AccountId"
-                  },
-                  ":",
-                  {
-                    "Ref": "${apiGatewayResource}"
-                  },
-                  "/*"
-                ]
-              ]
-            }
-          }
-        }
-      },
-      "Outputs": {
-        "ApiUrl": {
-          "Description": "The URL of the API Gateway",
-          "Value": {
-            "Fn::Join": [
-              "",
-              [
-                "https://",
-                {
-                  "Ref": "${apiGatewayResource}"
-                },
-                ".execute-api.",
-                {
-                  "Ref": "AWS::Region"
-                },
-                ".amazonaws.com/prod/"
-              ]
-            ]
-          }
-        }
-      }
-    }`;
-  }
 
   async getLatestObjectVersion(cliet: S3, bucket: string, key: string): Promise<string | undefined> {
     const result = await cliet.send(new HeadObjectCommand({
@@ -440,6 +251,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
       const integrationResourceName = `Integration${alphanumericString(inputItem.name)}`;
       const roleResourceName = `Role${alphanumericString(inputItem.name)}`;
 
+      // We iterate through all the classes, upload the zip to S3 and create the cloudformation resource for each class
       log.info(`Uploading class ${inputItem.name} to S3...`)
       await this.#uploadZipToS3(s3Client, bucketName, bucketKey, inputItem.archivePath);
 
@@ -608,8 +420,10 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
     const templateResult = cloudFormationTemplate.build();
 
     debugLogger.debug(templateResult);
+    // Once we have the template, we can create or update the CloudFormation stack.
     await this.#updateStack(cloudFormationClient, templateResult, stackName);
 
+    // Get the API Gateway URL and prepare the output
     const stackDetails = await cloudFormationClient.send(new DescribeStacksCommand({
       StackName: stackName,
     }));
