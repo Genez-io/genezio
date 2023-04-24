@@ -20,7 +20,21 @@ void main() async {
   }
 
   final Handler<Map<String, dynamic>> handler = (context, event) async {
+    if (event["requestContext"]["http"]["method"] == "OPTIONS") {
+      final response = {
+        "statusCode": 200,
+      };
+      return response;
+    }
+
     var response;
+
+    var eventBody = null;
+    try {
+      eventBody = jsonDecode(event["body"]);
+    } catch (e) {}
+
+    final isJsonRpcRequest = eventBody != null && eventBody["jsonrpc"] != null && eventBody["jsonrpc"] == "2.0";
 
     if (event["genezioEventType"] == "cron") {
       final method = event["methodName"];
@@ -49,7 +63,7 @@ void main() async {
           response = '{"jsonrpc": "2.0", "result": "No cron method found.", "id": 0}';
         break;
       };
-    } else if (event["requestContext"]["http"]["path"].split("/").length > 2 && event["requestContext"]["http"]["path"].split("/")[2].length > 0) {
+    } else if (!isJsonRpcRequest) {
       final method = event["requestContext"]["http"]["path"].split("/").last;
       Codec<String, String> stringToBase64 = utf8.fuse(base64);
 

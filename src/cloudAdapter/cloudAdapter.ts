@@ -11,7 +11,7 @@ export type GenezioCloudInput = {
 export type GenezioCloudResultClass = {
     className: string;
     methods: DeployCodeMethodResponse[];
-    functionUrl: string;
+    functionUrl: string,
     projectId?: string;
 };
 

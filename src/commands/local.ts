@@ -185,7 +185,7 @@ function getBundler(classConfiguration: ClassConfiguration): BundlerInterface | 
 async function startServerHttp(port: number, astSummary: AstSummary, projectName: string, processForClasses: Map<string, ClassProcess>): Promise<http.Server> {
   const app = express();
   app.use(cors());
-  app.use(bodyParser.raw({ type: () => true, limit: "1000mb" }));
+  app.use(bodyParser.raw({ type: () => true }));
   app.use(genezioRequestParser);
 
   app.get("/get-ast-summary", (req: any, res: any) => {
@@ -442,8 +442,13 @@ async function listenForChanges(sdkPathRelative: any | undefined) {
 function reportSuccess(projectConfiguration: ProjectConfiguration, sdk: SdkGeneratorResponse, port: number) {
   const classesInfo = projectConfiguration.classes.map((c) => ({
     className: c.name,
-    methods: c.methods,
-    functionUrl: `http://127.0.0.1:${port}/`,
+    methods: c.methods.map((m) => ({
+      name: m.name,
+      type: m.type,
+      cronString: m.cronString,
+      functionUrl: getFunctionUrl(`http://127.0.0.1:${port}`, m.type, c.name, m.name),
+    })),
+    functionUrl: `http://127.0.0.1:${port}/${c.name}`
   }));
 
   _reportSuccess(classesInfo, sdk);
@@ -452,6 +457,14 @@ function reportSuccess(projectConfiguration: ProjectConfiguration, sdk: SdkGener
     "\x1b[32m%s\x1b[0m",
     `Test your code at ${LOCAL_TEST_INTERFACE_URL}?port=${port}`
   );
+}
+
+function getFunctionUrl(baseUrl: string, methodType: string, className: string, methodName: string): string {
+  if (methodType === "http") {
+      return `${baseUrl}/${className}/${methodName}`;
+  } else {
+      return `${baseUrl}/${className}`;
+  }
 }
 
 async function clearAllResources(server: http.Server, processForClasses: Map<string, ClassProcess>, crons: LocalEnvCronHandler[]) {

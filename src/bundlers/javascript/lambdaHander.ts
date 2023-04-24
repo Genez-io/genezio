@@ -65,7 +65,7 @@ exports.handler =  async function(event, context) {
             body: event.isBase64Encoded ? Buffer.from(body, "base64") : body,
           }
         if (!object[method]) {
-          return { statusCode: 404, headers: { "Access-Control-Allow-Origin": "*", 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Method not found" }) };
+          return { statusCode: 404, headers: { 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Method not found" }) };
         }
 
         try {
@@ -88,9 +88,6 @@ exports.handler =  async function(event, context) {
               } catch (error) {}
             }
 
-            response.headers = {
-              "Access-Control-Allow-Origin": "*"
-            }
             return response;
         } catch(error) {
             console.error(error);

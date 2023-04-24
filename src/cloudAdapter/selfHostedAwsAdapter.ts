@@ -84,7 +84,6 @@ class GenezioCloudFormationBuilder {
       }
     }
 
-    console.log(this.template)
     return JSON.stringify(this.template);
   }
 }
@@ -289,7 +288,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
     return result.VersionId;
   }
 
-  async #checkIfStackExists(client: CloudFormationClient, stackName: string): Promise<{exists: boolean, status?: string}> {
+  async #checkIfStackExists(client: CloudFormationClient, stackName: string): Promise<{ exists: boolean, status?: string }> {
     return await client.send(new DescribeStacksCommand({
       StackName: stackName,
     }))
@@ -442,8 +441,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
       log.info(`Uploading class ${inputItem.name} to S3...`)
       await this.#uploadZipToS3(s3Client, bucketName, bucketKey, inputItem.archivePath);
 
-      // fac urmatoarele resurse:
-      //    - LambdaInvokePermission
+      // Create the LambdaInvokePermission
       cloudFormationTemplate.addResource(invokePermissionResourceName, {
         "Type": "AWS::Lambda::Permission",
         "Properties": {
@@ -475,11 +473,10 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
         }
       });
 
-      classConfiguration?.methods.forEach((m) => console.log(m))
-      //    - Route
+      // Create the route
       classConfiguration?.methods.filter((m) => m.type === "http").forEach((m) => {
 
-        cloudFormationTemplate.addResource(routeResourceName+m.name, {
+        cloudFormationTemplate.addResource(routeResourceName + m.name, {
           "Type": "AWS::ApiGatewayV2::Route",
           "Properties": {
             "ApiId": { "Ref": apiGatewayResourceName },
@@ -517,8 +514,8 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
           }
         }
       },);
-      //    - Integration
 
+      // Create the integration
       cloudFormationTemplate.addResource(integrationResourceName, {
         "Type": "AWS::ApiGatewayV2::Integration",
         "Properties": {
@@ -550,7 +547,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
           }
         }
       });
-      //    - Function
+      // Create the lambda function
       const runtime = this.#getFunctionRuntime(classConfiguration!.language);
       cloudFormationTemplate.addResource(lambdaFunctionResourceName, {
         "Type": "AWS::Lambda::Function",
@@ -571,7 +568,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
           "Timeout": 10
         }
       });
-      //    - LambdaExecutionRole
+      // Create the lambda execution role
       cloudFormationTemplate.addResource(roleResourceName, {
         "Type": "AWS::IAM::Role",
         "Properties": {
@@ -608,7 +605,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
 
     const templateResult = cloudFormationTemplate.build();
 
-    console.log(templateResult);
+    debugLogger.debug(templateResult);
     await this.#updateStack(cloudFormationClient, templateResult, stackName);
 
     const stackDetails = await cloudFormationClient.send(new DescribeStacksCommand({
@@ -616,32 +613,23 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
     }));
 
     const classes = [];
-    console.log(JSON.stringify(stackDetails));
 
     if (!stackDetails["Stacks"] || stackDetails["Stacks"].length === 0 || (stackDetails["Stacks"][0]["StackStatus"] !== "UPDATE_COMPLETE" && stackDetails["Stacks"][0]["StackStatus"] !== "CREATE_COMPLETE")) {
       debugLogger.error("Stack update failed", JSON.stringify(stackDetails));
       throw new Error("Stack update failed");
     }
 
+    const apiGatewayUrl = stackDetails["Stacks"]![0]["Outputs"]![0]["OutputValue"]!;
     for (const inputItem of input) {
-      const classConfiguration = projectConfiguration.classes.find((c) => c.path === inputItem.filePath);
-
-      let functionUrl;
-
-      if (classConfiguration?.type === "http") {
-        functionUrl = `${stackDetails["Stacks"][0]["Outputs"]![0]["OutputValue"]!}/`
-      } else {
-        functionUrl = `${stackDetails["Stacks"][0]["Outputs"]![0]["OutputValue"]!}/${inputItem.name}`
-      }
-
       classes.push({
         className: inputItem.name,
         methods: inputItem.methods.map((method) => ({
           name: method.name,
           type: method.type,
-          cronString: method.cronString
+          cronString: method.cronString,
+          functionUrl: getFunctionUrl(`${apiGatewayUrl}`, method.type, inputItem.name, method.name)
         })),
-        functionUrl: functionUrl,
+        functionUrl: `${apiGatewayUrl}/${inputItem.name}`,
       })
     }
 
@@ -653,4 +641,12 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
 
 function alphanumericString(input: string): string {
   return input.replace(/[^0-9a-zA-Z]/g, "")
+}
+
+function getFunctionUrl(baseUrl: string, methodType: string, className: string, methodName: string): string {
+  if (methodType === "http") {
+    return `${baseUrl}/${className}/${methodName}`;
+  } else {
+    return `${baseUrl}/${className}`;
+  }
 }

@@ -49,13 +49,26 @@ export class GenezioCloudAdapter implements CloudAdapter {
 
         const classesInfo = response.classes.map((c) => ({
             className: c.name,
-            methods: c.methods,
-            functionUrl: c.cloudUrl,
+            methods: c.methods.map((m) => ({
+                name: m.name,
+                type: m.type,
+                cronString: m.cronString,
+                functionUrl: getFunctionUrl(c.cloudUrl, m.type, c.name, m.name),
+            })),
+            functionUrl: `${c.cloudUrl}${c.name}`,
             projectId: response.projectId
         }));
 
         return {
             classes: classesInfo,
         };
+    }
+}
+
+function getFunctionUrl(baseUrl: string, methodType: string, className: string, methodName: string): string {
+    if (methodType === "http") {
+        return `${baseUrl}/${className}/${methodName}`;
+    } else {
+        return `${baseUrl}/${className}`;
     }
 }

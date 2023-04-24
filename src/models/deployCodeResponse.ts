@@ -2,6 +2,7 @@ export type DeployCodeMethodResponse = {
     name: string
     type: string
     cronString?: string
+    functionUrl: string,
 }
 
 export type DeployCodeClassResponse = {
