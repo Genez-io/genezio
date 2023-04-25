@@ -28,6 +28,14 @@ void main(List<String> args) async {
       final eventString = await utf8.decoder.bind(req).join();
       final event = jsonDecode(eventString);
 
+      var eventBody = null;
+      try {
+        eventBody = event["body"];
+      } catch (e) {}
+  
+      final isJsonRpcRequest = eventBody != null && eventBody["jsonrpc"] != null && eventBody["jsonrpc"] == "2.0";
+  
+
       if (event["genezioEventType"] == "cron") {
         final method = event["methodName"];
         switch (method) {
@@ -55,8 +63,8 @@ void main(List<String> args) async {
             response = '{"jsonrpc": "2.0", "result": "No cron method found.", "id": 0}';
           break;
         };
-      } else if (event["requestContext"]["http"]["path"].split("/").length > 2) {
-        final method = event["requestContext"]["http"]["path"].split("/")[2];
+      } else if (!isJsonRpcRequest) {
+        final method = event["requestContext"]["http"]["path"].split("/").last;
         Codec<String, String> stringToBase64 = utf8.fuse(base64);
   
         var body = event["body"];

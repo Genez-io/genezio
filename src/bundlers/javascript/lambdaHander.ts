@@ -21,15 +21,7 @@ const object = new genezioClass();
 
 
 exports.handler =  async function(event, context) {
-  if (event.requestContext.http.method === "OPTIONS") {
-      const response = {
-        statusCode: 200,
-    };
-    return response;
-  }
-
     if (event.genezioEventType === "cron") {
-
         const method = event.methodName;
 
         if (!object[method]) {
@@ -45,6 +37,13 @@ exports.handler =  async function(event, context) {
           console.log("ERROR: cron trigger with error: " + error);
         }
         return;
+    }
+
+    if (event.requestContext.http.method === "OPTIONS") {
+      const response = {
+        statusCode: 200,
+    };
+      return response;
     }
 
     let body = event.body

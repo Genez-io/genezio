@@ -3,7 +3,6 @@ import { ProjectConfiguration } from "../models/projectConfiguration";
 import { CloudAdapter, GenezioCloudInput, GenezioCloudOutput } from "./cloudAdapter";
 import { CloudFormationClient, CreateStackCommand, DescribeStacksCommand, CreateStackCommandInput, UpdateStackCommand, UpdateStackCommandOutput, DescribeStacksCommandOutput, waitUntilStackCreateComplete, waitUntilStackUpdateComplete, DeleteStackCommand, waitUntilStackDeleteComplete } from "@aws-sdk/client-cloudformation";
 import { CreateBucketCommand, HeadObjectCommand, PutBucketVersioningCommand, PutObjectCommand, S3, S3Client } from "@aws-sdk/client-s3";
-import AWS from "aws-sdk";
 import { debugLogger } from "../utils/logging";
 import log from "loglevel";
 
@@ -209,6 +208,23 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
     }
   }
 
+  #cronToAWSCron(unixCron: string): string {
+    const cronParts: string[] = unixCron.split(" ");
+  
+    if (cronParts[2] === "*" && cronParts[4] === "*") {
+      cronParts[4] = "?";
+    } else if (cronParts[2] === "*" && cronParts[4] !== "*") {
+      cronParts[2] = "?";
+    } else if (cronParts[2] !== "*" && cronParts[4] === "*") {
+      cronParts[4] = "?";
+    }
+  
+    const awsCron: string =
+      cronParts[0] + " " + cronParts[1] + " " + cronParts[2] + " " + cronParts[3] + " " + cronParts[4] + " *";
+  
+    return awsCron;
+  }
+
   async deploy(input: GenezioCloudInput[], projectConfiguration: ProjectConfiguration): Promise<GenezioCloudOutput> {
     const cloudFormationClient = new CloudFormationClient({ region: projectConfiguration.region });
     const s3Client = new S3({ region: projectConfiguration.region });
@@ -216,10 +232,11 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
     const stackName = `genezio-${projectConfiguration.name}`;
     const bucketExists = await this.#bucketForProjectExists(s3Client, bucketName);
 
-    if (!AWS.config.credentials) {
+    const credentials = await s3Client.config.credentials();
+    if (!credentials) {
       throw new Error("AWS credentials not found");
     }
-    log.info(`Deploying your backend project to the account represented by access key ID ${AWS.config.credentials.accessKeyId}...`);
+    log.info(`Deploying your backend project to the account represented by access key ID ${credentials.accessKeyId}...`);
 
     if (!bucketExists) {
       // If bucket does not exist, create it
@@ -415,6 +432,52 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
           ]
         }
       });
+
+      for (const method of inputItem.methods) {
+        if (method.type === "cron") {
+          const cronResourceName = `Cron${alphanumericString(inputItem.name)}${alphanumericString(method.name)}`;
+          const lambdaPermissionName = `LambdaPermission${alphanumericString(inputItem.name)}${alphanumericString(method.name)}`;
+          cloudFormationTemplate.addResource(cronResourceName, {
+            "Type": "AWS::Events::Rule",
+            "Properties": {
+              "ScheduleExpression": `cron(${this.#cronToAWSCron(method.cronString!)})`,
+              "State": "ENABLED",
+              "Targets": [
+                {
+                  "Arn": {
+                    "Fn::GetAtt": [lambdaFunctionResourceName, "Arn"]
+                  },
+                  "Id": `target_id_${method.name}`,
+                  "Input": {
+                    "Fn::Sub": `{"genezioEventType": "cron", "cronString": "${this.#cronToAWSCron(method.cronString!)}", "methodName": "${method.name}"}`
+                  }
+                }
+              ]
+            }
+          });
+
+          cloudFormationTemplate.addResource(lambdaPermissionName, {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "Action": "lambda:InvokeFunction",
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  lambdaFunctionResourceName,
+                  "Arn"
+                ]
+              },
+              "Principal": "events.amazonaws.com",
+              "SourceArn": {
+                "Fn::GetAtt": [
+                  cronResourceName,
+                  "Arn"
+                ]
+              }
+            }
+          },
+          )
+        }
+      }
     }
 
     const templateResult = cloudFormationTemplate.build();

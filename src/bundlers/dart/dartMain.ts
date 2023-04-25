@@ -20,13 +20,6 @@ void main() async {
   }
 
   final Handler<Map<String, dynamic>> handler = (context, event) async {
-    if (event["requestContext"]["http"]["method"] == "OPTIONS") {
-      final response = {
-        "statusCode": 200,
-      };
-      return response;
-    }
-
     var response;
 
     var eventBody = null;
@@ -63,6 +56,11 @@ void main() async {
           response = '{"jsonrpc": "2.0", "result": "No cron method found.", "id": 0}';
         break;
       };
+    } else if (event["requestContext"]["http"]["method"] == "OPTIONS") {
+      final response = {
+        "statusCode": 200,
+      };
+      return response;
     } else if (!isJsonRpcRequest) {
       final method = event["requestContext"]["http"]["path"].split("/").last;
       Codec<String, String> stringToBase64 = utf8.fuse(base64);
