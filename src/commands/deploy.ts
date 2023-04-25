@@ -39,7 +39,14 @@ export async function deployCommand(options: any) {
     exit(1);
   }
 
-  const configuration = await getProjectConfiguration();
+  let configuration
+  
+  try {
+    configuration = await getProjectConfiguration();
+  } catch (error: any) {
+    log.error(error.message);
+    exit(1);
+  }
 
   if (!options.frontend || options.backend) {
     if (configuration.scripts?.preBackendDeploy) {
