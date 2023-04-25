@@ -151,6 +151,7 @@ export interface Enum extends Node {
 
 export interface PropertyDefinition {
   name: string;
+  optional: boolean;
   type: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | TypeLiteral | CustomAstNodeType | ArrayType | UnionType | PromiseType;
 }
 

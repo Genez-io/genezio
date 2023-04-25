@@ -278,16 +278,16 @@ class SdkGenerator implements SdkGeneratorInterface {
 
         switch (node.type) {
             case AstNodeType.StringLiteral:
-                implementation += `${variableName} as String,`;
+                implementation += `${variableName} as String`;
                 break;
             case AstNodeType.DoubleLiteral:
-                implementation += `${variableName} as double,`;
+                implementation += `${variableName} as double`;
                 break;
             case AstNodeType.BooleanLiteral:
-                implementation += `${variableName} as bool,`;
+                implementation += `${variableName} as bool`;
                 break;
             case AstNodeType.IntegerLiteral:
-                implementation += `${variableName} as int,`;
+                implementation += `${variableName} as int`;
                 break;
             case AstNodeType.PromiseType:
                 implementation += this.castReturnTypeToPropertyType((node as PromiseType).generic, variableName);

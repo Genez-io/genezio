@@ -91,6 +91,42 @@ export async function fileExists(filePath: string): Promise<boolean> {
   });
 }
 
+export async function isDirectoryEmpty(directoryPath: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    fs.readdir(directoryPath, (error, files) => {
+      if (error) {
+        resolve(true);
+      }
+
+      resolve(files.length === 0);
+    });
+  });
+}
+
+export async function directoryContainsHtmlFiles(directoryPath: string): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    fs.readdir(directoryPath, (error, files) => {
+      if (error) {
+        reject(error)
+      }
+
+      resolve(files.some((file) => file.endsWith(".html")));
+    });
+  });
+}
+
+export async function directoryContainsIndexHtmlFiles(directoryPath: string): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    fs.readdir(directoryPath, (error, files) => {
+      if (error) {
+        reject(error)
+      }
+
+      resolve(files.some((file) => file === "index.html"));
+    });
+  });
+}
+
 export async function createTemporaryFolder(name = "foo-"): Promise<string> {
   return new Promise((resolve, reject) => {
     fs.mkdtemp(path.join(os.tmpdir(), name), (error: any, folder: string) => {

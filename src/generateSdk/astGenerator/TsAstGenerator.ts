@@ -54,14 +54,11 @@ export class AstGenerator implements AstGeneratorInterface {
       case typescript.SyntaxKind.TypeLiteral: {
         const properties: PropertyDefinition[] = [];
         for (const member of (type as any).members) {
-          const memberCopy: any = { ...member };
-          delete memberCopy.parent;
-          delete memberCopy.name.parent;
-          if (memberCopy.type) {
-            delete memberCopy.type.parent;
+          if (member.type) {
             const property: PropertyDefinition = {
-              name: memberCopy.name.escapedText,
-              type: this.mapTypesToParamType(memberCopy.type)
+              name: member.name.escapedText,
+              optional: member.questionToken ? true : false,
+              type: this.mapTypesToParamType(member.type)
             };
             properties.push(property);
           }
@@ -161,6 +158,7 @@ export class AstGenerator implements AstGeneratorInterface {
         if (member.type) {
           const field: PropertyDefinition = {
             name: member.name.escapedText,
+            optional: member.questionToken ? true : false,
             type: this.mapTypesToParamType(member.type),
           }
           structLiteral.typeLiteral.properties.push(field);
