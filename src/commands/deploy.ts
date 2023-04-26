@@ -38,6 +38,7 @@ export async function deployCommand(options: any) {
   }
 
   const configuration = await getProjectConfiguration();
+  let projectId: string | undefined = undefined;
 
   if (!options.frontend || options.backend) {
     if (configuration.scripts?.preBackendDeploy) {
@@ -49,7 +50,7 @@ export async function deployCommand(options: any) {
       }
     }
 
-    await deployClasses()
+    projectId = await deployClasses()
       .catch((error: AxiosError) => {
         switch (error.response?.status) {
           case 401:
@@ -103,8 +104,8 @@ export async function deployCommand(options: any) {
     log.info("Deploying your frontend to genezio infrastructure...");
     let url;
     try {
-      url = await deployFrontend()
-    } catch(error: any) {
+      url = await deployFrontend(projectId)
+    } catch (error: any) {
       log.error(error.message);
       if (error.message == "No frontend entry in genezio configuration file.") {
         exit(0);
@@ -114,7 +115,7 @@ export async function deployCommand(options: any) {
     log.info(
       "\x1b[36m%s\x1b[0m",
       `Frontend successfully deployed at ${url}.`);
-    
+
     if (configuration.scripts?.postFrontendDeploy) {
       log.info("Running postFrontendDeploy script...");
       log.info(configuration.scripts?.postFrontendDeploy);
@@ -158,7 +159,7 @@ export async function deployClasses() {
     clearOnComplete: false,
     hideCursor: true,
     format: 'Uploading {filename}: {bar} | {value}% | {eta_formatted}',
-}, cliProgress.Presets.shades_grey);
+  }, cliProgress.Presets.shades_grey);
 
   printAdaptiveLog("Bundling your code", "start");
   const bundlerResult: any = projectConfiguration.classes.map(
@@ -225,32 +226,32 @@ export async function deployClasses() {
       debugLogger.debug(`Get the presigned URL for class name ${element.name}.`)
 
       return { name: element.name, archivePath: archivePath, path: element.path };
-    }); 
+    });
 
-    const bundlerResultArray = await Promise.all(bundlerResult);
+  const bundlerResultArray = await Promise.all(bundlerResult);
 
-    printAdaptiveLog("Bundling your code", "end");
+  printAdaptiveLog("Bundling your code", "end");
 
-    const promisesDeploy = bundlerResultArray.map(async (element) => {
-      const resultPresignedUrl = await getPresignedURL(
-        configuration.region,
-        "genezioDeploy.zip",
-        configuration.name,
-        element.name
-      )
+  const promisesDeploy = bundlerResultArray.map(async (element) => {
+    const resultPresignedUrl = await getPresignedURL(
+      configuration.region,
+      "genezioDeploy.zip",
+      configuration.name,
+      element.name
+    )
 
-      const bar = multibar.create(100, 0, { filename: element.name });
-      debugLogger.debug(`Upload the content to S3 for file ${element.path}.`)
-      await uploadContentToS3(resultPresignedUrl.presignedURL, element.archivePath, (percentage) => {
-        bar.update(parseFloat((percentage * 100).toFixed(2)), {filename: element.name});
+    const bar = multibar.create(100, 0, { filename: element.name });
+    debugLogger.debug(`Upload the content to S3 for file ${element.path}.`)
+    await uploadContentToS3(resultPresignedUrl.presignedURL, element.archivePath, (percentage) => {
+      bar.update(parseFloat((percentage * 100).toFixed(2)), { filename: element.name });
 
-        if (percentage == 1) {
-          bar.stop();
-        }
-      })
+      if (percentage == 1) {
+        bar.stop();
+      }
+    })
 
-      debugLogger.debug(`Done uploading the content to S3 for file ${element.path}.`)
-    }
+    debugLogger.debug(`Done uploading the content to S3 for file ${element.path}.`)
+  }
   );
 
   // wait for all promises to finish
@@ -281,9 +282,11 @@ export async function deployClasses() {
   console.log(
     `Your backend project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`
   );
+
+  return projectId;
 }
 
-export async function deployFrontend(): Promise<string> {
+export async function deployFrontend(projectId: string): Promise<string> {
   const configuration = await getProjectConfiguration();
 
   if (configuration.frontend) {
@@ -336,6 +339,7 @@ export async function deployFrontend(): Promise<string> {
     debugLogger.debug("Content of the folder zipped. Uploading to S3.")
     await uploadContentToS3(result.presignedURL, archivePath, undefined, result.userId)
     debugLogger.debug("Uploaded to S3.")
+    await createFrontendProject(configuration.frontend.subdomain, projectId)
   } else {
     throw new Error("No frontend entry in genezio configuration file.")
   }
