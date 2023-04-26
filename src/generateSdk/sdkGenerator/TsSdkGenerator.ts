@@ -237,7 +237,7 @@ class SdkGenerator implements SdkGeneratorInterface {
   }
 
   getReturnType(returnType: Node): string {
-    if (!returnType || returnType.type === AstNodeType.AnyLiteral) {
+    if (!returnType || returnType.type === AstNodeType.VoidLiteral) {
       return "";
     }
 

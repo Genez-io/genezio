@@ -152,7 +152,7 @@ export interface Enum extends Node {
 export interface PropertyDefinition {
   name: string;
   optional: boolean;
-  type: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | TypeLiteral | CustomAstNodeType | ArrayType | UnionType | PromiseType;
+  type: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | TypeLiteral | CustomAstNodeType | ArrayType | UnionType | PromiseType | VoidType;
 }
 
 export interface TypeLiteral extends Node {
@@ -169,7 +169,7 @@ export interface StructLiteral extends Node {
 export interface TypeAlias extends Node {
   type: AstNodeType.TypeAlias;
   name: string;
-  aliasType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | CustomAstNodeType | ArrayType | TypeLiteral | UnionType | PromiseType;
+  aliasType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | CustomAstNodeType | ArrayType | TypeLiteral | UnionType | PromiseType | VoidType;
 }
 
 export interface UnionType extends Node {
@@ -181,7 +181,7 @@ export interface ParameterDefinition extends Node {
   type: AstNodeType.ParameterDefinition;
   name: string;
   rawType: string;
-  paramType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | MapType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType;
+  paramType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | MapType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType | VoidType;
   optional: boolean;
   defaultValue?: {
     value: string;
