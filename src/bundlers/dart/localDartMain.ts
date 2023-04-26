@@ -30,12 +30,11 @@ void main(List<String> args) async {
 
       var eventBody = null;
       try {
-        eventBody = event["body"];
+        eventBody = jsonDecode(event["body"]);
       } catch (e) {}
   
       final isJsonRpcRequest = eventBody != null && eventBody["jsonrpc"] != null && eventBody["jsonrpc"] == "2.0";
   
-
       if (event["genezioEventType"] == "cron") {
         final method = event["methodName"];
         switch (method) {
