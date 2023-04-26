@@ -139,6 +139,18 @@ export async function createTemporaryFolder(name = "foo-"): Promise<string> {
   });
 }
 
+export async function deleteFolder(folderPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    fs.rmdir(folderPath, { recursive: true }, (error) => {
+      if (error) {
+        reject(error);
+      }
+
+      resolve();
+    });
+  });
+}
+
 export function getFileDetails(filePath: string): FileDetails {
   const { ext, name, dir, base } = path.parse(filePath);
 

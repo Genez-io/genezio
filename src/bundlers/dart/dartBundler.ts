@@ -5,7 +5,7 @@ import Mustache from "mustache";
 import { getCompileDartPresignedURL } from "../../requests/getCompileDartPresignedURL";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3";
 import decompress from "decompress";
-import { createTemporaryFolder, writeToFile, zipDirectory } from "../../utils/file";
+import { createTemporaryFolder, deleteFolder, writeToFile, zipDirectory } from "../../utils/file";
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface";
 import { checkIfDartIsInstalled } from "../../utils/dart";
 import { debugLogger } from "../../utils/logging";
@@ -155,6 +155,9 @@ export class DartBundler implements BundlerInterface {
         await zipDirectory(userCodeFolderPath, archivePath);
         await uploadContentToS3(presignedUrlResult.presignedURL, archivePath)
 
+        // remove temporary folder
+        await deleteFolder(archiveDirectoryOutput);
+
         return archiveName;
     }
 
@@ -235,6 +238,9 @@ export class DartBundler implements BundlerInterface {
         debugLogger.debug("Downloading compiled code...")
         await this.#downloadAndUnzipFromS3ToFolder(s3Zip.downloadUrl, temporaryFolder)
         debugLogger.debug("Finished downloading compiled code...")
+
+        // remove temporary folder
+        await deleteFolder(inputTemporaryFolder);
 
         return {
             ...input,

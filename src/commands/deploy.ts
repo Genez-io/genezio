@@ -30,7 +30,8 @@ import {
   zipDirectoryToDestinationPath,
   isDirectoryEmpty,
   directoryContainsIndexHtmlFiles,
-  directoryContainsHtmlFiles
+  directoryContainsHtmlFiles,
+  deleteFolder
 } from "../utils/file";
 import { printAdaptiveLog, debugLogger } from "../utils/logging";
 import { runNewProcess } from "../utils/process";
@@ -247,6 +248,9 @@ export async function deployClasses() {
         `Get the presigned URL for class name ${element.name}.`
       );
 
+      // clean up temporary folder
+      await deleteFolder(output.path);
+
       return {
         name: element.name,
         archivePath: archivePath,
@@ -282,6 +286,9 @@ export async function deployClasses() {
         }
       }
     );
+
+    // clean up temporary folder
+    await deleteFolder(path.dirname(element.archivePath));
 
     debugLogger.debug(
       `Done uploading the content to S3 for file ${element.path}.`
@@ -398,6 +405,9 @@ export async function deployFrontend(): Promise<string> {
       result.userId
     );
     debugLogger.debug("Uploaded to S3.");
+    
+    // clean up temporary folder
+    await deleteFolder(path.dirname(archivePath));
   } else {
     throw new Error("No frontend entry in genezio configuration file.");
   }
