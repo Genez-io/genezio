@@ -134,7 +134,7 @@ class SdkGenerator implements SdkGeneratorInterface {
           name: methodDefinition.name,
           parameters: [],
           returnType: this.getParamType(methodDefinition.returnType),
-          mapToObject: methodDefinition.returnType.type === AstNodeType.CustomNodeLiteral,
+          mapToObject: this.isMapToObject(methodDefinition.returnType),
           methodCaller: methodDefinition.params.length === 0 ?
             `"${classDefinition.name}.${methodDefinition.name}"`
             : `"${classDefinition.name}.${methodDefinition.name}", `
@@ -245,6 +245,20 @@ class SdkGenerator implements SdkGeneratorInterface {
         + `${typeAlias.typeLiteral.properties.map((e: PropertyDefinition) => `${e.optional ? `if ${e.name} is not None:\n\t\t\t` : ''}${e.type.type === AstNodeType.CustomNodeLiteral ? `if isinstance(${e.name}, Mapping):\n\t\t\t${e.optional ? '\t' : ''}self.${e.name} = ${this.getParamType(e.type)}(**${e.name})\n\t\t${e.optional ? '\t' : ''}else:\n\t\t\t${e.optional ? '\t' : ''}self.${e.name} = ${e.name}` : `self.${e.name} = ${e.name}`}`).join("\n\t\t")}`;
     }
     return "";
+  }
+
+  isMapToObject(type: Node): boolean {
+    if (type.type === AstNodeType.CustomNodeLiteral) {
+      const customAstNodeType = type as CustomAstNodeType;
+      if (customAstNodeType.rawValue === "Date") {
+        return false;
+      }
+      return true;
+    }
+    if (type.type === AstNodeType.PromiseType) {
+      return this.isMapToObject((type as PromiseType).generic);
+    }
+    return false;
   }
 }
 
