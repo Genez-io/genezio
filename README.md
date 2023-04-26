@@ -41,9 +41,10 @@
 
 # What is [genezio](https://genez.io)?
 
-[genezio](https://genez.io/) is a platform for developers to write, deploy and use a serverless API.
+[genezio](https://genez.io/) is a platform for developers to write and host a serverless application.
 
-You are writing your backend logic in classes and design your frontend using your preferred programming language.
+You are writing your backend logic in classes and design your frontend using your preferred programming language. More languages coming soon! Better yet, join our open source community and help us build it!
+
 By calling `genezio deploy`, we are deploying your backend classes in a serverless infrastructure.
 
 To make it easy to call your backend logic from the client, an SDK is generated.
