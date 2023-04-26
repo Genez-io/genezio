@@ -11,7 +11,7 @@
 <br>
 
 <div align="center">
-<h2>The Coolest Way to Write, Deploy and Use a Serverless API</h2>
+<h2>The easiest way to write and host a serverless application</h2>
 </div>
 
 <br>
