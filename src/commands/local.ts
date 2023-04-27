@@ -149,8 +149,8 @@ async function startProcesses(
     }
 
     const ast = sdk.sdkGeneratorInput.classesInfo.find(
-      (classInfo) =>
-        classInfo.classConfiguration.path === classInfo.classConfiguration.path
+      (c) =>
+        c.classConfiguration.path === classInfo.path
     )!.program;
 
     debugLogger.log("Start bundling...");

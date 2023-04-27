@@ -146,10 +146,9 @@ export class AstGenerator implements AstGeneratorInterface {
     const ast = JSON.parse(result);
 
     const mainClasses = ast.classes.filter((c: any) => c.name === input.class.name);
-    if (mainClasses.length > 1) {
-      throw new Error(`No ${input.class.name} found.`);
+    if (mainClasses.length == 0) {
+      throw new Error(`No class named ${input.class.name} found. Check in the 'genezio.yaml' file and make sure the path is correct.`);
     }
-
     const classToDeploy = mainClasses[0];
 
     const genezioClass: ClassDefinition = {
