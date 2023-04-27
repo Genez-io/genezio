@@ -46,50 +46,6 @@ describe("project configuration", () => {
     }).rejects.toThrowError("The sdk.path property is missing from the configuration file.");
   });
 
-  test("missing sdk.options should throw error", async () => {
-    await expect(async () => {
-      const yaml = {
-        name: "test",
-        sdk: {
-          path: "/",
-          language: "js"
-        }
-      };
-      await YamlProjectConfiguration.create(yaml);
-    }).rejects.toThrowError("The sdk.options property is missing from the configuration file.");
-  });
-
-  test("missing sdk.runtime should throw error", async () => {
-    await expect(async () => {
-      const yaml = {
-        name: "test",
-        sdk: {
-          path: "/",
-          language: "js",
-          options: {
-            runtime: "",
-          },
-        }
-      };
-      await YamlProjectConfiguration.create(yaml);
-    }).rejects.toThrowError("The sdk.options.runtime property is missing from the configuration file.");
-  });
-
-  test("wrong sdk.runtime should throw error", async () => {
-    await expect(async () => {
-      const yaml = {
-        name: "test",
-        sdk: {
-          path: "/",
-          language: "js",
-          options: {
-            runtime: "wrong",
-          },
-        }
-      };
-      await YamlProjectConfiguration.create(yaml);
-    }).rejects.toThrowError("The sdk.options.runtime property is invalid.");
-  });
 
   test('invalid region should throw error', async () => {
       await expect(async () => {
@@ -179,9 +135,6 @@ describe("project configuration", () => {
                 sdk: {
                     path: "/",
                     language: "js",
-                    options: {
-                      runtime: "node",
-                    },
                 },
                 classes: [
                     {
@@ -198,21 +151,19 @@ describe("project configuration", () => {
     test('invalid cronString should throw error', async () => {
         await expect(async () => {
             const yaml = {
-                name: "test",
-                sdk: {
-                    path: "/",
-                    language: "js",
-                    runtime: "node",
-                  },
-                classes: [
-                    {
-                        path: "/",
-                        name: "method1",
-                        type: "cron",
-                        cronString: "* * * * * *"
-                    }
-                ]
-            }
+              name: "test",
+              sdk: {
+                  path: "/",
+                  language: "js",
+              },
+              classes: [
+                  {
+                      name: "method1",
+                      type: "cron",
+                      cronString: "* * * * * *"
+                  }
+              ]
+          }
             await YamlProjectConfiguration.create(yaml)
         }).rejects.toThrowError()
     });

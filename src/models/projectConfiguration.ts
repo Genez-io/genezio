@@ -1,7 +1,7 @@
 import { getAstSummary } from "../generateSdk/utils/getAstSummary";
 import { AstSummary } from "./astSummary";
 import { SdkGeneratorResponse } from "./sdkGeneratorResponse";
-import { JsRuntime, JsSdkOptions, Language, TriggerType, YamlProjectConfiguration } from "./yamlProjectConfiguration";
+import { Language, TriggerType, YamlProjectConfiguration } from "./yamlProjectConfiguration";
 
 export class ParameterType {
     name: string;
@@ -51,13 +51,10 @@ export class ClassConfiguration {
 
 export class SdkConfiguration {
     language: Language;
-    options: JsSdkOptions | any;
     path: string;
 
-    constructor(language: Language, runtime: JsRuntime | null, path: string) {
+    constructor(language: Language, path: string) {
         this.language = language;
-        this.options = {};
-        this.options.runtime = runtime || null;
         this.path = path;
     }
 }
