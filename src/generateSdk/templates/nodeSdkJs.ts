@@ -77,7 +77,7 @@ export class Remote {
 
    constructor(url) {
        this.url = url;
-       if (http !== null & https !== null) {
+       if (http !== null && https !== null) {
            const client = url.includes("https") ? https : http;
            this.agent = new client.Agent({ keepAlive: true });
        }
@@ -86,7 +86,7 @@ export class Remote {
    async call(method, ...args) {
        const requestContent = {"jsonrpc": "2.0", "method": method, "params": args, "id": 3};
        let response = undefined;
-       if (http !== null & https !== null) {
+       if (http !== null && https !== null) {
            response = await makeRequestNode(requestContent, this.url, this.agent);
        } else {
            response = await makeRequestBrowser(requestContent, this.url);
