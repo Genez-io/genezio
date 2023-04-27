@@ -19,9 +19,9 @@ if (!genezioClass) {
 
 const object = new genezioClass();
 
+
 exports.handler =  async function(event, context) {
     if (event.genezioEventType === "cron") {
-
         const method = event.methodName;
 
         if (!object[method]) {
@@ -39,6 +39,13 @@ exports.handler =  async function(event, context) {
         return;
     }
 
+    if (event.requestContext.http.method === "OPTIONS") {
+      const response = {
+        statusCode: 200,
+    };
+      return response;
+    }
+
     let body = event.body
 
     try {
@@ -46,8 +53,9 @@ exports.handler =  async function(event, context) {
     } catch (error) {
     }
 
-    if (event.requestContext.http.path.split("/").length > 2) {
-        const method = event.requestContext.http.path.split("/")[2]
+    const components = event.requestContext.http.path.split("/")
+    if (!body || (body && body["jsonrpc"] !== "2.0")) {
+        const method = components.slice(-1)
         const req = {
             headers: event.headers,
             http: event.requestContext.http,
@@ -123,7 +131,7 @@ exports.handler =  async function(event, context) {
 
           const result = await Promise.race([errorPromise, response])
           process.removeAllListeners("uncaughtException")
-          return result;
+          return result
         } catch (err) {
           return {"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId}
         }

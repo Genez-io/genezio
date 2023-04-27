@@ -37,7 +37,10 @@ import { runNewProcess } from "../utils/process";
 import { reportSuccess } from "../utils/reporter";
 import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk";
 import { generateRandomSubdomain } from "../utils/yaml";
-import cliProgress from "cli-progress";
+import { GenezioCloudAdapter } from "../cloudAdapter/genezioAdapter";
+import { SelfHostedAwsAdapter } from "../cloudAdapter/selfHostedAwsAdapter";
+import { CloudAdapter } from "../cloudAdapter/cloudAdapter";
+
 
 export async function deployCommand(options: any) {
   // check if user is logged in
@@ -47,7 +50,14 @@ export async function deployCommand(options: any) {
     exit(1);
   }
 
-  const configuration = await getProjectConfiguration();
+  let configuration
+  
+  try {
+    configuration = await getProjectConfiguration();
+  } catch (error: any) {
+    log.error(error.message);
+    exit(1);
+  }
 
   if (!options.frontend || options.backend) {
     if (configuration.scripts?.preBackendDeploy) {
@@ -118,7 +128,7 @@ export async function deployCommand(options: any) {
     log.info("Deploying your frontend to genezio infrastructure...");
     let url;
     try {
-      url = await deployFrontend();
+      url = await deployFrontend()
     } catch (error: any) {
       log.error(error.message);
       if (error.message == "No frontend entry in genezio configuration file.") {
@@ -149,11 +159,7 @@ export async function deployClasses() {
     throw new Error(GENEZIO_NO_CLASSES_FOUND);
   }
 
-  log.info("Deploying your backend project to genezio infrastructure...");
-
-  const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
-    configuration
-  ).catch((error) => {
+  const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(configuration).catch((error) => {
     // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
     if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
       log.error("Syntax error:");
@@ -170,24 +176,16 @@ export async function deployClasses() {
     sdkResponse
   );
 
-  const multibar = new cliProgress.MultiBar(
-    {
-      clearOnComplete: false,
-      hideCursor: true,
-      format: "Uploading {filename}: {bar} | {value}% | {eta_formatted}"
-    },
-    cliProgress.Presets.shades_grey
-  );
-
   printAdaptiveLog("Bundling your code", "start");
-  const bundlerResult: any = projectConfiguration.classes.map(
+  const bundlerResult = projectConfiguration.classes.map(
     async (element) => {
       if (!(await fileExists(element.path))) {
         printAdaptiveLog("Bundling your code and uploading it", "error");
         log.error(
           `\`${element.path}\` file does not exist at the indicated path.`
         );
-        exit(1);
+
+        throw new Error(`\`${element.path}\` file does not exist at the indicated path.`);
       }
 
       let bundler: BundlerInterface;
@@ -211,7 +209,7 @@ export async function deployClasses() {
         }
         default:
           log.error(`Unsupported ${element.language}`);
-          return Promise.resolve();
+          throw new Error(`Unsupported ${element.language}`);
       }
 
       debugLogger.debug(
@@ -247,82 +245,30 @@ export async function deployClasses() {
         `Get the presigned URL for class name ${element.name}.`
       );
 
-      return {
-        name: element.name,
-        archivePath: archivePath,
-        path: element.path
-      };
-    }
-  );
+      return { name: element.name, archivePath: archivePath, filePath: element.path, methods: element.methods };
+    });
 
   const bundlerResultArray = await Promise.all(bundlerResult);
 
   printAdaptiveLog("Bundling your code", "end");
 
-  const promisesDeploy = bundlerResultArray.map(async (element) => {
-    const resultPresignedUrl = await getPresignedURL(
-      configuration.region,
-      "genezioDeploy.zip",
-      configuration.name,
-      element.name
+  const cloudAdapter = getCloudProvider(projectConfiguration.cloudProvider || "aws");
+  const result = await cloudAdapter.deploy(bundlerResultArray, projectConfiguration);
+
+  reportSuccess(result.classes, sdkResponse);
+
+  await replaceUrlsInSdk(sdkResponse, result.classes.map((c: any) => ({
+    name: c.className,
+    cloudUrl: c.functionUrl
+  })));
+  await writeSdkToDisk(sdkResponse, configuration.sdk.language, configuration.sdk.path)
+
+  const projectId = result.classes[0].projectId;
+  if (projectId) {
+    console.log(
+      `Your backend project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`
     );
-
-    const bar = multibar.create(100, 0, { filename: element.name });
-    debugLogger.debug(`Upload the content to S3 for file ${element.path}.`);
-    await uploadContentToS3(
-      resultPresignedUrl.presignedURL,
-      element.archivePath,
-      (percentage) => {
-        bar.update(parseFloat((percentage * 100).toFixed(2)), {
-          filename: element.name
-        });
-
-        if (percentage == 1) {
-          bar.stop();
-        }
-      }
-    );
-
-    debugLogger.debug(
-      `Done uploading the content to S3 for file ${element.path}.`
-    );
-  });
-
-  // wait for all promises to finish
-  await Promise.all(promisesDeploy);
-  multibar.stop();
-  // The loading spinner is removing lines and with this we avoid clearing a progress bar.
-  // This can be removed only if we find a way to avoid clearing lines.
-  log.info("");
-
-  const response = await deployRequest(projectConfiguration);
-
-  const classesInfo = response.classes.map((c) => ({
-    className: c.name,
-    methods: c.methods,
-    functionUrl: c.cloudUrl,
-    projectId: response.projectId
-  }));
-
-  reportSuccess(classesInfo, sdkResponse);
-
-  await replaceUrlsInSdk(
-    sdkResponse,
-    response.classes.map((c) => ({
-      name: c.name,
-      cloudUrl: c.cloudUrl
-    }))
-  );
-  await writeSdkToDisk(
-    sdkResponse,
-    configuration.sdk.language,
-    configuration.sdk.path
-  );
-
-  const projectId = classesInfo[0].projectId;
-  console.log(
-    `Your backend project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`
-  );
+  }
 }
 
 export async function deployFrontend(): Promise<string> {
@@ -402,5 +348,18 @@ export async function deployFrontend(): Promise<string> {
     throw new Error("No frontend entry in genezio configuration file.");
   }
 
-  return `https://${configuration.frontend.subdomain}.${FRONTEND_DOMAIN}`;
+  return `https://${configuration.frontend.subdomain}.${FRONTEND_DOMAIN}`
+}
+
+function getCloudProvider(provider: string): CloudAdapter {
+  switch (provider) {
+    case "aws":
+    case "managedAws":
+    case "genezio":
+      return new GenezioCloudAdapter();
+    case "selfHostedAws":
+      return new SelfHostedAwsAdapter();
+    default:
+      throw new Error(`Unsupported cloud provider: ${provider}`);
+  }
 }

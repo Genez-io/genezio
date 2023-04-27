@@ -60,6 +60,11 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       sdk = await sdkGeneratorApiHandler(yamlProjectConfiguration).catch(
         (error) => {
           debugLogger.log("An error occured", error);
+          if (error.code === 'ENOENT') {
+            log.error(`The file ${error.path} does not exist. Please check your genezio.yaml configuration and make sure that all the file paths are correct.`)
+            throw error
+          }
+
           // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
           if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
             log.error("Syntax error:");
@@ -512,8 +517,13 @@ function reportSuccess(
 ) {
   const classesInfo = projectConfiguration.classes.map((c) => ({
     className: c.name,
-    methods: c.methods,
-    functionUrl: `http://127.0.0.1:${port}/`
+    methods: c.methods.map((m) => ({
+      name: m.name,
+      type: m.type,
+      cronString: m.cronString,
+      functionUrl: getFunctionUrl(`http://127.0.0.1:${port}`, m.type, c.name, m.name),
+    })),
+    functionUrl: `http://127.0.0.1:${port}/${c.name}`
   }));
 
   _reportSuccess(classesInfo, sdk);
@@ -524,11 +534,15 @@ function reportSuccess(
   );
 }
 
-async function clearAllResources(
-  server: http.Server,
-  processForClasses: Map<string, ClassProcess>,
-  crons: LocalEnvCronHandler[]
-) {
+function getFunctionUrl(baseUrl: string, methodType: string, className: string, methodName: string): string {
+  if (methodType === "http") {
+      return `${baseUrl}/${className}/${methodName}`;
+  } else {
+      return `${baseUrl}/${className}`;
+  }
+}
+
+async function clearAllResources(server: http.Server, processForClasses: Map<string, ClassProcess>, crons: LocalEnvCronHandler[]) {
   server.close();
   await stopCronJobs(crons);
 
