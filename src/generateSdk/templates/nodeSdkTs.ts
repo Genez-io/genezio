@@ -8,6 +8,7 @@ let https: any = null;
 
 (async () => {
 if (typeof process !== "undefined" && process.versions != null && process.versions.node != null) {
+    console.log("NodeJS detected");
    const httpModule: string = 'http';
    http = await import(httpModule);
    const httpsModule: string = 'https';
