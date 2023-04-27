@@ -5,16 +5,17 @@ export const nodeSdkTs = `/**
 
 let http: any = null;
 let https: any = null;
+let importDone: boolean = false;
 
-(async () => {
-if (typeof process !== "undefined" && process.versions != null && process.versions.node != null) {
-    console.log("NodeJS detected");
-   const httpModule: string = 'http';
-   http = await import(httpModule);
-   const httpsModule: string = 'https';
-   https = await import(httpsModule);
+async function importModules() {
+    if (typeof process !== "undefined" && process.versions != null && process.versions.node != null) {
+        const httpModule: string = 'http';
+        http = await import(httpModule);
+        const httpsModule: string = 'https';
+        https = await import(httpsModule);
+    }
+    importDone = true;
 }
-})();
 
 async function makeRequestBrowser(request: any, url: any) {
     const response = await fetch(\`\${url}\`, {
@@ -88,6 +89,10 @@ async function makeRequestNode(request: any, url: any, agent: any) {
     async call(method: any, ...args: any[]) {
         const requestContent = {"jsonrpc": "2.0", "method": method, "params": args, "id": 3};
         let response: any = undefined;
+        if (!importDone) {
+            await importModules();
+        }
+
         if (http !== null && https !== null) {
             response = await makeRequestNode(requestContent, this.url, this.agent);
         } else {

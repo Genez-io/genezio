@@ -5,15 +5,17 @@ export const nodeSdkJs = `/**
 
 let http = null;
 let https = null;
+let importDone = false;
 
-(async () => {
-if (typeof process !== "undefined" && process.versions != null && process.versions.node != null) {
-   const httpModule = 'http';
-   http = await import(httpModule);
-   const httpsModule = 'https';
-   https = await import(httpsModule);
+async function importModules() {
+    if (typeof process !== "undefined" && process.versions != null && process.versions.node != null) {
+        const httpModule = 'http';
+        http = await import(httpModule);
+        const httpsModule = 'https';
+        https = await import(httpsModule);
+    }
+    importDone = true;
 }
-})();
 
 async function makeRequestBrowser(request, url) {
    const response = await fetch(\`\${url}\`, {
@@ -86,6 +88,9 @@ export class Remote {
    async call(method, ...args) {
        const requestContent = {"jsonrpc": "2.0", "method": method, "params": args, "id": 3};
        let response = undefined;
+        if (!importDone) {
+            await importModules();
+        }
        if (http !== null && https !== null) {
            response = await makeRequestNode(requestContent, this.url, this.agent);
        } else {
