@@ -17,7 +17,6 @@ import {
   PromiseType
  } from "../../models/genezioModels";
 import { TriggerType } from "../../models/yamlProjectConfiguration";
-import { browserSdkTs } from "../templates/browserSdkTs";
 import { nodeSdkTs } from "../templates/nodeSdkTs";
 
 const TYPESCRIPT_RESERVED_WORDS = [
@@ -127,9 +126,6 @@ class SdkGenerator implements SdkGeneratorInterface {
   async generateSdk(
     sdkGeneratorInput: SdkGeneratorInput
   ): Promise<SdkGeneratorOutput> {
-    const options = sdkGeneratorInput.sdk.options;
-    const nodeRuntime = options.runtime;
-
     const generateSdkOutput: SdkGeneratorOutput = {
       files: []
     };
@@ -229,8 +225,7 @@ class SdkGenerator implements SdkGeneratorInterface {
     generateSdkOutput.files.push({
       className: "Remote",
       path: "remote.ts",
-      data: nodeRuntime === "node" ? nodeSdkTs.replace("%%%url%%%", "undefined")
-      : browserSdkTs.replace("%%%url%%%", "undefined")
+      data: nodeSdkTs.replace("%%%url%%%", "undefined")
     });
 
     return generateSdkOutput;

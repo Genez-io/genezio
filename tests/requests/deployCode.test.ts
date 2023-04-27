@@ -1,15 +1,10 @@
 import axios from "axios";
 import { getAuthToken } from "../../src/utils/accounts";
 import {
-  YamlClassConfiguration,
-  TriggerType,
-  YamlProjectConfiguration,
-  YamlSdkConfiguration,
   Language,
-  JsRuntime
 } from "../../src/models/yamlProjectConfiguration";
 import { deployRequest } from "../../src/requests/deployCode";
-import { ProjectConfiguration, SdkConfiguration, ClassConfiguration } from "../../src/models/projectConfiguration";
+import { ProjectConfiguration, SdkConfiguration } from "../../src/models/projectConfiguration";
 
 jest.mock("axios");
 jest.mock("../../src/utils/accounts");
@@ -30,7 +25,7 @@ test("should throw error if server returns error", async () => {
         classes: [],
         version: "1.0.0",
       },
-      sdk: new SdkConfiguration(Language.js, JsRuntime.browser, "./test"),
+      sdk: new SdkConfiguration(Language.js, "./test"),
       classes: [],
     }
 
@@ -56,7 +51,7 @@ test("should throw error if server returns data.error object", async () => {
         classes: [],
         version: "1.0.0",
       },
-      sdk: new SdkConfiguration(Language.js, JsRuntime.browser, "./test"),
+      sdk: new SdkConfiguration(Language.js, "./test"),
       classes: [],
     }
     mockedGetAuthToken.mockResolvedValue("token");
@@ -81,7 +76,7 @@ test("should return response.data if everything is ok", async () => {
       classes: [],
       version: "1.0.0",
     },
-    sdk: new SdkConfiguration(Language.js, JsRuntime.browser, "./test"),
+    sdk: new SdkConfiguration(Language.js, "./test"),
     classes: [],
   }
   mockedGetAuthToken.mockResolvedValue("token");
@@ -106,7 +101,7 @@ test("should read token and pass it to headers", async () => {
       classes: [],
       version: "1.0.0",
     },
-    sdk: new SdkConfiguration(Language.js, JsRuntime.browser, "./test"),
+    sdk: new SdkConfiguration(Language.js, "./test"),
     classes: [],
   }
   mockedGetAuthToken.mockResolvedValue("token");

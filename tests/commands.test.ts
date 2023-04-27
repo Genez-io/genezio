@@ -5,7 +5,6 @@ import { askQuestion } from "../src/utils/prompt";
 import { GENEZIO_YAML_COMMENT } from "../src/utils/strings";
 import { getProjectConfiguration } from "../src/utils/configuration";
 import {
-  JsRuntime,
   Language,
   TriggerType,
   YamlClassConfiguration,
@@ -32,7 +31,6 @@ describe("init", () => {
     .mockResolvedValueOnce("project-name")
     .mockResolvedValueOnce("us-east-1")
     .mockResolvedValueOnce("js")
-    .mockResolvedValueOnce("node")
     .mockResolvedValueOnce("./sdk/")
 
     const mockedWriteToFile = jest.mocked(writeToFile, { shallow: true });
@@ -41,7 +39,7 @@ describe("init", () => {
     const configFile : any = {
       name: "project-name",
       region: "us-east-1",
-      sdk: { options: { runtime: "node"}, language: "js", path: "./sdk/" },
+      sdk: { language: "js", path: "./sdk/" },
       classes: []
     };
 
@@ -53,13 +51,12 @@ describe("init", () => {
     await expect(initCommand()).resolves.toBeUndefined();
 
     expect(mockedWriteToFile).toBeCalledTimes(1);
-    expect(mockedAskQuestion).toBeCalledTimes(5);
+    expect(mockedAskQuestion).toBeCalledTimes(4);
     expect(mockedWriteToFile).toBeCalledWith(".", "genezio.yaml", yamlConfigurationFileContent)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `In what programming language do you want your SDK? (${languages}) [default value: js]: `, "js")
-    expect(mockedAskQuestion).toHaveBeenNthCalledWith(4, `What runtime will you use? Options: "node" or "browser". [default value: node]: `, "node")
-    expect(mockedAskQuestion).toHaveBeenNthCalledWith(5, `Where do you want to save your SDK? [default value: ./sdk/]: `, "./sdk/")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(4, `Where do you want to save your SDK? [default value: ./sdk/]: `, "./sdk/")
   });
 
   test("throws error if region is not supported", async () => {
@@ -92,23 +89,6 @@ describe("init", () => {
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `In what programming language do you want your SDK? (${languages}) [default value: js]: `, "js")
   });
 
-  test("throws error if runtime is not supported", async () => {
-    const notSupportedRuntime = "not-supported"
-    const mockedAskQuestion = jest.mocked(askQuestion, { shallow: true });
-    mockedAskQuestion
-    .mockResolvedValueOnce("project-name")
-    .mockResolvedValueOnce("us-east-1")
-    .mockResolvedValueOnce("js")
-    .mockResolvedValueOnce(notSupportedRuntime)
-
-    await expect(initCommand()).rejects.toThrowError(`We don't currently support this JS/TS runtime ${notSupportedRuntime}.`);
-
-    expect(mockedAskQuestion).toBeCalledTimes(4);
-    expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
-    expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
-    expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `In what programming language do you want your SDK? (${languages}) [default value: js]: `, "js")
-    expect(mockedAskQuestion).toHaveBeenNthCalledWith(4, `What runtime will you use? Options: "node" or "browser". [default value: node]: `, "node")
-  });
 })
 
 describe("addClassCommand", () => {
@@ -138,7 +118,7 @@ describe("addClassCommand", () => {
     const projectConfiguration = new YamlProjectConfiguration(
       "test",
       "us-east-1",
-      new YamlSdkConfiguration(Language.js, JsRuntime.browser, "./test.js"),
+      new YamlSdkConfiguration(Language.js, "./test.js"),
       "genezio",
       [new YamlClassConfiguration("./test.js", TriggerType.jsonrpc, Language.js, [])] as YamlClassConfiguration[],
     );
@@ -167,7 +147,7 @@ describe("addClassCommand", () => {
     const projectConfiguration = new YamlProjectConfiguration(
       "test",
       "us-east-1",
-      new YamlSdkConfiguration(Language.js, JsRuntime.browser, "./test.js"),
+      new YamlSdkConfiguration(Language.js, "./test.js"),
       "genezio",
       []
     );
@@ -196,7 +176,7 @@ describe("addClassCommand", () => {
     const projectConfiguration = new YamlProjectConfiguration(
       "test",
       "us-east-1",
-      new YamlSdkConfiguration(Language.js, JsRuntime.browser, "./test.js"),
+      new YamlSdkConfiguration(Language.js, "./test.js"),
       "genezio",
       []
     );

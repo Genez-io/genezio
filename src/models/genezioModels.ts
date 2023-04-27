@@ -229,7 +229,6 @@ export type SdkGeneratorInput = {
   classesInfo: SdkGeneratorClassesInfoInput[];
   sdk: {
     language: string;
-    options: any;
   }
 };
 

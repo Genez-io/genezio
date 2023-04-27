@@ -11,11 +11,6 @@ export enum TriggerType {
   http = "http"
 }
 
-export enum JsRuntime {
-  browser = "browser",
-  node = "node"
-}
-
 export enum Language {
   js = "js",
   ts = "ts",
@@ -24,19 +19,12 @@ export enum Language {
   dart = "dart"
 }
 
-export type JsSdkOptions = {
-  runtime: "node" | "browser";
-};
-
 export class YamlSdkConfiguration {
   language: Language;
-  options: JsSdkOptions | any;
   path: string;
 
-  constructor(language: Language, runtime: JsRuntime | null, path: string) {
+  constructor(language: Language, path: string) {
     this.language = language;
-    this.options = {};
-    this.options.runtime = runtime || null;
     this.path = path;
   }
 }
@@ -86,8 +74,6 @@ export class YamlMethodConfiguration {
     }
 
     // Checkcron string format
-
-
     if (type == TriggerType.cron) {
       if (!isValidCron(methodConfigurationYaml.cronString)) {
         throw new Error("The cron string is not valid. Check https://crontab.guru/ for more information.");
@@ -296,33 +282,10 @@ export class YamlProjectConfiguration {
       log.info("This sdk.language is not supported by default. It will be treated as a custom language.");
     }
 
-    if (Language[language as keyof typeof Language] == Language.js ||
-        Language[language as keyof typeof Language] == Language.ts) {
-      if (!configurationFileContent.sdk.options) {
-        throw new Error("The sdk.options property is missing from the configuration file.");
-      }
-
-      if (!configurationFileContent.sdk.options.runtime) {
-        throw new Error("The sdk.options.runtime property is missing from the configuration file.");
-      }
-
-      if (!JsRuntime[configurationFileContent.sdk.options.runtime as keyof typeof JsRuntime]) {
-        throw new Error("The sdk.options.runtime property is invalid.");
-      }
-    }
-
-    const jsRuntime: JsRuntime | null = configurationFileContent.sdk.options
-      ? JsRuntime[
-          configurationFileContent.sdk.options
-            .runtime as keyof typeof JsRuntime
-        ]
-      : null;
-
     const sdk = new YamlSdkConfiguration(
       Language[
         configurationFileContent.sdk.language as keyof typeof Language
       ],
-      jsRuntime,
       configurationFileContent.sdk.path
     );
 
@@ -405,9 +368,6 @@ export class YamlProjectConfiguration {
       cloudProvider: this.cloudProvider ? this.cloudProvider : undefined,
       sdk: {
         language: this.sdk.language,
-        options: {
-          runtime: this.sdk.options?.runtime
-        },
         path: this.sdk.path
       },
       scripts: this.scripts ? {

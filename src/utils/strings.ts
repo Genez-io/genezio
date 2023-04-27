@@ -36,8 +36,6 @@ name: hello-world
 region: us-east-1
 sdk:
 language: js
-options:
-runtime: node
 path: ./sdk/
 classes:
 - path: ./hello.js
