@@ -259,9 +259,6 @@ export async function deployClasses() {
   const cloudAdapter = getCloudProvider(projectConfiguration.cloudProvider || "aws");
   const result = await cloudAdapter.deploy(bundlerResultArray, projectConfiguration);
 
-  // clean up temporary folder
-  await deleteFolder(path.dirname(element.archivePath));
-
   reportSuccess(result.classes, sdkResponse);
 
   await replaceUrlsInSdk(sdkResponse, result.classes.map((c: any) => ({
