@@ -1,12 +1,33 @@
 export const nodeSdkTs = `/**
- * This is an auto generated code. This code should not be modified since the file can be overwriten 
- * if new genezio commands are executed.
- */
+* This is an auto generated code. This code should not be modified since the file can be overwriten 
+* if new genezio commands are executed.
+*/
 
-import https from 'https';
-import http from 'http';
+let http: any = null;
+let https: any = null;
 
-async function makeRequest(request: any, url: any, agent: any) {
+(async () => {
+if (typeof process !== "undefined" && process.versions != null && process.versions.node != null) {
+   const httpModule: string = 'http';
+   http = await import(httpModule);
+   const httpsModule: string = 'https';
+   https = await import(httpsModule);
+}
+})();
+
+async function makeRequestBrowser(request: any, url: any) {
+    const response = await fetch(\`\${url}\`, {
+        keepalive: true,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(request),
+    });
+    return response.json();
+}
+
+async function makeRequestNode(request: any, url: any, agent: any) {
 
     const data = JSON.stringify(request);
     const hostUrl = new URL(url);
@@ -25,10 +46,10 @@ async function makeRequest(request: any, url: any, agent: any) {
     const client = url.includes('https') ? https : http;
 
     return new Promise((resolve, reject) => {
-        const req = client.request(options, res => {
+        const req = client.request(options, (res: any)=> {
             let body = '';
 
-            res.on('data', d => {
+            res.on('data', (d: any) => {
                 body += d
             });
             res.on('end', async function() {
@@ -38,7 +59,7 @@ async function makeRequest(request: any, url: any, agent: any) {
 
         });
 
-        req.on('error', error => {
+        req.on('error', (error: any) => {
             reject(error);
         });
 
@@ -49,20 +70,28 @@ async function makeRequest(request: any, url: any, agent: any) {
 
 /**
  * The class through which all request to the Genezio backend will be passed.
+ * 
  */
-export class Remote {
+ export class Remote {
     url: any = undefined;
     agent: any = undefined;
-
-    constructor(url: string) {
+ 
+    constructor(url: any) {
         this.url = url;
-        const client = url.includes("https") ? https : http;
-        this.agent = new client.Agent({ keepAlive: true });
+        if (http !== null && https !== null) {
+            const client = url.includes("https") ? https : http;
+            this.agent = new client.Agent({ keepAlive: true });
+        }
     }
 
     async call(method: any, ...args: any[]) {
         const requestContent = {"jsonrpc": "2.0", "method": method, "params": args, "id": 3};
-        const response: any = await makeRequest(requestContent, this.url, this.agent);
+        let response: any = undefined;
+        if (http !== null && https !== null) {
+            response = await makeRequestNode(requestContent, this.url, this.agent);
+        } else {
+            response = await makeRequestBrowser(requestContent, this.url);
+        }
 
         if (response.error) {
             return response.error.message;

@@ -30,7 +30,8 @@ import {
   zipDirectoryToDestinationPath,
   isDirectoryEmpty,
   directoryContainsIndexHtmlFiles,
-  directoryContainsHtmlFiles
+  directoryContainsHtmlFiles,
+  deleteFolder
 } from "../utils/file";
 import { printAdaptiveLog, debugLogger } from "../utils/logging";
 import { runNewProcess } from "../utils/process";
@@ -245,6 +246,9 @@ export async function deployClasses() {
         `Get the presigned URL for class name ${element.name}.`
       );
 
+      // clean up temporary folder
+      await deleteFolder(output.path);
+
       return { name: element.name, archivePath: archivePath, filePath: element.path, methods: element.methods };
     });
 
@@ -254,6 +258,9 @@ export async function deployClasses() {
 
   const cloudAdapter = getCloudProvider(projectConfiguration.cloudProvider || "aws");
   const result = await cloudAdapter.deploy(bundlerResultArray, projectConfiguration);
+
+  // clean up temporary folder
+  await deleteFolder(path.dirname(element.archivePath));
 
   reportSuccess(result.classes, sdkResponse);
 
@@ -344,6 +351,9 @@ export async function deployFrontend(): Promise<string> {
       result.userId
     );
     debugLogger.debug("Uploaded to S3.");
+    
+    // clean up temporary folder
+    await deleteFolder(path.dirname(archivePath));
   } else {
     throw new Error("No frontend entry in genezio configuration file.");
   }

@@ -3,6 +3,7 @@ import fs from "fs";
 import webpackNodeExternals from "webpack-node-externals";
 import {
   createTemporaryFolder,
+  deleteFolder,
   getAllFilesFromCurrentPath,
   getFileDetails,
   readUTF8File,
@@ -49,6 +50,9 @@ export class NodeJsBundler implements BundlerInterface {
         conditionNames: ["require"]
       }
     );
+
+    // delete the temporary folder
+    await deleteFolder(temporaryFolder);
 
     const dependenciesInfo = dependencies.map((dependency) => {
       const relativePath = dependency.split("node_modules" + path.sep)[1];
