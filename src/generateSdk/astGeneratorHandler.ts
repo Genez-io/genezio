@@ -51,6 +51,6 @@ export async function generateAst(
   return await astGeneratorClass.generateAst(input)
     .catch((err: any) => {
       debugLogger.log("An error has occured", err);
-      throw {...err, path: input.class.path};
+      throw Object.assign(err, { path: input.class.path});
     });
 }
