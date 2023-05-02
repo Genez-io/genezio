@@ -62,6 +62,7 @@ exports.handler =  async function(event, context) {
             queryStringParameters: event.queryStringParameters,
             timeEpoch: event.requestContext.timeEpoch,
             body: event.isBase64Encoded ? Buffer.from(body, "base64") : body,
+            rawBody: event.body,
           }
         if (!object[method]) {
           return { statusCode: 404, headers: { 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Method not found" }) };

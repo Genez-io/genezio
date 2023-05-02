@@ -79,6 +79,7 @@ void main() async {
         "body": (event["isBase64Encoded"] != null && event["isBase64Encoded"] == true)
             ? stringToBase64.decode(event["body"])
             : body,
+        "rawBody": event["body"],
       });
 
       var httpResponse;
