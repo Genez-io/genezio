@@ -13,7 +13,9 @@ import {
   PropertyDefinition,
   Enum,
   StructLiteral,
-  PromiseType
+  PromiseType,
+  EnumCase,
+  EnumType
 } from "../../models/genezioModels";
 import { TriggerType } from "../../models/yamlProjectConfiguration";
 import { pythonSdk } from "../templates/pythonSdk";
@@ -62,7 +64,7 @@ const template = `# This is an auto generated code. This code should not be modi
   
 from .remote import Remote
 from typing import Any, List
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 from collections.abc import Mapping
 
 {{#externalTypes}}
@@ -215,6 +217,8 @@ class SdkGenerator implements SdkGeneratorInterface {
       return "float";
     } else if (elem.type === AstNodeType.BooleanLiteral) {
       return "bool";
+    } else if (elem.type === AstNodeType.Enum) {
+      return (elem as EnumType).name;
     } else if (elem.type === AstNodeType.AnyLiteral) {
       return "Any";
     } else if (elem.type === AstNodeType.ArrayType) {
@@ -231,13 +235,31 @@ class SdkGenerator implements SdkGeneratorInterface {
     return "Any";
   }
 
+  generateEnum(e: Enum): string {
+    const enumType = e.cases[0].type;
+    const allTypesAreTheSame = e.cases.map((v) => v.type).every((type) => type === enumType);
+
+    if (!allTypesAreTheSame) {
+      throw new Error("All enum cases must be the same type. Fix enum " + e.name + " and try again.");
+    }
+
+    switch (enumType) {
+      case AstNodeType.StringLiteral:
+        return `class ${e.name}(StrEnum):\n\t${e.cases.map((e: EnumCase, i: number) => `${e.name} = "${e.value}"`).join("\n\t")}`;
+      case AstNodeType.DoubleLiteral:
+        return `class ${e.name}(IntEnum):\n\t${e.cases.map((e: EnumCase, i: number) => `${e.name} = ${e.value}`).join("\n\t")}`;
+      default:
+        throw new Error("Unsupported enum type");
+    }
+  }
+
   generateExternalType(type: Node): string {
     if (type.type === AstNodeType.TypeAlias) {
       const typeAlias = type as TypeAlias;
       return `${typeAlias.name} = ${this.getParamType(typeAlias.aliasType)};`;
     } else if (type.type === AstNodeType.Enum) {
       const enumType = type as Enum;
-      return `class ${enumType.name}(IntEnum):\n\t${enumType.cases.map((e: string, i: number) => `${e} = ${i}`).join("\n\t")}`;
+      return this.generateEnum(enumType);
     } else if (type.type === AstNodeType.StructLiteral) {
       const typeAlias = type as StructLiteral;
       typeAlias.typeLiteral.properties.sort((a: PropertyDefinition, b: PropertyDefinition) => a.optional === b.optional ? 0 : a.optional ? 1 : -1);
