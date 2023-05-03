@@ -161,6 +161,7 @@ export class AstGenerator implements AstGeneratorInterface {
 
     const classAbsolutePath = path.resolve(input.class.path);
     const result = await runNewProcessWithResult(`dartaotruntime ${genezioAstGeneratorPath} ${classAbsolutePath}`)
+
     const ast = JSON.parse(result);
 
     const mainClasses = ast.classes.filter((c: any) => c.name === input.class.name);
