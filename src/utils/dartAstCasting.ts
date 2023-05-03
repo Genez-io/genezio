@@ -81,6 +81,8 @@ export function getParamType(elem: Node): string {
             return "int";
         case AstNodeType.AnyLiteral:
             return "Object";
+        case AstNodeType.VoidLiteral:
+            return "void";
         case AstNodeType.ArrayType:
             return `List<${getParamType((elem as ArrayType).generic)}>`;
         case AstNodeType.MapType:
