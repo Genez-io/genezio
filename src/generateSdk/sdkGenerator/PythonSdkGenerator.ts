@@ -64,7 +64,7 @@ const template = `# This is an auto generated code. This code should not be modi
   
 from .remote import Remote
 from typing import Any, List
-from enum import IntEnum, StrEnum
+from enum import IntEnum, Enum
 from collections.abc import Mapping
 
 {{#externalTypes}}
@@ -245,7 +245,7 @@ class SdkGenerator implements SdkGeneratorInterface {
 
     switch (enumType) {
       case AstNodeType.StringLiteral:
-        return `class ${e.name}(StrEnum):\n\t${e.cases.map((e: EnumCase, i: number) => `${e.name} = "${e.value}"`).join("\n\t")}`;
+        return `class ${e.name}(str, Enum):\n\t${e.cases.map((e: EnumCase, i: number) => `${e.name} = "${e.value}"`).join("\n\t")}`;
       case AstNodeType.DoubleLiteral:
         return `class ${e.name}(IntEnum):\n\t${e.cases.map((e: EnumCase, i: number) => `${e.name} = ${e.value}`).join("\n\t")}`;
       default:
