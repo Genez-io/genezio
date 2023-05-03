@@ -12,6 +12,6 @@ Error: Dart not found
 Please ensure that Dart is installed and its binary is added to your system's PATH environment variable. You can download and install Dart from the official website: https://dart.dev/get-dart. Once installed, try running the command again.
 `;
 export const GENEZIO_DARTAOTRUNTIME_NOT_FOUND = `
-Error: `dartaotruntime` not found
+Error: \`dartaotruntime\` not found
 
-Please ensure that `dartaotruntime` is installed and its binary is added to your system's PATH environment variable. Check the Dart documentation for more information: https://dart.dev/get-dart.`;
+Please ensure that \`dartaotruntime\` is installed and its binary is added to your system's PATH environment variable. Check the Dart documentation for more information: https://dart.dev/get-dart.`;
