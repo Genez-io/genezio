@@ -127,7 +127,6 @@ class SdkGenerator implements SdkGeneratorInterface {
     async generateSdk(
         sdkGeneratorInput: SdkGeneratorInput
     ): Promise<SdkGeneratorOutput> {
-
         const generateSdkOutput: SdkGeneratorOutput = {
             files: []
         };
