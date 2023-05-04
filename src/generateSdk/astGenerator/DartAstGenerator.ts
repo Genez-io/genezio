@@ -27,12 +27,19 @@ import {
 import { checkIfDartIsInstalled } from "../../utils/dart";
 import { createTemporaryFolder, fileExists } from "../../utils/file";
 import { runNewProcess, runNewProcessWithResult } from "../../utils/process";
+import { GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART } from "../../errors";
 
 export class AstGenerator implements AstGeneratorInterface {
   #parseList(type: string): ArrayType|undefined {
     const listToken = "List<";
     if (type.startsWith(listToken)) {
-      const extractedString = type.substring(listToken.length, type.length - 1);
+      const lastIndex = type.length - 1;
+      // If the List is optional, we need to remove the last character
+      if (type[type.length - 1] === "?") {
+        throw new Error(GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART);
+      }
+
+      const extractedString = type.substring(listToken.length, lastIndex);
       return {
         type: AstNodeType.ArrayType,
         generic: this.#mapTypesToParamType(extractedString),
@@ -46,7 +53,13 @@ export class AstGenerator implements AstGeneratorInterface {
     const mapToken = "Map<";
     if (type.startsWith(mapToken)) {
       const cleanedType = type.replace(" ", "");
-      const extractedString = cleanedType.substring(mapToken.length, cleanedType.length - 1);
+      const lastIndex = cleanedType.length - 1;
+      // If the Map is optional, we need to remove the last character
+      if (cleanedType[cleanedType.length - 1] === "?") {
+        throw new Error(GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART)
+      }
+
+      const extractedString = cleanedType.substring(mapToken.length, lastIndex);
       const components = extractedString.split(",");
       const key = components[0];
       const value = components.slice(1).join(",");
@@ -84,6 +97,11 @@ export class AstGenerator implements AstGeneratorInterface {
     const promise = this.#parsePromise(type)
     if (promise) {
       return promise;
+    }
+
+    // Remove the Optional property for now, we don't support it.
+    if (type[type.length - 1] === "?") {
+      throw new Error(GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART)
     }
 
     switch (type) {
@@ -143,13 +161,13 @@ export class AstGenerator implements AstGeneratorInterface {
 
     const classAbsolutePath = path.resolve(input.class.path);
     const result = await runNewProcessWithResult(`dartaotruntime ${genezioAstGeneratorPath} ${classAbsolutePath}`)
+
     const ast = JSON.parse(result);
 
     const mainClasses = ast.classes.filter((c: any) => c.name === input.class.name);
-    if (mainClasses.length > 1) {
-      throw new Error(`No ${input.class.name} found.`);
+    if (mainClasses.length == 0) {
+      throw new Error(`No class named ${input.class.name} found. Check in the 'genezio.yaml' file and make sure the path is correct.`);
     }
-
     const classToDeploy = mainClasses[0];
 
     const genezioClass: ClassDefinition = {

@@ -17,7 +17,7 @@ export async function initCommand() {
   const configFile: any = {
     name: projectName,
     region: "",
-    sdk: { options: {} },
+    sdk: { },
     classes: []
   };
 
@@ -44,18 +44,6 @@ export async function initCommand() {
     );
   }
   configFile.sdk.language = sdkLanguage;
-
-  if (sdkLanguage === "js" || sdkLanguage === "ts") {
-    const runtime = await askQuestion(
-      `What runtime will you use? Options: "node" or "browser". [default value: node]: `,
-      "node"
-    );
-    if (runtime !== "node" && runtime !== "browser") {
-      throw Error(`We don't currently support this JS/TS runtime ${runtime}.`);
-    }
-
-    configFile.sdk.options.runtime = runtime;
-  }
 
   const path = await askQuestion(
     `Where do you want to save your SDK? [default value: ./sdk/]: `,

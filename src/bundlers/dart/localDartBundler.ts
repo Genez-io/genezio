@@ -54,7 +54,7 @@ export class DartBundler implements BundlerInterface {
 
     async #createRouterFileForClass(classConfiguration: ClassConfiguration, ast: Program, folderPath: string): Promise<void> {
         const mainClass = ast.body?.find((element) => {
-            return element.type === AstNodeType.ClassDefinition
+            return element.type === AstNodeType.ClassDefinition && (element as ClassDefinition).name === classConfiguration.name
         }) as ClassDefinition;
 
         const moustacheViewForMain = {

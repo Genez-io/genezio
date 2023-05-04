@@ -17,7 +17,6 @@ import {
   PromiseType
  } from "../../models/genezioModels";
 import { TriggerType } from "../../models/yamlProjectConfiguration";
-import { browserSdkTs } from "../templates/browserSdkTs";
 import { nodeSdkTs } from "../templates/nodeSdkTs";
 
 const TYPESCRIPT_RESERVED_WORDS = [
@@ -127,9 +126,6 @@ class SdkGenerator implements SdkGeneratorInterface {
   async generateSdk(
     sdkGeneratorInput: SdkGeneratorInput
   ): Promise<SdkGeneratorOutput> {
-    const options = sdkGeneratorInput.sdk.options;
-    const nodeRuntime = options.runtime;
-
     const generateSdkOutput: SdkGeneratorOutput = {
       files: []
     };
@@ -229,8 +225,7 @@ class SdkGenerator implements SdkGeneratorInterface {
     generateSdkOutput.files.push({
       className: "Remote",
       path: "remote.ts",
-      data: nodeRuntime === "node" ? nodeSdkTs.replace("%%%url%%%", "undefined")
-      : browserSdkTs.replace("%%%url%%%", "undefined")
+      data: nodeSdkTs.replace("%%%url%%%", "undefined")
     });
 
     return generateSdkOutput;
@@ -264,6 +259,8 @@ class SdkGenerator implements SdkGeneratorInterface {
       return `Array<${this.getParamType((elem as ArrayType).generic)}>`;
     } else if (elem.type === AstNodeType.PromiseType) {
       return `Promise<${this.getParamType((elem as PromiseType).generic)}>`;
+    } else if (elem.type === AstNodeType.Enum) {
+      return (elem as Enum).name;
     } else if (elem.type === AstNodeType.TypeAlias) {
       return (elem as TypeAlias).name;
     } else if (elem.type === AstNodeType.UnionType) {
@@ -282,7 +279,17 @@ class SdkGenerator implements SdkGeneratorInterface {
       return `type ${typeAlias.name} = ${this.getParamType(typeAlias.aliasType)};`;
     } else if (type.type === AstNodeType.Enum) {
       const enumType = type as Enum;
-      return `enum ${enumType.name} {${enumType.cases.join(", ")}}`;
+      return `enum ${enumType.name} {${enumType.cases.map((c) => {
+        if (c.type === AstNodeType.StringLiteral) {
+          return `${c.name} = "${c.value}"`;
+        } else if (c.type === AstNodeType.DoubleLiteral) {
+          if (c.value !== undefined && c.value !== null) {
+            return `${c.name} = ${c.value}`;
+          } else {
+            return `${c.name}`;
+          }
+        }
+      }).join(", ")}}`;
     } else if (type.type === AstNodeType.StructLiteral) {
       const typeAlias = type as StructLiteral;
       return `type ${typeAlias.name} = ${this.getParamType(typeAlias.typeLiteral)};`;

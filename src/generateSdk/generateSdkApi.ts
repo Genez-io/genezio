@@ -1,12 +1,10 @@
 import { generateAst } from "./astGeneratorHandler";
 import { generateSdk } from "./sdkGeneratorHandler";
-import { getAstSummary } from "./utils/getAstSummary";
 import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration";
 import { getGenerateAstInputs } from "./utils/getFiles";
 import { SdkGeneratorInput, SdkGeneratorOutput } from "../models/genezioModels";
 import path from "path";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
-import { AstSummary } from "../models/astSummary";
 import { AstGeneratorInput } from "../models/genezioModels";
 
 
@@ -25,7 +23,6 @@ export async function sdkGeneratorApiHandler(projectConfiguration: YamlProjectCo
     classesInfo: [],
     sdk: {
       language: sdkLanguage as string,
-      options: projectConfiguration.sdk.options
     }
   };
 

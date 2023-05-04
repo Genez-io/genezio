@@ -7,7 +7,8 @@ import {
     getAllFilesFromCurrentPath,
     getFileDetails,
     writeToFile,
-    readUTF8File
+    readUTF8File,
+    deleteFolder
 } from "../../utils/file";
 import {
     BundlerInput,
@@ -94,6 +95,9 @@ export class NodeTsBundler implements BundlerInterface {
             resolve,
             resolveLoader
         );
+
+        // delete the temporary folder
+        await deleteFolder(temporaryFolder);
 
         const dependenciesInfo = dependencies.map((dependency) => {
             const relativePath = dependency.split("node_modules" + path.sep)[1];

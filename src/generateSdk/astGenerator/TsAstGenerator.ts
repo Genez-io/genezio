@@ -1,3 +1,4 @@
+import { SyntaxKind } from "typescript";
 import {
   AstGeneratorInterface,
   AstGeneratorInput,
@@ -25,12 +26,15 @@ import {
   UnionType,
   PromiseType,
   VoidType,
+  EnumType,
 } from "../../models/genezioModels";
 
 import typescript from "typescript";
 
 export class AstGenerator implements AstGeneratorInterface {
-  mapTypesToParamType(type: typescript.Node): DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType | VoidType {
+  rootNode?: typescript.SourceFile;
+
+  mapTypesToParamType(type: typescript.Node): DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType | VoidType | EnumType {
     switch (type.kind) {
       case typescript.SyntaxKind.StringKeyword:
         return { type: AstNodeType.StringLiteral };
@@ -47,10 +51,16 @@ export class AstGenerator implements AstGeneratorInterface {
         return { type: AstNodeType.VoidLiteral };
       case typescript.SyntaxKind.TypeReference: {
         const escapedText: string = (type as any).typeName.escapedText;
+
         if (escapedText === "Promise") {
           return { type: AstNodeType.PromiseType, generic: this.mapTypesToParamType((type as any).typeArguments[0]) };
         } else if (escapedText === "Array") {
           return { type: AstNodeType.ArrayType, generic: this.mapTypesToParamType((type as any).typeArguments[0]) };
+        } else {
+          const declaration = this.#findDeclarationOfType(escapedText)
+          if (declaration?.kind === typescript.SyntaxKind.EnumDeclaration) {
+            return { type: AstNodeType.Enum, name: escapedText };
+          }
         }
         return { type: AstNodeType.CustomNodeLiteral, rawValue: (type as any).typeName.escapedText };
       }
@@ -142,7 +152,20 @@ export class AstGenerator implements AstGeneratorInterface {
     return {
       type: AstNodeType.Enum,
       name: enumDeclarationCopy.name.escapedText,
-      cases: enumDeclarationCopy.members.map((member: any) => member.name.escapedText)
+      cases: enumDeclarationCopy.members.map((member: any, index: number) => {
+        if (!member.initializer) {
+          return { name: member.name.escapedText, value: index, type: AstNodeType.DoubleLiteral }
+        }
+
+        switch (member.initializer.kind) {
+          case typescript.SyntaxKind.NumericLiteral:
+            return { name: member.name.escapedText, value: member.initializer.text, type: AstNodeType.DoubleLiteral }
+          case typescript.SyntaxKind.StringLiteral:
+            return { name: member.name.escapedText, value: member.initializer.text, type: AstNodeType.StringLiteral }
+          default:
+            throw new Error("Unsupported enum value type")
+        }
+      })
     }
   }
 
@@ -180,12 +203,12 @@ export class AstGenerator implements AstGeneratorInterface {
   async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
     const fileData = input.class.data;
 
-    const node = typescript.createSourceFile('test.ts', fileData.toString(), typescript.ScriptTarget.ES2015, true, typescript.ScriptKind.TS);
+    this.rootNode = typescript.createSourceFile('test.ts', fileData.toString(), typescript.ScriptTarget.ES2015, true, typescript.ScriptKind.TS);
     let classDefinition: ClassDefinition | undefined = undefined;
     const declarations: Node[] = [];
-    node.forEachChild((child) => {
+    this.rootNode.forEachChild((child) => {
       if (typescript.isEnumDeclaration(child)) {
-        const enumDeclaration =  this.parseEnumDeclaration(child);
+        const enumDeclaration = this.parseEnumDeclaration(child);
         declarations.push(enumDeclaration);
       } else if (typescript.isClassDeclaration(child)) {
         const classDeclaration = this.parseClassDeclaration(child);
@@ -209,6 +232,21 @@ export class AstGenerator implements AstGeneratorInterface {
         body: [classDefinition, ...declarations],
       }
     }
+  }
+
+  #findDeclarationOfType(name: string): typescript.Node | undefined {
+    let found = undefined;
+    this.rootNode?.forEachChild((child) => {
+      if (typescript.isEnumDeclaration(child) && child.name.escapedText === name) {
+        found = child;
+      } else if (typescript.isClassDeclaration(child) && child.name?.escapedText === name) {
+        found = child;
+      } else if (typescript.isTypeAliasDeclaration(child) && child.name.escapedText === name) {
+        found = child;
+      }
+    });
+
+    return found;
   }
 }
 

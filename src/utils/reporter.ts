@@ -1,9 +1,10 @@
 import log from "loglevel";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
 import { TriggerType } from "../models/yamlProjectConfiguration";
+import { GenezioCloudResultClass } from "../cloudAdapter/cloudAdapter";
 
 export function reportSuccess(
-  classesInfo: any,
+  classesInfo: GenezioCloudResultClass[],
   sdkResponse: SdkGeneratorResponse,
 ) {
   if (sdkResponse.files.length > 0) {
@@ -21,11 +22,11 @@ export function reportSuccess(
   // print function urls
   let printHttpString = "";
 
-  classesInfo.forEach((classInfo: any) => {
-    classInfo.methods.forEach((method: any) => {
+  classesInfo.forEach((classInfo) => {
+    classInfo.methods.forEach((method) => {
       if (method.type === TriggerType.http) {
         printHttpString +=
-          `  - ${classInfo.className}.${method.name}: ${classInfo.functionUrl}${classInfo.className}/${method.name}` +
+          `  - ${classInfo.className}.${method.name}: ${method.functionUrl}` +
           "\n";
       }
     });

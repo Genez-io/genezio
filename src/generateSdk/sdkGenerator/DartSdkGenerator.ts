@@ -1,5 +1,5 @@
 import Mustache from "mustache";
-import { 
+import {
     AstNodeType,
     ClassDefinition,
     SdkGeneratorInput,
@@ -92,11 +92,11 @@ class {{name}} {
     {{#fields}}
     {{{type}}} {{fieldName}};
     {{/fields}}
-  
+
     {{name}}({{#fields}}this.{{fieldName}},{{/fields}});
 
     {{{fromJson}}}
-    
+
     {{{toJson}}}
 }
 
@@ -127,7 +127,6 @@ class SdkGenerator implements SdkGeneratorInterface {
     async generateSdk(
         sdkGeneratorInput: SdkGeneratorInput
     ): Promise<SdkGeneratorOutput> {
-
         const generateSdkOutput: SdkGeneratorOutput = {
             files: []
         };
@@ -251,8 +250,6 @@ class SdkGenerator implements SdkGeneratorInterface {
         let implementation = "";
         implementation += `factory ${elem.name}.fromJson(Map<String, dynamic> json) => `;
         implementation += `${elem.name}(`;
-
-        console.log(JSON.stringify(elem));
 
         elem.typeLiteral.properties.forEach((e) => {
             implementation += this.generateFromJsonImplementation(e.type, e.name);
