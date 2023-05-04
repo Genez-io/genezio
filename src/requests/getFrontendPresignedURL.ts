@@ -5,7 +5,7 @@ import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../../package.json");
 
-export async function getFrontendPresignedURL (
+export async function getFrontendPresignedURL(
     subdomain: string,
     projectName: string
 ) {
@@ -23,21 +23,21 @@ export async function getFrontendPresignedURL (
     const json = JSON.stringify({
         subdomainName: subdomain,
         projectName: projectName,
-        region:  region,
+        region: region,
     });
 
     const response: any = await axios({
         method: "GET",
-        url: `${BACKEND_ENDPOINT}/core/frontend-deployment-url`, 
+        url: `${BACKEND_ENDPOINT}/core/frontend-deployment-url`,
         data: json,
         headers: {
-            Authorization: `Bearer ${authToken}`, 
+            Authorization: `Bearer ${authToken}`,
             "Accept-Version": `genezio-cli/${pjson.version}`
         },
         maxContentLength: Infinity,
         maxBodyLength: Infinity
-      })
-    
+    })
+
     if (response.data.status === "error") {
         throw new Error(response.data.message);
     }

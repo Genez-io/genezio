@@ -16,6 +16,7 @@ import { ProjectConfiguration } from "../models/projectConfiguration";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
 import { deployRequest } from "../requests/deployCode";
 import { getFrontendPresignedURL } from "../requests/getFrontendPresignedURL";
+import { createFrontendProject } from "../requests/createFrontendProject";
 import { getPresignedURL } from "../requests/getPresignedURL";
 import { uploadContentToS3 } from "../requests/uploadContentToS3";
 import { getAuthToken } from "../utils/accounts";
@@ -27,6 +28,7 @@ import { reportSuccess } from "../utils/reporter";
 import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk";
 import { generateRandomSubdomain } from "../utils/yaml";
 import cliProgress from 'cli-progress';
+import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration";
 
 
 export async function deployCommand(options: any) {
@@ -38,7 +40,6 @@ export async function deployCommand(options: any) {
   }
 
   const configuration = await getProjectConfiguration();
-  let projectId: string | undefined = undefined;
 
   if (!options.frontend || options.backend) {
     if (configuration.scripts?.preBackendDeploy) {
@@ -50,7 +51,7 @@ export async function deployCommand(options: any) {
       }
     }
 
-    projectId = await deployClasses()
+    await deployClasses(configuration)
       .catch((error: AxiosError) => {
         switch (error.response?.status) {
           case 401:
@@ -104,7 +105,7 @@ export async function deployCommand(options: any) {
     log.info("Deploying your frontend to genezio infrastructure...");
     let url;
     try {
-      url = await deployFrontend(projectId)
+      url = await deployFrontend(configuration)
     } catch (error: any) {
       log.error(error.message);
       if (error.message == "No frontend entry in genezio configuration file.") {
@@ -129,9 +130,7 @@ export async function deployCommand(options: any) {
 }
 
 
-
-export async function deployClasses() {
-  const configuration = await getProjectConfiguration();
+export async function deployClasses(configuration: YamlProjectConfiguration) {
 
   if (configuration.classes.length === 0) {
     throw new Error(
@@ -286,9 +285,7 @@ export async function deployClasses() {
   return projectId;
 }
 
-export async function deployFrontend(projectId: string): Promise<string> {
-  const configuration = await getProjectConfiguration();
-
+export async function deployFrontend(configuration: YamlProjectConfiguration) {
   if (configuration.frontend) {
 
     // check if the build folder exists
@@ -339,7 +336,7 @@ export async function deployFrontend(projectId: string): Promise<string> {
     debugLogger.debug("Content of the folder zipped. Uploading to S3.")
     await uploadContentToS3(result.presignedURL, archivePath, undefined, result.userId)
     debugLogger.debug("Uploaded to S3.")
-    await createFrontendProject(configuration.frontend.subdomain, projectId)
+    await createFrontendProject(configuration.frontend.subdomain, configuration.name, configuration.region)
   } else {
     throw new Error("No frontend entry in genezio configuration file.")
   }
