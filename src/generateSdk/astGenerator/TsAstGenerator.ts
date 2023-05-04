@@ -23,13 +23,14 @@ import {
   PropertyDefinition,
   TypeLiteral,
   UnionType,
-  PromiseType
+  PromiseType,
+  VoidType,
 } from "../../models/genezioModels";
 
 import typescript from "typescript";
 
 export class AstGenerator implements AstGeneratorInterface {
-  mapTypesToParamType(type: typescript.Node): DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType {
+  mapTypesToParamType(type: typescript.Node): DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType | VoidType {
     switch (type.kind) {
       case typescript.SyntaxKind.StringKeyword:
         return { type: AstNodeType.StringLiteral };
@@ -42,6 +43,8 @@ export class AstGenerator implements AstGeneratorInterface {
         return { type: AstNodeType.ArrayType, generic: this.mapTypesToParamType((type as any).elementType) };
       case typescript.SyntaxKind.AnyKeyword:
         return { type: AstNodeType.AnyLiteral };
+      case typescript.SyntaxKind.VoidKeyword:
+        return { type: AstNodeType.VoidLiteral };
       case typescript.SyntaxKind.TypeReference: {
         const escapedText: string = (type as any).typeName.escapedText;
         if (escapedText === "Promise") {
@@ -128,7 +131,7 @@ export class AstGenerator implements AstGeneratorInterface {
       type: AstNodeType.MethodDefinition,
       name: methodSignatureCopy.name.escapedText,
       params: parameters,
-      returnType: methodSignatureCopy.type ? this.mapTypesToParamType(methodSignatureCopy.type) : { type: AstNodeType.AnyLiteral },
+      returnType: methodSignatureCopy.type ? this.mapTypesToParamType(methodSignatureCopy.type) : { type: AstNodeType.VoidLiteral },
       static: false,
       kind: MethodKindEnum.method
     }

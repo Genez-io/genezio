@@ -10,7 +10,10 @@ import { NodeJsBundler } from "../bundlers/javascript/nodeJsBundler";
 import { NodeTsBinaryDependenciesBundler } from "../bundlers/typescript/nodeTsBinaryDependenciesBundler";
 import { NodeTsBundler } from "../bundlers/typescript/nodeTsBundler";
 import { REACT_APP_BASE_URL, FRONTEND_DOMAIN } from "../constants";
-import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors";
+import {
+  GENEZIO_NOT_AUTH_ERROR_MSG,
+  GENEZIO_NO_CLASSES_FOUND
+} from "../errors";
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi";
 import { ProjectConfiguration } from "../models/projectConfiguration";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
@@ -21,7 +24,15 @@ import { getPresignedURL } from "../requests/getPresignedURL";
 import { uploadContentToS3 } from "../requests/uploadContentToS3";
 import { getAuthToken } from "../utils/accounts";
 import { getProjectConfiguration } from "../utils/configuration";
-import { fileExists, createTemporaryFolder, zipDirectory, zipDirectoryToDestinationPath, isDirectoryEmpty, directoryContainsIndexHtmlFiles, directoryContainsHtmlFiles } from "../utils/file";
+import {
+  fileExists,
+  createTemporaryFolder,
+  zipDirectory,
+  zipDirectoryToDestinationPath,
+  isDirectoryEmpty,
+  directoryContainsIndexHtmlFiles,
+  directoryContainsHtmlFiles
+} from "../utils/file";
 import { printAdaptiveLog, debugLogger } from "../utils/logging";
 import { runNewProcess } from "../utils/process";
 import { reportSuccess } from "../utils/reporter";
@@ -44,46 +55,49 @@ export async function deployCommand(options: any) {
   if (!options.frontend || options.backend) {
     if (configuration.scripts?.preBackendDeploy) {
       log.info("Running preBackendDeploy script...");
-      const output = await runNewProcess(configuration.scripts?.preBackendDeploy);
+      const output = await runNewProcess(
+        configuration.scripts?.preBackendDeploy
+      );
       if (!output) {
         log.error("preBackendDeploy script failed.");
         exit(1);
       }
     }
 
-    await deployClasses(configuration)
-      .catch((error: AxiosError) => {
-        switch (error.response?.status) {
-          case 401:
-            log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-            break;
-          case 500:
+    await deployClasses(configuration).catch((error: AxiosError) => {
+      switch (error.response?.status) {
+        case 401:
+          log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
+          break;
+        case 500:
+          log.error(error.message);
+          if (error.response?.data) {
+            const data: any = error.response?.data;
+            log.error(data.error?.message);
+          }
+          break;
+        case 400:
+          log.error(error.message);
+          if (error.response?.data) {
+            const data: any = error.response?.data;
+            log.error(data.error?.message);
+          }
+          break;
+        default:
+          if (error.message) {
             log.error(error.message);
-            if (error.response?.data) {
-              const data: any = error.response?.data;
-              log.error(data.error?.message);
-            }
-            break;
-          case 400:
-            log.error(error.message);
-            if (error.response?.data) {
-              const data: any = error.response?.data;
-              log.error(data.error?.message);
-            }
-            break;
-          default:
-            if (error.message) {
-              log.error(error.message);
-            }
-            break;
-        }
-        exit(1);
-      });
+          }
+          break;
+      }
+      exit(1);
+    });
 
     if (configuration.scripts?.postBackendDeploy) {
       log.info("Running postBackendDeploy script...");
       log.info(configuration.scripts?.postBackendDeploy);
-      const output = await runNewProcess(configuration.scripts?.postBackendDeploy);
+      const output = await runNewProcess(
+        configuration.scripts?.postBackendDeploy
+      );
       if (!output) {
         log.error("postBackendDeploy script failed.");
         exit(1);
@@ -95,7 +109,9 @@ export async function deployCommand(options: any) {
     if (configuration.scripts?.preFrontendDeploy) {
       log.info("Running preFrontendDeploy script...");
       log.info(configuration.scripts?.preFrontendDeploy);
-      const output = await runNewProcess(configuration.scripts?.preFrontendDeploy);
+      const output = await runNewProcess(
+        configuration.scripts?.preFrontendDeploy
+      );
       if (!output) {
         log.error("preFrontendDeploy script failed.");
         exit(1);
@@ -120,7 +136,9 @@ export async function deployCommand(options: any) {
     if (configuration.scripts?.postFrontendDeploy) {
       log.info("Running postFrontendDeploy script...");
       log.info(configuration.scripts?.postFrontendDeploy);
-      const output = await runNewProcess(configuration.scripts?.postFrontendDeploy);
+      const output = await runNewProcess(
+        configuration.scripts?.postFrontendDeploy
+      );
       if (!output) {
         log.error("postFrontendDeploy script failed.");
         exit(1);
@@ -133,26 +151,29 @@ export async function deployCommand(options: any) {
 export async function deployClasses(configuration: YamlProjectConfiguration) {
 
   if (configuration.classes.length === 0) {
-    throw new Error(
-      "You don't have any class in specified in the genezio.yaml configuration file. Add a class with 'genezio addClass <className> <classType>' field and then call again 'genezio deploy'."
-    );
+    throw new Error(GENEZIO_NO_CLASSES_FOUND);
   }
 
   log.info("Deploying your backend project to genezio infrastructure...");
 
-  const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(configuration).catch((error) => {
+  const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
+    configuration
+  ).catch((error) => {
     // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
     if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
       log.error("Syntax error:");
-      log.error(`Reason Code: ${error.reasonCode}`)
+      log.error(`Reason Code: ${error.reasonCode}`);
       log.error(`File: ${error.path}:${error.loc.line}:${error.loc.column}`);
 
       throw error;
     }
 
     throw error;
-  })
-  const projectConfiguration = new ProjectConfiguration(configuration, sdkResponse);
+  });
+  const projectConfiguration = new ProjectConfiguration(
+    configuration,
+    sdkResponse
+  );
 
   const multibar = new cliProgress.MultiBar({
     clearOnComplete: false,
@@ -199,7 +220,9 @@ export async function deployClasses(configuration: YamlProjectConfiguration) {
         `The bundling process has started for file ${element.path}...`
       );
 
-      const ast = sdkResponse.sdkGeneratorInput.classesInfo.find((classInfo) => classInfo.classConfiguration.path === element.path)!.program;
+      const ast = sdkResponse.sdkGeneratorInput.classesInfo.find(
+        (classInfo) => classInfo.classConfiguration.path === element.path
+      )!.program;
 
       const output = await bundler.bundle({
         projectConfiguration: projectConfiguration,
@@ -222,7 +245,9 @@ export async function deployClasses(configuration: YamlProjectConfiguration) {
 
       debugLogger.debug(`Zip the directory ${output.path}.`);
       await zipDirectory(output.path, archivePath);
-      debugLogger.debug(`Get the presigned URL for class name ${element.name}.`)
+      debugLogger.debug(
+        `Get the presigned URL for class name ${element.name}.`
+      );
 
       return { name: element.name, archivePath: archivePath, path: element.path };
     });
@@ -255,12 +280,12 @@ export async function deployClasses(configuration: YamlProjectConfiguration) {
 
   // wait for all promises to finish
   await Promise.all(promisesDeploy);
-  multibar.stop()
+  multibar.stop();
   // The loading spinner is removing lines and with this we avoid clearing a progress bar.
   // This can be removed only if we find a way to avoid clearing lines.
-  log.info("")
+  log.info("");
 
-  const response = await deployRequest(projectConfiguration)
+  const response = await deployRequest(projectConfiguration);
 
   const classesInfo = response.classes.map((c) => ({
     className: c.name,
@@ -271,11 +296,18 @@ export async function deployClasses(configuration: YamlProjectConfiguration) {
 
   reportSuccess(classesInfo, sdkResponse);
 
-  await replaceUrlsInSdk(sdkResponse, response.classes.map((c) => ({
-    name: c.name,
-    cloudUrl: c.cloudUrl
-  })));
-  await writeSdkToDisk(sdkResponse, configuration.sdk.language, configuration.sdk.path)
+  await replaceUrlsInSdk(
+    sdkResponse,
+    response.classes.map((c) => ({
+      name: c.name,
+      cloudUrl: c.cloudUrl
+    }))
+  );
+  await writeSdkToDisk(
+    sdkResponse,
+    configuration.sdk.language,
+    configuration.sdk.path
+  );
 
   const projectId = classesInfo[0].projectId;
   console.log(
@@ -287,50 +319,61 @@ export async function deployClasses(configuration: YamlProjectConfiguration) {
 
 export async function deployFrontend(configuration: YamlProjectConfiguration) {
   if (configuration.frontend) {
-
     // check if the build folder exists
-    if (!await fileExists(configuration.frontend.path)) {
-      throw new Error(`The build folder does not exist. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`)
+    if (!(await fileExists(configuration.frontend.path))) {
+      throw new Error(
+        `The build folder does not exist. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`
+      );
     }
 
     // check if the build folder is empty
     if (await isDirectoryEmpty(configuration.frontend.path)) {
-      throw new Error(`The build folder is empty. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`)
+      throw new Error(
+        `The build folder is empty. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`
+      );
     }
 
     // check if there are any .html files in the build folder
-    if (!await directoryContainsHtmlFiles(configuration.frontend.path)) {
-      log.info("WARNING: No .html files found in the build folder")
-    } else if (!await directoryContainsIndexHtmlFiles(configuration.frontend.path)) {
+    if (!(await directoryContainsHtmlFiles(configuration.frontend.path))) {
+      log.info("WARNING: No .html files found in the build folder");
+    } else if (
+      !(await directoryContainsIndexHtmlFiles(configuration.frontend.path))
+    ) {
       // check if there is no index.html file in the build folder
-      log.info("WARNING: No index.html file found in the build folder")
+      log.info("WARNING: No index.html file found in the build folder");
     }
 
     if (!configuration.frontend.subdomain) {
-      log.info("No subdomain specified in the genezio.yaml configuration file. We will provide a random one for you.")
-      configuration.frontend.subdomain = generateRandomSubdomain()
+      log.info(
+        "No subdomain specified in the genezio.yaml configuration file. We will provide a random one for you."
+      );
+      configuration.frontend.subdomain = generateRandomSubdomain();
 
       // write the configuration in yaml file
-      await configuration.addSubdomain(configuration.frontend.subdomain)
+      await configuration.addSubdomain(configuration.frontend.subdomain);
     }
 
-
-    debugLogger.debug("Getting presigned URL...")
-    const result = await getFrontendPresignedURL(configuration.frontend.subdomain, configuration.name)
+    debugLogger.debug("Getting presigned URL...");
+    const result = await getFrontendPresignedURL(
+      configuration.frontend.subdomain,
+      configuration.name
+    );
 
     if (!result.presignedURL) {
-      throw new Error("An error occured (missing presignedUrl). Please try again!")
+      throw new Error(
+        "An error occured (missing presignedUrl). Please try again!"
+      );
     }
 
     if (!result.userId) {
-      throw new Error("An error occured (missing userId). Please try again!")
+      throw new Error("An error occured (missing userId). Please try again!");
     }
 
     const archivePath = path.join(
       await createTemporaryFolder("genezio-"),
       `${configuration.frontend.subdomain}.zip`
     );
-    debugLogger.debug("Creating temporary folder", archivePath)
+    debugLogger.debug("Creating temporary folder", archivePath);
 
     await zipDirectoryToDestinationPath(configuration.frontend.path, configuration.frontend.subdomain, archivePath)
     debugLogger.debug("Content of the folder zipped. Uploading to S3.")
@@ -338,8 +381,8 @@ export async function deployFrontend(configuration: YamlProjectConfiguration) {
     debugLogger.debug("Uploaded to S3.")
     await createFrontendProject(configuration.frontend.subdomain, configuration.name, configuration.region)
   } else {
-    throw new Error("No frontend entry in genezio configuration file.")
+    throw new Error("No frontend entry in genezio configuration file.");
   }
 
-  return `https://${configuration.frontend.subdomain}.${FRONTEND_DOMAIN}`
+  return `https://${configuration.frontend.subdomain}.${FRONTEND_DOMAIN}`;
 }
