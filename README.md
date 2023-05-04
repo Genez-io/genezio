@@ -12,6 +12,7 @@
 
 <div align="center">
 <h2>The easiest way to write and host a serverless application</h2>
+<h3>Check out a <u><a href="https://getting-started-typescript.app.genez.io/">live demo deployed with genezio here</a></u> </h3>
 </div>
 
 <br>
@@ -81,6 +82,8 @@ For more details on how to use `genezio`, you can check out the official [docume
 
 # Getting Started
 
+0. **Create an account**. Head over to https://app.genez.io and create an account using your favourite social login.
+
 1. **Install `genezio`.** Use the command below to install genezio:
 
 ```bash
@@ -108,7 +111,7 @@ cd ./genezio-examples/javascript/getting-started/server/
 5. **Deploy your code.** Use the command below to deploy the code using `genezio`:
 
 ```bash
-npm i && genezio deploy
+genezio deploy
 ```
 
 6. **Test the code.** Run this command to test the code:
@@ -155,8 +158,10 @@ A detailed list of all the examples is below:
   - [Crons](https://github.com/Genez-io/genezio-examples/tree/master/javascript/cron) - a simple class that has a method that will be called every minute.
 
 - Typescript
+  - [Getting Starting](https://github.com/Genez-io/genezio-examples/tree/master/typescript/getting-started) - an example for brand new users of `genezio`.
   - [Todo List with React and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/typescript/todo-list) - an example of a todo application with users, auth and tasks.
   - [Todo List with Angular and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/typescript/todo-list-angular) - an example of a todo application with users.
+  - [Todo List with Flutter and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/typescript/todo-list-angular) - an example of a todo application with users.
   - [MultiversX](https://github.com/Genez-io/genezio-examples/tree/master/typescript/multiversx) - an example on an integration with the MultiversX blockchain. The application queries the balance of an existing account.
 
 # Official documentation
