@@ -97,7 +97,7 @@
     "@types/glob": "^8.0.0",
     "@types/jest": "^29.2.2",
     "@types/mustache": "^4.2.2",
-    "@types/node": "^18.11.4",
+    "@types/node": "^20.1.0",
     "@types/node-cron": "^3.0.7",
     "@types/whatwg-mimetype": "~3.0.0",
     "@types/which": "^3.0.0",
