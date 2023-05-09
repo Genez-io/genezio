@@ -37,7 +37,7 @@ export function getAstSummary(
             (param: ParameterDefinition) => {
               return {
                 name: param.name,
-                type: param.rawType
+                type: JSON.stringify(param.paramType)
               };
             }
           );
