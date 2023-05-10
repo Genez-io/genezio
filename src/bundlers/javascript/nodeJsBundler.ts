@@ -43,7 +43,7 @@ export class NodeJsBundler implements BundlerInterface {
       mode,
       [],
       undefined,
-      [new NodePolyfillPlugin(), new AccessDependenciesPlugin(dependencies)],
+      [new NodePolyfillPlugin(), new AccessDependenciesPlugin(dependencies, process.cwd())],
       temporaryFolder,
       outputFile,
       {
