@@ -74,9 +74,10 @@ export class NodeTsBundler implements BundlerInterface {
                 }
             ]
         };
+
         const plugins = [
             new NodePolyfillPlugin(),
-            new AccessDependenciesPlugin(dependencies)
+            new AccessDependenciesPlugin(dependencies, process.cwd()),
         ];
         const resolve = { extensions: [".tsx", ".ts", ".js"] };
         const resolveLoader = {
