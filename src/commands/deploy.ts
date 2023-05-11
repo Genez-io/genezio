@@ -19,6 +19,7 @@ import { ProjectConfiguration } from "../models/projectConfiguration";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
 import { deployRequest } from "../requests/deployCode";
 import { getFrontendPresignedURL } from "../requests/getFrontendPresignedURL";
+import { createFrontendProject } from "../requests/createFrontendProject";
 import { getPresignedURL } from "../requests/getPresignedURL";
 import { uploadContentToS3 } from "../requests/uploadContentToS3";
 import { getAuthToken } from "../utils/accounts";
@@ -38,6 +39,8 @@ import { runNewProcess } from "../utils/process";
 import { reportSuccess } from "../utils/reporter";
 import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk";
 import { generateRandomSubdomain } from "../utils/yaml";
+import cliProgress from 'cli-progress';
+import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration";
 import { GenezioCloudAdapter } from "../cloudAdapter/genezioAdapter";
 import { SelfHostedAwsAdapter } from "../cloudAdapter/selfHostedAwsAdapter";
 import { CloudAdapter } from "../cloudAdapter/cloudAdapter";
@@ -72,7 +75,7 @@ export async function deployCommand(options: any) {
       }
     }
 
-    await deployClasses().catch((error: AxiosError) => {
+    await deployClasses(configuration).catch((error: AxiosError) => {
       switch (error.response?.status) {
         case 401:
           log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
@@ -129,7 +132,7 @@ export async function deployCommand(options: any) {
     log.info("Deploying your frontend to genezio infrastructure...");
     let url;
     try {
-      url = await deployFrontend()
+      url = await deployFrontend(configuration)
     } catch (error: any) {
       log.error(error.message);
       if (error.message == "No frontend entry in genezio configuration file.") {
@@ -137,7 +140,9 @@ export async function deployCommand(options: any) {
       }
       exit(1);
     }
-    log.info("\x1b[36m%s\x1b[0m", `Frontend successfully deployed at ${url}.`);
+    log.info(
+      "\x1b[36m%s\x1b[0m",
+      `Frontend successfully deployed at ${url}.`);
 
     if (configuration.scripts?.postFrontendDeploy) {
       log.info("Running postFrontendDeploy script...");
@@ -153,8 +158,8 @@ export async function deployCommand(options: any) {
   }
 }
 
-export async function deployClasses() {
-  const configuration = await getProjectConfiguration();
+
+export async function deployClasses(configuration: YamlProjectConfiguration) {
 
   if (configuration.classes.length === 0) {
     throw new Error(GENEZIO_NO_CLASSES_FOUND);
@@ -176,6 +181,12 @@ export async function deployClasses() {
     configuration,
     sdkResponse
   );
+
+  const multibar = new cliProgress.MultiBar({
+    clearOnComplete: false,
+    hideCursor: true,
+    format: 'Uploading {filename}: {bar} | {value}% | {eta_formatted}',
+  }, cliProgress.Presets.shades_grey);
 
   printAdaptiveLog("Bundling your code", "start");
   const bundlerResult = projectConfiguration.classes.map(
@@ -256,6 +267,35 @@ export async function deployClasses() {
 
   printAdaptiveLog("Bundling your code", "end");
 
+  const promisesDeploy = bundlerResultArray.map(async (element) => {
+    const resultPresignedUrl = await getPresignedURL(
+      configuration.region,
+      "genezioDeploy.zip",
+      configuration.name,
+      element.name
+    )
+
+    const bar = multibar.create(100, 0, { filename: element.name });
+    debugLogger.debug(`Upload the content to S3 for file ${element.filePath}.`)
+    await uploadContentToS3(resultPresignedUrl.presignedURL, element.archivePath, (percentage) => {
+      bar.update(parseFloat((percentage * 100).toFixed(2)), { filename: element.name });
+
+      if (percentage == 1) {
+        bar.stop();
+      }
+    })
+
+    debugLogger.debug(`Done uploading the content to S3 for file ${element.filePath}.`)
+  }
+  );
+
+  // wait for all promises to finish
+  await Promise.all(promisesDeploy);
+  multibar.stop();
+  // The loading spinner is removing lines and with this we avoid clearing a progress bar.
+  // This can be removed only if we find a way to avoid clearing lines.
+  log.info("");
+
   const cloudAdapter = getCloudProvider(projectConfiguration.cloudProvider || "aws");
   const result = await cloudAdapter.deploy(bundlerResultArray, projectConfiguration);
 
@@ -275,9 +315,7 @@ export async function deployClasses() {
   }
 }
 
-export async function deployFrontend(): Promise<string> {
-  const configuration = await getProjectConfiguration();
-
+export async function deployFrontend(configuration: YamlProjectConfiguration) {
   if (configuration.frontend) {
     // check if the build folder exists
     if (!(await fileExists(configuration.frontend.path))) {
@@ -348,6 +386,7 @@ export async function deployFrontend(): Promise<string> {
       result.userId
     );
     debugLogger.debug("Uploaded to S3.");
+    await createFrontendProject(configuration.frontend.subdomain, configuration.name, configuration.region)
     
     // clean up temporary folder
     await deleteFolder(path.dirname(archivePath));

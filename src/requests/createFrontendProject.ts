@@ -1,19 +1,11 @@
 import axios from "./axios";
 import { getAuthToken } from "../utils/accounts";
-import { BACKEND_ENDPOINT } from "../constants";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors";
+import { BACKEND_ENDPOINT } from "../constants";
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../../package.json");
 
-export async function getFrontendPresignedURL(
-    subdomain: string,
-    projectName: string
-) {
-    const region = "us-east-1";
-    if (!subdomain || !projectName) {
-        throw new Error("Missing required parameters");
-    }
-
+export async function createFrontendProject(genezioDomain: string, projectName: string, region: string) {
     // Check if user is authenticated
     const authToken = await getAuthToken()
     if (!authToken) {
@@ -21,14 +13,14 @@ export async function getFrontendPresignedURL(
     }
 
     const json = JSON.stringify({
-        subdomainName: subdomain,
-        projectName: projectName,
-        region: region,
+        genezioDomain,
+        projectName,
+        region
     });
 
     const response: any = await axios({
-        method: "GET",
-        url: `${BACKEND_ENDPOINT}/core/frontend-deployment-url`,
+        method: "PUT",
+        url: `${BACKEND_ENDPOINT}/frontend`,
         data: json,
         headers: {
             Authorization: `Bearer ${authToken}`,
