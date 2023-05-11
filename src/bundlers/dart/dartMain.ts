@@ -63,24 +63,6 @@ void main() async {
       return response;
     } else if (!isJsonRpcRequest) {
       final method = event["requestContext"]["http"]["path"].split("/").last;
-      Codec<String, String> stringToBase64 = utf8.fuse(base64);
-
-      var body = event["body"];
-
-      try {
-        body = jsonDecode(event["body"]);
-      } catch (e) {}
-
-      final Map<String, dynamic> req = Map.from({
-        "headers": event["headers"],
-        "http": event["requestContext"]["http"],
-        "queryStringParameters": event["queryStringParameters"],
-        "timeEpoch": event["requestContext"]["timeEpoch"],
-        "body": (event["isBase64Encoded"] != null && event["isBase64Encoded"] == true)
-            ? stringToBase64.decode(event["body"])
-            : body,
-        "rawBody": event["body"],
-      });
 
       var httpResponse;
       switch (method) {
@@ -91,8 +73,26 @@ void main() async {
               response = {"statusCode": 500, "body": "{{className}} could not be instantiated. Check logs for more information."};
               break;
             }
-            
+
             try {
+              Codec<String, String> stringToBase64 = utf8.fuse(base64);
+              var body = event["body"];
+
+              try {
+                body = jsonDecode(event["body"]);
+              } catch (e) {}
+
+              final Map<String, dynamic> req = Map.from({
+                "headers": event["headers"],
+                "http": event["requestContext"]["http"],
+                "queryStringParameters": event["queryStringParameters"],
+                "timeEpoch": event["requestContext"]["timeEpoch"],
+                "body": (event["isBase64Encoded"] != null && event["isBase64Encoded"] == true)
+                    ? stringToBase64.decode(event["body"])
+                    : body,
+                "rawBody": event["body"],
+              });
+
               httpResponse = await service.{{name}}(req);
             } catch(e, s) {
               print(e);
@@ -108,7 +108,6 @@ void main() async {
       }
 
       try {
-        final x = httpResponse is Map;
       if (httpResponse is Map && httpResponse["statusCode"] == null) {
         httpResponse["statusCode"] = 200;
       }
