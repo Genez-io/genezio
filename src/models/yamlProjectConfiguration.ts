@@ -383,6 +383,7 @@ export class YamlProjectConfiguration {
       classes: this.classes.map((c) => ({
         path: c.path,
         type: c.type,
+        name: c.name ? c.name : undefined,
         methods: c.methods.map((m) => ({
           name: m.name,
           type: m.type,
