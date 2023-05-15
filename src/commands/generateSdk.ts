@@ -15,13 +15,6 @@ import { getProjectConfiguration } from "../utils/configuration";
 import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk";
 
 export async function generateSdkCommand(options: any) {
-  // check if user is logged in
-  const authToken = await getAuthToken();
-  if (!authToken) {
-    log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-    exit(1);
-  }
-
   const language = options.language;
   const sdkPath = options.path;
 
