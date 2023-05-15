@@ -1,4 +1,3 @@
-import os from "os";
 import path from "path";
 import fs from "fs";
 import {
@@ -24,11 +23,60 @@ import {
   MapType,
   VoidType,
 } from "../../models/genezioModels";
+
 import { checkIfDartIsInstalled, getDartAstGeneratorPath, getDartSdkVersion } from "../../utils/dart";
 import { createTemporaryFolder, deleteFolder, fileExists } from "../../utils/file";
-import { runNewProcess, runNewProcessWithResult, runNewProcessWithResultAndReturnCode } from "../../utils/process";
-import { GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART } from "../../errors";
-import { execSync } from "child_process";
+import { runNewProcess, runNewProcessWithResultAndReturnCode } from "../../utils/process";
+import { GENEZIO_NO_SUPPORT_FOR_BUILT_IN_TYPE, GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART } from "../../errors";
+
+// These are dart:core build-in errors that are not currently supported by the Genezio AST
+const dartNotSupportedBuiltInErrors = [
+    'AbstractClassInstantiationError',
+    'ConcurrentModificationError',
+    'CyclicInitializationError',
+    'Error',
+    'FallThroughError',
+    'IntegerDivisionByZeroException',
+    'NoSuchMethodError',
+    'NullThrownError',
+    'OutOfMemoryError',
+    'RangeError',
+    'StateError',
+    'StackOverflowError',
+    'TypeError',
+    'UnimplementedError',
+    'UnsupportedError'
+  ]
+
+// These are dart:core build-in types that are not currently supported by the Genezio AST
+const dartNotSupportedBuiltInTypes = [
+  'BidirectionalIterator',
+  'Comparable',
+  'DateTime',
+  'Duration',
+  'Exception',
+  'Expando',
+  'FormatException',
+  'Function',
+  'Invocation',
+  'Iterable',
+  'Iterator',
+  'Match',
+  'Null',
+  'Pattern',
+  'RegExp',
+  'RuneIterator',
+  'Runes',
+  'Set',
+  'StackTrace',
+  'Stopwatch',
+  'StringBuffer',
+  'StringSink',
+  'Symbol',
+  'Type',
+  'Uri',
+  'num'
+]
 
 export class AstGenerator implements AstGeneratorInterface {
   #parseList(type: string): ArrayType|undefined {
@@ -38,6 +86,11 @@ export class AstGenerator implements AstGeneratorInterface {
       // If the List is optional, we need to remove the last character
       if (type[type.length - 1] === "?") {
         throw new Error(GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART);
+      }
+
+      // Check for not supported built-in types
+      if (dartNotSupportedBuiltInTypes.includes(type) || dartNotSupportedBuiltInErrors.includes(type)) {
+        throw new Error(`${type} not supported.\n` + GENEZIO_NO_SUPPORT_FOR_BUILT_IN_TYPE)
       }
 
       const extractedString = type.substring(listToken.length, lastIndex);
@@ -58,6 +111,11 @@ export class AstGenerator implements AstGeneratorInterface {
       // If the Map is optional, we need to remove the last character
       if (cleanedType[cleanedType.length - 1] === "?") {
         throw new Error(GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART)
+      }
+
+      // Check for not supported built-in types
+      if (dartNotSupportedBuiltInTypes.includes(type) || dartNotSupportedBuiltInErrors.includes(type)) {
+        throw new Error(`${type} not supported.\n` + GENEZIO_NO_SUPPORT_FOR_BUILT_IN_TYPE)
       }
 
       const extractedString = cleanedType.substring(mapToken.length, lastIndex);
@@ -103,6 +161,11 @@ export class AstGenerator implements AstGeneratorInterface {
     // Remove the Optional property for now, we don't support it.
     if (type[type.length - 1] === "?") {
       throw new Error(GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART)
+    }
+
+    // Check for not supported built-in types
+    if (dartNotSupportedBuiltInTypes.includes(type) || dartNotSupportedBuiltInErrors.includes(type)) {
+      throw new Error(`${type} not supported.\n` + GENEZIO_NO_SUPPORT_FOR_BUILT_IN_TYPE)
     }
 
     switch (type) {
