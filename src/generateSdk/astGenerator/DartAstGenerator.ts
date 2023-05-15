@@ -24,10 +24,11 @@ import {
   MapType,
   VoidType,
 } from "../../models/genezioModels";
-import { checkIfDartIsInstalled } from "../../utils/dart";
-import { createTemporaryFolder, fileExists } from "../../utils/file";
+import { checkIfDartIsInstalled, getDartSdkVersion } from "../../utils/dart";
+import { createTemporaryFolder, deleteFolder, fileExists } from "../../utils/file";
 import { runNewProcess, runNewProcessWithResult } from "../../utils/process";
 import { GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART } from "../../errors";
+import { execSync } from "child_process";
 
 export class AstGenerator implements AstGeneratorInterface {
   #parseList(type: string): ArrayType|undefined {
@@ -138,25 +139,41 @@ export class AstGenerator implements AstGeneratorInterface {
     }
   }
 
-  async #compileGenezioDartAstExtractor() {
+  async #compileGenezioDartAstExtractor(dartSdkVersion: string) {
     const folder = await createTemporaryFolder();
+    // Clone the dart ast generator.
     await runNewProcess("git clone https://github.com/Genez-io/dart-ast.git .", folder)
     await runNewProcess("dart pub get", folder)
-    if (!fs.existsSync(path.join(os.homedir(), ".dart_ast_generator"))) {
-      fs.mkdirSync(path.join(os.homedir(), ".dart_ast_generator"));
+
+    const genezioAstGeneratorDir = path.join(os.homedir(), ".dart_ast_generator");
+    const genezioAstGeneratorPath = path.join(genezioAstGeneratorDir, `genezioDartAstGenerator_${dartSdkVersion}.aot`);
+    // Create the folder for the compiled ast generator if it doesn't exist.
+    if (!fs.existsSync(genezioAstGeneratorDir)) {
+      fs.mkdirSync(genezioAstGeneratorDir);
     }
-    await runNewProcess(`dart compile aot-snapshot main.dart -o ${os.homedir()}/.dart_ast_generator/genezioDartAstGenerator.aot`, folder)
+
+    // Compile the dart ast generator.
+    await runNewProcess(`dart compile aot-snapshot main.dart -o ${genezioAstGeneratorPath}`, folder)
+
+    // Remove the temporary folder.
+    await deleteFolder(folder);
   }
 
   async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
     // Check if dart is installed.
     await checkIfDartIsInstalled();
 
+    // Get the dart sdk version.
+    const rawDartSdkVersion = execSync("dart --version").toString();
+    const dartSdkVersion = getDartSdkVersion(rawDartSdkVersion)?.toString();
+    if (!dartSdkVersion) {
+      throw new Error("Unable to get the dart sdk version.");
+    }
     // Check if the dart ast extractor is compiled and installed in home.
-    const genezioAstGeneratorPath = path.join(os.homedir(), ".dart_ast_generator", "genezioDartAstGenerator.aot");
+    const genezioAstGeneratorPath = path.join(os.homedir(), ".dart_ast_generator", `genezioDartAstGenerator_${dartSdkVersion}.aot`);
     const compiled = await fileExists(genezioAstGeneratorPath);
     if (!compiled) {
-      await this.#compileGenezioDartAstExtractor();
+      await this.#compileGenezioDartAstExtractor(dartSdkVersion);
     }
 
     const classAbsolutePath = path.resolve(input.class.path);
