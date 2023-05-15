@@ -26,7 +26,7 @@ import {
 } from "../../models/genezioModels";
 import { checkIfDartIsInstalled, getDartSdkVersion } from "../../utils/dart";
 import { createTemporaryFolder, deleteFolder, fileExists } from "../../utils/file";
-import { runNewProcess, runNewProcessWithResult } from "../../utils/process";
+import { runNewProcess, runNewProcessWithResult, runNewProcessWithResultAndReturnCode } from "../../utils/process";
 import { GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART } from "../../errors";
 import { execSync } from "child_process";
 
@@ -177,9 +177,12 @@ export class AstGenerator implements AstGeneratorInterface {
     }
 
     const classAbsolutePath = path.resolve(input.class.path);
-    const result = await runNewProcessWithResult(`dartaotruntime ${genezioAstGeneratorPath} ${classAbsolutePath}`)
-
-    const ast = JSON.parse(result);
+    const result = await runNewProcessWithResultAndReturnCode(`dartaotruntime ${genezioAstGeneratorPath} ${classAbsolutePath}`)
+    // If the result is not 0, it means that the ast generator failed.
+    if (result.code !== 0) {
+      throw new Error(`Dart runtime error: ${result.stderr}`);
+    }
+    const ast = JSON.parse(result.stdout);
 
     const mainClasses = ast.classes.filter((c: any) => c.name === input.class.name);
     if (mainClasses.length == 0) {
