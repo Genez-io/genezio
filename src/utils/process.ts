@@ -30,3 +30,16 @@ export function runNewProcessWithResult(command: string, cwd?: string): Promise<
     });
   });
 }
+
+export function runNewProcessWithResultAndReturnCode(command: string, cwd?: string): Promise<{stdout: string, stderr: string, code: number}> {
+  return new Promise(function (resolve, reject) {
+    exec(command, { cwd }, (err, stdout, stderr) => {
+      if (err) {
+        resolve({ stdout, stderr, code: err.code || -1 });
+      } else {
+        resolve({ stdout, stderr, code: 0 });
+      }
+    });
+  });
+}
+
