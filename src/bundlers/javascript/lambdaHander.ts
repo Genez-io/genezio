@@ -119,6 +119,7 @@ exports.handler =  async function(event, context) {
         const requestId = body.id;
         const errorPromise = new Promise((resolve) => {
           process.on('uncaughtException', function(err) {
+            console.error(err);
             resolve({"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId})
           });
         })
@@ -127,6 +128,7 @@ exports.handler =  async function(event, context) {
           const response = Promise.resolve(object[method](...(body.params || []))).then((result) => {
             return {"jsonrpc": "2.0", "result": result, "error": null, "id": requestId};
           }).catch((err) => {
+            console.error(err);
             return {"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId}
           })
 
@@ -134,6 +136,7 @@ exports.handler =  async function(event, context) {
           process.removeAllListeners("uncaughtException")
           return result
         } catch (err) {
+          console.error(err);
           return {"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId}
         }
     }
