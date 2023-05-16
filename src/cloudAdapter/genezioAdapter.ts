@@ -18,6 +18,9 @@ export class GenezioCloudAdapter implements CloudAdapter {
         }, cliProgress.Presets.shades_grey);
 
         const promisesDeploy = input.map(async (element) => {
+            debugLogger.debug(
+                `Get the presigned URL for class name ${element.name}.`
+              );
             const resultPresignedUrl = await getPresignedURL(
                 projectConfiguration.region,
                 "genezioDeploy.zip",

@@ -47,20 +47,22 @@ import { CloudAdapter } from "../cloudAdapter/cloudAdapter";
 
 
 export async function deployCommand(options: any) {
-  // check if user is logged in
-  const authToken = await getAuthToken();
-  if (!authToken) {
-    log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-    exit(1);
-  }
-
   let configuration
-  
+
   try {
     configuration = await getProjectConfiguration();
   } catch (error: any) {
     log.error(error.message);
     exit(1);
+  }
+
+  // check if user is logged in
+  if (configuration.cloudProvider !== "selfHostedAws") {
+    const authToken = await getAuthToken();
+    if (!authToken) {
+      log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
+      exit(1);
+    }
   }
 
   if (!options.frontend || options.backend) {
@@ -253,9 +255,6 @@ export async function deployClasses(configuration: YamlProjectConfiguration) {
 
       debugLogger.debug(`Zip the directory ${output.path}.`);
       await zipDirectory(output.path, archivePath);
-      debugLogger.debug(
-        `Get the presigned URL for class name ${element.name}.`
-      );
 
       // clean up temporary folder
       await deleteFolder(output.path);
@@ -266,35 +265,6 @@ export async function deployClasses(configuration: YamlProjectConfiguration) {
   const bundlerResultArray = await Promise.all(bundlerResult);
 
   printAdaptiveLog("Bundling your code", "end");
-
-  const promisesDeploy = bundlerResultArray.map(async (element) => {
-    const resultPresignedUrl = await getPresignedURL(
-      configuration.region,
-      "genezioDeploy.zip",
-      configuration.name,
-      element.name
-    )
-
-    const bar = multibar.create(100, 0, { filename: element.name });
-    debugLogger.debug(`Upload the content to S3 for file ${element.filePath}.`)
-    await uploadContentToS3(resultPresignedUrl.presignedURL, element.archivePath, (percentage) => {
-      bar.update(parseFloat((percentage * 100).toFixed(2)), { filename: element.name });
-
-      if (percentage == 1) {
-        bar.stop();
-      }
-    })
-
-    debugLogger.debug(`Done uploading the content to S3 for file ${element.filePath}.`)
-  }
-  );
-
-  // wait for all promises to finish
-  await Promise.all(promisesDeploy);
-  multibar.stop();
-  // The loading spinner is removing lines and with this we avoid clearing a progress bar.
-  // This can be removed only if we find a way to avoid clearing lines.
-  log.info("");
 
   const cloudAdapter = getCloudProvider(projectConfiguration.cloudProvider || "aws");
   const result = await cloudAdapter.deploy(bundlerResultArray, projectConfiguration);
@@ -387,7 +357,7 @@ export async function deployFrontend(configuration: YamlProjectConfiguration) {
     );
     debugLogger.debug("Uploaded to S3.");
     await createFrontendProject(configuration.frontend.subdomain, configuration.name, configuration.region)
-    
+
     // clean up temporary folder
     await deleteFolder(path.dirname(archivePath));
   } else {

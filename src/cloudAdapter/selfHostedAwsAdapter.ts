@@ -11,28 +11,96 @@ class GenezioCloudFormationBuilder {
   template: { [index: string]: any } = {};
   resourceIds: string[] = [];
   apiGatewayResourceName: string;
+  apiGatewayName: string;
 
-  constructor(apiGatewayResourceName: string) {
+  constructor(apiGatewayResourceName: string, apiGatewayName: string) {
     this.apiGatewayResourceName = apiGatewayResourceName;
+    this.apiGatewayName = apiGatewayName;
     this.template = {
-      "Resources": {
-        [apiGatewayResourceName]: {
-          "Type": "AWS::ApiGatewayV2::Api",
-          "Properties": {
-            "Name": apiGatewayResourceName,
-            "ProtocolType": "HTTP",
-            "Description": `API Gateway for Genezio Project ${apiGatewayResourceName}}`,
-            "CorsConfiguration": {
-              "AllowOrigins": ["*"],
-              "AllowMethods": ["*"],
-              "AllowHeaders": ["*"],
-              "MaxAge": 10800
-            }
-          }
-        },
-      },
       "AWSTemplateFormatVersion": "2010-09-09",
+      "Outputs": {
+        "GenezioDeploymentBucketName": {
+          "Value": {
+            "Ref": "GenezioDeploymentBucket"
+          }
+        }
+      },
+      "Resources": {
+      },
     }
+    this.addResource("GenezioDeploymentBucket", {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "VersioningConfiguration": {
+          "Status": "Enabled"
+        },
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        }
+      }
+    });
+
+    this.addResource("GenezioDeploymentBucketPolicy", {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "GenezioDeploymentBucket"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:*",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":s3:::",
+                      {
+                        "Ref": "GenezioDeploymentBucket"
+                      },
+                      "/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":s3:::",
+                      {
+                        "Ref": "GenezioDeploymentBucket"
+                      }
+                    ]
+                  ]
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": false
+                }
+              }
+            }
+          ]
+        }
+      }
+    });
   }
 
   addResource(name: string, content: any) {
@@ -40,8 +108,22 @@ class GenezioCloudFormationBuilder {
     this.resourceIds.push(name);
   }
 
-  build(): string {
-    this.template["Resources"]["ApiStage"] = {
+  addDefaultResources() {
+    this.addResource(this.apiGatewayResourceName, {
+      "Type": "AWS::ApiGatewayV2::Api",
+      "Properties": {
+        "Name": this.apiGatewayName,
+        "ProtocolType": "HTTP",
+        "Description": `API Gateway for Genezio Project ${this.apiGatewayName}}`,
+        "CorsConfiguration": {
+          "AllowOrigins": ["*"],
+          "AllowMethods": ["*"],
+          "AllowHeaders": ["*"],
+          "MaxAge": 10800
+        }
+      }
+    })
+    this.addResource("ApiStage", {
       "Type": "AWS::ApiGatewayV2::Stage",
       "Properties": {
         "ApiId": {
@@ -50,9 +132,9 @@ class GenezioCloudFormationBuilder {
         "AutoDeploy": true,
         "StageName": "prod"
       }
-    };
+    });
 
-    this.template["Resources"]["ApiDeployment"] = {
+    this.addResource("ApiDeployment", {
       "Type": "AWS::ApiGatewayV2::Deployment",
       "DependsOn": [...this.resourceIds, "ApiStage"],
       "Properties": {
@@ -61,36 +143,36 @@ class GenezioCloudFormationBuilder {
         },
         "StageName": "prod"
       }
-    };
-    this.template["Outputs"] = {
-      "ApiUrl": {
-        "Description": "The URL of the API Gateway",
-        "Value": {
-          "Fn::Join": [
-            "",
-            [
-              "https://",
-              {
-                "Ref": this.apiGatewayResourceName
-              },
-              ".execute-api.",
-              {
-                "Ref": "AWS::Region"
-              },
-              ".amazonaws.com/prod/"
-            ]
+    });
+    this.template["Outputs"]["ApiUrl"] = {
+      "Description": "The URL of the API Gateway",
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "https://",
+            {
+              "Ref": this.apiGatewayResourceName
+            },
+            ".execute-api.",
+            {
+              "Ref": "AWS::Region"
+            },
+            ".amazonaws.com/prod/"
           ]
-        }
+        ]
       }
-    }
+    };
+  }
 
+  build(): string {
     return JSON.stringify(this.template);
   }
 }
 
 export class SelfHostedAwsAdapter implements CloudAdapter {
 
-  async getLatestObjectVersion(cliet: S3, bucket: string, key: string): Promise<string | undefined> {
+  async #getLatestObjectVersion(cliet: S3, bucket: string, key: string): Promise<string | undefined> {
     const result = await cliet.send(new HeadObjectCommand({
       Bucket: bucket,
       Key: key,
@@ -119,22 +201,6 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
       })
   }
 
-  async #bucketForProjectExists(client: S3, bucketName: string): Promise<boolean> {
-    const params = {
-      Bucket: bucketName
-    };
-
-    return new Promise((resolve) => {
-      client.headBucket(params, function (err: unknown) {
-        if (err) {
-          resolve(false);
-        } else {
-          resolve(true);
-        }
-      });
-    });
-  }
-
   async #uploadZipToS3(client: S3, bucket: string, key: string, path: string): Promise<void> {
     const content = fs.readFileSync(path);
 
@@ -158,21 +224,9 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
   }
 
   async #updateStack(cloudFormationClient: CloudFormationClient, createStackTemplate: string, stackName: string) {
-    const { exists, status } = await this.#checkIfStackExists(cloudFormationClient, stackName);
+    const { status } = await this.#checkIfStackExists(cloudFormationClient, stackName);
 
-    if (!exists) {
-      await cloudFormationClient.send(new CreateStackCommand({
-        StackName: stackName,
-        TemplateBody: createStackTemplate,
-        Capabilities: ["CAPABILITY_IAM"],
-      }));
-      await waitUntilStackCreateComplete({
-        client: cloudFormationClient,
-        maxWaitTime: 360,
-      }, {
-        StackName: stackName,
-      });
-    } else if (exists && status === "ROLLBACK_COMPLETE") {
+    if (status === "ROLLBACK_COMPLETE") {
       await cloudFormationClient.send(new DeleteStackCommand({
         StackName: stackName,
       }));
@@ -210,7 +264,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
 
   #cronToAWSCron(unixCron: string): string {
     const cronParts: string[] = unixCron.split(" ");
-  
+
     if (cronParts[2] === "*" && cronParts[4] === "*") {
       cronParts[4] = "?";
     } else if (cronParts[2] === "*" && cronParts[4] !== "*") {
@@ -218,19 +272,46 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
     } else if (cronParts[2] !== "*" && cronParts[4] === "*") {
       cronParts[4] = "?";
     }
-  
+
     const awsCron: string =
       cronParts[0] + " " + cronParts[1] + " " + cronParts[2] + " " + cronParts[3] + " " + cronParts[4] + " *";
-  
+
     return awsCron;
+  }
+
+  #findOutputValue(stackDetails: DescribeStacksCommandOutput, key: string): string | undefined {
+    const output = stackDetails.Stacks?.[0].Outputs?.find((output) => output.OutputKey === key);
+    return output?.OutputValue;
+  }
+
+  async #getValueForKeyFromOutput(cloudFormationClient: CloudFormationClient, stackName: string, key: string): Promise<string> {
+    const bucketStackDetails = await cloudFormationClient.send(new DescribeStacksCommand({
+      StackName: stackName,
+    }));
+    const successCloudFormationStatus = ["UPDATE_COMPLETE", "CREATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"];
+    if (!bucketStackDetails["Stacks"] || bucketStackDetails["Stacks"].length === 0 || !bucketStackDetails["Stacks"][0]["StackStatus"] || !successCloudFormationStatus.includes(bucketStackDetails["Stacks"][0]["StackStatus"])) {
+      debugLogger.error("Stack does not exists!", JSON.stringify(bucketStackDetails));
+      throw new Error("A problem occured while deploying your application. Please check the status of your CloudFormation stack.");
+    }
+
+    const bucketName = this.#findOutputValue(bucketStackDetails, key);
+    if (!bucketName) {
+      debugLogger.error("Could not find bucket name output in cloud formation describe output.", JSON.stringify(bucketStackDetails));
+      throw new Error("A problem occured while deploying your application. Please check the status of your CloudFormation stack.");
+    }
+
+    return bucketName;
+  }
+
+  #getBucketKey(projectName: string, className: string): string {
+    return `genezio-${projectName}/lambda-${className}.zip`
   }
 
   async deploy(input: GenezioCloudInput[], projectConfiguration: ProjectConfiguration): Promise<GenezioCloudOutput> {
     const cloudFormationClient = new CloudFormationClient({ region: projectConfiguration.region });
     const s3Client = new S3({ region: projectConfiguration.region });
-    const bucketName = `bucket-${projectConfiguration.region}-${projectConfiguration.name}`;
     const stackName = `genezio-${projectConfiguration.name}`;
-    const bucketExists = await this.#bucketForProjectExists(s3Client, bucketName);
+    const { exists } = await this.#checkIfStackExists(cloudFormationClient, stackName);
 
     const credentials = await s3Client.config.credentials();
     if (!credentials) {
@@ -238,39 +319,47 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
     }
     log.info(`Deploying your backend project to the account represented by access key ID ${credentials.accessKeyId}...`);
 
-    if (!bucketExists) {
-      // If bucket does not exist, create it
-      await s3Client.send(new CreateBucketCommand({
-        Bucket: bucketName,
-        CreateBucketConfiguration: {
-          // Weird issue https://github.com/aws/aws-sdk-js/issues/3647
-          LocationConstraint: projectConfiguration.region === "us-east-1" ? undefined : projectConfiguration.region,
-        },
+    const apiGatewayResourceName = `ApiGateway${alphanumericString(projectConfiguration.name)}`;
+    const apiGatewayName = `${projectConfiguration.name}`;
+    const cloudFormationTemplate = new GenezioCloudFormationBuilder(apiGatewayResourceName, apiGatewayName);
+
+    // Check if stack already exists. If it already exists, we need to send a describe-stack command to get the bucket name.
+    // If the stack does not exists, we need to first create a stack with just one s3 resource.
+    if (!exists) {
+      const createStackTemplate = cloudFormationTemplate.build();
+      await cloudFormationClient.send(new CreateStackCommand({
+        StackName: stackName,
+        TemplateBody: createStackTemplate,
+        Capabilities: ["CAPABILITY_IAM"],
       }));
 
-      await s3Client.send(new PutBucketVersioningCommand({
-        Bucket: bucketName,
-        VersioningConfiguration: {
-          Status: "Enabled",
-        },
-      }));
+      await waitUntilStackCreateComplete({
+        client: cloudFormationClient,
+        maxWaitTime: 360,
+      }, {
+        StackName: stackName,
+      });
     }
-    // verific existenta bucketului de proiect
-    const apiGatewayResourceName = `ApiGateway${alphanumericString(projectConfiguration.name)}`;
-    const cloudFormationTemplate = new GenezioCloudFormationBuilder(apiGatewayResourceName);
+    const bucketName = await this.#getValueForKeyFromOutput(cloudFormationClient, stackName, "GenezioDeploymentBucketName");
+
+    const uploadFilesPromises = input.map((inputItem) => {
+      const bucketKey = this.#getBucketKey(projectConfiguration.name, inputItem.name);
+
+      log.info(`Uploading class ${inputItem.name} to S3...`)
+      return this.#uploadZipToS3(s3Client, bucketName, bucketKey, inputItem.archivePath);
+    })
+
+    await Promise.all(uploadFilesPromises);
 
     for (const inputItem of input) {
       const classConfiguration = projectConfiguration.classes.find((c) => c.path === inputItem.filePath);
-      const bucketKey = `genezio-${projectConfiguration.name}/lambda-${inputItem.name}.zip`;
+      const bucketKey = this.#getBucketKey(projectConfiguration.name, inputItem.name);
       const lambdaFunctionResourceName = `LambdaFunction${alphanumericString(inputItem.name)}`;
+      const lambdaFunctionName = `${projectConfiguration.name.toLowerCase()}-${inputItem.name.toLowerCase()}`;
       const invokePermissionResourceName = `LambdaInvokePermission${alphanumericString(inputItem.name)}`;
       const routeResourceName = `Route${alphanumericString(inputItem.name)}`;
       const integrationResourceName = `Integration${alphanumericString(inputItem.name)}`;
       const roleResourceName = `Role${alphanumericString(inputItem.name)}`;
-
-      // We iterate through all the classes, upload the zip to S3 and create the cloudformation resource for each class
-      log.info(`Uploading class ${inputItem.name} to S3...`)
-      await this.#uploadZipToS3(s3Client, bucketName, bucketKey, inputItem.archivePath);
 
       // Create the LambdaInvokePermission
       cloudFormationTemplate.addResource(invokePermissionResourceName, {
@@ -383,7 +472,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
       cloudFormationTemplate.addResource(lambdaFunctionResourceName, {
         "Type": "AWS::Lambda::Function",
         "Properties": {
-          "FunctionName": lambdaFunctionResourceName,
+          "FunctionName": lambdaFunctionName,
           "Handler": "index.handler",
           "Architectures": ["arm64"],
           "Runtime": runtime,
@@ -393,7 +482,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
           "Code": {
             "S3Bucket": bucketName,
             "S3Key": bucketKey,
-            "S3ObjectVersion": (await this.getLatestObjectVersion(s3Client, bucketName, bucketKey))
+            "S3ObjectVersion": (await this.#getLatestObjectVersion(s3Client, bucketName, bucketKey))
           },
           "MemorySize": 1024,
           "Timeout": 10
@@ -480,25 +569,15 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
       }
     }
 
+    cloudFormationTemplate.addDefaultResources();
     const templateResult = cloudFormationTemplate.build();
 
     debugLogger.debug(templateResult);
     // Once we have the template, we can create or update the CloudFormation stack.
     await this.#updateStack(cloudFormationClient, templateResult, stackName);
-
-    // Get the API Gateway URL and prepare the output
-    const stackDetails = await cloudFormationClient.send(new DescribeStacksCommand({
-      StackName: stackName,
-    }));
-
     const classes = [];
+    const apiGatewayUrl = await this.#getValueForKeyFromOutput(cloudFormationClient, stackName, "ApiUrl");
 
-    if (!stackDetails["Stacks"] || stackDetails["Stacks"].length === 0 || (stackDetails["Stacks"][0]["StackStatus"] !== "UPDATE_COMPLETE" && stackDetails["Stacks"][0]["StackStatus"] !== "CREATE_COMPLETE")) {
-      debugLogger.error("Stack update failed", JSON.stringify(stackDetails));
-      throw new Error("Stack update failed");
-    }
-
-    const apiGatewayUrl = stackDetails["Stacks"]![0]["Outputs"]![0]["OutputValue"]!;
     for (const inputItem of input) {
       classes.push({
         className: inputItem.name,
