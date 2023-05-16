@@ -55,7 +55,7 @@ export async function deployCommand(options: any) {
   }
 
   let configuration
-  
+
   try {
     configuration = await getProjectConfiguration();
   } catch (error: any) {
@@ -387,7 +387,7 @@ export async function deployFrontend(configuration: YamlProjectConfiguration) {
     );
     debugLogger.debug("Uploaded to S3.");
     await createFrontendProject(configuration.frontend.subdomain, configuration.name, configuration.region)
-    
+
     // clean up temporary folder
     await deleteFolder(path.dirname(archivePath));
   } else {
