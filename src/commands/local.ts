@@ -560,7 +560,8 @@ async function startClassProcess(
   const availablePort = await findAvailablePort();
   const processParameters = [...parameters, availablePort.toString()];
   const classProcess = spawn(startingCommand, processParameters, {
-    stdio: ["pipe", "pipe", "pipe"]
+    stdio: ["pipe", "pipe", "pipe"],
+    env: { ...process.env, NODE_OPTIONS:"--enable-source-maps" }
   });
   classProcess.stdout.pipe(process.stdout);
   classProcess.stderr.pipe(process.stderr);

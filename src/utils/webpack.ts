@@ -24,7 +24,7 @@ export function bundle(
       resolve: _resolve,
       resolveLoader,
       plugins: plugins,
-      // compilation stats json
+      devtool: 'inline-source-map',
       output: {
         path: outputPath,
         filename: outputFile,
