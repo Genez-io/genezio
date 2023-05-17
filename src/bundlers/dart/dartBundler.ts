@@ -28,7 +28,7 @@ export class DartBundler implements BundlerInterface {
     }
 
     async #analyze(path: string) {
-        const result = spawnSync("dart", ["analyze"], { cwd: path });
+        const result = spawnSync("dart", ["analyze", "--no-fatal-warnings"], { cwd: path });
 
         if (result.status != 0) {
             log.info(result.stdout.toString().split("\n").slice(1).join("\n"));

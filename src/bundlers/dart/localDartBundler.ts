@@ -15,6 +15,15 @@ import { castArrayRecursivelyInitial, castMapRecursivelyInitial } from "../../ut
 
 export class DartBundler implements BundlerInterface {
 
+    async #analyze(path: string) {
+        const result = spawnSync("dart", ["analyze", "--no-fatal-warnings"], { cwd: path });
+
+        if (result.status != 0) {
+            log.info(result.stdout.toString().split("\n").slice(1).join("\n"));
+            throw new Error("Compilation error! Please check your code and try again.");
+        }
+    }
+
     #castParameterToPropertyType(node: Node, variableName: string): string {
         let implementation = "";
 
@@ -107,6 +116,9 @@ export class DartBundler implements BundlerInterface {
 
         // Check if dart is installed
         await checkIfDartIsInstalled();
+
+        // Analyze the Dart code on the server
+        await this.#analyze(inputTemporaryFolder);
 
         // Compile the Dart code on the server
         debugLogger.info("Compiling Dart...")
