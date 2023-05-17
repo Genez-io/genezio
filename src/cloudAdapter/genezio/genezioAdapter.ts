@@ -12,7 +12,9 @@ import { YamlFrontend } from "../../models/yamlProjectConfiguration";
 import { createFrontendProject } from "../../requests/createFrontendProject";
 import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL";
 import { FRONTEND_DOMAIN } from "../../constants";
+import { getFileSize } from "../../utils/file";
 
+export const BUNDLE_SIZE_LIMIT = 262144000;
 
 export class GenezioCloudAdapter implements CloudAdapter {
     async deploy(input: GenezioCloudInput[], projectConfiguration: ProjectConfiguration): Promise<GenezioCloudOutput> {
@@ -33,6 +35,11 @@ export class GenezioCloudAdapter implements CloudAdapter {
                 projectConfiguration.name,
                 element.name
             )
+
+            const size = await getFileSize(element.archivePath);
+            if (size > BUNDLE_SIZE_LIMIT) {
+                throw new Error(`Your class ${element.name} is too big: ${size} bytes. The maximum size is 250MB. Try to reduce the size of your class.`);
+            }
 
             const bar = multibar.create(100, 0, { filename: element.name });
             debugLogger.debug(`Upload the content to S3 for file ${element.filePath}.`)

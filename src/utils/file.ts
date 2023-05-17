@@ -134,6 +134,18 @@ export async function directoryContainsHtmlFiles(directoryPath: string): Promise
   });
 }
 
+export async function getFileSize(filePath: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    fs.stat(filePath, (error, stats) => {
+      if (error) {
+        reject(error);
+      }
+
+      resolve(stats.size);
+    });
+  });
+}
+
 export async function directoryContainsIndexHtmlFiles(directoryPath: string): Promise<boolean> {
   return new Promise((resolve, reject) => {
     fs.readdir(directoryPath, (error, files) => {
@@ -160,7 +172,7 @@ export async function createTemporaryFolder(name = "foo-"): Promise<string> {
 
 export async function deleteFolder(folderPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    fs.rmdir(folderPath, { recursive: true }, (error) => {
+    fs.rm(folderPath, { recursive: true , force: true}, (error) => {
       if (error) {
         reject(error);
       }

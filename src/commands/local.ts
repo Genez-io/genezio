@@ -558,6 +558,9 @@ async function startClassProcess(
   processForClasses: Map<string, ClassProcess>
 ) {
   const availablePort = await findAvailablePort();
+  debugLogger.debug(`[START_CLASS_PROCESS] Starting class ${className} on port ${availablePort}`);
+  debugLogger.debug(`[START_CLASS_PROCESS] Starting command: ${startingCommand}`);
+  debugLogger.debug(`[START_CLASS_PROCESS] Parameters: ${parameters}`);
   const processParameters = [...parameters, availablePort.toString()];
   const classProcess = spawn(startingCommand, processParameters, {
     stdio: ["pipe", "pipe", "pipe"],

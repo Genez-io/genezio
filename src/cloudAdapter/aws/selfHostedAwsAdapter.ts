@@ -6,9 +6,10 @@ import { HeadObjectCommand, PutObjectCommand, S3 } from "@aws-sdk/client-s3";
 import { debugLogger } from "../../utils/logging";
 import log from "loglevel";
 import { YamlFrontend } from "../../models/yamlProjectConfiguration";
-import { getAllFilesRecursively } from "../../utils/file";
+import { getAllFilesRecursively, getFileSize } from "../../utils/file";
 import { GenezioCloudFormationBuilder, getApiGatewayIntegrationResource, getApiGatewayRouteResource, getCloudFrontDistributionResource, getEventsRoleResource, getIamRoleResource, getLambdaFunctionResource, getLambdaPermissionForEventsResource, getLambdaPermissionResource, getS3BucketPolicyResource, getS3BucketPublicResource, getS3BucketResource } from "./cloudFormationBuilder";
 import mime from "mime-types";
+import { BUNDLE_SIZE_LIMIT } from "../genezio/genezioAdapter";
 
 export class SelfHostedAwsAdapter implements CloudAdapter {
 
@@ -21,20 +22,37 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
     return result.VersionId;
   }
 
-  async #checkIfStackExists(client: CloudFormationClient, stackName: string): Promise<{ exists: boolean, status?: string }> {
+  async #checkIfStackExists(client: CloudFormationClient, stackName: string): Promise<{ exists: boolean }> {
     return await client.send(new DescribeStacksCommand({
       StackName: stackName,
     }))
-      .then((stack) => {
+      .then(async (stack) => {
         if (stack.Stacks?.length === 0) {
-          return { exists: false, status: undefined };
+          return { exists: false };
         } else {
-          return { exists: true, status: stack.Stacks?.[0].StackStatus };
+          const status = stack.Stacks?.[0].StackStatus;
+          // If the stack is in ROLLBACK_COMPLETE status, we need to delete it. A stack in the ROLLBACK_COMPLETE state does not really exists.
+          if (status === "ROLLBACK_COMPLETE") {
+            debugLogger.debug("Stack in ROLLBACK_COMPLETE state. Deleting it...");
+            await client.send(new DeleteStackCommand({
+              StackName: stackName,
+            }));
+            await waitUntilStackDeleteComplete({
+              client: client,
+              maxWaitTime: 360,
+            }, {
+              StackName: stackName,
+            });
+
+            return { exists: false };
+          }
+
+          return { exists: true };
         }
       })
       .catch((e) => {
         if (e.message === "Stack with id " + stackName + " does not exist") {
-          return { exists: false, status: undefined };
+          return { exists: false };
         }
 
         throw e
@@ -71,42 +89,17 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
   }
 
   async #updateStack(cloudFormationClient: CloudFormationClient, createStackTemplate: string, stackName: string) {
-    const { status } = await this.#checkIfStackExists(cloudFormationClient, stackName);
-
-    if (status === "ROLLBACK_COMPLETE") {
-      await cloudFormationClient.send(new DeleteStackCommand({
-        StackName: stackName,
-      }));
-      await waitUntilStackDeleteComplete({
-        client: cloudFormationClient,
-        maxWaitTime: 360,
-      }, {
-        StackName: stackName,
-      });
-      await cloudFormationClient.send(new CreateStackCommand({
-        StackName: stackName,
-        TemplateBody: createStackTemplate,
-        Capabilities: ["CAPABILITY_IAM"],
-      }));
-      await waitUntilStackCreateComplete({
-        client: cloudFormationClient,
-        maxWaitTime: 360,
-      }, {
-        StackName: stackName,
-      });
-    } else {
-      await cloudFormationClient.send(new UpdateStackCommand({
-        StackName: stackName,
-        TemplateBody: createStackTemplate,
-        Capabilities: ["CAPABILITY_IAM"],
-      }));
-      await waitUntilStackUpdateComplete({
-        client: cloudFormationClient,
-        maxWaitTime: 360,
-      }, {
-        StackName: stackName,
-      });
-    }
+    await cloudFormationClient.send(new UpdateStackCommand({
+      StackName: stackName,
+      TemplateBody: createStackTemplate,
+      Capabilities: ["CAPABILITY_IAM"],
+    }));
+    await waitUntilStackUpdateComplete({
+      client: cloudFormationClient,
+      maxWaitTime: 360,
+    }, {
+      StackName: stackName,
+    });
   }
 
   #cronToAWSCron(unixCron: string): string {
@@ -176,6 +169,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
     // Check if stack already exists. If it already exists, we need to send a describe-stack command to get the bucket name.
     // If the stack does not exists, we need to first create a stack with just one s3 resource.
     if (!exists) {
+      debugLogger.debug("The backend stack does not exists. Creating a new stack...")
       const createStackTemplate = cloudFormationTemplate.build();
       await cloudFormationClient.send(new CreateStackCommand({
         StackName: stackName,
@@ -192,8 +186,13 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
     }
     const bucketName = await this.#getValueForKeyFromOutput(cloudFormationClient, stackName, "GenezioDeploymentBucketName");
 
-    const uploadFilesPromises = input.map((inputItem) => {
+    const uploadFilesPromises = input.map(async (inputItem) => {
       const bucketKey = this.#getBackendBucketKey(projectConfiguration.name, inputItem.name);
+
+      const size = await getFileSize(inputItem.archivePath);
+      if (size > BUNDLE_SIZE_LIMIT) {
+        throw new Error(`Your class ${inputItem.name} is too big: ${size} bytes. The maximum size is 250MB. Try to reduce the size of your class.`);
+      }
 
       log.info(`Uploading class ${inputItem.name} to S3...`)
       return this.#uploadFileToS3(s3Client, bucketName, bucketKey, inputItem.archivePath);
@@ -310,6 +309,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
     // Check if stack already exists. If it already exists, we need to send a describe-stack command to get the bucket name.
     // If the stack does not exists, we need to first create a stack with just one s3 resource.
     if (!exists) {
+      debugLogger.debug("The frontend stack does not exists. Creating a new stack...")
       const createStackTemplate = cloudFormationTemplate.build();
       debugLogger.log(createStackTemplate);
       await cloudFormationClient.send(new CreateStackCommand({
