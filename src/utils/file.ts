@@ -141,7 +141,7 @@ export async function createTemporaryFolder(name = "foo-"): Promise<string> {
 
 export async function deleteFolder(folderPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    fs.rmdir(folderPath, { recursive: true }, (error) => {
+    fs.rm(folderPath, { recursive: true , force: true}, (error) => {
       if (error) {
         reject(error);
       }
@@ -206,7 +206,6 @@ export async function validateYamlFile() {
   const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
 
   let configurationFileContent = null;
-    
   try {
     configurationFileContent = await parse(configurationFileContentUTF8);
   }
