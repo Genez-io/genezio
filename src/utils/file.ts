@@ -115,6 +115,18 @@ export async function directoryContainsHtmlFiles(directoryPath: string): Promise
   });
 }
 
+export async function getFileSize(filePath: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    fs.stat(filePath, (error, stats) => {
+      if (error) {
+        reject(error);
+      }
+
+      resolve(stats.size);
+    });
+  });
+}
+
 export async function directoryContainsIndexHtmlFiles(directoryPath: string): Promise<boolean> {
   return new Promise((resolve, reject) => {
     fs.readdir(directoryPath, (error, files) => {
