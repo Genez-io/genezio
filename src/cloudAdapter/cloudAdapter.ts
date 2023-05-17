@@ -1,5 +1,6 @@
 import { DeployCodeMethodResponse } from "../models/deployCodeResponse";
 import { MethodConfiguration, ProjectConfiguration } from "../models/projectConfiguration";
+import { YamlFrontend } from "../models/yamlProjectConfiguration";
 
 export type GenezioCloudInput = {
     name: string;
@@ -21,4 +22,5 @@ export type GenezioCloudOutput = {
 
 export interface CloudAdapter {
     deploy(input: GenezioCloudInput[], projectConfiguration: ProjectConfiguration): Promise<GenezioCloudOutput>;
+    deployFrontend(projectName: string, projectRegion: string, frontend: YamlFrontend): Promise<string>;
 }

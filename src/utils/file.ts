@@ -8,6 +8,25 @@ import { parse } from "yaml";
 import { exit } from "process";
 import awsCronParser from "aws-cron-parser";
 import log from "loglevel";
+import { promises as fsPromises } from 'fs';
+
+export async function getAllFilesRecursively(folderPath: string): Promise<string[]> {
+  let files: string[] = [];
+  const items = await fsPromises.readdir(folderPath, { withFileTypes: true });
+
+  for (const item of items) {
+    if (item.isDirectory()) {
+      files = [
+        ...files,
+        ...(await getAllFilesRecursively(path.join(folderPath, item.name))),
+      ];
+    } else {
+      files.push(path.join(folderPath, item.name));
+    }
+  }
+
+  return files;
+}
 
 export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
   // get genezioIgnore file
@@ -22,9 +41,9 @@ export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
 
   return new Promise((resolve, reject) => {
     glob(`./**/*`, {
-        dot: true,
-        ignore: genezioIgnore
-      }, (err, files) => {
+      dot: true,
+      ignore: genezioIgnore
+    }, (err, files) => {
       if (err) {
         reject(err);
       }
@@ -206,7 +225,7 @@ export async function validateYamlFile() {
   const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
 
   let configurationFileContent = null;
-    
+
   try {
     configurationFileContent = await parse(configurationFileContentUTF8);
   }
