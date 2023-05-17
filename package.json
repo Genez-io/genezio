@@ -36,7 +36,7 @@
     "@types/webpack-node-externals": "^3.0.0",
     "archiver": "^5.3.1",
     "aws-cron-parser": "^1.1.12",
-    "axios": "^0.27.2",
+    "axios": "^1.4.0",
     "body": "^5.1.0",
     "body-parser": "^1.20.1",
     "child_process": "^1.0.2",
