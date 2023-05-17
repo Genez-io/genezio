@@ -38,10 +38,12 @@ export interface BundlerInterface {
 
 export class AccessDependenciesPlugin {
     dependencies: string[];
+    genezioProjectFolder: string;
 
     // constructor() {
-    constructor(dependencies: string[]) {
+    constructor(dependencies: string[], genezioProjectFolder: string) {
         this.dependencies = dependencies;
+        this.genezioProjectFolder = genezioProjectFolder;
     }
 
     apply(compiler: {
@@ -59,7 +61,10 @@ export class AccessDependenciesPlugin {
                     (loader: any, normalModule: any) => {
                         if (
                             normalModule.resource &&
-                            normalModule.resource.includes("node_modules")
+                            normalModule.resource.includes("node_modules") &&
+                            normalModule.resource.includes(
+                                this.genezioProjectFolder
+                            )
                         ) {
                             const resource = normalModule.resource;
                             this.dependencies.push(resource);
