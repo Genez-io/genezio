@@ -41,8 +41,8 @@ import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk";
 import { generateRandomSubdomain } from "../utils/yaml";
 import cliProgress from 'cli-progress';
 import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration";
-import { GenezioCloudAdapter } from "../cloudAdapter/genezioAdapter";
-import { SelfHostedAwsAdapter } from "../cloudAdapter/selfHostedAwsAdapter";
+import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter";
+import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter";
 import { CloudAdapter } from "../cloudAdapter/cloudAdapter";
 
 
@@ -65,6 +65,8 @@ export async function deployCommand(options: any) {
     }
   }
 
+  const cloudAdapter = getCloudProvider(configuration.cloudProvider || "aws");
+
   if (!options.frontend || options.backend) {
     if (configuration.scripts?.preBackendDeploy) {
       log.info("Running preBackendDeploy script...");
@@ -77,7 +79,7 @@ export async function deployCommand(options: any) {
       }
     }
 
-    await deployClasses(configuration).catch((error: AxiosError) => {
+    await deployClasses(configuration, cloudAdapter).catch((error: AxiosError) => {
       switch (error.response?.status) {
         case 401:
           log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
@@ -134,7 +136,7 @@ export async function deployCommand(options: any) {
     log.info("Deploying your frontend to genezio infrastructure...");
     let url;
     try {
-      url = await deployFrontend(configuration)
+      url = await deployFrontend(configuration, cloudAdapter)
     } catch (error: any) {
       log.error(error.message);
       if (error.message == "No frontend entry in genezio configuration file.") {
@@ -161,7 +163,7 @@ export async function deployCommand(options: any) {
 }
 
 
-export async function deployClasses(configuration: YamlProjectConfiguration) {
+export async function deployClasses(configuration: YamlProjectConfiguration, cloudAdapter: CloudAdapter) {
 
   if (configuration.classes.length === 0) {
     throw new Error(GENEZIO_NO_CLASSES_FOUND);
@@ -266,7 +268,6 @@ export async function deployClasses(configuration: YamlProjectConfiguration) {
 
   printAdaptiveLog("Bundling your code", "end");
 
-  const cloudAdapter = getCloudProvider(projectConfiguration.cloudProvider || "aws");
   const result = await cloudAdapter.deploy(bundlerResultArray, projectConfiguration);
 
   reportSuccess(result.classes, sdkResponse);
@@ -285,7 +286,7 @@ export async function deployClasses(configuration: YamlProjectConfiguration) {
   }
 }
 
-export async function deployFrontend(configuration: YamlProjectConfiguration) {
+export async function deployFrontend(configuration: YamlProjectConfiguration, cloudAdapter: CloudAdapter) {
   if (configuration.frontend) {
     // check if the build folder exists
     if (!(await fileExists(configuration.frontend.path))) {
@@ -321,50 +322,11 @@ export async function deployFrontend(configuration: YamlProjectConfiguration) {
       await configuration.addSubdomain(configuration.frontend.subdomain);
     }
 
-    debugLogger.debug("Getting presigned URL...");
-    const result = await getFrontendPresignedURL(
-      configuration.frontend.subdomain,
-      configuration.name
-    );
-
-    if (!result.presignedURL) {
-      throw new Error(
-        "An error occured (missing presignedUrl). Please try again!"
-      );
-    }
-
-    if (!result.userId) {
-      throw new Error("An error occured (missing userId). Please try again!");
-    }
-
-    const archivePath = path.join(
-      await createTemporaryFolder("genezio-"),
-      `${configuration.frontend.subdomain}.zip`
-    );
-    debugLogger.debug("Creating temporary folder", archivePath);
-
-    await zipDirectoryToDestinationPath(
-      configuration.frontend.path,
-      configuration.frontend.subdomain,
-      archivePath
-    );
-    debugLogger.debug("Content of the folder zipped. Uploading to S3.");
-    await uploadContentToS3(
-      result.presignedURL,
-      archivePath,
-      undefined,
-      result.userId
-    );
-    debugLogger.debug("Uploaded to S3.");
-    await createFrontendProject(configuration.frontend.subdomain, configuration.name, configuration.region)
-
-    // clean up temporary folder
-    await deleteFolder(path.dirname(archivePath));
+    const url = await cloudAdapter.deployFrontend(configuration.name, configuration.region, configuration.frontend);
+    return url;
   } else {
     throw new Error("No frontend entry in genezio configuration file.");
   }
-
-  return `https://${configuration.frontend.subdomain}.${FRONTEND_DOMAIN}`
 }
 
 function getCloudProvider(provider: string): CloudAdapter {

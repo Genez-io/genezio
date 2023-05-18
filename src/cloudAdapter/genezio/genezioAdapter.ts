@@ -1,12 +1,18 @@
-import { ProjectConfiguration } from "../models/projectConfiguration";
+import { ProjectConfiguration } from "../../models/projectConfiguration";
 import cliProgress from 'cli-progress';
-import { getPresignedURL } from "../requests/getPresignedURL";
-import { debugLogger } from "../utils/logging";
-import { uploadContentToS3 } from "../requests/uploadContentToS3";
+import path from "path";
+import { getPresignedURL } from "../../requests/getPresignedURL";
+import { debugLogger } from "../../utils/logging";
+import { uploadContentToS3 } from "../../requests/uploadContentToS3";
 import log from "loglevel";
-import { deployRequest } from "../requests/deployCode";
-import { CloudAdapter, GenezioCloudInput, GenezioCloudOutput } from "./cloudAdapter";
-import { getFileSize } from "../utils/file";
+import { deployRequest } from "../../requests/deployCode";
+import { CloudAdapter, GenezioCloudInput, GenezioCloudOutput } from "../cloudAdapter";
+import { createTemporaryFolder, deleteFolder, zipDirectoryToDestinationPath } from "../../utils/file";
+import { YamlFrontend } from "../../models/yamlProjectConfiguration";
+import { createFrontendProject } from "../../requests/createFrontendProject";
+import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL";
+import { FRONTEND_DOMAIN } from "../../constants";
+import { getFileSize } from "../../utils/file";
 
 export const BUNDLE_SIZE_LIMIT = 262144000;
 
@@ -22,7 +28,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
         const promisesDeploy = input.map(async (element) => {
             debugLogger.debug(
                 `Get the presigned URL for class name ${element.name}.`
-              );
+            );
             const resultPresignedUrl = await getPresignedURL(
                 projectConfiguration.region,
                 "genezioDeploy.zip",
@@ -73,6 +79,51 @@ export class GenezioCloudAdapter implements CloudAdapter {
         return {
             classes: classesInfo,
         };
+    }
+
+    async deployFrontend(projectName: string, projectRegion: string, frontend: YamlFrontend): Promise<string> {
+        const archivePath = path.join(
+            await createTemporaryFolder("genezio-"),
+            `${frontend.subdomain}.zip`
+        );
+        debugLogger.debug("Creating temporary folder", archivePath);
+
+        await zipDirectoryToDestinationPath(
+            frontend.path,
+            frontend.subdomain,
+            archivePath
+        );
+
+        debugLogger.debug("Getting presigned URL...");
+        const result = await getFrontendPresignedURL(
+            frontend.subdomain,
+            projectName
+        );
+
+        if (!result.presignedURL) {
+            throw new Error(
+                "An error occured (missing presignedUrl). Please try again!"
+            );
+        }
+
+        if (!result.userId) {
+            throw new Error("An error occured (missing userId). Please try again!");
+        }
+
+        debugLogger.debug("Content of the folder zipped. Uploading to S3.");
+        await uploadContentToS3(
+            result.presignedURL,
+            archivePath,
+            undefined,
+            result.userId
+        );
+        debugLogger.debug("Uploaded to S3.");
+        await createFrontendProject(frontend.subdomain, projectName, projectRegion)
+
+        // clean up temporary folder
+        await deleteFolder(path.dirname(archivePath));
+
+        return `https://${frontend.subdomain}.${FRONTEND_DOMAIN}`
     }
 }
 
