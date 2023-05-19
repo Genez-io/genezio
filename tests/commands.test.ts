@@ -15,6 +15,7 @@ import { regions } from "../src/utils/configs";
 import { initCommand } from "../src/commands/init";
 import { addClassCommand } from "../src/commands/addClass";
 import { languages } from "../src/utils/languages";
+import { CloudProviderIdentifier } from "../src/models/cloudProviderIdentifier";
 
 jest.mock("../src/utils/file");
 jest.mock("../src/utils/configuration");
@@ -119,7 +120,7 @@ describe("addClassCommand", () => {
       "test",
       "us-east-1",
       new YamlSdkConfiguration(Language.js, "./test.js"),
-      "genezio",
+      CloudProviderIdentifier.GENEZIO,
       [new YamlClassConfiguration("./test.js", TriggerType.jsonrpc, Language.js, [])] as YamlClassConfiguration[],
     );
     projectConfiguration.addClass = jest.fn();
@@ -148,7 +149,7 @@ describe("addClassCommand", () => {
       "test",
       "us-east-1",
       new YamlSdkConfiguration(Language.js, "./test.js"),
-      "genezio",
+      CloudProviderIdentifier.GENEZIO,
       []
     );
     projectConfiguration.addClass = jest.fn();
@@ -177,7 +178,7 @@ describe("addClassCommand", () => {
       "test",
       "us-east-1",
       new YamlSdkConfiguration(Language.js, "./test.js"),
-      "genezio",
+      CloudProviderIdentifier.GENEZIO,
       []
     );
     projectConfiguration.addClass = jest.fn();
