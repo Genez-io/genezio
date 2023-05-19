@@ -91,6 +91,8 @@ export function getParamType(elem: Node): string {
             return (elem as CustomAstNodeType).rawValue;
         case AstNodeType.PromiseType:
             return getParamType((elem as PromiseType).generic);
+        case AstNodeType.DateType:
+            return "DateTime";
         default:
             return "Object";
     }

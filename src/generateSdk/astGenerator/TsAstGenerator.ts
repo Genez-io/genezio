@@ -27,6 +27,7 @@ import {
   PromiseType,
   VoidType,
   EnumType,
+  DateType,
 } from "../../models/genezioModels";
 
 import typescript from "typescript";
@@ -34,7 +35,7 @@ import typescript from "typescript";
 export class AstGenerator implements AstGeneratorInterface {
   rootNode?: typescript.SourceFile;
 
-  mapTypesToParamType(type: typescript.Node): DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType | VoidType | EnumType {
+  mapTypesToParamType(type: typescript.Node): DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | DateType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType | VoidType | EnumType {
     switch (type.kind) {
       case typescript.SyntaxKind.StringKeyword:
         return { type: AstNodeType.StringLiteral };
@@ -56,6 +57,8 @@ export class AstGenerator implements AstGeneratorInterface {
           return { type: AstNodeType.PromiseType, generic: this.mapTypesToParamType((type as any).typeArguments[0]) };
         } else if (escapedText === "Array") {
           return { type: AstNodeType.ArrayType, generic: this.mapTypesToParamType((type as any).typeArguments[0]) };
+        } else if (escapedText === "Date") {
+          return { type: AstNodeType.DateType };
         } else {
           const declaration = this.#findDeclarationOfType(escapedText)
           if (declaration?.kind === typescript.SyntaxKind.EnumDeclaration) {

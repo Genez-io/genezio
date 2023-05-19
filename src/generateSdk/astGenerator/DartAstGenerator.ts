@@ -23,6 +23,7 @@ import {
   PromiseType,
   MapType,
   VoidType,
+  DateType,
 } from "../../models/genezioModels";
 import { checkIfDartIsInstalled, getDartAstGeneratorPath, getDartSdkVersion } from "../../utils/dart";
 import { createTemporaryFolder, deleteFolder, fileExists } from "../../utils/file";
@@ -84,7 +85,7 @@ export class AstGenerator implements AstGeneratorInterface {
     }
   }
 
-  #mapTypesToParamType(type: string): DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | MapType | PromiseType | CustomAstNodeType | VoidType {
+  #mapTypesToParamType(type: string): DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | MapType | PromiseType | CustomAstNodeType | VoidType | DateType {
     const list = this.#parseList(type)
     if (list) {
       return list;
@@ -127,6 +128,10 @@ export class AstGenerator implements AstGeneratorInterface {
           type: AstNodeType.VoidLiteral,
         }
       }
+      case "DateTime":
+        return {
+          type: AstNodeType.DateType,
+        }
       case "Object":
         return {
           type: AstNodeType.AnyLiteral,
