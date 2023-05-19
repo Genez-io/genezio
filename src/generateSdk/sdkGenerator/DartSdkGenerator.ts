@@ -297,6 +297,9 @@ class SdkGenerator implements SdkGeneratorInterface {
                 break;
             case AstNodeType.MapType:
                 implementation += castMapRecursivelyInitial(node as MapType, variableName);
+                break;
+            case AstNodeType.DateType:
+                implementation += `${variableName} as DateTime`;
         }
 
         return implementation;
@@ -326,6 +329,9 @@ class SdkGenerator implements SdkGeneratorInterface {
                 break;
             case AstNodeType.MapType:
                 implementation += castMapRecursivelyInitial(node as MapType, `json['${name}']`) + ",";
+                break;
+            case AstNodeType.DateType:
+                implementation += `DateTime.parse(json['${name}'].toString()),`;
         }
 
         return implementation;
@@ -353,6 +359,8 @@ class SdkGenerator implements SdkGeneratorInterface {
                 return `Future<Map<${getParamType((elem as MapType).genericKey)}, ${getParamType((elem as MapType).genericValue)}>>`;
             case AstNodeType.CustomNodeLiteral:
                 return `Future<${(elem as CustomAstNodeType).rawValue}>`;
+            case AstNodeType.DateType:
+                return "Future<DateTime>";
             default:
                 return "Future<Object>";
         }
