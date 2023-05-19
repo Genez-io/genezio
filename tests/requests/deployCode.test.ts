@@ -5,6 +5,7 @@ import {
 } from "../../src/models/yamlProjectConfiguration";
 import { deployRequest } from "../../src/requests/deployCode";
 import { ProjectConfiguration, SdkConfiguration } from "../../src/models/projectConfiguration";
+import { CloudProviderIdentifier } from "../../src/models/cloudProviderIdentifier";
 
 jest.mock("axios");
 jest.mock("../../src/utils/accounts");
@@ -21,6 +22,7 @@ test("should throw error if server returns error", async () => {
     const projectConfiguration: ProjectConfiguration = {
       name: "test",
       region: "us-east-1",
+      cloudProvider: CloudProviderIdentifier.GENEZIO,
       astSummary: {
         classes: [],
         version: "1.0.0",
@@ -47,6 +49,7 @@ test("should throw error if server returns data.error object", async () => {
     const projectConfiguration: ProjectConfiguration = {
       name: "test",
       region: "us-east-1",
+      cloudProvider: CloudProviderIdentifier.GENEZIO,
       astSummary: {
         classes: [],
         version: "1.0.0",
@@ -72,6 +75,7 @@ test("should return response.data if everything is ok", async () => {
   const projectConfiguration: ProjectConfiguration = {
     name: "test",
     region: "us-east-1",
+    cloudProvider: CloudProviderIdentifier.GENEZIO,
     astSummary: {
       classes: [],
       version: "1.0.0",
@@ -97,6 +101,7 @@ test("should read token and pass it to headers", async () => {
   const projectConfiguration: ProjectConfiguration = {
     name: "test",
     region: "us-east-1",
+    cloudProvider: CloudProviderIdentifier.GENEZIO,
     astSummary: {
       classes: [],
       version: "1.0.0",
