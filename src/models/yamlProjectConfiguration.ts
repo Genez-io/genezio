@@ -4,6 +4,7 @@ import { getFileDetails, writeToFile } from "../utils/file";
 import { regions } from "../utils/configs";
 import { isValidCron } from 'cron-validator'
 import log from "loglevel";
+import { CloudProviderIdentifier } from "./cloudProviderIdentifier";
 
 export enum TriggerType {
   jsonrpc = "jsonrpc",
@@ -210,7 +211,7 @@ export class YamlProjectConfiguration {
   name: string;
   region: string;
   sdk: YamlSdkConfiguration;
-  cloudProvider?: string;
+  cloudProvider?: CloudProviderIdentifier;
   classes: YamlClassConfiguration[];
   frontend?: YamlFrontend;
   scripts?: YamlScriptsConfiguration;
@@ -220,7 +221,7 @@ export class YamlProjectConfiguration {
     name: string,
     region: string,
     sdk: YamlSdkConfiguration,
-    cloudProvider: string,
+    cloudProvider: CloudProviderIdentifier,
     classes: YamlClassConfiguration[],
     frontend: YamlFrontend|undefined = undefined,
     scripts: YamlScriptsConfiguration | undefined = undefined,
