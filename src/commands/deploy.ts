@@ -44,6 +44,7 @@ import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration";
 import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter";
 import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter";
 import { CloudAdapter } from "../cloudAdapter/cloudAdapter";
+import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier";
 
 
 export async function deployCommand(options: any) {
@@ -57,7 +58,7 @@ export async function deployCommand(options: any) {
   }
 
   // check if user is logged in
-  if (configuration.cloudProvider !== "selfHostedAws") {
+  if (configuration.cloudProvider !== CloudProviderIdentifier.SELF_HOSTED_AWS) {
     const authToken = await getAuthToken();
     if (!authToken) {
       log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
@@ -65,7 +66,7 @@ export async function deployCommand(options: any) {
     }
   }
 
-  const cloudAdapter = getCloudProvider(configuration.cloudProvider || "aws");
+  const cloudAdapter = getCloudProvider(configuration.cloudProvider || CloudProviderIdentifier.AWS);
 
   if (!options.frontend || options.backend) {
     if (configuration.scripts?.preBackendDeploy) {
@@ -331,11 +332,11 @@ export async function deployFrontend(configuration: YamlProjectConfiguration, cl
 
 function getCloudProvider(provider: string): CloudAdapter {
   switch (provider) {
-    case "aws":
-    case "managedAws":
-    case "genezio":
+    case CloudProviderIdentifier.AWS:
+    case CloudProviderIdentifier.GENEZIO:
+    case CloudProviderIdentifier.CAPYBARA:
       return new GenezioCloudAdapter();
-    case "selfHostedAws":
+    case CloudProviderIdentifier.SELF_HOSTED_AWS:
       return new SelfHostedAwsAdapter();
     default:
       throw new Error(`Unsupported cloud provider: ${provider}`);

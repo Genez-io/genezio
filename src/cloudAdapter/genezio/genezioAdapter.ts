@@ -13,6 +13,7 @@ import { createFrontendProject } from "../../requests/createFrontendProject";
 import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL";
 import { FRONTEND_DOMAIN } from "../../constants";
 import { getFileSize } from "../../utils/file";
+import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier";
 
 export const BUNDLE_SIZE_LIMIT = 262144000;
 
@@ -72,7 +73,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
                 cronString: m.cronString,
                 functionUrl: getFunctionUrl(c.cloudUrl, m.type, c.name, m.name),
             })),
-            functionUrl: `${c.cloudUrl}${c.name}`,
+            functionUrl: getClassFunctionUrl(c.cloudUrl, projectConfiguration.cloudProvider, c.name),
             projectId: response.projectId
         }));
 
@@ -132,5 +133,13 @@ function getFunctionUrl(baseUrl: string, methodType: string, className: string, 
         return `${baseUrl}/${className}/${methodName}`;
     } else {
         return `${baseUrl}/${className}`;
+    }
+}
+
+function getClassFunctionUrl(baseUrl: string, cloudProvider: CloudProviderIdentifier, className: string): string {
+    if (cloudProvider === CloudProviderIdentifier.CAPYBARA) {
+        return baseUrl;
+    } else {
+        return `${baseUrl}${className}`;
     }
 }
