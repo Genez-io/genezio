@@ -59,17 +59,23 @@ For more details on how to use `genezio`, you can check out the official [docume
 
 # Contents
 
-- [Features](#features)
-- [Getting Started](#getting-started)
-- [Test your project using the Test Interface](#test-your-project-using-the-test-interface)
-- [Examples deployed with `genezio`](#examples-deployed-with--genezio-)
-- [Official documentation](#official-documentation)
-- [Getting support](#getting-support)
-- [Troubleshooting](#troubleshooting)
-- [Known issues](#known-issues)
-- [Ecosystem](#ecosystem)
-- [Hall Of Fame](#hall-of-fame)
-- [Badge](#badge)
+  - [Features](#features)
+  - [Getting Started](#getting-started)
+  - [Test your project using the Test Interface](#test-your-project-using-the-test-interface)
+  - [Commands Summary](#commands-summary)
+  - [Examples deployed with genezio](#examples-deployed-with-`genezio`)
+  - [Official documentation](#official-documentation)
+    - [How does genezio work?](#how-does-`genezio`-work?)
+    - [Detailed documentation](#detailed-documentation)
+  - [Getting support](#getting-support)
+  - [System requirements](#system-requirements)
+  - [Troubleshooting](#troubleshooting)
+  - [Contributing](#contributing)
+  - [Ecosystem](#ecosystem)
+  - [Hall Of Fame](#hall-of-fame)
+  - [Badge](#badge)
+  - [License](#license)
+
 
 # Features
 
@@ -139,7 +145,25 @@ Now, you can navigate to the [Test Interface](https://app.genez.io/test-interfac
 
 Once you are happy with your project, you can deploy it in a production environment by running: `genezio deploy`.
 
-# Examples deployed with `genezio`
+# Commands Summary
+
+The genezio CLI tool supports the commands shown in the following tablke:
+
+| Command | Description |
+| ------- | ----------- |
+| genezio init | Initializes a new project and prepares your project for deploying with genezio. |
+| genezio addClass `<class-path> [<class-type>]` | Adds a new class to the 'genezio.yaml' file. |
+| genezio generateSdk | Generates an SDK corresponding to a deployed project. |
+| genezio local --port `<port>`| Runs a local environment with your project for testing purposes. |
+| genezio deploy | Deploys your project to the genezio infrastructure. |
+| genezio ls `[<identifier>]` | Displays details of your projects. You can view them all at once or display a particular one by providing its name or ID. |
+| genezio delete `[<project-id>]` | Deletes the project described by the provided ID. If no ID is provided, lists all the projects and IDs. |
+| genezio account | Display information about the current account logged in. |
+| genezio login `<access-token>`| Authenticates with genezio platform to deploy your code. |
+| genezio logout | Logout from genezio platform. |
+| genezio help / genezio `<command>` --help | Displays help for the CLI tool. |
+
+# Examples deployed with genezio
 
 You can find out more about `genezio` from our [examples repository](https://github.com/Genez-io/genezio-examples).
 
@@ -166,7 +190,7 @@ A detailed list of all the examples is below:
 
 # Official documentation
 
-## How does `genezio` work?
+## How does genezio work?
 
 `genezio` is using JSON RPC 2.0 to facilitate the communication between SDK and your class. Your functions are deployed in the Genezio infrastructure. The functions are not executed on a long lasting Virtual Machine. Instead, our system uses a serverless approach. Whenever a request is received, your code is loaded and executed. This is more cost and energy efficient. However, the developer needs to take into account the following - the values of the global variables are not persistent between runs.
 
