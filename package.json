@@ -71,7 +71,7 @@
     "path": "^0.12.7",
     "terminal-overwrite": "^2.0.1",
     "ts-loader": "^9.4.1",
-    "typescript": "^5.0.2",
+    "typescript": "^5.0.4",
     "typescript-parser": "^2.6.1",
     "unique-names-generator": "^4.7.1",
     "webpack": "^5.74.0",
