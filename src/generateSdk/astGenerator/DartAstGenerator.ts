@@ -52,7 +52,6 @@ const dartNotSupportedBuiltInErrors = [
 const dartNotSupportedBuiltInTypes = [
   'BidirectionalIterator',
   'Comparable',
-  'DateTime',
   'Duration',
   'Exception',
   'Expando',
