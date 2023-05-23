@@ -49,52 +49,98 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     // Read the project configuration everytime because it might change
     const yamlProjectConfiguration = await getProjectConfiguration();
     let sdk: SdkGeneratorResponse;
-    let processForClasses;
-    let projectConfiguration;
+    let processForClasses: any;
+    let projectConfiguration: ProjectConfiguration;
 
-    try {
-      if (yamlProjectConfiguration.classes.length === 0) {
-        throw new Error(GENEZIO_NO_CLASSES_FOUND);
-      }
+    const promiseListenForChanges: Promise<unknown> = listenForChanges(undefined, false);
 
-      sdk = await sdkGeneratorApiHandler(yamlProjectConfiguration).catch(
-        (error) => {
-          debugLogger.log("An error occured", error);
-          if (error.code === 'ENOENT') {
-            log.error(`The file ${error.path} does not exist. Please check your genezio.yaml configuration and make sure that all the file paths are correct.`)
-            throw error
-          }
 
-          // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
-          if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
-            log.error("Syntax error:");
-            log.error(`Reason Code: ${error.reasonCode}`);
-            log.error(
-              `File: ${error.path}:${error.loc.line}:${error.loc.column}`
-            );
+    // eslint-disable-next-line no-async-promise-executor
+    const bundlerPromise = new Promise<any>(async (resolve, reject) => {
+      try {
+        if (yamlProjectConfiguration.classes.length === 0) {
+          throw new Error(GENEZIO_NO_CLASSES_FOUND);
+        }
+
+        sdk = await sdkGeneratorApiHandler(yamlProjectConfiguration).catch(
+          (error) => {
+            debugLogger.log("An error occured", error);
+            if (error.code === 'ENOENT') {
+              log.error(`The file ${error.path} does not exist. Please check your genezio.yaml configuration and make sure that all the file paths are correct.`)
+              throw error
+            }
+
+            // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
+            if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
+              log.error("Syntax error:");
+              log.error(`Reason Code: ${error.reasonCode}`);
+              log.error(
+                `File: ${error.path}:${error.loc.line}:${error.loc.column}`
+              );
+
+              throw error;
+            }
 
             throw error;
           }
+        );
 
-          throw error;
-        }
-      );
+        projectConfiguration = new ProjectConfiguration(
+          yamlProjectConfiguration,
+          sdk
+        );
 
-      projectConfiguration = new ProjectConfiguration(
-        yamlProjectConfiguration,
-        sdk
-      );
+        processForClasses = await startProcesses(projectConfiguration, sdk);
+        resolve({
+          success:true,
+          projectConfiguration,
+          processForClasses,
+          sdk
+        });
+      } catch (error: any) {
+        log.error(error.message);
+        log.error(
+          `Fix the errors and genezio local will restart automatically. Waiting for changes...`
+        );
+        // If there was an error generating the SDK, wait for changes and try again.
+        await listenForChanges(undefined);
+        resolve({
+          success: false
+        });
+      }
+    });
 
-      processForClasses = await startProcesses(projectConfiguration, sdk);
-    } catch (error: any) {
-      log.error(error.message);
-      log.error(
-        `Fix the errors and genezio local will restart automatically. Waiting for changes...`
-      );
-      // If there was an error generating the SDK, wait for changes and try again.
-      await listenForChanges(undefined);
+    let promiseRes: any = await Promise.race([bundlerPromise, promiseListenForChanges]);
+    if (promiseRes.success === false) {
+      continue;
+    } else if (promiseRes.success === true) {
+      // Do nothing
+      projectConfiguration = promiseRes.projectConfiguration;
+      processForClasses = promiseRes.processForClasses;
+      sdk = promiseRes.sdk;
+
+    } else {
+      promiseRes = await bundlerPromise;
+
+      if (promiseRes.success === false) {
+        continue;
+      }
+
+      projectConfiguration = promiseRes.projectConfiguration;
+      processForClasses = promiseRes.processForClasses;
+      sdk = promiseRes.sdk;
+
+
+      processForClasses.forEach((classProcess: any) => {
+        classProcess.process.kill();
+      });
+      console.clear();
+      
+      log.info("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
       continue;
     }
+      
+
 
     // Start HTTP Server
     const server = await startServerHttp(
@@ -431,7 +477,7 @@ function handleResponseforHttp(res: any, httpResponse: any) {
   }
 }
 
-async function listenForChanges(sdkPathRelative: any | undefined) {
+async function listenForChanges(sdkPathRelative: any | undefined, showLogs = true) {
   const cwd = process.cwd();
 
   let sdkPath: any = null;
@@ -499,8 +545,10 @@ async function listenForChanges(sdkPathRelative: any | undefined) {
             }
           }
 
-          console.clear();
-          log.info("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
+          if (showLogs) {
+            console.clear();
+            log.info("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
+          }
 
           watch.close();
           resolve({});
@@ -549,6 +597,7 @@ async function clearAllResources(server: http.Server, processForClasses: Map<str
   processForClasses.forEach((classProcess) => {
     classProcess.process.kill();
   });
+
 }
 
 async function startClassProcess(
