@@ -1,31 +1,38 @@
 # Pull Request Template
 
-## Description
-
-Please include a summary of the change.
-Please also include relevant motivation and context.
-List any dependencies that are required for this change.
+<!--
+  Before submitting a Pull Request, please ensure you've done the following:
+  - Read the Genezio Contributing Guide: https://github.com/Genez-io/genezio/blob/master/CONTRIBUTING.md
+  - Read the Genezio Code of Conduct: https://github.com/Genez-io/genezio/blob/master/CODE_OF_CONDUCT.md
+  - Provide tests for your changes.
+  - Add comments on your code.
+  - Use descriptive commit messages.
+  - Update any related documentation and include any relevant screenshots for UI/UX changes.
+-->
 
 ## Type of change
 
-Please delete options that are not relevant.
+<!-- Please delete options that are not relevant. -->
 
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] This change requires a documentation update
+- [ ] 🍕 New feature
+- [ ] 🐛 Bug Fix
+- [ ] 🔥 Breaking change
+- [ ] 🧑‍💻 Improvement
+- [ ] 📝 Documentation Update
 
-## How Has This Been Tested?
+## Description
 
-Please describe the tests that you ran to verify your changes.
-Provide instructions so we can reproduce.
-Please also list any relevant details for your test configuration
+<!--
+Please do not leave this blank. Add a small summary of the PR:
 
-## Checklist:
+This PR [adds/removes/fixes/replaces] the [feature/bug/etc].
 
-- [ ] My code follows the style guidelines of this project
-- [ ] I have performed a self-review of my own code
-- [ ] I have commented my code
-- [ ] I have made corresponding changes to the documentation
-- [ ] I have added tests that prove my fix is effective or that my feature works
-- [ ] New and existing unit tests pass locally with my changes
+List any dependencies that are required for this change.
+-->
+
+## Checklist
+
+- [ ] My code follows the contributor guidelines of this project;
+- [ ] I have updated the documentation;
+- [ ] I have added tests;
+- [ ] New and existing unit tests pass locally with my changes;
