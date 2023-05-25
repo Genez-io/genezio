@@ -54,7 +54,7 @@ type LocalBundlerOutput = {
   sdk: SdkGeneratorResponse;
 };
 
-export async function bundlerLocalEnvironment(yamlProjectConfiguration: YamlProjectConfiguration): Promise<BundlerRestartResponse> {
+export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProjectConfiguration): Promise<BundlerRestartResponse> {
   // eslint-disable-next-line no-async-promise-executor
   return new Promise<BundlerRestartResponse>(async (resolve) => {
     try {
@@ -128,7 +128,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     let projectConfiguration: ProjectConfiguration;
 
     const promiseListenForChanges: Promise<BundlerRestartResponse> = listenForChanges(undefined);
-    const bundlerPromise: Promise<BundlerRestartResponse> = bundlerLocalEnvironment(yamlProjectConfiguration);
+    const bundlerPromise: Promise<BundlerRestartResponse> = prepareLocalEnvironment(yamlProjectConfiguration);
 
     let promiseRes: BundlerRestartResponse = await Promise.race([bundlerPromise, promiseListenForChanges]);
 
