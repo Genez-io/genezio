@@ -162,7 +162,7 @@ export class DartBundler implements BundlerInterface {
     }
 
     async #addLambdaRuntimeDepenendecy(path: string) {
-        const success = await runNewProcess("dart pub add aws_lambda_dart_runtime:'^1.0.3+2'", path, false);
+        const success = await runNewProcess("dart pub add aws_lambda_dart_runtime:'^1.1.0'", path, false);
 
         if (!success) {
             throw new Error("Error while adding aws_lambda_dart_runtime dependency");
