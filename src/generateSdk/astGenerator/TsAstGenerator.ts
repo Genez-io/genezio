@@ -93,7 +93,7 @@ export class AstGenerator implements AstGeneratorInterface {
     }
   }
 
-  parseClassDeclaration(classDeclaration: typescript.Node): ClassDefinition | undefined {
+  parseClassDeclaration(classDeclaration: typescript.Node, typeChecker: typescript.TypeChecker): ClassDefinition | undefined {
     const copy: any = { ...classDeclaration };
     if (copy.modifiers) {
       for (const modifier of copy.modifiers) {
@@ -102,7 +102,7 @@ export class AstGenerator implements AstGeneratorInterface {
           for (const member of copy.members) {
             if (typescript.isMethodDeclaration(member)) {
               const memberCopy: any = { ...member };
-              const method = this.parseMethodSignature(memberCopy);
+              const method = this.parseMethodSignature(memberCopy, typeChecker);
               if (method) {
                 methods.push(method);
               }
@@ -119,7 +119,7 @@ export class AstGenerator implements AstGeneratorInterface {
     return undefined;
   }
 
-  parseMethodSignature(methodSignature: typescript.Node): MethodDefinition | undefined {
+  parseMethodSignature(methodSignature: typescript.Node, typeChecker: typescript.TypeChecker): MethodDefinition | undefined {
     const parameters: ParameterDefinition[] = [];
     const methodSignatureCopy: any = { ...methodSignature };
     if (methodSignatureCopy.name.kind === typescript.SyntaxKind.PrivateIdentifier) {
@@ -128,6 +128,8 @@ export class AstGenerator implements AstGeneratorInterface {
     if (methodSignatureCopy.parameters) {
       for (const parameter of methodSignatureCopy.parameters) {
         if (parameter.type) {
+          const paramType = typeChecker.getTypeAtLocation(parameter)
+          console.log(paramType);
           const param: ParameterDefinition = {
             type: AstNodeType.ParameterDefinition,
             name: parameter.name.escapedText,
@@ -206,6 +208,16 @@ export class AstGenerator implements AstGeneratorInterface {
   async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
     const fileData = input.class.data;
 
+    const program = typescript.createProgram(["input.ts", "model.ts"], {});
+    const typeChecker = program.getTypeChecker();
+
+    const files = program.getSourceFiles();
+    files.forEach((file) => {
+      if (file.fileName.endsWith("model.ts")) {
+        this.modelNode = file;
+      }
+    });
+
     this.rootNode = typescript.createSourceFile('test.ts', fileData.toString(), typescript.ScriptTarget.ES2015, true, typescript.ScriptKind.TS);
     let classDefinition: ClassDefinition | undefined = undefined;
     const declarations: Node[] = [];
@@ -214,7 +226,7 @@ export class AstGenerator implements AstGeneratorInterface {
         const enumDeclaration = this.parseEnumDeclaration(child);
         declarations.push(enumDeclaration);
       } else if (typescript.isClassDeclaration(child)) {
-        const classDeclaration = this.parseClassDeclaration(child);
+        const classDeclaration = this.parseClassDeclaration(child, typeChecker);
         if (classDeclaration && !classDefinition) {
           classDefinition = classDeclaration;
         }
