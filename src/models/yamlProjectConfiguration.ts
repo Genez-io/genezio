@@ -260,7 +260,7 @@ export class YamlProjectConfiguration {
 
     const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
     if (!nameRegex.test(configurationFileContent.name)) {
-      throw new Error("The method name is not valid. It must be [a-zA-Z][-a-zA-Z0-9]*");
+      throw new Error("The project name is not valid. It must be [a-zA-Z][-a-zA-Z0-9]*");
     }
 
     if (!configurationFileContent.sdk) {
