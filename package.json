@@ -30,7 +30,7 @@
   "dependencies": {
     "@aws-sdk/client-cloudformation": "^3.315.0",
     "@aws-sdk/client-s3": "^3.335.0",
-    "@babel/parser": "^7.21.4",
+    "@babel/parser": "^7.22.3",
     "@babel/traverse": "^7.21.4",
     "@types/body": "^5.1.1",
     "@types/webpack-node-externals": "^3.0.0",
