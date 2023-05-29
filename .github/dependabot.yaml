@@ -14,6 +14,7 @@ updates:
       day: "monday"
       time: "10:00"
       timezone: Europe/Bucharest
+    versioning-strategy: increase
   - package-ecosystem: "gitsubmodule"
     target-branch: "master"
     directory: "/"

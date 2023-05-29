@@ -11,7 +11,8 @@
 <br>
 
 <div align="center">
-<h2>The Coolest Way to Write, Deploy and Use a Serverless API</h2>
+<h2>The easiest way to write and host a serverless application</h2>
+<h3>Check out a <u><a href="https://getting-started-typescript.app.genez.io/">live demo deployed with genezio here</a></u> </h3>
 </div>
 
 <br>
@@ -41,9 +42,10 @@
 
 # What is [genezio](https://genez.io)?
 
-[genezio](https://genez.io/) is a platform for developers to write, deploy and use a serverless API.
+[genezio](https://genez.io/) is a platform for developers to write and host a serverless application.
 
-You are writing your backend logic in classes and design your frontend using your preferred programming language.
+You are writing your backend logic in classes and design your frontend using your preferred programming language. More languages coming soon! Better yet, join our open source community and help us build it!
+
 By calling `genezio deploy`, we are deploying your backend classes in a serverless infrastructure.
 
 To make it easy to call your backend logic from the client, an SDK is generated.
@@ -57,17 +59,23 @@ For more details on how to use `genezio`, you can check out the official [docume
 
 # Contents
 
-- [Features](#features)
-- [Getting Started](#getting-started)
-- [Test your project using the Test Interface](#test-your-project-using-the-test-interface)
-- [Examples deployed with `genezio`](#examples-deployed-with--genezio-)
-- [Official documentation](#official-documentation)
-- [Getting support](#getting-support)
-- [Troubleshooting](#troubleshooting)
-- [Known issues](#known-issues)
-- [Ecosystem](#ecosystem)
-- [Hall Of Fame](#hall-of-fame)
-- [Badge](#badge)
+  - [Features](#features)
+  - [Getting Started](#getting-started)
+  - [Test your project using the Test Interface](#test-your-project-using-the-test-interface)
+  - [Commands Summary](#commands-summary)
+  - [Examples deployed with genezio](#examples-deployed-with-`genezio`)
+  - [Official documentation](#official-documentation)
+    - [How does genezio work?](#how-does-`genezio`-work?)
+    - [Detailed documentation](#detailed-documentation)
+  - [Getting support](#getting-support)
+  - [System requirements](#system-requirements)
+  - [Troubleshooting](#troubleshooting)
+  - [Contributing](#contributing)
+  - [Ecosystem](#ecosystem)
+  - [Hall Of Fame](#hall-of-fame)
+  - [Badge](#badge)
+  - [License](#license)
+
 
 # Features
 
@@ -79,6 +87,8 @@ For more details on how to use `genezio`, you can check out the official [docume
 - 🔨&nbsp; A dedicated GitHub Action to integrate in your CI/CD at [genezio-github-action](https://github.com/Genez-io/genezio-github-action).
 
 # Getting Started
+
+0. **Create an account**. Head over to https://app.genez.io and create an account using your favourite social login.
 
 1. **Install `genezio`.** Use the command below to install genezio:
 
@@ -107,7 +117,7 @@ cd ./genezio-examples/javascript/getting-started/server/
 5. **Deploy your code.** Use the command below to deploy the code using `genezio`:
 
 ```bash
-npm i && genezio deploy
+genezio deploy
 ```
 
 6. **Test the code.** Run this command to test the code:
@@ -135,7 +145,25 @@ Now, you can navigate to the [Test Interface](https://app.genez.io/test-interfac
 
 Once you are happy with your project, you can deploy it in a production environment by running: `genezio deploy`.
 
-# Examples deployed with `genezio`
+# Commands Summary
+
+The genezio CLI tool supports the commands shown in the following tablke:
+
+| Command | Description |
+| ------- | ----------- |
+| genezio init | Initializes a new project and prepares your project for deploying with genezio. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/init) |
+| genezio addClass `<class-path> [<class-type>]` | Adds a new class to the 'genezio.yaml' file. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/addclass) |
+| genezio generateSdk | Generates an SDK corresponding to a deployed project. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/generatesdk) |
+| genezio local --port `<port>`| Runs a local environment with your project for testing purposes. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/local) |
+| genezio deploy | Deploys your project to the genezio infrastructure. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/deploy) |
+| genezio ls `[<identifier>]` | Displays details of your projects. You can view them all at once or display a particular one by providing its name or ID. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/ls) |
+| genezio delete `[<project-id>]` | Deletes the project described by the provided ID. If no ID is provided, lists all the projects and IDs. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/delete) |
+| genezio account | Display information about the current account logged in. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/account) |
+| genezio login `<access-token>`| Authenticates with genezio platform to deploy your code. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/login) |
+| genezio logout | Logout from genezio platform. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/logout) |
+| genezio help / genezio `<command>` --help | Displays help for the CLI tool. |
+
+# Examples deployed with genezio
 
 You can find out more about `genezio` from our [examples repository](https://github.com/Genez-io/genezio-examples).
 
@@ -154,13 +182,15 @@ A detailed list of all the examples is below:
   - [Crons](https://github.com/Genez-io/genezio-examples/tree/master/javascript/cron) - a simple class that has a method that will be called every minute.
 
 - Typescript
+  - [Getting Starting](https://github.com/Genez-io/genezio-examples/tree/master/typescript/getting-started) - an example for brand new users of `genezio`.
   - [Todo List with React and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/typescript/todo-list) - an example of a todo application with users, auth and tasks.
   - [Todo List with Angular and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/typescript/todo-list-angular) - an example of a todo application with users.
+  - [Todo List with Flutter and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/typescript/todo-list-angular) - an example of a todo application with users.
   - [MultiversX](https://github.com/Genez-io/genezio-examples/tree/master/typescript/multiversx) - an example on an integration with the MultiversX blockchain. The application queries the balance of an existing account.
 
 # Official documentation
 
-## How does `genezio` work?
+## How does genezio work?
 
 `genezio` is using JSON RPC 2.0 to facilitate the communication between SDK and your class. Your functions are deployed in the Genezio infrastructure. The functions are not executed on a long lasting Virtual Machine. Instead, our system uses a serverless approach. Whenever a request is received, your code is loaded and executed. This is more cost and energy efficient. However, the developer needs to take into account the following - the values of the global variables are not persistent between runs.
 
