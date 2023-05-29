@@ -3,9 +3,16 @@ export const pythonSdk = `# This is an auto generated code. This code should not
 
 import urllib.request
 import json
+from datetime import datetime
+
+def jsonSerial(obj):
+    if isinstance(obj, datetime):
+        serial = obj.isoformat()
+        return serial
+    return obj.__dict__
 
 def makeRequest(requestContent, url):
-    data = json.dumps(requestContent).encode('utf8')
+    data = json.dumps(requestContent, default=jsonSerial).encode('utf8')
     req = urllib.request.Request(url, data=data,
                                  headers={'content-type': 'application/json'})
     response = urllib.request.urlopen(req)
@@ -32,5 +39,8 @@ class Remote:
         if (response.get('error') != None):
             return response['error']['message']
         else:
-            return response['result']
+            if 'result' in response:
+                return response['result']
+            else:
+                return None
 `;

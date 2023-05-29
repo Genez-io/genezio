@@ -8,6 +8,25 @@ import { parse } from "yaml";
 import { exit } from "process";
 import awsCronParser from "aws-cron-parser";
 import log from "loglevel";
+import { promises as fsPromises } from 'fs';
+
+export async function getAllFilesRecursively(folderPath: string): Promise<string[]> {
+  let files: string[] = [];
+  const items = await fsPromises.readdir(folderPath, { withFileTypes: true });
+
+  for (const item of items) {
+    if (item.isDirectory()) {
+      files = [
+        ...files,
+        ...(await getAllFilesRecursively(path.join(folderPath, item.name))),
+      ];
+    } else {
+      files.push(path.join(folderPath, item.name));
+    }
+  }
+
+  return files;
+}
 
 export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
   // get genezioIgnore file
@@ -22,9 +41,9 @@ export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
 
   return new Promise((resolve, reject) => {
     glob(`./**/*`, {
-        dot: true,
-        ignore: genezioIgnore
-      }, (err, files) => {
+      dot: true,
+      ignore: genezioIgnore
+    }, (err, files) => {
       if (err) {
         reject(err);
       }
@@ -91,6 +110,54 @@ export async function fileExists(filePath: string): Promise<boolean> {
   });
 }
 
+export async function isDirectoryEmpty(directoryPath: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    fs.readdir(directoryPath, (error, files) => {
+      if (error) {
+        resolve(true);
+      }
+
+      resolve(files.length === 0);
+    });
+  });
+}
+
+export async function directoryContainsHtmlFiles(directoryPath: string): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    fs.readdir(directoryPath, (error, files) => {
+      if (error) {
+        reject(error)
+      }
+
+      resolve(files.some((file) => file.endsWith(".html")));
+    });
+  });
+}
+
+export async function getFileSize(filePath: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    fs.stat(filePath, (error, stats) => {
+      if (error) {
+        reject(error);
+      }
+
+      resolve(stats.size);
+    });
+  });
+}
+
+export async function directoryContainsIndexHtmlFiles(directoryPath: string): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    fs.readdir(directoryPath, (error, files) => {
+      if (error) {
+        reject(error)
+      }
+
+      resolve(files.some((file) => file === "index.html"));
+    });
+  });
+}
+
 export async function createTemporaryFolder(name = "foo-"): Promise<string> {
   return new Promise((resolve, reject) => {
     fs.mkdtemp(path.join(os.tmpdir(), name), (error: any, folder: string) => {
@@ -99,6 +166,18 @@ export async function createTemporaryFolder(name = "foo-"): Promise<string> {
       }
 
       resolve(folder);
+    });
+  });
+}
+
+export async function deleteFolder(folderPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    fs.rm(folderPath, { recursive: true , force: true}, (error) => {
+      if (error) {
+        reject(error);
+      }
+
+      resolve();
     });
   });
 }
@@ -158,7 +237,7 @@ export async function validateYamlFile() {
   const configurationFileContentUTF8 = await readUTF8File("./genezio.yaml");
 
   let configurationFileContent = null;
-    
+
   try {
     configurationFileContent = await parse(configurationFileContentUTF8);
   }

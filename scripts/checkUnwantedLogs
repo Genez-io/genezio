@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# Check for console.* statements in the git diff
+if git diff --cached | grep '\bconsole\.' | grep '^[+-]'; then
+  # echo in red
+  echo "\033[31mERROR: Found console.* statements in the git diff. Please remove them before committing.\033[0m"
+  exit 1
+fi
+
+if git diff --cached | grep '\blog\.' | grep '^[+-]'; then
+  echo "\033[33mWARNING: Found log.* statements in the git diff. Please make sure they are wanted before committing. If they are, run commit with --no-verify / -n to skip this check.\033[0m"
+  exit 1
+fi
+
+if git diff --cached | grep '\bdebugLogger\.' | grep '^[+-]'; then
+  echo "\033[33mWARNING: Found debugLogger.* statements in the git diff. Please make sure they are wanted before committing. If they are, run commit with --no-verify / -n to skip this check.\033[0m"
+  exit 1
+fi
+
+
+# If no errors are found, allow the commit to proceed
+exit 0

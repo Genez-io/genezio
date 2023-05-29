@@ -2,7 +2,10 @@ import { AxiosError } from "axios";
 import log from "loglevel";
 import { exit } from "process";
 import { languages } from "../utils/languages";
-import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors";
+import {
+  GENEZIO_NOT_AUTH_ERROR_MSG,
+  GENEZIO_NO_CLASSES_FOUND
+} from "../errors";
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi";
 import { Language } from "../models/yamlProjectConfiguration";
 import getProjectInfo from "../requests/getProjectInfo";
@@ -11,32 +14,30 @@ import { getAuthToken } from "../utils/accounts";
 import { getProjectConfiguration } from "../utils/configuration";
 import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk";
 
-
 export async function generateSdkCommand(options: any) {
-  // check if user is logged in
-  const authToken = await getAuthToken();
-  if (!authToken) {
-    log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-    exit(1);
-  }
-
   const language = options.language;
   const sdkPath = options.path;
 
   if (!language) {
-    log.error(`Please specify a language for the SDK to generate using --language <language>. Please use one of the following: ${languages}.`);
+    log.error(
+      `Please specify a language for the SDK to generate using --language <language>. Please use one of the following: ${languages}.`
+    );
     exit(1);
   }
 
   // check if language is supported using languages array
   if (!languages.includes(language)) {
-    log.error(`The language you specified is not supported. Please use one of the following: ${languages}.`);
+    log.error(
+      `The language you specified is not supported. Please use one of the following: ${languages}.`
+    );
     exit(1);
   }
 
   // check if path is specified
   if (!sdkPath) {
-    log.error("Please specify a path for the SDK to generate using --path <path>.");
+    log.error(
+      "Please specify a path for the SDK to generate using --path <path>."
+    );
     exit(1);
   }
 
@@ -55,21 +56,20 @@ export async function generateSdkCommand(options: any) {
 async function generateSdkHandler(language: string, path: string) {
   const configuration = await getProjectConfiguration();
 
-
   configuration.sdk.language = language as Language;
   configuration.sdk.path = path;
 
   // check if there are classes in the configuration
   if (configuration.classes.length === 0) {
-    throw new Error(
-      "You don't have any class in specified in the genezio.yaml configuration file. Add a class with 'genezio addClass <className> <classType>'."
-    );
+    throw new Error(GENEZIO_NO_CLASSES_FOUND);
   }
 
   // get the sdk from the sdk generator api
-  const sdkResponse = await sdkGeneratorApiHandler(configuration).catch((error) => {
-    throw error;
-  });
+  const sdkResponse = await sdkGeneratorApiHandler(configuration).catch(
+    (error) => {
+      throw error;
+    }
+  );
 
   // get all project classes
   const projects = await listProjects(0).catch((error: any) => {
@@ -99,7 +99,6 @@ async function generateSdkHandler(language: string, path: string) {
 
   const classUrlMap: ClassUrlMap[] = [];
 
-
   // populate a map of class name and cloud url
   completeProjectInfo.classes.forEach((classInfo: any) => {
     classUrlMap.push({
@@ -108,11 +107,13 @@ async function generateSdkHandler(language: string, path: string) {
     });
   });
 
-
-
   // replace the placeholder urls in the sdk with the actual cloud urls
-  await replaceUrlsInSdk(sdkResponse, classUrlMap)
+  await replaceUrlsInSdk(sdkResponse, classUrlMap);
 
   // write the sdk to disk in the specified path
-  await writeSdkToDisk(sdkResponse, configuration.sdk.language, configuration.sdk.path)
+  await writeSdkToDisk(
+    sdkResponse,
+    configuration.sdk.language,
+    configuration.sdk.path
+  );
 }

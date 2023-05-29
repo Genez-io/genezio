@@ -1,9 +1,12 @@
 import log from "loglevel";
 import path from "path";
 import { AstGeneratorOutput, File } from "../models/genezioModels";
+import { AstGeneratorInput } from "../models/genezioModels";
 import JsAstGenerator from "./astGenerator/JsAstGenerator";
 import TsAstGenerator from "./astGenerator/TsAstGenerator";
 import { exit } from "process";
+import DartAstGenerator from "./astGenerator/DartAstGenerator";
+import { debugLogger } from "../utils/logging";
 
 
 /**
@@ -15,10 +18,10 @@ import { exit } from "process";
  * @throws {Error} If there was an error generating the AST.
  */
 export async function generateAst(
-  file: File,
+  input: AstGeneratorInput,
   plugins: string[] | undefined,
 ): Promise<AstGeneratorOutput> {
-  const extension = path.extname(file.path).replace(".", "");
+  const extension = path.extname(input.class.path).replace(".", "");
   let pluginsImported: any = [];
   
 
@@ -33,6 +36,7 @@ export async function generateAst(
 
   pluginsImported.push(JsAstGenerator);
   pluginsImported.push(TsAstGenerator);
+  pluginsImported.push(DartAstGenerator);
 
   const plugin = pluginsImported.find((plugin: any) => {
     return plugin.supportedExtensions.includes(extension);
@@ -44,9 +48,9 @@ export async function generateAst(
 
   const astGeneratorClass = new plugin.AstGenerator();
 
-  return await astGeneratorClass.generateAst({
-    file: file,
-  }).catch((err: any) => {
-    throw {...err, path: file.path};
-  });
+  return await astGeneratorClass.generateAst(input)
+    .catch((err: any) => {
+      debugLogger.log("An error has occured", err);
+      throw Object.assign(err, { path: input.class.path});
+    });
 }

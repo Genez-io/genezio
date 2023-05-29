@@ -7,7 +7,6 @@ import {
   SdkGeneratorInput,
   SdkGeneratorOutput
 } from "../../models/genezioModels";
-import { browserSdkJs } from "../templates/browserSdkJs";
 import { nodeSdkJs } from "../templates/nodeSdkJs";
 import Mustache from "mustache";
 
@@ -35,10 +34,6 @@ class SdkGenerator implements SdkGeneratorInterface {
   async generateSdk(
     sdkGeneratorInput: SdkGeneratorInput
   ): Promise<SdkGeneratorOutput> {
-
-    const options = sdkGeneratorInput.sdk.options;
-    const nodeRuntime = options.runtime;
-
     const generateSdkOutput: SdkGeneratorOutput = {
       files: []
     };
@@ -54,7 +49,7 @@ class SdkGenerator implements SdkGeneratorInterface {
       }
       for (const elem of classInfo.program.body) {
         if (elem.type === AstNodeType.ClassDefinition) {
-          classDefinition = elem;
+          classDefinition = elem as ClassDefinition;
         }
       }
 
@@ -121,8 +116,7 @@ class SdkGenerator implements SdkGeneratorInterface {
     generateSdkOutput.files.push({
       className: "Remote",
       path: "remote.js",
-      data: nodeRuntime === "node" ? nodeSdkJs.replace("%%%url%%%", "undefined")
-      : browserSdkJs.replace("%%%url%%%", "undefined")
+      data: nodeSdkJs.replace("%%%url%%%", "undefined")
     });
 
     return generateSdkOutput;

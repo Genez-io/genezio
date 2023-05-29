@@ -3,6 +3,7 @@ import fs from "fs";
 import webpackNodeExternals from "webpack-node-externals";
 import {
   createTemporaryFolder,
+  deleteFolder,
   getAllFilesFromCurrentPath,
   getFileDetails,
   readUTF8File,
@@ -16,9 +17,8 @@ import {
 } from "../bundler.interface";
 import FileDetails from "../../models/fileDetails";
 import { default as fsExtra } from "fs-extra";
-import { lambdaHandler } from "../../utils/lambdaHander";
+import { lambdaHandler } from "./lambdaHander";
 import log from "loglevel";
-import { exit } from "process";
 import NodePolyfillPlugin from "node-polyfill-webpack-plugin";
 import { bundle } from "../../utils/webpack";
 import { debugLogger } from "../../utils/logging";
@@ -50,6 +50,9 @@ export class NodeJsBundler implements BundlerInterface {
         conditionNames: ["require"]
       }
     );
+
+    // delete the temporary folder
+    await deleteFolder(temporaryFolder);
 
     const dependenciesInfo = dependencies.map((dependency) => {
       const relativePath = dependency.split("node_modules" + path.sep)[1];

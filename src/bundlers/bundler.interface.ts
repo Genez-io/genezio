@@ -1,13 +1,17 @@
 import { NormalModule } from "webpack";
-import { ClassConfiguration } from "../models/projectConfiguration";
+import { ClassConfiguration, ProjectConfiguration } from "../models/projectConfiguration";
+import { Program } from "../models/genezioModels";
 
 /**
  * The input that goes into the bundler.
  */
 export type BundlerInput = {
-    configuration: ClassConfiguration
+    projectConfiguration: ProjectConfiguration,
+    configuration: ClassConfiguration,
     // The path to the source code file that should be bundled.
-    path: string
+    path: string,
+    ast: Program,
+    genezioConfigurationFilePath: string,
     extra?: { [id: string]: any; }
 }
 
@@ -15,9 +19,12 @@ export type BundlerInput = {
  * The output that comes out of the bundler.
  */
 export type BundlerOutput = {
-    configuration: ClassConfiguration
+    projectConfiguration: ProjectConfiguration,
+    configuration: ClassConfiguration,
     // Path to a folder containing the source code bundled.
-    path: string
+    path: string,
+    ast: Program,
+    genezioConfigurationFilePath: string,
     extra?: { [id: string]: any; }
 }
 

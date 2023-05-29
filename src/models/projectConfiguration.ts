@@ -1,5 +1,8 @@
+import { getAstSummary } from "../generateSdk/utils/getAstSummary";
 import { AstSummary } from "./astSummary";
-import { JsRuntime, JsSdkOptions, Language, TriggerType, YamlProjectConfiguration } from "./yamlProjectConfiguration";
+import { CloudProviderIdentifier } from "./cloudProviderIdentifier";
+import { SdkGeneratorResponse } from "./sdkGeneratorResponse";
+import { Language, TriggerType, YamlProjectConfiguration } from "./yamlProjectConfiguration";
 
 export class ParameterType {
     name: string;
@@ -49,13 +52,10 @@ export class ClassConfiguration {
 
 export class SdkConfiguration {
     language: Language;
-    options: JsSdkOptions | any;
     path: string;
 
-    constructor(language: Language, runtime: JsRuntime | null, path: string) {
+    constructor(language: Language, path: string) {
         this.language = language;
-        this.options = {};
-        this.options.runtime = runtime || null;
         this.path = path;
     }
 }
@@ -69,19 +69,26 @@ export class ProjectConfiguration {
     name: string;
     region: string;
     sdk: SdkConfiguration;
-    cloudProvider?: string;
+    cloudProvider: CloudProviderIdentifier;
+    astSummary: AstSummary;
     classes: ClassConfiguration[];
 
     constructor(
         yamlConfiguration: YamlProjectConfiguration,
-        astSummary: AstSummary,
+        sdkGeneratorResponse: SdkGeneratorResponse,
     ) {
         this.name = yamlConfiguration.name;
         this.region = yamlConfiguration.region;
         this.sdk = yamlConfiguration.sdk;
-        this.cloudProvider = yamlConfiguration.cloudProvider || "aws";
+        this.cloudProvider = yamlConfiguration.cloudProvider || CloudProviderIdentifier.GENEZIO;
 
-        this.classes = astSummary.classes.map((c) => {
+        // Generate AST Summary
+        this.astSummary = {
+            version: "1.0.0",
+            classes: getAstSummary(sdkGeneratorResponse.sdkGeneratorInput.classesInfo)
+        };
+
+        this.classes = this.astSummary.classes.map((c) => {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const yamlClass = yamlConfiguration.classes.find((yamlC) => yamlC.path === c.path)!;
             const methods = c?.methods.map((m) => {
@@ -91,6 +98,7 @@ export class ProjectConfiguration {
                     name: m.name,
                     parameters: m.params.map((p) => new ParameterType(p.name, p.type)),
                     cronString: yamlMethod?.cronString,
+                    language: c.language,
                     type: yamlClass?.getMethodType(m.name)
                 }
             })

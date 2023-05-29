@@ -2,8 +2,13 @@ name: Unit Tests
 
 on:
   push:
+    branches:
+      - master
+      - dev
+    paths-ignore:
+      - "**/*.md"
   pull_request:
-    types: [opened, reopened, edited]
+    types: [opened, reopened, synchronize]
 
 jobs:
   build:
@@ -14,4 +19,5 @@ jobs:
         with:
           node-version: 16
       - run: npm ci
+      - run: npm run install-locally
       - run: npm test

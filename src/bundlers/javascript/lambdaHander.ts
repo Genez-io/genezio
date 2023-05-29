@@ -19,9 +19,9 @@ if (!genezioClass) {
 
 const object = new genezioClass();
 
+
 exports.handler =  async function(event, context) {
     if (event.genezioEventType === "cron") {
-
         const method = event.methodName;
 
         if (!object[method]) {
@@ -39,6 +39,13 @@ exports.handler =  async function(event, context) {
         return;
     }
 
+    if (event.requestContext.http.method === "OPTIONS") {
+      const response = {
+        statusCode: 200,
+    };
+      return response;
+    }
+
     let body = event.body
 
     try {
@@ -46,14 +53,16 @@ exports.handler =  async function(event, context) {
     } catch (error) {
     }
 
-    if (event.requestContext.http.path.split("/").length > 2) {
-        const method = event.requestContext.http.path.split("/")[2]
+    const components = event.requestContext.http.path.split("/")
+    if (!body || (body && body["jsonrpc"] !== "2.0")) {
+        const method = components.slice(-1)
         const req = {
             headers: event.headers,
             http: event.requestContext.http,
             queryStringParameters: event.queryStringParameters,
             timeEpoch: event.requestContext.timeEpoch,
             body: event.isBase64Encoded ? Buffer.from(body, "base64") : body,
+            rawBody: event.body,
           }
         if (!object[method]) {
           return { statusCode: 404, headers: { 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Method not found" }) };
@@ -110,6 +119,7 @@ exports.handler =  async function(event, context) {
         const requestId = body.id;
         const errorPromise = new Promise((resolve) => {
           process.on('uncaughtException', function(err) {
+            console.error(err);
             resolve({"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId})
           });
         })
@@ -118,13 +128,15 @@ exports.handler =  async function(event, context) {
           const response = Promise.resolve(object[method](...(body.params || []))).then((result) => {
             return {"jsonrpc": "2.0", "result": result, "error": null, "id": requestId};
           }).catch((err) => {
+            console.error(err);
             return {"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId}
           })
 
           const result = await Promise.race([errorPromise, response])
           process.removeAllListeners("uncaughtException")
-          return result;
+          return result
         } catch (err) {
+          console.error(err);
           return {"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId}
         }
     }

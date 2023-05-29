@@ -1,5 +1,14 @@
 import Mustache from "mustache";
-import { ClassDefinition, AstNodeType, SdkGeneratorInterface, SdkGeneratorInput, SdkGeneratorOutput, NativeType, NativeTypeEnum, TypeAlias, TypeDefinition } from "../../models/genezioModels";
+import {
+  ClassDefinition,
+  AstNodeType,
+  SdkGeneratorInterface,
+  SdkGeneratorInput,
+  SdkGeneratorOutput,
+  Node,
+  ArrayType,
+  PromiseType
+} from "../../models/genezioModels";
 import { TriggerType } from "../../models/yamlProjectConfiguration";
 import { swiftSdk } from "../templates/swiftSdk";
 
@@ -40,7 +49,6 @@ const template = `/**
    
 import Foundation
 
-
 class {{{className}}} {
   public static let remote = Remote(url: "{{{_url}}}")
 
@@ -55,8 +63,6 @@ class {{{className}}} {
 
 
 class SdkGenerator implements SdkGeneratorInterface {
-  externalTypes: TypeDefinition[] = [];
-
   async generateSdk(
     sdkGeneratorInput: SdkGeneratorInput
   ): Promise<SdkGeneratorOutput> {
@@ -76,7 +82,7 @@ class SdkGenerator implements SdkGeneratorInterface {
       }
       for (const elem of classInfo.program.body) {
         if (elem.type === AstNodeType.ClassDefinition) {
-          classDefinition = elem;
+          classDefinition = elem as ClassDefinition;
         }
       }
 
@@ -87,7 +93,8 @@ class SdkGenerator implements SdkGeneratorInterface {
       const view: any = {
         className: classDefinition.name,
         _url: _url,
-        methods: []
+        methods: [],
+        externalTypes: []
       };
 
       let exportClassChecker = false;
@@ -96,7 +103,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         const methodConfigurationType = classConfiguration.getMethodType(methodDefinition.name);
 
         if (methodConfigurationType !== TriggerType.jsonrpc
-            || classConfiguration.type !== TriggerType.jsonrpc
+          || classConfiguration.type !== TriggerType.jsonrpc
         ) {
           continue;
         }
@@ -159,51 +166,27 @@ class SdkGenerator implements SdkGeneratorInterface {
   }
 
 
-  getParamType(elem: TypeDefinition): string {
-    if (elem.type === AstNodeType.NativeType) {
-      const localElem: NativeType = elem as NativeType;
-      switch (localElem.paramType) {
-        case NativeTypeEnum.string:
-          return "String";
-        case NativeTypeEnum.number:
-          return "Double";
-        case NativeTypeEnum.boolean:
-          return "Bool";
-        case NativeTypeEnum.any:
-          return "Any";
-        default:
-          return "Any";
-      }
-    } else if (elem.type === AstNodeType.TypeAlias) {
-      // TODO: create types for all external types
-      const localElem: TypeAlias = elem as TypeAlias;
+  getParamType(elem: Node): string {
+    if (elem.type === AstNodeType.CustomNodeLiteral) {
+      return "Any";
+    } else if (elem.type === AstNodeType.StringLiteral) {
+      return "String";
+    } else if (elem.type === AstNodeType.IntegerLiteral) {
+      return "Int";
+    } else if (elem.type === AstNodeType.DoubleLiteral) {
+      return "Double";
+    } else if (elem.type === AstNodeType.FloatLiteral) {
+      return "Float";
+    } else if (elem.type === AstNodeType.BooleanLiteral) {
+      return "Bool";
+    } else if (elem.type === AstNodeType.AnyLiteral) {
+      return "Any";
+    } else if (elem.type === AstNodeType.ArrayType) {
+      return `[${this.getParamType((elem as ArrayType).generic)}]`;
+    } else if (elem.type === AstNodeType.PromiseType) {
+      return `${this.getParamType((elem as PromiseType).generic)}`;
     }
-
     return "Any";
-  }
-
-
-    // TODO: create types for all external types
-    async generateExternalTypes(type: TypeDefinition) {
-    // check if type is already in externalTypes
-    if (
-      this.externalTypes.find((e: TypeDefinition) => {
-        if (e.type === AstNodeType.TypeAlias) {
-          return (e as TypeAlias).name === (type as TypeAlias).name;
-        }
-        return false;
-      })
-    ) {
-      return;
-    }
-
-    this.externalTypes.push(type);
-
-    const externalType = "";
-    if (type.type === AstNodeType.TypeAlias) {
-      const localType: TypeAlias = type as TypeAlias;
-    }
-
   }
 }
 

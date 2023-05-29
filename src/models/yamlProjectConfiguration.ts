@@ -4,16 +4,12 @@ import { getFileDetails, writeToFile } from "../utils/file";
 import { regions } from "../utils/configs";
 import { isValidCron } from 'cron-validator'
 import log from "loglevel";
+import { CloudProviderIdentifier } from "./cloudProviderIdentifier";
 
 export enum TriggerType {
   jsonrpc = "jsonrpc",
   cron = "cron",
   http = "http"
-}
-
-export enum JsRuntime {
-  browser = "browser",
-  node = "node"
 }
 
 export enum Language {
@@ -24,19 +20,12 @@ export enum Language {
   dart = "dart"
 }
 
-export type JsSdkOptions = {
-  runtime: "node" | "browser";
-};
-
 export class YamlSdkConfiguration {
   language: Language;
-  options: JsSdkOptions | any;
   path: string;
 
-  constructor(language: Language, runtime: JsRuntime | null, path: string) {
+  constructor(language: Language, path: string) {
     this.language = language;
-    this.options = {};
-    this.options.runtime = runtime || null;
     this.path = path;
   }
 }
@@ -86,8 +75,6 @@ export class YamlMethodConfiguration {
     }
 
     // Checkcron string format
-
-
     if (type == TriggerType.cron) {
       if (!isValidCron(methodConfigurationYaml.cronString)) {
         throw new Error("The cron string is not valid. Check https://crontab.guru/ for more information.");
@@ -111,18 +98,21 @@ export class YamlClassConfiguration {
   path: string;
   type: TriggerType;
   language: string;
+  name?: string;
   methods: YamlMethodConfiguration[];
 
   constructor(
     path: string,
     type: TriggerType,
     language: string,
-    methods: YamlMethodConfiguration[]
+    methods: YamlMethodConfiguration[],
+    name?: string,
   ) {
     this.path = path;
     this.type = type;
     this.methods = methods;
     this.language = language;
+    this.name = name;
   }
 
   getMethodType(methodName: string): TriggerType {
@@ -173,7 +163,8 @@ export class YamlClassConfiguration {
       classConfigurationYaml.path,
       triggerType,
       language,
-      methods
+      methods,
+      classConfigurationYaml.name
     );
   }
 }
@@ -220,7 +211,7 @@ export class YamlProjectConfiguration {
   name: string;
   region: string;
   sdk: YamlSdkConfiguration;
-  cloudProvider?: string;
+  cloudProvider?: CloudProviderIdentifier;
   classes: YamlClassConfiguration[];
   frontend?: YamlFrontend;
   scripts?: YamlScriptsConfiguration;
@@ -230,7 +221,7 @@ export class YamlProjectConfiguration {
     name: string,
     region: string,
     sdk: YamlSdkConfiguration,
-    cloudProvider: string,
+    cloudProvider: CloudProviderIdentifier,
     classes: YamlClassConfiguration[],
     frontend: YamlFrontend|undefined = undefined,
     scripts: YamlScriptsConfiguration | undefined = undefined,
@@ -267,10 +258,9 @@ export class YamlProjectConfiguration {
       );
     }
 
-
     const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
     if (!nameRegex.test(configurationFileContent.name)) {
-      throw new Error("The method name is not valid. It must be [a-zA-Z][-a-zA-Z0-9]*");
+      throw new Error("The project name is not valid. It must be [a-zA-Z][-a-zA-Z0-9]*");
     }
 
     if (!configurationFileContent.sdk) {
@@ -293,33 +283,10 @@ export class YamlProjectConfiguration {
       log.info("This sdk.language is not supported by default. It will be treated as a custom language.");
     }
 
-    if (Language[language as keyof typeof Language] == Language.js ||
-        Language[language as keyof typeof Language] == Language.ts) {
-      if (!configurationFileContent.sdk.options) {
-        throw new Error("The sdk.options property is missing from the configuration file.");
-      }
-
-      if (!configurationFileContent.sdk.options.runtime) {
-        throw new Error("The sdk.options.runtime property is missing from the configuration file.");
-      }
-
-      if (!JsRuntime[configurationFileContent.sdk.options.runtime as keyof typeof JsRuntime]) {
-        throw new Error("The sdk.options.runtime property is invalid.");
-      }
-    }
-
-    const jsRuntime: JsRuntime | null = configurationFileContent.sdk.options
-      ? JsRuntime[
-          configurationFileContent.sdk.options
-            .runtime as keyof typeof JsRuntime
-        ]
-      : null;
-
     const sdk = new YamlSdkConfiguration(
       Language[
         configurationFileContent.sdk.language as keyof typeof Language
       ],
-      jsRuntime,
       configurationFileContent.sdk.path
     );
 
@@ -329,6 +296,11 @@ export class YamlProjectConfiguration {
       throw new Error(
         "The configuration file should contain at least one class."
       );
+    }
+
+    // check if unparsedClasses is an array
+    if (!Array.isArray(unparsedClasses)) {
+      throw new Error("The classes property must be an array.");
     }
 
     const classes = await Promise.all(
@@ -397,9 +369,6 @@ export class YamlProjectConfiguration {
       cloudProvider: this.cloudProvider ? this.cloudProvider : undefined,
       sdk: {
         language: this.sdk.language,
-        options: {
-          runtime: this.sdk.options?.runtime
-        },
         path: this.sdk.path
       },
       scripts: this.scripts ? {
@@ -415,6 +384,7 @@ export class YamlProjectConfiguration {
       classes: this.classes.map((c) => ({
         path: c.path,
         type: c.type,
+        name: c.name ? c.name : undefined,
         methods: c.methods.map((m) => ({
           name: m.name,
           type: m.type,
