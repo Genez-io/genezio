@@ -1,6 +1,6 @@
 {
   "name": "genezio",
-  "version": "0.3.12",
+  "version": "0.4.0",
   "description": "Command line utility to interact with Genezio infrastructure.",
   "main": "index.js",
   "scripts": {
