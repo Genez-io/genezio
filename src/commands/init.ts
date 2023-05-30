@@ -62,14 +62,14 @@ export async function initCommand() {
     }
   );
 
-  console.log("");
-  console.log(
+  log.info("");
+  log.info(
     "\x1b[36m%s\x1b[0m",
     "Your genezio project was successfully initialized!"
   );
-  console.log("");
-  console.log(
+  log.info("");
+  log.info(
     "The genezio.yaml configuration file was generated. You can now add the classes that you want to deploy using the 'genezio addClass <className> <classType>' command."
   );
-  console.log("");
+  log.info("");
 }
