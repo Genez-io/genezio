@@ -45,6 +45,8 @@ import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter";
 import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter";
 import { CloudAdapter } from "../cloudAdapter/cloudAdapter";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier";
+import { NodeTsDependenciesBundler } from "../bundlers/typescript/nodeTsDependenciesBundler";
+import { NodeJsDependenciesBundler } from "../bundlers/javascript/nodeJsDependenciesBundler";
 
 
 export async function deployCommand(options: any) {
@@ -210,14 +212,16 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
       switch (element.language) {
         case ".ts": {
           const standardBundler = new NodeTsBundler();
+          const getDependenciesBundler = new NodeTsDependenciesBundler();
           const binaryDepBundler = new NodeTsBinaryDependenciesBundler();
-          bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
+          bundler = new BundlerComposer([standardBundler, getDependenciesBundler, binaryDepBundler]);
           break;
         }
         case ".js": {
           const standardBundler = new NodeJsBundler();
+          const getDependenciesBundler = new NodeJsDependenciesBundler();
           const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
-          bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
+          bundler = new BundlerComposer([standardBundler, getDependenciesBundler, binaryDepBundler]);
           break;
         }
         case ".dart": {
@@ -237,6 +241,7 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
         (classInfo) => classInfo.classConfiguration.path === element.path
       )!.program;
 
+      const tmpFolder = await createTemporaryFolder();
       const output = await bundler.bundle({
         projectConfiguration: projectConfiguration,
         genezioConfigurationFilePath: process.cwd(),
@@ -244,7 +249,8 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
         configuration: element,
         path: element.path,
         extra: {
-          mode: "production"
+          mode: "development",
+          tmpFolder: tmpFolder,
         }
       });
       debugLogger.debug(
@@ -260,7 +266,7 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
       await zipDirectory(output.path, archivePath);
 
       // clean up temporary folder
-      await deleteFolder(output.path);
+      // await deleteFolder(output.path);
 
       return { name: element.name, archivePath: archivePath, filePath: element.path, methods: element.methods };
     });

@@ -25,6 +25,7 @@ export async function deployRequest(
   printAdaptiveLog("Checking your credentials", "end");
 
   const json = JSON.stringify({
+    options: projectConfiguration.options,
     classes: projectConfiguration.classes,
     projectName : projectConfiguration.name,
     region: projectConfiguration.region,

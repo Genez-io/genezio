@@ -212,6 +212,7 @@ export class YamlProjectConfiguration {
   region: string;
   sdk: YamlSdkConfiguration;
   cloudProvider?: CloudProviderIdentifier;
+  options?: any;
   classes: YamlClassConfiguration[];
   frontend?: YamlFrontend;
   scripts?: YamlScriptsConfiguration;
@@ -225,7 +226,8 @@ export class YamlProjectConfiguration {
     classes: YamlClassConfiguration[],
     frontend: YamlFrontend|undefined = undefined,
     scripts: YamlScriptsConfiguration | undefined = undefined,
-    plugins: YamlPluginsConfiguration | undefined = undefined
+    plugins: YamlPluginsConfiguration | undefined = undefined,
+    options: any = undefined
   ) {
     this.name = name;
     this.region = region;
@@ -235,6 +237,7 @@ export class YamlProjectConfiguration {
     this.frontend = frontend;
     this.scripts = scripts;
     this.plugins = plugins;
+    this.options = options;
   }
 
   getClassConfiguration(path: string): YamlClassConfiguration {
@@ -367,6 +370,7 @@ export class YamlProjectConfiguration {
       name: this.name,
       region: this.region,
       cloudProvider: this.cloudProvider ? this.cloudProvider : undefined,
+      options: this.options ? this.options : undefined,
       sdk: {
         language: this.sdk.language,
         path: this.sdk.path
