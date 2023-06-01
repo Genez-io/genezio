@@ -1,6 +1,7 @@
 import { getAstSummary } from "../generateSdk/utils/getAstSummary";
 import { AstSummary } from "./astSummary";
 import { CloudProviderIdentifier } from "./cloudProviderIdentifier";
+import { NodeOptions } from "./nodeRuntime";
 import { SdkGeneratorResponse } from "./sdkGeneratorResponse";
 import { Language, TriggerType, YamlProjectConfiguration } from "./yamlProjectConfiguration";
 
@@ -69,7 +70,7 @@ export class ProjectConfiguration {
     name: string;
     region: string;
     sdk: SdkConfiguration;
-    options?: any;
+    options?: NodeOptions;
     cloudProvider: CloudProviderIdentifier;
     astSummary: AstSummary;
     classes: ClassConfiguration[];

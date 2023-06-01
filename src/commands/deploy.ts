@@ -9,7 +9,7 @@ import { NodeJsBinaryDependenciesBundler } from "../bundlers/javascript/nodeJsBi
 import { NodeJsBundler } from "../bundlers/javascript/nodeJsBundler";
 import { NodeTsBinaryDependenciesBundler } from "../bundlers/typescript/nodeTsBinaryDependenciesBundler";
 import { NodeTsBundler } from "../bundlers/typescript/nodeTsBundler";
-import { REACT_APP_BASE_URL, FRONTEND_DOMAIN } from "../constants";
+import { REACT_APP_BASE_URL } from "../constants";
 import {
   GENEZIO_NOT_AUTH_ERROR_MSG,
   GENEZIO_NO_CLASSES_FOUND
@@ -17,22 +17,16 @@ import {
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi";
 import { ProjectConfiguration } from "../models/projectConfiguration";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
-import { deployRequest } from "../requests/deployCode";
-import { getFrontendPresignedURL } from "../requests/getFrontendPresignedURL";
-import { createFrontendProject } from "../requests/createFrontendProject";
-import { getPresignedURL } from "../requests/getPresignedURL";
-import { uploadContentToS3 } from "../requests/uploadContentToS3";
 import { getAuthToken } from "../utils/accounts";
 import { getProjectConfiguration } from "../utils/configuration";
 import {
   fileExists,
   createTemporaryFolder,
   zipDirectory,
-  zipDirectoryToDestinationPath,
   isDirectoryEmpty,
   directoryContainsIndexHtmlFiles,
   directoryContainsHtmlFiles,
-  deleteFolder
+  deleteFolder,
 } from "../utils/file";
 import { printAdaptiveLog, debugLogger } from "../utils/logging";
 import { runNewProcess } from "../utils/process";
@@ -266,7 +260,7 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
       await zipDirectory(output.path, archivePath);
 
       // clean up temporary folder
-      // await deleteFolder(output.path);
+      await deleteFolder(output.path);
 
       return { name: element.name, archivePath: archivePath, filePath: element.path, methods: element.methods };
     });

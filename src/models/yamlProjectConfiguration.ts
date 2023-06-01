@@ -5,6 +5,7 @@ import { regions } from "../utils/configs";
 import { isValidCron } from 'cron-validator'
 import log from "loglevel";
 import { CloudProviderIdentifier } from "./cloudProviderIdentifier";
+import { NodeOptions } from "./nodeRuntime";
 
 export enum TriggerType {
   jsonrpc = "jsonrpc",
@@ -212,7 +213,7 @@ export class YamlProjectConfiguration {
   region: string;
   sdk: YamlSdkConfiguration;
   cloudProvider?: CloudProviderIdentifier;
-  options?: any;
+  options?: NodeOptions;
   classes: YamlClassConfiguration[];
   frontend?: YamlFrontend;
   scripts?: YamlScriptsConfiguration;
@@ -227,7 +228,7 @@ export class YamlProjectConfiguration {
     frontend: YamlFrontend|undefined = undefined,
     scripts: YamlScriptsConfiguration | undefined = undefined,
     plugins: YamlPluginsConfiguration | undefined = undefined,
-    options: any = undefined
+    options: NodeOptions | undefined = undefined
   ) {
     this.name = name;
     this.region = region;
@@ -264,6 +265,15 @@ export class YamlProjectConfiguration {
     const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
     if (!nameRegex.test(configurationFileContent.name)) {
       throw new Error("The project name is not valid. It must be [a-zA-Z][-a-zA-Z0-9]*");
+    }
+
+    if (configurationFileContent.options && configurationFileContent.options.nodeRuntime && !(
+      configurationFileContent.options.nodeRuntime === "nodejs12.x" ||
+      configurationFileContent.options.nodeRuntime === "nodejs14.x" ||
+      configurationFileContent.options.nodeRuntime === "nodejs16.x" ||
+      configurationFileContent.options.nodeRuntime === "nodejs18.x"
+    )) {
+      throw new Error("The node version in the genezio.yaml configuration file is not valid. The value must be one of the following: nodejs12.x, nodejs14.x, nodejs16.x or nodejs18.x.");
     }
 
     if (!configurationFileContent.sdk) {
@@ -341,7 +351,8 @@ export class YamlProjectConfiguration {
       classes,
       configurationFileContent.frontend,
       scripts,
-      plugins
+      plugins,
+      configurationFileContent.options 
     );
   }
 
