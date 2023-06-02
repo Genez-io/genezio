@@ -46,5 +46,6 @@ export async function generateSdk(
 
   const sdkGeneratorClass = new sdkGeneratorElem.SdkGenerator();
 
+  console.log("GENERATE SDK CLASS", sdkGeneratorClass);
   return await sdkGeneratorClass.generateSdk(sdkGeneratorInput);
 }

@@ -1,11 +1,9 @@
 import { generateAst } from "./astGeneratorHandler";
 import { generateSdk } from "./sdkGeneratorHandler";
-import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration";
-import { getGenerateAstInputs } from "./utils/getFiles";
-import { SdkGeneratorInput, SdkGeneratorOutput } from "../models/genezioModels";
+import { TriggerType, YamlProjectConfiguration } from "../models/yamlProjectConfiguration";
+import { ClassDefinition, Program, SdkGeneratorInput, SdkGeneratorOutput } from "../models/genezioModels";
 import path from "path";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
-import { AstGeneratorInput } from "../models/genezioModels";
 
 
 /**
@@ -17,35 +15,59 @@ import { AstGeneratorInput } from "../models/genezioModels";
  */
 export async function sdkGeneratorApiHandler(projectConfiguration: YamlProjectConfiguration): Promise<SdkGeneratorResponse> {
   const sdkLanguage = projectConfiguration.sdk.language;
-  const inputs: AstGeneratorInput[] = getGenerateAstInputs(projectConfiguration);
+  const languageExtensions: string[] = Array.from(projectConfiguration.classes.map((c) => path.extname(c.path)));
+  // TODO: c.name! not sure if it is okay here.
+  const classNames: string[] = Array.from(projectConfiguration.classes.map((c) => c.name!));
 
-  const sdkGeneratorInput: SdkGeneratorInput = {
-    classesInfo: [],
-    sdk: {
-      language: sdkLanguage as string,
-    }
-  };
+  if (languageExtensions.length === 0) {
+    // TODO: throw error
+  }
+
+  if (languageExtensions.length > 1) {
+    // TODO: no idea what to do here. Maybe throw an error?
+  }
 
   // iterate over each class file
-  for (const input of inputs) {
-    // Generate genezio AST from file
-    const astGeneratorOutput = await generateAst(input, projectConfiguration.plugins?.astGenerator);
+  // for (const input of inputs) {
+  // Generate genezio AST from file
+  const result = await generateAst(process.cwd(), languageExtensions[0], classNames, projectConfiguration.plugins?.astGenerator);
 
-    // prepare input for sdkGenerator
-    sdkGeneratorInput.classesInfo.push({
-      program: astGeneratorOutput.program,
-      classConfiguration: projectConfiguration.getClassConfiguration(input.class.path),
-      fileName: path.basename(input.class.path)
-    });
+  // prepare input for sdkGenerator
+  // sdkGeneratorInput.classesInfo.push({
+  //   program: astGeneratorOutput.program,
+  //   classConfiguration: projectConfiguration.getClassConfiguration(input.class.path),
+  //   fileName: path.basename(input.class.path)
+  // });
+  // }
+  const filteredProgram: Program = {
+    ...result.program,
+    body: result.program.body!.map((node) => {
+      if (node.type === "ClassDefinition" && classNames.includes((node as ClassDefinition).name)) {
+        return {
+          ...node,
+          methods: (node as ClassDefinition).methods.filter((m) => projectConfiguration.getMethodType(path.resolve((node as ClassDefinition).path), m.name) === TriggerType.jsonrpc),
+        }
+      } else {
+        return node;
+      }
+    })
   }
+
+  console.log(JSON.stringify(filteredProgram));
 
   // Generate SDK
   const sdkOutput: SdkGeneratorOutput = await generateSdk(
-    sdkGeneratorInput, projectConfiguration.plugins?.sdkGenerator
+    {
+      program: filteredProgram,
+      sdk: {
+        language: sdkLanguage as string,
+      }
+    },
+    projectConfiguration.plugins?.sdkGenerator
   );
 
   return {
     files: sdkOutput.files,
-    sdkGeneratorInput: sdkGeneratorInput,
+    sdkGeneratorInput: {} as SdkGeneratorInput,
   };
 }

@@ -1,4 +1,4 @@
-import { YamlClassConfiguration } from "./yamlProjectConfiguration";
+import { TriggerType, YamlClassConfiguration } from "./yamlProjectConfiguration";
 
 
 export class File {
@@ -6,8 +6,8 @@ export class File {
   data: string
 
   constructor(path: string, data: string) {
-      this.path = path
-      this.data = data
+    this.path = path
+    this.data = data
   }
 }
 
@@ -68,16 +68,6 @@ export enum MethodKindEnum {
   set = "set"
 }
 
-/**
- * The input that goes into the astGenerator.
- */
-export type AstGeneratorInput = {
-  class: {
-    path: string;
-    data: string;
-    name?: string;
-  };
-};
 
 export type AstGeneratorOutput = {
   program: Program;
@@ -179,12 +169,16 @@ export interface TypeLiteral extends Node {
 
 export interface StructLiteral extends Node {
   type: AstNodeType.StructLiteral;
+  // TODO consider optional
+  path: string;
   name: string;
   typeLiteral: TypeLiteral;
 }
 
 export interface TypeAlias extends Node {
   type: AstNodeType.TypeAlias;
+  // TODO consider optional
+  path: string;
   name: string;
   aliasType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | CustomAstNodeType | DateType | ArrayType | TypeLiteral | UnionType | PromiseType | VoidType | EnumType;
 }
@@ -217,6 +211,8 @@ export interface MethodDefinition extends Node {
 
 export interface ClassDefinition extends Node {
   type: AstNodeType.ClassDefinition;
+  // TODO consider optional
+  path: string;
   name: string;
   methods: MethodDefinition[];
 }
@@ -231,7 +227,7 @@ export type Program = {
  * A class implementing this interface will create the ast for a given language.
  */
 export interface AstGeneratorInterface {
-  generateAst: (input: AstGeneratorInput) => Promise<AstGeneratorOutput>;
+  generateAst: (path: string, classNames: string[]) => Promise<AstGeneratorOutput>;
 }
 
 
@@ -243,7 +239,7 @@ export type SdkGeneratorClassesInfoInput = {
 };
 
 export type SdkGeneratorInput = {
-  classesInfo: SdkGeneratorClassesInfoInput[];
+  program: Program;
   sdk: {
     language: string;
   }

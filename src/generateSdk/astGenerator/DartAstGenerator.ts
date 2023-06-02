@@ -2,7 +2,6 @@ import path from "path";
 import fs from "fs";
 import {
   AstGeneratorInterface,
-  AstGeneratorInput,
   ClassDefinition,
   AstNodeType,
   MethodKindEnum,
@@ -219,7 +218,7 @@ export class AstGenerator implements AstGeneratorInterface {
     await deleteFolder(folder);
   }
 
-  async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
+  async generateAst(path: string, classNames: string[]): Promise<AstGeneratorOutput> {
     // Check if dart is installed.
     await checkIfDartIsInstalled();
 
@@ -242,24 +241,21 @@ export class AstGenerator implements AstGeneratorInterface {
       await this.#compileGenezioDartAstExtractor(genezioAstExtractorPath);
     }
 
-    const classAbsolutePath = path.resolve(input.class.path);
-    const result = await runNewProcessWithResultAndReturnCode(`dartaotruntime ${genezioAstExtractorPath} ${classAbsolutePath}`)
+    const result = await runNewProcessWithResultAndReturnCode(`dartaotruntime ${genezioAstExtractorPath} ${path}`)
     // If the result is not 0, it means that the ast generator failed.
     if (result.code !== 0) {
       throw new Error(`Dart runtime error: ${result.stderr}`);
     }
     const ast = JSON.parse(result.stdout);
+    console.log(ast);
 
-    const mainClasses = ast.classes.filter((c: any) => c.name === input.class.name);
-    if (mainClasses.length == 0) {
-      throw new Error(`No class named ${input.class.name} found. Check in the 'genezio.yaml' file and make sure the path is correct.`);
-    }
-    const classToDeploy = mainClasses[0];
+    const mainClasses = ast.classes.filter((c: any) => classNames.includes(c.name));
 
-    const genezioClass: ClassDefinition = {
+    const genezioClasses: ClassDefinition[] = mainClasses.map((c: any) => ({
       type: AstNodeType.ClassDefinition,
-      name: classToDeploy.name,
-      methods: classToDeploy.methods.map((m: any) => {
+      path: c.declarationPath,
+      name: c.name,
+      methods: c.methods.map((m: any) => {
         return {
           type: AstNodeType.MethodDefinition,
           name: m.name,
@@ -276,15 +272,16 @@ export class AstGenerator implements AstGeneratorInterface {
           kind: MethodKindEnum.method,
         } as MethodDefinition;
       }),
-    }
+    }));
 
-    const body: [Node] = [genezioClass];
+    const body: Node[] = [...genezioClasses];
 
-    const otherClasses = ast.classes.filter((c: any) => c.name !== input.class.name);
+    const otherClasses = ast.classes.filter((c: any) => !classNames.includes(c.name));
     otherClasses.forEach((c: any) => {
       const genezioClass: StructLiteral = {
         type: AstNodeType.StructLiteral,
         name: c.name,
+        path: c.declarationPath,
         typeLiteral: {
           type: AstNodeType.TypeLiteral,
           properties: c.fields.map((p: any) => {
@@ -309,6 +306,6 @@ export class AstGenerator implements AstGeneratorInterface {
   }
 }
 
-const supportedExtensions = ["dart"]
+const supportedExtensions = [".dart"]
 
 export default { supportedExtensions, AstGenerator }

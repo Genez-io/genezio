@@ -130,96 +130,96 @@ class SdkGenerator implements SdkGeneratorInterface {
       files: []
     };
 
-    for (const classInfo of sdkGeneratorInput.classesInfo) {
-      const externalTypes: Node[] = [];
-      const _url = "%%%link_to_be_replace%%%";
-      const classConfiguration = classInfo.classConfiguration;
+    // for (const classInfo of sdkGeneratorInput.classesInfo) {
+    //   const externalTypes: Node[] = [];
+    //   const _url = "%%%link_to_be_replace%%%";
+    //   const classConfiguration = classInfo.classConfiguration;
 
-      let classDefinition: ClassDefinition | undefined = undefined;
+    //   let classDefinition: ClassDefinition | undefined = undefined;
 
-      if (classInfo.program.body === undefined) {
-        continue;
-      }
-      for (const elem of classInfo.program.body) {
-        if (elem.type === AstNodeType.ClassDefinition) {
-          classDefinition = elem as ClassDefinition;
-        } else {
-          externalTypes.push(elem);
-        }
-      }
+    //   if (classInfo.program.body === undefined) {
+    //     continue;
+    //   }
+    //   for (const elem of classInfo.program.body) {
+    //     if (elem.type === AstNodeType.ClassDefinition) {
+    //       classDefinition = elem as ClassDefinition;
+    //     } else {
+    //       externalTypes.push(elem);
+    //     }
+    //   }
 
-      if (classDefinition === undefined) {
-        continue;
-      }
+    //   if (classDefinition === undefined) {
+    //     continue;
+    //   }
 
-      const view: any = {
-        className: classDefinition.name,
-        _url: _url,
-        methods: [],
-        externalTypes: []
-      };
+    //   const view: any = {
+    //     className: classDefinition.name,
+    //     _url: _url,
+    //     methods: [],
+    //     externalTypes: []
+    //   };
 
-      let exportClassChecker = false;
+    //   let exportClassChecker = false;
 
-      for (const methodDefinition of classDefinition.methods) {
-        const methodConfigurationType = classConfiguration.getMethodType(methodDefinition.name);
+    //   for (const methodDefinition of classDefinition.methods) {
+    //     const methodConfigurationType = classConfiguration.getMethodType(methodDefinition.name);
 
-        if (methodConfigurationType !== TriggerType.jsonrpc
-          || classConfiguration.type !== TriggerType.jsonrpc
-        ) {
-          continue;
-        }
+    //     if (methodConfigurationType !== TriggerType.jsonrpc
+    //       || classConfiguration.type !== TriggerType.jsonrpc
+    //     ) {
+    //       continue;
+    //     }
 
-        exportClassChecker = true;
+    //     exportClassChecker = true;
 
-        const methodView: any = {
-          name: methodDefinition.name,
-          parameters: [],
-          returnType: this.getReturnType(methodDefinition.returnType),
-          methodCaller: methodDefinition.params.length === 0 ?
-            `"${classDefinition.name}.${methodDefinition.name}"`
-            : `"${classDefinition.name}.${methodDefinition.name}", `
-        };
+    //     const methodView: any = {
+    //       name: methodDefinition.name,
+    //       parameters: [],
+    //       returnType: this.getReturnType(methodDefinition.returnType),
+    //       methodCaller: methodDefinition.params.length === 0 ?
+    //         `"${classDefinition.name}.${methodDefinition.name}"`
+    //         : `"${classDefinition.name}.${methodDefinition.name}", `
+    //     };
 
-        methodView.parameters = methodDefinition.params.map((e) => {
-          return {
-            name: (TYPESCRIPT_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name) + (e.optional ? "?" : "") + ": " + this.getParamType(e.paramType) + (e.defaultValue ? " = " + (e.defaultValue.type === AstNodeType.StringLiteral ? "'" + e.defaultValue.value + "'" : e.defaultValue.value) : ""),
-            last: false
-          }
-        });
+    //     methodView.parameters = methodDefinition.params.map((e) => {
+    //       return {
+    //         name: (TYPESCRIPT_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name) + (e.optional ? "?" : "") + ": " + this.getParamType(e.paramType) + (e.defaultValue ? " = " + (e.defaultValue.type === AstNodeType.StringLiteral ? "'" + e.defaultValue.value + "'" : e.defaultValue.value) : ""),
+    //         last: false
+    //       }
+    //     });
 
-        methodView.sendParameters = methodDefinition.params.map((e) => {
-          return {
-            name: (TYPESCRIPT_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
-            last: false
-          }
-        });
+    //     methodView.sendParameters = methodDefinition.params.map((e) => {
+    //       return {
+    //         name: (TYPESCRIPT_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
+    //         last: false
+    //       }
+    //     });
 
-        if (methodView.parameters.length > 0) {
-          methodView.parameters[methodView.parameters.length - 1].last = true;
-          methodView.sendParameters[methodView.sendParameters.length - 1].last = true;
-        }
+    //     if (methodView.parameters.length > 0) {
+    //       methodView.parameters[methodView.parameters.length - 1].last = true;
+    //       methodView.sendParameters[methodView.sendParameters.length - 1].last = true;
+    //     }
 
-        view.methods.push(methodView);
-      }
+    //     view.methods.push(methodView);
+    //   }
 
-      for (const externalType of externalTypes) {
-        view.externalTypes.push({type: this.generateExternalType(externalType)});
-      }
+    //   for (const externalType of externalTypes) {
+    //     view.externalTypes.push({type: this.generateExternalType(externalType)});
+    //   }
 
-      if (!exportClassChecker) {
-        continue;
-      }
+    //   if (!exportClassChecker) {
+    //     continue;
+    //   }
 
-      const rawSdkClassName = `${classDefinition.name}.sdk.ts`;
-      const sdkClassName = rawSdkClassName.charAt(0).toLowerCase() + rawSdkClassName.slice(1)
+    //   const rawSdkClassName = `${classDefinition.name}.sdk.ts`;
+    //   const sdkClassName = rawSdkClassName.charAt(0).toLowerCase() + rawSdkClassName.slice(1)
 
-      generateSdkOutput.files.push({
-        path: sdkClassName,
-        data: Mustache.render(template, view),
-        className: classDefinition.name
-      });
-    }
+    //   generateSdkOutput.files.push({
+    //     path: sdkClassName,
+    //     data: Mustache.render(template, view),
+    //     className: classDefinition.name
+    //   });
+    // }
 
     // generate remote.js
     generateSdkOutput.files.push({

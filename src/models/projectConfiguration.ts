@@ -88,7 +88,7 @@ export class ProjectConfiguration {
         // Generate AST Summary
         this.astSummary = {
             version: "1.0.0",
-            classes: getAstSummary(sdkGeneratorResponse.sdkGeneratorInput.classesInfo)
+            classes: [], //TODO: getAstSummary(sdkGeneratorResponse.sdkGeneratorInput.classesInfo)
         };
 
         this.classes = this.astSummary.classes.map((c) => {

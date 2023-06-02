@@ -41,6 +41,7 @@ import { CloudAdapter } from "../cloudAdapter/cloudAdapter";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier";
 import { NodeTsDependenciesBundler } from "../bundlers/typescript/nodeTsDependenciesBundler";
 import { NodeJsDependenciesBundler } from "../bundlers/javascript/nodeJsDependenciesBundler";
+import { Program } from "../models/genezioModels";
 
 
 export async function deployCommand(options: any) {
@@ -231,15 +232,15 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
         `The bundling process has started for file ${element.path}...`
       );
 
-      const ast = sdkResponse.sdkGeneratorInput.classesInfo.find(
-        (classInfo) => classInfo.classConfiguration.path === element.path
-      )!.program;
+      // const ast = sdkResponse.sdkGeneratorInput.classesInfo.find(
+      //   (classInfo) => classInfo.classConfiguration.path === element.path
+      // )!.program;
 
       const tmpFolder = await createTemporaryFolder();
       const output = await bundler.bundle({
         projectConfiguration: projectConfiguration,
         genezioConfigurationFilePath: process.cwd(),
-        ast: ast,
+        ast: {} as Program,
         configuration: element,
         path: element.path,
         extra: {

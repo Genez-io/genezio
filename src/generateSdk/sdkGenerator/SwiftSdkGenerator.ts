@@ -71,89 +71,89 @@ class SdkGenerator implements SdkGeneratorInterface {
       files: []
     };
 
-    for (const classInfo of sdkGeneratorInput.classesInfo) {
-      const _url = "%%%link_to_be_replace%%%";
-      const classConfiguration = classInfo.classConfiguration;
+    // for (const classInfo of sdkGeneratorInput.classesInfo) {
+    //   const _url = "%%%link_to_be_replace%%%";
+    //   const classConfiguration = classInfo.classConfiguration;
 
-      let classDefinition: ClassDefinition | undefined = undefined;
+    //   let classDefinition: ClassDefinition | undefined = undefined;
 
-      if (classInfo.program.body === undefined) {
-        continue;
-      }
-      for (const elem of classInfo.program.body) {
-        if (elem.type === AstNodeType.ClassDefinition) {
-          classDefinition = elem as ClassDefinition;
-        }
-      }
+    //   if (classInfo.program.body === undefined) {
+    //     continue;
+    //   }
+    //   for (const elem of classInfo.program.body) {
+    //     if (elem.type === AstNodeType.ClassDefinition) {
+    //       classDefinition = elem as ClassDefinition;
+    //     }
+    //   }
 
-      if (classDefinition === undefined) {
-        continue;
-      }
+    //   if (classDefinition === undefined) {
+    //     continue;
+    //   }
 
-      const view: any = {
-        className: classDefinition.name,
-        _url: _url,
-        methods: [],
-        externalTypes: []
-      };
+    //   const view: any = {
+    //     className: classDefinition.name,
+    //     _url: _url,
+    //     methods: [],
+    //     externalTypes: []
+    //   };
 
-      let exportClassChecker = false;
+    //   let exportClassChecker = false;
 
-      for (const methodDefinition of classDefinition.methods) {
-        const methodConfigurationType = classConfiguration.getMethodType(methodDefinition.name);
+    //   for (const methodDefinition of classDefinition.methods) {
+    //     const methodConfigurationType = classConfiguration.getMethodType(methodDefinition.name);
 
-        if (methodConfigurationType !== TriggerType.jsonrpc
-          || classConfiguration.type !== TriggerType.jsonrpc
-        ) {
-          continue;
-        }
+    //     if (methodConfigurationType !== TriggerType.jsonrpc
+    //       || classConfiguration.type !== TriggerType.jsonrpc
+    //     ) {
+    //       continue;
+    //     }
 
-        exportClassChecker = true;
+    //     exportClassChecker = true;
 
-        const methodView: any = {
-          name: methodDefinition.name,
-          parameters: [],
-          returnType: this.getParamType(methodDefinition.returnType),
-          methodCaller: methodDefinition.params.length === 0 ?
-            `"${classDefinition.name}.${methodDefinition.name}"`
-            : `"${classDefinition.name}.${methodDefinition.name}", args:`
-        };
+    //     const methodView: any = {
+    //       name: methodDefinition.name,
+    //       parameters: [],
+    //       returnType: this.getParamType(methodDefinition.returnType),
+    //       methodCaller: methodDefinition.params.length === 0 ?
+    //         `"${classDefinition.name}.${methodDefinition.name}"`
+    //         : `"${classDefinition.name}.${methodDefinition.name}", args:`
+    //     };
 
-        methodView.parameters = methodDefinition.params.map((e) => {
-          return {
-            name: (SWIFT_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name) + ": " + this.getParamType(e.paramType),
-            last: false
-          }
-        });
+    //     methodView.parameters = methodDefinition.params.map((e) => {
+    //       return {
+    //         name: (SWIFT_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name) + ": " + this.getParamType(e.paramType),
+    //         last: false
+    //       }
+    //     });
 
-        methodView.sendParameters = methodDefinition.params.map((e) => {
-          return {
-            name: (SWIFT_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
-            last: false
-          }
-        });
+    //     methodView.sendParameters = methodDefinition.params.map((e) => {
+    //       return {
+    //         name: (SWIFT_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
+    //         last: false
+    //       }
+    //     });
 
-        if (methodView.parameters.length > 0) {
-          methodView.parameters[methodView.parameters.length - 1].last = true;
-          methodView.sendParameters[methodView.sendParameters.length - 1].last = true;
-        }
+    //     if (methodView.parameters.length > 0) {
+    //       methodView.parameters[methodView.parameters.length - 1].last = true;
+    //       methodView.sendParameters[methodView.sendParameters.length - 1].last = true;
+    //     }
 
-        view.methods.push(methodView);
-      }
+    //     view.methods.push(methodView);
+    //   }
 
-      if (!exportClassChecker) {
-        continue;
-      }
+    //   if (!exportClassChecker) {
+    //     continue;
+    //   }
 
-      const rawSdkClassName = `${classDefinition.name}.sdk.swift`;
-      const sdkClassName = rawSdkClassName.charAt(0).toLowerCase() + rawSdkClassName.slice(1)
+    //   const rawSdkClassName = `${classDefinition.name}.sdk.swift`;
+    //   const sdkClassName = rawSdkClassName.charAt(0).toLowerCase() + rawSdkClassName.slice(1)
 
-      generateSdkOutput.files.push({
-        path: sdkClassName,
-        data: Mustache.render(template, view),
-        className: classDefinition.name
-      });
-    }
+    //   generateSdkOutput.files.push({
+    //     path: sdkClassName,
+    //     data: Mustache.render(template, view),
+    //     className: classDefinition.name
+    //   });
+    // }
 
     // generate remote.js
     generateSdkOutput.files.push({

@@ -356,9 +356,10 @@ export class YamlProjectConfiguration {
     );
   }
 
-  getMethodType(path: string, methodName: string): TriggerType | undefined {
+  getMethodType(classPath: string, methodName: string): TriggerType | undefined {
     const classElement = this.classes.find((classElement) => {
-      return classElement.path === path;
+      console.log(`compare path ${path} with ${classElement.path}`)
+      return path.resolve(classElement.path) === path.resolve(classPath);
     });
 
     return classElement?.getMethodType(methodName);

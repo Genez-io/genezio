@@ -34,6 +34,7 @@ import { DartBundler } from "../bundlers/dart/localDartBundler";
 import axios, { AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort";
 import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration";
+import { Program } from "../models/genezioModels";
 
 type ClassProcess = {
   process: ChildProcess;
@@ -223,10 +224,10 @@ async function startProcesses(
       throw new Error("Unsupported language ${classConfiguration.language}.");
     }
 
-    const ast = sdk.sdkGeneratorInput.classesInfo.find(
-      (c) =>
-        c.classConfiguration.path === classInfo.path
-    )!.program;
+    // const ast = sdk.sdkGeneratorInput.classesInfo.find(
+    //   (c) =>
+    //     c.classConfiguration.path === classInfo.path
+    // )!.program;
 
     debugLogger.log("Start bundling...");
     // TODO: Is it worth the extra complexity of maintaining the folder?
@@ -234,7 +235,7 @@ async function startProcesses(
       return bundler.bundle({
         projectConfiguration,
         path: classInfo.path,
-        ast: ast,
+        ast: {} as Program,
         genezioConfigurationFilePath: process.cwd(),
         configuration: classInfo,
         extra: { mode: "development", tmpFolder: tmpFolder }

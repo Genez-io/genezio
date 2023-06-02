@@ -11,10 +11,11 @@ import {
     Node,
     MapType,
 } from "../../models/genezioModels";
-import { TriggerType } from "../../models/yamlProjectConfiguration";
+import { TriggerType, YamlClassConfiguration } from "../../models/yamlProjectConfiguration";
 import { dartSdk } from "../templates/dartSdk";
 import { ArrayType } from "../../models/genezioModels";
 import { castArrayRecursivelyInitial, castMapRecursivelyInitial, getParamType } from "../../utils/dartAstCasting";
+import { ClassConfiguration } from "../../models/projectConfiguration";
 
 // https://dart.dev/language/keywords
 const DART_RESERVED_WORDS = [
@@ -86,6 +87,10 @@ const template = `/// This is an auto generated code. This code should not be mo
 
 import 'remote.dart';
 
+{{#imports}}
+import '{{{import}}}';
+{{/imports}}
+
 {{#otherClasses}}
 
 class {{name}} {
@@ -102,6 +107,7 @@ class {{name}} {
 
 {{/otherClasses}}
 
+{{#mainClass}}
 class {{{className}}} {
   static final remote = Remote("{{{_url}}}");
 
@@ -121,120 +127,201 @@ class {{{className}}} {
 
   {{/methods}}
 }
+{{/mainClass}}
 `;
 
+type View = {
+    imports: string[];
+    otherClasses: {
+        name: string;
+        fields: {
+            type: string;
+            fieldName: string;
+        }[];
+        fromJson: string;
+        toJson: string;
+    }[];
+    mainClass?: {
+        className: string;
+        _url: string;
+        methods: {
+            name: string;
+            parameters: {
+                name: string;
+                last: boolean;
+            }[];
+            returnType: string,
+            returnTypeCast?: string;
+            sendParameters: {
+                name: string;
+                last: boolean;
+            }[];
+            methodCaller: string;
+        }[];
+    }
+}
+
 class SdkGenerator implements SdkGeneratorInterface {
+
+    async handleClassDefinition(classDefinition: ClassDefinition): Promise<any> {
+        const _url = "%%%link_to_be_replace%%%";
+        const view: any = {
+            className: classDefinition.name,
+            _url: _url,
+            methods: []
+        };
+
+        for (const methodDefinition of classDefinition.methods) {
+            const methodView: any = {
+                name: methodDefinition.name,
+                parameters: [],
+                methodCaller: methodDefinition.params.length === 0 ?
+                    `"${classDefinition.name}.${methodDefinition.name}"`
+                    : `"${classDefinition.name}.${methodDefinition.name}"`
+            };
+
+            if (methodDefinition.returnType.type === AstNodeType.VoidLiteral) {
+                methodView.returnType = this.getReturnType(methodDefinition.returnType);
+                methodView.returnTypeCast = undefined;
+            } else {
+                methodView.returnTypeCast = this.castReturnTypeToPropertyType(methodDefinition.returnType, "response");
+                methodView.returnType = this.getReturnType(methodDefinition.returnType);
+            }
+
+            methodView.parameters = methodDefinition.params.map((e) => {
+                return {
+                    name: getParamType(e.paramType) + " " + (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
+                    last: false
+                }
+            });
+
+            if (methodView.parameters.length > 0) {
+                methodView.parameters[methodView.parameters.length - 1].last = true;
+            }
+
+            methodView.sendParameters = methodDefinition.params.map((e) => {
+                return {
+                    name: (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
+                    last: false
+                }
+            });
+
+            if (methodView.sendParameters.length > 0) {
+                methodView.sendParameters[methodView.parameters.length - 1].last = true;
+            }
+
+            view.methods.push(methodView);
+        }
+
+        return view;
+    }
+
     async generateSdk(
         sdkGeneratorInput: SdkGeneratorInput
     ): Promise<SdkGeneratorOutput> {
+        console.log("GENERATE SDK!!!");
         const generateSdkOutput: SdkGeneratorOutput = {
             files: []
         };
+        const viewsPerFile: { [id: string]: View } = {}
 
-        for (const classInfo of sdkGeneratorInput.classesInfo) {
-            const _url = "%%%link_to_be_replace%%%";
-            const classConfiguration = classInfo.classConfiguration;
-
-            let classDefinition: ClassDefinition | undefined = undefined;
-
-            if (classInfo.program.body === undefined) {
-                continue;
-            }
-
-            const view: any = {
-                otherClasses: [],
-                className: undefined,
-                _url: _url,
-                methods: []
-            };
-
-            let exportClassChecker = false;
-
-            for (const elem of classInfo.program.body) {
-                if (elem.type === AstNodeType.ClassDefinition) {
-                    classDefinition = elem as ClassDefinition;
-                    view.className = classDefinition.name;
-                    for (const methodDefinition of classDefinition.methods) {
-                        const methodConfigurationType = classConfiguration.getMethodType(methodDefinition.name);
-
-                        if (methodConfigurationType !== TriggerType.jsonrpc
-                            || classConfiguration.type !== TriggerType.jsonrpc
-                        ) {
-                            continue;
+        for (const node of sdkGeneratorInput.program.body!) {
+            switch (node.type) {
+                case AstNodeType.ClassDefinition:
+                    const view = await this.handleClassDefinition(node as ClassDefinition);
+                    if (!viewsPerFile[(node as ClassDefinition).path]) {
+                        viewsPerFile[(node as ClassDefinition).path] = {
+                            mainClass: view,
+                            imports: [],
+                            otherClasses: []
                         }
-
-                        exportClassChecker = true;
-
-                        const methodView: any = {
-                            name: methodDefinition.name,
-                            parameters: [],
-                            methodCaller: methodDefinition.params.length === 0 ?
-                                `"${classDefinition.name}.${methodDefinition.name}"`
-                                : `"${classDefinition.name}.${methodDefinition.name}"`
-                        };
-
-                        if (methodDefinition.returnType.type === AstNodeType.VoidLiteral) {
-                            methodView.returnType = this.getReturnType(methodDefinition.returnType);
-                            methodView.returnTypeCast = undefined;
-                        } else {
-                            methodView.returnTypeCast = this.castReturnTypeToPropertyType(methodDefinition.returnType, "response");
-                            methodView.returnType = this.getReturnType(methodDefinition.returnType);
-                        }
-
-                        methodView.parameters = methodDefinition.params.map((e) => {
-                            return {
-                                name: getParamType(e.paramType) + " " + (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
-                                last: false
-                            }
-                        });
-
-                        if (methodView.parameters.length > 0) {
-                            methodView.parameters[methodView.parameters.length - 1].last = true;
-                        }
-
-                        methodView.sendParameters = methodDefinition.params.map((e) => {
-                            return {
-                                name: (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
-                                last: false
-                            }
-                        });
-
-                        if (methodView.sendParameters.length > 0) {
-                            methodView.sendParameters[methodView.parameters.length - 1].last = true;
-                        }
-
-                        view.methods.push(methodView);
+                    } else {
+                        viewsPerFile[(node as ClassDefinition).path].mainClass = view;
                     }
-                } else if (elem.type === AstNodeType.StructLiteral) {
-                    const structLiteral = elem as StructLiteral;
+                    break;
+                case AstNodeType.StructLiteral:
+                    const structLiteral = node as StructLiteral;
                     const fromJson = this.generateFromJsonImplementationForClass(structLiteral);
                     const toJson = this.generateToJsonImplementationForClass(structLiteral);
-                    view.otherClasses.push({
-                        name: structLiteral.name,
-                        fields: structLiteral.typeLiteral.properties.map((e) => ({ type: getParamType(e.type), fieldName: e.name })),
-                        fromJson: fromJson,
-                        toJson: toJson
-                    });
-                }
+                    if (!viewsPerFile[structLiteral.path]) {
+                        viewsPerFile[structLiteral.path] = {
+                            mainClass: undefined,
+                            imports: [],
+                            otherClasses: [{
+                                name: structLiteral.name,
+                                fields: structLiteral.typeLiteral.properties.map((e) => ({ type: getParamType(e.type), fieldName: e.name })),
+                                fromJson: fromJson,
+                                toJson: toJson
+                            }]
+                        }
+                    } else {
+                        viewsPerFile[structLiteral.path].otherClasses.push({
+                            name: structLiteral.name,
+                            fields: structLiteral.typeLiteral.properties.map((e) => ({ type: getParamType(e.type), fieldName: e.name })),
+                            fromJson: fromJson,
+                            toJson: toJson
+                        });
+                    }
+                    
+                    break;
             }
+        }
 
-            if (classDefinition === undefined) {
-                continue;
-            }
+        console.log(JSON.stringify(viewsPerFile));
 
-            if (!exportClassChecker) {
-                continue;
-            }
-
-            const rawSdkClassName = `${classDefinition.name}.dart`
-            const sdkClassName = rawSdkClassName.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`).slice(1);
-
+        for (const [path, view] of Object.entries(viewsPerFile)) {
+            const data = Mustache.render(template, view)
             generateSdkOutput.files.push({
-                path: sdkClassName,
-                data: Mustache.render(template, view),
-                className: classDefinition.name
+                className: "TODO", // TODO not sure what is className here.
+                path: path,
+                data: data
             });
         }
+
+        // for (const classInfo of sdkGeneratorInput.classesInfo) {
+        //     const _url = "%%%link_to_be_replace%%%";
+        //     const classConfiguration = classInfo.classConfiguration;
+
+        //     let classDefinition: ClassDefinition | undefined = undefined;
+
+        //     if (classInfo.program.body === undefined) {
+        //         continue;
+        //     }
+
+        //     const view: any = {
+        //         otherClasses: [],
+        //         className: undefined,
+        //         _url: _url,
+        //         methods: []
+        //     };
+
+        //     let exportClassChecker = false;
+
+        //     for (const elem of classInfo.program.body) {
+        //         if (elem.type === AstNodeType.ClassDefinition) {
+
+        //         } else if (elem.type === AstNodeType.StructLiteral) {
+
+        //         }
+        //     }
+
+        //     if (classDefinition === undefined) {
+        //         continue;
+        //     }
+
+        //     if (!exportClassChecker) {
+        //         continue;
+        //     }
+
+        //     const rawSdkClassName = `${classDefinition.name}.dart`
+        //     const sdkClassName = rawSdkClassName.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`).slice(1);
+
+        //     generateSdkOutput.files.push({
+        //         path: sdkClassName,
+        //         data: Mustache.render(template, view),
+        //         className: classDefinition.name
+        //     });
+        // }
 
         // generate remote.js
         generateSdkOutput.files.push({

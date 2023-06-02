@@ -1,9 +1,8 @@
 import log from "loglevel";
 import path from "path";
 import { AstGeneratorOutput, File } from "../models/genezioModels";
-import { AstGeneratorInput } from "../models/genezioModels";
-import JsAstGenerator from "./astGenerator/JsAstGenerator";
-import TsAstGenerator from "./astGenerator/TsAstGenerator";
+// import JsAstGenerator from "./astGenerator/JsAstGenerator";
+// import TsAstGenerator from "./astGenerator/TsAstGenerator";
 import { exit } from "process";
 import DartAstGenerator from "./astGenerator/DartAstGenerator";
 import { debugLogger } from "../utils/logging";
@@ -18,10 +17,11 @@ import { debugLogger } from "../utils/logging";
  * @throws {Error} If there was an error generating the AST.
  */
 export async function generateAst(
-  input: AstGeneratorInput,
+  path: string,
+  language: string,
+  classNames: string[],
   plugins: string[] | undefined,
 ): Promise<AstGeneratorOutput> {
-  const extension = path.extname(input.class.path).replace(".", "");
   let pluginsImported: any = [];
   
 
@@ -34,23 +34,25 @@ export async function generateAst(
     });
   }
 
-  pluginsImported.push(JsAstGenerator);
-  pluginsImported.push(TsAstGenerator);
+  // pluginsImported.push(JsAstGenerator);
+  // pluginsImported.push(TsAstGenerator);
   pluginsImported.push(DartAstGenerator);
 
   const plugin = pluginsImported.find((plugin: any) => {
-    return plugin.supportedExtensions.includes(extension);
+    return plugin.supportedExtensions.includes(language);
   });
 
   if (!plugin) {
-    throw new Error(`Class language(${extension}) not supported`);
+    throw new Error(`Class language(${language}) not supported`);
   }
 
   const astGeneratorClass = new plugin.AstGenerator();
 
-  return await astGeneratorClass.generateAst(input)
+  return await astGeneratorClass.generateAst(path, classNames)
     .catch((err: any) => {
       debugLogger.log("An error has occured", err);
-      throw Object.assign(err, { path: input.class.path});
+
+      // TODO: figure out how to better handle this
+      // throw Object.assign(err, { path: input.class.path});
     });
 }

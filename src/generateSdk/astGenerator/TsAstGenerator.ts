@@ -1,258 +1,260 @@
-import { SyntaxKind } from "typescript";
-import {
-  AstGeneratorInterface,
-  AstGeneratorInput,
-  SourceType,
-  AstGeneratorOutput,
-  AnyType,
-  AstNodeType,
-  DoubleType,
-  IntegerType,
-  StringType,
-  BooleanType,
-  FloatType,
-  ArrayType,
-  ClassDefinition,
-  MethodKindEnum,
-  MethodDefinition,
-  CustomAstNodeType,
-  ParameterDefinition,
-  Enum,
-  Node,
-  StructLiteral,
-  TypeAlias,
-  PropertyDefinition,
-  TypeLiteral,
-  UnionType,
-  PromiseType,
-  VoidType,
-  EnumType,
-  DateType,
-} from "../../models/genezioModels";
+// import { SyntaxKind } from "typescript";
+// import {
+//   AstGeneratorInterface,
+//   SourceType,
+//   AstGeneratorOutput,
+//   AnyType,
+//   AstNodeType,
+//   DoubleType,
+//   IntegerType,
+//   StringType,
+//   BooleanType,
+//   FloatType,
+//   ArrayType,
+//   ClassDefinition,
+//   MethodKindEnum,
+//   MethodDefinition,
+//   CustomAstNodeType,
+//   ParameterDefinition,
+//   Enum,
+//   Node,
+//   StructLiteral,
+//   TypeAlias,
+//   PropertyDefinition,
+//   TypeLiteral,
+//   UnionType,
+//   PromiseType,
+//   VoidType,
+//   EnumType,
+//   DateType,
+// } from "../../models/genezioModels";
 
-import typescript from "typescript";
+// import typescript from "typescript";
 
-export class AstGenerator implements AstGeneratorInterface {
-  rootNode?: typescript.SourceFile;
+// export class AstGenerator implements AstGeneratorInterface {
+//   rootNode?: typescript.SourceFile;
 
-  mapTypesToParamType(type: typescript.Node): DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | DateType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType | VoidType | EnumType {
-    switch (type.kind) {
-      case typescript.SyntaxKind.StringKeyword:
-        return { type: AstNodeType.StringLiteral };
-      case typescript.SyntaxKind.NumberKeyword:
-        return { type: AstNodeType.DoubleLiteral };
-      case typescript.SyntaxKind.BooleanKeyword:
-        return { type: AstNodeType.BooleanLiteral };
-      //case arrays
-      case typescript.SyntaxKind.ArrayType:
-        return { type: AstNodeType.ArrayType, generic: this.mapTypesToParamType((type as any).elementType) };
-      case typescript.SyntaxKind.AnyKeyword:
-        return { type: AstNodeType.AnyLiteral };
-      case typescript.SyntaxKind.VoidKeyword:
-        return { type: AstNodeType.VoidLiteral };
-      case typescript.SyntaxKind.TypeReference: {
-        const escapedText: string = (type as any).typeName.escapedText;
+//   mapTypesToParamType(type: typescript.Node): DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | DateType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType | VoidType | EnumType {
+//     switch (type.kind) {
+//       case typescript.SyntaxKind.StringKeyword:
+//         return { type: AstNodeType.StringLiteral };
+//       case typescript.SyntaxKind.NumberKeyword:
+//         return { type: AstNodeType.DoubleLiteral };
+//       case typescript.SyntaxKind.BooleanKeyword:
+//         return { type: AstNodeType.BooleanLiteral };
+//       //case arrays
+//       case typescript.SyntaxKind.ArrayType:
+//         return { type: AstNodeType.ArrayType, generic: this.mapTypesToParamType((type as any).elementType) };
+//       case typescript.SyntaxKind.AnyKeyword:
+//         return { type: AstNodeType.AnyLiteral };
+//       case typescript.SyntaxKind.VoidKeyword:
+//         return { type: AstNodeType.VoidLiteral };
+//       case typescript.SyntaxKind.TypeReference: {
+//         const escapedText: string = (type as any).typeName.escapedText;
 
-        if (escapedText === "Promise") {
-          return { type: AstNodeType.PromiseType, generic: this.mapTypesToParamType((type as any).typeArguments[0]) };
-        } else if (escapedText === "Array") {
-          return { type: AstNodeType.ArrayType, generic: this.mapTypesToParamType((type as any).typeArguments[0]) };
-        } else if (escapedText === "Date") {
-          return { type: AstNodeType.DateType };
-        } else {
-          const declaration = this.#findDeclarationOfType(escapedText)
-          if (declaration?.kind === typescript.SyntaxKind.EnumDeclaration) {
-            return { type: AstNodeType.Enum, name: escapedText };
-          }
-        }
-        return { type: AstNodeType.CustomNodeLiteral, rawValue: (type as any).typeName.escapedText };
-      }
-      case typescript.SyntaxKind.TypeLiteral: {
-        const properties: PropertyDefinition[] = [];
-        for (const member of (type as any).members) {
-          if (member.type) {
-            const property: PropertyDefinition = {
-              name: member.name.escapedText,
-              optional: member.questionToken ? true : false,
-              type: this.mapTypesToParamType(member.type)
-            };
-            properties.push(property);
-          }
-        }
-        return { type: AstNodeType.TypeLiteral, properties: properties };
-      }
-      case typescript.SyntaxKind.UnionType: {
-        const params: Node[] = [];
-        for (const typeNode of (type as any).types) {
-          params.push(this.mapTypesToParamType(typeNode));
-        }
-        return { type: AstNodeType.UnionType, params: params };
-      }
-      default:
-        return { type: AstNodeType.AnyLiteral };
-    }
-  }
+//         if (escapedText === "Promise") {
+//           return { type: AstNodeType.PromiseType, generic: this.mapTypesToParamType((type as any).typeArguments[0]) };
+//         } else if (escapedText === "Array") {
+//           return { type: AstNodeType.ArrayType, generic: this.mapTypesToParamType((type as any).typeArguments[0]) };
+//         } else if (escapedText === "Date") {
+//           return { type: AstNodeType.DateType };
+//         } else {
+//           const declaration = this.#findDeclarationOfType(escapedText)
+//           if (declaration?.kind === typescript.SyntaxKind.EnumDeclaration) {
+//             return { type: AstNodeType.Enum, name: escapedText };
+//           }
+//         }
+//         return { type: AstNodeType.CustomNodeLiteral, rawValue: (type as any).typeName.escapedText };
+//       }
+//       case typescript.SyntaxKind.TypeLiteral: {
+//         const properties: PropertyDefinition[] = [];
+//         for (const member of (type as any).members) {
+//           if (member.type) {
+//             const property: PropertyDefinition = {
+//               name: member.name.escapedText,
+//               optional: member.questionToken ? true : false,
+//               type: this.mapTypesToParamType(member.type)
+//             };
+//             properties.push(property);
+//           }
+//         }
+//         return { type: AstNodeType.TypeLiteral, properties: properties };
+//       }
+//       case typescript.SyntaxKind.UnionType: {
+//         const params: Node[] = [];
+//         for (const typeNode of (type as any).types) {
+//           params.push(this.mapTypesToParamType(typeNode));
+//         }
+//         return { type: AstNodeType.UnionType, params: params };
+//       }
+//       default:
+//         return { type: AstNodeType.AnyLiteral };
+//     }
+//   }
 
-  parseClassDeclaration(classDeclaration: typescript.Node): ClassDefinition | undefined {
-    const copy: any = { ...classDeclaration };
-    if (copy.modifiers) {
-      for (const modifier of copy.modifiers) {
-        if (modifier.kind === typescript.SyntaxKind.ExportKeyword) {
-          const methods: MethodDefinition[] = [];
-          for (const member of copy.members) {
-            if (typescript.isMethodDeclaration(member)) {
-              const memberCopy: any = { ...member };
-              const method = this.parseMethodSignature(memberCopy);
-              if (method) {
-                methods.push(method);
-              }
-            }
-          }
-          return {
-            type: AstNodeType.ClassDefinition,
-            name: copy.name.escapedText,
-            methods: methods
-          }
-        }
-      }
-    }
-    return undefined;
-  }
+//   parseClassDeclaration(classDeclaration: typescript.Node): ClassDefinition | undefined {
+//     const copy: any = { ...classDeclaration };
+//     if (copy.modifiers) {
+//       for (const modifier of copy.modifiers) {
+//         if (modifier.kind === typescript.SyntaxKind.ExportKeyword) {
+//           const methods: MethodDefinition[] = [];
+//           for (const member of copy.members) {
+//             if (typescript.isMethodDeclaration(member)) {
+//               const memberCopy: any = { ...member };
+//               const method = this.parseMethodSignature(memberCopy);
+//               if (method) {
+//                 methods.push(method);
+//               }
+//             }
+//           }
+//           return {
+//             type: AstNodeType.ClassDefinition,
+//             path: "",
+//             name: copy.name.escapedText,
+//             methods: methods
+//           }
+//         }
+//       }
+//     }
+//     return undefined;
+//   }
 
-  parseMethodSignature(methodSignature: typescript.Node): MethodDefinition | undefined {
-    const parameters: ParameterDefinition[] = [];
-    const methodSignatureCopy: any = { ...methodSignature };
-    if (methodSignatureCopy.name.kind === typescript.SyntaxKind.PrivateIdentifier) {
-      return undefined;
-    }
-    if (methodSignatureCopy.parameters) {
-      for (const parameter of methodSignatureCopy.parameters) {
-        if (parameter.type) {
-          const param: ParameterDefinition = {
-            type: AstNodeType.ParameterDefinition,
-            name: parameter.name.escapedText,
-            rawType: "",
-            paramType: this.mapTypesToParamType(parameter.type),
-            optional: parameter.questionToken ? true : false,
-            defaultValue: parameter.initializer ? {value: parameter.initializer.text, type: parameter.initializer.kind === 10 ? AstNodeType.StringLiteral : AstNodeType.DoubleLiteral} : undefined
-          }
-          parameters.push(param);
-        }
-      }
-    }
-    return {
-      type: AstNodeType.MethodDefinition,
-      name: methodSignatureCopy.name.escapedText,
-      params: parameters,
-      returnType: methodSignatureCopy.type ? this.mapTypesToParamType(methodSignatureCopy.type) : { type: AstNodeType.VoidLiteral },
-      static: false,
-      kind: MethodKindEnum.method
-    }
-  }
+//   parseMethodSignature(methodSignature: typescript.Node): MethodDefinition | undefined {
+//     const parameters: ParameterDefinition[] = [];
+//     const methodSignatureCopy: any = { ...methodSignature };
+//     if (methodSignatureCopy.name.kind === typescript.SyntaxKind.PrivateIdentifier) {
+//       return undefined;
+//     }
+//     if (methodSignatureCopy.parameters) {
+//       for (const parameter of methodSignatureCopy.parameters) {
+//         if (parameter.type) {
+//           const param: ParameterDefinition = {
+//             type: AstNodeType.ParameterDefinition,
+//             name: parameter.name.escapedText,
+//             rawType: "",
+//             paramType: this.mapTypesToParamType(parameter.type),
+//             optional: parameter.questionToken ? true : false,
+//             defaultValue: parameter.initializer ? {value: parameter.initializer.text, type: parameter.initializer.kind === 10 ? AstNodeType.StringLiteral : AstNodeType.DoubleLiteral} : undefined
+//           }
+//           parameters.push(param);
+//         }
+//       }
+//     }
+//     return {
+//       type: AstNodeType.MethodDefinition,
+//       name: methodSignatureCopy.name.escapedText,
+//       params: parameters,
+//       returnType: methodSignatureCopy.type ? this.mapTypesToParamType(methodSignatureCopy.type) : { type: AstNodeType.VoidLiteral },
+//       static: false,
+//       kind: MethodKindEnum.method
+//     }
+//   }
 
-  parseEnumDeclaration(enumDeclaration: typescript.Node): Enum {
-    const enumDeclarationCopy: any = { ...enumDeclaration };
-    return {
-      type: AstNodeType.Enum,
-      name: enumDeclarationCopy.name.escapedText,
-      cases: enumDeclarationCopy.members.map((member: any, index: number) => {
-        if (!member.initializer) {
-          return { name: member.name.escapedText, value: index, type: AstNodeType.DoubleLiteral }
-        }
+//   parseEnumDeclaration(enumDeclaration: typescript.Node): Enum {
+//     const enumDeclarationCopy: any = { ...enumDeclaration };
+//     return {
+//       type: AstNodeType.Enum,
+//       name: enumDeclarationCopy.name.escapedText,
+//       cases: enumDeclarationCopy.members.map((member: any, index: number) => {
+//         if (!member.initializer) {
+//           return { name: member.name.escapedText, value: index, type: AstNodeType.DoubleLiteral }
+//         }
 
-        switch (member.initializer.kind) {
-          case typescript.SyntaxKind.NumericLiteral:
-            return { name: member.name.escapedText, value: member.initializer.text, type: AstNodeType.DoubleLiteral }
-          case typescript.SyntaxKind.StringLiteral:
-            return { name: member.name.escapedText, value: member.initializer.text, type: AstNodeType.StringLiteral }
-          default:
-            throw new Error("Unsupported enum value type")
-        }
-      })
-    }
-  }
+//         switch (member.initializer.kind) {
+//           case typescript.SyntaxKind.NumericLiteral:
+//             return { name: member.name.escapedText, value: member.initializer.text, type: AstNodeType.DoubleLiteral }
+//           case typescript.SyntaxKind.StringLiteral:
+//             return { name: member.name.escapedText, value: member.initializer.text, type: AstNodeType.StringLiteral }
+//           default:
+//             throw new Error("Unsupported enum value type")
+//         }
+//       })
+//     }
+//   }
 
-  parseTypeAliasDeclaration(typeAliasDeclaration: typescript.Node): StructLiteral | TypeAlias {
-    const typeAliasDeclarationCopy: any = { ...typeAliasDeclaration };
-    if (typeAliasDeclarationCopy.type.kind === typescript.SyntaxKind.TypeLiteral) {
-      const structLiteral: StructLiteral = {
-        type: AstNodeType.StructLiteral,
-        name: typeAliasDeclarationCopy.name.escapedText,
-        typeLiteral: {
-          type: AstNodeType.TypeLiteral,
-          properties: []
-        }
-      }
-      for (const member of typeAliasDeclarationCopy.type.members) {
-        if (member.type) {
-          const field: PropertyDefinition = {
-            name: member.name.escapedText,
-            optional: member.questionToken ? true : false,
-            type: this.mapTypesToParamType(member.type),
-          }
-          structLiteral.typeLiteral.properties.push(field);
-        }
-      }
-      return structLiteral;
-    } else {
-      return {
-        type: AstNodeType.TypeAlias,
-        name: typeAliasDeclarationCopy.name.escapedText,
-        aliasType: this.mapTypesToParamType(typeAliasDeclarationCopy.type)
-      }
-    }
-  }
+//   parseTypeAliasDeclaration(typeAliasDeclaration: typescript.Node): StructLiteral | TypeAlias {
+//     const typeAliasDeclarationCopy: any = { ...typeAliasDeclaration };
+//     if (typeAliasDeclarationCopy.type.kind === typescript.SyntaxKind.TypeLiteral) {
+//       const structLiteral: StructLiteral = {
+//         type: AstNodeType.StructLiteral,
+//         path: "",
+//         name: typeAliasDeclarationCopy.name.escapedText,
+//         typeLiteral: {
+//           type: AstNodeType.TypeLiteral,
+//           properties: []
+//         }
+//       }
+//       for (const member of typeAliasDeclarationCopy.type.members) {
+//         if (member.type) {
+//           const field: PropertyDefinition = {
+//             name: member.name.escapedText,
+//             optional: member.questionToken ? true : false,
+//             type: this.mapTypesToParamType(member.type),
+//           }
+//           structLiteral.typeLiteral.properties.push(field);
+//         }
+//       }
+//       return structLiteral;
+//     } else {
+//       return {
+//         type: AstNodeType.TypeAlias,
+//         path: "",
+//         name: typeAliasDeclarationCopy.name.escapedText,
+//         aliasType: this.mapTypesToParamType(typeAliasDeclarationCopy.type)
+//       }
+//     }
+//   }
 
-  async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
-    const fileData = input.class.data;
+//   async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
+//     const fileData = input.class.data;
 
-    this.rootNode = typescript.createSourceFile('test.ts', fileData.toString(), typescript.ScriptTarget.ES2015, true, typescript.ScriptKind.TS);
-    let classDefinition: ClassDefinition | undefined = undefined;
-    const declarations: Node[] = [];
-    this.rootNode.forEachChild((child) => {
-      if (typescript.isEnumDeclaration(child)) {
-        const enumDeclaration = this.parseEnumDeclaration(child);
-        declarations.push(enumDeclaration);
-      } else if (typescript.isClassDeclaration(child)) {
-        const classDeclaration = this.parseClassDeclaration(child);
-        if (classDeclaration && !classDefinition) {
-          classDefinition = classDeclaration;
-        }
-      } else if (typescript.isTypeAliasDeclaration(child)) {
-        const typeAliasDeclaration = this.parseTypeAliasDeclaration(child);
-        declarations.push(typeAliasDeclaration);
-      }
-    });
+//     this.rootNode = typescript.createSourceFile('test.ts', fileData.toString(), typescript.ScriptTarget.ES2015, true, typescript.ScriptKind.TS);
+//     let classDefinition: ClassDefinition | undefined = undefined;
+//     const declarations: Node[] = [];
+//     this.rootNode.forEachChild((child) => {
+//       if (typescript.isEnumDeclaration(child)) {
+//         const enumDeclaration = this.parseEnumDeclaration(child);
+//         declarations.push(enumDeclaration);
+//       } else if (typescript.isClassDeclaration(child)) {
+//         const classDeclaration = this.parseClassDeclaration(child);
+//         if (classDeclaration && !classDefinition) {
+//           classDefinition = classDeclaration;
+//         }
+//       } else if (typescript.isTypeAliasDeclaration(child)) {
+//         const typeAliasDeclaration = this.parseTypeAliasDeclaration(child);
+//         declarations.push(typeAliasDeclaration);
+//       }
+//     });
 
-    if (!classDefinition) {
-      throw new Error("No exported class found in file.");
-    }
+//     if (!classDefinition) {
+//       throw new Error("No exported class found in file.");
+//     }
 
-    return {
-      program: {
-        originalLanguage: "typescript",
-        sourceType: SourceType.module,
-        body: [classDefinition, ...declarations],
-      }
-    }
-  }
+//     return {
+//       program: {
+//         originalLanguage: "typescript",
+//         sourceType: SourceType.module,
+//         body: [classDefinition, ...declarations],
+//       }
+//     }
+//   }
 
-  #findDeclarationOfType(name: string): typescript.Node | undefined {
-    let found = undefined;
-    this.rootNode?.forEachChild((child) => {
-      if (typescript.isEnumDeclaration(child) && child.name.escapedText === name) {
-        found = child;
-      } else if (typescript.isClassDeclaration(child) && child.name?.escapedText === name) {
-        found = child;
-      } else if (typescript.isTypeAliasDeclaration(child) && child.name.escapedText === name) {
-        found = child;
-      }
-    });
+//   #findDeclarationOfType(name: string): typescript.Node | undefined {
+//     let found = undefined;
+//     this.rootNode?.forEachChild((child) => {
+//       if (typescript.isEnumDeclaration(child) && child.name.escapedText === name) {
+//         found = child;
+//       } else if (typescript.isClassDeclaration(child) && child.name?.escapedText === name) {
+//         found = child;
+//       } else if (typescript.isTypeAliasDeclaration(child) && child.name.escapedText === name) {
+//         found = child;
+//       }
+//     });
 
-    return found;
-  }
-}
+//     return found;
+//   }
+// }
 
-const supportedExtensions = ["ts"]
+// const supportedExtensions = ["ts"]
 
-export default { supportedExtensions, AstGenerator }
+// export default { supportedExtensions, AstGenerator }
