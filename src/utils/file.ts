@@ -105,6 +105,8 @@ export async function fileExists(filePath: string): Promise<boolean> {
         return resolve(true);
       } else if (exists.code === "ENOENT") {
         return resolve(false);
+      } else {
+        return resolve(false);
       }
     });
   });
