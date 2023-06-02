@@ -52,12 +52,13 @@ export class NodeJsDependenciesBundler implements BundlerInterface {
   }
 
   async bundle(input: BundlerInput): Promise<BundlerOutput> {
-    const dependenciesInfo = await this.#getNodeModulesJs(input.path)
+    const dependenciesInfo = await this.#getNodeModulesJs(input.extra!.originalPath)
 
     return {
       ...input,
       extra: {
         ...input.extra,
+        originalPath: input.path,
         dependenciesInfo
       }
     };
