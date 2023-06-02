@@ -223,6 +223,7 @@ export class NodeTsBundler implements BundlerInterface {
             ...input,
             path: temporaryFolder,
             extra: {
+                originalPath: input.path,
                 dependenciesInfo: input.extra?.dependenciesInfo
             }
         };

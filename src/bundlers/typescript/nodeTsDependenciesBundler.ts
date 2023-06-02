@@ -52,12 +52,13 @@ export class NodeTsDependenciesBundler implements BundlerInterface {
   }
 
   async bundle(input: BundlerInput): Promise<BundlerOutput> {
-    const dependenciesInfo = await this.#getNodeModulesTs(input.path)
+    const dependenciesInfo = await this.#getNodeModulesTs(input.extra!.originalPath)
 
     return {
       ...input,
       extra: {
         ...input.extra,
+        originalPath: input.path,
         dependenciesInfo
       }
     };
