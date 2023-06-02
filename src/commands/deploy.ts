@@ -9,7 +9,7 @@ import { NodeJsBinaryDependenciesBundler } from "../bundlers/javascript/nodeJsBi
 import { NodeJsBundler } from "../bundlers/javascript/nodeJsBundler";
 import { NodeTsBinaryDependenciesBundler } from "../bundlers/typescript/nodeTsBinaryDependenciesBundler";
 import { NodeTsBundler } from "../bundlers/typescript/nodeTsBundler";
-import { REACT_APP_BASE_URL, FRONTEND_DOMAIN } from "../constants";
+import { REACT_APP_BASE_URL } from "../constants";
 import {
   GENEZIO_NOT_AUTH_ERROR_MSG,
   GENEZIO_NO_CLASSES_FOUND
@@ -17,22 +17,16 @@ import {
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi";
 import { ProjectConfiguration } from "../models/projectConfiguration";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
-import { deployRequest } from "../requests/deployCode";
-import { getFrontendPresignedURL } from "../requests/getFrontendPresignedURL";
-import { createFrontendProject } from "../requests/createFrontendProject";
-import { getPresignedURL } from "../requests/getPresignedURL";
-import { uploadContentToS3 } from "../requests/uploadContentToS3";
 import { getAuthToken } from "../utils/accounts";
 import { getProjectConfiguration } from "../utils/configuration";
 import {
   fileExists,
   createTemporaryFolder,
   zipDirectory,
-  zipDirectoryToDestinationPath,
   isDirectoryEmpty,
   directoryContainsIndexHtmlFiles,
   directoryContainsHtmlFiles,
-  deleteFolder
+  deleteFolder,
 } from "../utils/file";
 import { printAdaptiveLog, debugLogger } from "../utils/logging";
 import { runNewProcess } from "../utils/process";
@@ -45,6 +39,8 @@ import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter";
 import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter";
 import { CloudAdapter } from "../cloudAdapter/cloudAdapter";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier";
+import { NodeTsDependenciesBundler } from "../bundlers/typescript/nodeTsDependenciesBundler";
+import { NodeJsDependenciesBundler } from "../bundlers/javascript/nodeJsDependenciesBundler";
 
 
 export async function deployCommand(options: any) {
@@ -210,14 +206,16 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
       switch (element.language) {
         case ".ts": {
           const standardBundler = new NodeTsBundler();
+          const getDependenciesBundler = new NodeTsDependenciesBundler();
           const binaryDepBundler = new NodeTsBinaryDependenciesBundler();
-          bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
+          bundler = new BundlerComposer([standardBundler, getDependenciesBundler, binaryDepBundler]);
           break;
         }
         case ".js": {
           const standardBundler = new NodeJsBundler();
+          const getDependenciesBundler = new NodeJsDependenciesBundler();
           const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
-          bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
+          bundler = new BundlerComposer([standardBundler, getDependenciesBundler, binaryDepBundler]);
           break;
         }
         case ".dart": {
@@ -237,6 +235,7 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
         (classInfo) => classInfo.classConfiguration.path === element.path
       )!.program;
 
+      const tmpFolder = await createTemporaryFolder();
       const output = await bundler.bundle({
         projectConfiguration: projectConfiguration,
         genezioConfigurationFilePath: process.cwd(),
@@ -244,7 +243,8 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
         configuration: element,
         path: element.path,
         extra: {
-          mode: "production"
+          mode: "development",
+          tmpFolder: tmpFolder,
         }
       });
       debugLogger.debug(
