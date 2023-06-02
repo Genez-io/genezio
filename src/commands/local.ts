@@ -25,7 +25,7 @@ import { genezioRequestParser } from "../utils/genezioRequestParser";
 import { debugLogger } from "../utils/logging";
 import { rectifyCronString } from "../utils/rectifyCronString";
 import cron from "node-cron";
-import { createTemporaryFolder, fileExists, readUTF8File } from "../utils/file";
+import { createTemporaryFolder, deleteFolder, fileExists, readUTF8File } from "../utils/file";
 import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk";
 import { reportSuccess as _reportSuccess } from "../utils/reporter";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
@@ -53,6 +53,14 @@ type LocalBundlerOutput = {
   processForClasses: Map<string, ClassProcess>;
   sdk: SdkGeneratorResponse;
 };
+
+const temporaryFolders: string[] = [];
+
+async function deteleTemporaryFolders() {
+  for (const temporaryFolder of temporaryFolders) {
+    await deleteFolder(temporaryFolder);
+  }
+}
 
 export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProjectConfiguration): Promise<BundlerRestartResponse> {
   // eslint-disable-next-line no-async-promise-executor
@@ -105,6 +113,8 @@ export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProj
       log.error(
         `Fix the errors and genezio local will restart automatically. Waiting for changes...`
       );
+      // In case of an error, delete the temporary folders, then wait for changes
+      await deteleTemporaryFolders();
       // If there was an error generating the SDK, wait for changes and try again.
       await listenForChanges(undefined);
       logChangeDetection();
@@ -120,11 +130,22 @@ export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProj
 // It also monitors for changes in the user's code and restarts the environment when changes are detected.
 export async function startLocalEnvironment(options: GenezioLocalOptions) {
   // eslint-disable-next-line no-constant-condition
+
+  // Set-up SIGINT and exit handlers that clean up the temporary folder structure
+  process.on('SIGINT', async () => {
+    await deteleTemporaryFolders();
+    process.exit();
+  });
+  process.on('exit', async () => {
+    await deteleTemporaryFolders();
+    process.exit();
+  });
+
   while (true) {
     // Read the project configuration everytime because it might change
     const yamlProjectConfiguration = await getProjectConfiguration();
     let sdk: SdkGeneratorResponse;
-    let processForClasses: any;
+    let processForClasses: Map<string, ClassProcess>;
     let projectConfiguration: ProjectConfiguration;
 
     const promiseListenForChanges: Promise<BundlerRestartResponse> = listenForChanges(undefined);
@@ -155,15 +176,16 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       processForClasses = promiseRes.bundlerOutput.processForClasses;
 
       // clean up the old processes
-      processForClasses.forEach((classProcess: any) => {
+      processForClasses.forEach((classProcess: ClassProcess) => {
         classProcess.process.kill();
       });
+
+      // if bundler needs to be restarted, we need to clean up the temporary folderss
+      await deteleTemporaryFolders();
 
       logChangeDetection();
       continue;
     }
-      
-
 
     // Start HTTP Server
     const server = await startServerHttp(
@@ -230,8 +252,10 @@ async function startProcesses(
 
     debugLogger.log("Start bundling...");
     // TODO: Is it worth the extra complexity of maintaining the folder?
-    return createTemporaryFolder().then((tmpFolder) => {
-      return bundler.bundle({
+    return createTemporaryFolder().then(async (tmpFolder) => {
+      temporaryFolders.push(tmpFolder);
+
+      const bundlerOutput = await bundler.bundle({
         projectConfiguration,
         path: classInfo.path,
         ast: ast,
@@ -239,6 +263,10 @@ async function startProcesses(
         configuration: classInfo,
         extra: { mode: "development", tmpFolder: tmpFolder }
       });
+
+      temporaryFolders.push(bundlerOutput.path);
+
+      return bundlerOutput;
     });
   });
 
@@ -623,6 +651,7 @@ async function clearAllResources(server: http.Server, processForClasses: Map<str
     classProcess.process.kill();
   });
 
+  await deteleTemporaryFolders();
 }
 
 async function startClassProcess(

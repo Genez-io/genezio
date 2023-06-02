@@ -158,7 +158,7 @@ export async function directoryContainsIndexHtmlFiles(directoryPath: string): Pr
   });
 }
 
-export async function createTemporaryFolder(name = "foo-"): Promise<string> {
+export async function createTemporaryFolder(name = "genezio-"): Promise<string> {
   return new Promise((resolve, reject) => {
     fs.mkdtemp(path.join(os.tmpdir(), name), (error: any, folder: string) => {
       if (error) {

@@ -42,6 +42,13 @@ import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier";
 import { NodeTsDependenciesBundler } from "../bundlers/typescript/nodeTsDependenciesBundler";
 import { NodeJsDependenciesBundler } from "../bundlers/javascript/nodeJsDependenciesBundler";
 
+const temporaryFolders: string[] = [];
+
+async function deleteTemporaryFolders() {
+  for (const temporaryFolder of temporaryFolders) {
+    await deleteFolder(temporaryFolder);
+  }
+}
 
 export async function deployCommand(options: any) {
   let configuration
@@ -76,7 +83,9 @@ export async function deployCommand(options: any) {
       }
     }
 
-    await deployClasses(configuration, cloudAdapter).catch((error: AxiosError) => {
+    await deployClasses(configuration, cloudAdapter).catch(async (error: AxiosError) => {
+      await deleteTemporaryFolders();
+
       switch (error.response?.status) {
         case 401:
           log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
@@ -236,6 +245,7 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
       )!.program;
 
       const tmpFolder = await createTemporaryFolder();
+      temporaryFolders.push(tmpFolder);
       const output = await bundler.bundle({
         projectConfiguration: projectConfiguration,
         genezioConfigurationFilePath: process.cwd(),
@@ -251,8 +261,10 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
         `The bundling process finished successfully for file ${element.path}.`
       );
 
+      const archivePathTempFolder = await createTemporaryFolder();
+      temporaryFolders.push(archivePathTempFolder);
       const archivePath = path.join(
-        await createTemporaryFolder("genezio-"),
+        archivePathTempFolder,
         `genezioDeploy.zip`
       );
 
@@ -260,7 +272,11 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
       await zipDirectory(output.path, archivePath);
 
       // clean up temporary folder
-      await deleteFolder(output.path);
+      const indexOfFolder = temporaryFolders.indexOf(output.path);
+      if (indexOfFolder !== -1) {
+        temporaryFolders.splice(indexOfFolder, 1);
+        await deleteFolder(output.path);
+      }
 
       return { name: element.name, archivePath: archivePath, filePath: element.path, methods: element.methods };
     });
@@ -285,6 +301,8 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
       `Your backend project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`
     );
   }
+
+  await deleteTemporaryFolders();
 }
 
 export async function deployFrontend(configuration: YamlProjectConfiguration, cloudAdapter: CloudAdapter) {
