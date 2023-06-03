@@ -24,58 +24,6 @@ import { bundle } from "../../utils/webpack";
 import { debugLogger } from "../../utils/logging";
 
 export class NodeJsBundler implements BundlerInterface {
-  async #getNodeModulesJs(
-    filePath: string,
-    mode: "development" | "production"
-  ): Promise<any> {
-
-    if (mode === "development") {
-      return null;
-    }
-
-    const { name } = getFileDetails(filePath);
-    const outputFile = `${name}-processed.js`;
-    const temporaryFolder = await createTemporaryFolder();
-    const dependencies: string[] = [];
-
-    await bundle(
-      "./" + filePath,
-      mode,
-      [],
-      undefined,
-      [new NodePolyfillPlugin(), new AccessDependenciesPlugin(dependencies, process.cwd())],
-      temporaryFolder,
-      outputFile,
-      {
-        conditionNames: ["require"]
-      }
-    );
-
-    // delete the temporary folder
-    await deleteFolder(temporaryFolder);
-
-    const dependenciesInfo = dependencies.map((dependency) => {
-      const relativePath = dependency.split("node_modules" + path.sep)[1];
-      const dependencyName = relativePath?.split(path.sep)[0];
-      const dependencyPath =
-        dependency.split("node_modules" + path.sep)[0] +
-        "node_modules" +
-        path.sep +
-        dependencyName;
-      return {
-        name: dependencyName,
-        path: dependencyPath
-      };
-    });
-
-    // remove duplicates from dependenciesInfo by name
-    const uniqueDependenciesInfo = dependenciesInfo.filter(
-      (v, i, a) => a.findIndex((t) => t.name === v.name) === i
-    );
-
-    return uniqueDependenciesInfo;
-  }
-
   async #copyDependencies(dependenciesInfo: any, tempFolderPath: string, mode: "development" | "production") {
     const nodeModulesPath = path.join(tempFolderPath, "node_modules");
 
@@ -86,7 +34,6 @@ export class NodeJsBundler implements BundlerInterface {
       }
       return
     }
-
 
     // copy all dependencies to node_modules folder
     await Promise.all(
@@ -230,8 +177,7 @@ export class NodeJsBundler implements BundlerInterface {
 
     // 1. Run webpack to get dependenciesInfo and the packed file
     debugLogger.debug(`[NodeJSBundler] Get the list of node modules and bundling the javascript code for file ${input.path}.`)
-    const [dependenciesInfo, _] = await Promise.all([
-      this.#getNodeModulesJs(input.path, mode),
+    await Promise.all([
       this.#bundleJavascriptCode(
         input.configuration.path,
         temporaryFolder,
@@ -244,7 +190,7 @@ export class NodeJsBundler implements BundlerInterface {
     // 2. Copy non js files and node_modules and write index.js file
     await Promise.all([
       this.#copyNonJsFiles(temporaryFolder),
-      mode === "production" ? this.#copyDependencies(dependenciesInfo, temporaryFolder, mode) : Promise.resolve(),
+      mode === "production" ? this.#copyDependencies(input.extra!.dependenciesInfo, temporaryFolder, mode) : Promise.resolve(),
       writeToFile(temporaryFolder, "index.js", lambdaHandler(`"${input.configuration.name}"`))
     ]);
 
@@ -255,7 +201,8 @@ export class NodeJsBundler implements BundlerInterface {
       ...input,
       path: temporaryFolder,
       extra: {
-        dependenciesInfo
+        originalPath: input.path,
+        dependenciesInfo: input.extra!.dependenciesInfo
       }
     };
   }
