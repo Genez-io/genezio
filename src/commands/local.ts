@@ -1,5 +1,6 @@
 import log from "loglevel";
 import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
+import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
 import express from "express";
 import chokidar from "chokidar";
 import cors from "cors";
@@ -444,6 +445,10 @@ function getBundler(
     }
     case ".dart": {
       bundler = new DartBundler();
+      break;
+    }
+    case ".kt": {
+      bundler = new KotlinBundler();
       break;
     }
     default: {

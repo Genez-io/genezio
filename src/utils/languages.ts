@@ -1,2 +1,2 @@
-export const languages: string[] = ["js", "ts", "swift", "python", "dart"];
-export const supportedExtensions: string[]=["ts","js","dart"];
+export const languages: string[] = ["js", "ts", "swift", "python", "dart", "kotlin"];
+export const supportedExtensions: string[]=["ts","js","dart", "kt"];
