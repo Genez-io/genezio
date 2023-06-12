@@ -54,7 +54,7 @@
     "form-data": "^4.0.0",
     "fs": "^0.0.1-security",
     "fs-extra": "^11.1.1",
-    "glob": "^8.0.3",
+    "glob": "^9.3.5",
     "http-terminator": "^3.2.0",
     "json5": "~2.2.3",
     "loglevel": "^1.8.1",
