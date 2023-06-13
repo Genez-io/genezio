@@ -148,7 +148,7 @@ Once you are happy with your project, you can deploy it in a production environm
 
 # Commands Summary
 
-The genezio CLI tool supports the commands shown in the following tablke:
+The genezio CLI tool supports the commands shown in the following table:
 
 | Command | Description |
 | ------- | ----------- |
