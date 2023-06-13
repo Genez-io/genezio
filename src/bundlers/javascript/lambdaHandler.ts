@@ -12,7 +12,7 @@ const genezioClass = handler.genezio[${className}];
 if (!genezioClass) {
   console.error('Error! No class found with name ${className}. Make sure you exported it from your file.')
   exports.handler =  async function(event, context) {
-    return {"jsonrpc": "2.0", "error": {"code": -1, "message": 'Error! No class found with name ${className}. Make sure you exported it from your file.'}, "id": 0};
+    return {statusCode: 500, body: JSON.stringify({"jsonrpc": "2.0", "error": {"code": -1, "message": 'Error! No class found with name ${className}. Make sure you exported it from your file.'}, "id": 0}), headers: { 'Content-Type': 'application/json','X-Powered-By': 'genezio' }};
   }
   return;
 }
@@ -65,7 +65,7 @@ exports.handler =  async function(event, context) {
             rawBody: event.body,
           }
         if (!object[method]) {
-          return { statusCode: 404, headers: { 'Content-Type': 'text/json' }, body: JSON.stringify({ error: "Method not found" }) };
+          return { statusCode: 404, headers: { 'Content-Type': 'text/json', 'X-Powered-By': 'genezio' }, body: JSON.stringify({ error: "Method not found" }) };
         }
 
         try {
@@ -91,17 +91,17 @@ exports.handler =  async function(event, context) {
             return response;
         } catch(error) {
             console.error(error);
-            return { statusCode: 500, body: JSON.stringify({"error": error.message}), headers: { 'Content-Type': 'application/json' }};
+            return { statusCode: 500, body: JSON.stringify({"error": error.message}), headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }}
         }
     } else {
         let body = null;
         try {
           body = JSON.parse(event.body);
         } catch (error) {
-          return {"jsonrpc": "2.0", "error": {"code": -1, "message": "Invalid JSON-RPC request"}, "id": 0}
+          return {statusCode: 500, body: JSON.stringify({"jsonrpc": "2.0", "error": {"code": -1, "message": "Invalid JSON-RPC request"}, "id": 0}), headers: { 'Content-Type': 'application/json','X-Powered-By': 'genezio' }};
         }
         if (!body || !body.method || !body.params || !Number.isInteger(body.id)) {
-          return {"jsonrpc": "2.0", "error": {"code": -1, "message": "Invalid JSON-RPC request"}, "id": 0}
+          return {statusCode: 500, body: JSON.stringify({"jsonrpc": "2.0", "error": {"code": -1, "message": "Invalid JSON-RPC request"}, "id": 0}), headers: { 'Content-Type': 'application/json','X-Powered-By': 'genezio' }};
         }
 
         let method = null;
@@ -109,27 +109,27 @@ exports.handler =  async function(event, context) {
           const methodElems = body.method.split(".");
           method = methodElems[1];
         } catch (error) {
-          return {"jsonrpc": "2.0", "error": {"code": -1, "message": "Invalid Genezio JSON-RPC request"}, "id": 0}
+          return {statusCode: 500, body: JSON.stringify({"jsonrpc": "2.0", "error": {"code": -1, "message": "Invalid Genezio JSON-RPC request"}, "id": 0}), headers: { 'Content-Type': 'application/json','X-Powered-By': 'genezio' }};
         }
 
         if (!object[method]) {
-          return {"jsonrpc": "2.0", "error": {"code": -1, "message": "Method not found!"}, "id": 0}
+          return {statusCode: 500, body: JSON.stringify({"jsonrpc": "2.0", "error": {"code": -1, "message": "Method not found!"}, "id": 0}), headers: { 'Content-Type': 'application/json','X-Powered-By': 'genezio' }};
         }
 
         const requestId = body.id;
         const errorPromise = new Promise((resolve) => {
           process.on('uncaughtException', function(err) {
             console.error(err);
-            resolve({"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId})
+            resolve({statusCode: 500, body: JSON.stringify({"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId}), headers: { 'Content-Type': 'application/json','X-Powered-By': 'genezio' }});
           });
         })
 
         try {
           const response = Promise.resolve(object[method](...(body.params || []))).then((result) => {
-            return {"jsonrpc": "2.0", "result": result, "error": null, "id": requestId};
+            return {statusCode: 200, body: JSON.stringify({"jsonrpc": "2.0", "result": result, "error": null, "id": requestId}), headers: { 'Content-Type': 'application/json','X-Powered-By': 'genezio' }};
           }).catch((err) => {
             console.error(err);
-            return {"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId}
+            return {statusCode: 500, body: JSON.stringify({"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId}), headers: { 'Content-Type': 'application/json','X-Powered-By': 'genezio' }};
           })
 
           const result = await Promise.race([errorPromise, response])
@@ -137,7 +137,7 @@ exports.handler =  async function(event, context) {
           return result
         } catch (err) {
           console.error(err);
-          return {"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId}
+          return {statusCode: 500, body: JSON.stringify({"jsonrpc": "2.0", "error": {"code": -1, "message": err.toString()}, "id": requestId}), headers: { 'Content-Type': 'application/json','X-Powered-By': 'genezio' }};
         }
     }
 }
