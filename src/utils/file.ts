@@ -174,13 +174,13 @@ export async function createTemporaryFolder(name = "genezio-"): Promise<string> 
 
 export async function deleteFolder(folderPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    fs.rm(folderPath, { recursive: true , force: true}, (error) => {
-      if (error) {
-        reject(error);
-      }
-
-      resolve();
-    });
+    try {
+      fs.rmSync(folderPath, { recursive: true , force: true});
+    } catch (error) {
+      reject(error);
+    }
+    
+    resolve();
   });
 }
 
