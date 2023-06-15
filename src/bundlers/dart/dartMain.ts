@@ -1,8 +1,6 @@
 export const template = `
-/**
-* This is an auto generated code. This code should not be modified since the file can be overwriten
-* if new genezio commands are executed.
-*/
+/// This is an auto generated code. This code should not be modified since the file can be overwritten
+/// if new genezio commands are executed.
 
 import 'package:aws_lambda_dart_runtime/aws_lambda_dart_runtime.dart';
 import 'dart:convert';
@@ -19,6 +17,7 @@ void main() async {
     print(s);
   }
 
+  // ignore: prefer_function_declarations_over_variables
   final Handler<Map<String, dynamic>> handler = (context, event) async {
     var response;
 
@@ -42,8 +41,7 @@ void main() async {
               }
 
               final result = await service.{{name}}();
-              final json = jsonEncode(result);
-              response = '{"jsonrpc": "2.0", "result": $json, "id": 0}';
+              response = '{"jsonrpc": "2.0", "result": result, "id": 0}';
             } catch(e, s) {
               print(e);
               print(s);
@@ -60,6 +58,7 @@ void main() async {
       final response = {
         "statusCode": 200,
       };
+
       return response;
     } else if (!isJsonRpcRequest) {
       final method = event["requestContext"]["http"]["path"].split("/").last;
@@ -138,7 +137,8 @@ void main() async {
     {{#jsonRpcMethods}}
     case "{{name}}": {
       if (service == null) {
-        response = '{"jsonrpc": "2.0", "result": "{{className}} could not be instantiated. Check logs for more information.", "id": 0}';
+        response = {"jsonrpc": "2.0", "result": "{{className}} could not be instantiated. Check logs for more information.", "id": 0};
+
         break;
       }
 
@@ -147,22 +147,36 @@ void main() async {
           final param{{index}} = {{{cast}}};
       {{/parameters}}
       final result = await service.{{name}}({{#parameters}}param{{index}}{{^last}},{{/last}}{{/parameters}});
-      final json = jsonEncode(result);
-      response = '{"jsonrpc": "2.0", "result": $json, "id": 0}';
+      response = {"jsonrpc": "2.0", "result": result, "id": 0};
       } catch(e, s) {
         print(e);
         print(s);
-        response = '{"jsonrpc": "2.0", "result": "\${e.toString()}", "id": 0}';
+        response = {"jsonrpc": "2.0",  "result": "\${e.toString()}", "id": 0};
+
       }
       break;
     }
     {{/jsonRpcMethods}}
     default:
-      response = '{"jsonrpc": "2.0", "result": "No JSONRPC method found.", "id": 0}';
+      response = {"jsonrpc": "2.0", "result": "No JSONRPC method found.", "id": 0};
+
     break;
   };
   }
-    return response;
+
+  // Create a http response object
+  final jsonResponse = jsonEncode(response);
+  final headers = {
+    'Content-Type': 'application/json',
+    'X-Powered-By': 'genezio'
+  };
+  final httpResponse = {
+    "statusCode": 200,
+    "headers": headers,
+    "body": jsonResponse
+  };
+
+  return httpResponse;
   };
 
   /// The Runtime is a singleton.
