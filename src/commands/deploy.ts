@@ -5,10 +5,8 @@ import { exit } from "process";
 import { BundlerInterface } from "../bundlers/bundler.interface";
 import { BundlerComposer } from "../bundlers/bundlerComposer";
 import { DartBundler } from "../bundlers/dart/dartBundler";
-import { NodeJsBinaryDependenciesBundler } from "../bundlers/javascript/nodeJsBinaryDependenciesBundler";
-import { NodeJsBundler } from "../bundlers/javascript/nodeJsBundler";
-import { NodeTsBinaryDependenciesBundler } from "../bundlers/typescript/nodeTsBinaryDependenciesBundler";
-import { NodeTsBundler } from "../bundlers/typescript/nodeTsBundler";
+import { NodeJsBinaryDependenciesBundler } from "../bundlers/node/nodeJsBinaryDependenciesBundler";
+import { NodeJsBundler } from "../bundlers/node/nodeJsBundler";
 import { REACT_APP_BASE_URL } from "../constants";
 import {
   GENEZIO_NOT_AUTH_ERROR_MSG,
@@ -39,8 +37,7 @@ import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter";
 import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter";
 import { CloudAdapter } from "../cloudAdapter/cloudAdapter";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier";
-import { NodeTsDependenciesBundler } from "../bundlers/typescript/nodeTsDependenciesBundler";
-import { NodeJsDependenciesBundler } from "../bundlers/javascript/nodeJsDependenciesBundler";
+import { TypeCheckerBundler } from "../bundlers/node/typeCheckerBundler";
 
 const temporaryFolders: string[] = [];
 
@@ -214,17 +211,16 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
 
       switch (element.language) {
         case ".ts": {
-          const standardBundler = new NodeTsBundler();
-          const getDependenciesBundler = new NodeTsDependenciesBundler();
-          const binaryDepBundler = new NodeTsBinaryDependenciesBundler();
-          bundler = new BundlerComposer([standardBundler, getDependenciesBundler, binaryDepBundler]);
+          const typeCheckerBundler = new TypeCheckerBundler();
+          const standardBundler = new NodeJsBundler();
+          const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
+          bundler = new BundlerComposer([typeCheckerBundler, standardBundler, binaryDepBundler]);
           break;
         }
         case ".js": {
           const standardBundler = new NodeJsBundler();
-          const getDependenciesBundler = new NodeJsDependenciesBundler();
           const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
-          bundler = new BundlerComposer([standardBundler, getDependenciesBundler, binaryDepBundler]);
+          bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
           break;
         }
         case ".dart": {

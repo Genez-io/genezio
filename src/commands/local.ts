@@ -1,6 +1,5 @@
 import log from "loglevel";
-import { NodeJsBundler } from "../bundlers/javascript/nodeJsBundler";
-import { NodeTsBundler } from "../bundlers/typescript/nodeTsBundler";
+import { NodeJsBundler } from "../bundlers/node/nodeJsBundler";
 import express from "express";
 import chokidar from "chokidar";
 import cors from "cors";
@@ -19,7 +18,7 @@ import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi";
 import { AstSummary } from "../models/astSummary";
 import { getProjectConfiguration } from "../utils/configuration";
 import { BundlerInterface } from "../bundlers/bundler.interface";
-import { NodeJsLocalBundler } from "../bundlers/javascript/nodeJsLocalBundler";
+import { NodeJsLocalBundler } from "../bundlers/node/nodeJsLocalBundler";
 import { BundlerComposer } from "../bundlers/bundlerComposer";
 import { genezioRequestParser } from "../utils/genezioRequestParser";
 import { debugLogger } from "../utils/logging";
@@ -34,6 +33,7 @@ import { DartBundler } from "../bundlers/dart/localDartBundler";
 import axios, { AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort";
 import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration";
+import { TypeCheckerBundler } from "../bundlers/node/typeCheckerBundler";
 
 type ClassProcess = {
   process: ChildProcess;
@@ -118,6 +118,7 @@ export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProj
       await deteleTemporaryFolders();
       // If there was an error generating the SDK, wait for changes and try again.
       const { watcher } =  await listenForChanges(undefined);
+      TypeCheckerBundler.logChangeDetection();
       logChangeDetection();
       resolve({
         shouldRestartBundling: true,
@@ -143,6 +144,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     process.exit();
   });
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     // Read the project configuration everytime because it might change
     const yamlProjectConfiguration = await getProjectConfiguration();
@@ -287,13 +289,13 @@ async function startProcesses(
       throw new Error("Bundler output is missing extra field.");
     }
 
-    if (!extra["startingCommand"]) {
+    if (!extra.startingCommand) {
       throw new Error("No starting command found for this language.");
     }
 
     await startClassProcess(
-      extra["startingCommand"],
-      extra["commandParameters"],
+      extra.startingCommand,
+      extra.commandParameters ? extra.commandParameters : [],
       bundlerOutput.configuration.name,
       processForClasses
     );
@@ -309,9 +311,10 @@ function getBundler(
   let bundler: BundlerInterface | undefined;
   switch (classConfiguration.language) {
     case ".ts": {
-      const nodeTsBundler = new NodeTsBundler();
+      const typeCheckerBundler = new TypeCheckerBundler();
+      const nodeJsBundler = new NodeJsBundler();
       const localBundler = new NodeJsLocalBundler();
-      bundler = new BundlerComposer([nodeTsBundler, localBundler]);
+      bundler = new BundlerComposer([typeCheckerBundler, nodeJsBundler, localBundler]);
       break;
     }
     case ".js": {

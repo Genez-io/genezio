@@ -12,21 +12,20 @@ export type BundlerInput = {
     path: string,
     ast: Program,
     genezioConfigurationFilePath: string,
-    extra?: { [id: string]: any; }
+    extra: {
+        originalPath?: string,
+        mode: "production" | "development",
+        tmpFolder?: string,
+        dependenciesInfo?: Dependency[],
+        startingCommand?: string
+        commandParameters?: string[]
+    }
 }
 
 /**
  * The output that comes out of the bundler.
  */
-export type BundlerOutput = {
-    projectConfiguration: ProjectConfiguration,
-    configuration: ClassConfiguration,
-    // Path to a folder containing the source code bundled.
-    path: string,
-    ast: Program,
-    genezioConfigurationFilePath: string,
-    extra?: { [id: string]: any; }
-}
+export type BundlerOutput = BundlerInput
 
 /**
  * A class implementing this interface will bundle the source code files together with all the required dependencies
@@ -36,42 +35,7 @@ export interface BundlerInterface {
     bundle: (input: BundlerInput) => Promise<BundlerOutput>
 }
 
-export class AccessDependenciesPlugin {
-    dependencies: string[];
-    genezioProjectFolder: string;
-
-    // constructor() {
-    constructor(dependencies: string[], genezioProjectFolder: string) {
-        this.dependencies = dependencies;
-        this.genezioProjectFolder = genezioProjectFolder;
-    }
-
-    apply(compiler: {
-        hooks: {
-            compilation: {
-                tap: (arg0: string, arg1: (compilation: any) => void) => void;
-            };
-        };
-    }) {
-        compiler.hooks.compilation.tap(
-            "AccessDependenciesPlugin",
-            (compilation) => {
-                NormalModule.getCompilationHooks(compilation).beforeLoaders.tap(
-                    "AccessDependenciesPlugin",
-                    (loader: any, normalModule: any) => {
-                        if (
-                            normalModule.resource &&
-                            normalModule.resource.includes("node_modules") &&
-                            normalModule.resource.includes(
-                                this.genezioProjectFolder
-                            )
-                        ) {
-                            const resource = normalModule.resource;
-                            this.dependencies.push(resource);
-                        }
-                    }
-                );
-            }
-        );
-    }
+export interface Dependency {
+    name: string,
+    path: string
 }
