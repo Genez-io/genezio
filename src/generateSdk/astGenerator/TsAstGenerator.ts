@@ -31,8 +31,9 @@ import {
 } from "../../models/genezioModels";
 
 import typescript from "typescript";
-import { readdir } from "fs";
 import { readdirSync } from "fs";
+import path from "path";
+import { statSync } from "fs";
 
 export class AstGenerator implements AstGeneratorInterface {
     rootNode?: typescript.SourceFile;
@@ -222,27 +223,36 @@ export class AstGenerator implements AstGeneratorInterface {
         }
     }
 
+    getAllFiles(files: string[], dirPath: string) {
+        if (dirPath.endsWith("node_modules")) {
+            return;
+        }
+        readdirSync(dirPath).forEach((file) => {
+            const absolute = path.join(dirPath, file);
+            if (statSync(absolute).isDirectory()) {
+                this.getAllFiles(files, absolute);
+            } else if (file.endsWith(".ts")) {
+                files.push(absolute);
+            }
+        });
+    }
+
     async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
         const fileData = input.class.data;
 
         const typescriptFiles: string[] = [];
-        readdirSync(".").forEach((file) => {
-            if (file.endsWith(".ts")) {
-                typescriptFiles.push(file);
-            }
-        });
+        this.getAllFiles(typescriptFiles, ".");
 
         const program = typescript.createProgram(typescriptFiles, {});
         const typeChecker = program.getTypeChecker();
 
         const files = program.getSourceFiles();
         files.forEach((file) => {
-            if (file.fileName.endsWith(input.class.path)) {
+            if (path.resolve(file.fileName) === path.resolve(input.class.path)) {
                 this.rootNode = file;
             }
         });
 
-        //this.rootNode = typescript.createSourceFile('test.ts', fileData.toString(), typescript.ScriptTarget.ES2015, true, typescript.ScriptKind.TS);
         if (!this.rootNode) {
             throw new Error("No root node found");
         }
@@ -258,10 +268,6 @@ export class AstGenerator implements AstGeneratorInterface {
                     classDefinition = classDeclaration;
                 }
             }
-            // } else if (typescript.isTypeAliasDeclaration(child)) {
-            //     const typeAliasDeclaration = this.parseTypeAliasDeclaration(child, typeChecker);
-            //     declarations.push(typeAliasDeclaration);
-            // }
         });
 
         if (!classDefinition) {
