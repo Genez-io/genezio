@@ -85,6 +85,7 @@ export type AstGeneratorOutput = {
 
 export interface Node {
   type: AstNodeType;
+  path?: string;
 }
 
 // DONE native types, enums, type alias, union type - type | type
