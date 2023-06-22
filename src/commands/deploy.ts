@@ -9,7 +9,7 @@ import { NodeJsBinaryDependenciesBundler } from "../bundlers/javascript/nodeJsBi
 import { NodeJsBundler } from "../bundlers/javascript/nodeJsBundler";
 import { NodeTsBinaryDependenciesBundler } from "../bundlers/typescript/nodeTsBinaryDependenciesBundler";
 import { NodeTsBundler } from "../bundlers/typescript/nodeTsBundler";
-import { REACT_APP_BASE_URL, FRONTEND_DOMAIN } from "../constants";
+import { REACT_APP_BASE_URL } from "../constants";
 import {
   GENEZIO_NOT_AUTH_ERROR_MSG,
   GENEZIO_NO_CLASSES_FOUND
@@ -17,22 +17,16 @@ import {
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi";
 import { ProjectConfiguration } from "../models/projectConfiguration";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
-import { deployRequest } from "../requests/deployCode";
-import { getFrontendPresignedURL } from "../requests/getFrontendPresignedURL";
-import { createFrontendProject } from "../requests/createFrontendProject";
-import { getPresignedURL } from "../requests/getPresignedURL";
-import { uploadContentToS3 } from "../requests/uploadContentToS3";
 import { getAuthToken } from "../utils/accounts";
 import { getProjectConfiguration } from "../utils/configuration";
 import {
   fileExists,
   createTemporaryFolder,
   zipDirectory,
-  zipDirectoryToDestinationPath,
   isDirectoryEmpty,
   directoryContainsIndexHtmlFiles,
   directoryContainsHtmlFiles,
-  deleteFolder
+  deleteFolder,
 } from "../utils/file";
 import { printAdaptiveLog, debugLogger } from "../utils/logging";
 import { runNewProcess } from "../utils/process";
@@ -45,7 +39,16 @@ import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter";
 import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter";
 import { CloudAdapter } from "../cloudAdapter/cloudAdapter";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier";
+import { NodeTsDependenciesBundler } from "../bundlers/typescript/nodeTsDependenciesBundler";
+import { NodeJsDependenciesBundler } from "../bundlers/javascript/nodeJsDependenciesBundler";
 
+const temporaryFolders: string[] = [];
+
+async function deleteTemporaryFolders() {
+  for (const temporaryFolder of temporaryFolders) {
+    await deleteFolder(temporaryFolder);
+  }
+}
 
 export async function deployCommand(options: any) {
   let configuration
@@ -80,7 +83,9 @@ export async function deployCommand(options: any) {
       }
     }
 
-    await deployClasses(configuration, cloudAdapter).catch((error: AxiosError) => {
+    await deployClasses(configuration, cloudAdapter).catch(async (error: AxiosError) => {
+      await deleteTemporaryFolders();
+
       switch (error.response?.status) {
         case 401:
           log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
@@ -210,14 +215,16 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
       switch (element.language) {
         case ".ts": {
           const standardBundler = new NodeTsBundler();
+          const getDependenciesBundler = new NodeTsDependenciesBundler();
           const binaryDepBundler = new NodeTsBinaryDependenciesBundler();
-          bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
+          bundler = new BundlerComposer([standardBundler, getDependenciesBundler, binaryDepBundler]);
           break;
         }
         case ".js": {
           const standardBundler = new NodeJsBundler();
+          const getDependenciesBundler = new NodeJsDependenciesBundler();
           const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
-          bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
+          bundler = new BundlerComposer([standardBundler, getDependenciesBundler, binaryDepBundler]);
           break;
         }
         case ".dart": {
@@ -237,6 +244,8 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
         (classInfo) => classInfo.classConfiguration.path === element.path
       )!.program;
 
+      const tmpFolder = await createTemporaryFolder();
+      temporaryFolders.push(tmpFolder);
       const output = await bundler.bundle({
         projectConfiguration: projectConfiguration,
         genezioConfigurationFilePath: process.cwd(),
@@ -244,15 +253,18 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
         configuration: element,
         path: element.path,
         extra: {
-          mode: "production"
+          mode: "development",
+          tmpFolder: tmpFolder,
         }
       });
       debugLogger.debug(
         `The bundling process finished successfully for file ${element.path}.`
       );
 
+      const archivePathTempFolder = await createTemporaryFolder();
+      temporaryFolders.push(archivePathTempFolder);
       const archivePath = path.join(
-        await createTemporaryFolder("genezio-"),
+        archivePathTempFolder,
         `genezioDeploy.zip`
       );
 
@@ -260,7 +272,11 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
       await zipDirectory(output.path, archivePath);
 
       // clean up temporary folder
-      await deleteFolder(output.path);
+      const indexOfFolder = temporaryFolders.indexOf(output.path);
+      if (indexOfFolder !== -1) {
+        temporaryFolders.splice(indexOfFolder, 1);
+        await deleteFolder(output.path);
+      }
 
       return { name: element.name, archivePath: archivePath, filePath: element.path, methods: element.methods };
     });
@@ -285,6 +301,8 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
       `Your backend project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`
     );
   }
+
+  await deleteTemporaryFolders();
 }
 
 export async function deployFrontend(configuration: YamlProjectConfiguration, cloudAdapter: CloudAdapter) {

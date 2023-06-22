@@ -1,6 +1,6 @@
 import path from "path";
 import Mustache from "mustache";
-import { createTemporaryFolder, writeToFile } from "../../utils/file";
+import { createTemporaryFolder, deleteFolder, writeToFile } from "../../utils/file";
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface";
 import { checkIfDartIsInstalled } from "../../utils/dart";
 import { debugLogger } from "../../utils/logging";
@@ -20,6 +20,10 @@ export class DartBundler implements BundlerInterface {
 
         if (result.status != 0) {
             log.info(result.stdout.toString().split("\n").slice(1).join("\n"));
+
+            // Delete the temporary folder if the compilation fails
+            await deleteFolder(path);
+
             throw new Error("Compilation error! Please check your code and try again.");
         }
     }
@@ -99,6 +103,10 @@ export class DartBundler implements BundlerInterface {
         if (result.status != 0) {
             log.info(result.stderr.toString());
             log.info(result.stdout.toString());
+
+            // Delete the temporary folder if the compilation fails
+            await deleteFolder(folderPath);
+
             throw new Error("Compilation error! Please check your code and try again.");
         }
     }

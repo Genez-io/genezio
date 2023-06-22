@@ -25,7 +25,7 @@ import { genezioRequestParser } from "../utils/genezioRequestParser";
 import { debugLogger } from "../utils/logging";
 import { rectifyCronString } from "../utils/rectifyCronString";
 import cron from "node-cron";
-import { createTemporaryFolder, fileExists, readUTF8File } from "../utils/file";
+import { createTemporaryFolder, deleteFolder, fileExists, readUTF8File } from "../utils/file";
 import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk";
 import { reportSuccess as _reportSuccess } from "../utils/reporter";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
@@ -33,6 +33,7 @@ import { GenezioLocalOptions } from "../models/commandOptions";
 import { DartBundler } from "../bundlers/dart/localDartBundler";
 import axios, { AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort";
+import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration";
 
 type ClassProcess = {
   process: ChildProcess;
@@ -41,23 +42,36 @@ type ClassProcess = {
   listeningPort: number;
 };
 
-// Function that starts the local environment.
-// It also monitors for changes in the user's code and restarts the environment when changes are detected.
-export async function startLocalEnvironment(options: GenezioLocalOptions) {
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    // Read the project configuration everytime because it might change
-    const yamlProjectConfiguration = await getProjectConfiguration();
-    let sdk: SdkGeneratorResponse;
-    let processForClasses;
-    let projectConfiguration;
+type BundlerRestartResponse = {
+  shouldRestartBundling: boolean;
+  bundlerOutput?: LocalBundlerOutput;
+  watcher?: chokidar.FSWatcher;
+};
 
+type LocalBundlerOutput = {
+  success: boolean;
+  projectConfiguration: ProjectConfiguration;
+  processForClasses: Map<string, ClassProcess>;
+  sdk: SdkGeneratorResponse;
+};
+
+const temporaryFolders: string[] = [];
+
+async function deteleTemporaryFolders() {
+  for (const temporaryFolder of temporaryFolders) {
+    await deleteFolder(temporaryFolder);
+  }
+}
+
+export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProjectConfiguration): Promise<BundlerRestartResponse> {
+  // eslint-disable-next-line no-async-promise-executor
+  return new Promise<BundlerRestartResponse>(async (resolve) => {
     try {
       if (yamlProjectConfiguration.classes.length === 0) {
         throw new Error(GENEZIO_NO_CLASSES_FOUND);
       }
 
-      sdk = await sdkGeneratorApiHandler(yamlProjectConfiguration).catch(
+      const sdk = await sdkGeneratorApiHandler(yamlProjectConfiguration).catch(
         (error) => {
           debugLogger.log("An error occured", error);
           if (error.code === 'ENOENT') {
@@ -80,19 +94,101 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         }
       );
 
-      projectConfiguration = new ProjectConfiguration(
+      const projectConfiguration = new ProjectConfiguration(
         yamlProjectConfiguration,
         sdk
       );
 
-      processForClasses = await startProcesses(projectConfiguration, sdk);
+      const processForClasses = await startProcesses(projectConfiguration, sdk);
+      resolve({
+        shouldRestartBundling: false,
+        bundlerOutput: {
+          success: true,
+          projectConfiguration,
+          processForClasses,
+          sdk
+        }
+      });
     } catch (error: any) {
       log.error(error.message);
       log.error(
         `Fix the errors and genezio local will restart automatically. Waiting for changes...`
       );
+      // In case of an error, delete the temporary folders, then wait for changes
+      await deteleTemporaryFolders();
       // If there was an error generating the SDK, wait for changes and try again.
-      await listenForChanges(undefined);
+      const { watcher } =  await listenForChanges(undefined);
+      logChangeDetection();
+      resolve({
+        shouldRestartBundling: true,
+        bundlerOutput: undefined,
+        watcher
+      });
+    }
+  });
+}
+
+// Function that starts the local environment.
+// It also monitors for changes in the user's code and restarts the environment when changes are detected.
+export async function startLocalEnvironment(options: GenezioLocalOptions) {
+  // eslint-disable-next-line no-constant-condition
+
+  // Set-up SIGINT and exit handlers that clean up the temporary folder structure
+  process.on('SIGINT', async () => {
+    await deteleTemporaryFolders();
+    process.exit();
+  });
+  process.on('exit', async () => {
+    await deteleTemporaryFolders();
+    process.exit();
+  });
+
+  while (true) {
+    // Read the project configuration everytime because it might change
+    const yamlProjectConfiguration = await getProjectConfiguration();
+    let sdk: SdkGeneratorResponse;
+    let processForClasses: Map<string, ClassProcess>;
+    let projectConfiguration: ProjectConfiguration;
+
+    const promiseListenForChanges: Promise<BundlerRestartResponse> = listenForChanges(undefined);
+    const bundlerPromise: Promise<BundlerRestartResponse> = prepareLocalEnvironment(yamlProjectConfiguration);
+
+    let promiseRes: BundlerRestartResponse = await Promise.race([bundlerPromise, promiseListenForChanges]);
+
+    if (promiseRes.shouldRestartBundling === false) {
+      // There was no change in the user's code during the bundling process
+      if (!promiseRes.bundlerOutput || promiseRes.bundlerOutput.success === false) {
+        continue;
+      }
+      
+      // bundling process finished successfully
+      // asign the variables to the values of the bundling process output
+      projectConfiguration = promiseRes.bundlerOutput.projectConfiguration;
+      processForClasses = promiseRes.bundlerOutput.processForClasses;
+      sdk = promiseRes.bundlerOutput.sdk;
+    } else {
+      // where was a change made by the user
+      // so we need to restart the bundler process after the bundling process is finished
+      promiseRes = await bundlerPromise;
+
+      if (!promiseRes.bundlerOutput || promiseRes.bundlerOutput.success === false) {
+        continue;
+      }
+
+      processForClasses = promiseRes.bundlerOutput.processForClasses;
+
+      // clean up the old processes
+      processForClasses.forEach((classProcess: ClassProcess) => {
+        classProcess.process.kill();
+      });
+
+      // if bundler needs to be restarted, we need to clean up the temporary folderss
+      await deteleTemporaryFolders();
+
+      if (promiseRes.watcher) {
+        promiseRes.watcher.close();
+      }
+      logChangeDetection();
       continue;
     }
 
@@ -123,11 +219,20 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     reportSuccess(projectConfiguration, sdk, options.port);
 
     // Start listening for changes in user's code
-    await listenForChanges(projectConfiguration.sdk.path);
+    const { watcher } = await listenForChanges(projectConfiguration.sdk.path);
+    if (watcher) {
+      watcher.close();
+    }
+    logChangeDetection();
 
     // When new changes are detected, close everything and restart the process
     clearAllResources(server, processForClasses, crons);
   }
+}
+
+function logChangeDetection() {
+  console.clear();
+  log.info("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
 }
 
 /**
@@ -155,8 +260,10 @@ async function startProcesses(
 
     debugLogger.log("Start bundling...");
     // TODO: Is it worth the extra complexity of maintaining the folder?
-    return createTemporaryFolder().then((tmpFolder) => {
-      return bundler.bundle({
+    return createTemporaryFolder().then(async (tmpFolder) => {
+      temporaryFolders.push(tmpFolder);
+
+      const bundlerOutput = await bundler.bundle({
         projectConfiguration,
         path: classInfo.path,
         ast: ast,
@@ -164,6 +271,10 @@ async function startProcesses(
         configuration: classInfo,
         extra: { mode: "development", tmpFolder: tmpFolder }
       });
+
+      temporaryFolders.push(bundlerOutput.path);
+
+      return bundlerOutput;
     });
   });
 
@@ -231,7 +342,7 @@ async function startServerHttp(
 ): Promise<http.Server> {
   const app = express();
   app.use(cors());
-  app.use(bodyParser.raw({ type: () => true }));
+  app.use(bodyParser.raw({ type: () => true, limit: "6mb" }));
   app.use(genezioRequestParser);
 
   app.get("/get-ast-summary", (req: any, res: any) => {
@@ -464,7 +575,7 @@ async function listenForChanges(sdkPathRelative: any | undefined) {
     );
   }
 
-  return new Promise((resolve) => {
+  return new Promise<BundlerRestartResponse>((resolve) => {
     // delete / if sdkPath ends with /
     if (sdkPath?.endsWith("/")) {
       sdkPath = sdkPath.slice(0, -1);
@@ -498,12 +609,10 @@ async function listenForChanges(sdkPathRelative: any | undefined) {
               return;
             }
           }
-
-          console.clear();
-          log.info("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
-
-          watch.close();
-          resolve({});
+          resolve({
+            shouldRestartBundling: true,
+            watcher: watch
+          });
         });
     };
     startWatching();
@@ -549,6 +658,8 @@ async function clearAllResources(server: http.Server, processForClasses: Map<str
   processForClasses.forEach((classProcess) => {
     classProcess.process.kill();
   });
+
+  await deteleTemporaryFolders();
 }
 
 async function startClassProcess(

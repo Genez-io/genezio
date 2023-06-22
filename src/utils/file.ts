@@ -105,6 +105,8 @@ export async function fileExists(filePath: string): Promise<boolean> {
         return resolve(true);
       } else if (exists.code === "ENOENT") {
         return resolve(false);
+      } else {
+        return resolve(false);
       }
     });
   });
@@ -158,7 +160,7 @@ export async function directoryContainsIndexHtmlFiles(directoryPath: string): Pr
   });
 }
 
-export async function createTemporaryFolder(name = "foo-"): Promise<string> {
+export async function createTemporaryFolder(name = "genezio-"): Promise<string> {
   return new Promise((resolve, reject) => {
     fs.mkdtemp(path.join(os.tmpdir(), name), (error: any, folder: string) => {
       if (error) {
@@ -172,13 +174,13 @@ export async function createTemporaryFolder(name = "foo-"): Promise<string> {
 
 export async function deleteFolder(folderPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    fs.rm(folderPath, { recursive: true , force: true}, (error) => {
-      if (error) {
-        reject(error);
-      }
-
-      resolve();
-    });
+    try {
+      fs.rmSync(folderPath, { recursive: true , force: true});
+    } catch (error) {
+      reject(error);
+    }
+    
+    resolve();
   });
 }
 

@@ -152,17 +152,19 @@ export class DartBundler implements BundlerInterface {
         const archiveDirectoryOutput = await createTemporaryFolder();
         const archivePath = path.join(archiveDirectoryOutput, archiveName);
 
-        await zipDirectory(userCodeFolderPath, archivePath);
-        await uploadContentToS3(presignedUrlResult.presignedURL, archivePath)
-
-        // remove temporary folder
-        await deleteFolder(archiveDirectoryOutput);
+        try {
+            await zipDirectory(userCodeFolderPath, archivePath);
+            await uploadContentToS3(presignedUrlResult.presignedURL, archivePath)
+        } finally {
+            // remove temporary folder
+            await deleteFolder(archiveDirectoryOutput);
+        }
 
         return archiveName;
     }
 
     async #addLambdaRuntimeDepenendecy(path: string) {
-        const success = await runNewProcess("dart pub add aws_lambda_dart_runtime:'^1.0.3+2'", path, false);
+        const success = await runNewProcess("dart pub add aws_lambda_dart_runtime:'^1.1.0'", path, false);
 
         if (!success) {
             throw new Error("Error while adding aws_lambda_dart_runtime dependency");
@@ -203,44 +205,54 @@ export class DartBundler implements BundlerInterface {
         // Create a temporary folder were we copy user code to prepare everything.
         const folderPath = input.genezioConfigurationFilePath;
         const inputTemporaryFolder = await createTemporaryFolder(input.configuration.name);
-        await fsExtra.copy(folderPath, inputTemporaryFolder);
-        debugLogger.debug(`Copy files in temp folder ${inputTemporaryFolder}`);
+        let temporaryFolder: string | undefined = undefined;
 
-        // Create the router class
-        const userClass = input.projectConfiguration.classes.find((c: ClassConfiguration) => c.path == input.path)!;
-        this.#createRouterFileForClass(userClass, input.ast, inputTemporaryFolder);
+        try {
+            await fsExtra.copy(folderPath, inputTemporaryFolder);
+            debugLogger.debug(`Copy files in temp folder ${inputTemporaryFolder}`);
 
-        // Check if dart is installed
-        await checkIfDartIsInstalled();
+            // Create the router class
+            const userClass = input.projectConfiguration.classes.find((c: ClassConfiguration) => c.path == input.path)!;
+            this.#createRouterFileForClass(userClass, input.ast, inputTemporaryFolder);
 
-        await this.#addLambdaRuntimeDepenendecy(inputTemporaryFolder);
+            // Check if dart is installed
+            await checkIfDartIsInstalled();
 
-        await this.#analyze(inputTemporaryFolder);
+            await this.#addLambdaRuntimeDepenendecy(inputTemporaryFolder);
 
-        const archiveName = await this.#uploadUserCodeToS3(input.projectConfiguration.name, userClass.name, inputTemporaryFolder);
+            await this.#analyze(inputTemporaryFolder);
 
-        // Compile the Dart code on the server
-        debugLogger.debug("Compiling Dart...")
-        const s3Zip: any = await this.#compile(archiveName)
-        debugLogger.debug("Compiling Dart finished.")
+            const archiveName = await this.#uploadUserCodeToS3(input.projectConfiguration.name, userClass.name, inputTemporaryFolder);
 
-        if (s3Zip.success === false) {
-            throw new Error("Failed to upload code for compiling.");
+            // Compile the Dart code on the server
+            debugLogger.debug("Compiling Dart...")
+            const s3Zip: any = await this.#compile(archiveName)
+            debugLogger.debug("Compiling Dart finished.")
+
+            if (s3Zip.success === false) {
+                throw new Error("Failed to upload code for compiling.");
+            }
+
+            temporaryFolder = await createTemporaryFolder()
+
+            try {
+                debugLogger.debug(`Copy all non dart files to folder ${temporaryFolder}...`);
+                await this.#copyNonDartFiles(temporaryFolder);
+                debugLogger.debug("Copy all non dart files to folder done.");
+    
+    
+                debugLogger.debug("Downloading compiled code...")
+                await this.#downloadAndUnzipFromS3ToFolder(s3Zip.downloadUrl, temporaryFolder)
+                debugLogger.debug("Finished downloading compiled code...")
+            } catch (error) {
+                await deleteFolder(temporaryFolder);
+                throw error;
+            }
+        } finally {
+            // remove temporary folder
+            await deleteFolder(inputTemporaryFolder);
         }
-
-        const temporaryFolder = await createTemporaryFolder()
-
-        debugLogger.debug(`Copy all non dart files to folder ${temporaryFolder}...`);
-        await this.#copyNonDartFiles(temporaryFolder);
-        debugLogger.debug("Copy all non dart files to folder done.");
-
-
-        debugLogger.debug("Downloading compiled code...")
-        await this.#downloadAndUnzipFromS3ToFolder(s3Zip.downloadUrl, temporaryFolder)
-        debugLogger.debug("Finished downloading compiled code...")
-
-        // remove temporary folder
-        await deleteFolder(inputTemporaryFolder);
+        
 
         return {
             ...input,
