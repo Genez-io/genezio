@@ -1,8 +1,6 @@
 export const template = `
-/**
-* This is an auto generated code. This code should not be modified since the file can be overwriten
-* if new genezio commands are executed.
-*/
+/// This is an auto generated code. This code should not be modified since the file can be overwritten
+/// if new genezio commands are executed.
 
 import 'package:aws_lambda_dart_runtime/aws_lambda_dart_runtime.dart';
 import 'dart:convert';
@@ -14,13 +12,18 @@ void main() async {
   var service;
   try {
     service = {{className}}();
-  } catch(e, s) {
-    print(e);
-    print(s);
+  } catch(e) {
   }
 
+  // ignore: prefer_function_declarations_over_variables
   final Handler<Map<String, dynamic>> handler = (context, event) async {
     var response;
+
+    // Define headers for the response
+    final headers = {
+      'Content-Type': 'application/json',
+      'X-Powered-By': 'genezio'
+    };
 
     var eventBody = null;
     try {
@@ -42,23 +45,23 @@ void main() async {
               }
 
               final result = await service.{{name}}();
-              final json = jsonEncode(result);
-              response = '{"jsonrpc": "2.0", "result": $json, "id": 0}';
+              response = {"jsonrpc": "2.0", "result": result, "id": 0};
             } catch(e, s) {
-              print(e);
-              print(s);
-              response = '{"jsonrpc": "2.0", "result": "\${e.toString()}", "id": 0}';
+              print("Error:" + e.toString());
+              print("Stack Trace:" + s.toString());
+              response = {"jsonrpc": "2.0", "result": e.toString(), "id": 0};
             }
             break;
           }
         {{/cronMethods}}
         default:
-          response = '{"jsonrpc": "2.0", "result": "No cron method found.", "id": 0}';
+          response = {"jsonrpc": "2.0", "result": "No cron method found.", "id": 0};
         break;
       };
     } else if (event["requestContext"]["http"]["method"] == "OPTIONS") {
       final response = {
         "statusCode": 200,
+        "headers": headers,
       };
       return response;
     } else if (!isJsonRpcRequest) {
@@ -70,8 +73,8 @@ void main() async {
         case "{{name}}":
           {
             if (service == null) {
-              response = {"statusCode": 500, "body": "{{className}} could not be instantiated. Check logs for more information."};
-              break;
+              response = {"statusCode": 500, "headers": headers, "body": "{{className}} could not be instantiated. Check logs for more information."};
+              return response;
             }
 
             try {
@@ -95,16 +98,16 @@ void main() async {
 
               httpResponse = await service.{{name}}(req);
             } catch(e, s) {
-              print(e);
-              print(s);
-              httpResponse = {"statusCode": 500, "body": "\${e.toString()}"};
+              print("Error:" + e.toString());
+              print("Stack Trace:" + s.toString());
+              httpResponse = {"statusCode": 500, "headers":headers, "body": "\${e.toString()}"};
             }
             break;
           }
         {{/httpMethods}}
         default:
-          response ={"statusCode": 404, "body": "No HTTP method found."};
-        break;
+          httpResponse = {"statusCode": 404, "headers": headers, "body": "No HTTP method found."};
+          break;
       }
 
       try {
@@ -121,14 +124,13 @@ void main() async {
         } catch (error) {}
       }
       } catch (e, s) {
-        print(e);
-        print(s);
-        httpResponse = {"statusCode": 500, "body": "\${e.toString()}"};
+        print("Error:" + e.toString());
+        print("Stack Trace:" + s.toString());
+        httpResponse = {"statusCode": 500, "headers":headers, "body": e.toString()};
       }
 
-      response = httpResponse;
+      return httpResponse;
     } else {
-
     Map<String, dynamic> map = jsonDecode(event["body"]);
 
     final method = (map["method"] as String).split(".")[1];
@@ -138,7 +140,7 @@ void main() async {
     {{#jsonRpcMethods}}
     case "{{name}}": {
       if (service == null) {
-        response = '{"jsonrpc": "2.0", "result": "{{className}} could not be instantiated. Check logs for more information.", "id": 0}';
+        response = {"jsonrpc": "2.0", "result": "{{className}} could not be instantiated. Check logs for more information.", "id": 0};
         break;
       }
 
@@ -147,23 +149,46 @@ void main() async {
           final param{{index}} = {{{cast}}};
       {{/parameters}}
       final result = await service.{{name}}({{#parameters}}param{{index}}{{^last}},{{/last}}{{/parameters}});
-      final json = jsonEncode(result);
-      response = '{"jsonrpc": "2.0", "result": $json, "id": 0}';
+      response = {"jsonrpc": "2.0", "result": result, "id": 0};
       } catch(e, s) {
-        print(e);
-        print(s);
-        response = '{"jsonrpc": "2.0", "result": "\${e.toString()}", "id": 0}';
+        print("Error:" + e.toString());
+        print("Stack Trace:" + s.toString());
+        response = {"jsonrpc": "2.0",  "result": "\${e.toString()}", "id": 0};
+        final jsonResponse = jsonEncode(response);
+        return {
+          "statusCode": 500,
+          "headers": headers,
+          "body": jsonResponse
+        };
       }
-      break;
+
+      final jsonResponse = jsonEncode(response);
+      return {
+        "statusCode": 200,
+        "headers": headers,
+        "body": jsonResponse
+      };
     }
     {{/jsonRpcMethods}}
     default:
-      response = '{"jsonrpc": "2.0", "result": "No JSONRPC method found.", "id": 0}';
-    break;
+      response = {"jsonrpc": "2.0", "result": "No JSONRPC method found.", "id": 0};
+      final jsonResponse = jsonEncode(response);
+      return {
+        "statusCode": 404,
+        "headers": headers,
+        "body": jsonResponse
+      };
   };
   }
-    return response;
+
+  // Create a http response object
+  final jsonResponse = jsonEncode(response);
+  return {
+    "statusCode": 200,
+    "headers": headers,
+    "body": jsonResponse
   };
+};
 
   /// The Runtime is a singleton.
   /// You can define the handlers as you wish.
@@ -172,5 +197,4 @@ void main() async {
     ..registerHandler<Map<String, dynamic>>("index.handler", handler)
     ..invoke();
 }
-
 `;
