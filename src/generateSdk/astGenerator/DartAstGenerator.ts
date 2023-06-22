@@ -210,6 +210,7 @@ export class AstGenerator implements AstGeneratorInterface {
     const folder = await createTemporaryFolder();
     // Clone the dart ast generator.
     await runNewProcess("git clone https://github.com/Genez-io/dart-ast.git .", folder)
+    await runNewProcess("git checkout tags/v0.1 -b releases", folder)
     await runNewProcess("dart pub get", folder)
 
     // Compile the dart ast generator.
@@ -243,7 +244,10 @@ export class AstGenerator implements AstGeneratorInterface {
     }
 
     const classAbsolutePath = path.resolve(input.class.path);
-    const result = await runNewProcessWithResultAndReturnCode(`dartaotruntime ${genezioAstExtractorPath} ${classAbsolutePath}`)
+    const modelsAbsolutePath = path.join(process.cwd(), "lib", "models");
+    
+    const result = await runNewProcessWithResultAndReturnCode(`dartaotruntime ${genezioAstExtractorPath} ${classAbsolutePath} ${modelsAbsolutePath}`)
+
     // If the result is not 0, it means that the ast generator failed.
     if (result.code !== 0) {
       throw new Error(`Dart runtime error: ${result.stderr}`);
@@ -258,6 +262,7 @@ export class AstGenerator implements AstGeneratorInterface {
 
     const genezioClass: ClassDefinition = {
       type: AstNodeType.ClassDefinition,
+      path: classToDeploy.library.replace(/package:.*?\//, './lib/'),
       name: classToDeploy.name,
       methods: classToDeploy.methods.map((m: any) => {
         return {
@@ -266,6 +271,7 @@ export class AstGenerator implements AstGeneratorInterface {
           params: m.parameters.map((p: any) => {
             return {
               type: AstNodeType.ParameterDefinition,
+              path: p.library.replace(/package:.*?\//, './lib/'),
               name: p.name,
               paramType: this.#mapTypesToParamType(p.type),
               rawType: p.type,
@@ -284,13 +290,17 @@ export class AstGenerator implements AstGeneratorInterface {
     otherClasses.forEach((c: any) => {
       const genezioClass: StructLiteral = {
         type: AstNodeType.StructLiteral,
+        path: c.library.replace(/package:.*?\//, './lib/'),
         name: c.name,
         typeLiteral: {
           type: AstNodeType.TypeLiteral,
           properties: c.fields.map((p: any) => {
             return {
               name: p.name,
-              type: this.#mapTypesToParamType(p.type),
+              type: {
+                ...this.#mapTypesToParamType(p.type),
+                path: p.library.replace(/package:.*?\//, './lib/'),
+              },
               rawType: p.type,
             };
           }),

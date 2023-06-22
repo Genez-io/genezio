@@ -36,6 +36,6 @@ export async function checkIfDartIsInstalled(): Promise<boolean> {
 export function getDartAstGeneratorPath(dartSdkVersion: string): {directory: string, path: string} {
     return {
         directory: path.join(os.homedir(), ".dart_ast_generator"),
-        path: path.join(os.homedir(), ".dart_ast_generator", `genezioDartAstGenerator_${dartSdkVersion}.aot`)
+        path: path.join(os.homedir(), ".dart_ast_generator", `genezioDartAstGenerator_${dartSdkVersion}_v0.1.aot`)
     };
 }

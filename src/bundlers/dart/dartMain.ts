@@ -8,7 +8,9 @@ import 'package:aws_lambda_dart_runtime/aws_lambda_dart_runtime.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import './lib/{{classFileName}}.dart';
+{{#imports}}
+import '{{{name}}}';
+{{/imports}}
 
 void main() async {
   var service;
