@@ -63,6 +63,7 @@ export class AstGenerator implements AstGeneratorInterface {
                 } else if (escapedText === "Date") {
                     return { type: AstNodeType.DateType };
                 } else {
+                    //console.log(type)
                     const declaration = this.#findDeclarationOfType(escapedText)
                     if (declaration?.kind === typescript.SyntaxKind.EnumDeclaration) {
                         return { type: AstNodeType.Enum, name: escapedText };
@@ -70,7 +71,15 @@ export class AstGenerator implements AstGeneratorInterface {
                 }
                 const typeAtLocation = typeChecker.getTypeAtLocation((type as any).typeName);
                 if (this.addDeclarationToList(escapedText, (typeAtLocation.aliasSymbol as any).parent.escapedName, declarations)) {
-                    const structLiteral = this.parseTypeAliasDeclaration((typeAtLocation.aliasSymbol?.declarations?.[0] as any), typeChecker, declarations);
+                    console.log(typeAtLocation.aliasSymbol?.declarations?.[0].kind);
+                    let structLiteral: StructLiteral | TypeAlias | Enum;
+                    if (typeAtLocation.aliasSymbol?.declarations?.[0].kind === typescript.SyntaxKind.TypeAliasDeclaration) {
+                        structLiteral = this.parseTypeAliasDeclaration((typeAtLocation.aliasSymbol?.declarations?.[0] as any), typeChecker, declarations);
+                    } else if (typeAtLocation.aliasSymbol?.declarations?.[0].kind === typescript.SyntaxKind.EnumDeclaration) {
+                        structLiteral = this.parseEnumDeclaration(typeAtLocation.aliasSymbol?.declarations?.[0] as any);
+                    } else {
+                        return { type: AstNodeType.CustomNodeLiteral, rawValue: (type as any).typeName.escapedText };
+                    }
                     structLiteral.name = escapedText;
                     structLiteral.path = (typeAtLocation.aliasSymbol as any).parent.escapedName;
                     declarations.push(structLiteral);
