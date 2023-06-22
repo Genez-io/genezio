@@ -45,6 +45,7 @@ type ClassProcess = {
 type BundlerRestartResponse = {
   shouldRestartBundling: boolean;
   bundlerOutput?: LocalBundlerOutput;
+  watcher?: chokidar.FSWatcher;
 };
 
 type LocalBundlerOutput = {
@@ -116,11 +117,12 @@ export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProj
       // In case of an error, delete the temporary folders, then wait for changes
       await deteleTemporaryFolders();
       // If there was an error generating the SDK, wait for changes and try again.
-      await listenForChanges(undefined);
+      const { watcher } =  await listenForChanges(undefined);
       logChangeDetection();
       resolve({
         shouldRestartBundling: true,
-        bundlerOutput: undefined
+        bundlerOutput: undefined,
+        watcher
       });
     }
   });
@@ -183,6 +185,9 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       // if bundler needs to be restarted, we need to clean up the temporary folderss
       await deteleTemporaryFolders();
 
+      if (promiseRes.watcher) {
+        promiseRes.watcher.close();
+      }
       logChangeDetection();
       continue;
     }
@@ -214,7 +219,10 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     reportSuccess(projectConfiguration, sdk, options.port);
 
     // Start listening for changes in user's code
-    await listenForChanges(projectConfiguration.sdk.path);
+    const { watcher } = await listenForChanges(projectConfiguration.sdk.path);
+    if (watcher) {
+      watcher.close();
+    }
     logChangeDetection();
 
     // When new changes are detected, close everything and restart the process
@@ -601,9 +609,9 @@ async function listenForChanges(sdkPathRelative: any | undefined) {
               return;
             }
           }
-          watch.close();
           resolve({
             shouldRestartBundling: true,
+            watcher: watch
           });
         });
     };
