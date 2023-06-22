@@ -44,6 +44,7 @@
     "chokidar": "^3.5.3",
     "cli-progress": "^3.12.0",
     "cli-spinner": "^0.2.10",
+    "colors": "^1.4.0",
     "command-line-args": "^5.2.1",
     "commander": "^10.0.0",
     "cors": "^2.8.5",

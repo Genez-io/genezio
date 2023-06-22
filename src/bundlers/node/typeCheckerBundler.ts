@@ -54,7 +54,7 @@ export class TypeCheckerBundler implements BundlerInterface {
                 }
             });
 
-            throw new Error("Typescript syntax error");
+            throw new Error("Typescript compilation failed.");
         }
 
         return input;

@@ -38,6 +38,7 @@ import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter";
 import { CloudAdapter } from "../cloudAdapter/cloudAdapter";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier";
 import { TypeCheckerBundler } from "../bundlers/node/typeCheckerBundler";
+import { GenezioDeployOptions } from "../models/commandOptions";
 
 const temporaryFolders: string[] = [];
 
@@ -47,7 +48,7 @@ async function deleteTemporaryFolders() {
   }
 }
 
-export async function deployCommand(options: any) {
+export async function deployCommand(options: GenezioDeployOptions) {
   let configuration
 
   try {
@@ -80,7 +81,7 @@ export async function deployCommand(options: any) {
       }
     }
 
-    await deployClasses(configuration, cloudAdapter).catch(async (error: AxiosError) => {
+    await deployClasses(configuration, cloudAdapter, options.installDeps).catch(async (error: AxiosError) => {
       await deleteTemporaryFolders();
 
       switch (error.response?.status) {
@@ -166,7 +167,7 @@ export async function deployCommand(options: any) {
 }
 
 
-export async function deployClasses(configuration: YamlProjectConfiguration, cloudAdapter: CloudAdapter) {
+export async function deployClasses(configuration: YamlProjectConfiguration, cloudAdapter: CloudAdapter, installDeps: boolean) {
 
   if (configuration.classes.length === 0) {
     throw new Error(GENEZIO_NO_CLASSES_FOUND);
@@ -249,8 +250,9 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
         configuration: element,
         path: element.path,
         extra: {
-          mode: "development",
+          mode: "production",
           tmpFolder: tmpFolder,
+          installDeps,
         }
       });
       debugLogger.debug(

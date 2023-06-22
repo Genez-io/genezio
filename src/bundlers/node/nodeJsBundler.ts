@@ -18,8 +18,9 @@ import { default as fsExtra } from "fs-extra";
 import { lambdaHandler } from "./lambdaHander";
 import log from "loglevel";
 import { debugLogger } from "../../utils/logging";
-import esbuild, { BuildResult, Plugin, BuildFailure, Message } from "esbuild";
+import esbuild, { BuildResult, Plugin, BuildFailure, Message, Loader } from "esbuild";
 import { nodeExternalsPlugin } from "esbuild-node-externals";
+import colors from "colors"
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const exec = require("await-exec");
@@ -104,17 +105,38 @@ export class NodeJsBundler implements BundlerInterface {
       name: "esbuild-require-plugin",
       setup(build) {
         build.onLoad({ filter: /\.m?[jt]sx?$/ }, async (args) => {
+          function getLoader(extension: string): Loader {
+            switch (extension) {
+              case "ts":
+              case "mts":
+                return "ts";
+              case "tsx":
+              case "mtsx":
+                return "tsx";
+              case "js":
+              case "mjs":
+                return "js";
+              case "jsx":
+              case "mjsx":
+                return "jsx";
+              default:
+                return "js";
+            }
+          }
+
           const contents = await fs.promises.readFile(args.path, "utf8");
+          const loader = getLoader(args.path.split(".").pop()!);
+
           // Check if file doesn't use require()
           if (!contents.includes("require(")) {
-            return { contents };
+            return { contents, loader };
           }
 
           return {
             contents: `import { createRequire } from 'module';
-          const require = createRequire(import.meta.url);
-          ${contents}`,
-            loader: "js",
+            const require = createRequire(import.meta.url);
+            ${contents}`,
+            loader
           };
         });
       },
@@ -166,11 +188,65 @@ export class NodeJsBundler implements BundlerInterface {
     }
   }
 
+  async #handleMissingDependencies(error: BuildFailure, try_count: number, MAX_TRIES: number) {
+    // If there is a build failure, check if it is caused by missing library dependencies
+    // If it is, install them and try again
+    const resolveRegex = /Could not resolve "(?<dependencyName>.+)"/;
+    let npmInstallRequired = false;
+    const errToDeps = error.errors.map((error: Message) => {
+      const packageName = resolveRegex.exec(error.text)?.groups?.dependencyName;
+      if (packageName && !error.location?.file.startsWith("node_modules/")) {
+        npmInstallRequired = true;
+        return null;
+      }
+
+      return packageName;
+    });
+    const libraryDependencies: string[] = errToDeps.filter(
+      (dependencyName: string | undefined | null): dependencyName is string =>
+        !!dependencyName
+    );
+
+    if (try_count >= MAX_TRIES) {
+      if (libraryDependencies.length > 0 || npmInstallRequired) {
+        log.info(
+          `You have some missing dependencies. If you want to install them automatically, please run with ${colors.green(
+            "--install-deps"
+          )} flag`
+        );
+      }
+      throw error;
+    }
+
+    if (npmInstallRequired) {
+      debugLogger.debug("Running command: npm install")
+      await exec(`npm install`);
+    }
+
+    if (libraryDependencies.length > 0) {
+      const lib_deps_command = "npm install --no-save " + libraryDependencies.join(" ");
+
+      log.info(`You are missing some library dependencies. Installing them now...`);
+      debugLogger.debug("Running command: " + lib_deps_command)
+
+      // install missing library dependencies
+      await exec(lib_deps_command);
+    }
+
+    if (errToDeps.some((dependencyName: string | undefined | null) => dependencyName === undefined)) {
+      throw error;
+    }
+  }
+
   async #getDependenciesInfo(filePath: string, bundlerInput: BundlerInput) {
     const tempFolderPath = await createTemporaryFolder();
     let output: BuildResult;
     let try_count = 0;
-    const MAX_TRIES = 2;
+    let MAX_TRIES = -1;
+
+    if (bundlerInput.extra.installDeps) {
+      MAX_TRIES = 2;
+    }
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -186,37 +262,7 @@ export class NodeJsBundler implements BundlerInterface {
         });
         break;
       } catch (error: BuildFailure | any) {
-        if (try_count >= MAX_TRIES) {
-          throw error;
-        }
-
-        // If there is a build failure, check if it is caused by missing library dependencies
-        // If it is, install them and try again
-        const resolveRegex = /Could not resolve "(?<dependencyName>.+)"/;
-        const missingPackages = error.errors.map((error: Message) => {
-          // Only looking for missing dependencies in the library code (node_modules)
-          if (!error.location?.file?.startsWith("node_modules/")) {
-            return undefined;
-          }
-
-          return resolveRegex.exec(error.text)?.groups?.dependencyName;
-        });
-
-        const installing = missingPackages.filter((dependencyName: string) => dependencyName !== undefined);
-        const command = "npm install " + installing.join(" ");
-
-        log.info(`You are missing some library dependencies. Installing them now...`);
-
-        // install missing packages
-        await exec(command);
-
-        if (
-          missingPackages.some(
-            (dependencyName: string) => dependencyName === undefined
-          )
-        ) {
-          throw error;
-        }
+        await this.#handleMissingDependencies(error, try_count, MAX_TRIES);
       }
 
       try_count++;
@@ -249,26 +295,6 @@ export class NodeJsBundler implements BundlerInterface {
     await deleteFolder(tempFolderPath);
   }
 
-  async #deleteTypeModuleFromPackageJson(tempFolderPath: string) {
-    const packageJsonPath = path.join(tempFolderPath, "package.json");
-
-    // check if package.json file exists
-    if (!fs.existsSync(packageJsonPath)) {
-      return;
-    }
-
-    // read package.json file
-    const packageJson: any = JSON.parse(
-      await readUTF8File(packageJsonPath) || "{}"
-    );
-
-    // delete type module from package.json
-    delete packageJson.type;
-
-    // write package.json file
-    await writeToFile(tempFolderPath, "package.json", JSON.stringify(packageJson, null, 2));
-  }
-
   async bundle(input: BundlerInput): Promise<BundlerOutput> {
     const mode = input.extra.mode;
     const tmpFolder = input.extra.tmpFolder;
@@ -280,7 +306,7 @@ export class NodeJsBundler implements BundlerInterface {
     const temporaryFolder = mode === "production" ? await createTemporaryFolder() : tmpFolder!;
     input.extra.dependenciesInfo = [];
 
-    // 1. Run webpack to get dependenciesInfo and the packed file
+    // 1. Run esbuild to get dependenciesInfo and the bundled file
     debugLogger.debug(`[NodeJSBundler] Get the list of node modules and bundling the javascript code for file ${input.path}.`)
     await Promise.all([
       this.#bundleNodeJSCode(
@@ -298,9 +324,6 @@ export class NodeJsBundler implements BundlerInterface {
       mode === "production" ? this.#copyDependencies(input.extra.dependenciesInfo, temporaryFolder, mode) : Promise.resolve(),
       writeToFile(temporaryFolder, "index.mjs", lambdaHandler(`"${input.configuration.name}"`))
     ]);
-
-    // 3. Delete type: module from package.json
-    await this.#deleteTypeModuleFromPackageJson(temporaryFolder);
 
     return {
       ...input,

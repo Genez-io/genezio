@@ -17,8 +17,9 @@ export type BundlerInput = {
         mode: "production" | "development",
         tmpFolder?: string,
         dependenciesInfo?: Dependency[],
-        startingCommand?: string
-        commandParameters?: string[]
+        startingCommand?: string,
+        commandParameters?: string[],
+        installDeps?: boolean,
     }
 }
 

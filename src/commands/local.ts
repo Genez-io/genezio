@@ -33,7 +33,6 @@ import { DartBundler } from "../bundlers/dart/localDartBundler";
 import axios, { AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort";
 import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration";
-import { TypeCheckerBundler } from "../bundlers/node/typeCheckerBundler";
 
 type ClassProcess = {
   process: ChildProcess;
@@ -63,7 +62,7 @@ async function deteleTemporaryFolders() {
   }
 }
 
-export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProjectConfiguration): Promise<BundlerRestartResponse> {
+export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProjectConfiguration, installDeps: boolean): Promise<BundlerRestartResponse> {
   // eslint-disable-next-line no-async-promise-executor
   return new Promise<BundlerRestartResponse>(async (resolve) => {
     try {
@@ -99,7 +98,7 @@ export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProj
         sdk
       );
 
-      const processForClasses = await startProcesses(projectConfiguration, sdk);
+      const processForClasses = await startProcesses(projectConfiguration, sdk, installDeps);
       resolve({
         shouldRestartBundling: false,
         bundlerOutput: {
@@ -118,7 +117,6 @@ export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProj
       await deteleTemporaryFolders();
       // If there was an error generating the SDK, wait for changes and try again.
       const { watcher } =  await listenForChanges(undefined);
-      TypeCheckerBundler.logChangeDetection();
       logChangeDetection();
       resolve({
         shouldRestartBundling: true,
@@ -153,7 +151,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     let projectConfiguration: ProjectConfiguration;
 
     const promiseListenForChanges: Promise<BundlerRestartResponse> = listenForChanges(undefined);
-    const bundlerPromise: Promise<BundlerRestartResponse> = prepareLocalEnvironment(yamlProjectConfiguration);
+    const bundlerPromise: Promise<BundlerRestartResponse> = prepareLocalEnvironment(yamlProjectConfiguration, options.installDeps);
 
     let promiseRes: BundlerRestartResponse = await Promise.race([bundlerPromise, promiseListenForChanges]);
 
@@ -242,7 +240,8 @@ function logChangeDetection() {
  */
 async function startProcesses(
   projectConfiguration: ProjectConfiguration,
-  sdk: SdkGeneratorResponse
+  sdk: SdkGeneratorResponse,
+  installDeps: boolean
 ): Promise<Map<string, ClassProcess>> {
   const classes = projectConfiguration.classes;
   const processForClasses = new Map<string, ClassProcess>();
@@ -271,7 +270,7 @@ async function startProcesses(
         ast: ast,
         genezioConfigurationFilePath: process.cwd(),
         configuration: classInfo,
-        extra: { mode: "development", tmpFolder: tmpFolder }
+        extra: { mode: "development", tmpFolder: tmpFolder, installDeps}
       });
 
       temporaryFolders.push(bundlerOutput.path);
@@ -310,13 +309,7 @@ function getBundler(
 ): BundlerInterface | undefined {
   let bundler: BundlerInterface | undefined;
   switch (classConfiguration.language) {
-    case ".ts": {
-      const typeCheckerBundler = new TypeCheckerBundler();
-      const nodeJsBundler = new NodeJsBundler();
-      const localBundler = new NodeJsLocalBundler();
-      bundler = new BundlerComposer([typeCheckerBundler, nodeJsBundler, localBundler]);
-      break;
-    }
+    case ".ts":
     case ".js": {
       const nodeJsBundler = new NodeJsBundler();
       const localBundler = new NodeJsLocalBundler();
