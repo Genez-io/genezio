@@ -160,7 +160,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       if (!promiseRes.bundlerOutput || promiseRes.bundlerOutput.success === false) {
         continue;
       }
-      
+
       // bundling process finished successfully
       // asign the variables to the values of the bundling process output
       projectConfiguration = promiseRes.bundlerOutput.projectConfiguration;
@@ -352,10 +352,12 @@ async function startServerHttp(
     const localProcess = processForClasses.get(req.params.className);
 
     if (!localProcess) {
-      handleResponseForJsonRpc(res, {
-        jsonrpc: "2.0",
-        id: 0,
-        error: { code: -32000, message: "Class not found!" }
+      sendResponse(res, {
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 0,
+          error: { code: -32000, message: "Class not found!" }
+        })
       });
       return;
     }
@@ -367,12 +369,14 @@ async function startServerHttp(
         reqToFunction,
         processForClasses
       );
-      handleResponseForJsonRpc(res, response.data);
+      sendResponse(res, response.data);
     } catch (error: any) {
-      handleResponseForJsonRpc(res, {
-        jsonrpc: "2.0",
-        id: 0,
-        error: { code: -32000, message: "Internal error" }
+      sendResponse(res, {
+        "body": JSON.stringify({
+          jsonrpc: "2.0",
+          id: 0,
+          error: { code: -32000, message: "Internal error" }
+        })
       });
       return;
     }
@@ -395,7 +399,7 @@ async function startServerHttp(
       reqToFunction,
       processForClasses
     );
-    handleResponseforHttp(res, response.data);
+    sendResponse(res, response.data);
   });
 
   return await new Promise((resolve, reject) => {
@@ -498,12 +502,7 @@ function getEventObjectFromRequest(request: any) {
   };
 }
 
-function handleResponseForJsonRpc(res: any, jsonRpcResponse: any) {
-  res.setHeader("Content-Type", "application/json");
-  res.end(JSON.stringify(jsonRpcResponse));
-}
-
-function handleResponseforHttp(res: any, httpResponse: any) {
+function sendResponse(res: any, httpResponse: any) {
   if (httpResponse.statusDescription) {
     res.statusMessage = httpResponse.statusDescription;
   }
@@ -641,9 +640,9 @@ function reportSuccess(
 
 function getFunctionUrl(baseUrl: string, methodType: string, className: string, methodName: string): string {
   if (methodType === "http") {
-      return `${baseUrl}/${className}/${methodName}`;
+    return `${baseUrl}/${className}/${methodName}`;
   } else {
-      return `${baseUrl}/${className}`;
+    return `${baseUrl}/${className}`;
   }
 }
 
@@ -671,7 +670,7 @@ async function startClassProcess(
   const processParameters = [...parameters, availablePort.toString()];
   const classProcess = spawn(startingCommand, processParameters, {
     stdio: ["pipe", "pipe", "pipe"],
-    env: { ...process.env, NODE_OPTIONS:"--enable-source-maps" }
+    env: { ...process.env, NODE_OPTIONS: "--enable-source-maps" }
   });
   classProcess.stdout.pipe(process.stdout);
   classProcess.stderr.pipe(process.stderr);
