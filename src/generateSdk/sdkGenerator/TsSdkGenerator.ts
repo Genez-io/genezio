@@ -97,12 +97,29 @@ const TYPESCRIPT_RESERVED_WORDS = [
   "of"
 ];
 
+const modelTemplate = `/**
+* This is an auto generated code. This code should not be modified since the file can be overwriten
+* if new genezio commands are executed.
+*/
+
+{{#imports}}
+import { {{#models}}{{{name}}}{{^last}}, {{/last}}{{/models}} } from "./{{{path}}}";
+{{/imports}}
+
+{{#externalTypes}}
+export {{{type}}}
+{{/externalTypes}}
+`
+
 const template = `/**
 * This is an auto generated code. This code should not be modified since the file can be overwriten
 * if new genezio commands are executed.
 */
 
 import { Remote } from "./remote";
+{{#imports}}
+import { {{#models}}{{{name}}}{{^last}}, {{/last}}{{/models}} } from "./{{{path}}}";
+{{/imports}}
 
 {{#externalTypes}}
 export {{{type}}}
@@ -156,8 +173,11 @@ class SdkGenerator implements SdkGeneratorInterface {
         className: classDefinition.name,
         _url: _url,
         methods: [],
-        externalTypes: []
+        externalTypes: [],
+        imports: [],
       };
+
+      const modelViews: any = [];
 
       let exportClassChecker = false;
 
@@ -204,7 +224,49 @@ class SdkGenerator implements SdkGeneratorInterface {
       }
 
       for (const externalType of externalTypes) {
-        view.externalTypes.push({type: this.generateExternalType(externalType)});
+        if (externalType.path && !classInfo.classConfiguration.path.includes(externalType.path)) {
+          view.imports = view.imports || [];
+          let found = false;
+          for (const importType of view.imports) {
+            if (importType.path === externalType.path) {
+              importType.models.push({name: (externalType as any).name});
+              importType.last = false;
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            view.imports.push({
+              path: externalType.path,
+              models: [{name: (externalType as any).name}],
+              last: false
+            });
+          }
+          found = false;
+          for (const modelView of modelViews) {
+            if (modelView.path === externalType.path) {
+              modelView.externalTypes.push({type: this.generateExternalType(externalType)});
+              modelView.last = false;
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            modelViews.push({
+              path: externalType.path,
+              externalTypes: [{type: this.generateExternalType(externalType)}],
+            });
+          }
+        } else {
+          view.externalTypes.push({type: this.generateExternalType(externalType)});
+        }
+      }
+
+      for (const importType of view.imports || []) {
+        importType.last = false;
+        if (importType.models.length > 0) {
+          importType.models[importType.models.length - 1].last = true;
+        }
       }
 
       if (!exportClassChecker) {
@@ -219,6 +281,15 @@ class SdkGenerator implements SdkGeneratorInterface {
         data: Mustache.render(template, view),
         className: classDefinition.name
       });
+
+
+      for (const modelView of modelViews) {
+        generateSdkOutput.files.push({
+          path: modelView.path + ".ts",
+          data: Mustache.render(modelTemplate, modelView),
+          className: ''
+        });
+      }
     }
 
     // generate remote.js

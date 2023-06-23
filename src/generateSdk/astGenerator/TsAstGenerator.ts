@@ -63,15 +63,14 @@ export class AstGenerator implements AstGeneratorInterface {
                 } else if (escapedText === "Date") {
                     return { type: AstNodeType.DateType };
                 } else {
-                    //console.log(type)
                     const declaration = this.#findDeclarationOfType(escapedText)
                     if (declaration?.kind === typescript.SyntaxKind.EnumDeclaration) {
                         return { type: AstNodeType.Enum, name: escapedText };
                     }
                 }
                 const typeAtLocation = typeChecker.getTypeAtLocation((type as any).typeName);
-                if (this.addDeclarationToList(escapedText, (typeAtLocation.aliasSymbol as any).parent.escapedName, declarations)) {
-                    console.log(typeAtLocation.aliasSymbol?.declarations?.[0].kind);
+                const pathFile = path.relative(process.cwd(), (typeAtLocation.aliasSymbol as any).parent.escapedName.substring(1, (typeAtLocation.aliasSymbol as any).parent.escapedName.length - 1));
+                if (this.addDeclarationToList(escapedText, pathFile, declarations)) {
                     let structLiteral: StructLiteral | TypeAlias | Enum;
                     if (typeAtLocation.aliasSymbol?.declarations?.[0].kind === typescript.SyntaxKind.TypeAliasDeclaration) {
                         structLiteral = this.parseTypeAliasDeclaration((typeAtLocation.aliasSymbol?.declarations?.[0] as any), typeChecker, declarations);
@@ -81,7 +80,7 @@ export class AstGenerator implements AstGeneratorInterface {
                         return { type: AstNodeType.CustomNodeLiteral, rawValue: (type as any).typeName.escapedText };
                     }
                     structLiteral.name = escapedText;
-                    structLiteral.path = (typeAtLocation.aliasSymbol as any).parent.escapedName;
+                    structLiteral.path = pathFile;
                     declarations.push(structLiteral);
                 }
                 return { type: AstNodeType.CustomNodeLiteral, rawValue: (type as any).typeName.escapedText };
@@ -149,8 +148,7 @@ export class AstGenerator implements AstGeneratorInterface {
 
     parseTypeAliasDeclaration(typeAliasDeclaration: typescript.Node, typeChecker: typescript.TypeChecker, declarations: Node[]): StructLiteral | TypeAlias {
         const typeAliasDeclarationCopy: any = { ...typeAliasDeclaration };
-        
-        if (typeAliasDeclarationCopy.kind === typescript.SyntaxKind.TypeLiteral) {
+        if (typeAliasDeclarationCopy.type.kind === typescript.SyntaxKind.TypeLiteral) {
             const structLiteral: StructLiteral = {
                 type: AstNodeType.StructLiteral,
                 name: '',
@@ -159,7 +157,7 @@ export class AstGenerator implements AstGeneratorInterface {
                     properties: [],
                 }
             }
-            for (const member of typeAliasDeclarationCopy.members) { // sters .type
+            for (const member of typeAliasDeclarationCopy.type.members) { // sters .type
                 if (member.type) {
                     const field: PropertyDefinition = {
                         name: member.name.escapedText,
