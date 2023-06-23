@@ -19,7 +19,7 @@ import { startLocalEnvironment } from "./commands/local";
 import { loginCommand } from "./commands/login";
 import { logoutCommand } from "./commands/logout";
 import { lsCommand } from "./commands/ls";
-import { GenezioLocalOptions } from "./models/commandOptions";
+import { GenezioDeployOptions, GenezioLocalOptions } from "./models/commandOptions";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
@@ -98,9 +98,10 @@ program
   .option("--backend", "Deploy only the backend application.")
   .option("--frontend", "Deploy only the frontend application.")
   .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
+  .option("--install-deps", "Automatically install missing dependencies.", false)
   .description(`Deploy your project to the genezio infrastructure. Use --frontend to deploy only the frontend application. 
 Use --backend to deploy only the backend application.`)
-  .action(async (options: any) => {
+  .action(async (options: GenezioDeployOptions) => {
     setDebuggingLoggerLogLevel(options.logLevel);
 
     await deployCommand(options);
@@ -135,6 +136,7 @@ program
     "Set the port your local server will be running on.",
     String(PORT_LOCAL_ENVIRONMENT)
   )
+  .option("--install-deps", "Automatically install missing dependencies.", false)
   .description("Run a local environment for your functions.")
   .action(async (options: GenezioLocalOptions) => {
     setDebuggingLoggerLogLevel(options.logLevel);

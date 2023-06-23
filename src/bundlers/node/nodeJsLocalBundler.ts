@@ -5,8 +5,8 @@ import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interf
 // This file is the wrapper that is used to run the user's code in a separate process.
 // It listens for messages from the parent process and runs the user's code when it receives a message.
 const localWrapperCode = `
-const userHandler = require("./index.js")
-const http = require('http');
+import { handler as userHandler } from "./index.mjs";
+import http from "http";
 
 const hostname = '127.0.0.1';
 const port = process.argv[2];
@@ -20,7 +20,7 @@ const server = http.createServer((req, res) => {
     req.on('end', () => {
       res.writeHead(200, {'Content-Type': 'text/plain'});
       const jsonParsedBody = JSON.parse(body);
-      userHandler.handler(jsonParsedBody).then((response) => {
+      userHandler(jsonParsedBody).then((response) => {
         res.end(JSON.stringify(response));
     })
     });
@@ -37,14 +37,14 @@ server.listen(port, hostname, () => {
 // Adds a wrapper to the user's code that allows it to be run in a separate process.
 export class NodeJsLocalBundler implements BundlerInterface {
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
-        await writeToFile(input.path, "local.js", localWrapperCode, true)
+        await writeToFile(input.path, "local.mjs", localWrapperCode, true)
 
         return {
             ...input,
             extra: {
                 ...input.extra,
                 startingCommand: "node",
-                commandParameters: [path.resolve(input.path, 'local.js')],
+                commandParameters: [path.resolve(input.path, 'local.mjs')],
             }
         }
     }

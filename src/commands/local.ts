@@ -1,6 +1,5 @@
 import log from "loglevel";
-import { NodeJsBundler } from "../bundlers/javascript/nodeJsBundler";
-import { NodeTsBundler } from "../bundlers/typescript/nodeTsBundler";
+import { NodeJsBundler } from "../bundlers/node/nodeJsBundler";
 import express from "express";
 import chokidar from "chokidar";
 import cors from "cors";
@@ -19,7 +18,7 @@ import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi";
 import { AstSummary } from "../models/astSummary";
 import { getProjectConfiguration } from "../utils/configuration";
 import { BundlerInterface } from "../bundlers/bundler.interface";
-import { NodeJsLocalBundler } from "../bundlers/javascript/nodeJsLocalBundler";
+import { NodeJsLocalBundler } from "../bundlers/node/nodeJsLocalBundler";
 import { BundlerComposer } from "../bundlers/bundlerComposer";
 import { genezioRequestParser } from "../utils/genezioRequestParser";
 import { debugLogger } from "../utils/logging";
@@ -63,7 +62,7 @@ async function deteleTemporaryFolders() {
   }
 }
 
-export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProjectConfiguration): Promise<BundlerRestartResponse> {
+export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProjectConfiguration, installDeps: boolean): Promise<BundlerRestartResponse> {
   // eslint-disable-next-line no-async-promise-executor
   return new Promise<BundlerRestartResponse>(async (resolve) => {
     try {
@@ -99,7 +98,7 @@ export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProj
         sdk
       );
 
-      const processForClasses = await startProcesses(projectConfiguration, sdk);
+      const processForClasses = await startProcesses(projectConfiguration, sdk, installDeps);
       resolve({
         shouldRestartBundling: false,
         bundlerOutput: {
@@ -143,6 +142,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     process.exit();
   });
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     // Read the project configuration everytime because it might change
     const yamlProjectConfiguration = await getProjectConfiguration();
@@ -151,7 +151,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     let projectConfiguration: ProjectConfiguration;
 
     const promiseListenForChanges: Promise<BundlerRestartResponse> = listenForChanges(undefined);
-    const bundlerPromise: Promise<BundlerRestartResponse> = prepareLocalEnvironment(yamlProjectConfiguration);
+    const bundlerPromise: Promise<BundlerRestartResponse> = prepareLocalEnvironment(yamlProjectConfiguration, options.installDeps);
 
     let promiseRes: BundlerRestartResponse = await Promise.race([bundlerPromise, promiseListenForChanges]);
 
@@ -240,7 +240,8 @@ function logChangeDetection() {
  */
 async function startProcesses(
   projectConfiguration: ProjectConfiguration,
-  sdk: SdkGeneratorResponse
+  sdk: SdkGeneratorResponse,
+  installDeps: boolean
 ): Promise<Map<string, ClassProcess>> {
   const classes = projectConfiguration.classes;
   const processForClasses = new Map<string, ClassProcess>();
@@ -269,7 +270,7 @@ async function startProcesses(
         ast: ast,
         genezioConfigurationFilePath: process.cwd(),
         configuration: classInfo,
-        extra: { mode: "development", tmpFolder: tmpFolder }
+        extra: { mode: "development", tmpFolder: tmpFolder, installDeps}
       });
 
       temporaryFolders.push(bundlerOutput.path);
@@ -287,13 +288,13 @@ async function startProcesses(
       throw new Error("Bundler output is missing extra field.");
     }
 
-    if (!extra["startingCommand"]) {
+    if (!extra.startingCommand) {
       throw new Error("No starting command found for this language.");
     }
 
     await startClassProcess(
-      extra["startingCommand"],
-      extra["commandParameters"],
+      extra.startingCommand,
+      extra.commandParameters ? extra.commandParameters : [],
       bundlerOutput.configuration.name,
       processForClasses
     );
@@ -308,12 +309,7 @@ function getBundler(
 ): BundlerInterface | undefined {
   let bundler: BundlerInterface | undefined;
   switch (classConfiguration.language) {
-    case ".ts": {
-      const nodeTsBundler = new NodeTsBundler();
-      const localBundler = new NodeJsLocalBundler();
-      bundler = new BundlerComposer([nodeTsBundler, localBundler]);
-      break;
-    }
+    case ".ts":
     case ".js": {
       const nodeJsBundler = new NodeJsBundler();
       const localBundler = new NodeJsLocalBundler();

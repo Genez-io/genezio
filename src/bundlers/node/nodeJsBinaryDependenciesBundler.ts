@@ -1,7 +1,7 @@
 import path from 'path'
 import fs from 'fs'
 import util from "util";
-import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface"
+import { BundlerInput, BundlerInterface, BundlerOutput, Dependency } from "../bundler.interface"
 import { fileExists } from '../../utils/file';
 import log from "loglevel";
 import { debugLogger } from '../../utils/logging';
@@ -10,7 +10,7 @@ const exec = util.promisify(require("child_process").exec);
 
 
 export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
-    async #handleBinaryDependencies(dependenciesInfo: any, tempFolderPath: string) {
+    async #handleBinaryDependencies(dependenciesInfo: Dependency[], tempFolderPath: string) {
         // create node_modules folder in tmp folder
         const nodeModulesPath = path.join(tempFolderPath, "node_modules");
         const binaryDependencies = [];
@@ -87,7 +87,8 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
     }
 
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
-        if (!input.extra) {
+        if (!input.extra.dependenciesInfo) {
+            debugLogger.debug(`[NodeJSBinaryDependenciesBundler] No dependencies info for file ${input.path}... Something might be wrong.`)
             return Promise.resolve(input)
         }
 
