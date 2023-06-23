@@ -55,6 +55,7 @@ if (!genezioClass) {
         if (event.requestContext.http.method === "OPTIONS") {
             const response = {
                 statusCode: 200,
+                headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
             };
             return response;
         }
