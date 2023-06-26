@@ -278,7 +278,8 @@ export class NodeJsBundler implements BundlerInterface {
         return;
       }
 
-      const dependencyName = value.split(path.sep)[1];
+      // We use '/' as a separator regardless the platform because esbuild returns '/' separated paths
+      const dependencyName = value.split("/")[1];
       const dependencyPath = path.resolve(path.join("node_modules", dependencyName));
 
       // This should not ever happen. If you got here... Good luck!
