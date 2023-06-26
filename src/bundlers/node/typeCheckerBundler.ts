@@ -1,11 +1,11 @@
-import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface";
+import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface.js";
 import ts from "typescript";
 import log from "loglevel";
 import fs from "fs";
-import { tsconfig } from "../../utils/configs";
+import { tsconfig } from "../../utils/configs.js";
 import path from "path";
-import { writeToFile } from "../../utils/file";
-import { debugLogger } from "../../utils/logging";
+import { writeToFile } from "../../utils/file.js";
+import { debugLogger } from "../../utils/logging.js";
 
 export class TypeCheckerBundler implements BundlerInterface {
     // Call this class only once

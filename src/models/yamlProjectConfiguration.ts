@@ -1,11 +1,11 @@
 import path from "path";
 import yaml from "yaml";
-import { getFileDetails, writeToFile } from "../utils/file";
-import { regions } from "../utils/configs";
+import { getFileDetails, writeToFile } from "../utils/file.js";
+import { regions } from "../utils/configs.js";
 import { isValidCron } from 'cron-validator'
 import log from "loglevel";
-import { CloudProviderIdentifier } from "./cloudProviderIdentifier";
-import { NodeOptions } from "./nodeRuntime";
+import { CloudProviderIdentifier } from "./cloudProviderIdentifier.js";
+import { NodeOptions } from "./nodeRuntime.js";
 
 export enum TriggerType {
   jsonrpc = "jsonrpc",

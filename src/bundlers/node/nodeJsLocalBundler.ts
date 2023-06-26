@@ -1,6 +1,6 @@
-import { writeToFile } from "../../utils/file";
+import { writeToFile } from "../../utils/file.js";
 import path from "path";
-import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface";
+import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface.js";
 
 // This file is the wrapper that is used to run the user's code in a separate process.
 // It listens for messages from the parent process and runs the user's code when it receives a message.

@@ -1,4 +1,4 @@
-import { BundlerInput, BundlerInterface, BundlerOutput } from "./bundler.interface";
+import { BundlerInput, BundlerInterface, BundlerOutput } from "./bundler.interface.js";
 
 export class BundlerComposer implements BundlerInterface {
     bundlers: BundlerInterface[]

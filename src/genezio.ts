@@ -1,29 +1,29 @@
 import { Command, CommanderError } from "commander";
-import { setDebuggingLoggerLogLevel } from "./utils/logging";
+import { setDebuggingLoggerLogLevel } from "./utils/logging.js";
 import { exit } from "process";
 import {
   PORT_LOCAL_ENVIRONMENT,
   ENABLE_DEBUG_LOGS_BY_DEFAULT,
-} from "./constants";
+} from "./constants.js";
 import log from "loglevel";
 import prefix from 'loglevel-plugin-prefix';
 
 // commands imports
-import { accountCommand } from "./commands/account";
-import { addClassCommand } from "./commands/addClass";
-import { deleteCommand } from "./commands/delete";
-import { deployCommand } from "./commands/deploy";
-import { generateSdkCommand } from "./commands/generateSdk";
-import { initCommand } from "./commands/init";
-import { startLocalEnvironment } from "./commands/local";
-import { loginCommand } from "./commands/login";
-import { logoutCommand } from "./commands/logout";
-import { lsCommand } from "./commands/ls";
-import { GenezioDeployOptions, GenezioLocalOptions } from "./models/commandOptions";
+import { accountCommand } from "./commands/account.js";
+import { addClassCommand } from "./commands/addClass.js";
+import { deleteCommand } from "./commands/delete.js";
+import { deployCommand } from "./commands/deploy.js";
+import { generateSdkCommand } from "./commands/generateSdk.js";
+import { initCommand } from "./commands/init.js";
+import { startLocalEnvironment } from "./commands/local.js";
+import { loginCommand } from "./commands/login.js";
+import { logoutCommand } from "./commands/logout.js";
+import { lsCommand } from "./commands/ls.js";
+import { GenezioDeployOptions, GenezioLocalOptions } from "./models/commandOptions.js";
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const pjson = require("../package.json");
-
 
 const program = new Command();
 

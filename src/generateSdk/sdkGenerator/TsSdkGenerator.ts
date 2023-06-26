@@ -15,9 +15,9 @@ import {
   TypeLiteral,
   StructLiteral,
   PromiseType
- } from "../../models/genezioModels";
-import { TriggerType } from "../../models/yamlProjectConfiguration";
-import { nodeSdkTs } from "../templates/nodeSdkTs";
+ } from "../../models/genezioModels.js";
+import { TriggerType } from "../../models/yamlProjectConfiguration.js";
+import { nodeSdkTs } from "../templates/nodeSdkTs.js";
 
 const TYPESCRIPT_RESERVED_WORDS = [
   "abstract",

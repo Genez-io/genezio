@@ -1,5 +1,5 @@
 #! /usr/bin/env node
 
-import program from "./genezio";
+import program from "./genezio.js";
 
 program.parse();

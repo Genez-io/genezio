@@ -3,14 +3,15 @@
   "version": "0.4.0",
   "description": "Command line utility to interact with Genezio infrastructure.",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "start": "npx tsc && node build/index.js",
+    "start": "npx tsc && node build/src/index.js",
     "preinstall-locally": "npx tsc",
-    "install-locally": "node solveEnvVariables.js build/constants.js",
+    "install-locally": "node solveEnvVariables.js build/src/constants.js",
     "postinstall-locally": "npm install -g",
-    "build": "npx tsc && node solveEnvVariables.js build/constants.js",
+    "build": "npx tsc && node solveEnvVariables.js build/src/constants.js",
     "install-locally-dev": "npm run install-locally -- dev",
-    "build-dev": "npx tsc && node solveEnvVariables.js build/constants.js -- dev",
+    "build-dev": "npx tsc && node solveEnvVariables.js build/src/constants.js -- dev",
     "lint": "./scripts/lint",
     "checkChangesInVariables": "./scripts/checkConstants",
     "checkUnwantedLogs": "./scripts/checkUnwantedLogs",
@@ -86,7 +87,7 @@
     "url": "https://github.com/Genez-io/genezio.git"
   },
   "bin": {
-    "genezio": "./build/index.js"
+    "genezio": "./build/src/index.js"
   },
   "devDependencies": {
     "@types/archiver": "^5.3.2",

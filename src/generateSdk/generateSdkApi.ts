@@ -1,11 +1,11 @@
-import { generateAst } from "./astGeneratorHandler";
-import { generateSdk } from "./sdkGeneratorHandler";
-import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration";
-import { getGenerateAstInputs } from "./utils/getFiles";
-import { SdkGeneratorInput, SdkGeneratorOutput } from "../models/genezioModels";
+import { generateAst } from "./astGeneratorHandler.js";
+import { generateSdk } from "./sdkGeneratorHandler.js";
+import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js";
+import { getGenerateAstInputs } from "./utils/getFiles.js";
+import { SdkGeneratorInput, SdkGeneratorOutput } from "../models/genezioModels.js";
 import path from "path";
-import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
-import { AstGeneratorInput } from "../models/genezioModels";
+import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
+import { AstGeneratorInput } from "../models/genezioModels.js";
 
 
 /**

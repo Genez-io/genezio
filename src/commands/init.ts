@@ -1,10 +1,10 @@
 import log from "loglevel";
 import { Document } from "yaml";
-import { regions } from "../utils/configs";
-import { writeToFile } from "../utils/file";
-import { languages } from "../utils/languages";
-import { askQuestion } from "../utils/prompt";
-import {cyan, red} from "../utils/strings";
+import { regions } from "../utils/configs.js";
+import { writeToFile } from "../utils/file.js";
+import { languages } from "../utils/languages.js";
+import { askQuestion } from "../utils/prompt.js";
+import {cyan, red} from "../utils/strings.js";
 export async function initCommand() {
   let projectName = "";
   while (projectName.length === 0) {

@@ -2,11 +2,11 @@ import { AxiosError } from "axios";
 import { Spinner } from "cli-spinner";
 import log from "loglevel";
 import { exit } from "process";
-import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors";
-import deleteProject from "../requests/deleteProject";
-import listProjects from "../requests/listProjects";
-import { getAuthToken } from "../utils/accounts";
-import { askQuestion } from "../utils/prompt";
+import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
+import deleteProject from "../requests/deleteProject.js";
+import listProjects from "../requests/listProjects.js";
+import { getAuthToken } from "../utils/accounts.js";
+import { askQuestion } from "../utils/prompt.js";
 
 
 export async function deleteCommand(projectId: string, options: any) {

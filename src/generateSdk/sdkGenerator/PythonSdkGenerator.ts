@@ -16,9 +16,9 @@ import {
   PromiseType,
   EnumCase,
   EnumType
-} from "../../models/genezioModels";
-import { TriggerType } from "../../models/yamlProjectConfiguration";
-import { pythonSdk } from "../templates/pythonSdk";
+} from "../../models/genezioModels.js";
+import { TriggerType } from "../../models/yamlProjectConfiguration.js";
+import { pythonSdk } from "../templates/pythonSdk.js";
 
 
 const PYTHON_RESERVED_WORDS = [
