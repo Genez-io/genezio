@@ -16,7 +16,9 @@ import {
   PromiseType,
   EnumCase,
   EnumType,
-  TypeLiteral
+  TypeLiteral,
+  ParameterDefinition,
+  MethodDefinition
 } from "../../models/genezioModels";
 import { TriggerType } from "../../models/yamlProjectConfiguration";
 import { pythonSdk } from "../templates/pythonSdk";
@@ -213,12 +215,16 @@ class SdkGenerator implements SdkGeneratorInterface {
                 }
               }
               if (!found) {
-                currentView = {
-                  path: nestedExternalType.path,
-                  externalTypes: [],
-                  imports: [],
-                };
-                modelViews.push(currentView);
+                if (!classInfo.classConfiguration.path.includes(nestedExternalType.path)) {
+                  currentView = {
+                    path: nestedExternalType.path,
+                    externalTypes: [],
+                    imports: [],
+                  };
+                  modelViews.push(currentView);
+                } else {
+                  currentView = view;
+                }
               }
             }
             if (currentView) {
@@ -244,11 +250,11 @@ class SdkGenerator implements SdkGeneratorInterface {
               }
             }
           }
-          if (!currentView) {
+          if (this.isExternalTypeUsedInMethod(externalType, classDefinition.methods)) {
             let found = false;
             currentView = view;
             for (const importType of currentView.imports) {
-              if (importType.path === externalType.path.replace("/", ".") && !importType.models.includes((externalType as any).name)) {
+              if (importType.path === externalType.path.replace("/", ".") && !importType.models.find((e: any) => e.name === (externalType as any).name)) {
                 importType.models.push({name: (externalType as any).name});
                 importType.last = false;
                 found = true;
@@ -260,11 +266,13 @@ class SdkGenerator implements SdkGeneratorInterface {
               if (relativePath.substring(0,3) == "...") {
                 relativePath = relativePath.substring(3);
               }
-              currentView.imports.push({
-                path: relativePath,
-                models: [{name: (externalType as any).name}],
-                last: false
-              });
+              if (!currentView.imports.find((e: any) => e.path === relativePath)) {
+                currentView.imports.push({
+                  path: relativePath,
+                  models: [{name: (externalType as any).name}],
+                  last: false
+                });
+              }
             }
           }
 
@@ -452,6 +460,10 @@ class SdkGenerator implements SdkGeneratorInterface {
       return false;
     }
     return false;
+  }
+
+  isExternalTypeUsedInMethod(externalType: Node, methods: MethodDefinition[]): boolean {
+    return methods.some((m) => this.isExternalTypeUsed(externalType, m.returnType) || m.params.some((p: ParameterDefinition) => this.isExternalTypeUsed(externalType, p.paramType)));
   }
 }
 
