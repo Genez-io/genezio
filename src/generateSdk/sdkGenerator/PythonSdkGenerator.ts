@@ -280,8 +280,10 @@ class SdkGenerator implements SdkGeneratorInterface {
           let found = false;
           for (const modelView of modelViews) {
             if (modelView.path === externalType.path) {
-              modelView.externalTypes.push({type: this.generateExternalType(externalType)});
-              modelView.last = false;
+              if (!modelView.externalTypes.find((e: any) => e.name === (externalType as any).name)) {
+                modelView.externalTypes.push({type: this.generateExternalType(externalType), name: (externalType as any).name});
+                modelView.last = false;
+              }
               found = true;
               break;
             }
@@ -289,12 +291,12 @@ class SdkGenerator implements SdkGeneratorInterface {
           if (!found) {
             modelViews.push({
               path: externalType.path,
-              externalTypes: [{type: this.generateExternalType(externalType)}],
+              externalTypes: [{type: this.generateExternalType(externalType), name: (externalType as any).name}],
               imports: [],
             });
           }
         } else {
-          view.externalTypes.push({type: this.generateExternalType(externalType)});
+          view.externalTypes.push({type: this.generateExternalType(externalType), name: (externalType as any).name});
         }
       }
 
