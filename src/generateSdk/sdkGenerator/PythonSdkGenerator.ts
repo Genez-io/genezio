@@ -114,6 +114,8 @@ class SdkGenerator implements SdkGeneratorInterface {
       files: []
     };
 
+    const modelViews: any = [];
+
     for (const classInfo of sdkGeneratorInput.classesInfo) {
       const externalTypes: Node[] = [];
       const _url = "%%%link_to_be_replace%%%";
@@ -143,8 +145,6 @@ class SdkGenerator implements SdkGeneratorInterface {
         externalTypes: [],
         imports: [],
       };
-
-      const modelViews: any = [];
 
       let exportClassChecker = false;
 
