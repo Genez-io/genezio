@@ -414,6 +414,7 @@ async function startServerHttp(
       }
 
       reject(error);
+      process.exit(1);
     });
   });
 }
