@@ -21,9 +21,9 @@ import { logoutCommand } from "./commands/logout.js";
 import { lsCommand } from "./commands/ls.js";
 import { GenezioDeployOptions, GenezioLocalOptions } from "./models/commandOptions.js";
 import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
+const requireESM = createRequire(import.meta.url);
 
-const pjson = require("../package.json");
+const pjson = requireESM("../package.json");
 
 const program = new Command();
 

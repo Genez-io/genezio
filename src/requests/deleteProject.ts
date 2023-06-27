@@ -4,9 +4,9 @@ import { BACKEND_ENDPOINT } from "../constants.js";
 import { debugLogger, printAdaptiveLog, printUninformativeLog } from "../utils/logging.js";
 import { AbortController } from "node-abort-controller";
 import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
+const requireESM = createRequire(import.meta.url);
 
-const pjson = require("../../package.json");
+const pjson = requireESM("../../package.json");
 
 export default async function deleteProject(
   projectId: string,

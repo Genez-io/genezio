@@ -8,9 +8,9 @@ import { printUninformativeLog, printAdaptiveLog } from "../utils/logging.js";
 import { AbortController } from "node-abort-controller";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
+const requireESM = createRequire(import.meta.url);
 
-const pjson = require("../../package.json");
+const pjson = requireESM("../../package.json");
 
 export async function deployRequest(
   projectConfiguration: ProjectConfiguration,

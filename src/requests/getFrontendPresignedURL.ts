@@ -3,9 +3,9 @@ import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
+const requireESM = createRequire(import.meta.url);
 
-const pjson = require("../../package.json");
+const pjson = requireESM("../../package.json");
 
 export async function getFrontendPresignedURL(
     subdomain: string,
