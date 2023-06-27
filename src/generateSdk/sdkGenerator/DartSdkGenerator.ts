@@ -10,11 +10,11 @@ import {
     PromiseType,
     Node,
     MapType,
-} from "../../models/genezioModels";
-import { TriggerType } from "../../models/yamlProjectConfiguration";
-import { dartSdk } from "../templates/dartSdk";
-import { ArrayType } from "../../models/genezioModels";
-import { castArrayRecursivelyInitial, castMapRecursivelyInitial, getParamType } from "../../utils/dartAstCasting";
+} from "../../models/genezioModels.js";
+import { TriggerType } from "../../models/yamlProjectConfiguration.js";
+import { dartSdk } from "../templates/dartSdk.js";
+import { ArrayType } from "../../models/genezioModels.js";
+import { castArrayRecursivelyInitial, castMapRecursivelyInitial, getParamType } from "../../utils/dartAstCasting.js";
 
 // https://dart.dev/language/keywords
 const DART_RESERVED_WORDS = [

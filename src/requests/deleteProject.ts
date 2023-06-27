@@ -1,10 +1,12 @@
-import axios from "./axios";
-import { getAuthToken } from "../utils/accounts";
-import { BACKEND_ENDPOINT } from "../constants";
-import { debugLogger, printAdaptiveLog, printUninformativeLog } from "../utils/logging";
+import axios from "./axios.js";
+import { getAuthToken } from "../utils/accounts.js";
+import { BACKEND_ENDPOINT } from "../constants.js";
+import { debugLogger, printAdaptiveLog, printUninformativeLog } from "../utils/logging.js";
 import { AbortController } from "node-abort-controller";
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const pjson = require("../../package.json");
+import { createRequire } from 'module';
+const requireESM = createRequire(import.meta.url);
+
+const pjson = requireESM("../../package.json");
 
 export default async function deleteProject(
   projectId: string,

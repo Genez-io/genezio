@@ -5,24 +5,24 @@ import {
   deleteFolder,
   getAllFilesFromCurrentPath,
   writeToFile,
-} from "../../utils/file";
+} from "../../utils/file.js";
 import {
   BundlerInput,
   BundlerInterface,
   BundlerOutput,
   Dependency,
-} from "../bundler.interface";
-import FileDetails from "../../models/fileDetails";
+} from "../bundler.interface.js";
+import FileDetails from "../../models/fileDetails.js";
 import { default as fsExtra } from "fs-extra";
-import { lambdaHandler } from "./lambdaHandler";
+import { lambdaHandler } from "./lambdaHandler.js";
 import log from "loglevel";
-import { debugLogger } from "../../utils/logging";
+import { debugLogger } from "../../utils/logging.js";
 import esbuild, { BuildResult, Plugin, BuildFailure, Message, Loader } from "esbuild";
 import { nodeExternalsPlugin } from "esbuild-node-externals";
 import colors from "colors"
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const exec = require("await-exec");
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import exec from "await-exec";
 
 
 export class NodeJsBundler implements BundlerInterface {

@@ -2,21 +2,21 @@ import { AxiosError } from "axios";
 import log from "loglevel";
 import path from "path";
 import { exit } from "process";
-import { BundlerInterface } from "../bundlers/bundler.interface";
-import { BundlerComposer } from "../bundlers/bundlerComposer";
-import { DartBundler } from "../bundlers/dart/dartBundler";
-import { NodeJsBinaryDependenciesBundler } from "../bundlers/node/nodeJsBinaryDependenciesBundler";
-import { NodeJsBundler } from "../bundlers/node/nodeJsBundler";
-import { REACT_APP_BASE_URL } from "../constants";
+import { BundlerInterface } from "../bundlers/bundler.interface.js";
+import { BundlerComposer } from "../bundlers/bundlerComposer.js";
+import { DartBundler } from "../bundlers/dart/dartBundler.js";
+import { NodeJsBinaryDependenciesBundler } from "../bundlers/node/nodeJsBinaryDependenciesBundler.js";
+import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
+import { REACT_APP_BASE_URL } from "../constants.js";
 import {
   GENEZIO_NOT_AUTH_ERROR_MSG,
   GENEZIO_NO_CLASSES_FOUND
-} from "../errors";
-import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi";
-import { ProjectConfiguration } from "../models/projectConfiguration";
-import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
-import { getAuthToken } from "../utils/accounts";
-import { getProjectConfiguration } from "../utils/configuration";
+} from "../errors.js";
+import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
+import { ProjectConfiguration } from "../models/projectConfiguration.js";
+import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
+import { getAuthToken } from "../utils/accounts.js";
+import { getProjectConfiguration } from "../utils/configuration.js";
 import {
   fileExists,
   createTemporaryFolder,
@@ -25,20 +25,20 @@ import {
   directoryContainsIndexHtmlFiles,
   directoryContainsHtmlFiles,
   deleteFolder,
-} from "../utils/file";
-import { printAdaptiveLog, debugLogger } from "../utils/logging";
-import { runNewProcess } from "../utils/process";
-import { reportSuccess } from "../utils/reporter";
-import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk";
-import { generateRandomSubdomain } from "../utils/yaml";
+} from "../utils/file.js";
+import { printAdaptiveLog, debugLogger } from "../utils/logging.js";
+import { runNewProcess } from "../utils/process.js";
+import { reportSuccess } from "../utils/reporter.js";
+import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
+import { generateRandomSubdomain } from "../utils/yaml.js";
 import cliProgress from 'cli-progress';
-import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration";
-import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter";
-import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter";
-import { CloudAdapter } from "../cloudAdapter/cloudAdapter";
-import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier";
-import { TypeCheckerBundler } from "../bundlers/node/typeCheckerBundler";
-import { GenezioDeployOptions } from "../models/commandOptions";
+import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js";
+import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter.js";
+import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter.js";
+import { CloudAdapter } from "../cloudAdapter/cloudAdapter.js";
+import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
+import { TypeCheckerBundler } from "../bundlers/node/typeCheckerBundler.js";
+import { GenezioDeployOptions } from "../models/commandOptions.js";
 
 const temporaryFolders: string[] = [];
 

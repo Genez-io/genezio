@@ -1,17 +1,17 @@
 import path from "path";
 import Mustache from "mustache";
-import { createTemporaryFolder, deleteFolder, writeToFile } from "../../utils/file";
-import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface";
-import { checkIfDartIsInstalled } from "../../utils/dart";
-import { debugLogger } from "../../utils/logging";
-import { ClassConfiguration, MethodConfiguration, ParameterType } from "../../models/projectConfiguration";
-import { template } from "./localDartMain";
+import { createTemporaryFolder, deleteFolder, writeToFile } from "../../utils/file.js";
+import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface.js";
+import { checkIfDartIsInstalled } from "../../utils/dart.js";
+import { debugLogger } from "../../utils/logging.js";
+import { ClassConfiguration, MethodConfiguration, ParameterType } from "../../models/projectConfiguration.js";
+import { template } from "./localDartMain.js";
 import { default as fsExtra } from "fs-extra";
 import { spawnSync } from 'child_process';
-import { TriggerType } from "../../models/yamlProjectConfiguration";
+import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 import log from "loglevel";
-import { ArrayType, AstNodeType, ClassDefinition, CustomAstNodeType, MapType, Node, Program, PromiseType } from "../../models/genezioModels";
-import { castArrayRecursivelyInitial, castMapRecursivelyInitial } from "../../utils/dartAstCasting";
+import { ArrayType, AstNodeType, ClassDefinition, CustomAstNodeType, MapType, Node, Program, PromiseType } from "../../models/genezioModels.js";
+import { castArrayRecursivelyInitial, castMapRecursivelyInitial } from "../../utils/dartAstCasting.js";
 
 export class DartBundler implements BundlerInterface {
 

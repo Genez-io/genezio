@@ -1,4 +1,4 @@
-import { YamlClassConfiguration } from "./yamlProjectConfiguration";
+import { YamlClassConfiguration } from "./yamlProjectConfiguration.js";
 
 
 export class File {

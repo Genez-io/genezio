@@ -3,9 +3,9 @@ import { Spinner } from "cli-spinner";
 import log from "loglevel";
 import moment from "moment";
 import { exit } from "process";
-import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors";
-import listProjects from "../requests/listProjects";
-import { getAuthToken } from "../utils/accounts";
+import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
+import listProjects from "../requests/listProjects.js";
+import { getAuthToken } from "../utils/accounts.js";
 
 
 export async function lsCommand(identifier: string, options: any) {

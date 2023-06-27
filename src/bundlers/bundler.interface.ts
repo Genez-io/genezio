@@ -1,6 +1,5 @@
-import { NormalModule } from "webpack";
-import { ClassConfiguration, ProjectConfiguration } from "../models/projectConfiguration";
-import { Program } from "../models/genezioModels";
+import { ClassConfiguration, ProjectConfiguration } from "../models/projectConfiguration.js";
+import { Program } from "../models/genezioModels.js";
 
 /**
  * The input that goes into the bundler.

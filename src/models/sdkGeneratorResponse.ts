@@ -1,5 +1,4 @@
-import { AstSummary } from "./astSummary";
-import { SdkFileClass, SdkGeneratorInput } from "./genezioModels";
+import { SdkFileClass, SdkGeneratorInput } from "./genezioModels.js";
 
 export type AstSummaryParam = {
     name: string;

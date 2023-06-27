@@ -1,8 +1,8 @@
-import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse"
-import { Language } from "../models/yamlProjectConfiguration"
-import { writeToFile } from "./file"
-import { debugLogger } from "./logging"
-import { File, SdkFileClass } from "../models/genezioModels"
+import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js"
+import { Language } from "../models/yamlProjectConfiguration.js"
+import { writeToFile } from "./file.js"
+import { debugLogger } from "./logging.js"
+import { File, SdkFileClass } from "../models/genezioModels.js"
 
 export type ClassUrlMap = {
     name: string

@@ -1,11 +1,11 @@
-import { AstSummaryClass, AstSummaryMethod, AstSummaryParam } from "../../models/astSummary";
+import { AstSummaryClass, AstSummaryMethod, AstSummaryParam } from "../../models/astSummary.js";
 import {
   ClassDefinition,
   MethodDefinition,
   Node,
   ParameterDefinition,
   SdkGeneratorClassesInfoInput
-} from "../../models/genezioModels";
+} from "../../models/genezioModels.js";
 
 
 

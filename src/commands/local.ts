@@ -1,5 +1,5 @@
 import log from "loglevel";
-import { NodeJsBundler } from "../bundlers/node/nodeJsBundler";
+import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
 import express from "express";
 import chokidar from "chokidar";
 import cors from "cors";
@@ -11,28 +11,28 @@ import * as http from "http";
 import {
   ProjectConfiguration,
   ClassConfiguration
-} from "../models/projectConfiguration";
-import { LOCAL_TEST_INTERFACE_URL } from "../constants";
-import { GENEZIO_NO_CLASSES_FOUND, PORT_ALREADY_USED } from "../errors";
-import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi";
-import { AstSummary } from "../models/astSummary";
-import { getProjectConfiguration } from "../utils/configuration";
-import { BundlerInterface } from "../bundlers/bundler.interface";
-import { NodeJsLocalBundler } from "../bundlers/node/nodeJsLocalBundler";
-import { BundlerComposer } from "../bundlers/bundlerComposer";
-import { genezioRequestParser } from "../utils/genezioRequestParser";
-import { debugLogger } from "../utils/logging";
-import { rectifyCronString } from "../utils/rectifyCronString";
+} from "../models/projectConfiguration.js";
+import { LOCAL_TEST_INTERFACE_URL } from "../constants.js";
+import { GENEZIO_NO_CLASSES_FOUND, PORT_ALREADY_USED } from "../errors.js";
+import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
+import { AstSummary } from "../models/astSummary.js";
+import { getProjectConfiguration } from "../utils/configuration.js";
+import { BundlerInterface } from "../bundlers/bundler.interface.js";
+import { NodeJsLocalBundler } from "../bundlers/node/nodeJsLocalBundler.js";
+import { BundlerComposer } from "../bundlers/bundlerComposer.js";
+import { genezioRequestParser } from "../utils/genezioRequestParser.js";
+import { debugLogger } from "../utils/logging.js";
+import { rectifyCronString } from "../utils/rectifyCronString.js";
 import cron from "node-cron";
-import { createTemporaryFolder, deleteFolder, fileExists, readUTF8File } from "../utils/file";
-import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk";
-import { reportSuccess as _reportSuccess } from "../utils/reporter";
-import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
-import { GenezioLocalOptions } from "../models/commandOptions";
-import { DartBundler } from "../bundlers/dart/localDartBundler";
+import { createTemporaryFolder, deleteFolder, fileExists, readUTF8File } from "../utils/file.js";
+import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
+import { reportSuccess as _reportSuccess } from "../utils/reporter.js";
+import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
+import { GenezioLocalOptions } from "../models/commandOptions.js";
+import { DartBundler } from "../bundlers/dart/localDartBundler.js";
 import axios, { AxiosResponse } from "axios";
-import { findAvailablePort } from "../utils/findAvailablePort";
-import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration";
+import { findAvailablePort } from "../utils/findAvailablePort.js";
+import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js";
 
 type ClassProcess = {
   process: ChildProcess;

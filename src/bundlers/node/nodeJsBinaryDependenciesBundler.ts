@@ -1,12 +1,12 @@
 import path from 'path'
 import fs from 'fs'
-import util from "util";
-import { BundlerInput, BundlerInterface, BundlerOutput, Dependency } from "../bundler.interface"
-import { fileExists } from '../../utils/file';
+import { BundlerInput, BundlerInterface, BundlerOutput, Dependency } from "../bundler.interface.js"
+import { fileExists } from '../../utils/file.js';
 import log from "loglevel";
-import { debugLogger } from '../../utils/logging';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const exec = util.promisify(require("child_process").exec);
+import { debugLogger } from '../../utils/logging.js';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import exec from "await-exec";
 
 
 export class NodeJsBinaryDependenciesBundler implements BundlerInterface {

@@ -1,6 +1,6 @@
-import { DeployCodeMethodResponse } from "../models/deployCodeResponse";
-import { MethodConfiguration, ProjectConfiguration } from "../models/projectConfiguration";
-import { YamlFrontend } from "../models/yamlProjectConfiguration";
+import { DeployCodeMethodResponse } from "../models/deployCodeResponse.js";
+import { MethodConfiguration, ProjectConfiguration } from "../models/projectConfiguration.js";
+import { YamlFrontend } from "../models/yamlProjectConfiguration.js";
 
 export type GenezioCloudInput = {
     name: string;

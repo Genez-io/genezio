@@ -1,6 +1,6 @@
 import path from "path"
-import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration"
-import { checkYamlFileExists, readUTF8File } from "./file"
+import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js"
+import { checkYamlFileExists, readUTF8File } from "./file.js"
 import { parse } from "yaml"
 
 export async function getProjectConfiguration(configurationFilePath = "./genezio.yaml"): Promise<YamlProjectConfiguration> {

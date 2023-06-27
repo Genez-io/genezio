@@ -1,9 +1,9 @@
 import log, { LogLevelDesc } from 'loglevel';
 import { Spinner } from "cli-spinner";
 import { AbortController } from "node-abort-controller";
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const terminalOverwrite = require('terminal-overwrite');
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import terminalOverwrite from 'terminal-overwrite';
 
 export const spinner = new Spinner("%s  ");
 spinner.setSpinnerString("|/-\\");
