@@ -14,7 +14,7 @@ import {
 } from "../bundler.interface.js";
 import FileDetails from "../../models/fileDetails.js";
 import { default as fsExtra } from "fs-extra";
-import { lambdaHandler } from "./lambdaHander.js";
+import { lambdaHandler } from "./lambdaHandler.js";
 import log from "loglevel";
 import { debugLogger } from "../../utils/logging.js";
 import esbuild, { BuildResult, Plugin, BuildFailure, Message, Loader } from "esbuild";
@@ -67,7 +67,7 @@ export class NodeJsBundler implements BundlerInterface {
       }
     );
 
-    // iterare over all non js files and copy them to tmp folder
+    // iterate over all non js files and copy them to tmp folder
     await Promise.all(
       allNonJsFilesPaths.map((filePath: FileDetails) => {
         // get folders array
