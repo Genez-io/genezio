@@ -4,7 +4,6 @@ import {
   createTemporaryFolder,
   deleteFolder,
   getAllFilesFromCurrentPath,
-  readUTF8File,
   writeToFile,
 } from "../../utils/file";
 import {
@@ -15,7 +14,7 @@ import {
 } from "../bundler.interface";
 import FileDetails from "../../models/fileDetails";
 import { default as fsExtra } from "fs-extra";
-import { lambdaHandler } from "./lambdaHander";
+import { lambdaHandler } from "./lambdaHandler";
 import log from "loglevel";
 import { debugLogger } from "../../utils/logging";
 import esbuild, { BuildResult, Plugin, BuildFailure, Message, Loader } from "esbuild";
@@ -68,7 +67,7 @@ export class NodeJsBundler implements BundlerInterface {
       }
     );
 
-    // iterare over all non js files and copy them to tmp folder
+    // iterate over all non js files and copy them to tmp folder
     await Promise.all(
       allNonJsFilesPaths.map((filePath: FileDetails) => {
         // get folders array
