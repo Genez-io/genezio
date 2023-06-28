@@ -58,6 +58,7 @@
     "fs": "^0.0.1-security",
     "fs-extra": "^11.1.1",
     "glob": "^8.0.3",
+    "hash-it": "^6.0.0",
     "json5": "~2.2.3",
     "loglevel": "^1.8.1",
     "loglevel-plugin-prefix": "^0.8.4",

@@ -33,6 +33,7 @@ import { DartBundler } from "../bundlers/dart/localDartBundler.js";
 import axios, { AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
 import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js";
+import hash from 'hash-it';
 
 type ClassProcess = {
   process: ChildProcess;
@@ -235,8 +236,9 @@ async function startProcesses(
     )!.program;
 
     debugLogger.log("Start bundling...");
-    // TODO: Is it worth the extra complexity of maintaining the folder?
-    return createTemporaryFolder(classInfo.name).then(async (tmpFolder) => {
+    return createTemporaryFolder(
+      `${classInfo.name}-${hash(classInfo.path)}`
+    ).then(async (tmpFolder) => {
       const bundlerOutput = await bundler.bundle({
         projectConfiguration,
         path: classInfo.path,
