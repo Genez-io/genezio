@@ -208,12 +208,14 @@ export function writeToFile(
   createPathIfNeeded = false
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (!fs.existsSync(folderPath) && createPathIfNeeded) {
-      fs.mkdirSync(folderPath, { recursive: true });
+    const fullPath = path.join(folderPath, filename);
+
+    if (!fs.existsSync(path.dirname(fullPath)) && createPathIfNeeded) {
+      fs.mkdirSync(path.dirname(fullPath), { recursive: true });
     }
 
     // create the file if it doesn't exist
-    fs.writeFile(path.join(folderPath, filename), content, function (error) {
+    fs.writeFile(fullPath, content, function (error) {
       if (error) {
         reject(error);
         return;

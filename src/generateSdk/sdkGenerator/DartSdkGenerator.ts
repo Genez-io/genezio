@@ -10,11 +10,13 @@ import {
     PromiseType,
     Node,
     MapType,
+    SdkFileClass,
 } from "../../models/genezioModels.js";
-import { TriggerType } from "../../models/yamlProjectConfiguration.js";
+import { TriggerType, YamlClassConfiguration } from "../../models/yamlProjectConfiguration.js";
 import { dartSdk } from "../templates/dartSdk.js";
 import { ArrayType } from "../../models/genezioModels.js";
 import { castArrayRecursivelyInitial, castMapRecursivelyInitial, getParamType } from "../../utils/dartAstCasting.js";
+import path from "path";
 
 // https://dart.dev/language/keywords
 const DART_RESERVED_WORDS = [
@@ -81,10 +83,41 @@ const DART_RESERVED_WORDS = [
     "yield",
 ];
 
+/**
+ * Template that is going to be used for models.
+ */
+const modelTemplate = `
+import './models.dart';
+
+{{#classes}}
+
+class {{name}} {
+    {{#fields}}
+    {{{type}}} {{fieldName}};
+    {{/fields}}
+
+    {{name}}({{#fields}}this.{{fieldName}},{{/fields}});
+
+    {{{fromJson}}}
+
+    {{{toJson}}}
+}
+
+{{/classes}}
+`;
+
+/**
+ * Template that is going to be used for main class.
+ */
 const template = `/// This is an auto generated code. This code should not be modified since the file can be overwritten
 /// if new genezio commands are executed.
 
 import 'remote.dart';
+import './models/models.dart';
+
+{{#imports}}
+import '{{{name}}}';
+{{/imports}}
 
 {{#otherClasses}}
 
@@ -131,6 +164,10 @@ class SdkGenerator implements SdkGeneratorInterface {
             files: []
         };
 
+        // A dictionary where the key is the path of the file and the value is the view object.
+        // This dictionary is used to create and aggregate the model views.
+        const modelClassesView: {[key: string]: any} = {};
+
         for (const classInfo of sdkGeneratorInput.classesInfo) {
             const _url = "%%%link_to_be_replace%%%";
             const classConfiguration = classInfo.classConfiguration;
@@ -145,84 +182,37 @@ class SdkGenerator implements SdkGeneratorInterface {
                 otherClasses: [],
                 className: undefined,
                 _url: _url,
-                methods: []
+                methods: [],
+                imports: [],
             };
 
-            let exportClassChecker = false;
+            const mainClass = classInfo.program.body.find((e) => e.type === AstNodeType.ClassDefinition);
 
             for (const elem of classInfo.program.body) {
                 if (elem.type === AstNodeType.ClassDefinition) {
                     classDefinition = elem as ClassDefinition;
-                    view.className = classDefinition.name;
-                    for (const methodDefinition of classDefinition.methods) {
-                        const methodConfigurationType = classConfiguration.getMethodType(methodDefinition.name);
-
-                        if (methodConfigurationType !== TriggerType.jsonrpc
-                            || classConfiguration.type !== TriggerType.jsonrpc
-                        ) {
-                            continue;
-                        }
-
-                        exportClassChecker = true;
-
-                        const methodView: any = {
-                            name: methodDefinition.name,
-                            parameters: [],
-                            methodCaller: methodDefinition.params.length === 0 ?
-                                `"${classDefinition.name}.${methodDefinition.name}"`
-                                : `"${classDefinition.name}.${methodDefinition.name}"`
-                        };
-
-                        if (methodDefinition.returnType.type === AstNodeType.VoidLiteral) {
-                            methodView.returnType = this.getReturnType(methodDefinition.returnType);
-                            methodView.returnTypeCast = undefined;
-                        } else {
-                            methodView.returnTypeCast = this.castReturnTypeToPropertyType(methodDefinition.returnType, "response");
-                            methodView.returnType = this.getReturnType(methodDefinition.returnType);
-                        }
-
-                        methodView.parameters = methodDefinition.params.map((e) => {
-                            return {
-                                name: getParamType(e.paramType) + " " + (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
-                                last: false
-                            }
-                        });
-
-                        if (methodView.parameters.length > 0) {
-                            methodView.parameters[methodView.parameters.length - 1].last = true;
-                        }
-
-                        methodView.sendParameters = methodDefinition.params.map((e) => {
-                            return {
-                                name: (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
-                                last: false
-                            }
-                        });
-
-                        if (methodView.sendParameters.length > 0) {
-                            methodView.sendParameters[methodView.parameters.length - 1].last = true;
-                        }
-
-                        view.methods.push(methodView);
-                    }
+                    this.populateViewForMainClass(classDefinition, classConfiguration, view);
                 } else if (elem.type === AstNodeType.StructLiteral) {
                     const structLiteral = elem as StructLiteral;
                     const fromJson = this.generateFromJsonImplementationForClass(structLiteral);
                     const toJson = this.generateToJsonImplementationForClass(structLiteral);
-                    view.otherClasses.push({
-                        name: structLiteral.name,
-                        fields: structLiteral.typeLiteral.properties.map((e) => ({ type: getParamType(e.type), fieldName: e.name })),
-                        fromJson: fromJson,
-                        toJson: toJson
-                    });
+
+                    // If the model belogs to the class, add it to the class view.
+                    // Otherwise, we should add it to its proper model view.
+                    if (mainClass?.path === elem.path) {
+                        view.otherClasses.push({
+                            name: structLiteral.name,
+                            fields: structLiteral.typeLiteral.properties.map((e) => ({ type: getParamType(e.type), fieldName: e.name })),
+                            fromJson: fromJson,
+                            toJson: toJson
+                        });
+                    } else {
+                        this.addModelToModelViews(modelClassesView, structLiteral, fromJson, toJson);
+                    }
                 }
             }
 
             if (classDefinition === undefined) {
-                continue;
-            }
-
-            if (!exportClassChecker) {
                 continue;
             }
 
@@ -236,7 +226,10 @@ class SdkGenerator implements SdkGeneratorInterface {
             });
         }
 
-        // generate remote.js
+        // Generate the models files
+        generateSdkOutput.files.push(...this.getModelFiles(modelClassesView));
+
+        // Generate the remote.js file
         generateSdkOutput.files.push({
             className: "Remote",
             path: "remote.dart",
@@ -244,6 +237,111 @@ class SdkGenerator implements SdkGeneratorInterface {
         });
 
         return generateSdkOutput;
+    }
+
+    populateViewForMainClass(classDefinition: ClassDefinition, classConfiguration: YamlClassConfiguration, view: any) {
+        view.className = classDefinition.name;
+        for (const methodDefinition of classDefinition.methods) {
+            const methodConfigurationType = classConfiguration.getMethodType(methodDefinition.name);
+
+            if (methodConfigurationType !== TriggerType.jsonrpc
+                || classConfiguration.type !== TriggerType.jsonrpc
+            ) {
+                continue;
+            }
+
+            const methodView: any = {
+                name: methodDefinition.name,
+                parameters: [],
+                methodCaller: methodDefinition.params.length === 0 ?
+                    `"${classDefinition.name}.${methodDefinition.name}"`
+                    : `"${classDefinition.name}.${methodDefinition.name}"`
+            };
+
+            if (methodDefinition.returnType.type === AstNodeType.VoidLiteral) {
+                methodView.returnType = this.getReturnType(methodDefinition.returnType);
+                methodView.returnTypeCast = undefined;
+            } else {
+                methodView.returnTypeCast = this.castReturnTypeToPropertyType(methodDefinition.returnType, "response");
+                methodView.returnType = this.getReturnType(methodDefinition.returnType);
+            }
+
+            methodView.parameters = methodDefinition.params.map((e) => {
+                return {
+                    name: getParamType(e.paramType) + " " + (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
+                    last: false
+                }
+            });
+
+            if (methodView.parameters.length > 0) {
+                methodView.parameters[methodView.parameters.length - 1].last = true;
+            }
+
+            methodView.sendParameters = methodDefinition.params.map((e) => {
+                return {
+                    name: (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
+                    last: false
+                }
+            });
+
+            if (methodView.sendParameters.length > 0) {
+                methodView.sendParameters[methodView.parameters.length - 1].last = true;
+            }
+
+            view.methods.push(methodView);
+        }
+    }
+
+    getModelFiles(modelClassesView: {[key: string]: any}): SdkFileClass[] {
+        const files: SdkFileClass[] = [];
+        Object.entries(modelClassesView).forEach(([key, value]) => {
+            files.push({
+                className: "",
+                path: path.join("models", decodeURIComponent(key.split("/").pop()!)),
+                data: Mustache.render(modelTemplate, value)
+            });
+        })
+
+        let exportModelsContent = "";
+        Object.keys(modelClassesView).forEach((key) => {
+            exportModelsContent += `export './${decodeURIComponent(key.split("/").pop()!)}';\n`;
+        });
+        files.push({
+            className: "",
+            path: path.join("models", "models.dart"),
+            data: exportModelsContent
+        });
+
+        return files;
+    }
+
+    /**
+     * Create a model and add it to the moustache model views.
+     * 
+     * If the model already exists, it will not be added.
+     * 
+     * @param views Moustache views array with models where the new model will be added.
+     * @param struct The struct from which the view object will be created and added to the views array.
+     * @param fromJson 
+     * @param toJson 
+     */
+    addModelToModelViews(views: {[key: string]: any}, struct: StructLiteral, fromJson: string, toJson: string) {
+        if (!views[struct.path!]) {
+            views[struct.path!] = {
+                classes: [],
+            }
+        }
+
+        if (!views[struct.path!].classes.find((e: any) => e.name === struct.name)) {
+            views[struct.path!] = {
+                classes: [...views[struct.path!].classes, {
+                    name: struct.name,
+                    fields: struct.typeLiteral.properties.map((e) => ({ type: getParamType(e.type), fieldName: e.name })),
+                    fromJson: fromJson,
+                    toJson: toJson
+                }],
+            }
+        }
     }
 
     generateFromJsonImplementationForClass(elem: StructLiteral): string {

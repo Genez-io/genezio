@@ -138,6 +138,7 @@ export class DartBundler implements BundlerInterface {
                 .map((m) => ({
                     name: m.name,
                 })),
+            imports: ast.body?.map((element) => ({ name: element.path }))
         }
 
         const routerFileContent = Mustache.render(template, moustacheViewForMain);
@@ -239,8 +240,8 @@ export class DartBundler implements BundlerInterface {
                 debugLogger.debug(`Copy all non dart files to folder ${temporaryFolder}...`);
                 await this.#copyNonDartFiles(temporaryFolder);
                 debugLogger.debug("Copy all non dart files to folder done.");
-    
-    
+
+
                 debugLogger.debug("Downloading compiled code...")
                 await this.#downloadAndUnzipFromS3ToFolder(s3Zip.downloadUrl, temporaryFolder)
                 debugLogger.debug("Finished downloading compiled code...")
@@ -252,7 +253,7 @@ export class DartBundler implements BundlerInterface {
             // remove temporary folder
             await deleteFolder(inputTemporaryFolder);
         }
-        
+
 
         return {
             ...input,

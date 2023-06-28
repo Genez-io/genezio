@@ -6,7 +6,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import './lib/{{classFileName}}.dart';
+{{#imports}}
+import '{{{name}}}';
+{{/imports}}
 
 void main(List<String> args) async {
   final port = int.tryParse(args.isNotEmpty ? args[0] : '') ?? 3000;

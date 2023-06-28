@@ -92,6 +92,7 @@ export class DartBundler implements BundlerInterface {
                 .map((m) => ({
                     name: m.name,
                 })),
+            imports: ast.body?.map((element) => ({ name: element.path }))
         }
 
         const routerFileContent = Mustache.render(template, moustacheViewForMain);
