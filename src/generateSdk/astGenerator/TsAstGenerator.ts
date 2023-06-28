@@ -61,11 +61,6 @@ export class AstGenerator implements AstGeneratorInterface {
           return { type: AstNodeType.ArrayType, generic: this.mapTypesToParamType((type as any).typeArguments[0], typeChecker, declarations) };
         } else if (escapedText === "Date") {
           return { type: AstNodeType.DateType };
-        } else {
-          const declaration = this.#findDeclarationOfType(escapedText)
-          if (declaration?.kind === typescript.SyntaxKind.EnumDeclaration) {
-            return { type: AstNodeType.Enum, name: escapedText };
-          }
         }
         const typeAtLocation = typeChecker.getTypeAtLocation((type as any).typeName);
         const typeAtLocationPath = (typeAtLocation.aliasSymbol as any).parent.escapedName;
@@ -287,21 +282,6 @@ export class AstGenerator implements AstGeneratorInterface {
         body: [classDefinition, ...declarations],
       }
     }
-  }
-
-  #findDeclarationOfType(name: string): typescript.Node | undefined {
-    let found = undefined;
-    this.rootNode?.forEachChild((child) => {
-      if (typescript.isEnumDeclaration(child) && child.name.escapedText === name) {
-        found = child;
-      } else if (typescript.isClassDeclaration(child) && child.name?.escapedText === name) {
-        found = child;
-      } else if (typescript.isTypeAliasDeclaration(child) && child.name.escapedText === name) {
-        found = child;
-      }
-    });
-
-    return found;
   }
 }
 
