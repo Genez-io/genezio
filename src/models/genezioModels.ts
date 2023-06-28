@@ -1,5 +1,19 @@
 import { YamlClassConfiguration } from "./yamlProjectConfiguration";
 
+export type ModelView = {
+  path: string,
+  externalTypes: {
+    name: string,
+    type: string
+  }[],
+  imports: {
+    path: string,
+    models: {
+      name: string,
+      last?: boolean
+    }[]
+  }[]
+}
 
 export class File {
   path: string

@@ -1,4 +1,3 @@
-import { SyntaxKind } from "typescript";
 import {
     AstGeneratorInterface,
     AstGeneratorInput,
@@ -92,7 +91,7 @@ export class AstGenerator implements AstGeneratorInterface {
                         const property: PropertyDefinition = {
                             name: member.name.escapedText,
                             optional: member.questionToken ? true : false,
-                            type: this.mapTypesToParamType(member.type, typeChecker, declarations) // am sters .type
+                            type: this.mapTypesToParamType(member.type, typeChecker, declarations)
                         };
                         properties.push(property);
                     }
@@ -102,7 +101,7 @@ export class AstGenerator implements AstGeneratorInterface {
             case typescript.SyntaxKind.UnionType: {
                 const params: Node[] = [];
                 for (const typeNode of (type as any).types) {
-                    params.push(this.mapTypesToParamType(typeNode, typeChecker, declarations)); // am sters .type
+                    params.push(this.mapTypesToParamType(typeNode, typeChecker, declarations));
                 }
                 return { type: AstNodeType.UnionType, params: params };
             }
@@ -157,12 +156,12 @@ export class AstGenerator implements AstGeneratorInterface {
                     properties: [],
                 }
             }
-            for (const member of typeAliasDeclarationCopy.type.members) { // sters .type
+            for (const member of typeAliasDeclarationCopy.type.members) { 
                 if (member.type) {
                     const field: PropertyDefinition = {
                         name: member.name.escapedText,
                         optional: member.questionToken ? true : false,
-                        type: this.mapTypesToParamType(member.type, typeChecker, declarations), // am sters .type
+                        type: this.mapTypesToParamType(member.type, typeChecker, declarations), 
                     }
                     structLiteral.typeLiteral.properties.push(field);
                 }
@@ -172,7 +171,7 @@ export class AstGenerator implements AstGeneratorInterface {
             return {
                 type: AstNodeType.TypeAlias,
                 name: '',
-                aliasType: this.mapTypesToParamType(typeAliasDeclarationCopy.type, typeChecker, declarations) // am sters .type
+                aliasType: this.mapTypesToParamType(typeAliasDeclarationCopy.type, typeChecker, declarations)
             }
         }
     }
@@ -190,7 +189,7 @@ export class AstGenerator implements AstGeneratorInterface {
                         type: AstNodeType.ParameterDefinition,
                         name: parameter.name.escapedText,
                         rawType: "",
-                        paramType: this.mapTypesToParamType(parameter.type, typeChecker, declarations), // am sters .type
+                        paramType: this.mapTypesToParamType(parameter.type, typeChecker, declarations),
                         optional: parameter.questionToken ? true : false,
                         defaultValue: parameter.initializer ? { value: parameter.initializer.text, type: parameter.initializer.kind === 10 ? AstNodeType.StringLiteral : AstNodeType.DoubleLiteral } : undefined
                     }
@@ -202,7 +201,7 @@ export class AstGenerator implements AstGeneratorInterface {
             type: AstNodeType.MethodDefinition,
             name: methodSignatureCopy.name.escapedText,
             params: parameters,
-            returnType: methodSignatureCopy.type ? this.mapTypesToParamType(methodSignatureCopy.type, typeChecker, declarations) : { type: AstNodeType.VoidLiteral }, // am sters .type
+            returnType: methodSignatureCopy.type ? this.mapTypesToParamType(methodSignatureCopy.type, typeChecker, declarations) : { type: AstNodeType.VoidLiteral },
             static: false,
             kind: MethodKindEnum.method
         }
@@ -245,8 +244,6 @@ export class AstGenerator implements AstGeneratorInterface {
     }
 
     async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
-        const fileData = input.class.data;
-
         const typescriptFiles: string[] = [];
         this.getAllFiles(typescriptFiles, ".");
 
