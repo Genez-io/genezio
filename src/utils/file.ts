@@ -160,14 +160,60 @@ export async function directoryContainsIndexHtmlFiles(directoryPath: string): Pr
   });
 }
 
-export async function createTemporaryFolder(name = "genezio-"): Promise<string> {
-  return new Promise((resolve, reject) => {
-    fs.mkdtemp(path.join(os.tmpdir(), name), (error: any, folder: string) => {
+
+/**
+ * Removes the temporary root folder of the process.
+ * This root folder contains all the temporary folders created by `createTemporaryFolder` function.
+ * The folder is removed only if it exists. It is meant to be called when the process exits.
+ */
+export async function cleanupTemporaryFolders() {
+  const folderName = `genezio-${process.pid}`;
+
+  if (fs.existsSync(path.join(os.tmpdir(), folderName))) {
+    fs.rmSync(path.join(os.tmpdir(), folderName), { recursive: true });
+  }
+}
+
+
+/**
+ * Creates a temporary folder with a given name or a random name of 6 characters if no name is provided.
+ * The folder is created inside a parent folder with a unique name based on the current process ID.
+ * If the folder already exists, it will not be created again.
+ * @param name - Optional name for the temporary folder.
+ * @param shouldDeleteContents - Optional flag to delete the contents of the folder if it already exists.
+ * @returns A promise that resolves with the path of the created folder.
+ */
+export async function createTemporaryFolder(
+  name?: string,
+  shouldDeleteContents?: boolean
+): Promise<string> {  return new Promise((resolve, reject) => {
+    const folderName = `genezio-${process.pid}`;
+
+    if (!fs.existsSync(path.join(os.tmpdir(), folderName))) {
+      fs.mkdirSync(path.join(os.tmpdir(), folderName));
+    }
+
+    if (name === undefined) {
+      // Generate a random name of 6 characters
+      name = Math.random().toString(36).substring(2, 8);
+    }
+
+    const tempFolder = path.join(os.tmpdir(), folderName, name);
+    if (fs.existsSync(tempFolder)) {
+      if (shouldDeleteContents) {
+        fs.rmSync(tempFolder, { recursive: true });
+      } else {
+        resolve(tempFolder);
+        return;
+      }
+    }
+
+    fs.mkdir(tempFolder, (error: any) => {
       if (error) {
         reject(error);
       }
 
-      resolve(folder);
+      resolve(tempFolder);
     });
   });
 }

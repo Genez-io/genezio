@@ -24,7 +24,7 @@ import { genezioRequestParser } from "../utils/genezioRequestParser.js";
 import { debugLogger } from "../utils/logging.js";
 import { rectifyCronString } from "../utils/rectifyCronString.js";
 import cron from "node-cron";
-import { createTemporaryFolder, deleteFolder, fileExists, readUTF8File } from "../utils/file.js";
+import { createTemporaryFolder, fileExists, readUTF8File } from "../utils/file.js";
 import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 import { reportSuccess as _reportSuccess } from "../utils/reporter.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
@@ -53,14 +53,6 @@ type LocalBundlerOutput = {
   processForClasses: Map<string, ClassProcess>;
   sdk: SdkGeneratorResponse;
 };
-
-const temporaryFolders: string[] = [];
-
-async function deleteTemporaryFolders() {
-  for (const temporaryFolder of temporaryFolders) {
-    await deleteFolder(temporaryFolder);
-  }
-}
 
 export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProjectConfiguration, installDeps: boolean): Promise<BundlerRestartResponse> {
   // eslint-disable-next-line no-async-promise-executor
@@ -113,8 +105,6 @@ export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProj
       log.error(
         `Fix the errors and genezio local will restart automatically. Waiting for changes...`
       );
-      // In case of an error, delete the temporary folders, then wait for changes
-      await deleteTemporaryFolders();
       // If there was an error generating the SDK, wait for changes and try again.
       const { watcher } =  await listenForChanges(undefined);
       logChangeDetection();
@@ -130,18 +120,6 @@ export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProj
 // Function that starts the local environment.
 // It also monitors for changes in the user's code and restarts the environment when changes are detected.
 export async function startLocalEnvironment(options: GenezioLocalOptions) {
-  // eslint-disable-next-line no-constant-condition
-
-  // Set-up SIGINT and exit handlers that clean up the temporary folder structure
-  process.on('SIGINT', async () => {
-    await deleteTemporaryFolders();
-    process.exit();
-  });
-  process.on('exit', async () => {
-    await deleteTemporaryFolders();
-    process.exit();
-  });
-
   // eslint-disable-next-line no-constant-condition
   while (true) {
     // Read the project configuration every time because it might change
@@ -181,9 +159,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       processForClasses.forEach((classProcess: ClassProcess) => {
         classProcess.process.kill();
       });
-
-      // if bundler needs to be restarted, we need to clean up the temporary folders
-      await deleteTemporaryFolders();
 
       if (promiseRes.watcher) {
         promiseRes.watcher.close();
@@ -261,9 +236,7 @@ async function startProcesses(
 
     debugLogger.log("Start bundling...");
     // TODO: Is it worth the extra complexity of maintaining the folder?
-    return createTemporaryFolder().then(async (tmpFolder) => {
-      temporaryFolders.push(tmpFolder);
-
+    return createTemporaryFolder(classInfo.name).then(async (tmpFolder) => {
       const bundlerOutput = await bundler.bundle({
         projectConfiguration,
         path: classInfo.path,
@@ -272,8 +245,6 @@ async function startProcesses(
         configuration: classInfo,
         extra: { mode: "development", tmpFolder: tmpFolder, installDeps}
       });
-
-      temporaryFolders.push(bundlerOutput.path);
 
       return bundlerOutput;
     });
@@ -653,8 +624,6 @@ async function clearAllResources(server: http.Server, processForClasses: Map<str
   processForClasses.forEach((classProcess) => {
     classProcess.process.kill();
   });
-
-  await deleteTemporaryFolders();
 }
 
 async function startClassProcess(

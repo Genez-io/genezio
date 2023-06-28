@@ -84,7 +84,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
 
     async deployFrontend(projectName: string, projectRegion: string, frontend: YamlFrontend): Promise<string> {
         const archivePath = path.join(
-            await createTemporaryFolder("genezio-"),
+            await createTemporaryFolder(),
             `${frontend.subdomain}.zip`
         );
         debugLogger.debug("Creating temporary folder", archivePath);

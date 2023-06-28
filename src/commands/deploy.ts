@@ -40,14 +40,6 @@ import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { TypeCheckerBundler } from "../bundlers/node/typeCheckerBundler.js";
 import { GenezioDeployOptions } from "../models/commandOptions.js";
 
-const temporaryFolders: string[] = [];
-
-async function deleteTemporaryFolders() {
-  for (const temporaryFolder of temporaryFolders) {
-    await deleteFolder(temporaryFolder);
-  }
-}
-
 export async function deployCommand(options: GenezioDeployOptions) {
   let configuration
 
@@ -82,7 +74,6 @@ export async function deployCommand(options: GenezioDeployOptions) {
     }
 
     await deployClasses(configuration, cloudAdapter, options.installDeps).catch(async (error: AxiosError) => {
-      await deleteTemporaryFolders();
 
       switch (error.response?.status) {
         case 401:
@@ -242,7 +233,6 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
       )!.program;
 
       const tmpFolder = await createTemporaryFolder();
-      temporaryFolders.push(tmpFolder);
       const output = await bundler.bundle({
         projectConfiguration: projectConfiguration,
         genezioConfigurationFilePath: process.cwd(),
@@ -260,7 +250,6 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
       );
 
       const archivePathTempFolder = await createTemporaryFolder();
-      temporaryFolders.push(archivePathTempFolder);
       const archivePath = path.join(
         archivePathTempFolder,
         `genezioDeploy.zip`
@@ -269,12 +258,7 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
       debugLogger.debug(`Zip the directory ${output.path}.`);
       await zipDirectory(output.path, archivePath);
 
-      // clean up temporary folder
-      const indexOfFolder = temporaryFolders.indexOf(output.path);
-      if (indexOfFolder !== -1) {
-        temporaryFolders.splice(indexOfFolder, 1);
-        await deleteFolder(output.path);
-      }
+      await deleteFolder(output.path);
 
       return { name: element.name, archivePath: archivePath, filePath: element.path, methods: element.methods };
     });
@@ -299,8 +283,6 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
       `Your backend project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`
     );
   }
-
-  await deleteTemporaryFolders();
 }
 
 export async function deployFrontend(configuration: YamlProjectConfiguration, cloudAdapter: CloudAdapter) {
