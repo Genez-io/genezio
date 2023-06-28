@@ -126,8 +126,6 @@ export class DartBundler implements BundlerInterface {
         // Check if dart is installed
         await checkIfDartIsInstalled();
 
-        // await new Promise((resolve, reject) => setTimeout(resolve, 100000));
-
         // Analyze the Dart code on the server
         await this.#analyze(inputTemporaryFolder);
 
