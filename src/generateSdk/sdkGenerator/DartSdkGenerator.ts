@@ -11,13 +11,12 @@ import {
     Node,
     MapType,
     SdkFileClass,
-} from "../../models/genezioModels";
-import { TriggerType, YamlClassConfiguration } from "../../models/yamlProjectConfiguration";
-import { dartSdk } from "../templates/dartSdk";
-import { ArrayType } from "../../models/genezioModels";
-import { castArrayRecursivelyInitial, castMapRecursivelyInitial, getParamType } from "../../utils/dartAstCasting";
+} from "../../models/genezioModels.js";
+import { TriggerType, YamlClassConfiguration } from "../../models/yamlProjectConfiguration.js";
+import { dartSdk } from "../templates/dartSdk.js";
+import { ArrayType } from "../../models/genezioModels.js";
+import { castArrayRecursivelyInitial, castMapRecursivelyInitial, getParamType } from "../../utils/dartAstCasting.js";
 import path from "path";
-import { ClassConfiguration } from "../../models/projectConfiguration";
 
 // https://dart.dev/language/keywords
 const DART_RESERVED_WORDS = [

@@ -18,9 +18,9 @@ import {
   MethodDefinition,
   ParameterDefinition,
   ModelView
-} from "../../models/genezioModels";
-import { TriggerType } from "../../models/yamlProjectConfiguration";
-import { nodeSdkTs } from "../templates/nodeSdkTs";
+} from "../../models/genezioModels.js";
+import { TriggerType } from "../../models/yamlProjectConfiguration.js";
+import { nodeSdkTs } from "../templates/nodeSdkTs.js";
 import path from "path";
 
 const TYPESCRIPT_RESERVED_WORDS = [

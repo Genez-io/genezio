@@ -1,4 +1,4 @@
-import { ArrayType, AstNodeType, CustomAstNodeType, MapType, Node, PromiseType } from "../models/genezioModels";
+import { ArrayType, AstNodeType, CustomAstNodeType, MapType, Node, PromiseType } from "../models/genezioModels.js";
 
 function castNodeRecursively(node: Node): string {
     let implementation = "";

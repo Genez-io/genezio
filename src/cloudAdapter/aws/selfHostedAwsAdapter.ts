@@ -1,15 +1,15 @@
 import fs from "fs";
-import { ProjectConfiguration } from "../../models/projectConfiguration";
-import { CloudAdapter, GenezioCloudInput, GenezioCloudOutput } from "../cloudAdapter";
+import { ProjectConfiguration } from "../../models/projectConfiguration.js";
+import { CloudAdapter, GenezioCloudInput, GenezioCloudOutput } from "../cloudAdapter.js";
 import { CloudFormationClient, CreateStackCommand, DescribeStacksCommand, UpdateStackCommand, DescribeStacksCommandOutput, waitUntilStackCreateComplete, waitUntilStackUpdateComplete, DeleteStackCommand, waitUntilStackDeleteComplete } from "@aws-sdk/client-cloudformation";
 import { HeadObjectCommand, PutObjectCommand, S3 } from "@aws-sdk/client-s3";
-import { debugLogger } from "../../utils/logging";
+import { debugLogger } from "../../utils/logging.js";
 import log from "loglevel";
-import { YamlFrontend } from "../../models/yamlProjectConfiguration";
-import { getAllFilesRecursively, getFileSize } from "../../utils/file";
-import { GenezioCloudFormationBuilder, getApiGatewayIntegrationResource, getApiGatewayRouteResource, getCloudFrontDistributionResource, getEventsRoleResource, getIamRoleResource, getLambdaFunctionResource, getLambdaPermissionForEventsResource, getLambdaPermissionResource, getS3BucketPolicyResource, getS3BucketPublicResource, getS3BucketResource } from "./cloudFormationBuilder";
+import { YamlFrontend } from "../../models/yamlProjectConfiguration.js";
+import { getAllFilesRecursively, getFileSize } from "../../utils/file.js";
+import { GenezioCloudFormationBuilder, getApiGatewayIntegrationResource, getApiGatewayRouteResource, getCloudFrontDistributionResource, getEventsRoleResource, getIamRoleResource, getLambdaFunctionResource, getLambdaPermissionForEventsResource, getLambdaPermissionResource, getS3BucketPolicyResource, getS3BucketPublicResource, getS3BucketResource } from "./cloudFormationBuilder.js";
 import mime from "mime-types";
-import { BUNDLE_SIZE_LIMIT } from "../genezio/genezioAdapter";
+import { BUNDLE_SIZE_LIMIT } from "../genezio/genezioAdapter.js";
 
 export class SelfHostedAwsAdapter implements CloudAdapter {
 

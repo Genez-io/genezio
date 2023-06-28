@@ -1,8 +1,8 @@
 import log from "loglevel";
 import path from "path";
-import { TriggerType } from "../models/yamlProjectConfiguration";
-import { getProjectConfiguration } from "../utils/configuration";
-import { fileExists, writeToFile } from "../utils/file";
+import { TriggerType } from "../models/yamlProjectConfiguration.js";
+import { getProjectConfiguration } from "../utils/configuration.js";
+import { fileExists, writeToFile } from "../utils/file.js";
 
 export async function addClassCommand(classPath: string, classType: string) {
   if (classType === undefined) {

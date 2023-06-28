@@ -1,7 +1,6 @@
 export const tsconfig = {
   compilerOptions: {
     target: "es6",
-    module: "commonjs",
     lib: ["es6", "dom"],
     outDir: "build",
     rootDir: ".",

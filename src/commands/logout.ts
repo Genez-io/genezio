@@ -1,6 +1,6 @@
 import log from "loglevel";
 import { exit } from "process";
-import { removeAuthToken } from "../utils/accounts";
+import { removeAuthToken } from "../utils/accounts.js";
 
 export async function logoutCommand() {
   await removeAuthToken()

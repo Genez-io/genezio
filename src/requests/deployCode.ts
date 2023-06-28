@@ -1,14 +1,16 @@
-import axios from "./axios";
-import { BACKEND_ENDPOINT } from "../constants";
-import { getAuthToken } from "../utils/accounts";
-import { debugLogger } from "../utils/logging";
-import { DeployCodeResponse } from "../models/deployCodeResponse";
-import { ProjectConfiguration } from "../models/projectConfiguration";
-import { printUninformativeLog, printAdaptiveLog } from "../utils/logging";
+import axios from "./axios.js";
+import { BACKEND_ENDPOINT } from "../constants.js";
+import { getAuthToken } from "../utils/accounts.js";
+import { debugLogger } from "../utils/logging.js";
+import { DeployCodeResponse } from "../models/deployCodeResponse.js";
+import { ProjectConfiguration } from "../models/projectConfiguration.js";
+import { printUninformativeLog, printAdaptiveLog } from "../utils/logging.js";
 import { AbortController } from "node-abort-controller";
-import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors";
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const pjson = require("../../package.json");
+import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
+import { createRequire } from 'module';
+const requireESM = createRequire(import.meta.url);
+
+const pjson = requireESM("../../package.json");
 
 export async function deployRequest(
   projectConfiguration: ProjectConfiguration,

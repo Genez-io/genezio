@@ -1,8 +1,8 @@
 import which from "which";
 import os from "os";
 import path from "path";
-import { GENEZIO_DARTAOTRUNTIME_NOT_FOUND, GENEZIO_DART_NOT_FOUND } from "../errors";
-import { SemanticVersion } from "../models/semanticVersion";
+import { GENEZIO_DARTAOTRUNTIME_NOT_FOUND, GENEZIO_DART_NOT_FOUND } from "../errors.js";
+import { SemanticVersion } from "../models/semanticVersion.js";
 import { execSync } from 'child_process';
 
 export function getDartSdkVersion(): SemanticVersion | undefined {

@@ -20,9 +20,9 @@ import {
   ParameterDefinition,
   MethodDefinition,
   ModelView
-} from "../../models/genezioModels";
-import { TriggerType } from "../../models/yamlProjectConfiguration";
-import { pythonSdk } from "../templates/pythonSdk";
+} from "../../models/genezioModels.js";
+import { TriggerType } from "../../models/yamlProjectConfiguration.js";
+import { pythonSdk } from "../templates/pythonSdk.js";
 import path from "path";
 
 

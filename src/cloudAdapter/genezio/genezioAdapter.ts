@@ -1,19 +1,19 @@
-import { ProjectConfiguration } from "../../models/projectConfiguration";
+import { ProjectConfiguration } from "../../models/projectConfiguration.js";
 import cliProgress from 'cli-progress';
 import path from "path";
-import { getPresignedURL } from "../../requests/getPresignedURL";
-import { debugLogger } from "../../utils/logging";
-import { uploadContentToS3 } from "../../requests/uploadContentToS3";
+import { getPresignedURL } from "../../requests/getPresignedURL.js";
+import { debugLogger } from "../../utils/logging.js";
+import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import log from "loglevel";
-import { deployRequest } from "../../requests/deployCode";
-import { CloudAdapter, GenezioCloudInput, GenezioCloudOutput } from "../cloudAdapter";
-import { createTemporaryFolder, deleteFolder, zipDirectoryToDestinationPath } from "../../utils/file";
-import { YamlFrontend } from "../../models/yamlProjectConfiguration";
-import { createFrontendProject } from "../../requests/createFrontendProject";
-import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL";
-import { FRONTEND_DOMAIN } from "../../constants";
-import { getFileSize } from "../../utils/file";
-import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier";
+import { deployRequest } from "../../requests/deployCode.js";
+import { CloudAdapter, GenezioCloudInput, GenezioCloudOutput } from "../cloudAdapter.js";
+import { createTemporaryFolder, deleteFolder, zipDirectoryToDestinationPath } from "../../utils/file.js";
+import { YamlFrontend } from "../../models/yamlProjectConfiguration.js";
+import { createFrontendProject } from "../../requests/createFrontendProject.js";
+import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL.js";
+import { FRONTEND_DOMAIN } from "../../constants.js";
+import { getFileSize } from "../../utils/file.js";
+import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 
 export const BUNDLE_SIZE_LIMIT = 262144000;
 

@@ -1,12 +1,12 @@
-import jsonBody from "body/json";
+import jsonBody from "body/json.js";
 import log from "loglevel";
 import { AddressInfo } from "net";
 import { exit } from "process";
-import { REACT_APP_BASE_URL } from "../constants";
-import { saveAuthToken } from "../utils/accounts";
+import { REACT_APP_BASE_URL } from "../constants.js";
+import { saveAuthToken } from "../utils/accounts.js";
 import http from "http";
 import open from "open";
-import { asciiCapybara } from "../utils/strings";
+import { asciiCapybara } from "../utils/strings.js";
 
 export async function loginCommand(accessToken: string) {
   log.info(asciiCapybara);

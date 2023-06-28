@@ -27,7 +27,7 @@ import {
   VoidType,
   EnumType,
   DateType,
-} from "../../models/genezioModels";
+} from "../../models/genezioModels.js";
 
 import typescript from "typescript";
 import { readdirSync } from "fs";

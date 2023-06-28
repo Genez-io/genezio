@@ -1,13 +1,13 @@
 
-import { TriggerType } from "../../models/yamlProjectConfiguration";
+import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 import {
   SdkGeneratorInterface,
   ClassDefinition,
   AstNodeType,
   SdkGeneratorInput,
   SdkGeneratorOutput
-} from "../../models/genezioModels";
-import { nodeSdkJs } from "../templates/nodeSdkJs";
+} from "../../models/genezioModels.js";
+import { nodeSdkJs } from "../templates/nodeSdkJs.js";
 import Mustache from "mustache";
 
 

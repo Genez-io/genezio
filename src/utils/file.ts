@@ -1,7 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import FileDetails from "../models/fileDetails";
+import FileDetails from "../models/fileDetails.js";
 import glob from "glob";
 import archiver from "archiver";
 import { parse } from "yaml";

@@ -23,12 +23,12 @@ import {
   MapType,
   VoidType,
   DateType,
-} from "../../models/genezioModels";
+} from "../../models/genezioModels.js";
 
-import { checkIfDartIsInstalled, getDartAstGeneratorPath, getDartSdkVersion } from "../../utils/dart";
-import { createTemporaryFolder, deleteFolder, fileExists } from "../../utils/file";
-import { runNewProcess, runNewProcessWithResultAndReturnCode } from "../../utils/process";
-import { GENEZIO_NO_SUPPORT_FOR_BUILT_IN_TYPE, GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART } from "../../errors";
+import { checkIfDartIsInstalled, getDartAstGeneratorPath, getDartSdkVersion } from "../../utils/dart.js";
+import { createTemporaryFolder, deleteFolder, fileExists } from "../../utils/file.js";
+import { runNewProcess, runNewProcessWithResultAndReturnCode } from "../../utils/process.js";
+import { GENEZIO_NO_SUPPORT_FOR_BUILT_IN_TYPE, GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART } from "../../errors.js";
 
 // These are dart:core build-in errors that are not currently supported by the Genezio AST
 const dartNotSupportedBuiltInErrors = [
