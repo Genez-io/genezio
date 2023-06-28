@@ -68,19 +68,21 @@ export class AstGenerator implements AstGeneratorInterface {
           }
         }
         const typeAtLocation = typeChecker.getTypeAtLocation((type as any).typeName);
-        const pathFile = path.relative(process.cwd(), (typeAtLocation.aliasSymbol as any).parent.escapedName.substring(1, (typeAtLocation.aliasSymbol as any).parent.escapedName.length - 1));
-        if (this.addDeclarationToList(escapedText, pathFile, declarations)) {
-          let structLiteral: StructLiteral | TypeAlias | Enum;
+        const typeAtLocationPath = (typeAtLocation.aliasSymbol as any).parent.escapedName;
+        const trimmedPath = typeAtLocationPath.substring(1, typeAtLocationPath.length - 1);
+        const pathFile = path.relative(process.cwd(), trimmedPath);
+        if (!this.isDeclarationInList(escapedText, pathFile, declarations)) {
+          let declaredNode: StructLiteral | TypeAlias | Enum;
           if (typeAtLocation.aliasSymbol?.declarations?.[0].kind === typescript.SyntaxKind.TypeAliasDeclaration) {
-            structLiteral = this.parseTypeAliasDeclaration((typeAtLocation.aliasSymbol?.declarations?.[0] as any), typeChecker, declarations);
+            declaredNode = this.parseTypeAliasDeclaration((typeAtLocation.aliasSymbol?.declarations?.[0] as any), typeChecker, declarations);
           } else if (typeAtLocation.aliasSymbol?.declarations?.[0].kind === typescript.SyntaxKind.EnumDeclaration) {
-            structLiteral = this.parseEnumDeclaration(typeAtLocation.aliasSymbol?.declarations?.[0] as any);
+            declaredNode = this.parseEnumDeclaration(typeAtLocation.aliasSymbol?.declarations?.[0] as any);
           } else {
             return { type: AstNodeType.CustomNodeLiteral, rawValue: (type as any).typeName.escapedText };
           }
-          structLiteral.name = escapedText;
-          structLiteral.path = pathFile;
-          declarations.push(structLiteral);
+          declaredNode.name = escapedText;
+          declaredNode.path = pathFile;
+          declarations.push(declaredNode);
         }
         return { type: AstNodeType.CustomNodeLiteral, rawValue: (type as any).typeName.escapedText };
       }
@@ -110,13 +112,13 @@ export class AstGenerator implements AstGeneratorInterface {
     }
   }
 
-  addDeclarationToList(name: string, path: string, declarations: Node[]): boolean {
+  isDeclarationInList(name: string, path: string, declarations: Node[]): boolean {
     for (const declarationInList of declarations) {
       if ((declarationInList as any).name === name && declarationInList.path === path) {
-        return false;
+        return true;
       }
     }
-    return true;
+    return false;
   }
 
   parseClassDeclaration(classDeclaration: typescript.Node, typeChecker: typescript.TypeChecker, declarations: Node[]): ClassDefinition | undefined {
