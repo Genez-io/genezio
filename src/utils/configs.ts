@@ -1,7 +1,8 @@
 export const tsconfig = {
   compilerOptions: {
       target: "ES2020",
-      module: "commonjs",
+      module: "ES2020",
+      moduleResolution: "node",
       lib: [
           "es6",
           "dom"
