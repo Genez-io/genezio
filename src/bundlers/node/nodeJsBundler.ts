@@ -316,7 +316,7 @@ export class NodeJsBundler implements BundlerInterface {
         temporaryFolder,
       ),
       mode === "development" ? this.#copyDependencies(undefined, temporaryFolder, mode) : Promise.resolve(),
-      this.#getDependenciesInfo(input.configuration.path, input)
+      mode === "production" ? this.#getDependenciesInfo(input.configuration.path, input) : Promise.resolve(),
     ]);
 
     debugLogger.debug(`[NodeJSBundler] Copy non js files and node_modules for file ${input.path}.`)
