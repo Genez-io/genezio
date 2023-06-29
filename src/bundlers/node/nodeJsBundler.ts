@@ -150,6 +150,7 @@ export class NodeJsBundler implements BundlerInterface {
       platform: "node",
       outfile: path.join(tempFolderPath, outputFile),
       plugins: [nodeExternalsPlugin(), supportRequireInESM],
+      sourcemap: "inline",
     });
 
     if (output.errors.length > 0) {
@@ -258,6 +259,7 @@ export class NodeJsBundler implements BundlerInterface {
           platform: "node",
           outfile: path.join(tempFolderPath, "module.mjs"),
           logLevel: "silent",
+          sourcemap: "inline",
         });
         break;
       } catch (error: BuildFailure | any) {
