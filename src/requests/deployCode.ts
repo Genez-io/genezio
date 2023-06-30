@@ -7,10 +7,7 @@ import { ProjectConfiguration } from "../models/projectConfiguration.js";
 import { printUninformativeLog, printAdaptiveLog } from "../utils/logging.js";
 import { AbortController } from "node-abort-controller";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
-import { createRequire } from 'module';
-const requireESM = createRequire(import.meta.url);
-
-const pjson = requireESM("../../package.json");
+import version from "../utils/version.js";
 
 export async function deployRequest(
   projectConfiguration: ProjectConfiguration,
@@ -42,7 +39,7 @@ export async function deployRequest(
     data: json,
     headers: {
       Authorization: `Bearer ${authToken}`,
-      "Accept-Version": `genezio-cli/${pjson.version}`
+      "Accept-Version": `genezio-cli/${version}`
     },
     maxContentLength: Infinity,
     maxBodyLength: Infinity

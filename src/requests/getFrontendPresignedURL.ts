@@ -2,10 +2,7 @@ import axios from "./axios.js";
 import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
-import { createRequire } from 'module';
-const requireESM = createRequire(import.meta.url);
-
-const pjson = requireESM("../../package.json");
+import version from "../utils/version.js";
 
 export async function getFrontendPresignedURL(
     subdomain: string,
@@ -34,7 +31,7 @@ export async function getFrontendPresignedURL(
         data: json,
         headers: {
             Authorization: `Bearer ${authToken}`,
-            "Accept-Version": `genezio-cli/${pjson.version}`
+            "Accept-Version": `genezio-cli/${version}`
         },
         maxContentLength: Infinity,
         maxBodyLength: Infinity
