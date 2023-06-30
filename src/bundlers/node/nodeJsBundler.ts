@@ -20,10 +20,7 @@ import { debugLogger } from "../../utils/logging.js";
 import esbuild, { BuildResult, Plugin, BuildFailure, Message, Loader } from "esbuild";
 import { nodeExternalsPlugin } from "esbuild-node-externals";
 import colors from "colors"
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import exec from "await-exec";
-
+import { DependencyInstaller } from "./dependencyInstaller.js";
 
 export class NodeJsBundler implements BundlerInterface {
   async #copyDependencies(dependenciesInfo: Dependency[] | undefined, tempFolderPath: string, mode: "development" | "production") {
@@ -218,19 +215,14 @@ export class NodeJsBundler implements BundlerInterface {
       throw error;
     }
 
+    const dependencyInstaller: DependencyInstaller = new DependencyInstaller();
+
     if (npmInstallRequired) {
-      debugLogger.debug("Running command: npm install")
-      await exec(`npm install`);
+      await dependencyInstaller.installAll();
     }
 
     if (libraryDependencies.length > 0) {
-      const lib_deps_command = "npm install --no-save " + libraryDependencies.join(" ");
-
-      log.info(`You are missing some library dependencies. Installing them now...`);
-      debugLogger.debug("Running command: " + lib_deps_command)
-
-      // install missing library dependencies
-      await exec(lib_deps_command);
+      await dependencyInstaller.install(libraryDependencies, true);
     }
 
     if (errToDeps.some((dependencyName: string | undefined | null) => dependencyName === undefined)) {
