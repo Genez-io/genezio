@@ -2,6 +2,7 @@ import axios from "./axios.js";
 import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
+import { AxiosError } from "axios";
 import version from "../utils/version.js";
 
 export async function getFrontendPresignedURL(
@@ -35,7 +36,9 @@ export async function getFrontendPresignedURL(
         },
         maxContentLength: Infinity,
         maxBodyLength: Infinity
-    })
+    }).catch((error: AxiosError) => {
+        throw new Error((error.response?.data as any).error.message)
+    });
 
     if (response.data.status === "error") {
         throw new Error(response.data.message);
