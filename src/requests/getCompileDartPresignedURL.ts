@@ -1,10 +1,7 @@
 import axios from "./axios.js";
 import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
-import { createRequire } from 'module';
-const requireESM = createRequire(import.meta.url);
-
-const pjson = requireESM("../../package.json");
+import version from "../utils/version.js";
 
 export async function getCompileDartPresignedURL(archiveName: string) {
     if (!archiveName) {
@@ -29,7 +26,7 @@ export async function getCompileDartPresignedURL(archiveName: string) {
         data: json,
         headers: {
             Authorization: `Bearer ${authToken}`,
-            "Accept-Version": `genezio-cli/${pjson.version}`
+            "Accept-Version": `genezio-cli/${version}`
         },
         maxContentLength: Infinity,
         maxBodyLength: Infinity
