@@ -11,7 +11,7 @@ export class TypeCheckerBundler implements BundlerInterface {
     // Call this class only once
     static used = false;
 
-    #generateTsconfigJson() {
+    async #generateTsconfigJson() {
         if (fs.existsSync("tsconfig.json")) {
             return;
         } else {
@@ -19,7 +19,7 @@ export class TypeCheckerBundler implements BundlerInterface {
             tsconfig.compilerOptions.rootDir = ".";
             tsconfig.compilerOptions.outDir = path.join(".", "build");
             tsconfig.include = [path.join(".", "**/*")];
-            writeToFile(process.cwd(), "tsconfig.json", JSON.stringify(tsconfig, null, 4));
+            await writeToFile(process.cwd(), "tsconfig.json", JSON.stringify(tsconfig, null, 4));
         }
     }
 
@@ -33,7 +33,7 @@ export class TypeCheckerBundler implements BundlerInterface {
         }
         TypeCheckerBundler.used = true;
 
-        this.#generateTsconfigJson();
+        await this.#generateTsconfigJson();
 
         const configFile = ts.readConfigFile("tsconfig.json", ts.sys.readFile);
         const config = ts.parseJsonConfigFileContent(configFile.config, ts.sys, process.cwd());

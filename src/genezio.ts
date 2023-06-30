@@ -20,10 +20,7 @@ import { loginCommand } from "./commands/login.js";
 import { logoutCommand } from "./commands/logout.js";
 import { lsCommand } from "./commands/ls.js";
 import { GenezioDeployOptions, GenezioLocalOptions } from "./models/commandOptions.js";
-import { createRequire } from 'module';
-const requireESM = createRequire(import.meta.url);
-
-const pjson = requireESM("../package.json");
+import version, { logOutdatedVersion } from "./utils/version.js";
 
 const program = new Command();
 
@@ -61,7 +58,7 @@ program
     }
   })
   .addHelpText("afterAll", `\nUse 'genezio [command] --help' for more information about a command.`)
-  .version(pjson.version);
+  .version(version);
 
 // genezio init command
 program
@@ -75,6 +72,7 @@ program
       log.error(error.message);
       exit(1);
     });
+    await logOutdatedVersion();
   });
 
 // genezio login command
@@ -90,6 +88,7 @@ program
       log.error(error.message);
       exit(1);
     });
+    await logOutdatedVersion();
   });
 
 // genezio deploy command
@@ -105,6 +104,7 @@ Use --backend to deploy only the backend application.`)
     setDebuggingLoggerLogLevel(options.logLevel);
 
     await deployCommand(options);
+    await logOutdatedVersion();
   });
 
 
@@ -125,6 +125,7 @@ program
       log.error(error.message);
       exit(1);
     });
+    await logOutdatedVersion();
   });
 
 // genezio local command
@@ -147,6 +148,7 @@ program
       }
       exit(1);
     });
+    await logOutdatedVersion();
   });
 
 // genezio login command
@@ -158,6 +160,7 @@ program
     setDebuggingLoggerLogLevel(options.logLevel);
 
     await logoutCommand();
+    await logOutdatedVersion();
   });
 
 // genezio account command
@@ -169,6 +172,7 @@ program
     setDebuggingLoggerLogLevel(options.logLevel);
 
     await accountCommand();
+    await logOutdatedVersion();
   });
 
 // genezio ls command
@@ -184,6 +188,7 @@ program
     setDebuggingLoggerLogLevel(options.logLevel);
 
     await lsCommand(identifier, options);
+    await logOutdatedVersion();
   });
 
 
@@ -200,6 +205,7 @@ program
     setDebuggingLoggerLogLevel(options.logLevel);
 
     await deleteCommand(projectId, options);
+    await logOutdatedVersion();
   });
 
 // genezio generateSdk command
@@ -213,6 +219,7 @@ program
     setDebuggingLoggerLogLevel(options.logLevel);
 
     await generateSdkCommand(options);
+    await logOutdatedVersion();
   });
 
 export default program;

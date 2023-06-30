@@ -1,10 +1,7 @@
 import axios from "./axios.js";
 import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
-import { createRequire } from 'module';
-const requireESM = createRequire(import.meta.url);
-
-const pjson = requireESM("../../package.json");
+import version from "../utils/version.js";
 
 export default async function getProjectInfo(
   projectId: string,
@@ -22,7 +19,7 @@ export default async function getProjectInfo(
     url: `${BACKEND_ENDPOINT}/projects/${projectId}`,
     headers: {
       Authorization: `Bearer ${authToken}`,
-      "Accept-Version": `genezio-cli/${pjson.version}`
+      "Accept-Version": `genezio-cli/${version}`
     }
   }).catch((error: Error) => {
     throw error;

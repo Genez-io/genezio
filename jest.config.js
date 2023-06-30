@@ -2,7 +2,7 @@ export default {
   preset: "ts-jest/presets/default-esm",
   testEnvironment: "node",
   transform: {
-    "\\.[jt]sx?$": [
+    "\\.tsx?$": [
       "ts-jest",
       {
         diagnostics: {
@@ -18,9 +18,11 @@ export default {
         }
       },
     ],
+    "\\.jsx?$": "babel-jest",
   },
   moduleNameMapper: {
     "(.+)\\.js": "$1",
   },
   extensionsToTreatAsEsm: [".ts"],
+  transformIgnorePatterns: ["node_modules/(?!(.*)/)"],
 };

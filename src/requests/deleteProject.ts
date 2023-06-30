@@ -3,10 +3,7 @@ import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import { debugLogger, printAdaptiveLog, printUninformativeLog } from "../utils/logging.js";
 import { AbortController } from "node-abort-controller";
-import { createRequire } from 'module';
-const requireESM = createRequire(import.meta.url);
-
-const pjson = requireESM("../../package.json");
+import version from "../utils/version.js";
 
 export default async function deleteProject(
   projectId: string,
@@ -28,7 +25,7 @@ export default async function deleteProject(
     url: `${BACKEND_ENDPOINT}/projects/${projectId}`,
     headers: {
       Authorization: `Bearer ${authToken}`,
-      "Accept-Version": `genezio-cli/${pjson.version}`
+      "Accept-Version": `genezio-cli/${version}`
     }
   }).catch(async (error: Error) => {
     controller.abort();
