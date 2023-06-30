@@ -31,7 +31,9 @@
   "dependencies": {
     "@aws-sdk/client-cloudformation": "^3.359.0",
     "@aws-sdk/client-s3": "^3.335.0",
+    "@babel/core": "^7.22.5",
     "@babel/parser": "^7.22.5",
+    "@babel/preset-env": "^7.22.5",
     "@babel/traverse": "^7.22.5",
     "@types/body": "^5.1.1",
     "@types/webpack-node-externals": "^3.0.0",
@@ -39,6 +41,7 @@
     "await-exec": "^0.1.2",
     "aws-cron-parser": "^1.1.12",
     "axios": "^1.4.0",
+    "babel-jest": "^29.5.0",
     "body": "^5.1.0",
     "body-parser": "^1.20.1",
     "boxen": "^7.1.0",
