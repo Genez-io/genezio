@@ -9,9 +9,9 @@ import {
   AnyType,
   ParameterDefinition,
   SourceType
-} from "../../models/genezioModels";
-const parser = require("@babel/parser");
-const traverse = require("@babel/traverse");
+} from "../../models/genezioModels.js";
+import parser from "@babel/parser";
+import traverse from "@babel/traverse";
 
 class AstGenerator implements AstGeneratorInterface {
   async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
@@ -29,7 +29,7 @@ class AstGenerator implements AstGeneratorInterface {
 
     let classDefinition: ClassDefinition | undefined = undefined;
 
-    await traverse.default(result, {
+    traverse.default(result, {
       enter(path: any) {
         if (path.type === "ClassDeclaration") {
           classDefinition = {

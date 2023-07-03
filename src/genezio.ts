@@ -1,29 +1,26 @@
 import { Command, CommanderError } from "commander";
-import { setDebuggingLoggerLogLevel } from "./utils/logging";
+import { setDebuggingLoggerLogLevel } from "./utils/logging.js";
 import { exit } from "process";
 import {
   PORT_LOCAL_ENVIRONMENT,
   ENABLE_DEBUG_LOGS_BY_DEFAULT,
-} from "./constants";
+} from "./constants.js";
 import log from "loglevel";
 import prefix from 'loglevel-plugin-prefix';
 
 // commands imports
-import { accountCommand } from "./commands/account";
-import { addClassCommand } from "./commands/addClass";
-import { deleteCommand } from "./commands/delete";
-import { deployCommand } from "./commands/deploy";
-import { generateSdkCommand } from "./commands/generateSdk";
-import { initCommand } from "./commands/init";
-import { startLocalEnvironment } from "./commands/local";
-import { loginCommand } from "./commands/login";
-import { logoutCommand } from "./commands/logout";
-import { lsCommand } from "./commands/ls";
-import { GenezioLocalOptions } from "./models/commandOptions";
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const pjson = require("../package.json");
-
+import { accountCommand } from "./commands/account.js";
+import { addClassCommand } from "./commands/addClass.js";
+import { deleteCommand } from "./commands/delete.js";
+import { deployCommand } from "./commands/deploy.js";
+import { generateSdkCommand } from "./commands/generateSdk.js";
+import { initCommand } from "./commands/init.js";
+import { startLocalEnvironment } from "./commands/local.js";
+import { loginCommand } from "./commands/login.js";
+import { logoutCommand } from "./commands/logout.js";
+import { lsCommand } from "./commands/ls.js";
+import { GenezioDeployOptions, GenezioLocalOptions } from "./models/commandOptions.js";
+import version, { logOutdatedVersion } from "./utils/version.js";
 
 const program = new Command();
 
@@ -61,7 +58,7 @@ program
     }
   })
   .addHelpText("afterAll", `\nUse 'genezio [command] --help' for more information about a command.`)
-  .version(pjson.version);
+  .version(version);
 
 // genezio init command
 program
@@ -75,6 +72,7 @@ program
       log.error(error.message);
       exit(1);
     });
+    await logOutdatedVersion();
   });
 
 // genezio login command
@@ -90,6 +88,7 @@ program
       log.error(error.message);
       exit(1);
     });
+    await logOutdatedVersion();
   });
 
 // genezio deploy command
@@ -98,12 +97,14 @@ program
   .option("--backend", "Deploy only the backend application.")
   .option("--frontend", "Deploy only the frontend application.")
   .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
+  .option("--install-deps", "Automatically install missing dependencies.", false)
   .description(`Deploy your project to the genezio infrastructure. Use --frontend to deploy only the frontend application. 
 Use --backend to deploy only the backend application.`)
-  .action(async (options: any) => {
+  .action(async (options: GenezioDeployOptions) => {
     setDebuggingLoggerLogLevel(options.logLevel);
 
     await deployCommand(options);
+    await logOutdatedVersion();
   });
 
 
@@ -124,6 +125,7 @@ program
       log.error(error.message);
       exit(1);
     });
+    await logOutdatedVersion();
   });
 
 // genezio local command
@@ -135,6 +137,7 @@ program
     "Set the port your local server will be running on.",
     String(PORT_LOCAL_ENVIRONMENT)
   )
+  .option("--install-deps", "Automatically install missing dependencies.", false)
   .description("Run a local environment for your functions.")
   .action(async (options: GenezioLocalOptions) => {
     setDebuggingLoggerLogLevel(options.logLevel);
@@ -145,6 +148,7 @@ program
       }
       exit(1);
     });
+    await logOutdatedVersion();
   });
 
 // genezio login command
@@ -156,6 +160,7 @@ program
     setDebuggingLoggerLogLevel(options.logLevel);
 
     await logoutCommand();
+    await logOutdatedVersion();
   });
 
 // genezio account command
@@ -167,6 +172,7 @@ program
     setDebuggingLoggerLogLevel(options.logLevel);
 
     await accountCommand();
+    await logOutdatedVersion();
   });
 
 // genezio ls command
@@ -182,6 +188,7 @@ program
     setDebuggingLoggerLogLevel(options.logLevel);
 
     await lsCommand(identifier, options);
+    await logOutdatedVersion();
   });
 
 
@@ -198,6 +205,7 @@ program
     setDebuggingLoggerLogLevel(options.logLevel);
 
     await deleteCommand(projectId, options);
+    await logOutdatedVersion();
   });
 
 // genezio generateSdk command
@@ -211,6 +219,7 @@ program
     setDebuggingLoggerLogLevel(options.logLevel);
 
     await generateSdkCommand(options);
+    await logOutdatedVersion();
   });
 
 export default program;

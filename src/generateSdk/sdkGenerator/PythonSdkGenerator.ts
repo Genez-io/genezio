@@ -15,10 +15,15 @@ import {
   StructLiteral,
   PromiseType,
   EnumCase,
-  EnumType
-} from "../../models/genezioModels";
-import { TriggerType } from "../../models/yamlProjectConfiguration";
-import { pythonSdk } from "../templates/pythonSdk";
+  EnumType,
+  TypeLiteral,
+  ParameterDefinition,
+  MethodDefinition,
+  ModelView
+} from "../../models/genezioModels.js";
+import { TriggerType } from "../../models/yamlProjectConfiguration.js";
+import { pythonSdk } from "../templates/pythonSdk.js";
+import path from "path";
 
 
 const PYTHON_RESERVED_WORDS = [
@@ -59,6 +64,22 @@ const PYTHON_RESERVED_WORDS = [
   "not"
 ];
 
+const modelTemplate = `# This is an auto generated code. This code should not be modified since the file can be overwriten
+# if new genezio commands are executed.
+
+from typing import Any, List
+from enum import IntEnum, Enum
+from datetime import datetime
+from collections.abc import Mapping
+{{#imports}}
+from .{{{path}}} import {{#models}}{{{name}}}{{^last}}, {{/last}}{{/models}}
+{{/imports}}
+
+{{#externalTypes}}
+{{{type}}}
+{{/externalTypes}}
+`;
+
 const template = `# This is an auto generated code. This code should not be modified since the file can be overwriten 
 # if new genezio commands are executed.
   
@@ -67,6 +88,9 @@ from typing import Any, List
 from enum import IntEnum, Enum
 from datetime import datetime
 from collections.abc import Mapping
+{{#imports}}
+from .{{{path}}} import {{#models}}{{{name}}}{{^last}}, {{/last}}{{/models}}
+{{/imports}}
 
 {{#externalTypes}}
 {{{type}}}
@@ -90,6 +114,8 @@ class SdkGenerator implements SdkGeneratorInterface {
     const generateSdkOutput: SdkGeneratorOutput = {
       files: []
     };
+
+    const modelViews: ModelView[] = [];
 
     for (const classInfo of sdkGeneratorInput.classesInfo) {
       const externalTypes: Node[] = [];
@@ -117,7 +143,8 @@ class SdkGenerator implements SdkGeneratorInterface {
         className: classDefinition.name,
         _url: _url,
         methods: [],
-        externalTypes: []
+        externalTypes: [],
+        imports: [],
       };
 
       let exportClassChecker = false;
@@ -176,7 +203,43 @@ class SdkGenerator implements SdkGeneratorInterface {
       }
 
       for (const externalType of externalTypes) {
-        view.externalTypes.push({type: this.generateExternalType(externalType)});
+        if (externalType.path) {
+          let currentView: ModelView | undefined = undefined;
+          for (const parentType of externalTypes) {
+            const isUsed = this.isExternalTypeUsedByOtherType(externalType, parentType);
+            if (isUsed && parentType.path && parentType.path !== externalType.path) {
+              currentView = this.addViewIfNotExists(modelViews, parentType, view, classInfo);
+            }
+            if (currentView && !classInfo.classConfiguration.path.includes(externalType.path)) {
+              this.addImportToCurrentView(currentView, externalType);
+            }
+          }
+          if (this.isExternalTypeUsedInMethod(externalType, classDefinition.methods)) {
+            currentView = view;
+            if (currentView && !classInfo.classConfiguration.path.includes(externalType.path)) {
+              this.addImportToCurrentView(currentView, externalType);
+            }
+          }
+          
+          currentView = this.addViewIfNotExists(modelViews, externalType, view, classInfo);
+          if (!currentView?.externalTypes.find((e) => e.name === (externalType as any).name)) {
+            currentView?.externalTypes.push({type: this.generateExternalType(externalType), name: (externalType as any).name});
+          }
+        }
+      }
+
+      for (const modelView of modelViews) {
+        for (const importType of modelView.imports) {
+          if (importType.models.length > 0) {
+            importType.models[importType.models.length - 1].last = true;
+          }
+        }
+      }
+
+      for (const importType of view.imports) {
+        if (importType.models.length > 0) {
+          importType.models[importType.models.length - 1].last = true;
+        }
       }
 
       if (!exportClassChecker) {
@@ -191,6 +254,14 @@ class SdkGenerator implements SdkGeneratorInterface {
         data: Mustache.render(template, view),
         className: classDefinition.name
       });
+
+      for (const modelView of modelViews) {
+        generateSdkOutput.files.push({
+          path: modelView.path + ".py",
+          data: Mustache.render(modelTemplate, modelView),
+          className: ''
+        });
+      }
     }
 
     // generate remote.js
@@ -281,6 +352,94 @@ class SdkGenerator implements SdkGeneratorInterface {
       return this.isMapToObject((type as PromiseType).generic);
     }
     return false;
+  }
+
+  isExternalTypeUsedByOtherType(externalType: Node, type: Node): boolean {
+    if (type.type === AstNodeType.TypeAlias) {
+      const typeAlias = type as TypeAlias;
+      return this.isExternalTypeUsedByOtherType(externalType, typeAlias.aliasType);
+    } else if (type.type === AstNodeType.Enum) {
+      return false;
+    } else if (type.type === AstNodeType.StructLiteral) {
+      const typeAlias = type as StructLiteral;
+      return this.isExternalTypeUsedByOtherType(externalType, typeAlias.typeLiteral);
+    } else if (type.type === AstNodeType.ArrayType) {
+      return this.isExternalTypeUsedByOtherType(externalType, (type as ArrayType).generic);
+    } else if (type.type === AstNodeType.PromiseType) {
+      return this.isExternalTypeUsedByOtherType(externalType, (type as PromiseType).generic);
+    } else if (type.type === AstNodeType.UnionType) {
+      return (type as UnionType).params.some((e: Node) => this.isExternalTypeUsedByOtherType(externalType, e));
+    } else if (type.type === AstNodeType.TypeLiteral) {
+      return (type as TypeLiteral).properties.some((e: PropertyDefinition) => this.isExternalTypeUsedByOtherType(externalType, e.type));
+    } else if (type.type === AstNodeType.DateType) {
+      return false;
+    } else if (type.type === AstNodeType.CustomNodeLiteral) {
+      if ((type as CustomAstNodeType).rawValue === (externalType as any).name) {
+        return true;
+      }
+      return false;
+    } else if (type.type === AstNodeType.StringLiteral) {
+      return false;
+    } else if (type.type === AstNodeType.IntegerLiteral || type.type === AstNodeType.FloatLiteral || type.type === AstNodeType.DoubleLiteral) {
+      return false;
+    } else if (type.type === AstNodeType.BooleanLiteral) {
+      return false;
+    } else if (type.type === AstNodeType.AnyLiteral) {
+      return false;
+    }
+    return false;
+  }
+
+  isExternalTypeUsedInMethod(externalType: Node, methods: MethodDefinition[]): boolean {
+    return methods.some((m) => this.isExternalTypeUsedByOtherType(externalType, m.returnType) || m.params.some((p: ParameterDefinition) => this.isExternalTypeUsedByOtherType(externalType, p.paramType)));
+  }
+
+  addImportToCurrentView(currentView: ModelView, externalType: Node) {
+    let found = false;
+    for (const importType of currentView.imports) {
+      if (importType.path === externalType.path?.replace("/", ".") && !importType.models.find((e: any) => e.name === (externalType as any).name)) {
+        importType.models.push({name: (externalType as any).name});
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      let relativePath = path.relative(currentView.path || ".", externalType.path || ".").replace("/", ".");
+      if (relativePath.substring(0,3) == "...") {
+        relativePath = relativePath.substring(3);
+      }
+      if (!currentView.imports.find((e: any) => e.path === relativePath)) {
+        currentView.imports.push({
+          path: relativePath,
+          models: [{name: (externalType as any).name}],
+        });
+      }
+    }
+  }
+
+  addViewIfNotExists(modelViews: ModelView[], type: Node, classView: any, classInfo: any) {
+    let found = false;
+    let currentView: ModelView | undefined = undefined;
+    for (const modelView of modelViews) {
+      if (modelView.path === type.path) {
+        currentView = modelView;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      if (!classInfo.classConfiguration.path.includes(type.path)) {
+        currentView = {
+          path: type.path || "",
+          externalTypes: [],
+          imports: [],
+        };
+        modelViews.push(currentView);
+      } else {
+        currentView = classView;
+      }
+    }
+    return currentView;
   }
 }
 

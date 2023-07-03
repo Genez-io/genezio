@@ -8,9 +8,9 @@ import {
   Node,
   ArrayType,
   PromiseType
-} from "../../models/genezioModels";
-import { TriggerType } from "../../models/yamlProjectConfiguration";
-import { swiftSdk } from "../templates/swiftSdk";
+} from "../../models/genezioModels.js";
+import { TriggerType } from "../../models/yamlProjectConfiguration.js";
+import { swiftSdk } from "../templates/swiftSdk.js";
 
 const SWIFT_RESERVED_WORDS = [
   "associativity",

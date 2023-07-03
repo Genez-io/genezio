@@ -1,8 +1,8 @@
-import { readUTF8File, writeToFile } from "./file";
+import { readUTF8File, writeToFile } from "./file.js";
 import os from "os";
 import path from "path";
 import fs from "fs";
-import { debugLogger } from "./logging";
+import { debugLogger } from "./logging.js";
 
 export async function getAuthToken(): Promise<string|undefined> {
     const homeDirectory = os.homedir();

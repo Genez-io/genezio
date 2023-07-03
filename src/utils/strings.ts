@@ -26,20 +26,7 @@ export const asciiCapybara = `        ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡀
         ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠋⠁⢰⣿⡽⢛⡧⢠⡇⠀⠀⠀⠉⠉⠙⠓⠒⠒⠚⠉⠁⠀⠉⠑⠒⠒⠉⠉⠁⠀⠀⠀⠀
         ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⠛⠒⣿⣤⠞⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀`;
 
-// Comment template for genezio.yaml
-export const GENEZIO_YAML_COMMENT = `File that configures what classes will be deployed in Genezio Infrastructure.
- Add the paths to classes that you want to deploy in "classes".
 
-Example:
-
-name: hello-world
-region: us-east-1
-sdk:
-language: js
-path: ./sdk/
-classes:
-- path: ./hello.js
-type: jsonrpc
-methods:
-- name: hello
-        type: http`;
+export const reset = "%s" + "\x1b[0m";
+export const red = "\x1b[31m" + reset;
+export const cyan = "\x1b[36m" + reset;

@@ -1,70 +1,70 @@
 import log from "loglevel";
 import { Document } from "yaml";
-import { regions } from "../utils/configs";
-import { writeToFile } from "../utils/file";
-import { languages } from "../utils/languages";
-import { askQuestion } from "../utils/prompt";
-import { GENEZIO_YAML_COMMENT } from "../utils/strings";
-
+import { regions } from "../utils/configs.js";
+import { writeToFile } from "../utils/file.js";
+import { languages } from "../utils/languages.js";
+import { askQuestion } from "../utils/prompt.js";
+import {cyan, red} from "../utils/strings.js";
 export async function initCommand() {
   let projectName = "";
   while (projectName.length === 0) {
     projectName = await askQuestion(`What is the name of the project: `);
     if (projectName.length === 0) {
-      log.error("The project name can't be empty.");
+      log.error(red, "The project name can't be empty. Please provide one.");
     }
   }
-  const configFile: any = {
-    name: projectName,
-    region: "",
-    sdk: { },
-    classes: []
-  };
 
-  const region = await askQuestion(
-    `What region do you want to deploy your project to? [default value: us-east-1]: `,
-    "us-east-1"
-  );
-
-  if (!regions.includes(region)) {
-    throw Error(
-      `The region is invalid. Please use a valid region.\n Region list: ${regions}`
-    )
-  }
-  configFile.region = region;
-
-  const sdkLanguage = await askQuestion(
-    `In what programming language do you want your SDK? (${languages}) [default value: js]: `,
-    "js"
-  );
-
-  if (!languages.includes(sdkLanguage)) {
-    throw Error(
-      `We don't currently support the ${sdkLanguage} language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`
+  let region = "";
+  while (!regions.includes(region)) {
+    region = await askQuestion(
+      `What region do you want to deploy your project to? [default value: us-east-1]: `,
+      "us-east-1"
     );
+
+    if (!regions.includes(region)) {
+        log.error(red, `The region is invalid. Please use a valid region.\n Region list: ${regions}`);
+    }
   }
-  configFile.sdk.language = sdkLanguage;
+
+  let sdkLanguage = "";
+  while (!languages.includes(sdkLanguage)) {
+    sdkLanguage = await askQuestion(
+      `In what programming language do you want your SDK? (${languages}) [default value: ts]: `,
+      "ts"
+    );
+
+    if (!languages.includes(sdkLanguage)) {
+      log.error(red, `We don't currently support the ${sdkLanguage} language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`);
+    }
+  }
 
   const path = await askQuestion(
     `Where do you want to save your SDK? [default value: ./sdk/]: `,
     "./sdk/"
   );
-  configFile.sdk.path = path;
+
+  const configFile: any = {
+    name: projectName,
+    region: region,
+    sdk: {
+      language: sdkLanguage,
+      path: path
+    },
+    classes: []
+  };
 
   const doc = new Document(configFile);
-  doc.commentBefore = GENEZIO_YAML_COMMENT
-
   const yamlConfigurationFileContent = doc.toString();
 
   await writeToFile(".", "genezio.yaml", yamlConfigurationFileContent).catch(
     (error) => {
-      log.error(error.toString());
+      log.error(red, error.toString());
     }
   );
 
   log.info("");
   log.info(
-    "\x1b[36m%s\x1b[0m",
+    cyan,
     "Your genezio project was successfully initialized!"
   );
   log.info("");

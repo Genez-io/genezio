@@ -1,17 +1,17 @@
 import path from "path";
 import Mustache from "mustache";
-import { createTemporaryFolder, writeToFile } from "../../utils/file";
-import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface";
-import { checkIfDartIsInstalled } from "../../utils/dart";
-import { debugLogger } from "../../utils/logging";
-import { ClassConfiguration, MethodConfiguration, ParameterType } from "../../models/projectConfiguration";
-import { template } from "./localDartMain";
+import { createTemporaryFolder, deleteFolder, writeToFile } from "../../utils/file.js";
+import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface.js";
+import { checkIfDartIsInstalled } from "../../utils/dart.js";
+import { debugLogger } from "../../utils/logging.js";
+import { ClassConfiguration, MethodConfiguration, ParameterType } from "../../models/projectConfiguration.js";
+import { template } from "./localDartMain.js";
 import { default as fsExtra } from "fs-extra";
 import { spawnSync } from 'child_process';
-import { TriggerType } from "../../models/yamlProjectConfiguration";
+import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 import log from "loglevel";
-import { ArrayType, AstNodeType, ClassDefinition, CustomAstNodeType, MapType, Node, Program, PromiseType } from "../../models/genezioModels";
-import { castArrayRecursivelyInitial, castMapRecursivelyInitial } from "../../utils/dartAstCasting";
+import { ArrayType, AstNodeType, ClassDefinition, CustomAstNodeType, MapType, Node, Program, PromiseType } from "../../models/genezioModels.js";
+import { castArrayRecursivelyInitial, castMapRecursivelyInitial } from "../../utils/dartAstCasting.js";
 
 export class DartBundler implements BundlerInterface {
 
@@ -20,6 +20,10 @@ export class DartBundler implements BundlerInterface {
 
         if (result.status != 0) {
             log.info(result.stdout.toString().split("\n").slice(1).join("\n"));
+
+            // Delete the temporary folder if the compilation fails
+            await deleteFolder(path);
+
             throw new Error("Compilation error! Please check your code and try again.");
         }
     }
@@ -88,6 +92,7 @@ export class DartBundler implements BundlerInterface {
                 .map((m) => ({
                     name: m.name,
                 })),
+            imports: ast.body?.map((element) => ({ name: element.path }))
         }
 
         const routerFileContent = Mustache.render(template, moustacheViewForMain);
@@ -99,6 +104,10 @@ export class DartBundler implements BundlerInterface {
         if (result.status != 0) {
             log.info(result.stderr.toString());
             log.info(result.stdout.toString());
+
+            // Delete the temporary folder if the compilation fails
+            await deleteFolder(folderPath);
+
             throw new Error("Compilation error! Please check your code and try again.");
         }
     }
@@ -129,6 +138,7 @@ export class DartBundler implements BundlerInterface {
             ...input,
             path: inputTemporaryFolder,
             extra: {
+                ...input.extra,
                 startingCommand: path.join(inputTemporaryFolder, "main.exe"),
                 commandParameters: [],
             }

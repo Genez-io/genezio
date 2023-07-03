@@ -1,10 +1,9 @@
-import axios from "./axios";
-import { getAuthToken } from "../utils/accounts";
-import { BACKEND_ENDPOINT } from "../constants";
-import { debugLogger, printAdaptiveLog, printUninformativeLog } from "../utils/logging";
+import axios from "./axios.js";
+import { getAuthToken } from "../utils/accounts.js";
+import { BACKEND_ENDPOINT } from "../constants.js";
+import { debugLogger, printAdaptiveLog, printUninformativeLog } from "../utils/logging.js";
 import { AbortController } from "node-abort-controller";
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const pjson = require("../../package.json");
+import version from "../utils/version.js";
 
 export default async function deleteProject(
   projectId: string,
@@ -26,7 +25,7 @@ export default async function deleteProject(
     url: `${BACKEND_ENDPOINT}/projects/${projectId}`,
     headers: {
       Authorization: `Bearer ${authToken}`,
-      "Accept-Version": `genezio-cli/${pjson.version}`
+      "Accept-Version": `genezio-cli/${version}`
     }
   }).catch(async (error: Error) => {
     controller.abort();

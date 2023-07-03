@@ -1,7 +1,7 @@
 import log from "loglevel";
 import { exit } from "process";
-import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors";
-import { getAuthToken } from "../utils/accounts";
+import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
+import { getAuthToken } from "../utils/accounts.js";
 
 export async function accountCommand() {
   const authToken = await getAuthToken();

@@ -1,9 +1,9 @@
-import { getAstSummary } from "../generateSdk/utils/getAstSummary";
-import { AstSummary } from "./astSummary";
-import { CloudProviderIdentifier } from "./cloudProviderIdentifier";
-import { NodeOptions } from "./nodeRuntime";
-import { SdkGeneratorResponse } from "./sdkGeneratorResponse";
-import { Language, TriggerType, YamlProjectConfiguration } from "./yamlProjectConfiguration";
+import { getAstSummary } from "../generateSdk/utils/getAstSummary.js";
+import { AstSummary } from "./astSummary.js";
+import { CloudProviderIdentifier } from "./cloudProviderIdentifier.js";
+import { NodeOptions } from "./nodeRuntime.js";
+import { SdkGeneratorResponse } from "./sdkGeneratorResponse.js";
+import { Language, TriggerType, YamlProjectConfiguration } from "./yamlProjectConfiguration.js";
 
 export class ParameterType {
     name: string;

@@ -1,7 +1,7 @@
 import log from "loglevel";
-import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse";
-import { TriggerType } from "../models/yamlProjectConfiguration";
-import { GenezioCloudResultClass } from "../cloudAdapter/cloudAdapter";
+import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
+import { TriggerType } from "../models/yamlProjectConfiguration.js";
+import { GenezioCloudResultClass } from "../cloudAdapter/cloudAdapter.js";
 
 export function reportSuccess(
   classesInfo: GenezioCloudResultClass[],

@@ -2,7 +2,6 @@ import { Document } from "yaml";
 
 import { fileExists, writeToFile } from "../src/utils/file";
 import { askQuestion } from "../src/utils/prompt";
-import { GENEZIO_YAML_COMMENT } from "../src/utils/strings";
 import { getProjectConfiguration } from "../src/utils/configuration";
 import {
   Language,
@@ -11,27 +10,31 @@ import {
   YamlProjectConfiguration,
   YamlSdkConfiguration
 } from "../src/models/yamlProjectConfiguration";
-import { regions } from "../src/utils/configs";
 import { initCommand } from "../src/commands/init";
 import { addClassCommand } from "../src/commands/addClass";
 import { languages } from "../src/utils/languages";
 import { CloudProviderIdentifier } from "../src/models/cloudProviderIdentifier";
+import log from "loglevel";
+import { red } from "../src/utils/strings";
+import { regions } from "../src/utils/configs";
 
 jest.mock("../src/utils/file");
 jest.mock("../src/utils/configuration");
 jest.mock("../src/utils/prompt");
+jest.mock("loglevel");
 
 beforeEach(() => {
   jest.clearAllMocks();
 });
 
 describe("init", () => {
-  test("create genezio.yaml succesfully", async () => {
+  test("create genezio.yaml successfully", async () => {
     const mockedAskQuestion = jest.mocked(askQuestion, { shallow: true });
+
     mockedAskQuestion
     .mockResolvedValueOnce("project-name")
     .mockResolvedValueOnce("us-east-1")
-    .mockResolvedValueOnce("js")
+    .mockResolvedValueOnce("ts")
     .mockResolvedValueOnce("./sdk/")
 
     const mockedWriteToFile = jest.mocked(writeToFile, { shallow: true });
@@ -40,13 +43,11 @@ describe("init", () => {
     const configFile : any = {
       name: "project-name",
       region: "us-east-1",
-      sdk: { language: "js", path: "./sdk/" },
+      sdk: { language: "ts", path: "./sdk/" },
       classes: []
     };
 
     const doc = new Document(configFile);
-    doc.commentBefore = GENEZIO_YAML_COMMENT
-
     const yamlConfigurationFileContent = doc.toString();
 
     await expect(initCommand()).resolves.toBeUndefined();
@@ -56,40 +57,126 @@ describe("init", () => {
     expect(mockedWriteToFile).toBeCalledWith(".", "genezio.yaml", yamlConfigurationFileContent)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
-    expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `In what programming language do you want your SDK? (${languages}) [default value: js]: `, "js")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `In what programming language do you want your SDK? (${languages}) [default value: ts]: `, "ts")
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(4, `Where do you want to save your SDK? [default value: ./sdk/]: `, "./sdk/")
   });
 
-  test("throws error if region is not supported", async () => {
-    const notSupportedRegion = "not-supported";
+  test("handle error for empty project", async () => {
     const mockedAskQuestion = jest.mocked(askQuestion, { shallow: true });
+    const mockedLogError = jest.spyOn(log, "error");
+
     mockedAskQuestion
+    .mockResolvedValueOnce("")
     .mockResolvedValueOnce("project-name")
-    .mockResolvedValueOnce(notSupportedRegion)
+    .mockResolvedValueOnce("us-east-1")
+    .mockResolvedValueOnce("ts")
+    .mockResolvedValueOnce("./sdk/")
 
-    await expect(initCommand()).rejects.toThrowError(`The region is invalid. Please use a valid region.\n Region list: ${regions}`);
+    const mockedWriteToFile = jest.mocked(writeToFile, { shallow: true });
+    mockedWriteToFile.mockResolvedValue();
 
-    expect(mockedAskQuestion).toBeCalledTimes(2);
+
+    const configFile : any = {
+      name: "project-name",
+      region: "us-east-1",
+      sdk: { language: "ts", path: "./sdk/" },
+      classes: []
+    };
+
+    const doc = new Document(configFile);
+    const yamlConfigurationFileContent = doc.toString();
+
+    await expect(initCommand()).resolves.toBeUndefined();
+
+    expect(mockedLogError).toBeCalledTimes(1);
+    expect(mockedLogError).toBeCalledWith(red, `The project name can't be empty. Please provide one.`);
+    expect(mockedWriteToFile).toBeCalledTimes(1);
+    expect(mockedAskQuestion).toBeCalledTimes(5);
+    expect(mockedWriteToFile).toBeCalledWith(".", "genezio.yaml", yamlConfigurationFileContent)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
-    expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What is the name of the project: `)
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(4, `In what programming language do you want your SDK? (${languages}) [default value: ts]: `, "ts")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(5, `Where do you want to save your SDK? [default value: ./sdk/]: `, "./sdk/")
   });
 
-  test("throws error if language is not supported", async () => {
-    const notSupportedLanguage = "not-supported";
+  test("handle error for invalid region", async () => {
     const mockedAskQuestion = jest.mocked(askQuestion, { shallow: true });
+    const mockedLogError = jest.spyOn(log, "error");
+    const notSupported = "not-supported";
+
+    mockedAskQuestion
+    .mockResolvedValueOnce("project-name")
+    .mockResolvedValueOnce(notSupported)
+    .mockResolvedValueOnce("us-east-1")
+    .mockResolvedValueOnce("ts")
+    .mockResolvedValueOnce("./sdk/")
+
+    const mockedWriteToFile = jest.mocked(writeToFile, { shallow: true });
+    mockedWriteToFile.mockResolvedValue();
+
+    const configFile : any = {
+      name: "project-name",
+      region: "us-east-1",
+      sdk: { language: "ts", path: "./sdk/" },
+      classes: []
+    };
+
+    const doc = new Document(configFile);
+    const yamlConfigurationFileContent = doc.toString();
+
+    await expect(initCommand()).resolves.toBeUndefined();
+
+    expect(mockedLogError).toBeCalledTimes(1);
+    expect(mockedLogError).toBeCalledWith(red, `The region is invalid. Please use a valid region.\n Region list: ${regions}`);
+    expect(mockedWriteToFile).toBeCalledTimes(1);
+    expect(mockedAskQuestion).toBeCalledTimes(5);
+    expect(mockedWriteToFile).toBeCalledWith(".", "genezio.yaml", yamlConfigurationFileContent)
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(4, `In what programming language do you want your SDK? (${languages}) [default value: ts]: `, "ts")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(5, `Where do you want to save your SDK? [default value: ./sdk/]: `, "./sdk/")
+  });
+
+  test("handle error for invalid programming language", async () => {
+    const mockedAskQuestion = jest.mocked(askQuestion, { shallow: true });
+    const mockedLogError = jest.spyOn(log, "error");
+    const notSupported = "not-supported";
+
     mockedAskQuestion
     .mockResolvedValueOnce("project-name")
     .mockResolvedValueOnce("us-east-1")
-    .mockResolvedValueOnce(notSupportedLanguage)
+    .mockResolvedValueOnce(notSupported)
+    .mockResolvedValueOnce("ts")
+    .mockResolvedValueOnce("./sdk/")
 
-    await expect(initCommand()).rejects.toThrowError(`We don't currently support the ${notSupportedLanguage} language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`);
+    const mockedWriteToFile = jest.mocked(writeToFile, { shallow: true });
+    mockedWriteToFile.mockResolvedValue();
 
-    expect(mockedAskQuestion).toBeCalledTimes(3);
+    const configFile : any = {
+      name: "project-name",
+      region: "us-east-1",
+      sdk: { language: "ts", path: "./sdk/" },
+      classes: []
+    };
+
+    const doc = new Document(configFile);
+    const yamlConfigurationFileContent = doc.toString();
+
+    await expect(initCommand()).resolves.toBeUndefined();
+
+    expect(mockedLogError).toBeCalledTimes(1);
+    expect(mockedLogError).toBeCalledWith(red, `We don't currently support the ${notSupported} language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`);
+    expect(mockedWriteToFile).toBeCalledTimes(1);
+    expect(mockedAskQuestion).toBeCalledTimes(5);
+    expect(mockedWriteToFile).toBeCalledWith(".", "genezio.yaml", yamlConfigurationFileContent)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
-    expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `In what programming language do you want your SDK? (${languages}) [default value: js]: `, "js")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `In what programming language do you want your SDK? (${languages}) [default value: ts]: `, "ts")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(4, `In what programming language do you want your SDK? (${languages}) [default value: ts]: `, "ts")
+    expect(mockedAskQuestion).toHaveBeenNthCalledWith(5, `Where do you want to save your SDK? [default value: ./sdk/]: `, "./sdk/")
   });
-
 })
 
 describe("addClassCommand", () => {

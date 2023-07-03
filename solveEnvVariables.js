@@ -1,5 +1,5 @@
-var envify = require("envify")
-    , fs = require('fs')
+import envify from "envify";
+import fs from "fs";
 
 if (process.argv.length == 4) {
     process.env.NODE_ENV = process.argv[3];

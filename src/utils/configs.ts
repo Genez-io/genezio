@@ -1,20 +1,28 @@
 export const tsconfig = {
   compilerOptions: {
-    target: "es6",
-    module: "commonjs",
-    lib: ["es6", "dom"],
-    outDir: "build",
-    rootDir: ".",
-    strict: true,
-    noImplicitAny: true,
-    esModuleInterop: true,
-    resolveJsonModule: true,
-    allowJs: true,
-    types: ["node"]
+      target: "ES2020",
+      module: "ES2020",
+      moduleResolution: "node",
+      lib: [
+          "es6",
+          "dom"
+      ],
+      outDir: "build",
+      rootDir: ".",
+      strict: true,
+      noImplicitAny: true,
+      esModuleInterop: true,
+      resolveJsonModule: true,
+      allowJs: true,
+      types: [
+          "node"
+      ]
   },
-  //files: ["hello.ts"],
-  include: [""]
-};
+  include: [
+      "**/*"
+  ],
+}
+;
 
 export const regions = [
   "us-east-1",
