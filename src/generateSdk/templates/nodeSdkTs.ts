@@ -18,6 +18,7 @@ async function importModules() {
 }
 
 async function makeRequestBrowser(request: any, url: any) {
+    // @ts-ignore
     const response = await fetch(\`\${url}\`, {
         method: 'POST',
         headers: {
