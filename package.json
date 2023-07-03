@@ -79,7 +79,7 @@
     "parse-multipart-data": "^1.5.0",
     "path": "^0.12.7",
     "terminal-overwrite": "^2.0.1",
-    "ts-loader": "^9.4.3",
+    "ts-loader": "^9.4.4",
     "typescript": "^5.1.3",
     "typescript-parser": "^2.6.1",
     "unique-names-generator": "^4.7.1",
