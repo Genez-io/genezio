@@ -20,7 +20,8 @@
 <div align="center">
 
 [![unit-tests](https://github.com/Genez-io/genezio/actions/workflows/unit-test.yaml/badge.svg)](https://github.com/Genez-io/genezio/actions/workflows/unit-test.yaml)
-[![integration-tests-prod](https://github.com/Genez-io/genezio-tests/actions/workflows/integration-prod.yml/badge.svg)](https://github.com/Genez-io/genezio-tests/actions/workflows/integration-prod.yml)
+[![windows-integration-tests-prod](https://github.com/Genez-io/genezio-tests/actions/workflows/integration-prod-windows.yml/badge.svg)](https://github.com/Genez-io/genezio-tests/actions/workflows/integration-prod-windows.yml)
+[![linux-integration-tests-prod](https://github.com/Genez-io/genezio-tests/actions/workflows/integration-prod-linux.yml/badge.svg)](https://github.com/Genez-io/genezio-tests/actions/workflows/integration-prod-linux.yml)
 
 </div>
 
@@ -79,7 +80,7 @@ For more details on how to use `genezio`, you can check out the official [docume
 
 # Features
 
-- 👩‍💻&nbsp; Write your backend code in Javascript or Typescript.
+- 👩‍💻&nbsp; Write your backend code in Javascript, Typescript or Dart.
 - 🪛&nbsp; Deploy your backend in no-time on a serverless infrastructure.
 - 🖼️&nbsp; Host your frontend on the genezio infrastructure.
 - 🪄&nbsp; A magically-generated SDK to call your server functions from the client (supported languages: JS, TS, Swift, Python, Dart).
@@ -147,7 +148,7 @@ Once you are happy with your project, you can deploy it in a production environm
 
 # Commands Summary
 
-The genezio CLI tool supports the commands shown in the following tablke:
+The genezio CLI tool supports the commands shown in the following table:
 
 | Command | Description |
 | ------- | ----------- |
@@ -182,11 +183,16 @@ A detailed list of all the examples is below:
   - [Crons](https://github.com/Genez-io/genezio-examples/tree/master/javascript/cron) - a simple class that has a method that will be called every minute.
 
 - Typescript
-  - [Getting Starting](https://github.com/Genez-io/genezio-examples/tree/master/typescript/getting-started) - an example for brand new users of `genezio`.
+  - [Getting Started](https://github.com/Genez-io/genezio-examples/tree/master/typescript/getting-started) - an example for brand new users of `genezio`.
   - [Todo List with React and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/typescript/todo-list) - an example of a todo application with users, auth and tasks.
   - [Todo List with Angular and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/typescript/todo-list-angular) - an example of a todo application with users.
   - [Todo List with Flutter and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/typescript/todo-list-angular) - an example of a todo application with users.
   - [MultiversX](https://github.com/Genez-io/genezio-examples/tree/master/typescript/multiversx) - an example on an integration with the MultiversX blockchain. The application queries the balance of an existing account.
+
+- Dart
+  - [Getting Started](https://github.com/Genez-io/genezio-examples/tree/master/dart/getting-started) - an example for brand new users of `genezio`.
+  - [Todo List with React and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/dart/todo-list-react-typescript) - an example of a todo application.
+  - [Chat with Yoda with ChatGPT API](https://github.com/Genez-io/genezio-examples/tree/master/dart/chat-with-yoda-chatgpt) - an example on how to integrate with ChatGPT API.
 
 # Official documentation
 
