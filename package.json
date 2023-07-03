@@ -38,6 +38,7 @@
     "@types/body": "^5.1.1",
     "@types/webpack-node-externals": "^3.0.0",
     "archiver": "^5.3.1",
+    "async-mutex": "^0.4.0",
     "await-exec": "^0.1.2",
     "aws-cron-parser": "^1.1.12",
     "axios": "^1.4.0",
