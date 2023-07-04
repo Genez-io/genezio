@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { debugLogger } from '../utils/logging';
+import { debugLogger } from '../utils/logging.js';
 
 enum GenezioErrorCode {
 	UnknownError = 0,

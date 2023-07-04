@@ -1,9 +1,8 @@
-import axios from "./axios";
-import { getAuthToken } from "../utils/accounts";
-import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors";
-import { BACKEND_ENDPOINT } from "../constants";
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const pjson = require("../../package.json");
+import axios from "./axios.js";
+import { getAuthToken } from "../utils/accounts.js";
+import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
+import { BACKEND_ENDPOINT } from "../constants.js";
+import version from "../utils/version.js";
 
 export async function createFrontendProject(genezioDomain: string, projectName: string, region: string) {
     // Check if user is authenticated
@@ -24,7 +23,7 @@ export async function createFrontendProject(genezioDomain: string, projectName: 
         data: json,
         headers: {
             Authorization: `Bearer ${authToken}`,
-            "Accept-Version": `genezio-cli/${pjson.version}`
+            "Accept-Version": `genezio-cli/${version}`
         },
         maxContentLength: Infinity,
         maxBodyLength: Infinity

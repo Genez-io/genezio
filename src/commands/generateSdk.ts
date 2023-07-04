@@ -1,18 +1,17 @@
 import { AxiosError } from "axios";
 import log from "loglevel";
 import { exit } from "process";
-import { languages } from "../utils/languages";
+import { languages } from "../utils/languages.js";
 import {
   GENEZIO_NOT_AUTH_ERROR_MSG,
   GENEZIO_NO_CLASSES_FOUND
-} from "../errors";
-import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi";
-import { Language } from "../models/yamlProjectConfiguration";
-import getProjectInfo from "../requests/getProjectInfo";
-import listProjects from "../requests/listProjects";
-import { getAuthToken } from "../utils/accounts";
-import { getProjectConfiguration } from "../utils/configuration";
-import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk";
+} from "../errors.js";
+import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
+import { Language } from "../models/yamlProjectConfiguration.js";
+import getProjectInfo from "../requests/getProjectInfo.js";
+import listProjects from "../requests/listProjects.js";
+import { getProjectConfiguration } from "../utils/configuration.js";
+import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 
 export async function generateSdkCommand(options: any) {
   const language = options.language;

@@ -1,11 +1,11 @@
 import path from "path";
 import yaml from "yaml";
-import { getFileDetails, writeToFile } from "../utils/file";
-import { regions } from "../utils/configs";
+import { getFileDetails, writeToFile } from "../utils/file.js";
+import { regions } from "../utils/configs.js";
 import { isValidCron } from 'cron-validator'
 import log from "loglevel";
-import { CloudProviderIdentifier } from "./cloudProviderIdentifier";
-import { NodeOptions } from "./nodeRuntime";
+import { CloudProviderIdentifier, cloudProviders } from "./cloudProviderIdentifier.js";
+import { NodeOptions } from "./nodeRuntime.js";
 
 export enum TriggerType {
   jsonrpc = "jsonrpc",
@@ -343,16 +343,22 @@ export class YamlProjectConfiguration {
     }
     const plugins: YamlPluginsConfiguration | undefined = configurationFileContent.plugins;
 
+    if (configurationFileContent.cloudProvider) {
+      if(!cloudProviders.includes(configurationFileContent.cloudProvider)) {
+        throw new Error(`The cloud provider ${configurationFileContent.cloudProvider} is invalid. Please use ${CloudProviderIdentifier.GENEZIO} or ${CloudProviderIdentifier.SELF_HOSTED_AWS}.`);
+      }
+    }
+
     return new YamlProjectConfiguration(
       configurationFileContent.name,
       configurationFileContent.region || "us-east-1",
       sdk,
-      configurationFileContent.cloudProvider || "aws",
+      configurationFileContent.cloudProvider || CloudProviderIdentifier.GENEZIO,
       classes,
       configurationFileContent.frontend,
       scripts,
       plugins,
-      configurationFileContent.options 
+      configurationFileContent.options
     );
   }
 

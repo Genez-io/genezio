@@ -1,5 +1,19 @@
-import { YamlClassConfiguration } from "./yamlProjectConfiguration";
+import { YamlClassConfiguration } from "./yamlProjectConfiguration.js";
 
+export type ModelView = {
+  path: string,
+  externalTypes: {
+    name: string,
+    type: string
+  }[],
+  imports: {
+    path: string,
+    models: {
+      name: string,
+      last?: boolean
+    }[]
+  }[]
+}
 
 export class File {
   path: string
@@ -85,6 +99,7 @@ export type AstGeneratorOutput = {
 
 export interface Node {
   type: AstNodeType;
+  path?: string;
 }
 
 // DONE native types, enums, type alias, union type - type | type

@@ -1,6 +1,5 @@
-import axios from "axios";
 import fs from "fs";
-import { getAuthToken } from "../utils/accounts";
+import { getAuthToken } from "../utils/accounts.js";
 import https from "https";
 
 export async function uploadContentToS3(

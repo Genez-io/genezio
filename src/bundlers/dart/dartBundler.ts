@@ -2,25 +2,25 @@ import axios from "axios";
 import fs from "fs";
 import path from "path";
 import Mustache from "mustache";
-import { getCompileDartPresignedURL } from "../../requests/getCompileDartPresignedURL";
-import { uploadContentToS3 } from "../../requests/uploadContentToS3";
+import { getCompileDartPresignedURL } from "../../requests/getCompileDartPresignedURL.js";
+import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import decompress from "decompress";
-import { createTemporaryFolder, deleteFolder, writeToFile, zipDirectory } from "../../utils/file";
-import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface";
-import { checkIfDartIsInstalled } from "../../utils/dart";
-import { debugLogger } from "../../utils/logging";
-import { ClassConfiguration, MethodConfiguration, ParameterType } from "../../models/projectConfiguration";
-import { template } from "./dartMain";
+import { createTemporaryFolder, deleteFolder, writeToFile, zipDirectory } from "../../utils/file.js";
+import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface.js";
+import { checkIfDartIsInstalled } from "../../utils/dart.js";
+import { debugLogger } from "../../utils/logging.js";
+import { ClassConfiguration, MethodConfiguration, ParameterType } from "../../models/projectConfiguration.js";
+import { template } from "./dartMain.js";
 import { default as fsExtra } from "fs-extra";
-import { DART_COMPILATION_ENDPOINT } from "../../constants";
-import { TriggerType } from "../../models/yamlProjectConfiguration";
+import { DART_COMPILATION_ENDPOINT } from "../../constants.js";
+import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 import { spawnSync } from "child_process";
 import log from "loglevel";
-import { runNewProcess } from "../../utils/process";
-import { getAllFilesFromCurrentPath } from "../../utils/file";
-import FileDetails from "../../models/fileDetails";
-import { ArrayType, AstNodeType, ClassDefinition, CustomAstNodeType, MapType, Node, Program, PromiseType } from "../../models/genezioModels";
-import { castArrayRecursivelyInitial, castMapRecursivelyInitial } from "../../utils/dartAstCasting";
+import { runNewProcess } from "../../utils/process.js";
+import { getAllFilesFromCurrentPath } from "../../utils/file.js";
+import FileDetails from "../../models/fileDetails.js";
+import { ArrayType, AstNodeType, ClassDefinition, CustomAstNodeType, MapType, Node, Program, PromiseType } from "../../models/genezioModels.js";
+import { castArrayRecursivelyInitial, castMapRecursivelyInitial } from "../../utils/dartAstCasting.js";
 
 export class DartBundler implements BundlerInterface {
     async #getDartCompilePresignedUrl(archiveName: string): Promise<string> {
@@ -138,6 +138,7 @@ export class DartBundler implements BundlerInterface {
                 .map((m) => ({
                     name: m.name,
                 })),
+            imports: ast.body?.map((element) => ({ name: element.path }))
         }
 
         const routerFileContent = Mustache.render(template, moustacheViewForMain);
@@ -152,11 +153,13 @@ export class DartBundler implements BundlerInterface {
         const archiveDirectoryOutput = await createTemporaryFolder();
         const archivePath = path.join(archiveDirectoryOutput, archiveName);
 
-        await zipDirectory(userCodeFolderPath, archivePath);
-        await uploadContentToS3(presignedUrlResult.presignedURL, archivePath)
-
-        // remove temporary folder
-        await deleteFolder(archiveDirectoryOutput);
+        try {
+            await zipDirectory(userCodeFolderPath, archivePath);
+            await uploadContentToS3(presignedUrlResult.presignedURL, archivePath)
+        } finally {
+            // remove temporary folder
+            await deleteFolder(archiveDirectoryOutput);
+        }
 
         return archiveName;
     }
@@ -203,44 +206,54 @@ export class DartBundler implements BundlerInterface {
         // Create a temporary folder were we copy user code to prepare everything.
         const folderPath = input.genezioConfigurationFilePath;
         const inputTemporaryFolder = await createTemporaryFolder(input.configuration.name);
-        await fsExtra.copy(folderPath, inputTemporaryFolder);
-        debugLogger.debug(`Copy files in temp folder ${inputTemporaryFolder}`);
+        let temporaryFolder: string | undefined = undefined;
 
-        // Create the router class
-        const userClass = input.projectConfiguration.classes.find((c: ClassConfiguration) => c.path == input.path)!;
-        this.#createRouterFileForClass(userClass, input.ast, inputTemporaryFolder);
+        try {
+            await fsExtra.copy(folderPath, inputTemporaryFolder);
+            debugLogger.debug(`Copy files in temp folder ${inputTemporaryFolder}`);
 
-        // Check if dart is installed
-        await checkIfDartIsInstalled();
+            // Create the router class
+            const userClass = input.projectConfiguration.classes.find((c: ClassConfiguration) => c.path == input.path)!;
+            this.#createRouterFileForClass(userClass, input.ast, inputTemporaryFolder);
 
-        await this.#addLambdaRuntimeDepenendecy(inputTemporaryFolder);
+            // Check if dart is installed
+            await checkIfDartIsInstalled();
 
-        await this.#analyze(inputTemporaryFolder);
+            await this.#addLambdaRuntimeDepenendecy(inputTemporaryFolder);
 
-        const archiveName = await this.#uploadUserCodeToS3(input.projectConfiguration.name, userClass.name, inputTemporaryFolder);
+            await this.#analyze(inputTemporaryFolder);
 
-        // Compile the Dart code on the server
-        debugLogger.debug("Compiling Dart...")
-        const s3Zip: any = await this.#compile(archiveName)
-        debugLogger.debug("Compiling Dart finished.")
+            const archiveName = await this.#uploadUserCodeToS3(input.projectConfiguration.name, userClass.name, inputTemporaryFolder);
 
-        if (s3Zip.success === false) {
-            throw new Error("Failed to upload code for compiling.");
+            // Compile the Dart code on the server
+            debugLogger.debug("Compiling Dart...")
+            const s3Zip: any = await this.#compile(archiveName)
+            debugLogger.debug("Compiling Dart finished.")
+
+            if (s3Zip.success === false) {
+                throw new Error("Failed to upload code for compiling.");
+            }
+
+            temporaryFolder = await createTemporaryFolder()
+
+            try {
+                debugLogger.debug(`Copy all non dart files to folder ${temporaryFolder}...`);
+                await this.#copyNonDartFiles(temporaryFolder);
+                debugLogger.debug("Copy all non dart files to folder done.");
+
+
+                debugLogger.debug("Downloading compiled code...")
+                await this.#downloadAndUnzipFromS3ToFolder(s3Zip.downloadUrl, temporaryFolder)
+                debugLogger.debug("Finished downloading compiled code...")
+            } catch (error) {
+                await deleteFolder(temporaryFolder);
+                throw error;
+            }
+        } finally {
+            // remove temporary folder
+            await deleteFolder(inputTemporaryFolder);
         }
 
-        const temporaryFolder = await createTemporaryFolder()
-
-        debugLogger.debug(`Copy all non dart files to folder ${temporaryFolder}...`);
-        await this.#copyNonDartFiles(temporaryFolder);
-        debugLogger.debug("Copy all non dart files to folder done.");
-
-
-        debugLogger.debug("Downloading compiled code...")
-        await this.#downloadAndUnzipFromS3ToFolder(s3Zip.downloadUrl, temporaryFolder)
-        debugLogger.debug("Finished downloading compiled code...")
-
-        // remove temporary folder
-        await deleteFolder(inputTemporaryFolder);
 
         return {
             ...input,

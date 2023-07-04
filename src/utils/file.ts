@@ -1,7 +1,7 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import FileDetails from "../models/fileDetails";
+import FileDetails from "../models/fileDetails.js";
 import glob from "glob";
 import archiver from "archiver";
 import { parse } from "yaml";
@@ -160,27 +160,73 @@ export async function directoryContainsIndexHtmlFiles(directoryPath: string): Pr
   });
 }
 
-export async function createTemporaryFolder(name = "foo-"): Promise<string> {
-  return new Promise((resolve, reject) => {
-    fs.mkdtemp(path.join(os.tmpdir(), name), (error: any, folder: string) => {
+
+/**
+ * Removes the temporary root folder of the process.
+ * This root folder contains all the temporary folders created by `createTemporaryFolder` function.
+ * The folder is removed only if it exists. It is meant to be called when the process exits.
+ */
+export async function cleanupTemporaryFolders() {
+  const folderName = `genezio-${process.pid}`;
+
+  if (fs.existsSync(path.join(os.tmpdir(), folderName))) {
+    fs.rmSync(path.join(os.tmpdir(), folderName), { recursive: true });
+  }
+}
+
+
+/**
+ * Creates a temporary folder with a given name or a random name of 6 characters if no name is provided.
+ * The folder is created inside a parent folder with a unique name based on the current process ID.
+ * If the folder already exists, it will not be created again.
+ * @param name - Optional name for the temporary folder.
+ * @param shouldDeleteContents - Optional flag to delete the contents of the folder if it already exists.
+ * @returns A promise that resolves with the path of the created folder.
+ */
+export async function createTemporaryFolder(
+  name?: string,
+  shouldDeleteContents?: boolean
+): Promise<string> {  return new Promise((resolve, reject) => {
+    const folderName = `genezio-${process.pid}`;
+
+    if (!fs.existsSync(path.join(os.tmpdir(), folderName))) {
+      fs.mkdirSync(path.join(os.tmpdir(), folderName));
+    }
+
+    if (name === undefined) {
+      // Generate a random name of 6 characters
+      name = Math.random().toString(36).substring(2, 8);
+    }
+
+    const tempFolder = path.join(os.tmpdir(), folderName, name);
+    if (fs.existsSync(tempFolder)) {
+      if (shouldDeleteContents) {
+        fs.rmSync(tempFolder, { recursive: true });
+      } else {
+        resolve(tempFolder);
+        return;
+      }
+    }
+
+    fs.mkdir(tempFolder, (error: any) => {
       if (error) {
         reject(error);
       }
 
-      resolve(folder);
+      resolve(tempFolder);
     });
   });
 }
 
 export async function deleteFolder(folderPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    fs.rm(folderPath, { recursive: true , force: true}, (error) => {
-      if (error) {
-        reject(error);
-      }
-
-      resolve();
-    });
+    try {
+      fs.rmSync(folderPath, { recursive: true , force: true});
+    } catch (error) {
+      reject(error);
+    }
+    
+    resolve();
   });
 }
 
@@ -208,12 +254,14 @@ export function writeToFile(
   createPathIfNeeded = false
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (!fs.existsSync(folderPath) && createPathIfNeeded) {
-      fs.mkdirSync(folderPath, { recursive: true });
+    const fullPath = path.join(folderPath, filename);
+
+    if (!fs.existsSync(path.dirname(fullPath)) && createPathIfNeeded) {
+      fs.mkdirSync(path.dirname(fullPath), { recursive: true });
     }
 
     // create the file if it doesn't exist
-    fs.writeFile(path.join(folderPath, filename), content, function (error) {
+    fs.writeFile(fullPath, content, function (error) {
       if (error) {
         reject(error);
         return;

@@ -1,13 +1,13 @@
 import log from "loglevel";
 import path from "path";
-import { AstGeneratorOutput, File } from "../models/genezioModels";
-import { AstGeneratorInput } from "../models/genezioModels";
-import JsAstGenerator from "./astGenerator/JsAstGenerator";
-import TsAstGenerator from "./astGenerator/TsAstGenerator";
+import { AstGeneratorOutput, File } from "../models/genezioModels.js";
+import { AstGeneratorInput } from "../models/genezioModels.js";
+import JsAstGenerator from "./astGenerator/JsAstGenerator.js";
+import TsAstGenerator from "./astGenerator/TsAstGenerator.js";
 import { exit } from "process";
-import DartAstGenerator from "./astGenerator/DartAstGenerator";
-import { debugLogger } from "../utils/logging";
-import { supportedExtensions } from "../utils/languages";
+import DartAstGenerator from "./astGenerator/DartAstGenerator.js";
+import { debugLogger } from "../utils/logging.js";
+import { supportedExtensions } from "../utils/languages.js";
 
 /**
  * Asynchronously generates an abstract syntax tree (AST) from a file using specified plugins.
