@@ -3,6 +3,7 @@ import path from "path";
 import { TriggerType } from "../models/yamlProjectConfiguration";
 import { getProjectConfiguration } from "../utils/configuration";
 import { fileExists, writeToFile } from "../utils/file";
+import { supportedExtensions } from "../utils/languages";
 
 export async function addClassCommand(classPath: string, classType: string) {
   if (classType === undefined) {
@@ -26,8 +27,17 @@ export async function addClassCommand(classPath: string, classType: string) {
   }
 
   const classExtension = className.split(".").pop();
+
   if (!classExtension || className.split(".").length < 2) {
     throw new Error("Please provide a class name with a valid class extension.");
+  }
+  
+  // check if class is supported
+  if (!supportedExtensions.includes(classExtension)) {
+    const supportedExtensionsString = supportedExtensions
+    .slice(0, -1)
+    .join(", ") + (supportedExtensions.length > 1 ? " and " : "") + supportedExtensions.slice(-1);
+    throw new Error(`Class language(${classExtension}) not supported. Currently supporting: ${supportedExtensionsString}`);
   }
 
   // check if class already exists

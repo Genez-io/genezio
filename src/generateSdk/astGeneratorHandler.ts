@@ -7,7 +7,7 @@ import TsAstGenerator from "./astGenerator/TsAstGenerator";
 import { exit } from "process";
 import DartAstGenerator from "./astGenerator/DartAstGenerator";
 import { debugLogger } from "../utils/logging";
-
+import { supportedExtensions } from "../utils/languages";
 
 /**
  * Asynchronously generates an abstract syntax tree (AST) from a file using specified plugins.
@@ -43,7 +43,12 @@ export async function generateAst(
   });
 
   if (!plugin) {
-    throw new Error(`Class language(${extension}) not supported`);
+
+    const supportedExtensionsString = supportedExtensions
+    .slice(0, -1)
+    .join(", ") + (supportedExtensions.length > 1 ? " and " : "") + supportedExtensions.slice(-1);
+
+    throw new Error(`Class language(${extension}) not supported. Currently supporting: ${supportedExtensionsString}. You can delete the class from genezio.yaml`);
   }
 
   const astGeneratorClass = new plugin.AstGenerator();
