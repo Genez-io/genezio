@@ -182,7 +182,7 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
   );
 
   const classesWithNoMethods = getNoMethodClasses(projectConfiguration.classes);
-  if (classesWithNoMethods.length > 0) {
+  if (classesWithNoMethods.length) {
     const errorClasses = classesWithNoMethods.join(", ");
     throw new Error(`Unable to deploy classes [${errorClasses}] as they do not have any methods.`);
   }
