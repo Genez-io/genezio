@@ -5,7 +5,7 @@
 
 import { Remote } from "./remote.js";
 
-export type AnalyticsData = {eventType: string, sessionId: string, opS: string, ul?: string, cl?: string, errTrace?: string, timeZone?: string};
+export type AnalyticsData = {eventType: string, sessionId: string, operatingSystem: string, userLanguage?: string, cloudProvider?: string, errTrace?: string, timeZone?: string};
 
 export class AnalyticsHandler {
   static remote = new Remote("http://127.0.0.1:8083/AnalyticsHandler");

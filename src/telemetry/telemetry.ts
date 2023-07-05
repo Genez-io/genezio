@@ -17,31 +17,31 @@ export class GenezioTelemetry {
     return sessionId;
   }
 
-  public static async sendEvent(eventType: string, cl?: string, errorTrace?: string): Promise<void> {
+  public static async sendEvent(eventType: string, cloudProvider?: string, errorTrace?: string): Promise<void> {
     if (process.env.GENEZIO_NO_TELEMETRY == "1") {
       debugLogger.debug(`[GenezioTelemetry]`, `Telemetry disabled by user`);
       return;
     }
 
     // get user language
-    const ul: string = Intl.DateTimeFormat().resolvedOptions().locale;
+    const userLanguage: string = Intl.DateTimeFormat().resolvedOptions().locale;
     // get user operating system
-    const opS: string = process.platform;
+    const operatingSystem: string = process.platform;
     const sessionId: string = await this.getSessionId();
 
     // get user country
     const timeZone: string = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     // send event to telemetry
-    debugLogger.debug(`[GenezioTelemetry]`, `${timeZone} ${eventType} ${sessionId} ${ul} ${opS} ${cl} ${errorTrace}`);
+    debugLogger.debug(`[GenezioTelemetry]`, `${timeZone} ${eventType} ${sessionId} ${userLanguage} ${operatingSystem} ${cloudProvider} ${errorTrace}`);
 
     // send event to analytics
     const analyticsData: AnalyticsData = {
       eventType,
       sessionId,
-      opS,
-      ul,
-      cl,
+      operatingSystem,
+      userLanguage,
+      cloudProvider,
       errTrace: errorTrace,
       timeZone: timeZone
     };
