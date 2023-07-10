@@ -45,7 +45,7 @@
     "babel-jest": "^29.5.0",
     "body": "^5.1.0",
     "body-parser": "^1.20.1",
-    "boxen": "^7.1.0",
+    "boxen": "^7.1.1",
     "child_process": "^1.0.2",
     "chokidar": "^3.5.3",
     "cli-progress": "^3.12.0",
