@@ -6,9 +6,6 @@ export const lambdaHandler = (className: string): string => `
  *  if new genezio commands are executed.
  */
 
-delete process.env.AWS_ACCESS_KEY_ID;
-delete process.env.AWS_SECRET_ACCESS_KEY;
-delete process.env.AWS_REGION;
 import {  ${className.replace(/["]/g, '')} as genezioClass } from "./module.mjs";
 
 var handler = undefined;
