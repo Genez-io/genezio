@@ -40,7 +40,7 @@ export class GenezioTelemetry {
     // get user operating system
     const operatingSystem: string = process.platform;
     const sessionId: string = await this.getSessionId().catch((err) => {
-      debugLogger.error(`[GenezioTelemetry]`, `Error getting session id: ${err}`);
+      debugLogger.debug(`[GenezioTelemetry]`, `Error getting session id: ${err}`);
       return "";
     });
 
@@ -66,7 +66,7 @@ export class GenezioTelemetry {
     };
       
     await AnalyticsHandler.sendEvent(analyticsData).catch((err) => {
-      debugLogger.error(`[GenezioTelemetry]`, `Error sending event to analytics: ${err}`);
+      debugLogger.debug(`[GenezioTelemetry]`, `Error sending event to analytics: ${err}`);
     });
     return;
   }
