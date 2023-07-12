@@ -17,6 +17,7 @@ import { ProjectConfiguration } from "../models/projectConfiguration.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import { getAuthToken } from "../utils/accounts.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
+import { getNoMethodClasses } from "../utils/getNoMethodClasses.js";
 import {
   fileExists,
   createTemporaryFolder,
@@ -169,7 +170,6 @@ export async function deployCommand(options: GenezioDeployOptions) {
 
 
 export async function deployClasses(configuration: YamlProjectConfiguration, cloudAdapter: CloudAdapter, installDeps: boolean) {
-
   if (configuration.classes.length === 0) {
     throw new Error(GENEZIO_NO_CLASSES_FOUND);
   }
@@ -190,6 +190,12 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
     configuration,
     sdkResponse
   );
+
+  const classesWithNoMethods = getNoMethodClasses(projectConfiguration.classes);
+  if (classesWithNoMethods.length) {
+    const errorClasses = classesWithNoMethods.join(", ");
+    throw new Error(`Unable to deploy classes [${errorClasses}] as they do not have any methods.`);
+  }
 
   const multibar = new cliProgress.MultiBar({
     clearOnComplete: false,

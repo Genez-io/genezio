@@ -141,6 +141,11 @@ program
     "Set the port your local server will be running on.",
     String(PORT_LOCAL_ENVIRONMENT)
   )
+  .option(
+    "--env <envFile>",
+    "Set a custom environment variables file.",
+    undefined
+  )
   .option("--install-deps", "Automatically install missing dependencies.", false)
   .description("Run a local environment for your functions.")
   .action(async (options: GenezioLocalOptions) => {

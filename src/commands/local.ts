@@ -35,6 +35,7 @@ import { findAvailablePort } from "../utils/findAvailablePort.js";
 import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js";
 import hash from 'hash-it';
 import { GenezioTelemetry } from "../telemetry/telemetry.js";
+import dotenv from 'dotenv';
 
 type ClassProcess = {
   process: ChildProcess;
@@ -56,7 +57,7 @@ type LocalBundlerOutput = {
   sdk: SdkGeneratorResponse;
 };
 
-export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProjectConfiguration, installDeps: boolean): Promise<BundlerRestartResponse> {
+export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProjectConfiguration, options: GenezioLocalOptions): Promise<BundlerRestartResponse> {
   // eslint-disable-next-line no-async-promise-executor
   return new Promise<BundlerRestartResponse>(async (resolve) => {
     try {
@@ -92,7 +93,7 @@ export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProj
         sdk
       );
 
-      const processForClasses = await startProcesses(projectConfiguration, sdk, installDeps);
+      const processForClasses = await startProcesses(projectConfiguration, sdk, options);
       resolve({
         shouldRestartBundling: false,
         bundlerOutput: {
@@ -133,7 +134,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     let projectConfiguration: ProjectConfiguration;
 
     const promiseListenForChanges: Promise<BundlerRestartResponse> = listenForChanges(undefined);
-    const bundlerPromise: Promise<BundlerRestartResponse> = prepareLocalEnvironment(yamlProjectConfiguration, options.installDeps);
+    const bundlerPromise: Promise<BundlerRestartResponse> = prepareLocalEnvironment(yamlProjectConfiguration, options);
 
     let promiseRes: BundlerRestartResponse = await Promise.race([bundlerPromise, promiseListenForChanges]);
 
@@ -221,7 +222,7 @@ function logChangeDetection() {
 async function startProcesses(
   projectConfiguration: ProjectConfiguration,
   sdk: SdkGeneratorResponse,
-  installDeps: boolean
+  options: GenezioLocalOptions
 ): Promise<Map<string, ClassProcess>> {
   const classes = projectConfiguration.classes;
   const processForClasses = new Map<string, ClassProcess>();
@@ -249,7 +250,11 @@ async function startProcesses(
         ast: ast,
         genezioConfigurationFilePath: process.cwd(),
         configuration: classInfo,
-        extra: { mode: "development", tmpFolder: tmpFolder, installDeps}
+        extra: {
+          mode: "development",
+          tmpFolder: tmpFolder,
+          installDeps: options.installDeps,
+        },
       });
 
       return bundlerOutput;
@@ -258,6 +263,8 @@ async function startProcesses(
 
   const bundlersOutput = await Promise.all(bundlersOutputPromise);
 
+  const envVars: dotenv.DotenvPopulateInput = {};
+  dotenv.config({ path: options.env, processEnv: envVars });
   for (const bundlerOutput of bundlersOutput) {
     const extra = bundlerOutput.extra;
 
@@ -273,7 +280,8 @@ async function startProcesses(
       extra.startingCommand,
       extra.commandParameters ? extra.commandParameters : [],
       bundlerOutput.configuration.name,
-      processForClasses
+      processForClasses,
+      envVars
     );
   }
 
@@ -636,7 +644,8 @@ async function startClassProcess(
   startingCommand: string,
   parameters: string[],
   className: string,
-  processForClasses: Map<string, ClassProcess>
+  processForClasses: Map<string, ClassProcess>,
+  envVars: dotenv.DotenvPopulateInput = {},
 ) {
   const availablePort = await findAvailablePort();
   debugLogger.debug(`[START_CLASS_PROCESS] Starting class ${className} on port ${availablePort}`);
@@ -645,7 +654,7 @@ async function startClassProcess(
   const processParameters = [...parameters, availablePort.toString()];
   const classProcess = spawn(startingCommand, processParameters, {
     stdio: ["pipe", "pipe", "pipe"],
-    env: { ...process.env, NODE_OPTIONS: "--enable-source-maps" }
+    env: { ...process.env, ...envVars, NODE_OPTIONS: "--enable-source-maps" }
   });
   classProcess.stdout.pipe(process.stdout);
   classProcess.stderr.pipe(process.stderr);

@@ -2,6 +2,7 @@ export type GenezioLocalOptions = {
     port: number,
     logLevel?: string,
     installDeps: boolean,
+    env?: string,
 }
 
 export type GenezioDeployOptions = {

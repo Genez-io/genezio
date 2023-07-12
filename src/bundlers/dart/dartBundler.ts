@@ -177,8 +177,9 @@ export class DartBundler implements BundlerInterface {
             (file: FileDetails) => {
                 // filter js files, node_modules and folders
                 return (
-                    file.extension !== ".dart" &&
-                    !fs.lstatSync(file.path).isDirectory()
+                  file.extension !== ".dart" &&
+                  !file.path.includes(".git") &&
+                  !fs.lstatSync(file.path).isDirectory()
                 );
             }
         );
