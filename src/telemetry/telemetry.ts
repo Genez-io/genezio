@@ -39,7 +39,14 @@ export class GenezioTelemetry {
     const userLanguage: string = Intl.DateTimeFormat().resolvedOptions().locale;
     // get user operating system
     const operatingSystem: string = process.platform;
-    const sessionId: string = await this.getSessionId();
+    const sessionId: string = await this.getSessionId().catch((err) => {
+      debugLogger.error(`[GenezioTelemetry]`, `Error getting session id: ${err}`);
+      return "";
+    });
+
+    if (!sessionId) {
+      return;
+    }
 
     // get user country
     const timeZone: string = Intl.DateTimeFormat().resolvedOptions().timeZone;
