@@ -7,9 +7,12 @@ import { saveAuthToken } from "../utils/accounts.js";
 import http from "http";
 import open from "open";
 import { asciiCapybara } from "../utils/strings.js";
+import { GenezioTelemetry } from "../telemetry/telemetry.js";
 
 export async function loginCommand(accessToken: string) {
   log.info(asciiCapybara);
+
+  GenezioTelemetry.sendEvent({eventType: "GENEZIO_LOGIN"});
 
   if (accessToken !== "") {
     saveAuthToken(accessToken);

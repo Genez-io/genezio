@@ -12,10 +12,12 @@ import getProjectInfo from "../requests/getProjectInfo.js";
 import listProjects from "../requests/listProjects.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
 import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
+import { GenezioTelemetry } from "../telemetry/telemetry.js";
 
 export async function generateSdkCommand(options: any) {
   const language = options.language;
   const sdkPath = options.path;
+  GenezioTelemetry.sendEvent({eventType: "GENEZIO_GENERATE_SDK"});
 
   if (!language) {
     log.error(
@@ -44,6 +46,7 @@ export async function generateSdkCommand(options: any) {
     if (error.response?.status == 401) {
       log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
     } else {
+      GenezioTelemetry.sendEvent({eventType: "GENEZIO_GENERATE_SDK_ERROR", errorTrace: error.message});
       log.error(error.message);
     }
     exit(1);

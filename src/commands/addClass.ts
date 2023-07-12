@@ -2,11 +2,14 @@ import log from "loglevel";
 import path from "path";
 
 import { TriggerType } from "../models/yamlProjectConfiguration.js";
+import { GenezioTelemetry } from "../telemetry/telemetry.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
 import { fileExists, writeToFile } from "../utils/file.js";
 import { supportedExtensions } from "../utils/languages.js";
 
 export async function addClassCommand(classPath: string, classType: string) {
+  GenezioTelemetry.sendEvent({eventType: "GENEZIO_ADD_CLASS"});
+
   if (classType === undefined) {
     classType = "jsonrpc";
   } else if (!["http", "jsonrpc"].includes(classType)) {
@@ -56,6 +59,7 @@ export async function addClassCommand(classPath: string, classType: string) {
   if (!(await fileExists(classPath))) {
     await writeToFile(".", classPath, "", true).catch((error) => {
       log.error(error.toString());
+      GenezioTelemetry.sendEvent({eventType: "GENEZIO_ADD_CLASS_ERROR", errorTrace: error.toString()});
       throw error;
     });
   }

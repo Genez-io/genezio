@@ -7,6 +7,7 @@ let PORT_LOCAL_ENVIRONMENT: number;
 let LOCAL_TEST_INTERFACE_URL: string;
 let DART_COMPILATION_ENDPOINT: string;
 let ENABLE_DEBUG_LOGS_BY_DEFAULT: boolean;
+let GENEZIO_TELEMETRY_ENDPOINT: string;
 
 if (environment === "dev") {
     REACT_APP_BASE_URL = "https://dev.app.genez.io";
@@ -16,6 +17,7 @@ if (environment === "dev") {
     PORT_LOCAL_ENVIRONMENT = 8083;
     ENABLE_DEBUG_LOGS_BY_DEFAULT = true;
     DART_COMPILATION_ENDPOINT = "https://zsa65trirluh7kwabtvvl773de0plbmw.lambda-url.us-east-1.on.aws/";
+    GENEZIO_TELEMETRY_ENDPOINT = "";
 } else {
     REACT_APP_BASE_URL = "https://app.genez.io";
     FRONTEND_DOMAIN = "app.genez.io";
@@ -24,6 +26,7 @@ if (environment === "dev") {
     PORT_LOCAL_ENVIRONMENT = 8083;
     ENABLE_DEBUG_LOGS_BY_DEFAULT = false;
     DART_COMPILATION_ENDPOINT = "https://cniedue5ht4eylr4qtdp4w4qum0rgzgi.lambda-url.us-east-1.on.aws/";
+    GENEZIO_TELEMETRY_ENDPOINT = "https://c4h2bia7gbokqdxxc6fe5sgj5e0imchy.lambda-url.us-east-1.on.aws/";
 }
 
-export { REACT_APP_BASE_URL, FRONTEND_DOMAIN, BACKEND_ENDPOINT, PORT_LOCAL_ENVIRONMENT, ENABLE_DEBUG_LOGS_BY_DEFAULT, LOCAL_TEST_INTERFACE_URL, DART_COMPILATION_ENDPOINT };
+export { REACT_APP_BASE_URL, FRONTEND_DOMAIN, BACKEND_ENDPOINT, PORT_LOCAL_ENVIRONMENT, ENABLE_DEBUG_LOGS_BY_DEFAULT, LOCAL_TEST_INTERFACE_URL, DART_COMPILATION_ENDPOINT, GENEZIO_TELEMETRY_ENDPOINT };

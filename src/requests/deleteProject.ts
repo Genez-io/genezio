@@ -4,10 +4,12 @@ import { BACKEND_ENDPOINT } from "../constants.js";
 import { debugLogger, printAdaptiveLog, printUninformativeLog } from "../utils/logging.js";
 import { AbortController } from "node-abort-controller";
 import version from "../utils/version.js";
+import { GenezioTelemetry } from "../telemetry/telemetry.js";
 
 export default async function deleteProject(
   projectId: string,
 ) : Promise<boolean> {
+  GenezioTelemetry.sendEvent({eventType: "GENEZIO_DELETE_PROJECT"});
   printAdaptiveLog("Checking your credentials", "start");
   const authToken = await getAuthToken()
   if (!authToken) {
@@ -29,6 +31,7 @@ export default async function deleteProject(
     }
   }).catch(async (error: Error) => {
     controller.abort();
+    GenezioTelemetry.sendEvent({eventType: "GENEZIO_DELETE_PROJECT_ERROR", errorTrace: error.toString()});
     printAdaptiveLog(await messagePromise, "error");
     debugLogger.debug("Error received", error)
     throw error;
@@ -40,6 +43,7 @@ export default async function deleteProject(
   debugLogger.debug("Response received", response.data)
 
   if (response.data?.error?.message) {
+    GenezioTelemetry.sendEvent({eventType: "GENEZIO_DELETE_PROJECT_ERROR", errorTrace: response.data.error.message});
     throw new Error(response.data.error.message);
   }
 
