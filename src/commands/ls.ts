@@ -5,11 +5,14 @@ import moment from "moment";
 import { exit } from "process";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import listProjects from "../requests/listProjects.js";
+import { GenezioTelemetry } from "../telemetry/telemetry.js";
 import { getAuthToken } from "../utils/accounts.js";
 
 
 export async function lsCommand(identifier: string, options: any) {
   // check if user is logged in
+  GenezioTelemetry.sendEvent({eventType: "GENEZIO_LS"});
+
   const authToken = await getAuthToken();
   if (!authToken) {
     log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
@@ -21,6 +24,7 @@ export async function lsCommand(identifier: string, options: any) {
       if (error.response?.status === 401) {
         log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
       } else {
+        GenezioTelemetry.sendEvent({eventType: "GENEZIO_LS_ERROR", errorTrace: error.message});
         log.error(error.message);
       }
       exit(1);

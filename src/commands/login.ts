@@ -12,7 +12,7 @@ import { GenezioTelemetry } from "../telemetry/telemetry.js";
 export async function loginCommand(accessToken: string) {
   log.info(asciiCapybara);
 
-  GenezioTelemetry.sendEvent("GENEZIO_LOGIN");
+  GenezioTelemetry.sendEvent({eventType: "GENEZIO_LOGIN"});
 
   if (accessToken !== "") {
     saveAuthToken(accessToken);

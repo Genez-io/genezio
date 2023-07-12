@@ -1,10 +1,13 @@
 import log from "loglevel";
 import { Document } from "yaml";
+import { GenezioTelemetry } from "../telemetry/telemetry.js";
 import { regions } from "../utils/configs.js";
 import { writeToFile } from "../utils/file.js";
 import { languages } from "../utils/languages.js";
 import { askQuestion } from "../utils/prompt.js";
 import {cyan, red} from "../utils/strings.js";
+
+
 export async function initCommand() {
   let projectName = "";
   while (projectName.length === 0) {
@@ -53,11 +56,15 @@ export async function initCommand() {
     classes: []
   };
 
+  GenezioTelemetry.sendEvent({eventType: "GENEZIO_INIT"});
+
+
   const doc = new Document(configFile);
   const yamlConfigurationFileContent = doc.toString();
 
   await writeToFile(".", "genezio.yaml", yamlConfigurationFileContent).catch(
     (error) => {
+      GenezioTelemetry.sendEvent({eventType: "GENEZIO_INIT_ERROR", errorTrace: error.toString()});
       log.error(red, error.toString());
     }
   );
