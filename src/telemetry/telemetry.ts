@@ -40,7 +40,6 @@ export class GenezioTelemetry {
     // get user operating system
     const operatingSystem: string = process.platform;
     const sessionId: string = await this.getSessionId().catch((err) => {
-      debugLogger.debug(`[GenezioTelemetry]`, `Error getting session id: ${err}`);
       return "";
     });
 
