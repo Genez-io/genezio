@@ -2,7 +2,7 @@ import { debugLogger } from '../utils/logging.js';
 import { AnalyticsData, AnalyticsHandler } from './sdk/analyticsHandler.sdk.js';
 import { getTelemetrySessionId, saveTelemetrySessionId } from './session.js';
 import { v4 as uuidv4 } from 'uuid';
-import { GENEZIO_TELEMETRY_ENDPOINT } from '../constants.js';
+import { ENVIRONMENT } from '../constants.js';
 
 export type EventRequest = {
   eventType: string;
@@ -30,11 +30,6 @@ export class GenezioTelemetry {
       return;
     }
 
-    if (GENEZIO_TELEMETRY_ENDPOINT == "") {
-      debugLogger.debug(`[GenezioTelemetry]`, `Telemetry disabled by empty endpoint`);
-      return;
-    }
-
     // get user language
     const userLanguage: string = Intl.DateTimeFormat().resolvedOptions().locale;
     // get user operating system
@@ -55,6 +50,7 @@ export class GenezioTelemetry {
 
     // send event to analytics
     const analyticsData: AnalyticsData = {
+      env: ENVIRONMENT,
       eventType: eventRequest.eventType,
       sessionId,
       operatingSystem,
