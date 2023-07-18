@@ -71,6 +71,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
         configuration.scripts?.preBackendDeploy
       );
       if (!output) {
+        GenezioTelemetry.sendEvent({eventType: "GENEZIO_PRE_BACKEND_DEPLOY_SCRIPT_ERROR"});
         log.error("preBackendDeploy script failed.");
         exit(1);
       }
@@ -115,6 +116,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
         configuration.scripts?.postBackendDeploy
       );
       if (!output) {
+        GenezioTelemetry.sendEvent({eventType: "GENEZIO_POST_BACKEND_DEPLOY_SCRIPT_ERROR"});
         log.error("postBackendDeploy script failed.");
         exit(1);
       }
@@ -129,6 +131,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
         configuration.scripts?.preFrontendDeploy
       );
       if (!output) {
+        GenezioTelemetry.sendEvent({eventType: "GENEZIO_PRE_FRONTEND_DEPLOY_SCRIPT_ERROR"});
         log.error("preFrontendDeploy script failed.");
         exit(1);
       }
@@ -161,6 +164,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
         configuration.scripts?.postFrontendDeploy
       );
       if (!output) {
+        GenezioTelemetry.sendEvent({eventType: "GENEZIO_POST_FRONTEND_DEPLOY_SCRIPT_ERROR"});
         log.error("postFrontendDeploy script failed.");
         exit(1);
       }
