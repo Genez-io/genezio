@@ -28,6 +28,12 @@ export async function getAllFilesRecursively(folderPath: string): Promise<string
   return files;
 }
 
+export function ensureRelativePaths(file: string) {
+  const absolutePath = path.resolve(file);
+  const relativePath = path.relative('.', absolutePath);
+  return './' + relativePath;
+}
+
 export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
   // get genezioIgnore file
   let genezioIgnore: string[] = [];
@@ -36,8 +42,10 @@ export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
     const genezioIgnoreContent = await readUTF8File(genezioIgnorePath);
     genezioIgnore = genezioIgnoreContent.split("\n").filter(
       (line) => line !== "" && !line.startsWith("#")
-    );
+    )
   }
+
+  genezioIgnore = genezioIgnore.map((p) => ensureRelativePaths(p))
 
   return new Promise((resolve, reject) => {
     glob(`./**/*`, {
@@ -186,7 +194,8 @@ export async function cleanupTemporaryFolders() {
 export async function createTemporaryFolder(
   name?: string,
   shouldDeleteContents?: boolean
-): Promise<string> {  return new Promise((resolve, reject) => {
+): Promise<string> {
+  return new Promise((resolve, reject) => {
     const folderName = `genezio-${process.pid}`;
 
     if (!fs.existsSync(path.join(os.tmpdir(), folderName))) {
@@ -221,11 +230,11 @@ export async function createTemporaryFolder(
 export async function deleteFolder(folderPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
-      fs.rmSync(folderPath, { recursive: true , force: true});
+      fs.rmSync(folderPath, { recursive: true, force: true });
     } catch (error) {
       reject(error);
     }
-    
+
     resolve();
   });
 }
