@@ -10,11 +10,20 @@ import {cyan, red} from "../utils/strings.js";
 
 export async function initCommand() {
   let projectName = "";
-  while (projectName.length === 0) {
+  let projectNameValidated = false
+  while (!projectNameValidated) {
     projectName = await askQuestion(`What is the name of the project: `);
     if (projectName.length === 0) {
       log.error(red, "The project name can't be empty. Please provide one.");
+      continue;
     }
+
+    if (!projectName.match(/^[a-zA-Z][-a-zA-Z0-9]*$/)) {
+      log.error(red, "The project name can only contain letters, numbers, and dashes and must start with a letter.");
+      continue;
+    }
+
+    projectNameValidated = true;
   }
 
   let region = "";
@@ -62,7 +71,7 @@ export async function initCommand() {
   const doc = new Document(configFile);
   const yamlConfigurationFileContent = doc.toString();
 
-  await writeToFile(".", "genezio.yaml", yamlConfigurationFileContent).catch(
+  await writeToFile(`./${projectName}`, "genezio.yaml", yamlConfigurationFileContent, true).catch(
     (error) => {
       GenezioTelemetry.sendEvent({eventType: "GENEZIO_INIT_ERROR", errorTrace: error.toString()});
       log.error(red, error.toString());
