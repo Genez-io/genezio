@@ -21,6 +21,7 @@ import { getAllFilesFromCurrentPath } from "../../utils/file.js";
 import FileDetails from "../../models/fileDetails.js";
 import { ArrayType, AstNodeType, ClassDefinition, CustomAstNodeType, MapType, Node, Program, PromiseType } from "../../models/genezioModels.js";
 import { castArrayRecursivelyInitial, castMapRecursivelyInitial } from "../../utils/dartAstCasting.js";
+import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE } from "../../errors.js";
 
 export class DartBundler implements BundlerInterface {
     async #getDartCompilePresignedUrl(archiveName: string): Promise<string> {
@@ -198,7 +199,13 @@ export class DartBundler implements BundlerInterface {
                 }
                 // copy file to tmp folder
                 const fileDestinationPath = path.join(tempFolderPath, filePath.path);
-                return fs.promises.copyFile(filePath.path, fileDestinationPath);
+                return fs.promises.copyFile(filePath.path, fileDestinationPath).catch((error) => {
+                    if (error.code === "EACCES") {
+                      throw new Error(GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE(filePath.path))
+                    }
+          
+                    throw error;
+                  });
             })
         );
     }
