@@ -113,14 +113,14 @@ import { {{#models}}{{{name}}}{{^last}}, {{/last}}{{/models}} } from "./{{{path}
 {{#externalTypes}}
 export {{{type}}}
 {{/externalTypes}}
-`
+`;
 
 const template = `/**
 * This is an auto generated code. This code should not be modified since the file can be overwriten
 * if new genezio commands are executed.
 */
 
-import { Remote } from "./remote";
+import { Remote } from "./remote.js";
 {{#imports}}
 import { {{#models}}{{{name}}}{{^last}}, {{/last}}{{/models}} } from "./{{{path}}}";
 {{/imports}}
@@ -179,17 +179,19 @@ class SdkGenerator implements SdkGeneratorInterface {
         _url: _url,
         methods: [],
         externalTypes: [],
-        imports: [],
+        imports: []
       };
-
 
       let exportClassChecker = false;
 
       for (const methodDefinition of classDefinition.methods) {
-        const methodConfigurationType = classConfiguration.getMethodType(methodDefinition.name);
+        const methodConfigurationType = classConfiguration.getMethodType(
+          methodDefinition.name
+        );
 
-        if (methodConfigurationType !== TriggerType.jsonrpc
-          || classConfiguration.type !== TriggerType.jsonrpc
+        if (
+          methodConfigurationType !== TriggerType.jsonrpc ||
+          classConfiguration.type !== TriggerType.jsonrpc
         ) {
           continue;
         }
@@ -200,28 +202,44 @@ class SdkGenerator implements SdkGeneratorInterface {
           name: methodDefinition.name,
           parameters: [],
           returnType: this.getReturnType(methodDefinition.returnType),
-          methodCaller: methodDefinition.params.length === 0 ?
-            `"${classDefinition.name}.${methodDefinition.name}"`
-            : `"${classDefinition.name}.${methodDefinition.name}", `
+          methodCaller:
+            methodDefinition.params.length === 0
+              ? `"${classDefinition.name}.${methodDefinition.name}"`
+              : `"${classDefinition.name}.${methodDefinition.name}", `
         };
 
         methodView.parameters = methodDefinition.params.map((e) => {
           return {
-            name: (TYPESCRIPT_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name) + (e.optional ? "?" : "") + ": " + this.getParamType(e.paramType) + (e.defaultValue ? " = " + (e.defaultValue.type === AstNodeType.StringLiteral ? "'" + e.defaultValue.value + "'" : e.defaultValue.value) : ""),
+            name:
+              (TYPESCRIPT_RESERVED_WORDS.includes(e.name)
+                ? e.name + "_"
+                : e.name) +
+              (e.optional ? "?" : "") +
+              ": " +
+              this.getParamType(e.paramType) +
+              (e.defaultValue
+                ? " = " +
+                  (e.defaultValue.type === AstNodeType.StringLiteral
+                    ? "'" + e.defaultValue.value + "'"
+                    : e.defaultValue.value)
+                : ""),
             last: false
-          }
+          };
         });
 
         methodView.sendParameters = methodDefinition.params.map((e) => {
           return {
-            name: (TYPESCRIPT_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
+            name: TYPESCRIPT_RESERVED_WORDS.includes(e.name)
+              ? e.name + "_"
+              : e.name,
             last: false
-          }
+          };
         });
 
         if (methodView.parameters.length > 0) {
           methodView.parameters[methodView.parameters.length - 1].last = true;
-          methodView.sendParameters[methodView.sendParameters.length - 1].last = true;
+          methodView.sendParameters[methodView.sendParameters.length - 1].last =
+            true;
         }
 
         view.methods.push(methodView);
@@ -231,24 +249,59 @@ class SdkGenerator implements SdkGeneratorInterface {
         if (externalType.path) {
           let currentView: ModelView | undefined = undefined;
           for (const parentType of externalTypes) {
-            const isUsed = this.isExternalTypeUsedByOtherType(externalType, parentType);
-            if (isUsed && parentType.path && parentType.path !== externalType.path) {
-              currentView = this.addViewIfNotExists(modelViews, parentType, view, classInfo);
+            const isUsed = this.isExternalTypeUsedByOtherType(
+              externalType,
+              parentType
+            );
+            if (
+              isUsed &&
+              parentType.path &&
+              parentType.path !== externalType.path
+            ) {
+              currentView = this.addViewIfNotExists(
+                modelViews,
+                parentType,
+                view,
+                classInfo
+              );
             }
-            if (currentView && !classInfo.classConfiguration.path.includes(externalType.path)) {
+            if (
+              currentView &&
+              !classInfo.classConfiguration.path.includes(externalType.path)
+            ) {
               this.addImportToCurrentView(currentView, externalType);
             }
           }
-          if (this.isExternalTypeUsedInMethod(externalType, classDefinition.methods)) {
+          if (
+            this.isExternalTypeUsedInMethod(
+              externalType,
+              classDefinition.methods
+            )
+          ) {
             currentView = view;
-            if (currentView && !classInfo.classConfiguration.path.includes(externalType.path)) {
+            if (
+              currentView &&
+              !classInfo.classConfiguration.path.includes(externalType.path)
+            ) {
               this.addImportToCurrentView(currentView, externalType);
             }
           }
 
-          currentView = this.addViewIfNotExists(modelViews, externalType, view, classInfo);
-          if (!currentView?.externalTypes.find((e) => e.name === (externalType as any).name)) {
-            currentView?.externalTypes.push({ type: this.generateExternalType(externalType), name: (externalType as any).name });
+          currentView = this.addViewIfNotExists(
+            modelViews,
+            externalType,
+            view,
+            classInfo
+          );
+          if (
+            !currentView?.externalTypes.find(
+              (e) => e.name === (externalType as any).name
+            )
+          ) {
+            currentView?.externalTypes.push({
+              type: this.generateExternalType(externalType),
+              name: (externalType as any).name
+            });
           }
         }
       }
@@ -272,7 +325,8 @@ class SdkGenerator implements SdkGeneratorInterface {
       }
 
       const rawSdkClassName = `${classDefinition.name}.sdk.ts`;
-      const sdkClassName = rawSdkClassName.charAt(0).toLowerCase() + rawSdkClassName.slice(1)
+      const sdkClassName =
+        rawSdkClassName.charAt(0).toLowerCase() + rawSdkClassName.slice(1);
 
       generateSdkOutput.files.push({
         path: sdkClassName,
@@ -280,12 +334,11 @@ class SdkGenerator implements SdkGeneratorInterface {
         className: classDefinition.name
       });
 
-
       for (const modelView of modelViews) {
         generateSdkOutput.files.push({
           path: modelView.path + ".ts",
           data: Mustache.render(modelTemplate, modelView),
-          className: ''
+          className: ""
         });
       }
     }
@@ -318,7 +371,11 @@ class SdkGenerator implements SdkGeneratorInterface {
       return (elem as CustomAstNodeType).rawValue;
     } else if (elem.type === AstNodeType.StringLiteral) {
       return "string";
-    } else if (elem.type === AstNodeType.IntegerLiteral || elem.type === AstNodeType.FloatLiteral || elem.type === AstNodeType.DoubleLiteral) {
+    } else if (
+      elem.type === AstNodeType.IntegerLiteral ||
+      elem.type === AstNodeType.FloatLiteral ||
+      elem.type === AstNodeType.DoubleLiteral
+    ) {
       return "number";
     } else if (elem.type === AstNodeType.BooleanLiteral) {
       return "boolean";
@@ -337,7 +394,12 @@ class SdkGenerator implements SdkGeneratorInterface {
         .map((e: Node) => this.getParamType(e))
         .join(" | ");
     } else if (elem.type === AstNodeType.TypeLiteral) {
-      return `{${(elem as TypeLiteral).properties.map((e: PropertyDefinition) => `${e.name}${e.optional ? '?' : ''}: ${this.getParamType(e.type)}`).join(", ")}}`;
+      return `{${(elem as TypeLiteral).properties
+        .map(
+          (e: PropertyDefinition) =>
+            `${e.name}${e.optional ? "?" : ""}: ${this.getParamType(e.type)}`
+        )
+        .join(", ")}}`;
     } else if (elem.type === AstNodeType.DateType) {
       return "Date";
     }
@@ -347,23 +409,29 @@ class SdkGenerator implements SdkGeneratorInterface {
   generateExternalType(type: Node): string {
     if (type.type === AstNodeType.TypeAlias) {
       const typeAlias = type as TypeAlias;
-      return `type ${typeAlias.name} = ${this.getParamType(typeAlias.aliasType)};`;
+      return `type ${typeAlias.name} = ${this.getParamType(
+        typeAlias.aliasType
+      )};`;
     } else if (type.type === AstNodeType.Enum) {
       const enumType = type as Enum;
-      return `enum ${enumType.name} {${enumType.cases.map((c) => {
-        if (c.type === AstNodeType.StringLiteral) {
-          return `${c.name} = "${c.value}"`;
-        } else if (c.type === AstNodeType.DoubleLiteral) {
-          if (c.value !== undefined && c.value !== null) {
-            return `${c.name} = ${c.value}`;
-          } else {
-            return `${c.name}`;
+      return `enum ${enumType.name} {${enumType.cases
+        .map((c) => {
+          if (c.type === AstNodeType.StringLiteral) {
+            return `${c.name} = "${c.value}"`;
+          } else if (c.type === AstNodeType.DoubleLiteral) {
+            if (c.value !== undefined && c.value !== null) {
+              return `${c.name} = ${c.value}`;
+            } else {
+              return `${c.name}`;
+            }
           }
-        }
-      }).join(", ")}}`;
+        })
+        .join(", ")}}`;
     } else if (type.type === AstNodeType.StructLiteral) {
       const typeAlias = type as StructLiteral;
-      return `type ${typeAlias.name} = ${this.getParamType(typeAlias.typeLiteral)};`;
+      return `type ${typeAlias.name} = ${this.getParamType(
+        typeAlias.typeLiteral
+      )};`;
     }
     return "";
   }
@@ -371,20 +439,36 @@ class SdkGenerator implements SdkGeneratorInterface {
   isExternalTypeUsedByOtherType(externalType: Node, type: Node): boolean {
     if (type.type === AstNodeType.TypeAlias) {
       const typeAlias = type as TypeAlias;
-      return this.isExternalTypeUsedByOtherType(externalType, typeAlias.aliasType);
+      return this.isExternalTypeUsedByOtherType(
+        externalType,
+        typeAlias.aliasType
+      );
     } else if (type.type === AstNodeType.Enum) {
       return false;
     } else if (type.type === AstNodeType.StructLiteral) {
       const typeAlias = type as StructLiteral;
-      return this.isExternalTypeUsedByOtherType(externalType, typeAlias.typeLiteral);
+      return this.isExternalTypeUsedByOtherType(
+        externalType,
+        typeAlias.typeLiteral
+      );
     } else if (type.type === AstNodeType.ArrayType) {
-      return this.isExternalTypeUsedByOtherType(externalType, (type as ArrayType).generic);
+      return this.isExternalTypeUsedByOtherType(
+        externalType,
+        (type as ArrayType).generic
+      );
     } else if (type.type === AstNodeType.PromiseType) {
-      return this.isExternalTypeUsedByOtherType(externalType, (type as PromiseType).generic);
+      return this.isExternalTypeUsedByOtherType(
+        externalType,
+        (type as PromiseType).generic
+      );
     } else if (type.type === AstNodeType.UnionType) {
-      return (type as UnionType).params.some((e: Node) => this.isExternalTypeUsedByOtherType(externalType, e));
+      return (type as UnionType).params.some((e: Node) =>
+        this.isExternalTypeUsedByOtherType(externalType, e)
+      );
     } else if (type.type === AstNodeType.TypeLiteral) {
-      return (type as TypeLiteral).properties.some((e: PropertyDefinition) => this.isExternalTypeUsedByOtherType(externalType, e.type));
+      return (type as TypeLiteral).properties.some((e: PropertyDefinition) =>
+        this.isExternalTypeUsedByOtherType(externalType, e.type)
+      );
     } else if (type.type === AstNodeType.DateType) {
       return false;
     } else if (type.type === AstNodeType.CustomNodeLiteral) {
@@ -394,7 +478,11 @@ class SdkGenerator implements SdkGeneratorInterface {
       return false;
     } else if (type.type === AstNodeType.StringLiteral) {
       return false;
-    } else if (type.type === AstNodeType.IntegerLiteral || type.type === AstNodeType.FloatLiteral || type.type === AstNodeType.DoubleLiteral) {
+    } else if (
+      type.type === AstNodeType.IntegerLiteral ||
+      type.type === AstNodeType.FloatLiteral ||
+      type.type === AstNodeType.DoubleLiteral
+    ) {
       return false;
     } else if (type.type === AstNodeType.BooleanLiteral) {
       return false;
@@ -404,34 +492,56 @@ class SdkGenerator implements SdkGeneratorInterface {
     return false;
   }
 
-  isExternalTypeUsedInMethod(externalType: Node, methods: MethodDefinition[]): boolean {
-    return methods.some((m) => this.isExternalTypeUsedByOtherType(externalType, m.returnType) || m.params.some((p: ParameterDefinition) => this.isExternalTypeUsedByOtherType(externalType, p.paramType)));
+  isExternalTypeUsedInMethod(
+    externalType: Node,
+    methods: MethodDefinition[]
+  ): boolean {
+    return methods.some(
+      (m) =>
+        this.isExternalTypeUsedByOtherType(externalType, m.returnType) ||
+        m.params.some((p: ParameterDefinition) =>
+          this.isExternalTypeUsedByOtherType(externalType, p.paramType)
+        )
+    );
   }
 
   addImportToCurrentView(currentView: ModelView, externalType: Node) {
     let found = false;
     for (const importType of currentView.imports) {
-      if (importType.path === externalType.path && !importType.models.find((e: any) => e.name === (externalType as any).name)) {
+      if (
+        importType.path === externalType.path &&
+        !importType.models.find(
+          (e: any) => e.name === (externalType as any).name
+        )
+      ) {
         importType.models.push({ name: (externalType as any).name });
         found = true;
         break;
       }
     }
     if (!found) {
-      let relativePath = path.relative(currentView.path || ".", externalType.path || ".");
+      let relativePath = path.relative(
+        currentView.path || ".",
+        externalType.path || "."
+      );
       if (relativePath.substring(0, 3) == "../") {
         relativePath = relativePath.substring(3);
       }
       if (!currentView.imports.find((e: any) => e.path === relativePath)) {
         currentView.imports.push({
           path: relativePath,
-          models: [{ name: (externalType as any).name }],
+          models: [{ name: (externalType as any).name }]
         });
       }
     }
   }
 
-  addViewIfNotExists(modelViews: ModelView[], type: Node, classView: any, classInfo: any) {
+  addViewIfNotExists(
+    modelViews: ModelView[],
+    type: Node,
+    classView: any,
+    classInfo: any
+  ) {
     let found = false;
     let currentView: ModelView | undefined = undefined;
     for (const modelView of modelViews) {
@@ -446,7 +556,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         currentView = {
           path: type.path || "",
           externalTypes: [],
-          imports: [],
+          imports: []
         };
         modelViews.push(currentView);
       } else {
@@ -459,5 +569,4 @@ class SdkGenerator implements SdkGeneratorInterface {
 
 const supportedLanguages = ["ts", "typescript"];
 
-
-export default { SdkGenerator, supportedLanguages }
+export default { SdkGenerator, supportedLanguages };

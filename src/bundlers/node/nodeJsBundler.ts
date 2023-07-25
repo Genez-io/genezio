@@ -21,6 +21,7 @@ import esbuild, { BuildResult, Plugin, BuildFailure, Message, Loader } from "esb
 import { nodeExternalsPlugin } from "esbuild-node-externals";
 import colors from "colors"
 import { DependencyInstaller } from "./dependencyInstaller.js";
+import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE } from "../../errors.js";
 
 export class NodeJsBundler implements BundlerInterface {
   async #copyDependencies(dependenciesInfo: Dependency[] | undefined, tempFolderPath: string, mode: "development" | "production") {
@@ -59,6 +60,7 @@ export class NodeJsBundler implements BundlerInterface {
           file.extension !== ".tsx" &&
           file.extension !== ".jsx" &&
           !file.path.includes("node_modules") &&
+          !file.path.includes(".git") && 
           !fs.lstatSync(file.path).isDirectory()
         );
       }
@@ -78,7 +80,13 @@ export class NodeJsBundler implements BundlerInterface {
         }
         // copy file to tmp folder
         const fileDestinationPath = path.join(tempFolderPath, filePath.path);
-        return fs.promises.copyFile(filePath.path, fileDestinationPath);
+        return fs.promises.copyFile(filePath.path, fileDestinationPath).catch((error) => {
+          if (error.code === "EACCES") {
+            throw new Error(GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE(filePath.path))
+          }
+
+          throw error;
+        });
       })
     );
   }
@@ -158,9 +166,9 @@ export class NodeJsBundler implements BundlerInterface {
           log.info(
             "\x1b[37m",
             "file: " +
-              error.moduleIdentifier?.split("|")[1] +
-              ":" +
-              error.loc?.split(":")[0]
+            error.moduleIdentifier?.split("|")[1] +
+            ":" +
+            error.loc?.split(":")[0]
           );
         } else {
           log.info(

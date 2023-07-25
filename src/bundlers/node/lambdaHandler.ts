@@ -2,9 +2,10 @@
 /* eslint-disable no-useless-escape */
 
 export const lambdaHandler = (className: string): string => `
-delete process.env.AWS_ACCESS_KEY_ID;
-delete process.env.AWS_SECRET_ACCESS_KEY;
-delete process.env.AWS_REGION;
+/** This is an auto generated code. This code should not be modified since the file can be overwritten
+ *  if new genezio commands are executed.
+ */
+
 import {  ${className.replace(/["]/g, '')} as genezioClass } from "./module.mjs";
 
 var handler = undefined;

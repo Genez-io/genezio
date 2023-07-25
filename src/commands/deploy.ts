@@ -17,6 +17,7 @@ import { ProjectConfiguration } from "../models/projectConfiguration.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import { getAuthToken } from "../utils/accounts.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
+import { getNoMethodClasses } from "../utils/getNoMethodClasses.js";
 import {
   fileExists,
   createTemporaryFolder,
@@ -39,6 +40,7 @@ import { CloudAdapter } from "../cloudAdapter/cloudAdapter.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { TypeCheckerBundler } from "../bundlers/node/typeCheckerBundler.js";
 import { GenezioDeployOptions } from "../models/commandOptions.js";
+import { GenezioTelemetry } from "../telemetry/telemetry.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
   let configuration
@@ -47,6 +49,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
     configuration = await getProjectConfiguration();
   } catch (error: any) {
     log.error(error.message);
+    GenezioTelemetry.sendEvent({eventType: "GENEZIO_DEPLOY_ERROR", errorTrace: error.toString()});
     exit(1);
   }
 
@@ -68,12 +71,15 @@ export async function deployCommand(options: GenezioDeployOptions) {
         configuration.scripts?.preBackendDeploy
       );
       if (!output) {
+        GenezioTelemetry.sendEvent({eventType: "GENEZIO_PRE_BACKEND_DEPLOY_SCRIPT_ERROR"});
         log.error("preBackendDeploy script failed.");
         exit(1);
       }
     }
 
+    GenezioTelemetry.sendEvent({eventType: "GENEZIO_BACKEND_DEPLOY_START", cloudProvider: configuration.cloudProvider});
     await deployClasses(configuration, cloudAdapter, options.installDeps).catch(async (error: AxiosError) => {
+      GenezioTelemetry.sendEvent({eventType: "GENEZIO_BACKEND_DEPLOY_ERROR", errorTrace: error.toString()});
 
       switch (error.response?.status) {
         case 401:
@@ -101,6 +107,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
       }
       exit(1);
     });
+    GenezioTelemetry.sendEvent({eventType: "GENEZIO_BACKEND_DEPLOY_END", cloudProvider: configuration.cloudProvider});
 
     if (configuration.scripts?.postBackendDeploy) {
       log.info("Running postBackendDeploy script...");
@@ -109,6 +116,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
         configuration.scripts?.postBackendDeploy
       );
       if (!output) {
+        GenezioTelemetry.sendEvent({eventType: "GENEZIO_POST_BACKEND_DEPLOY_SCRIPT_ERROR"});
         log.error("postBackendDeploy script failed.");
         exit(1);
       }
@@ -123,10 +131,13 @@ export async function deployCommand(options: GenezioDeployOptions) {
         configuration.scripts?.preFrontendDeploy
       );
       if (!output) {
+        GenezioTelemetry.sendEvent({eventType: "GENEZIO_PRE_FRONTEND_DEPLOY_SCRIPT_ERROR"});
         log.error("preFrontendDeploy script failed.");
         exit(1);
       }
     }
+
+    GenezioTelemetry.sendEvent({eventType: "GENEZIO_FRONTEND_DEPLOY_START"});
 
     log.info("Deploying your frontend to genezio infrastructure...");
     let url;
@@ -137,11 +148,14 @@ export async function deployCommand(options: GenezioDeployOptions) {
       if (error.message == "No frontend entry in genezio configuration file.") {
         exit(0);
       }
+      GenezioTelemetry.sendEvent({eventType: "GENEZIO_FRONTEND_DEPLOY_ERROR", errorTrace: error.toString()});
       exit(1);
     }
     log.info(
       "\x1b[36m%s\x1b[0m",
       `Frontend successfully deployed at ${url}.`);
+
+    GenezioTelemetry.sendEvent({eventType: "GENEZIO_FRONTEND_DEPLOY_END"});
 
     if (configuration.scripts?.postFrontendDeploy) {
       log.info("Running postFrontendDeploy script...");
@@ -150,6 +164,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
         configuration.scripts?.postFrontendDeploy
       );
       if (!output) {
+        GenezioTelemetry.sendEvent({eventType: "GENEZIO_POST_FRONTEND_DEPLOY_SCRIPT_ERROR"});
         log.error("postFrontendDeploy script failed.");
         exit(1);
       }
@@ -159,7 +174,6 @@ export async function deployCommand(options: GenezioDeployOptions) {
 
 
 export async function deployClasses(configuration: YamlProjectConfiguration, cloudAdapter: CloudAdapter, installDeps: boolean) {
-
   if (configuration.classes.length === 0) {
     throw new Error(GENEZIO_NO_CLASSES_FOUND);
   }
@@ -180,6 +194,12 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
     configuration,
     sdkResponse
   );
+
+  const classesWithNoMethods = getNoMethodClasses(projectConfiguration.classes);
+  if (classesWithNoMethods.length) {
+    const errorClasses = classesWithNoMethods.join(", ");
+    throw new Error(`Unable to deploy classes [${errorClasses}] as they do not have any methods.`);
+  }
 
   const multibar = new cliProgress.MultiBar({
     clearOnComplete: false,

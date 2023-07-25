@@ -21,6 +21,7 @@ import { logoutCommand } from "./commands/logout.js";
 import { lsCommand } from "./commands/ls.js";
 import { GenezioDeployOptions, GenezioLocalOptions } from "./models/commandOptions.js";
 import version, { logOutdatedVersion } from "./utils/version.js";
+import { GenezioTelemetry } from "./telemetry/telemetry.js";
 
 const program = new Command();
 
@@ -70,6 +71,7 @@ program
 
     await initCommand().catch((error: Error) => {
       log.error(error.message);
+      GenezioTelemetry.sendEvent({eventType: "GENEZIO_INIT_ERROR", errorTrace: error.message});
       exit(1);
     });
     await logOutdatedVersion();
@@ -86,6 +88,7 @@ program
 
     await loginCommand(accessToken).catch((error: Error) => {
       log.error(error.message);
+      GenezioTelemetry.sendEvent({eventType: "GENEZIO_LOGIN_ERROR", errorTrace: error.message});
       exit(1);
     });
     await logOutdatedVersion();
@@ -123,6 +126,7 @@ program
 
     await addClassCommand(classPath, classType).catch((error: Error) => {
       log.error(error.message);
+      GenezioTelemetry.sendEvent({eventType: "GENEZIO_ADD_CLASS_ERROR", errorTrace: error.message});
       exit(1);
     });
     await logOutdatedVersion();
@@ -137,6 +141,11 @@ program
     "Set the port your local server will be running on.",
     String(PORT_LOCAL_ENVIRONMENT)
   )
+  .option(
+    "--env <envFile>",
+    "Set a custom environment variables file.",
+    undefined
+  )
   .option("--install-deps", "Automatically install missing dependencies.", false)
   .description("Run a local environment for your functions.")
   .action(async (options: GenezioLocalOptions) => {
@@ -145,6 +154,7 @@ program
     await startLocalEnvironment(options).catch((error: any) => {
       if (error.message) {
         log.error(error.message);
+        GenezioTelemetry.sendEvent({eventType: "GENEZIO_LOCAL_ERROR", errorTrace: error.message});
       }
       exit(1);
     });

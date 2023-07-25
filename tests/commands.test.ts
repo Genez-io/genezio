@@ -54,7 +54,7 @@ describe("init", () => {
 
     expect(mockedWriteToFile).toBeCalledTimes(1);
     expect(mockedAskQuestion).toBeCalledTimes(4);
-    expect(mockedWriteToFile).toBeCalledWith(".", "genezio.yaml", yamlConfigurationFileContent)
+    expect(mockedWriteToFile).toBeCalledWith("./project-name", "genezio.yaml", yamlConfigurationFileContent, true)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `In what programming language do you want your SDK? (${languages}) [default value: ts]: `, "ts")
@@ -92,7 +92,7 @@ describe("init", () => {
     expect(mockedLogError).toBeCalledWith(red, `The project name can't be empty. Please provide one.`);
     expect(mockedWriteToFile).toBeCalledTimes(1);
     expect(mockedAskQuestion).toBeCalledTimes(5);
-    expect(mockedWriteToFile).toBeCalledWith(".", "genezio.yaml", yamlConfigurationFileContent)
+    expect(mockedWriteToFile).toBeCalledWith("./project-name", "genezio.yaml", yamlConfigurationFileContent, true)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What is the name of the project: `)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
@@ -131,7 +131,7 @@ describe("init", () => {
     expect(mockedLogError).toBeCalledWith(red, `The region is invalid. Please use a valid region.\n Region list: ${regions}`);
     expect(mockedWriteToFile).toBeCalledTimes(1);
     expect(mockedAskQuestion).toBeCalledTimes(5);
-    expect(mockedWriteToFile).toBeCalledWith(".", "genezio.yaml", yamlConfigurationFileContent)
+    expect(mockedWriteToFile).toBeCalledWith("./project-name", "genezio.yaml", yamlConfigurationFileContent, true)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
@@ -170,7 +170,7 @@ describe("init", () => {
     expect(mockedLogError).toBeCalledWith(red, `We don't currently support the ${notSupported} language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`);
     expect(mockedWriteToFile).toBeCalledTimes(1);
     expect(mockedAskQuestion).toBeCalledTimes(5);
-    expect(mockedWriteToFile).toBeCalledWith(".", "genezio.yaml", yamlConfigurationFileContent)
+    expect(mockedWriteToFile).toBeCalledWith("./project-name", "genezio.yaml", yamlConfigurationFileContent, true)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(3, `In what programming language do you want your SDK? (${languages}) [default value: ts]: `, "ts")

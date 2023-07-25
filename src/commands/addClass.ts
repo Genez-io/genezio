@@ -1,10 +1,15 @@
 import log from "loglevel";
 import path from "path";
+
 import { TriggerType } from "../models/yamlProjectConfiguration.js";
+import { GenezioTelemetry } from "../telemetry/telemetry.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
 import { fileExists, writeToFile } from "../utils/file.js";
+import { supportedExtensions } from "../utils/languages.js";
 
 export async function addClassCommand(classPath: string, classType: string) {
+  GenezioTelemetry.sendEvent({eventType: "GENEZIO_ADD_CLASS"});
+
   if (classType === undefined) {
     classType = "jsonrpc";
   } else if (!["http", "jsonrpc"].includes(classType)) {
@@ -26,8 +31,17 @@ export async function addClassCommand(classPath: string, classType: string) {
   }
 
   const classExtension = className.split(".").pop();
+
   if (!classExtension || className.split(".").length < 2) {
     throw new Error("Please provide a class name with a valid class extension.");
+  }
+  
+  // check if class is supported
+  if (!supportedExtensions.includes(classExtension)) {
+    const supportedExtensionsString = supportedExtensions
+    .slice(0, -1)
+    .join(", ") + (supportedExtensions.length > 1 ? " and " : "") + supportedExtensions.slice(-1);
+    throw new Error(`Class language(${classExtension}) not supported. Currently supporting: ${supportedExtensionsString}`);
   }
 
   // check if class already exists
@@ -45,6 +59,7 @@ export async function addClassCommand(classPath: string, classType: string) {
   if (!(await fileExists(classPath))) {
     await writeToFile(".", classPath, "", true).catch((error) => {
       log.error(error.toString());
+      GenezioTelemetry.sendEvent({eventType: "GENEZIO_ADD_CLASS_ERROR", errorTrace: error.toString()});
       throw error;
     });
   }
