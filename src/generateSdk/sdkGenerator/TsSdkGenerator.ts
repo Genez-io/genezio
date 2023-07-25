@@ -120,7 +120,7 @@ const template = `/**
 * if new genezio commands are executed.
 */
 
-import { Remote } from "./remote.js";
+import { Remote } from "./remote";
 {{#imports}}
 import { {{#models}}{{{name}}}{{^last}}, {{/last}}{{/models}} } from "./{{{path}}}";
 {{/imports}}
