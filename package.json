@@ -86,7 +86,6 @@
     "typescript-parser": "^2.6.1",
     "unique-names-generator": "^4.7.1",
     "uuid": "^9.0.0",
-    "webpack": "^5.88.0",
     "webpack-node-externals": "^3.0.0",
     "whatwg-mimetype": "~3.0.0",
     "which": "^3.0.1",
