@@ -101,6 +101,7 @@ program
   .option("--frontend", "Deploy only the frontend application.")
   .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .option("--install-deps", "Automatically install missing dependencies.", false)
+  .option("--stage <stage>", "Stage to deploy to. Default: 'production'.")
   .description(`Deploy your project to the genezio infrastructure. Use --frontend to deploy only the frontend application. 
 Use --backend to deploy only the backend application.`)
   .action(async (options: GenezioDeployOptions) => {

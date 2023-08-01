@@ -78,7 +78,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
     }
 
     GenezioTelemetry.sendEvent({eventType: "GENEZIO_BACKEND_DEPLOY_START", cloudProvider: configuration.cloudProvider});
-    await deployClasses(configuration, cloudAdapter, options.installDeps).catch(async (error: AxiosError) => {
+    await deployClasses(configuration, cloudAdapter, options).catch(async (error: AxiosError) => {
       GenezioTelemetry.sendEvent({eventType: "GENEZIO_BACKEND_DEPLOY_ERROR", errorTrace: error.toString()});
 
       switch (error.response?.status) {
@@ -142,7 +142,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
     log.info("Deploying your frontend to genezio infrastructure...");
     let url;
     try {
-      url = await deployFrontend(configuration, cloudAdapter)
+      url = await deployFrontend(configuration, cloudAdapter, options);
     } catch (error: any) {
       log.error(error.message);
       if (error.message == "No frontend entry in genezio configuration file.") {
@@ -173,10 +173,14 @@ export async function deployCommand(options: GenezioDeployOptions) {
 }
 
 
-export async function deployClasses(configuration: YamlProjectConfiguration, cloudAdapter: CloudAdapter, installDeps: boolean) {
+export async function deployClasses(configuration: YamlProjectConfiguration, cloudAdapter: CloudAdapter, options: GenezioDeployOptions) {
   if (configuration.classes.length === 0) {
     throw new Error(GENEZIO_NO_CLASSES_FOUND);
   }
+  
+  // get options
+  const installDeps: boolean = options.installDeps || false;
+  const stage: string = options.stage || "";
 
   const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(configuration).catch((error) => {
     // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
@@ -248,6 +252,7 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
         `The bundling process has started for file ${element.path}...`
       );
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const ast = sdkResponse.sdkGeneratorInput.classesInfo.find(
         (classInfo) => classInfo.classConfiguration.path === element.path
       )!.program;
@@ -287,7 +292,7 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
 
   printAdaptiveLog("Bundling your code", "end");
 
-  const result = await cloudAdapter.deploy(bundlerResultArray, projectConfiguration);
+  const result = await cloudAdapter.deploy(bundlerResultArray, projectConfiguration, { stage: stage });
 
   reportSuccess(result.classes, sdkResponse);
 
@@ -305,7 +310,7 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
   }
 }
 
-export async function deployFrontend(configuration: YamlProjectConfiguration, cloudAdapter: CloudAdapter) {
+export async function deployFrontend(configuration: YamlProjectConfiguration, cloudAdapter: CloudAdapter, options: GenezioDeployOptions) {
   if (configuration.frontend) {
     // check if the build folder exists
     if (!(await fileExists(configuration.frontend.path))) {
@@ -339,6 +344,11 @@ export async function deployFrontend(configuration: YamlProjectConfiguration, cl
 
       // write the configuration in yaml file
       await configuration.addSubdomain(configuration.frontend.subdomain);
+    }
+
+    // check if stage != prod and add subdomain-stage
+    if (options.stage !== "prod" && options.stage != "" && options.stage != undefined) {
+      configuration.frontend.subdomain = `${configuration.frontend.subdomain}-${options.stage}`;
     }
 
     const url = await cloudAdapter.deployFrontend(configuration.name, configuration.region, configuration.frontend);

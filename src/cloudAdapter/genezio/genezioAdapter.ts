@@ -6,7 +6,7 @@ import { debugLogger } from "../../utils/logging.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import log from "loglevel";
 import { deployRequest } from "../../requests/deployCode.js";
-import { CloudAdapter, GenezioCloudInput, GenezioCloudOutput } from "../cloudAdapter.js";
+import { CloudAdapter, CloudAdapterOptions, GenezioCloudInput, GenezioCloudOutput } from "../cloudAdapter.js";
 import { createTemporaryFolder, deleteFolder, zipDirectoryToDestinationPath } from "../../utils/file.js";
 import { YamlFrontend } from "../../models/yamlProjectConfiguration.js";
 import { createFrontendProject } from "../../requests/createFrontendProject.js";
@@ -18,7 +18,9 @@ import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js
 export const BUNDLE_SIZE_LIMIT = 262144000;
 
 export class GenezioCloudAdapter implements CloudAdapter {
-    async deploy(input: GenezioCloudInput[], projectConfiguration: ProjectConfiguration): Promise<GenezioCloudOutput> {
+    async deploy(input: GenezioCloudInput[], projectConfiguration: ProjectConfiguration, cloudAdapterOptions: CloudAdapterOptions): Promise<GenezioCloudOutput> {
+        const stage: string = cloudAdapterOptions.stage || "";
+
         log.info("Deploying your backend project to genezio infrastructure...");
         const multibar = new cliProgress.MultiBar({
             clearOnComplete: false,
@@ -63,7 +65,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
         // This can be removed only if we find a way to avoid clearing lines.
         log.info("")
 
-        const response = await deployRequest(projectConfiguration)
+        const response = await deployRequest(projectConfiguration, stage)
 
         const classesInfo = response.classes.map((c) => ({
             className: c.name,

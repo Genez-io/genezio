@@ -1,6 +1,6 @@
 import fs from "fs";
 import { ProjectConfiguration } from "../../models/projectConfiguration.js";
-import { CloudAdapter, GenezioCloudInput, GenezioCloudOutput } from "../cloudAdapter.js";
+import { CloudAdapter, CloudAdapterOptions, GenezioCloudInput, GenezioCloudOutput } from "../cloudAdapter.js";
 import { CloudFormationClient, CreateStackCommand, DescribeStacksCommand, UpdateStackCommand, DescribeStacksCommandOutput, waitUntilStackCreateComplete, waitUntilStackUpdateComplete, DeleteStackCommand, waitUntilStackDeleteComplete } from "@aws-sdk/client-cloudformation";
 import { HeadObjectCommand, PutObjectCommand, S3 } from "@aws-sdk/client-s3";
 import { debugLogger } from "../../utils/logging.js";
@@ -147,7 +147,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
     return `genezio-${projectName}/server/lambda-${className}.zip`
   }
 
-  async deploy(input: GenezioCloudInput[], projectConfiguration: ProjectConfiguration): Promise<GenezioCloudOutput> {
+  async deploy(input: GenezioCloudInput[], projectConfiguration: ProjectConfiguration, cloudAdapterOptions: CloudAdapterOptions): Promise<GenezioCloudOutput> {
     const cloudFormationClient = new CloudFormationClient({ region: projectConfiguration.region });
     const s3Client = new S3({ region: projectConfiguration.region });
     const stackName = `genezio-${projectConfiguration.name}`;
