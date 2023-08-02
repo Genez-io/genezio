@@ -17,6 +17,8 @@ import { GenezioTelemetry } from "../telemetry/telemetry.js";
 export async function generateSdkCommand(options: any) {
   const language = options.language;
   const sdkPath = options.path;
+  const stage = options.stage || "prod";
+
   GenezioTelemetry.sendEvent({eventType: "GENEZIO_GENERATE_SDK"});
 
   if (!language) {
@@ -42,7 +44,7 @@ export async function generateSdkCommand(options: any) {
     exit(1);
   }
 
-  await generateSdkHandler(language, sdkPath).catch((error: AxiosError) => {
+  await generateSdkHandler(language, sdkPath, stage).catch((error: AxiosError) => {
     if (error.response?.status == 401) {
       log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
     } else {
@@ -55,7 +57,7 @@ export async function generateSdkCommand(options: any) {
   console.log("Your SDK has been generated successfully in " + sdkPath + "");
 }
 
-async function generateSdkHandler(language: string, path: string) {
+async function generateSdkHandler(language: string, path: string, stage: string) {
   const configuration = await getProjectConfiguration();
 
   configuration.sdk.language = language as Language;
@@ -82,7 +84,8 @@ async function generateSdkHandler(language: string, path: string) {
   const project = projects.find(
     (project: any) =>
       project.name === configuration.name &&
-      project.region === configuration.region
+      project.region === configuration.region &&
+      project.stage === stage
   );
 
   // if the project doesn't exist, throw an error

@@ -225,6 +225,7 @@ program
   .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .option("-lang, --language <language>", "Language of the SDK to generate.")
   .option("-p, --path <path>", "Path to the directory where the SDK will be generated.")
+  .option("--stage <stage>", "Stage to deploy to. Default: 'production'.")
   .description("Generate an SDK corresponding to a deployed project.")
   .action(async (options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
