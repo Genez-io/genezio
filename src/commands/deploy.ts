@@ -311,6 +311,7 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
 }
 
 export async function deployFrontend(configuration: YamlProjectConfiguration, cloudAdapter: CloudAdapter, options: GenezioDeployOptions) {
+  const stage: string = options.stage || "";
   if (configuration.frontend) {
     // check if the build folder exists
     if (!(await fileExists(configuration.frontend.path))) {
@@ -346,12 +347,7 @@ export async function deployFrontend(configuration: YamlProjectConfiguration, cl
       await configuration.addSubdomain(configuration.frontend.subdomain);
     }
 
-    // check if stage != prod and add subdomain-stage
-    if (options.stage !== "prod" && options.stage != "" && options.stage != undefined) {
-      configuration.frontend.subdomain = `${configuration.frontend.subdomain}-${options.stage}`;
-    }
-
-    const url = await cloudAdapter.deployFrontend(configuration.name, configuration.region, configuration.frontend);
+    const url = await cloudAdapter.deployFrontend(configuration.name, configuration.region, configuration.frontend, stage);
     return url;
   } else {
     throw new Error("No frontend entry in genezio configuration file.");

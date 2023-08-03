@@ -4,7 +4,7 @@ import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
 
-export async function createFrontendProject(genezioDomain: string, projectName: string, region: string) {
+export async function createFrontendProject(genezioDomain: string, projectName: string, region: string, stage: string) {
     // Check if user is authenticated
     const authToken = await getAuthToken()
     if (!authToken) {
@@ -14,7 +14,8 @@ export async function createFrontendProject(genezioDomain: string, projectName: 
     const json = JSON.stringify({
         genezioDomain,
         projectName,
-        region
+        region,
+        stage
     });
 
     const response: any = await axios({

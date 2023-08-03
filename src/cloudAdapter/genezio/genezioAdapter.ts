@@ -84,7 +84,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
         };
     }
 
-    async deployFrontend(projectName: string, projectRegion: string, frontend: YamlFrontend): Promise<string> {
+    async deployFrontend(projectName: string, projectRegion: string, frontend: YamlFrontend, stage: string): Promise<string> {
         const archivePath = path.join(
             await createTemporaryFolder(),
             `${frontend.subdomain}.zip`
@@ -121,10 +121,14 @@ export class GenezioCloudAdapter implements CloudAdapter {
             result.userId
         );
         debugLogger.debug("Uploaded to S3.");
-        await createFrontendProject(frontend.subdomain, projectName, projectRegion)
+        await createFrontendProject(frontend.subdomain, projectName, projectRegion, stage)
 
         // clean up temporary folder
         await deleteFolder(path.dirname(archivePath));
+
+        if (stage != "" && stage != "prod") {
+            return `https://${frontend.subdomain}-${stage}.${FRONTEND_DOMAIN}`
+        }
 
         return `https://${frontend.subdomain}.${FRONTEND_DOMAIN}`
     }
