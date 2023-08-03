@@ -10,4 +10,5 @@ export type GenezioDeployOptions = {
     frontend?: boolean,
     logLevel?: string,
     installDeps: boolean,
+    stage: string,
 }
