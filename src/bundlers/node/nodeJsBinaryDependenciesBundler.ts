@@ -44,16 +44,18 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
                 }
             } else {
                 const packageJsonPath = path.join(dependencyPath, "package.json");
-                const packageJson = JSON.parse(
-                    fs.readFileSync(packageJsonPath, "utf8")
-                );
+                if (await fileExists(packageJsonPath)) {
+                    const packageJson = JSON.parse(
+                        fs.readFileSync(packageJsonPath, "utf8")
+                    );
 
-                // check if package.json has binary property
-                if (packageJson.binary) {
-                    binaryDependencies.push({
-                        path: dependencyPath,
-                        name: dependency.name
-                    });
+                    // check if package.json has binary property
+                    if (packageJson.binary) {
+                        binaryDependencies.push({
+                            path: dependencyPath,
+                            name: dependency.name
+                        });
+                    }
                 }
             }
         }
