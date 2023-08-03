@@ -180,7 +180,7 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
   
   // get options
   const installDeps: boolean = options.installDeps || false;
-  const stage: string = options.stage || "";
+  const stage: string = options.stage || "prod";
 
   const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(configuration).catch((error) => {
     // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
