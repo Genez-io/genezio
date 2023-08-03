@@ -40,7 +40,8 @@ class DependencyInstaller {
                 return;
             }
 
-            const command = "npm install " + (noSave ? "--no-save " : "") + toBeInstalled.join(" ");
+            const baseCommand = this.getInstallPackageCommand(noSave);
+            const command = baseCommand + " " + toBeInstalled.join(" ");
             debugLogger.debug("Running command: " + command);
 
             await exec(command);
@@ -54,11 +55,41 @@ class DependencyInstaller {
      */
     async installAll(): Promise<void> {
         await this.mutex.runExclusive(async () => {
-            const command = "npm install";
+            const command = this.getInstallCommand();
             debugLogger.debug("Running command: " + command);
 
             await exec(command);
         })
+    }
+
+    getInstallPackageCommand(noSave?: boolean): string {
+        const dependencyManager = process.env.GENEZIO_DEPENDENCY_MANAGER || "npm";
+
+        switch (dependencyManager) {
+            case "npm":
+                return "npm install " + (noSave ? "--no-save " : "");
+            case "yarn":
+                return "yarn add";
+            case "pnpm":
+                return "pnpm add";
+            default:
+                return "npm install";
+        }
+    }
+
+    getInstallCommand(): string {
+        const dependencyManager = process.env.GENEZIO_DEPENDENCY_MANAGER || "npm";
+
+        switch (dependencyManager) {
+            case "npm":
+                return "npm install";
+            case "yarn":
+                return "yarn install";
+            case "pnpm":
+                return "pnpm install";
+            default:
+                return "npm install";
+        }
     }
 }
 
