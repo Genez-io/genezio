@@ -153,7 +153,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
     const cloudFormationClient = new CloudFormationClient({ region: projectConfiguration.region });
     const s3Client = new S3({ region: projectConfiguration.region });
     const cloudFormationStage = stage === "prod" ? "" : `-${stage}`;
-    const stackName = `genezio-${projectConfiguration.name}-${cloudFormationStage}`;
+    const stackName = `genezio-${projectConfiguration.name}${cloudFormationStage}`;
     const { exists } = await this.#checkIfStackExists(cloudFormationClient, stackName);
 
     const credentials = await s3Client.config.credentials();
