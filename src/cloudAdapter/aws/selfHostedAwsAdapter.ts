@@ -207,7 +207,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
       const classConfiguration = projectConfiguration.classes.find((c) => c.path === inputItem.filePath);
       const bucketKey = this.#getBackendBucketKey(projectConfiguration.name, inputItem.name);
       const lambdaFunctionResourceName = `LambdaFunction${alphanumericString(inputItem.name)}`;
-      const lambdaFunctionName = `${projectConfiguration.name.toLowerCase()}-${inputItem.name.toLowerCase()}`;
+      const lambdaFunctionName = `${projectConfiguration.name.toLowerCase()}-${inputItem.name.toLowerCase()}${cloudFormationStage}`;
       const invokePermissionResourceName = `LambdaInvokePermission${alphanumericString(inputItem.name)}`;
       const routeResourceName = `Route${alphanumericString(inputItem.name)}`;
       const integrationResourceName = `Integration${alphanumericString(inputItem.name)}`;
