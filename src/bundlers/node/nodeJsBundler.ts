@@ -60,7 +60,7 @@ export class NodeJsBundler implements BundlerInterface {
           file.extension !== ".tsx" &&
           file.extension !== ".jsx" &&
           !file.path.includes("node_modules") &&
-          !file.path.includes(".git") && 
+          !file.path.includes(".git") &&
           !fs.lstatSync(file.path).isDirectory()
         );
       }

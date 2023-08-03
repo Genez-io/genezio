@@ -36,6 +36,7 @@ import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js"
 import hash from 'hash-it';
 import { GenezioTelemetry } from "../telemetry/telemetry.js";
 import dotenv from 'dotenv';
+import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
 
 type ClassProcess = {
   process: ChildProcess;
@@ -294,7 +295,13 @@ function getBundler(
 ): BundlerInterface | undefined {
   let bundler: BundlerInterface | undefined;
   switch (classConfiguration.language) {
-    case ".ts":
+    case ".ts": {
+      const requiredDepsBundler = new TsRequiredDepsBundler();
+      const nodeJsBundler = new NodeJsBundler();
+      const localBundler = new NodeJsLocalBundler();
+      bundler = new BundlerComposer([requiredDepsBundler, nodeJsBundler, localBundler]);
+      break;
+    }
     case ".js": {
       const nodeJsBundler = new NodeJsBundler();
       const localBundler = new NodeJsLocalBundler();

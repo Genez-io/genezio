@@ -41,6 +41,7 @@ import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { TypeCheckerBundler } from "../bundlers/node/typeCheckerBundler.js";
 import { GenezioDeployOptions } from "../models/commandOptions.js";
 import { GenezioTelemetry } from "../telemetry/telemetry.js";
+import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
   let configuration
@@ -223,10 +224,11 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
 
       switch (element.language) {
         case ".ts": {
+          const requiredDepsBundler = new TsRequiredDepsBundler();
           const typeCheckerBundler = new TypeCheckerBundler();
           const standardBundler = new NodeJsBundler();
           const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
-          bundler = new BundlerComposer([typeCheckerBundler, standardBundler, binaryDepBundler]);
+          bundler = new BundlerComposer([requiredDepsBundler, typeCheckerBundler, standardBundler, binaryDepBundler]);
           break;
         }
         case ".js": {
