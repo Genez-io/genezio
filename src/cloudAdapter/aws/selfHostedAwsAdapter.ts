@@ -148,9 +148,12 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
   }
 
   async deploy(input: GenezioCloudInput[], projectConfiguration: ProjectConfiguration, cloudAdapterOptions: CloudAdapterOptions): Promise<GenezioCloudOutput> {
+    const stage: string = cloudAdapterOptions.stage || "prod";
+
     const cloudFormationClient = new CloudFormationClient({ region: projectConfiguration.region });
     const s3Client = new S3({ region: projectConfiguration.region });
-    const stackName = `genezio-${projectConfiguration.name}`;
+    const cloudFormationStage = stage === "prod" ? "" : `-${stage}`;
+    const stackName = `genezio-${projectConfiguration.name}-${cloudFormationStage}`;
     const { exists } = await this.#checkIfStackExists(cloudFormationClient, stackName);
 
     const credentials = await s3Client.config.credentials();
@@ -275,10 +278,13 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
     }
   }
 
-  async deployFrontend(projectName: string, projectRegion: string, frontend: YamlFrontend): Promise<string> {
+  async deployFrontend(projectName: string, projectRegion: string, frontend: YamlFrontend, stage: string): Promise<string> {
+    stage = stage || "prod";
+  
     const cloudFormationClient = new CloudFormationClient({ region: projectRegion });
     const s3Client = new S3({ region: projectRegion });
-    const stackName = `genezio-${projectName}-frontend`;
+    const cloudFormationStage = stage === "prod" ? "" : `-${stage}`;
+    const stackName = `genezio-${projectName}-frontend${cloudFormationStage}`;
     const { exists } = await this.#checkIfStackExists(cloudFormationClient, stackName);
 
     const credentials = await s3Client.config.credentials();
