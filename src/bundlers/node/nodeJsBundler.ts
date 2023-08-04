@@ -89,13 +89,13 @@ export class NodeJsBundler implements BundlerInterface {
   }
 
   async #bundleNodeJSCode(
-      filePath: string,
-      tempFolderPath: string,
-    ): Promise < void> {
-      const outputFile = `module.mjs`;
+    filePath: string,
+    tempFolderPath: string,
+  ): Promise<void> {
+    const outputFile = `module.mjs`;
 
-      // delete module.js file if it exists
-      if(fs.existsSync(path.join(tempFolderPath, outputFile))) {
+    // delete module.js file if it exists
+    if (fs.existsSync(path.join(tempFolderPath, outputFile))) {
       fs.unlinkSync(path.join(tempFolderPath, outputFile));
     }
 
