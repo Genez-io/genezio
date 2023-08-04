@@ -85,22 +85,25 @@ export class GenezioCloudAdapter implements CloudAdapter {
     }
 
     async deployFrontend(projectName: string, projectRegion: string, frontend: YamlFrontend, stage: string): Promise<string> {
+        const finalStageName = stage != "" && stage != "prod" ? `-${stage}` : "";
+        const finalSubdomain = frontend.subdomain + finalStageName;
         const archivePath = path.join(
             await createTemporaryFolder(),
-            `${frontend.subdomain}.zip`
+            `${finalSubdomain}.zip`
         );
         debugLogger.debug("Creating temporary folder", archivePath);
 
         await zipDirectoryToDestinationPath(
             frontend.path,
-            frontend.subdomain,
+            finalSubdomain,
             archivePath
         );
 
         debugLogger.debug("Getting presigned URL...");
         const result = await getFrontendPresignedURL(
-            frontend.subdomain,
-            projectName
+            finalSubdomain,
+            projectName,
+            stage
         );
 
         if (!result.presignedURL) {
@@ -121,16 +124,16 @@ export class GenezioCloudAdapter implements CloudAdapter {
             result.userId
         );
         debugLogger.debug("Uploaded to S3.");
-        await createFrontendProject(frontend.subdomain, projectName, projectRegion, stage)
+        await createFrontendProject(finalSubdomain, projectName, projectRegion, stage)
 
         // clean up temporary folder
         await deleteFolder(path.dirname(archivePath));
 
         if (stage != "" && stage != "prod") {
-            return `https://${frontend.subdomain}-${stage}.${FRONTEND_DOMAIN}`
+            return `https://${finalSubdomain}.${FRONTEND_DOMAIN}`
         }
 
-        return `https://${frontend.subdomain}.${FRONTEND_DOMAIN}`
+        return `https://${finalSubdomain}.${FRONTEND_DOMAIN}`
     }
 }
 

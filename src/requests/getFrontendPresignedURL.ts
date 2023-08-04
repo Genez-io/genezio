@@ -7,7 +7,8 @@ import version from "../utils/version.js";
 
 export async function getFrontendPresignedURL(
     subdomain: string,
-    projectName: string
+    projectName: string,
+    stage: string
 ) {
     const region = "us-east-1";
     if (!subdomain || !projectName) {
@@ -24,6 +25,7 @@ export async function getFrontendPresignedURL(
         subdomainName: subdomain,
         projectName: projectName,
         region: region,
+        stage: stage
     });
 
     const response: any = await axios({
