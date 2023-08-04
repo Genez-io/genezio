@@ -11,6 +11,7 @@ import version from "../utils/version.js";
 
 export async function deployRequest(
   projectConfiguration: ProjectConfiguration,
+  stage: string
 ): Promise<DeployCodeResponse> {
   // auth token
   printAdaptiveLog("Checking your credentials", "start");
@@ -29,6 +30,7 @@ export async function deployRequest(
     projectName : projectConfiguration.name,
     region: projectConfiguration.region,
     cloudProvider: projectConfiguration.cloudProvider,
+    stage: stage
   })
 
   const controller = new AbortController();

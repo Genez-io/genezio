@@ -40,7 +40,7 @@ test("should throw error if server returns error", async () => {
       config: {}
     });
 
-    await deployRequest(projectConfiguration);
+    await deployRequest(projectConfiguration, "");
   }).rejects.toThrowError();
 });
 
@@ -66,7 +66,7 @@ test("should throw error if server returns data.error object", async () => {
       config: {}
     });
 
-    await deployRequest(projectConfiguration);
+    await deployRequest(projectConfiguration, "");
   }).rejects.toThrowError();
 });
 
@@ -92,7 +92,7 @@ test("should return response.data if everything is ok", async () => {
     config: {}
   });
 
-  const response = await deployRequest(projectConfiguration);
+  const response = await deployRequest(projectConfiguration, "");
   expect(response).toEqual(someObject);
 });
 
@@ -118,7 +118,7 @@ test("should read token and pass it to headers", async () => {
     config: {}
   });
 
-  const response = await deployRequest(projectConfiguration);
+  const response = await deployRequest(projectConfiguration, "");
 
   expect(mockedGetAuthToken.mock.calls.length).toBe(1);
 

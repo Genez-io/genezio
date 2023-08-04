@@ -178,9 +178,9 @@ export class DartBundler implements BundlerInterface {
             (file: FileDetails) => {
                 // filter js files, node_modules and folders
                 return (
-                  file.extension !== ".dart" &&
-                  !file.path.includes(".git") &&
-                  !fs.lstatSync(file.path).isDirectory()
+                    file.extension !== ".dart" &&
+                    !file.path.includes(".git") &&
+                    !fs.lstatSync(file.path).isDirectory()
                 );
             }
         );
@@ -188,12 +188,8 @@ export class DartBundler implements BundlerInterface {
         // iterare over all non dart files and copy them to tmp folder
         await Promise.all(
             allNonJsFilesPaths.map((filePath: FileDetails) => {
-                // get folders array
-                const folders = filePath.path.split('/');
-                // remove file name from folders array
-                folders.pop();
                 // create folder structure in tmp folder
-                const folderPath = path.join(tempFolderPath, ...folders);
+                const folderPath = path.join(tempFolderPath, path.dirname(filePath.path));
                 if (!fs.existsSync(folderPath)) {
                     fs.mkdirSync(folderPath, { recursive: true });
                 }
@@ -201,11 +197,11 @@ export class DartBundler implements BundlerInterface {
                 const fileDestinationPath = path.join(tempFolderPath, filePath.path);
                 return fs.promises.copyFile(filePath.path, fileDestinationPath).catch((error) => {
                     if (error.code === "EACCES") {
-                      throw new Error(GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE(filePath.path))
+                        throw new Error(GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE(filePath.path))
                     }
-          
+
                     throw error;
-                  });
+                });
             })
         );
     }

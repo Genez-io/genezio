@@ -60,7 +60,7 @@ export class NodeJsBundler implements BundlerInterface {
           file.extension !== ".tsx" &&
           file.extension !== ".jsx" &&
           !file.path.includes("node_modules") &&
-          !file.path.includes(".git") && 
+          !file.path.includes(".git") &&
           !fs.lstatSync(file.path).isDirectory()
         );
       }
@@ -69,15 +69,12 @@ export class NodeJsBundler implements BundlerInterface {
     // iterate over all non js files and copy them to tmp folder
     await Promise.all(
       allNonJsFilesPaths.map((filePath: FileDetails) => {
-        // get folders array
-        const folders = filePath.path.split(path.sep);
-        // remove file name from folders array
-        folders.pop();
         // create folder structure in tmp folder
-        const folderPath = path.join(tempFolderPath, ...folders);
+        const folderPath = path.join(tempFolderPath, path.dirname(filePath.path));
         if (!fs.existsSync(folderPath)) {
           fs.mkdirSync(folderPath, { recursive: true });
         }
+
         // copy file to tmp folder
         const fileDestinationPath = path.join(tempFolderPath, filePath.path);
         return fs.promises.copyFile(filePath.path, fileDestinationPath).catch((error) => {

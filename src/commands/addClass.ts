@@ -6,6 +6,7 @@ import { GenezioTelemetry } from "../telemetry/telemetry.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
 import { fileExists, writeToFile } from "../utils/file.js";
 import { supportedExtensions } from "../utils/languages.js";
+import { DependencyInstaller } from "../bundlers/node/dependencyInstaller.js";
 
 export async function addClassCommand(classPath: string, classType: string) {
   GenezioTelemetry.sendEvent({eventType: "GENEZIO_ADD_CLASS"});
@@ -35,7 +36,7 @@ export async function addClassCommand(classPath: string, classType: string) {
   if (!classExtension || className.split(".").length < 2) {
     throw new Error("Please provide a class name with a valid class extension.");
   }
-  
+
   // check if class is supported
   if (!supportedExtensions.includes(classExtension)) {
     const supportedExtensionsString = supportedExtensions
