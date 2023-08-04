@@ -69,10 +69,8 @@ export class NodeJsBundler implements BundlerInterface {
     // iterate over all non js files and copy them to tmp folder
     await Promise.all(
       allNonJsFilesPaths.map((filePath: FileDetails) => {
-        // get folders
-        const folders = path.dirname(filePath.path);
         // create folder structure in tmp folder
-        const folderPath = path.join(tempFolderPath, folders);
+        const folderPath = path.join(tempFolderPath, path.dirname(filePath.path));
         if (!fs.existsSync(folderPath)) {
           fs.mkdirSync(folderPath, { recursive: true });
         }
