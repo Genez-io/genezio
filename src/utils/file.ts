@@ -48,7 +48,7 @@ export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
   genezioIgnore = genezioIgnore.map((p) => ensureRelativePaths(p))
 
   return new Promise((resolve, reject) => {
-    const pattern = `.` + path.sep + `**` + path.sep + `*`;
+    const pattern = `**`;
     glob(
       pattern,
       {

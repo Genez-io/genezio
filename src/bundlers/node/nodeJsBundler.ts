@@ -69,15 +69,14 @@ export class NodeJsBundler implements BundlerInterface {
     // iterate over all non js files and copy them to tmp folder
     await Promise.all(
       allNonJsFilesPaths.map((filePath: FileDetails) => {
-        // get folders array
-        const folders = filePath.path.split(path.sep);
-        // remove file name from folders array
-        folders.pop();
+        // get folders
+        const folders = path.dirname(filePath.path);
         // create folder structure in tmp folder
-        const folderPath = path.join(tempFolderPath, ...folders);
+        const folderPath = path.join(tempFolderPath, folders);
         if (!fs.existsSync(folderPath)) {
           fs.mkdirSync(folderPath, { recursive: true });
         }
+
         // copy file to tmp folder
         const fileDestinationPath = path.join(tempFolderPath, filePath.path);
         return fs.promises.copyFile(filePath.path, fileDestinationPath).catch((error) => {
@@ -92,13 +91,13 @@ export class NodeJsBundler implements BundlerInterface {
   }
 
   async #bundleNodeJSCode(
-    filePath: string,
-    tempFolderPath: string,
-  ): Promise<void> {
-    const outputFile = `module.mjs`;
+      filePath: string,
+      tempFolderPath: string,
+    ): Promise < void> {
+      const outputFile = `module.mjs`;
 
-    // delete module.js file if it exists
-    if (fs.existsSync(path.join(tempFolderPath, outputFile))) {
+      // delete module.js file if it exists
+      if(fs.existsSync(path.join(tempFolderPath, outputFile))) {
       fs.unlinkSync(path.join(tempFolderPath, outputFile));
     }
 
