@@ -9,6 +9,7 @@ import { exit } from "process";
 import awsCronParser from "aws-cron-parser";
 import log from "loglevel";
 import { promises as fsPromises } from 'fs';
+import { debugLogger } from "./logging.js";
 
 export async function getAllFilesRecursively(folderPath: string): Promise<string[]> {
   let files: string[] = [];
@@ -159,6 +160,13 @@ export async function getFileSize(filePath: string): Promise<number> {
       resolve(stats.size);
     });
   });
+}
+
+export async function checkBundleFolderSizeLimit(directoryPath: string, limit: number): Promise<boolean> {
+  const files = await getAllFilesRecursively(directoryPath);
+  const totalSize = files.reduce((acc, file) => acc + fs.statSync(file).size, 0);
+  debugLogger.debug(`Total size of the bundle: ${totalSize} bytes`);
+  return totalSize <= limit;
 }
 
 export async function directoryContainsIndexHtmlFiles(directoryPath: string): Promise<boolean> {

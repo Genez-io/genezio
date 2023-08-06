@@ -9,7 +9,7 @@ import { YamlFrontend } from "../../models/yamlProjectConfiguration.js";
 import { getAllFilesRecursively, getFileSize } from "../../utils/file.js";
 import { GenezioCloudFormationBuilder, getApiGatewayIntegrationResource, getApiGatewayRouteResource, getCloudFrontDistributionResource, getEventsRoleResource, getIamRoleResource, getLambdaFunctionResource, getLambdaPermissionForEventsResource, getLambdaPermissionResource, getS3BucketPolicyResource, getS3BucketPublicResource, getS3BucketResource } from "./cloudFormationBuilder.js";
 import mime from "mime-types";
-import { BUNDLE_SIZE_LIMIT } from "../genezio/genezioAdapter.js";
+import { BUNDLE_SIZE_LIMIT } from "../../constants.js";
 
 export class SelfHostedAwsAdapter implements CloudAdapter {
 

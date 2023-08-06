@@ -11,11 +11,10 @@ import { createTemporaryFolder, deleteFolder, zipDirectoryToDestinationPath } fr
 import { YamlFrontend } from "../../models/yamlProjectConfiguration.js";
 import { createFrontendProject } from "../../requests/createFrontendProject.js";
 import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL.js";
-import { FRONTEND_DOMAIN } from "../../constants.js";
+import { BUNDLE_SIZE_LIMIT, FRONTEND_DOMAIN } from "../../constants.js";
 import { getFileSize } from "../../utils/file.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 
-export const BUNDLE_SIZE_LIMIT = 262144000;
 
 export class GenezioCloudAdapter implements CloudAdapter {
     async deploy(input: GenezioCloudInput[], projectConfiguration: ProjectConfiguration, cloudAdapterOptions: CloudAdapterOptions): Promise<GenezioCloudOutput> {
