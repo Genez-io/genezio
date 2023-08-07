@@ -179,7 +179,7 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
   if (configuration.classes.length === 0) {
     throw new Error(GENEZIO_NO_CLASSES_FOUND);
   }
-  
+
   // get options
   const installDeps: boolean = options.installDeps || false;
   const stage: string = options.stage || "prod";
@@ -322,33 +322,39 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
 export async function deployFrontend(configuration: YamlProjectConfiguration, cloudAdapter: CloudAdapter, options: GenezioDeployOptions) {
   const stage: string = options.stage || "";
   if (configuration.frontend) {
+    // check if subdomain contains only numbers, letters and hyphens
+    if (!configuration.frontend.subdomain.match(/^[a-zA-Z0-9-]+$/)) {
+      throw new Error(
+        `The subdomain can only contain letters, numbers and hyphens.`,
+      );
+    }
     // check if the build folder exists
     if (!(await fileExists(configuration.frontend.path))) {
       throw new Error(
-        `The build folder does not exist. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`
+        `The build folder does not exist. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
       );
     }
 
     // check if the build folder is empty
     if (await isDirectoryEmpty(configuration.frontend.path)) {
       throw new Error(
-        `The build folder is empty. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`
+        `The build folder is empty. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
       );
     }
 
     // check if there are any .html files in the build folder
     if (!(await directoryContainsHtmlFiles(configuration.frontend.path))) {
-      log.info("WARNING: No .html files found in the build folder");
+      log.info('WARNING: No .html files found in the build folder');
     } else if (
       !(await directoryContainsIndexHtmlFiles(configuration.frontend.path))
     ) {
       // check if there is no index.html file in the build folder
-      log.info("WARNING: No index.html file found in the build folder");
+      log.info('WARNING: No index.html file found in the build folder');
     }
 
     if (!configuration.frontend.subdomain) {
       log.info(
-        "No subdomain specified in the genezio.yaml configuration file. We will provide a random one for you."
+        'No subdomain specified in the genezio.yaml configuration file. We will provide a random one for you.',
       );
       configuration.frontend.subdomain = generateRandomSubdomain();
 
@@ -356,7 +362,12 @@ export async function deployFrontend(configuration: YamlProjectConfiguration, cl
       await configuration.addSubdomain(configuration.frontend.subdomain);
     }
 
-    const url = await cloudAdapter.deployFrontend(configuration.name, configuration.region, configuration.frontend, stage);
+    const url = await cloudAdapter.deployFrontend(
+      configuration.name,
+      configuration.region,
+      configuration.frontend,
+      stage,
+    );
     return url;
   } else {
     throw new Error("No frontend entry in genezio configuration file.");
