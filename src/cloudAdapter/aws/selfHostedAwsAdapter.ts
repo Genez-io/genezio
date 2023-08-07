@@ -9,7 +9,8 @@ import { YamlFrontend } from "../../models/yamlProjectConfiguration.js";
 import { getAllFilesRecursively, getFileSize } from "../../utils/file.js";
 import { GenezioCloudFormationBuilder, getApiGatewayIntegrationResource, getApiGatewayRouteResource, getCloudFrontDistributionResource, getEventsRoleResource, getIamRoleResource, getLambdaFunctionResource, getLambdaPermissionForEventsResource, getLambdaPermissionResource, getS3BucketPolicyResource, getS3BucketPublicResource, getS3BucketResource } from "./cloudFormationBuilder.js";
 import mime from "mime-types";
-import { BUNDLE_SIZE_LIMIT } from "../../constants.js";
+
+const BUNDLE_SIZE_LIMIT = 262144000;
 
 export class SelfHostedAwsAdapter implements CloudAdapter {
 
@@ -190,6 +191,10 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
     const bucketName = await this.#getValueForKeyFromOutput(cloudFormationClient, stackName, "GenezioDeploymentBucketName");
 
     const uploadFilesPromises = input.map(async (inputItem) => {
+      if (inputItem.unzippedBundleSize > BUNDLE_SIZE_LIMIT) {
+        throw new Error(`Class ${inputItem.name} is too big: ${(inputItem.unzippedBundleSize/1048576).toFixed(2)}MB. The maximum size is ${BUNDLE_SIZE_LIMIT/1048576}MB. Try to reduce the size of your class.`);
+    }
+      
       const bucketKey = this.#getBackendBucketKey(projectConfiguration.name, inputItem.name);
 
       const size = await getFileSize(inputItem.archivePath);

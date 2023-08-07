@@ -7,7 +7,7 @@ import { BundlerComposer } from "../bundlers/bundlerComposer.js";
 import { DartBundler } from "../bundlers/dart/dartBundler.js";
 import { NodeJsBinaryDependenciesBundler } from "../bundlers/node/nodeJsBinaryDependenciesBundler.js";
 import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
-import { BUNDLE_SIZE_LIMIT, REACT_APP_BASE_URL } from "../constants.js";
+import { REACT_APP_BASE_URL } from "../constants.js";
 import {
   GENEZIO_NOT_AUTH_ERROR_MSG,
   GENEZIO_NO_CLASSES_FOUND
@@ -26,7 +26,7 @@ import {
   directoryContainsIndexHtmlFiles,
   directoryContainsHtmlFiles,
   deleteFolder,
-  checkBundleFolderSizeLimit,
+  getBundleFolderSizeLimit,
 } from "../utils/file.js";
 import { printAdaptiveLog, debugLogger } from "../utils/logging.js";
 import { runNewProcess } from "../utils/process.js";
@@ -284,11 +284,8 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
       );
 
       // check if the unzipped folder is smaller than 250MB
-      const bundlerSizeCheck = await checkBundleFolderSizeLimit(output.path, BUNDLE_SIZE_LIMIT);
-      debugLogger.debug(`The bundlerSizeCheck for class ${element.path} is ${bundlerSizeCheck}.`);
-      if (!bundlerSizeCheck) {
-        throw new Error(`The size of the bundled folder for class ${element.path} is bigger than ${BUNDLE_SIZE_LIMIT/1048576}MB.`);
-      }
+      const unzippedBundleSize: number = await getBundleFolderSizeLimit(output.path);
+      debugLogger.debug(`The unzippedBundleSize for class ${element.path} is ${unzippedBundleSize}.`);
 
       debugLogger.debug(`Zip the directory ${output.path}.`);
       await zipDirectory(output.path, archivePath);
@@ -297,7 +294,7 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
 
       await deleteFolder(output.path);
 
-      return { name: element.name, archivePath: archivePath, filePath: element.path, methods: element.methods };
+      return { name: element.name, archivePath: archivePath, filePath: element.path, methods: element.methods, unzippedBundleSize: unzippedBundleSize };
     });
 
   const bundlerResultArray = await Promise.all(bundlerResult);

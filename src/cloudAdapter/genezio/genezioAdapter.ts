@@ -11,9 +11,11 @@ import { createTemporaryFolder, deleteFolder, zipDirectoryToDestinationPath } fr
 import { YamlFrontend } from "../../models/yamlProjectConfiguration.js";
 import { createFrontendProject } from "../../requests/createFrontendProject.js";
 import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL.js";
-import { BUNDLE_SIZE_LIMIT, FRONTEND_DOMAIN } from "../../constants.js";
+import { FRONTEND_DOMAIN } from "../../constants.js";
 import { getFileSize } from "../../utils/file.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
+
+const BUNDLE_SIZE_LIMIT = 262144000;
 
 
 export class GenezioCloudAdapter implements CloudAdapter {
@@ -28,6 +30,10 @@ export class GenezioCloudAdapter implements CloudAdapter {
         }, cliProgress.Presets.shades_grey);
 
         const promisesDeploy = input.map(async (element) => {
+            if (element.unzippedBundleSize > BUNDLE_SIZE_LIMIT) {
+                throw new Error(`Class ${element.name} is too big: ${(element.unzippedBundleSize/1048576).toFixed(2)}MB. The maximum size is ${BUNDLE_SIZE_LIMIT/1048576}MB. Try to reduce the size of your class.`);
+            }
+
             debugLogger.debug(
                 `Get the presigned URL for class name ${element.name}.`
             );

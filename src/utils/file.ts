@@ -162,11 +162,11 @@ export async function getFileSize(filePath: string): Promise<number> {
   });
 }
 
-export async function checkBundleFolderSizeLimit(directoryPath: string, limit: number): Promise<boolean> {
+export async function getBundleFolderSizeLimit(directoryPath: string): Promise<number> {
   const files = await getAllFilesRecursively(directoryPath);
   const totalSize = files.reduce((acc, file) => acc + fs.statSync(file).size, 0);
   debugLogger.debug(`Total size of the bundle: ${totalSize} bytes`);
-  return totalSize <= limit;
+  return totalSize;
 }
 
 export async function directoryContainsIndexHtmlFiles(directoryPath: string): Promise<boolean> {
