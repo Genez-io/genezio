@@ -26,6 +26,7 @@ import {
   directoryContainsIndexHtmlFiles,
   directoryContainsHtmlFiles,
   deleteFolder,
+  getBundleFolderSizeLimit,
 } from "../utils/file.js";
 import { printAdaptiveLog, debugLogger } from "../utils/logging.js";
 import { runNewProcess } from "../utils/process.js";
@@ -282,12 +283,18 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
         `genezioDeploy.zip`
       );
 
+      // check if the unzipped folder is smaller than 250MB
+      const unzippedBundleSize: number = await getBundleFolderSizeLimit(output.path);
+      debugLogger.debug(`The unzippedBundleSize for class ${element.path} is ${unzippedBundleSize}.`);
+
       debugLogger.debug(`Zip the directory ${output.path}.`);
       await zipDirectory(output.path, archivePath);
 
+
+
       await deleteFolder(output.path);
 
-      return { name: element.name, archivePath: archivePath, filePath: element.path, methods: element.methods };
+      return { name: element.name, archivePath: archivePath, filePath: element.path, methods: element.methods, unzippedBundleSize: unzippedBundleSize };
     });
 
   const bundlerResultArray = await Promise.all(bundlerResult);
