@@ -1,5 +1,0 @@
-.git
-.env
-**/*.env
-build
-**/node_modules
