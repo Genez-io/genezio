@@ -15,7 +15,7 @@ import { FRONTEND_DOMAIN } from "../../constants.js";
 import { getFileSize } from "../../utils/file.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 
-const BUNDLE_SIZE_LIMIT = 262144000;
+const BUNDLE_SIZE_LIMIT = 256901120;
 
 
 export class GenezioCloudAdapter implements CloudAdapter {

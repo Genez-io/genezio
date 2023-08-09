@@ -10,7 +10,7 @@ import { getAllFilesRecursively, getFileSize } from "../../utils/file.js";
 import { GenezioCloudFormationBuilder, getApiGatewayIntegrationResource, getApiGatewayRouteResource, getCloudFrontDistributionResource, getEventsRoleResource, getIamRoleResource, getLambdaFunctionResource, getLambdaPermissionForEventsResource, getLambdaPermissionResource, getS3BucketPolicyResource, getS3BucketPublicResource, getS3BucketResource } from "./cloudFormationBuilder.js";
 import mime from "mime-types";
 
-const BUNDLE_SIZE_LIMIT = 262144000;
+const BUNDLE_SIZE_LIMIT = 256901120;
 
 export class SelfHostedAwsAdapter implements CloudAdapter {
 
