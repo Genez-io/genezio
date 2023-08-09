@@ -323,7 +323,10 @@ export async function deployFrontend(configuration: YamlProjectConfiguration, cl
   const stage: string = options.stage || "";
   if (configuration.frontend) {
     // check if subdomain contains only numbers, letters and hyphens
-    if (!configuration.frontend.subdomain.match(/^[a-zA-Z0-9-]+$/)) {
+    if (
+      configuration.frontend.subdomain &&
+      !configuration.frontend.subdomain.match(/^[a-z0-9-]+$/)
+    ) {
       throw new Error(
         `The subdomain can only contain letters, numbers and hyphens.`,
       );
