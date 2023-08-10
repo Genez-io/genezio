@@ -218,6 +218,17 @@ if (!genezioClass) {
                 return result;
             } catch (err) {
                 console.error(err);
+                try {
+                    const { createRequire } = await import("module");
+                    const require = createRequire(import.meta.url);
+                    const Sentry = require("@sentry/node");
+                    Sentry.init({
+                        dsn: process.env.SENTRY_DSN,
+                        tracesSampleRate: process.env.SENTRY_TRACES_SAMPLE_RATE
+                    });
+                    Sentry.captureException(err);
+                    await Sentry.flush();
+                } catch (e) {}
                 return {
                     statusCode: 500,
                     body: JSON.stringify({
