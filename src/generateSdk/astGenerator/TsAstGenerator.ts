@@ -63,7 +63,7 @@ export class AstGenerator implements AstGeneratorInterface {
           return { type: AstNodeType.DateType };
         }
         const typeAtLocation = typeChecker.getTypeAtLocation((type as any).typeName);
-        const typeAtLocationPath = (typeAtLocation.aliasSymbol as any).parent.escapedName;
+        const typeAtLocationPath = (typeAtLocation.aliasSymbol as any).declarations?.[0].getSourceFile().symbol.escapedName;
         const trimmedPath = typeAtLocationPath.substring(1, typeAtLocationPath.length - 1);
         const pathFile = path.relative(process.cwd(), trimmedPath);
         if (!this.isDeclarationInList(escapedText, pathFile, declarations)) {
