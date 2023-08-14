@@ -29,7 +29,7 @@
   "author": "Genezio",
   "license": "GPL-3",
   "dependencies": {
-    "@aws-sdk/client-cloudformation": "^3.359.0",
+    "@aws-sdk/client-cloudformation": "^3.388.0",
     "@aws-sdk/client-s3": "^3.385.0",
     "@babel/core": "^7.22.5",
     "@babel/parser": "^7.22.5",
