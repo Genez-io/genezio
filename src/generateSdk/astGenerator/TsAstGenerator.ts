@@ -176,7 +176,7 @@ export class AstGenerator implements AstGeneratorInterface {
   parseMethodSignature(methodSignature: typescript.Node, typeChecker: typescript.TypeChecker, declarations: Node[]): MethodDefinition | undefined {
     const parameters: ParameterDefinition[] = [];
     const methodSignatureCopy: any = { ...methodSignature };
-    if (methodSignatureCopy.name.kind === typescript.SyntaxKind.PrivateIdentifier) {
+    if (methodSignatureCopy.name.kind === typescript.SyntaxKind.PrivateIdentifier || methodSignatureCopy.modifiers?.[0].kind === typescript.SyntaxKind.PrivateKeyword) {
       return undefined;
     }
     if (methodSignatureCopy.parameters) {
