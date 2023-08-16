@@ -8,10 +8,12 @@ import { Language, TriggerType, YamlProjectConfiguration } from "./yamlProjectCo
 export class ParameterType {
     name: string;
     type: string;
+    optional: boolean;
 
-    constructor(name: string, type: string) {
+    constructor(name: string, type: string, optional = false) {
         this.name = name
         this.type = type
+        this.optional = optional
     }
 }
 
@@ -20,12 +22,14 @@ export class MethodConfiguration {
     parameters: ParameterType[]
     cronString?: string;
     type: TriggerType;
+    returnType: string;
 
-    constructor(name: string, parameters: string[], type?: TriggerType, cronString?: string) {
+    constructor(name: string, parameters: string[], returnType: string, type?: TriggerType, cronString?: string) {
         this.name = name;
         this.parameters = parameters.map((parameter) => new ParameterType(parameter, "any"));
         this.type = type ?? TriggerType.jsonrpc;
         this.cronString = cronString;
+        this.returnType = returnType;
     }
 }
 
@@ -35,19 +39,22 @@ export class ClassConfiguration {
     type: TriggerType;
     language: string;
     methods: MethodConfiguration[];
+    types: string[];
 
     constructor(
         name: string,
         path: string,
         type: TriggerType,
         language: string,
-        methods: MethodConfiguration[]
+        methods: MethodConfiguration[],
+        types: string[]
     ) {
         this.name = name;
         this.path = path;
         this.type = type;
         this.methods = methods;
         this.language = language;
+        this.types = types;
     }
 }
 
@@ -99,10 +106,11 @@ export class ProjectConfiguration {
 
                 return {
                     name: m.name,
-                    parameters: m.params.map((p) => new ParameterType(p.name, p.type)),
+                    parameters: m.params.map((p) => new ParameterType(p.name, p.type, p.optional)),
                     cronString: yamlMethod?.cronString,
                     language: c.language,
-                    type: yamlClass?.getMethodType(m.name)
+                    type: yamlClass?.getMethodType(m.name),
+                    returnType: m.returnType
                 }
             })
 
@@ -112,6 +120,7 @@ export class ProjectConfiguration {
                 type: yamlClass?.type ?? TriggerType.jsonrpc,
                 language: yamlClass.language,
                 methods: methods,
+                types: c.types
             }
         });
     }
