@@ -529,7 +529,7 @@ class SdkGenerator implements SdkGeneratorInterface {
       }
       if (!currentView.imports.find((e: any) => e.path === relativePath)) {
         currentView.imports.push({
-          path: relativePath,
+          path: relativePath.replace(/\\/g, "/"),
           models: [{ name: (externalType as any).name }]
         });
       }
