@@ -10,6 +10,7 @@ import awsCronParser from "aws-cron-parser";
 import log from "loglevel";
 import { promises as fsPromises } from 'fs';
 import { debugLogger } from "./logging.js";
+import { EnvironmentVariable } from "../models/environmentVariables.js";
 
 export async function getAllFilesRecursively(folderPath: string): Promise<string[]> {
   let files: string[] = [];
@@ -350,4 +351,32 @@ export async function validateYamlFile() {
       }
     }
   }
+}
+
+export async function readEnvironmentVariablesFile(envFilePath: string): Promise<EnvironmentVariable[]> {
+  const envVars = new Array<EnvironmentVariable>();
+
+  const envFileContent = await readUTF8File(envFilePath);
+  const envFileLines = envFileContent.split("\n");
+
+  for (const line of envFileLines) {
+    if (line === "") {
+      continue;
+    }
+
+    const [key, value] = line.split("=");
+
+    if (key === undefined || value === undefined) {
+      log.warn(`The environment variable '${line}' is not valid.`);
+      continue;
+    }
+
+    // key and value should not be surrounded by whitespaces or quotes
+    envVars.push({
+      name: key.trim(),
+      value: value.replace(/['"]+/g, "").trim(),
+    });
+  }
+
+  return envVars;
 }
