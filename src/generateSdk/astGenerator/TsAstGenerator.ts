@@ -65,7 +65,7 @@ export class AstGenerator implements AstGeneratorInterface {
         const typeAtLocation = typeChecker.getTypeAtLocation((type as any).typeName);
         const typeAtLocationPath = (typeAtLocation.aliasSymbol as any).declarations?.[0].getSourceFile().symbol.escapedName;
         const trimmedPath = typeAtLocationPath.substring(1, typeAtLocationPath.length - 1);
-        const pathFile = path.relative(process.cwd(), trimmedPath);
+        const pathFile = path.relative(process.cwd(), trimmedPath).replace(/\\/g, "/");
         if (!this.isDeclarationInList(escapedText, pathFile, declarations)) {
           let declaredNode: StructLiteral | TypeAlias | Enum;
           if (typeAtLocation.aliasSymbol?.declarations?.[0].kind === typescript.SyntaxKind.TypeAliasDeclaration) {
