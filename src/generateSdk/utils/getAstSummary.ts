@@ -32,10 +32,10 @@ export function getAstSummary(
       }) as ClassDefinition;
 
       // get the types
-      const types: string[] = body?.filter((elem) => {
+      const types: Object[] = body?.filter((elem) => {
         return elem.type !== "ClassDefinition";
       }).map((elem) => {
-        return JSON.stringify(elem);
+        return elem;
       }) || [];
 
       const methods: AstSummaryMethod[] = classElem.methods.map(
@@ -44,7 +44,7 @@ export function getAstSummary(
             (param: ParameterDefinition) => {
               return {
                 name: param.name,
-                type: JSON.stringify(param.paramType),
+                type: param.paramType,
                 optional: param.optional
               };
             }
@@ -54,7 +54,7 @@ export function getAstSummary(
             name: method.name,
             type: classConfiguration.classConfiguration.getMethodType(method.name),
             params: params,
-            returnType: JSON.stringify(method.returnType)
+            returnType: method.returnType
           };
           return methodInfo;
         }

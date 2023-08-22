@@ -2,7 +2,7 @@ import { TriggerType } from "./yamlProjectConfiguration.js";
 
 export type AstSummaryParam = {
   name: string;
-  type: string;
+  type: Object;
   optional: boolean;
 };
 
@@ -10,14 +10,14 @@ export type AstSummaryMethod = {
   name: string;
   type: TriggerType;
   params: AstSummaryParam[];
-  returnType: string;
+  returnType: Object;
 };
 
 export type AstSummaryClass = {
   name: string;
   path: string;
   language: string;
-  types: string[];
+  types: Object[];
   methods: AstSummaryMethod[];
 };
 
