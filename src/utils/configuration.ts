@@ -4,7 +4,7 @@ import { checkYamlFileExists, readUTF8File } from "./file.js"
 import { parse } from "yaml"
 
 export async function getProjectConfiguration(configurationFilePath = "./genezio.yaml"): Promise<YamlProjectConfiguration> {
-  if (!await checkYamlFileExists()) {
+  if (!await checkYamlFileExists(configurationFilePath)) {
     throw new Error("The configuration file does not exist.");
   }
 

@@ -7,10 +7,10 @@ import { Language, TriggerType, YamlProjectConfiguration } from "./yamlProjectCo
 
 export class ParameterType {
     name: string;
-    type: Object;
+    type: any;
     optional: boolean;
 
-    constructor(name: string, type: Object, optional = false) {
+    constructor(name: string, type: any, optional = false) {
         this.name = name
         this.type = type
         this.optional = optional
@@ -22,9 +22,9 @@ export class MethodConfiguration {
     parameters: ParameterType[]
     cronString?: string;
     type: TriggerType;
-    returnType: Object;
+    returnType: any;
 
-    constructor(name: string, parameters: string[], returnType: Object, type?: TriggerType, cronString?: string) {
+    constructor(name: string, parameters: string[], returnType: any, type?: TriggerType, cronString?: string) {
         this.name = name;
         this.parameters = parameters.map((parameter) => new ParameterType(parameter, "any"));
         this.type = type ?? TriggerType.jsonrpc;
@@ -39,7 +39,7 @@ export class ClassConfiguration {
     type: TriggerType;
     language: string;
     methods: MethodConfiguration[];
-    types: Object[];
+    types: any[];
 
     constructor(
         name: string,
@@ -47,7 +47,7 @@ export class ClassConfiguration {
         type: TriggerType,
         language: string,
         methods: MethodConfiguration[],
-        types: Object[]
+        types: any[]
     ) {
         this.name = name;
         this.path = path;
