@@ -224,13 +224,13 @@ program
   .command("sdk")
   .argument("[projectName]", "Name of the project you want to generate an SDK for.")
   .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
-  .option("-lang, --language <language>", "Language of the SDK to generate. Default: 'ts'.", "ts")
-  .option("-s, --source <source>", "Path to the genezio.yaml file on your disk. Only used for generating SDKs for local projects. Default: './'.", "./")
-  .option("-p, --path <path>", "Path to the directory where the SDK will be generated. Default: './sdk'.", "./sdk")
-  .option("--port <port>", "Port of the local environment to generate the SDK for. Default: 8083.", "8083")
-  .option("--stage <stage>", "Stage to deploy to. Default: 'prod'.", "prod")
-  .option("--region <region>", "Region to deploy to. Default: 'us-east-1'.", "us-east-1")
-  .description("Generate an SDK corresponding to a deployed or local project. Provide the project name to generate an SDK for a deployed project. Provide the path to the genezio.yaml on your disk to generate an SDK for a local project.")
+  .option("--language <language>", "Language of the SDK.", "ts")
+  .option("-s, --source <source>", "Path to the genezio.yaml file on your disk. Only used for generating SDKs for local projects.", "./")
+  .option("-p, --path <path>", "Path to the directory where the SDK will be generated.", "./sdk")
+  .option("--port <port>", "Port of the local environment to generate the SDK for.", "8083")
+  .option("--stage <stage>", "Stage of the project.", "prod")
+  .option("--region <region>", "Region where your project is deployed.", "us-east-1")
+  .description("Generate an SDK corresponding to a deployed or local project.\nProvide the project name to generate an SDK for a deployed project.\nEx: genezio sdk my-project --stage prod --region us-east-1\n\nProvide the path to the genezio.yaml on your disk to generate an SDK for a local project.\nEx: genezio sdk --source ../my-project")
   .action(async (projectName = "", options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
 
