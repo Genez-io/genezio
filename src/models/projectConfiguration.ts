@@ -94,7 +94,7 @@ export class ProjectConfiguration {
 
         // Generate AST Summary
         this.astSummary = {
-            version: "1.0.0",
+            version: "2",
             classes: getAstSummary(sdkGeneratorResponse.sdkGeneratorInput.classesInfo)
         };
 
