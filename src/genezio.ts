@@ -221,16 +221,24 @@ program
 
 // genezio generateSdk command
 program
-  .command("generateSdk")
+  .command("sdk")
+  .argument("[projectName]", "Name of the project you want to generate an SDK for.")
   .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
-  .option("-lang, --language <language>", "Language of the SDK to generate.")
-  .option("-p, --path <path>", "Path to the directory where the SDK will be generated.")
-  .option("--stage <stage>", "Stage to deploy to. Default: 'production'.")
-  .description("Generate an SDK corresponding to a deployed project.")
-  .action(async (options: any) => {
+  .option("--language <language>", "Language of the SDK.", "ts")
+  .option("-s, --source <source>", "Path to the genezio.yaml file on your disk. Only used for generating SDKs for local projects.", "./")
+  .option("-p, --path <path>", "Path to the directory where the SDK will be generated.", "./sdk")
+  .option("--port <port>", "Port of the local environment to generate the SDK for.", "8083")
+  .option("--stage <stage>", "Stage of the project.", "prod")
+  .option("--region <region>", "Region where your project is deployed.", "us-east-1")
+  .description("Generate an SDK corresponding to a deployed or local project.\nProvide the project name to generate an SDK for a deployed project.\nEx: genezio sdk my-project --stage prod --region us-east-1\n\nProvide the path to the genezio.yaml on your disk to generate an SDK for a local project.\nEx: genezio sdk --source ../my-project")
+  .action(async (projectName = "", options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
 
-    await generateSdkCommand(options);
+    await generateSdkCommand(projectName, options).catch((error: Error) => {
+      log.error(error.message);
+      GenezioTelemetry.sendEvent({eventType: "GENEZIO_GENERATE_SDK_ERROR", errorTrace: error.message});
+      exit(1);
+    });
     await logOutdatedVersion();
   });
 
