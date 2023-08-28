@@ -71,7 +71,7 @@
     "node-cron": "^3.0.2",
     "open": "^8.4.0",
     "terminal-overwrite": "^2.0.1",
-    "typescript": "^5.1.6",
+    "typescript": "^5.2.2",
     "unique-names-generator": "^4.7.1",
     "uuid": "^9.0.0",
     "whatwg-mimetype": "~3.0.0",
