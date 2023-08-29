@@ -27,6 +27,7 @@ import {
   directoryContainsHtmlFiles,
   deleteFolder,
   getBundleFolderSizeLimit,
+  readEnvironmentVariablesFile,
 } from "../utils/file.js";
 import { printAdaptiveLog, debugLogger } from "../utils/logging.js";
 import { runNewProcess } from "../utils/process.js";
@@ -43,6 +44,7 @@ import { TypeCheckerBundler } from "../bundlers/node/typeCheckerBundler.js";
 import { GenezioDeployOptions } from "../models/commandOptions.js";
 import { GenezioTelemetry } from "../telemetry/telemetry.js";
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
+import { setEnvironmentVariables } from "../requests/setEnvironmentVariables.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
   let configuration
@@ -313,6 +315,32 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
 
   const projectId = result.classes[0].projectId;
   if (projectId) {
+    // Deploy environment variables if --upload-env is true
+    if (options.env) {
+      const envFile = path.join(process.cwd(), options.env);
+      debugLogger.debug(`Loading environment variables from ${envFile}.`);
+
+      if (!(await fileExists(envFile))) {
+        // There is no need to exit the process here, as the project has been deployed
+        log.error(`File ${envFile} does not exists. Please provide the correct path.`);
+        GenezioTelemetry.sendEvent({eventType: "GENEZIO_DEPLOY_ERROR", errorTrace: `File ${envFile} does not exists`});
+      } else {
+        // Read environment variables from .env file
+        const envVars = await readEnvironmentVariablesFile(envFile);
+        debugLogger.debug(`Environment variables:`, envVars);
+
+        // Upload environment variables to the project
+        await setEnvironmentVariables(projectId, envVars).then(() => {
+          debugLogger.debug(`Environment variables uploaded to project ${projectId}`);
+          GenezioTelemetry.sendEvent({eventType: "GENEZIO_DEPLOY_LOAD_ENV_VARS"});
+        }).catch((error: AxiosError) => {
+          log.error(`Loading environment variables failed with: ${error.message}`);
+          log.error(`You can also try to set the environment variables using the dashboard.`)
+          GenezioTelemetry.sendEvent({eventType: "GENEZIO_DEPLOY_ERROR", errorTrace: error.toString()});
+        });
+      }
+    }
+
     console.log(
       `Your backend project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`
     );
