@@ -40,6 +40,7 @@ export class ClassConfiguration {
     language: string;
     methods: MethodConfiguration[];
     types: any[];
+    version: string;
 
     constructor(
         name: string,
@@ -47,7 +48,8 @@ export class ClassConfiguration {
         type: TriggerType,
         language: string,
         methods: MethodConfiguration[],
-        types: any[]
+        types: any[],
+        version: string
     ) {
         this.name = name;
         this.path = path;
@@ -55,6 +57,7 @@ export class ClassConfiguration {
         this.methods = methods;
         this.language = language;
         this.types = types;
+        this.version = version;
     }
 }
 
@@ -120,7 +123,8 @@ export class ProjectConfiguration {
                 type: yamlClass?.type ?? TriggerType.jsonrpc,
                 language: yamlClass.language,
                 methods: methods,
-                types: c.types
+                types: c.types,
+                version: this.astSummary.version
             }
         });
     }
