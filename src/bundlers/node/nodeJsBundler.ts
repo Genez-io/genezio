@@ -53,14 +53,18 @@ export class NodeJsBundler implements BundlerInterface {
   async #copyNonJsFiles(tempFolderPath: string) {
     const allNonJsFilesPaths = (await getAllFilesFromCurrentPath()).filter(
       (file: FileDetails) => {
+        // create a regex to match any .env files
+        const envFileRegex = new RegExp(/\.env(\..+)?$/);
+
         // filter js files, node_modules and folders
         return (
-          file.extension !== ".ts" &&
-          file.extension !== ".js" &&
-          file.extension !== ".tsx" &&
-          file.extension !== ".jsx" &&
-          !file.path.includes("node_modules") &&
-          !file.path.includes(".git") &&
+          file.extension !== '.ts' &&
+          file.extension !== '.js' &&
+          file.extension !== '.tsx' &&
+          file.extension !== '.jsx' &&
+          !file.path.includes('node_modules') &&
+          !file.path.includes('.git') &&
+          !envFileRegex.test(file.path) &&
           !fs.lstatSync(file.path).isDirectory()
         );
       }
