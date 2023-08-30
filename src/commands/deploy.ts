@@ -41,7 +41,7 @@ import { CloudAdapter } from "../cloudAdapter/cloudAdapter.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { TypeCheckerBundler } from "../bundlers/node/typeCheckerBundler.js";
 import { GenezioDeployOptions } from "../models/commandOptions.js";
-import { GenezioTelemetry } from "../telemetry/telemetry.js";
+import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
@@ -51,7 +51,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
     configuration = await getProjectConfiguration();
   } catch (error: any) {
     log.error(error.message);
-    GenezioTelemetry.sendEvent({eventType: "GENEZIO_DEPLOY_ERROR", errorTrace: error.toString()});
+    GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR, errorTrace: error.toString(), commandOptions: JSON.stringify(options)});
     exit(1);
   }
 
@@ -73,15 +73,15 @@ export async function deployCommand(options: GenezioDeployOptions) {
         configuration.scripts?.preBackendDeploy
       );
       if (!output) {
-        GenezioTelemetry.sendEvent({eventType: "GENEZIO_PRE_BACKEND_DEPLOY_SCRIPT_ERROR"});
+        GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_PRE_BACKEND_DEPLOY_SCRIPT_ERROR, commandOptions: JSON.stringify(options)});
         log.error("preBackendDeploy script failed.");
         exit(1);
       }
     }
 
-    GenezioTelemetry.sendEvent({eventType: "GENEZIO_BACKEND_DEPLOY_START", cloudProvider: configuration.cloudProvider});
+    GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_START, cloudProvider: configuration.cloudProvider, commandOptions: JSON.stringify(options)});
     await deployClasses(configuration, cloudAdapter, options).catch(async (error: AxiosError) => {
-      GenezioTelemetry.sendEvent({eventType: "GENEZIO_BACKEND_DEPLOY_ERROR", errorTrace: error.toString()});
+      GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_ERROR, errorTrace: error.toString(), commandOptions: JSON.stringify(options)});
 
       switch (error.response?.status) {
         case 401:
@@ -109,7 +109,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
       }
       exit(1);
     });
-    GenezioTelemetry.sendEvent({eventType: "GENEZIO_BACKEND_DEPLOY_END", cloudProvider: configuration.cloudProvider});
+    GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_END, cloudProvider: configuration.cloudProvider, commandOptions: JSON.stringify(options)});
 
     if (configuration.scripts?.postBackendDeploy) {
       log.info("Running postBackendDeploy script...");
@@ -118,7 +118,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
         configuration.scripts?.postBackendDeploy
       );
       if (!output) {
-        GenezioTelemetry.sendEvent({eventType: "GENEZIO_POST_BACKEND_DEPLOY_SCRIPT_ERROR"});
+        GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_POST_BACKEND_DEPLOY_SCRIPT_ERROR, commandOptions: JSON.stringify(options)});
         log.error("postBackendDeploy script failed.");
         exit(1);
       }
@@ -133,13 +133,13 @@ export async function deployCommand(options: GenezioDeployOptions) {
         configuration.scripts?.preFrontendDeploy
       );
       if (!output) {
-        GenezioTelemetry.sendEvent({eventType: "GENEZIO_PRE_FRONTEND_DEPLOY_SCRIPT_ERROR"});
+        GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_PRE_FRONTEND_DEPLOY_SCRIPT_ERROR, commandOptions: JSON.stringify(options)});
         log.error("preFrontendDeploy script failed.");
         exit(1);
       }
     }
 
-    GenezioTelemetry.sendEvent({eventType: "GENEZIO_FRONTEND_DEPLOY_START"});
+    GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_START, commandOptions: JSON.stringify(options)});
 
     log.info("Deploying your frontend to genezio infrastructure...");
     let url;
@@ -150,14 +150,14 @@ export async function deployCommand(options: GenezioDeployOptions) {
       if (error.message == "No frontend entry in genezio configuration file.") {
         exit(0);
       }
-      GenezioTelemetry.sendEvent({eventType: "GENEZIO_FRONTEND_DEPLOY_ERROR", errorTrace: error.toString()});
+      GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_ERROR, errorTrace: error.toString(), commandOptions: JSON.stringify(options)});
       exit(1);
     }
     log.info(
       "\x1b[36m%s\x1b[0m",
       `Frontend successfully deployed at ${url}.`);
 
-    GenezioTelemetry.sendEvent({eventType: "GENEZIO_FRONTEND_DEPLOY_END"});
+    GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_END, commandOptions: JSON.stringify(options)});
 
     if (configuration.scripts?.postFrontendDeploy) {
       log.info("Running postFrontendDeploy script...");
@@ -166,7 +166,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
         configuration.scripts?.postFrontendDeploy
       );
       if (!output) {
-        GenezioTelemetry.sendEvent({eventType: "GENEZIO_POST_FRONTEND_DEPLOY_SCRIPT_ERROR"});
+        GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_POST_FRONTEND_DEPLOY_SCRIPT_ERROR, commandOptions: JSON.stringify(options)});
         log.error("postFrontendDeploy script failed.");
         exit(1);
       }

@@ -34,7 +34,7 @@ import axios, { AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
 import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js";
 import hash from 'hash-it';
-import { GenezioTelemetry } from "../telemetry/telemetry.js";
+import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import dotenv from 'dotenv';
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
 
@@ -124,7 +124,7 @@ export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProj
 // Function that starts the local environment.
 // It also monitors for changes in the user's code and restarts the environment when changes are detected.
 export async function startLocalEnvironment(options: GenezioLocalOptions) {
-  GenezioTelemetry.sendEvent({eventType: "GENEZIO_LOCAL"});
+  GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_LOCAL, commandOptions: JSON.stringify(options)});
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
@@ -208,7 +208,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 
     // When new changes are detected, close everything and restart the process
     clearAllResources(server, processForClasses, crons);
-    GenezioTelemetry.sendEvent({eventType: "GENEZIO_LOCAL_RELOAD"});
+    GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_LOCAL_RELOAD, commandOptions: JSON.stringify(options)});
   }
 }
 
