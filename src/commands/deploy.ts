@@ -323,7 +323,7 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
       if (!(await fileExists(envFile))) {
         // There is no need to exit the process here, as the project has been deployed
         log.error(`File ${envFile} does not exists. Please provide the correct path.`);
-        GenezioTelemetry.sendEvent({eventType: "GENEZIO_DEPLOY_ERROR", errorTrace: `File ${envFile} does not exists`});
+        GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR, errorTrace: `File ${envFile} does not exists`});
       } else {
         // Read environment variables from .env file
         const envVars = await readEnvironmentVariablesFile(envFile);
@@ -332,11 +332,11 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
         // Upload environment variables to the project
         await setEnvironmentVariables(projectId, envVars).then(() => {
           debugLogger.debug(`Environment variables uploaded to project ${projectId}`);
-          GenezioTelemetry.sendEvent({eventType: "GENEZIO_DEPLOY_LOAD_ENV_VARS"});
+          GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS});
         }).catch((error: AxiosError) => {
           log.error(`Loading environment variables failed with: ${error.message}`);
           log.error(`You can also try to set the environment variables using the dashboard.`)
-          GenezioTelemetry.sendEvent({eventType: "GENEZIO_DEPLOY_ERROR", errorTrace: error.toString()});
+          GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR, errorTrace: error.toString()});
         });
       }
     }
