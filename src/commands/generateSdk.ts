@@ -12,7 +12,7 @@ import getProjectInfo from "../requests/getProjectInfo.js";
 import listProjects from "../requests/listProjects.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
 import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
-import { GenezioTelemetry } from "../telemetry/telemetry.js";
+import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import path from "path";
 import {
   SdkGeneratorClassesInfoInput,
@@ -38,7 +38,7 @@ export async function generateSdkCommand(projectName: string, options: any) {
   }
 
   if (projectName) {
-    GenezioTelemetry.sendEvent({ eventType: "GENEZIO_GENERATE_REMOTE_SDK" });
+    GenezioTelemetry.sendEvent({ eventType: TelemetryEventTypes.GENEZIO_GENERATE_REMOTE_SDK , commandOptions: JSON.stringify(options)});
     await generateRemoteSdkHandler(
       language,
       sdkPath,
@@ -49,16 +49,13 @@ export async function generateSdkCommand(projectName: string, options: any) {
       if (error.response?.status == 401) {
         log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
       } else {
-        GenezioTelemetry.sendEvent({
-          eventType: "GENEZIO_GENERATE_SDK_REMOTE_ERROR",
-          errorTrace: error.message,
-        });
+        GenezioTelemetry.sendEvent({ eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK_REMOTE_ERROR, errorTrace: error.message, commandOptions: JSON.stringify(options)});
         log.error(error.message);
       }
       exit(1);
     });
   } else {
-    GenezioTelemetry.sendEvent({ eventType: "GENEZIO_GENERATE_LOCAL_SDK" });
+    GenezioTelemetry.sendEvent({ eventType: TelemetryEventTypes.GENEZIO_GENERATE_LOCAL_SDK, commandOptions: JSON.stringify(options)});
     let source = options.source;
     // check if path ends in .genezio.yaml or else append it
     if (!source.endsWith("genezio.yaml")) {
@@ -72,10 +69,7 @@ export async function generateSdkCommand(projectName: string, options: any) {
     const portNumber = port ? parseInt(port) : 8083;
     await generateLocalSdkHandler(language, source, sdkPath, portNumber).catch(
       (error: Error) => {
-        GenezioTelemetry.sendEvent({
-          eventType: "GENEZIO_GENERATE_SDK_LOCAL_ERROR",
-          errorTrace: error.message,
-        });
+        GenezioTelemetry.sendEvent({ eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK_LOCAL_ERROR, errorTrace: error.message, commandOptions: JSON.stringify(options)});
         log.error(error.message);
         exit(1);
       }
