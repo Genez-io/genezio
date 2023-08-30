@@ -12,7 +12,6 @@ process.on('SIGINT', async () => {
     process.exit();
 });
 process.on('exit', async (code) => {
-    GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_CANCEL, errorTrace: "", commandOptions: ""});
     await cleanupTemporaryFolders();
 });
 
