@@ -35,7 +35,7 @@ import { reportSuccess } from "../utils/reporter.js";
 import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 import { generateRandomSubdomain } from "../utils/yaml.js";
 import cliProgress from 'cli-progress';
-import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js";
+import { BackendConfigurationRequired, YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js";
 import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter.js";
 import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter.js";
 import { CloudAdapter } from "../cloudAdapter/cloudAdapter.js";
@@ -50,7 +50,11 @@ export async function deployCommand(options: GenezioDeployOptions) {
   let configuration
 
   try {
-    configuration = await getProjectConfiguration();
+    if (options.frontend && !options.backend) {
+      configuration = await getProjectConfiguration(BackendConfigurationRequired.BACKEND_OPTIONAL);
+    } else {
+      configuration = await getProjectConfiguration(BackendConfigurationRequired.BACKEND_REQUIRED);
+    }
   } catch (error: any) {
     log.error(error.message);
     GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR, errorTrace: error.toString(), commandOptions: JSON.stringify(options)});
@@ -311,7 +315,7 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
     name: c.className,
     cloudUrl: c.functionUrl
   })));
-  await writeSdkToDisk(sdkResponse, configuration.sdk.language, configuration.sdk.path)
+  await writeSdkToDisk(sdkResponse, configuration.sdk!.language, configuration.sdk!.path)
 
   const projectId = result.classes[0].projectId;
   if (projectId) {

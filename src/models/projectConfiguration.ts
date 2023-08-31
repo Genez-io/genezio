@@ -91,7 +91,7 @@ export class ProjectConfiguration {
     ) {
         this.name = yamlConfiguration.name;
         this.region = yamlConfiguration.region;
-        this.sdk = yamlConfiguration.sdk;
+        this.sdk = yamlConfiguration.sdk!;
         this.options = yamlConfiguration.options;
         this.cloudProvider = yamlConfiguration.cloudProvider || CloudProviderIdentifier.GENEZIO;
 
@@ -103,7 +103,7 @@ export class ProjectConfiguration {
 
         this.classes = this.astSummary.classes.map((c) => {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const yamlClass = yamlConfiguration.classes.find((yamlC) => yamlC.path === c.path)!;
+            const yamlClass = yamlConfiguration.classes!.find((yamlC) => yamlC.path === c.path)!;
             const methods = c?.methods.map((m) => {
                 const yamlMethod = yamlClass.methods.find((yamlM) => yamlM.name === m.name)
 

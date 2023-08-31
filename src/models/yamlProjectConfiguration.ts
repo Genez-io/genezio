@@ -231,7 +231,7 @@ export class YamlProjectConfiguration {
   sdk?: YamlSdkConfiguration;
   cloudProvider?: CloudProviderIdentifier;
   options?: NodeOptions;
-  classes?: YamlClassConfiguration[];
+  classes: YamlClassConfiguration[];
   frontend?: YamlFrontend;
   scripts?: YamlScriptsConfiguration;
   plugins?: YamlPluginsConfiguration;
@@ -289,25 +289,21 @@ export class YamlProjectConfiguration {
 
     let sdk: YamlSdkConfiguration | undefined;
     let classes: YamlClassConfiguration[] = [];
-    let scripts: YamlScriptsConfiguration | undefined;
-    let plugins: YamlPluginsConfiguration | undefined;
     if (
-      backendConfigurationRequired ===
-      BackendConfigurationRequired.BACKEND_REQUIRED
+      backendConfigurationRequired === BackendConfigurationRequired.BACKEND_REQUIRED &&
+      configurationFileContent.options &&
+      configurationFileContent.options.nodeRuntime &&
+      !(
+        configurationFileContent.options.nodeRuntime === "nodejs16.x" ||
+        configurationFileContent.options.nodeRuntime === "nodejs18.x"
+      )
     ) {
-      if (
-        configurationFileContent.options &&
-        configurationFileContent.options.nodeRuntime &&
-        !(
-          configurationFileContent.options.nodeRuntime === "nodejs16.x" ||
-          configurationFileContent.options.nodeRuntime === "nodejs18.x"
-        )
-      ) {
-        throw new Error(
-          "The node version in the genezio.yaml configuration file is not valid. The value must be one of the following: nodejs16.x or nodejs18.x."
-        );
-      }
+      throw new Error(
+        "The node version in the genezio.yaml configuration file is not valid. The value must be one of the following: nodejs16.x or nodejs18.x."
+      );
+    }
 
+    if (backendConfigurationRequired === BackendConfigurationRequired.BACKEND_REQUIRED) {
       if (!configurationFileContent.sdk) {
         throw new Error(
           "The sdk property is missing from the configuration file."
@@ -320,11 +316,17 @@ export class YamlProjectConfiguration {
         );
       }
 
-      const language: string = configurationFileContent.sdk.language;
-
-      if (!language) {
+      if (!configurationFileContent.sdk.language) {
         throw new Error("The sdk.language property is missing.");
       }
+    }
+
+    if (
+      configurationFileContent.sdk &&
+      configurationFileContent.sdk.path &&
+      configurationFileContent.sdk.language
+    ) {
+      const language: string = configurationFileContent.sdk.language;
 
       if (!Language[language as keyof typeof Language]) {
         log.info(
@@ -338,9 +340,11 @@ export class YamlProjectConfiguration {
         ],
         configurationFileContent.sdk.path
       );
+    }
 
-      const unparsedClasses: any[] = configurationFileContent.classes;
+    const unparsedClasses: any[] = configurationFileContent.classes;
 
+    if (backendConfigurationRequired === BackendConfigurationRequired.BACKEND_REQUIRED) {
       if (!unparsedClasses) {
         throw new Error(
           "The configuration file should contain at least one class."
@@ -351,12 +355,15 @@ export class YamlProjectConfiguration {
       if (!Array.isArray(unparsedClasses)) {
         throw new Error("The classes property must be an array.");
       }
+    }
 
+    if (unparsedClasses && Array.isArray(unparsedClasses)) {
       classes = await Promise.all(
         unparsedClasses.map((c) => YamlClassConfiguration.create(c))
       );
+    }
 
-      scripts = configurationFileContent.scripts;
+    if (backendConfigurationRequired === BackendConfigurationRequired.BACKEND_REQUIRED) {
       if (
         configurationFileContent.plugins?.astGenerator &&
         !Array.isArray(configurationFileContent.plugins?.astGenerator)
@@ -369,16 +376,22 @@ export class YamlProjectConfiguration {
       ) {
         throw new Error("sdkGenerator must be an array");
       }
-      plugins = configurationFileContent.plugins;
+    }
+    const plugins: YamlPluginsConfiguration | undefined = configurationFileContent.plugins;
 
-      if (configurationFileContent.cloudProvider) {
-        if (!cloudProviders.includes(configurationFileContent.cloudProvider)) {
-          throw new Error(
-            `The cloud provider ${configurationFileContent.cloudProvider} is invalid. Please use ${CloudProviderIdentifier.GENEZIO} or ${CloudProviderIdentifier.SELF_HOSTED_AWS}.`
-          );
-        }
+    if (
+      configurationFileContent.cloudProvider &&
+      backendConfigurationRequired === BackendConfigurationRequired.BACKEND_REQUIRED
+    ) {
+      if (!cloudProviders.includes(configurationFileContent.cloudProvider)) {
+        throw new Error(
+          `The cloud provider ${configurationFileContent.cloudProvider} is invalid. Please use ${CloudProviderIdentifier.GENEZIO} or ${CloudProviderIdentifier.SELF_HOSTED_AWS}.`
+        );
       }
     }
+
+    const scripts: YamlScriptsConfiguration | undefined =
+      configurationFileContent.scripts;
 
     if (configurationFileContent.region) {
       if (!regions.includes(configurationFileContent.region)) {
@@ -432,10 +445,12 @@ export class YamlProjectConfiguration {
       region: this.region,
       cloudProvider: this.cloudProvider ? this.cloudProvider : undefined,
       options: this.options ? this.options : undefined,
-      sdk: {
-        language: this.sdk?.language,
-        path: this.sdk?.path,
-      },
+      sdk: this.sdk
+        ? {
+            language: this.sdk?.language,
+            path: this.sdk?.path,
+          }
+        : undefined,
       scripts: this.scripts
         ? {
             preBackendDeploy: this.scripts?.preBackendDeploy,
@@ -450,16 +465,18 @@ export class YamlProjectConfiguration {
             subdomain: this.frontend?.subdomain,
           }
         : undefined,
-      classes: this.classes?.map((c) => ({
-        path: c.path,
-        type: c.type,
-        name: c.name ? c.name : undefined,
-        methods: c.methods.map((m) => ({
-          name: m.name,
-          type: m.type,
-          cronString: m.cronString,
-        })),
-      })),
+      classes: this.classes.length
+        ? this.classes?.map((c) => ({
+            path: c.path,
+            type: c.type,
+            name: c.name ? c.name : undefined,
+            methods: c.methods.map((m) => ({
+              name: m.name,
+              type: m.type,
+              cronString: m.cronString,
+            })),
+          }))
+        : undefined,
     };
 
     const fileDetails = getFileDetails(path);

@@ -7,7 +7,7 @@ import {
   GENEZIO_NO_CLASSES_FOUND,
 } from "../errors.js";
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
-import { Language, TriggerType } from "../models/yamlProjectConfiguration.js";
+import { BackendConfigurationRequired, Language, TriggerType } from "../models/yamlProjectConfiguration.js";
 import getProjectInfo from "../requests/getProjectInfo.js";
 import listProjects from "../requests/listProjects.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
@@ -85,10 +85,10 @@ async function generateLocalSdkHandler(
   sdkPath: string,
   port: number
 ) {
-  const configuration = await getProjectConfiguration(source);
+  const configuration = await getProjectConfiguration(BackendConfigurationRequired.BACKEND_REQUIRED, source);
 
-  configuration.sdk.language = language as Language;
-  configuration.sdk.path = sdkPath;
+  configuration.sdk!.language = language as Language;
+  configuration.sdk!.path = sdkPath;
 
   // check if there are classes in the configuration
   if (configuration.classes.length === 0) {
@@ -118,8 +118,8 @@ async function generateLocalSdkHandler(
   // write the sdk to disk in the specified path
   await writeSdkToDisk(
     sdkResponse,
-    configuration.sdk.language,
-    configuration.sdk.path
+    configuration.sdk!.language,
+    configuration.sdk!.path
   );
 }
 

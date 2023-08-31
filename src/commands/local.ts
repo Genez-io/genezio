@@ -32,7 +32,7 @@ import { GenezioLocalOptions } from "../models/commandOptions.js";
 import { DartBundler } from "../bundlers/dart/localDartBundler.js";
 import axios, { AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
-import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js";
+import { BackendConfigurationRequired, YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js";
 import hash from 'hash-it';
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import dotenv from 'dotenv';
@@ -62,7 +62,7 @@ export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProj
   // eslint-disable-next-line no-async-promise-executor
   return new Promise<BundlerRestartResponse>(async (resolve) => {
     try {
-      if (yamlProjectConfiguration.classes.length === 0) {
+      if (yamlProjectConfiguration.classes!.length === 0) {
         throw new Error(GENEZIO_NO_CLASSES_FOUND);
       }
 
@@ -129,7 +129,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
   // eslint-disable-next-line no-constant-condition
   while (true) {
     // Read the project configuration every time because it might change
-    const yamlProjectConfiguration = await getProjectConfiguration();
+    const yamlProjectConfiguration = await getProjectConfiguration(BackendConfigurationRequired.BACKEND_REQUIRED);
     let sdk: SdkGeneratorResponse;
     let processForClasses: Map<string, ClassProcess>;
     let projectConfiguration: ProjectConfiguration;

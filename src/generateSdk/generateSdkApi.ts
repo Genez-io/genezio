@@ -16,7 +16,7 @@ import { AstGeneratorInput } from "../models/genezioModels.js";
  * @throws {Error} If there was an error generating the SDK.
  */
 export async function sdkGeneratorApiHandler(projectConfiguration: YamlProjectConfiguration): Promise<SdkGeneratorResponse> {
-  const sdkLanguage = projectConfiguration.sdk.language;
+  const sdkLanguage = projectConfiguration.sdk!.language;
   const inputs: AstGeneratorInput[] = getGenerateAstInputs(projectConfiguration);
 
   const sdkGeneratorInput: SdkGeneratorInput = {

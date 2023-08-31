@@ -1,12 +1,11 @@
 import log from "loglevel";
 import path from "path";
 
-import { TriggerType } from "../models/yamlProjectConfiguration.js";
+import { BackendConfigurationRequired, TriggerType, YamlClassConfiguration } from "../models/yamlProjectConfiguration.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
 import { fileExists, writeToFile } from "../utils/file.js";
 import { supportedExtensions } from "../utils/languages.js";
-import { DependencyInstaller } from "../bundlers/node/dependencyInstaller.js";
 
 export async function addClassCommand(classPath: string, classType: string) {
   GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_ADD_CLASS});
@@ -23,7 +22,7 @@ export async function addClassCommand(classPath: string, classType: string) {
     throw new Error("Please provide a path to the class you want to add.");
   }
 
-  const projectConfiguration = await getProjectConfiguration();
+  const projectConfiguration = await getProjectConfiguration(BackendConfigurationRequired.BACKEND_REQUIRED);
 
   const className = classPath.split(path.sep).pop();
 
@@ -48,8 +47,7 @@ export async function addClassCommand(classPath: string, classType: string) {
   // check if class already exists
   if (projectConfiguration.classes.length > 0) {
     if (
-      projectConfiguration.classes
-        .map((c) => c.path.split(path.sep).pop())
+      projectConfiguration.classes.map((c: YamlClassConfiguration) => c.path.split(path.sep).pop())
         .includes(className)
     ) {
       throw new Error("Class already exists.");
