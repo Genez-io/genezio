@@ -315,7 +315,10 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
     name: c.className,
     cloudUrl: c.functionUrl
   })));
-  await writeSdkToDisk(sdkResponse, configuration.sdk!.language, configuration.sdk!.path)
+  if (!configuration.sdk) {
+    throw new Error("SDK configuration is missing");
+  }
+  await writeSdkToDisk(sdkResponse, configuration.sdk.language, configuration.sdk.path)
 
   const projectId = result.classes[0].projectId;
   if (projectId) {

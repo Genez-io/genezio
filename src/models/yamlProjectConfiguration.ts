@@ -222,6 +222,8 @@ export enum BackendConfigurationRequired {
   BACKEND_OPTIONAL,
 }
 
+const supportedNodeRuntimes: string[] = ["nodejs16.x", "nodejs18.x"];
+
 /**
  * This class represents the model for the YAML configuration file.
  */
@@ -293,13 +295,10 @@ export class YamlProjectConfiguration {
       backendConfigurationRequired === BackendConfigurationRequired.BACKEND_REQUIRED &&
       configurationFileContent.options &&
       configurationFileContent.options.nodeRuntime &&
-      !(
-        configurationFileContent.options.nodeRuntime === "nodejs16.x" ||
-        configurationFileContent.options.nodeRuntime === "nodejs18.x"
-      )
+      !(supportedNodeRuntimes.includes(configurationFileContent.options.nodeRuntime))
     ) {
       throw new Error(
-        "The node version in the genezio.yaml configuration file is not valid. The value must be one of the following: nodejs16.x or nodejs18.x."
+        "The node version in the genezio.yaml configuration file is not valid. The value must be one of the following: " + supportedNodeRuntimes.join(", ")
       );
     }
 
