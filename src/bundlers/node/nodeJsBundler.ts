@@ -137,6 +137,17 @@ export class NodeJsBundler implements BundlerInterface {
             return { contents, loader };
           }
 
+          const regex = /require\(['"]\.\.?(?:\/[\w.-]+)+['"]\);?/g;
+          const matches = contents.match(regex);
+
+          if (matches) {
+            return {
+              errors: [{
+                text: `genezio does not support require() for relative paths. Please use import statements instead.`
+              }]
+            }
+          }
+
           return {
             contents: `import { createRequire } from 'module';
             const require = createRequire(import.meta.url);
