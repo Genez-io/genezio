@@ -137,6 +137,7 @@ export class NodeJsBundler implements BundlerInterface {
             return { contents, loader };
           }
 
+          // Check if file uses require() for relative paths
           const regex = /require\(['"]\.\.?(?:\/[\w.-]+)+['"]\);?/g;
           const matches = contents.match(regex);
 
