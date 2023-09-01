@@ -23,7 +23,7 @@ export async function generateAst(
 ): Promise<AstGeneratorOutput> {
   const extension = path.extname(input.class.path).replace(".", "");
   let pluginsImported: any = [];
-  
+
 
   if (plugins) {
     pluginsImported = plugins?.map(async plugin => {
@@ -55,7 +55,7 @@ export async function generateAst(
 
   return await astGeneratorClass.generateAst(input)
     .catch((err: any) => {
-      debugLogger.log("An error has occured", err);
+      debugLogger.log("An error has occurred", err);
       throw Object.assign(err, { path: input.class.path});
     });
 }

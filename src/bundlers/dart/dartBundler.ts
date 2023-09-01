@@ -165,7 +165,7 @@ export class DartBundler implements BundlerInterface {
         return archiveName;
     }
 
-    async #addLambdaRuntimeDepenendecy(path: string) {
+    async #addLambdaRuntimeDependency(path: string) {
         const success = await runNewProcess("dart pub add aws_lambda_dart_runtime:'^1.1.0'", path, false, false);
 
         if (!success) {
@@ -185,7 +185,7 @@ export class DartBundler implements BundlerInterface {
             }
         );
 
-        // iterare over all non dart files and copy them to tmp folder
+        // iterate over all non dart files and copy them to tmp folder
         await Promise.all(
             allNonJsFilesPaths.map((filePath: FileDetails) => {
                 // create folder structure in tmp folder
@@ -223,7 +223,7 @@ export class DartBundler implements BundlerInterface {
             // Check if dart is installed
             await checkIfDartIsInstalled();
 
-            await this.#addLambdaRuntimeDepenendecy(inputTemporaryFolder);
+            await this.#addLambdaRuntimeDependency(inputTemporaryFolder);
 
             await this.#analyze(inputTemporaryFolder);
 

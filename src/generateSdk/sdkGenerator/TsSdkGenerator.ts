@@ -102,7 +102,7 @@ const TYPESCRIPT_RESERVED_WORDS = [
 ];
 
 const modelTemplate = `/**
-* This is an auto generated code. This code should not be modified since the file can be overwriten
+* This is an auto generated code. This code should not be modified since the file can be overwritten
 * if new genezio commands are executed.
 */
 
@@ -116,7 +116,7 @@ export {{{type}}}
 `;
 
 const template = `/**
-* This is an auto generated code. This code should not be modified since the file can be overwriten
+* This is an auto generated code. This code should not be modified since the file can be overwritten
 * if new genezio commands are executed.
 */
 

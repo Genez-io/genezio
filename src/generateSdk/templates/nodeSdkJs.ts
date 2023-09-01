@@ -1,5 +1,5 @@
 export const nodeSdkJs = `/**
-* This is an auto generated code. This code should not be modified since the file can be overwriten 
+* This is an auto generated code. This code should not be modified since the file can be overwritten
 * if new genezio commands are executed.
 */
 
@@ -35,7 +35,7 @@ async function makeRequestNode(request, url, agent) {
 
    const options = {
        hostname: hostUrl.hostname,
-       path: hostUrl.search ? hostUrl.pathname + hostUrl.search : hostUrl.pathname, 
+       path: hostUrl.search ? hostUrl.pathname + hostUrl.search : hostUrl.pathname,
        port: hostUrl.port,
        method: 'POST',
        headers: {

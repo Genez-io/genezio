@@ -9,18 +9,18 @@ const requireESM = createRequire(import.meta.url);
 const pjson = requireESM("../../package.json");
 const currentGenezioVersion = pjson.version;
 
-const latestGenzioVersionPromise = latestVersion("genezio");
+const latestGenezioVersionPromise = latestVersion("genezio");
 
 export default currentGenezioVersion;
 
 export async function logOutdatedVersion() {
-  const latestGenzioVersion = await latestGenzioVersionPromise;
-  if (compare(latestGenzioVersion, currentGenezioVersion, ">")) {
+  const latestGenezioVersion = await latestGenezioVersionPromise;
+  if (compare(latestGenezioVersion, currentGenezioVersion, ">")) {
     log.info(
       boxen(
         `Update available ${colors.grey(
           currentGenezioVersion
-        )} → ${colors.magenta(latestGenzioVersion)}\nRun ${colors.green(
+        )} → ${colors.magenta(latestGenezioVersion)}\nRun ${colors.green(
           "npm i -g genezio"
         )} to update`,
         { padding: 1, margin: 1, borderStyle: "round", borderColor: "magentaBright" }
