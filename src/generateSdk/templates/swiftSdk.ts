@@ -1,5 +1,5 @@
 export const swiftSdk = `/**
- * This is an auto generated code. This code should not be modified since the file can be overwriten
+ * This is an auto generated code. This code should not be modified since the file can be overwritten
  * if new genezio commands are executed.
  */
 
@@ -12,7 +12,7 @@ struct ResponseContent {
 
 class Remote {
     private var urlString: String? = nil
-    
+
     init(url: String? = nil) {
         self.urlString = url
     }

@@ -1,5 +1,5 @@
 import Mustache from "mustache";
-import { 
+import {
   ClassDefinition,
   AstNodeType,
   SdkGeneratorInterface,
@@ -64,7 +64,7 @@ const PYTHON_RESERVED_WORDS = [
   "not"
 ];
 
-const modelTemplate = `# This is an auto generated code. This code should not be modified since the file can be overwriten
+const modelTemplate = `# This is an auto generated code. This code should not be modified since the file can be overwritten
 # if new genezio commands are executed.
 
 from typing import Any, List
@@ -80,9 +80,9 @@ from .{{{path}}} import {{#models}}{{{name}}}{{^last}}, {{/last}}{{/models}}
 {{/externalTypes}}
 `;
 
-const template = `# This is an auto generated code. This code should not be modified since the file can be overwriten 
+const template = `# This is an auto generated code. This code should not be modified since the file can be overwritten
 # if new genezio commands are executed.
-  
+
 from .remote import Remote
 from typing import Any, List
 from enum import IntEnum, Enum
@@ -220,7 +220,7 @@ class SdkGenerator implements SdkGeneratorInterface {
               this.addImportToCurrentView(currentView, externalType);
             }
           }
-          
+
           currentView = this.addViewIfNotExists(modelViews, externalType, view, classInfo);
           if (!currentView?.externalTypes.find((e) => e.name === (externalType as any).name)) {
             currentView?.externalTypes.push({type: this.generateExternalType(externalType), name: (externalType as any).name});

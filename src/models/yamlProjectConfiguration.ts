@@ -75,7 +75,7 @@ export class YamlMethodConfiguration {
       throw new Error("The cron method is missing a cron string property.");
     }
 
-    // Checkcron string format
+    // Check cron string format
     if (type == TriggerType.cron) {
       if (!isValidCron(methodConfigurationYaml.cronString)) {
         throw new Error("The cron string is not valid. Check https://crontab.guru/ for more information.");
