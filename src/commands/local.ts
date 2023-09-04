@@ -37,6 +37,7 @@ import hash from 'hash-it';
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import dotenv from 'dotenv';
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
+import { EOL } from "os";
 
 type ClassProcess = {
   process: ChildProcess;
@@ -545,8 +546,8 @@ async function listenForChanges(sdkPathRelative: any | undefined) {
   if (await fileExists(ignoreFilePath)) {
     // read the file as a string
     const ignoreFile = await readUTF8File(ignoreFilePath);
-    // split the string by new line \n
-    const ignoreFileLines = ignoreFile.split("\n");
+    // split the string by newline - CRLF or LF
+    const ignoreFileLines = ignoreFile.split(EOL);
     // remove empty lines
     const ignoreFileLinesWithoutEmptyLines = ignoreFileLines.filter(
       (line) => line !== "" && !line.startsWith("#")
@@ -575,7 +576,6 @@ async function listenForChanges(sdkPathRelative: any | undefined) {
     if (sdkPath) {
       ignoredPaths = [
         "**/node_modules/*",
-        // "**/node_modules/**/*",
         sdkPath + "/**/*",
         sdkPath + "/*",
         ...ignoredPathsFromGenezioIgnore

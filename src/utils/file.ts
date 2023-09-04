@@ -42,7 +42,7 @@ export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
   const genezioIgnorePath = path.join(process.cwd(), ".genezioignore");
   if (fs.existsSync(genezioIgnorePath)) {
     const genezioIgnoreContent = await readUTF8File(genezioIgnorePath);
-    genezioIgnore = genezioIgnoreContent.split("\n").filter(
+    genezioIgnore = genezioIgnoreContent.split(os.EOL).filter(
       (line) => line !== "" && !line.startsWith("#")
     )
   }
@@ -357,7 +357,7 @@ export async function readEnvironmentVariablesFile(envFilePath: string): Promise
   const envVars = new Array<EnvironmentVariable>();
 
   const envFileContent = await readUTF8File(envFilePath);
-  const envFileLines = envFileContent.split("\n");
+  const envFileLines = envFileContent.split(os.EOL);
 
   for (const line of envFileLines) {
     if (line === "") {
