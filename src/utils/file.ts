@@ -163,11 +163,75 @@ export async function getFileSize(filePath: string): Promise<number> {
   });
 }
 
-export async function getBundleFolderSizeLimit(directoryPath: string): Promise<number> {
+export async function getBundleFolderSizeLimit(directoryPath: string): Promise<object> {
   const files = await getAllFilesRecursively(directoryPath);
   const totalSize = files.reduce((acc, file) => acc + fs.statSync(file).size, 0);
+
+  // Get size for each file
+  const dependencySizes: { name: string; size: number }[] = [];
+  for (const file of files) {
+    try {
+      const stats = await fs.statSync(file);
+      const name = file.replace(directoryPath, "");
+      dependencySizes.push({ name, size: stats.size });
+    } catch (error) {
+      console.error(`Error calculating size for ${file}`);
+    }
+  }
+
+  // Sum size for each dependency and non js/ts files
+  const sum: {
+    dependencySizes: Record<string, number>;
+    nonJsFiles: Record<string, number>;
+  } = {
+    dependencySizes: {},
+    nonJsFiles: {},
+  };
+
+  // Calculate total size for each dependency and non js/ts files
+  dependencySizes.forEach((dep) => {
+    const splitedDepName = dep.name.split("/");
+    // Calculate size only for node_modules dependencies
+    if (splitedDepName[1] === "node_modules") {
+      const depName = splitedDepName[2];
+
+      if (sum.dependencySizes[depName]) {
+        sum.dependencySizes[depName] = sum.dependencySizes[depName] + dep.size;
+        return;
+      }
+
+      sum.dependencySizes[depName] = dep.size;
+      return;
+    }
+
+    const filePath = dep.name;
+    // Calculate size for non js/ts files outside node_modules
+    if (sum.nonJsFiles[filePath]) {
+      sum.nonJsFiles[filePath] = sum.nonJsFiles[filePath] + dep.size;
+    } else {
+      sum.nonJsFiles[filePath] = dep.size;
+    }
+  });
+
+  // Get the biggest N files
+  function getBiggestNFiles(obj: Record<string, number>, n: number): Record<string, number> {
+    const entries = Object.entries(obj);
+    entries.sort((a, b) => b[1] - a[1]);
+    const topN = entries.slice(0, n);
+    const result = Object.fromEntries(topN);
+
+    return result;
+  }
+
   debugLogger.debug(`Total size of the bundle: ${totalSize} bytes`);
-  return totalSize;
+
+  return {
+    totalSize: totalSize,
+    folderSize: {
+      dependenciesSize: getBiggestNFiles(sum.dependencySizes, 5),
+      filesSize: getBiggestNFiles(sum.nonJsFiles, 5),
+    },
+  };
 }
 
 export async function directoryContainsIndexHtmlFiles(directoryPath: string): Promise<boolean> {

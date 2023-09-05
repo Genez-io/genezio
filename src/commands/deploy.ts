@@ -286,7 +286,7 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
       );
 
       // check if the unzipped folder is smaller than 250MB
-      const unzippedBundleSize: number = await getBundleFolderSizeLimit(output.path);
+      const unzippedBundleSize: object = await getBundleFolderSizeLimit(output.path);
       debugLogger.debug(`The unzippedBundleSize for class ${element.path} is ${unzippedBundleSize}.`);
 
       debugLogger.debug(`Zip the directory ${output.path}.`);
@@ -296,14 +296,18 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
 
       await deleteFolder(output.path);
 
-      return { name: element.name, archivePath: archivePath, filePath: element.path, methods: element.methods, unzippedBundleSize: unzippedBundleSize };
+      return { name: element.name, archivePath: archivePath, filePath: element.path, methods: element.methods, totalSize:unzippedBundleSize, unzippedBundleSize: unzippedBundleSize };
     });
 
   const bundlerResultArray = await Promise.all(bundlerResult);
 
   printAdaptiveLog("Bundling your code", "end");
 
-  const result = await cloudAdapter.deploy(bundlerResultArray, projectConfiguration, { stage: stage });
+  const result = await cloudAdapter.deploy(
+    bundlerResultArray as any,
+    projectConfiguration,
+    { stage: stage }
+  );
 
   reportSuccess(result.classes, sdkResponse);
 
