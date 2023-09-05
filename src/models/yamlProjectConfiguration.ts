@@ -217,11 +217,6 @@ export class YamlPluginsConfiguration {
   }
 }
 
-export enum BackendConfigurationRequired {
-  BACKEND_REQUIRED,
-  BACKEND_OPTIONAL,
-}
-
 const supportedNodeRuntimes: string[] = ["nodejs16.x", "nodejs18.x"];
 
 /**
@@ -229,6 +224,7 @@ const supportedNodeRuntimes: string[] = ["nodejs16.x", "nodejs18.x"];
  */
 export class YamlProjectConfiguration {
   name: string;
+  stage: string;
   region: string;
   sdk?: YamlSdkConfiguration;
   cloudProvider?: CloudProviderIdentifier;
@@ -240,6 +236,7 @@ export class YamlProjectConfiguration {
 
   constructor(
     name: string,
+    stage: string,
     region: string,
     sdk: YamlSdkConfiguration | undefined = undefined,
     cloudProvider: CloudProviderIdentifier,
@@ -250,6 +247,7 @@ export class YamlProjectConfiguration {
     options: NodeOptions | undefined = undefined
   ) {
     this.name = name;
+    this.stage = stage;
     this.region = region;
     this.sdk = sdk;
     this.cloudProvider = cloudProvider;
@@ -273,8 +271,7 @@ export class YamlProjectConfiguration {
   }
 
   static async create(
-    configurationFileContent: any,
-    backendConfigurationRequired: BackendConfigurationRequired
+    configurationFileContent: any
   ): Promise<YamlProjectConfiguration> {
     if (!configurationFileContent.name) {
       throw new Error(
@@ -292,13 +289,15 @@ export class YamlProjectConfiguration {
     let sdk: YamlSdkConfiguration | undefined;
     let classes: YamlClassConfiguration[] = [];
     if (
-      backendConfigurationRequired === BackendConfigurationRequired.BACKEND_REQUIRED &&
       configurationFileContent.options &&
       configurationFileContent.options.nodeRuntime &&
-      !(supportedNodeRuntimes.includes(configurationFileContent.options.nodeRuntime))
+      !supportedNodeRuntimes.includes(
+        configurationFileContent.options.nodeRuntime
+      )
     ) {
       throw new Error(
-        "The node version in the genezio.yaml configuration file is not valid. The value must be one of the following: " + supportedNodeRuntimes.join(", ")
+        "The node version in the genezio.yaml configuration file is not valid. The value must be one of the following: " +
+          supportedNodeRuntimes.join(", ")
       );
     }
 
@@ -325,17 +324,9 @@ export class YamlProjectConfiguration {
 
     const unparsedClasses: any[] = configurationFileContent.classes;
 
-    if (backendConfigurationRequired === BackendConfigurationRequired.BACKEND_REQUIRED) {
-      if (!unparsedClasses) {
-        throw new Error(
-          "The configuration file should contain at least one class."
-        );
-      }
-
-      // check if unparsedClasses is an array
-      if (!Array.isArray(unparsedClasses)) {
-        throw new Error("The classes property must be an array.");
-      }
+    // check if unparsedClasses is an array
+    if (unparsedClasses && !Array.isArray(unparsedClasses)) {
+      throw new Error("The classes property must be an array.");
     }
 
     if (unparsedClasses && Array.isArray(unparsedClasses)) {
@@ -344,26 +335,23 @@ export class YamlProjectConfiguration {
       );
     }
 
-    if (backendConfigurationRequired === BackendConfigurationRequired.BACKEND_REQUIRED) {
-      if (
-        configurationFileContent.plugins?.astGenerator &&
-        !Array.isArray(configurationFileContent.plugins?.astGenerator)
-      ) {
-        throw new Error("astGenerator must be an array");
-      }
-      if (
-        configurationFileContent.plugins?.sdkGenerator &&
-        !Array.isArray(configurationFileContent.plugins?.sdkGenerator)
-      ) {
-        throw new Error("sdkGenerator must be an array");
-      }
-    }
-    const plugins: YamlPluginsConfiguration | undefined = configurationFileContent.plugins;
-
     if (
-      configurationFileContent.cloudProvider &&
-      backendConfigurationRequired === BackendConfigurationRequired.BACKEND_REQUIRED
+      configurationFileContent.plugins?.astGenerator &&
+      !Array.isArray(configurationFileContent.plugins?.astGenerator)
     ) {
+      throw new Error("astGenerator must be an array");
+    }
+    if (
+      configurationFileContent.plugins?.sdkGenerator &&
+      !Array.isArray(configurationFileContent.plugins?.sdkGenerator)
+    ) {
+      throw new Error("sdkGenerator must be an array");
+    }
+
+    const plugins: YamlPluginsConfiguration | undefined =
+      configurationFileContent.plugins;
+
+    if (configurationFileContent.cloudProvider) {
       if (!cloudProviders.includes(configurationFileContent.cloudProvider)) {
         throw new Error(
           `The cloud provider ${configurationFileContent.cloudProvider} is invalid. Please use ${CloudProviderIdentifier.GENEZIO} or ${CloudProviderIdentifier.SELF_HOSTED_AWS}.`
@@ -390,6 +378,7 @@ export class YamlProjectConfiguration {
 
     return new YamlProjectConfiguration(
       configurationFileContent.name,
+      configurationFileContent.stage || "prod",
       configurationFileContent.region || "us-east-1",
       sdk,
       configurationFileContent.cloudProvider || CloudProviderIdentifier.GENEZIO,

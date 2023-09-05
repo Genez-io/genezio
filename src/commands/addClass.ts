@@ -1,7 +1,7 @@
 import log from "loglevel";
 import path from "path";
 
-import { BackendConfigurationRequired, TriggerType, YamlClassConfiguration } from "../models/yamlProjectConfiguration.js";
+import { TriggerType, YamlClassConfiguration } from "../models/yamlProjectConfiguration.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
 import { fileExists, writeToFile } from "../utils/file.js";
@@ -22,7 +22,7 @@ export async function addClassCommand(classPath: string, classType: string) {
     throw new Error("Please provide a path to the class you want to add.");
   }
 
-  const projectConfiguration = await getProjectConfiguration(BackendConfigurationRequired.BACKEND_REQUIRED);
+  const projectConfiguration = await getProjectConfiguration();
 
   const className = classPath.split(path.sep).pop();
 

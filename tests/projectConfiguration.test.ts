@@ -2,7 +2,6 @@ import { describe, expect, test } from "@jest/globals";
 import {
   YamlProjectConfiguration,
   TriggerType,
-  BackendConfigurationRequired
 } from "../src/models/yamlProjectConfiguration";
 import { rectifyCronString } from "../src/utils/rectifyCronString";
 
@@ -10,7 +9,7 @@ describe("project configuration", () => {
   test("missing name should throw error", async () => {
     await expect(async () => {
       const yaml = {};
-      await YamlProjectConfiguration.create(yaml, BackendConfigurationRequired.BACKEND_REQUIRED);
+      await YamlProjectConfiguration.create(yaml);
     }).rejects.toThrowError("The name property is missing from the configuration file.");
   });
 
@@ -32,7 +31,7 @@ describe("project configuration", () => {
                   }
               ]
           }
-          await YamlProjectConfiguration.create(yaml, BackendConfigurationRequired.BACKEND_REQUIRED)
+          await YamlProjectConfiguration.create(yaml)
       }).rejects.toThrowError("The region is invalid. Please use a valid region.")
   });
 
@@ -53,25 +52,9 @@ describe("project configuration", () => {
               }
           ]
       }
-      const configuration = await YamlProjectConfiguration.create(yaml, BackendConfigurationRequired.BACKEND_REQUIRED)
+      const configuration = await YamlProjectConfiguration.create(yaml)
       expect(configuration.region).toEqual("us-east-1")
   });
-
-    test('missing class should throw error', async () => {
-        await expect(async () => {
-            const yaml = {
-                name: "test",
-                sdk: {
-                    path: "/",
-                    language: "js",
-                    options: {
-                      runtime: "node",
-                    },
-                  },
-            }
-            await YamlProjectConfiguration.create(yaml, BackendConfigurationRequired.BACKEND_REQUIRED)
-        }).rejects.toThrowError()
-    });
 
     test('missing cronString in cron method should throw error', async () => {
         await expect(async () => {
@@ -91,7 +74,7 @@ describe("project configuration", () => {
                     }
                 ]
             }
-            await YamlProjectConfiguration.create(yaml, BackendConfigurationRequired.BACKEND_REQUIRED)
+            await YamlProjectConfiguration.create(yaml)
         }).rejects.toThrowError()
     });
 
@@ -111,7 +94,7 @@ describe("project configuration", () => {
                     }
                 ]
             }
-            await YamlProjectConfiguration.create(yaml, BackendConfigurationRequired.BACKEND_REQUIRED)
+            await YamlProjectConfiguration.create(yaml)
         }).rejects.toThrowError()
     });
 
@@ -131,7 +114,7 @@ describe("project configuration", () => {
                   }
               ]
           }
-            await YamlProjectConfiguration.create(yaml, BackendConfigurationRequired.BACKEND_REQUIRED)
+            await YamlProjectConfiguration.create(yaml)
         }).rejects.toThrowError()
     });
 
@@ -152,7 +135,7 @@ describe("project configuration", () => {
                     }
                 ]
             }
-            await YamlProjectConfiguration.create(yaml, BackendConfigurationRequired.BACKEND_REQUIRED)
+            await YamlProjectConfiguration.create(yaml)
             return {}
         }).not.toThrowError()
     });
@@ -181,7 +164,7 @@ describe("project configuration", () => {
                 }
             ]
         }
-        const configuration = await YamlProjectConfiguration.create(yaml, BackendConfigurationRequired.BACKEND_REQUIRED)
+        const configuration = await YamlProjectConfiguration.create(yaml)
         expect(configuration.classes[0].methods[0].name).toEqual("cronMethod")
         expect(configuration.classes[0].methods[0].type).toEqual(TriggerType.cron)
         expect(configuration.classes[0].methods[0].cronString).toEqual("5 8-17 * * *")
@@ -213,7 +196,7 @@ describe("project configuration", () => {
                 }
             ]
         }
-        const configuration = await YamlProjectConfiguration.create(yaml, BackendConfigurationRequired.BACKEND_REQUIRED)
+        const configuration = await YamlProjectConfiguration.create(yaml)
         expect(configuration.classes[0].methods[0].name).toEqual("cronMethod")
         expect(configuration.classes[0].methods[0].type).toEqual(TriggerType.cron)
         expect(configuration.classes[0].methods[0].cronString).toEqual("* * * * *")
@@ -251,7 +234,7 @@ describe("project configuration", () => {
                 }
             ]
         }
-        await YamlProjectConfiguration.create(yaml, BackendConfigurationRequired.BACKEND_REQUIRED);
+        await YamlProjectConfiguration.create(yaml);
     }).rejects.toThrowError();
   });
 
@@ -272,7 +255,7 @@ describe("project configuration", () => {
           }
         ]
       };
-      await YamlProjectConfiguration.create(yaml, BackendConfigurationRequired.BACKEND_REQUIRED);
+      await YamlProjectConfiguration.create(yaml);
       return {};
     }).not.toThrowError();
   });
@@ -294,7 +277,7 @@ describe("project configuration", () => {
         }
       ]
     };
-    const configuration = await YamlProjectConfiguration.create(yaml, BackendConfigurationRequired.BACKEND_REQUIRED);
+    const configuration = await YamlProjectConfiguration.create(yaml);
     expect(configuration.classes[0].type).toEqual(TriggerType.http);
   });
 
@@ -328,7 +311,7 @@ describe("project configuration", () => {
         }
       ]
     };
-    const configuration = await YamlProjectConfiguration.create(yaml, BackendConfigurationRequired.BACKEND_REQUIRED);
+    const configuration = await YamlProjectConfiguration.create(yaml);
     expect(configuration.classes[0].methods[0].type).toEqual(TriggerType.http);
     expect(configuration.classes[0].methods[0].name).toEqual("method1");
     expect(configuration.classes[0].methods[1].type).toEqual(TriggerType.http);

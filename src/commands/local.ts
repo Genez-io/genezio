@@ -37,7 +37,6 @@ import { DartBundler } from "../bundlers/dart/localDartBundler.js";
 import axios, { AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
 import {
-  BackendConfigurationRequired,
   Language,
   YamlProjectConfiguration,
   YamlSdkConfiguration,
@@ -153,9 +152,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
   // eslint-disable-next-line no-constant-condition
   while (true) {
     // Read the project configuration every time because it might change
-    const yamlProjectConfiguration = await getProjectConfiguration(
-      BackendConfigurationRequired.BACKEND_REQUIRED
-    );
+    const yamlProjectConfiguration = await getProjectConfiguration();
     if (options.path && options.language) {
       if (!Language[options.language as keyof typeof Language]) {
         log.info(

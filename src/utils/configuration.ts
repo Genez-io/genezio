@@ -1,13 +1,9 @@
 import path from "path";
-import {
-  BackendConfigurationRequired,
-  YamlProjectConfiguration,
-} from "../models/yamlProjectConfiguration.js";
+import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js";
 import { checkYamlFileExists, readUTF8File } from "./file.js";
 import { parse } from "yaml";
 
 export async function getProjectConfiguration(
-  backendConfigurationRequired: BackendConfigurationRequired,
   configurationFilePath = "./genezio.yaml"
 ): Promise<YamlProjectConfiguration> {
   if (!(await checkYamlFileExists(configurationFilePath))) {
@@ -24,8 +20,7 @@ export async function getProjectConfiguration(
     throw new Error(`The configuration yaml file is not valid.\n${error}`);
   }
   const projectConfiguration = await YamlProjectConfiguration.create(
-    configurationFileContent,
-    backendConfigurationRequired
+    configurationFileContent
   );
 
   return projectConfiguration;

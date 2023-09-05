@@ -36,7 +36,6 @@ import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 import { generateRandomSubdomain } from "../utils/yaml.js";
 import cliProgress from "cli-progress";
 import {
-  BackendConfigurationRequired,
   YamlProjectConfiguration,
 } from "../models/yamlProjectConfiguration.js";
 import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter.js";
@@ -56,15 +55,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
   let configuration;
 
   try {
-    if (options.frontend && !options.backend) {
-      configuration = await getProjectConfiguration(
-        BackendConfigurationRequired.BACKEND_OPTIONAL
-      );
-    } else {
-      configuration = await getProjectConfiguration(
-        BackendConfigurationRequired.BACKEND_REQUIRED
-      );
-    }
+    configuration = await getProjectConfiguration();
   } catch (error: any) {
     log.error(error.message);
     GenezioTelemetry.sendEvent({
@@ -89,82 +80,88 @@ export async function deployCommand(options: GenezioDeployOptions) {
   );
 
   if (!options.frontend || options.backend) {
-    if (configuration.scripts?.preBackendDeploy) {
-      log.info("Running preBackendDeploy script...");
-      const output = await runNewProcess(
-        configuration.scripts?.preBackendDeploy
+    if (configuration.classes.length === 0) {
+      log.error(
+        "No classes were found in your genezio.yaml. Add some to be able to deploy your backend."
       );
-      if (!output) {
-        GenezioTelemetry.sendEvent({
-          eventType:
-            TelemetryEventTypes.GENEZIO_PRE_BACKEND_DEPLOY_SCRIPT_ERROR,
-          commandOptions: JSON.stringify(options),
-        });
-        log.error("preBackendDeploy script failed.");
-        exit(1);
-      }
-    }
-
-    GenezioTelemetry.sendEvent({
-      eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_START,
-      cloudProvider: configuration.cloudProvider,
-      commandOptions: JSON.stringify(options),
-    });
-    await deployClasses(configuration, cloudAdapter, options).catch(
-      async (error: AxiosError) => {
-        GenezioTelemetry.sendEvent({
-          eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_ERROR,
-          errorTrace: error.toString(),
-          commandOptions: JSON.stringify(options),
-        });
-
-        switch (error.response?.status) {
-          case 401:
-            log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-            break;
-          case 500:
-            log.error(error.message);
-            if (error.response?.data) {
-              const data: any = error.response?.data;
-              log.error(data.error?.message);
-            }
-            break;
-          case 400:
-            log.error(error.message);
-            if (error.response?.data) {
-              const data: any = error.response?.data;
-              log.error(data.error?.message);
-            }
-            break;
-          default:
-            if (error.message) {
-              log.error(error.message);
-            }
-            break;
+    } else {
+      if (configuration.scripts?.preBackendDeploy) {
+        log.info("Running preBackendDeploy script...");
+        const output = await runNewProcess(
+          configuration.scripts?.preBackendDeploy
+        );
+        if (!output) {
+          GenezioTelemetry.sendEvent({
+            eventType:
+              TelemetryEventTypes.GENEZIO_PRE_BACKEND_DEPLOY_SCRIPT_ERROR,
+            commandOptions: JSON.stringify(options),
+          });
+          log.error("preBackendDeploy script failed.");
+          exit(1);
         }
-        exit(1);
       }
-    );
-    GenezioTelemetry.sendEvent({
-      eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_END,
-      cloudProvider: configuration.cloudProvider,
-      commandOptions: JSON.stringify(options),
-    });
 
-    if (configuration.scripts?.postBackendDeploy) {
-      log.info("Running postBackendDeploy script...");
-      log.info(configuration.scripts?.postBackendDeploy);
-      const output = await runNewProcess(
-        configuration.scripts?.postBackendDeploy
+      GenezioTelemetry.sendEvent({
+        eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_START,
+        cloudProvider: configuration.cloudProvider,
+        commandOptions: JSON.stringify(options),
+      });
+      await deployClasses(configuration, cloudAdapter, options).catch(
+        async (error: AxiosError) => {
+          GenezioTelemetry.sendEvent({
+            eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_ERROR,
+            errorTrace: error.toString(),
+            commandOptions: JSON.stringify(options),
+          });
+
+          switch (error.response?.status) {
+            case 401:
+              log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
+              break;
+            case 500:
+              log.error(error.message);
+              if (error.response?.data) {
+                const data: any = error.response?.data;
+                log.error(data.error?.message);
+              }
+              break;
+            case 400:
+              log.error(error.message);
+              if (error.response?.data) {
+                const data: any = error.response?.data;
+                log.error(data.error?.message);
+              }
+              break;
+            default:
+              if (error.message) {
+                log.error(error.message);
+              }
+              break;
+          }
+          exit(1);
+        }
       );
-      if (!output) {
-        GenezioTelemetry.sendEvent({
-          eventType:
-            TelemetryEventTypes.GENEZIO_POST_BACKEND_DEPLOY_SCRIPT_ERROR,
-          commandOptions: JSON.stringify(options),
-        });
-        log.error("postBackendDeploy script failed.");
-        exit(1);
+      GenezioTelemetry.sendEvent({
+        eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_END,
+        cloudProvider: configuration.cloudProvider,
+        commandOptions: JSON.stringify(options),
+      });
+
+      if (configuration.scripts?.postBackendDeploy) {
+        log.info("Running postBackendDeploy script...");
+        log.info(configuration.scripts?.postBackendDeploy);
+        const output = await runNewProcess(
+          configuration.scripts?.postBackendDeploy
+        );
+        if (!output) {
+          GenezioTelemetry.sendEvent({
+            eventType:
+              TelemetryEventTypes.GENEZIO_POST_BACKEND_DEPLOY_SCRIPT_ERROR,
+            commandOptions: JSON.stringify(options),
+          });
+          log.error("postBackendDeploy script failed.");
+          exit(1);
+        }
       }
     }
   }
