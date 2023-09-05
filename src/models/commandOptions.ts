@@ -3,6 +3,8 @@ export type GenezioLocalOptions = {
     logLevel?: string,
     installDeps: boolean,
     env?: string,
+    path?: string,
+    language?: string,
 }
 
 export type GenezioDeployOptions = {

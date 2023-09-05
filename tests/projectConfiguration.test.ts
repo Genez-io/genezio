@@ -14,40 +14,6 @@ describe("project configuration", () => {
     }).rejects.toThrowError("The name property is missing from the configuration file.");
   });
 
-  test("missing sdk should throw error", async () => {
-    await expect(async () => {
-      const yaml = {
-        name: "test"
-      };
-      await YamlProjectConfiguration.create(yaml, BackendConfigurationRequired.BACKEND_REQUIRED);
-    }).rejects.toThrowError("The sdk property is missing from the configuration file.");
-  });
-
-  test("missing sdk.language should throw error", async () => {
-    await expect(async () => {
-      const yaml = {
-        name: "test",
-        sdk: {
-          path: "/"
-        }
-      };
-      await YamlProjectConfiguration.create(yaml, BackendConfigurationRequired.BACKEND_REQUIRED);
-    }).rejects.toThrowError("The sdk.language property is missing.");
-  });
-
-  test("missing sdk.path should throw error", async () => {
-    await expect(async () => {
-      const yaml = {
-        name: "test",
-        sdk: {
-          language: "js"
-        }
-      };
-      await YamlProjectConfiguration.create(yaml, BackendConfigurationRequired.BACKEND_REQUIRED);
-    }).rejects.toThrowError("The sdk.path property is missing from the configuration file.");
-  });
-
-
   test('invalid region should throw error', async () => {
       await expect(async () => {
           const yaml = {

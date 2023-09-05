@@ -302,24 +302,6 @@ export class YamlProjectConfiguration {
       );
     }
 
-    if (backendConfigurationRequired === BackendConfigurationRequired.BACKEND_REQUIRED) {
-      if (!configurationFileContent.sdk) {
-        throw new Error(
-          "The sdk property is missing from the configuration file."
-        );
-      }
-
-      if (!configurationFileContent.sdk.path) {
-        throw new Error(
-          "The sdk.path property is missing from the configuration file."
-        );
-      }
-
-      if (!configurationFileContent.sdk.language) {
-        throw new Error("The sdk.language property is missing.");
-      }
-    }
-
     if (
       configurationFileContent.sdk &&
       configurationFileContent.sdk.path &&

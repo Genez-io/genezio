@@ -79,7 +79,7 @@ export class SdkConfiguration {
 export class ProjectConfiguration {
     name: string;
     region: string;
-    sdk: SdkConfiguration;
+    sdk?: SdkConfiguration;
     options?: NodeOptions;
     cloudProvider: CloudProviderIdentifier;
     astSummary: AstSummary;
@@ -91,7 +91,7 @@ export class ProjectConfiguration {
     ) {
         this.name = yamlConfiguration.name;
         this.region = yamlConfiguration.region;
-        this.sdk = yamlConfiguration.sdk!;
+        this.sdk = yamlConfiguration.sdk;
         this.options = yamlConfiguration.options;
         this.cloudProvider = yamlConfiguration.cloudProvider || CloudProviderIdentifier.GENEZIO;
 

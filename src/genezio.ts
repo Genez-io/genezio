@@ -148,6 +148,8 @@ program
     "Load environment variables from a given .env file.",
     undefined
   )
+  .option("--path <path>", "Path where to generate your local sdk.")
+  .option("-l --language <language>", "Language of the generated sdk.")
   .option("--install-deps", "Automatically install missing dependencies.", false)
   .description("Run a local environment for your functions.")
   .action(async (options: GenezioLocalOptions) => {

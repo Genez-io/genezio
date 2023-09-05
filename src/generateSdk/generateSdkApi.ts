@@ -16,15 +16,19 @@ import { AstGeneratorInput } from "../models/genezioModels.js";
  * @throws {Error} If there was an error generating the SDK.
  */
 export async function sdkGeneratorApiHandler(projectConfiguration: YamlProjectConfiguration): Promise<SdkGeneratorResponse> {
-  const sdkLanguage = projectConfiguration.sdk!.language;
+  const sdkLanguage: string | undefined = projectConfiguration.sdk?.language;
+  // const sdkLanguage = projectConfiguration.sdk!.language;
   const inputs: AstGeneratorInput[] = getGenerateAstInputs(projectConfiguration);
 
   const sdkGeneratorInput: SdkGeneratorInput = {
     classesInfo: [],
-    sdk: {
+  };
+
+  if (sdkLanguage) {
+    sdkGeneratorInput.sdk = {
       language: sdkLanguage as string,
     }
-  };
+  }
 
   // iterate over each class file
   for (const input of inputs) {
@@ -39,7 +43,14 @@ export async function sdkGeneratorApiHandler(projectConfiguration: YamlProjectCo
     });
   }
 
-  // Generate SDK
+  // Generate SDK if the yaml sdk field is present
+  if (!sdkGeneratorInput.sdk) {
+    return {
+      files: [],
+      sdkGeneratorInput: sdkGeneratorInput,
+    }
+  }
+
   const sdkOutput: SdkGeneratorOutput = await generateSdk(
     sdkGeneratorInput, projectConfiguration.plugins?.sdkGenerator
   );
