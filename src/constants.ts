@@ -18,7 +18,7 @@ if (environment === "dev") {
     LOCAL_TEST_INTERFACE_URL = "https://dev.app.genez.io/test-interface/local";
     PORT_LOCAL_ENVIRONMENT = 8083;
     ENABLE_DEBUG_LOGS_BY_DEFAULT = true;
-    DART_COMPILATION_ENDPOINT = "https://zsa65trirluh7kwabtvvl773de0plbmw.lambda-url.us-east-1.on.aws/";
+    DART_COMPILATION_ENDPOINT = "https://2uweph47zqvpgmiurihpnybdba0loxje.lambda-url.us-east-1.on.aws/";
     ENVIRONMENT = "dev";
 } else {
     REACT_APP_BASE_URL = "https://app.genez.io";
