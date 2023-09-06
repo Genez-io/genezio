@@ -50,7 +50,7 @@ export class NodeJsBundler implements BundlerInterface {
     );
   }
 
-  async #copyNonJsFiles(tempFolderPath: string) {
+  async #copyNonJsFiles(tempFolderPath: string, bundlerInput: BundlerInput) {
     const allNonJsFilesPaths = (await getAllFilesFromCurrentPath()).filter(
       (file: FileDetails) => {
         // create a regex to match any .env files
@@ -69,6 +69,8 @@ export class NodeJsBundler implements BundlerInterface {
         );
       }
     );
+
+    bundlerInput.extra.allNonJsFilesPaths = allNonJsFilesPaths;
 
     // iterate over all non js files and copy them to tmp folder
     await Promise.all(
@@ -323,9 +325,11 @@ export class NodeJsBundler implements BundlerInterface {
     debugLogger.debug(`[NodeJSBundler] Copy non js files and node_modules for file ${input.path}.`)
     // 2. Copy non js files and node_modules and write index.mjs file
     await Promise.all([
-      this.#copyNonJsFiles(temporaryFolder),
-      mode === "production" ? this.#copyDependencies(input.extra.dependenciesInfo, temporaryFolder, mode) : Promise.resolve(),
-      writeToFile(temporaryFolder, "index.mjs", lambdaHandler(`"${input.configuration.name}"`))
+      this.#copyNonJsFiles(temporaryFolder, input),
+      mode === "production"
+        ? this.#copyDependencies(input.extra.dependenciesInfo, temporaryFolder, mode)
+        : Promise.resolve(),
+      writeToFile(temporaryFolder, "index.mjs", lambdaHandler(`"${input.configuration.name}"`)),
     ]);
 
     return {
@@ -335,6 +339,7 @@ export class NodeJsBundler implements BundlerInterface {
         ...input.extra,
         originalPath: input.path,
         dependenciesInfo: input.extra.dependenciesInfo,
+        allNonJsFilesPaths: input.extra.allNonJsFilesPaths,
       },
     };
   }

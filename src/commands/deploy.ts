@@ -286,7 +286,7 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
       );
 
       // check if the unzipped folder is smaller than 250MB
-      const unzippedBundleSize: object = await getBundleFolderSizeLimit(output.path);
+      const unzippedBundleSize: object = await getBundleFolderSizeLimit(output.path, output.extra.dependenciesInfo, output.extra.allNonJsFilesPaths);
       debugLogger.debug(`The unzippedBundleSize for class ${element.path} is ${unzippedBundleSize}.`);
 
       debugLogger.debug(`Zip the directory ${output.path}.`);

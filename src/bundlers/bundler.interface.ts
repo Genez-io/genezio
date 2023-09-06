@@ -19,6 +19,7 @@ export type BundlerInput = {
         startingCommand?: string,
         commandParameters?: string[],
         installDeps?: boolean,
+        allNonJsFilesPaths?: any,
     }
 }
 

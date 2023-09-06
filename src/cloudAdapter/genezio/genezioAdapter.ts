@@ -15,8 +15,8 @@ import { FRONTEND_DOMAIN } from "../../constants.js";
 import { getFileSize } from "../../utils/file.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 
-const BUNDLE_SIZE_LIMIT = 256901120;
-// const BUNDLE_SIZE_LIMIT = 10000;
+// const BUNDLE_SIZE_LIMIT = 256901120;
+const BUNDLE_SIZE_LIMIT = 10000;
 
 
 export class GenezioCloudAdapter implements CloudAdapter {
@@ -34,7 +34,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
             if (element.unzippedBundleSize.totalSize > BUNDLE_SIZE_LIMIT) {
                 throw new Error(`
 Class ${element.name} is too big: ${(element.unzippedBundleSize.totalSize/1048576).toFixed(2)}MB. The maximum size is ${BUNDLE_SIZE_LIMIT/1048576}MB. Try to reduce the size of your class.
-Your biggest dependencies are: ${JSON.stringify( element.unzippedBundleSize.folderSize.dependenciesSize)}.
+Your biggest dependencies are: ${JSON.stringify(element.unzippedBundleSize.folderSize.dependenciesSize)}.
 Your biggest files are:  ${JSON.stringify(element.unzippedBundleSize.folderSize.filesSize)}.
                 `);
             }

@@ -163,55 +163,46 @@ export async function getFileSize(filePath: string): Promise<number> {
   });
 }
 
-export async function getBundleFolderSizeLimit(directoryPath: string): Promise<object> {
+// TODO: change any type => refactor
+export async function getBundleFolderSizeLimit(directoryPath: string, dependencies: any, allNonJsFilesPaths: any): Promise<object> {
   const files = await getAllFilesRecursively(directoryPath);
   const totalSize = files.reduce((acc, file) => acc + fs.statSync(file).size, 0);
 
-  // Get size for each file
-  const dependencySizes: { name: string; size: number }[] = [];
-  for (const file of files) {
-    try {
-      const stats = await fs.statSync(file);
-      const name = file.replace(directoryPath, "");
-      dependencySizes.push({ name, size: stats.size });
-    } catch (error) {
-      console.error(`Error calculating size for ${file}`);
-    }
+  interface FileSizeInfo {
+    name: string;
+    sizeInBytes: number;
   }
 
-  // Sum size for each dependency and non js/ts files
-  const sum: {
-    dependencySizes: Record<string, number>;
-    nonJsFiles: Record<string, number>;
-  } = {
-    dependencySizes: {},
-    nonJsFiles: {},
-  };
+  const nodeModulesMap: { [key: string]: number } = {};
+  const fileSizes: FileSizeInfo[] = [];
 
-  // Calculate total size for each dependency and non js/ts files
-  dependencySizes.forEach((dep) => {
-    const splitedDepName = dep.name.split("/");
-    // Calculate size only for node_modules dependencies
-    if (splitedDepName[1] === "node_modules") {
-      const depName = splitedDepName[2];
+  // Calculate the size for each node_modules dependency
+  dependencies.forEach((file: any) => {
+    const filePath = file.path
+    const stats = fs.statSync(filePath);
+    const directorySegments = filePath.split("/node_modules/");
 
-      if (sum.dependencySizes[depName]) {
-        sum.dependencySizes[depName] = sum.dependencySizes[depName] + dep.size;
-        return;
-      }
-
-      sum.dependencySizes[depName] = dep.size;
-      return;
-    }
-
-    const filePath = dep.name;
-    // Calculate size for non js/ts files outside node_modules
-    if (sum.nonJsFiles[filePath]) {
-      sum.nonJsFiles[filePath] = sum.nonJsFiles[filePath] + dep.size;
-    } else {
-      sum.nonJsFiles[filePath] = dep.size;
+    if (directorySegments.length > 1) {
+      const moduleName = directorySegments[1].split("/")[0];
+      nodeModulesMap[moduleName] = (nodeModulesMap[moduleName] || 0) + stats.size;
     }
   });
+
+   allNonJsFilesPaths.forEach((fileInfo: any) => {
+     const filePath = fileInfo.path;
+     try {
+       const stats = fs.statSync(filePath);
+       if (stats.isFile()) {
+         const sizeInBytes = stats.size;
+         fileSizes.push({
+           name: fileInfo.name + fileInfo.extension,
+           sizeInBytes,
+         });
+       }
+     } catch (error) {
+       console.error(`Error calculating size for file ${filePath}:`, error);
+     }
+   });
 
   // Get the biggest N files
   function getBiggestNFiles(obj: Record<string, number>, n: number): Record<string, number> {
@@ -223,13 +214,24 @@ export async function getBundleFolderSizeLimit(directoryPath: string): Promise<o
     return result;
   }
 
+  function getTop5LargestFiles(data: FileSizeInfo[]): Record<string, number> {
+    const sortedData = data.sort((a, b) => b.sizeInBytes - a.sizeInBytes);
+    const top5 = sortedData.slice(0, 5);
+    const result: Record<string, number> = {};
+    top5.forEach((file) => {
+      result[file.name] = file.sizeInBytes;
+    });
+
+    return result;
+  }
+
   debugLogger.debug(`Total size of the bundle: ${totalSize} bytes`);
 
   return {
     totalSize: totalSize,
     folderSize: {
-      dependenciesSize: getBiggestNFiles(sum.dependencySizes, 5),
-      filesSize: getBiggestNFiles(sum.nonJsFiles, 5),
+      dependenciesSize: getBiggestNFiles(nodeModulesMap, 5),
+      filesSize: getTop5LargestFiles(fileSizes),
     },
   };
 }
