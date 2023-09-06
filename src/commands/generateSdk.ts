@@ -2,11 +2,7 @@ import { AxiosError } from "axios";
 import log from "loglevel";
 import { exit } from "process";
 import { languages } from "../utils/languages.js";
-import {
-  GENEZIO_NOT_AUTH_ERROR_MSG,
-  GENEZIO_NO_CLASSES_FOUND,
-} from "../errors.js";
-import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
+import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import { Language, TriggerType } from "../models/yamlProjectConfiguration.js";
 import getProjectInfo from "../requests/getProjectInfo.js";
 import listProjects from "../requests/listProjects.js";
