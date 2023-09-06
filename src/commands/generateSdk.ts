@@ -72,13 +72,12 @@ export async function generateSdkCommand(projectName: string, options: any) {
     }
     const configuration = await getProjectConfiguration(source);
     const name = configuration.name;
-    const configurationStage = configuration.stage;
     const configurationRegion = configuration.region;
     await generateRemoteSdkHandler(
       language,
       sdkPath,
       name,
-      configurationStage,
+      stage,
       configurationRegion
     ).catch((error: Error) => {
       GenezioTelemetry.sendEvent({

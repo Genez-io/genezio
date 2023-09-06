@@ -232,7 +232,7 @@ program
   .option("-p, --path <path>", "Path to the directory where the SDK will be generated.", "./sdk")
   .option("--stage <stage>", "Stage of the project.", "prod")
   .option("--region <region>", "Region where your project is deployed.", "us-east-1")
-  .description("Generate an SDK corresponding to a deployed or local project.\nProvide the project name to generate an SDK for a deployed project.\nEx: genezio sdk my-project --stage prod --region us-east-1\n\nProvide the path to the genezio.yaml on your disk to load project details from that file instead of command arguments.\nEx: genezio sdk --source ../my-project")
+  .description("Generate an SDK corresponding to a deployed or local project.\n\nProvide the project name to generate an SDK for a deployed project.\nEx: genezio sdk my-project --stage prod --region us-east-1\n\nProvide the path to the genezio.yaml on your disk to load project details (name and region) from that file instead of command arguments.\nEx: genezio sdk --source ../my-project")
   .action(async (projectName = "", options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
 

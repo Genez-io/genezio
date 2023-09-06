@@ -205,7 +205,6 @@ describe("addClassCommand", () => {
     });
     const projectConfiguration = new YamlProjectConfiguration(
       "test",
-      "prod",
       "us-east-1",
       new YamlSdkConfiguration(Language.js, "./test.js"),
       CloudProviderIdentifier.GENEZIO,
@@ -235,7 +234,6 @@ describe("addClassCommand", () => {
     });
     const projectConfiguration = new YamlProjectConfiguration(
       "test",
-      "prod",
       "us-east-1",
       new YamlSdkConfiguration(Language.js, "./test.js"),
       CloudProviderIdentifier.GENEZIO,
@@ -265,7 +263,6 @@ describe("addClassCommand", () => {
     });
     const projectConfiguration = new YamlProjectConfiguration(
       "test",
-      "prod",
       "us-east-1",
       new YamlSdkConfiguration(Language.js, "./test.js"),
       CloudProviderIdentifier.GENEZIO,

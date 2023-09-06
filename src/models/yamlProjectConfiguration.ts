@@ -224,7 +224,6 @@ const supportedNodeRuntimes: string[] = ["nodejs16.x", "nodejs18.x"];
  */
 export class YamlProjectConfiguration {
   name: string;
-  stage: string;
   region: string;
   sdk?: YamlSdkConfiguration;
   cloudProvider?: CloudProviderIdentifier;
@@ -236,7 +235,6 @@ export class YamlProjectConfiguration {
 
   constructor(
     name: string,
-    stage: string,
     region: string,
     sdk: YamlSdkConfiguration | undefined = undefined,
     cloudProvider: CloudProviderIdentifier,
@@ -247,7 +245,6 @@ export class YamlProjectConfiguration {
     options: NodeOptions | undefined = undefined
   ) {
     this.name = name;
-    this.stage = stage;
     this.region = region;
     this.sdk = sdk;
     this.cloudProvider = cloudProvider;
@@ -378,7 +375,6 @@ export class YamlProjectConfiguration {
 
     return new YamlProjectConfiguration(
       configurationFileContent.name,
-      configurationFileContent.stage || "prod",
       configurationFileContent.region || "us-east-1",
       sdk,
       configurationFileContent.cloudProvider || CloudProviderIdentifier.GENEZIO,
