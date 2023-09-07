@@ -288,13 +288,12 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
 
       // check here the errors for size and get the folder size of node deps with the function named getBundleFolderSizeLimit
 
-        const x = await calculateBiggestFiles(
+        const filesSize = await calculateBiggestFiles(
           output.path,
           output.extra.dependenciesInfo,
           output.extra.allNonJsFilesPaths
         );
 
-        console.log(x, ' here are my results')
 
       // check if the unzipped folder is smaller than 250MB
       const unzippedBundleSize: object = await getBundleFolderSizeLimit(output.path);
@@ -307,7 +306,15 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
 
       await deleteFolder(output.path);
 
-      return { name: element.name, archivePath: archivePath, filePath: element.path, methods: element.methods, totalSize:unzippedBundleSize, unzippedBundleSize: unzippedBundleSize };
+      return {
+        name: element.name,
+        archivePath: archivePath,
+        filePath: element.path,
+        methods: element.methods,
+        totalSize: unzippedBundleSize,
+        unzippedBundleSize: unzippedBundleSize,
+        filesSize: filesSize,
+      };
     });
 
   const bundlerResultArray = await Promise.all(bundlerResult);
