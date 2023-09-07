@@ -34,7 +34,6 @@ export class GenezioCloudAdapter implements CloudAdapter {
             console.log(element.filesSize.dependenciesSize, "dependenciesSize -> get biggest 5 from here");
             console.log(element.filesSize.filesSize, "nonjsfilessize -> get biggest 5 from here");
 
-            console.log(element, "element");
             if (element.unzippedBundleSize.totalSize > BUNDLE_SIZE_LIMIT) {
                 throw new Error(`
 Class ${element.name} is too big: ${(element.unzippedBundleSize.totalSize/1048576).toFixed(2)}MB. The maximum size is ${BUNDLE_SIZE_LIMIT/1048576}MB. Try to reduce the size of your class.
