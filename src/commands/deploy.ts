@@ -28,6 +28,7 @@ import {
   deleteFolder,
   getBundleFolderSizeLimit,
   readEnvironmentVariablesFile,
+  calculateBiggestFiles,
 } from "../utils/file.js";
 import { printAdaptiveLog, debugLogger } from "../utils/logging.js";
 import { runNewProcess } from "../utils/process.js";
@@ -285,8 +286,18 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
         `genezioDeploy.zip`
       );
 
+      // check here the errors for size and get the folder size of node deps with the function named getBundleFolderSizeLimit
+
+        const x = await calculateBiggestFiles(
+          output.path,
+          output.extra.dependenciesInfo,
+          output.extra.allNonJsFilesPaths
+        );
+
+        console.log(x, ' here are my results')
+
       // check if the unzipped folder is smaller than 250MB
-      const unzippedBundleSize: object = await getBundleFolderSizeLimit(output.path, output.extra.dependenciesInfo, output.extra.allNonJsFilesPaths);
+      const unzippedBundleSize: object = await getBundleFolderSizeLimit(output.path);
       debugLogger.debug(`The unzippedBundleSize for class ${element.path} is ${unzippedBundleSize}.`);
 
       debugLogger.debug(`Zip the directory ${output.path}.`);
