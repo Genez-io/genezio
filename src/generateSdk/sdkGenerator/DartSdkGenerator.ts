@@ -197,7 +197,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                     const fromJson = this.generateFromJsonImplementationForClass(structLiteral);
                     const toJson = this.generateToJsonImplementationForClass(structLiteral);
 
-                    // If the model belogs to the class, add it to the class view.
+                    // If the model belongs to the class, add it to the class view.
                     // Otherwise, we should add it to its proper model view.
                     if (mainClass?.path === elem.path) {
                         view.otherClasses.push({
@@ -317,13 +317,13 @@ class SdkGenerator implements SdkGeneratorInterface {
 
     /**
      * Create a model and add it to the moustache model views.
-     * 
+     *
      * If the model already exists, it will not be added.
-     * 
+     *
      * @param views Moustache views array with models where the new model will be added.
      * @param struct The struct from which the view object will be created and added to the views array.
-     * @param fromJson 
-     * @param toJson 
+     * @param fromJson
+     * @param toJson
      */
     addModelToModelViews(views: {[key: string]: any}, struct: StructLiteral, fromJson: string, toJson: string) {
         if (!views[struct.path!]) {

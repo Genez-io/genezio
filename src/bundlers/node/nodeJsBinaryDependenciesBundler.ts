@@ -81,9 +81,9 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
             } catch (error) {
                 debugLogger.debug("[BinaryDepStdOut]", error);
                 log.error(
-                    "An error has occured while installing binary dependecies."
+                    "An error has occurred while installing binary dependencies."
                 );
-                throw new Error("An error has occured while installing binary dependecies.")
+                throw new Error("An error has occurred while installing binary dependencies.")
             }
         }
     }

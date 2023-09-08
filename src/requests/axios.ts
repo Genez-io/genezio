@@ -18,7 +18,7 @@ axios.interceptors.response.use(function (response) {
     return response;
 }, function (error) {
 	if (error.response?.status === 402) {
-		throw new Error("You've hit the maxmimum numer of projects. To continue, please upgrade your subscription.")
+		throw new Error("You've hit the maximum number of projects. To continue, please upgrade your subscription.")
 	} else {
 			if (error.response?.data?.error?.code === GenezioErrorCode.UpdateRequired) {
 					throw new Error("Please update your genezio CLI. Run 'npm update -g genezio'.")

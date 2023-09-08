@@ -14,8 +14,8 @@ const BUNDLE_SIZE_LIMIT = 256901120;
 
 export class SelfHostedAwsAdapter implements CloudAdapter {
 
-  async #getLatestObjectVersion(cliet: S3, bucket: string, key: string): Promise<string | undefined> {
-    const result = await cliet.send(new HeadObjectCommand({
+  async #getLatestObjectVersion(client: S3, bucket: string, key: string): Promise<string | undefined> {
+    const result = await client.send(new HeadObjectCommand({
       Bucket: bucket,
       Key: key,
     }));
@@ -132,13 +132,13 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
     const successCloudFormationStatus = ["UPDATE_COMPLETE", "CREATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"];
     if (!bucketStackDetails["Stacks"] || bucketStackDetails["Stacks"].length === 0 || !bucketStackDetails["Stacks"][0]["StackStatus"] || !successCloudFormationStatus.includes(bucketStackDetails["Stacks"][0]["StackStatus"])) {
       debugLogger.error("Stack does not exists!", JSON.stringify(bucketStackDetails));
-      throw new Error("A problem occured while deploying your application. Please check the status of your CloudFormation stack.");
+      throw new Error("A problem occurred while deploying your application. Please check the status of your CloudFormation stack.");
     }
 
     const bucketName = this.#findOutputValue(bucketStackDetails, key);
     if (!bucketName) {
       debugLogger.error("Could not find bucket name output in cloud formation describe output.", JSON.stringify(bucketStackDetails));
-      throw new Error("A problem occured while deploying your application. Please check the status of your CloudFormation stack.");
+      throw new Error("A problem occurred while deploying your application. Please check the status of your CloudFormation stack.");
     }
 
     return bucketName;
@@ -194,7 +194,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
       if (inputItem.unzippedBundleSize > BUNDLE_SIZE_LIMIT) {
         throw new Error(`Class ${inputItem.name} is too big: ${(inputItem.unzippedBundleSize/1048576).toFixed(2)}MB. The maximum size is ${BUNDLE_SIZE_LIMIT/1048576}MB. Try to reduce the size of your class.`);
     }
-      
+
       const bucketKey = this.#getBackendBucketKey(projectConfiguration.name, inputItem.name);
 
       const size = await getFileSize(inputItem.archivePath);
@@ -285,7 +285,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
 
   async deployFrontend(projectName: string, projectRegion: string, frontend: YamlFrontend, stage: string): Promise<string> {
     stage = stage || "prod";
-  
+
     const cloudFormationClient = new CloudFormationClient({ region: projectRegion });
     const s3Client = new S3({ region: projectRegion });
     const cloudFormationStage = stage === "prod" ? "" : `-${stage}`;

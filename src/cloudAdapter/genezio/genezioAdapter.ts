@@ -113,12 +113,12 @@ export class GenezioCloudAdapter implements CloudAdapter {
 
         if (!result.presignedURL) {
             throw new Error(
-                "An error occured (missing presignedUrl). Please try again!"
+                "An error occurred (missing presignedUrl). Please try again!"
             );
         }
 
         if (!result.userId) {
-            throw new Error("An error occured (missing userId). Please try again!");
+            throw new Error("An error occurred (missing userId). Please try again!");
         }
 
         debugLogger.debug("Content of the folder zipped. Uploading to S3.");

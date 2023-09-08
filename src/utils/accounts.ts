@@ -11,7 +11,7 @@ export async function getAuthToken(): Promise<string|undefined> {
         const result = await readUTF8File(loginConfigFilePath)
         return result.trim();
     } catch(error) {
-        debugLogger.debug(`An error occured during getAuthToken ${error}`)
+        debugLogger.debug(`An error occurred during getAuthToken ${error}`)
         return undefined;
     }
 }

@@ -11,7 +11,7 @@ export async function getTelemetrySessionId(): Promise<string|undefined> {
         const result = await readUTF8File(loginConfigFilePath)
         return result.trim();
     } catch(error) {
-        debugLogger.debug(`An error occured during getTelemetrySessionId ${error}`)
+        debugLogger.debug(`An error occurred during getTelemetrySessionId ${error}`)
         return undefined;
     }
 }
