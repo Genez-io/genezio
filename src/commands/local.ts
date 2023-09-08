@@ -16,7 +16,10 @@ import { LOCAL_TEST_INTERFACE_URL } from "../constants.js";
 import { GENEZIO_NO_CLASSES_FOUND, PORT_ALREADY_USED } from "../errors.js";
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
 import { AstSummary } from "../models/astSummary.js";
-import { getProjectConfiguration } from "../utils/configuration.js";
+import {
+  getLocalConfiguration,
+  getProjectConfiguration,
+} from "../utils/configuration.js";
 import { BundlerInterface } from "../bundlers/bundler.interface.js";
 import { NodeJsLocalBundler } from "../bundlers/node/nodeJsLocalBundler.js";
 import { BundlerComposer } from "../bundlers/bundlerComposer.js";
@@ -38,6 +41,7 @@ import axios, { AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
 import {
   Language,
+  YamlLocalConfiguration,
   YamlProjectConfiguration,
   YamlSdkConfiguration,
 } from "../models/yamlProjectConfiguration.js";
@@ -48,6 +52,7 @@ import {
 } from "../telemetry/telemetry.js";
 import dotenv from "dotenv";
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
+import inquirer, { Answers } from "inquirer";
 
 type ClassProcess = {
   process: ChildProcess;
@@ -153,6 +158,27 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
   while (true) {
     // Read the project configuration every time because it might change
     const yamlProjectConfiguration = await getProjectConfiguration();
+    const yamlLocalConfiguration = await getLocalConfiguration();
+    if (yamlLocalConfiguration) {
+      if (yamlLocalConfiguration.generateSdk) {
+        if (!(yamlLocalConfiguration.path && yamlLocalConfiguration.language)) {
+          throw new Error(
+            "Local configuration file is missing required fields"
+          );
+        }
+        if (!Language[options.language as keyof typeof Language]) {
+          log.info(
+            "This sdk.language is not supported by default. It will be treated as a custom language."
+          );
+        }
+        yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
+          Language[yamlLocalConfiguration.language as keyof typeof Language],
+          yamlLocalConfiguration.path
+        );
+      } else {
+        yamlProjectConfiguration.sdk = undefined;
+      }
+    }
     if (options.path && options.language) {
       if (!Language[options.language as keyof typeof Language]) {
         log.info(
@@ -242,6 +268,42 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         projectConfiguration.sdk.language,
         projectConfiguration.sdk.path
       );
+    } else if (!yamlLocalConfiguration) {
+      const answer: Answers = await inquirer.prompt([
+        {
+          type: "confirm",
+          name: "generateSdk",
+          message:
+            "You have not provide any sdk configuration. Do you wish to generate one?",
+        },
+      ]);
+      if (answer.generateSdk) {
+        const sdkConfiguration: Answers = await inquirer.prompt([
+          {
+            type: "input",
+            name: "sdkPath",
+            message: "Where do you want to generate the sdk?",
+            default: "./sdk",
+          },
+          {
+            type: "list",
+            name: "sdkLanguage",
+            message: "What language do you want to generate the sdk in?",
+            choices: Object.keys(Language).filter((key) => isNaN(Number(key))),
+          },
+        ]);
+        const localConfiguration = await YamlLocalConfiguration.create({
+          generateSdk: true,
+          path: sdkConfiguration.sdkPath,
+          language: sdkConfiguration.sdkLanguage,
+        });
+        await localConfiguration.writeToFile();
+      } else {
+        const localConfiguration = await YamlLocalConfiguration.create({
+          generateSdk: false,
+        });
+        await localConfiguration.writeToFile();
+      }
     }
 
     reportSuccess(projectConfiguration, sdk, options.port);

@@ -1,5 +1,8 @@
 import path from "path";
-import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js";
+import {
+  YamlLocalConfiguration,
+  YamlProjectConfiguration,
+} from "../models/yamlProjectConfiguration.js";
 import { checkYamlFileExists, readUTF8File } from "./file.js";
 import { parse } from "yaml";
 
@@ -24,4 +27,27 @@ export async function getProjectConfiguration(
   );
 
   return projectConfiguration;
+}
+
+export async function getLocalConfiguration(
+  configurationFilePath = "./genezio.local.yaml"
+): Promise<YamlLocalConfiguration | undefined> {
+  if (!(await checkYamlFileExists(configurationFilePath))) {
+    return undefined;
+  }
+
+  const genezioYamlPath = path.join(configurationFilePath);
+  const configurationFileContentUTF8 = await readUTF8File(genezioYamlPath);
+  let configurationFileContent = null;
+
+  try {
+    configurationFileContent = await parse(configurationFileContentUTF8);
+  } catch (error) {
+    throw new Error(`The configuration yaml file is not valid.\n${error}`);
+  }
+  const localConfiguration = await YamlLocalConfiguration.create(
+    configurationFileContent
+  );
+
+  return localConfiguration;
 }

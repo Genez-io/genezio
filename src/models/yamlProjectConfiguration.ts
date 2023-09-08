@@ -463,3 +463,49 @@ export class YamlProjectConfiguration {
     await this.writeToFile();
   }
 }
+
+export class YamlLocalConfiguration {
+  generateSdk: boolean;
+  path?: string | undefined;
+  language?: Language | undefined;
+
+  constructor(
+    generateSdk: boolean,
+    path: string | undefined = undefined,
+    language: Language | undefined = undefined
+  ) {
+    this.generateSdk = generateSdk;
+    this.path = path;
+    this.language = language;
+  }
+
+  static async create(
+    yamlLocalConfiguration: any
+  ): Promise<YamlLocalConfiguration> {
+    if (yamlLocalConfiguration.generateSdk === undefined) {
+      throw new Error("generateSdk is not set.");
+    }
+    const generateSdk: boolean = yamlLocalConfiguration.generateSdk;
+    const path: string | undefined = yamlLocalConfiguration.path;
+    const language: Language | undefined = yamlLocalConfiguration.language;
+
+    return new YamlLocalConfiguration(generateSdk, path, language);
+  }
+
+  async writeToFile(path = "./genezio.local.yaml") {
+    const content = {
+      generateSdk: this.generateSdk,
+      path: this.path,
+      language: this.language,
+    };
+
+    const fileDetails = getFileDetails(path);
+    const yamlString = yaml.stringify(content);
+
+    await writeToFile(fileDetails.path, fileDetails.filename, yamlString).catch(
+      (error) => {
+        console.error(error.toString());
+      }
+    );
+  }
+}
