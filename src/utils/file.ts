@@ -297,12 +297,8 @@ export function writeToFile(
 
 export async function checkYamlFileExists(yamlPath = "./genezio.yaml") {
   if (!(await fileExists(yamlPath))) {
-    log.error(
-      "genezio.yaml file does not exist. Please run `genezio init` to initialize a project."
-    );
     return false;
   }
-
   return true;
 }
 

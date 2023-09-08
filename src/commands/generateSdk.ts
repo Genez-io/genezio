@@ -3,7 +3,11 @@ import log from "loglevel";
 import { exit } from "process";
 import { languages } from "../utils/languages.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
-import { Language, TriggerType } from "../models/yamlProjectConfiguration.js";
+import {
+  Language,
+  TriggerType,
+  YamlProjectConfiguration,
+} from "../models/yamlProjectConfiguration.js";
 import getProjectInfo from "../requests/getProjectInfo.js";
 import listProjects from "../requests/listProjects.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
@@ -21,6 +25,7 @@ import { AstSummaryClassResponse } from "../models/astSummary.js";
 import { mapDbAstToSdkGeneratorAst } from "../generateSdk/utils/mapDbAstToFullAst.js";
 import { generateSdk } from "../generateSdk/sdkGeneratorHandler.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
+import inquirer, { Answers } from "inquirer";
 
 export async function generateSdkCommand(projectName: string, options: any) {
   const language = options.language;
@@ -36,11 +41,11 @@ export async function generateSdkCommand(projectName: string, options: any) {
     exit(1);
   }
 
-  GenezioTelemetry.sendEvent({
-    eventType: TelemetryEventTypes.GENEZIO_GENERATE_REMOTE_SDK,
-    commandOptions: JSON.stringify(options),
-  });
   if (projectName) {
+    GenezioTelemetry.sendEvent({
+      eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK,
+      commandOptions: JSON.stringify(options),
+    });
     await generateRemoteSdkHandler(
       language,
       sdkPath,
@@ -52,7 +57,7 @@ export async function generateSdkCommand(projectName: string, options: any) {
         log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
       } else {
         GenezioTelemetry.sendEvent({
-          eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK_REMOTE_ERROR,
+          eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK_ERROR,
           errorTrace: error.message,
           commandOptions: JSON.stringify(options),
         });
@@ -66,9 +71,57 @@ export async function generateSdkCommand(projectName: string, options: any) {
     if (!source.endsWith("genezio.yaml")) {
       source = path.join(source, "genezio.yaml");
     }
-    const configuration = await getProjectConfiguration(source);
+    let configuration: YamlProjectConfiguration | undefined;
+    try {
+      configuration = await getProjectConfiguration(source);
+    } catch (error: any) {
+      if (error.message === "The configuration file does not exist.") {
+        const answers: Answers = await inquirer.prompt([
+          {
+            type: "confirm",
+            name: "createConfig",
+            message:
+              "Oops! The configuration file does not exist at the specified path. Do you want us to create one for you?",
+          },
+        ]);
+        if (answers.createConfig) {
+          const projects = await listProjects(0).catch((error: any) => {
+            throw error;
+          });
+          const options = [
+            ...new Set(
+              projects.map((p) => ({ name: p.name, region: p.region }))
+            ),
+          ].map((p) => ({
+            name: `${p.name} (${p.region})`,
+            value: p,
+          }));
+          const answers: Answers = await inquirer.prompt([
+            {
+              type: "list",
+              name: "project",
+              message: "Select the project you want to generate the SDK for:",
+              choices: options,
+            },
+          ]);
+          configuration = await YamlProjectConfiguration.create({
+            name: answers.project.name,
+            region: answers.project.region,
+          });
+          await configuration.writeToFile(source);
+        } else {
+          exit(1);
+        }
+      } else {
+        throw error;
+      }
+    }
     const name = configuration.name;
     const configurationRegion = configuration.region;
+    GenezioTelemetry.sendEvent({
+      eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK,
+      commandOptions: JSON.stringify(options),
+    });
     await generateRemoteSdkHandler(
       language,
       sdkPath,
@@ -77,7 +130,7 @@ export async function generateSdkCommand(projectName: string, options: any) {
       configurationRegion
     ).catch((error: Error) => {
       GenezioTelemetry.sendEvent({
-        eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK_REMOTE_ERROR,
+        eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK_ERROR,
         errorTrace: error.message,
         commandOptions: JSON.stringify(options),
       });
