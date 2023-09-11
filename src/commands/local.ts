@@ -275,7 +275,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
           type: "confirm",
           name: "generateSdk",
           message:
-            "You have not provide any sdk configuration. Do you wish to generate one?",
+            "You have not provided any sdk configuration. Do you wish to generate one?",
         },
       ]);
       if (answer.generateSdk) {

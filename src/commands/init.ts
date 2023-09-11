@@ -3,10 +3,8 @@ import { Document } from "yaml";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import { regions } from "../utils/configs.js";
 import { writeToFile } from "../utils/file.js";
-import { languages } from "../utils/languages.js";
 import { askQuestion } from "../utils/prompt.js";
 import {cyan, red} from "../utils/strings.js";
-
 
 export async function initCommand() {
   let projectName = "";
