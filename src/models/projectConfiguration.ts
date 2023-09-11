@@ -79,7 +79,7 @@ export class SdkConfiguration {
 export class ProjectConfiguration {
     name: string;
     region: string;
-    sdk: SdkConfiguration;
+    sdk?: SdkConfiguration;
     options?: NodeOptions;
     cloudProvider: CloudProviderIdentifier;
     astSummary: AstSummary;
@@ -103,7 +103,7 @@ export class ProjectConfiguration {
 
         this.classes = this.astSummary.classes.map((c) => {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const yamlClass = yamlConfiguration.classes.find((yamlC) => yamlC.path === c.path)!;
+            const yamlClass = yamlConfiguration.classes!.find((yamlC) => yamlC.path === c.path)!;
             const methods = c?.methods.map((m) => {
                 const yamlMethod = yamlClass.methods.find((yamlM) => yamlM.name === m.name)
 

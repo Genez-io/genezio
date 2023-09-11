@@ -148,6 +148,8 @@ program
     "Load environment variables from a given .env file.",
     undefined
   )
+  .option("--path <path>", "Path where to generate your local sdk.")
+  .option("-l --language <language>", "Language of the generated sdk.")
   .option("--install-deps", "Automatically install missing dependencies.", false)
   .description("Run a local environment for your functions.")
   .action(async (options: GenezioLocalOptions) => {
@@ -226,12 +228,11 @@ program
   .argument("[projectName]", "Name of the project you want to generate an SDK for.")
   .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .option("--language <language>", "Language of the SDK.", "ts")
-  .option("-s, --source <source>", "Path to the genezio.yaml file on your disk. Only used for generating SDKs for local projects.", "./")
+  .option("-s, --source <source>", "Path to the genezio.yaml file on your disk. Used for loading project details from a genezio.yaml file, instead of command argumments like --name", "./")
   .option("-p, --path <path>", "Path to the directory where the SDK will be generated.", "./sdk")
-  .option("--port <port>", "Port of the local environment to generate the SDK for.", "8083")
   .option("--stage <stage>", "Stage of the project.", "prod")
   .option("--region <region>", "Region where your project is deployed.", "us-east-1")
-  .description("Generate an SDK corresponding to a deployed or local project.\nProvide the project name to generate an SDK for a deployed project.\nEx: genezio sdk my-project --stage prod --region us-east-1\n\nProvide the path to the genezio.yaml on your disk to generate an SDK for a local project.\nEx: genezio sdk --source ../my-project")
+  .description("Generate an SDK corresponding to a deployed or local project.\n\nProvide the project name to generate an SDK for a deployed project.\nEx: genezio sdk my-project --stage prod --region us-east-1\n\nProvide the path to the genezio.yaml on your disk to load project details (name and region) from that file instead of command arguments.\nEx: genezio sdk --source ../my-project")
   .action(async (projectName = "", options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
 

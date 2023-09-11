@@ -2,17 +2,20 @@ import { AxiosError } from "axios";
 import log from "loglevel";
 import { exit } from "process";
 import { languages } from "../utils/languages.js";
+import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import {
-  GENEZIO_NOT_AUTH_ERROR_MSG,
-  GENEZIO_NO_CLASSES_FOUND,
-} from "../errors.js";
-import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
-import { Language, TriggerType } from "../models/yamlProjectConfiguration.js";
+  Language,
+  TriggerType,
+  YamlProjectConfiguration,
+} from "../models/yamlProjectConfiguration.js";
 import getProjectInfo from "../requests/getProjectInfo.js";
 import listProjects from "../requests/listProjects.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
 import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
-import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
+import {
+  GenezioTelemetry,
+  TelemetryEventTypes,
+} from "../telemetry/telemetry.js";
 import path from "path";
 import {
   SdkGeneratorClassesInfoInput,
@@ -22,6 +25,7 @@ import { AstSummaryClassResponse } from "../models/astSummary.js";
 import { mapDbAstToSdkGeneratorAst } from "../generateSdk/utils/mapDbAstToFullAst.js";
 import { generateSdk } from "../generateSdk/sdkGeneratorHandler.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
+import inquirer, { Answers } from "inquirer";
 
 export async function generateSdkCommand(projectName: string, options: any) {
   const language = options.language;
@@ -38,7 +42,10 @@ export async function generateSdkCommand(projectName: string, options: any) {
   }
 
   if (projectName) {
-    GenezioTelemetry.sendEvent({ eventType: TelemetryEventTypes.GENEZIO_GENERATE_REMOTE_SDK , commandOptions: JSON.stringify(options)});
+    GenezioTelemetry.sendEvent({
+      eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK,
+      commandOptions: JSON.stringify(options),
+    });
     await generateRemoteSdkHandler(
       language,
       sdkPath,
@@ -49,78 +56,90 @@ export async function generateSdkCommand(projectName: string, options: any) {
       if (error.response?.status == 401) {
         log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
       } else {
-        GenezioTelemetry.sendEvent({ eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK_REMOTE_ERROR, errorTrace: error.message, commandOptions: JSON.stringify(options)});
+        GenezioTelemetry.sendEvent({
+          eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK_ERROR,
+          errorTrace: error.message,
+          commandOptions: JSON.stringify(options),
+        });
         log.error(error.message);
       }
       exit(1);
     });
   } else {
-    GenezioTelemetry.sendEvent({ eventType: TelemetryEventTypes.GENEZIO_GENERATE_LOCAL_SDK, commandOptions: JSON.stringify(options)});
     let source = options.source;
     // check if path ends in .genezio.yaml or else append it
     if (!source.endsWith("genezio.yaml")) {
       source = path.join(source, "genezio.yaml");
     }
-    const port = options.port;
-    if (port && isNaN(parseInt(port))) {
-      log.error("Please specify a valid port number using --port <port>.");
-      exit(1);
-    }
-    const portNumber = port ? parseInt(port) : 8083;
-    await generateLocalSdkHandler(language, source, sdkPath, portNumber).catch(
-      (error: Error) => {
-        GenezioTelemetry.sendEvent({ eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK_LOCAL_ERROR, errorTrace: error.message, commandOptions: JSON.stringify(options)});
-        log.error(error.message);
-        exit(1);
+    let configuration: YamlProjectConfiguration | undefined;
+    try {
+      configuration = await getProjectConfiguration(source);
+    } catch (error: any) {
+      if (error.message === "The configuration file does not exist.") {
+        const answers: Answers = await inquirer.prompt([
+          {
+            type: "confirm",
+            name: "createConfig",
+            message:
+              "Oops! The configuration file does not exist at the specified path. Do you want us to create one for you?",
+          },
+        ]);
+        if (answers.createConfig) {
+          const projects = await listProjects(0).catch((error: any) => {
+            throw error;
+          });
+          const options = [
+            ...new Set(
+              projects.map((p) => ({ name: p.name, region: p.region }))
+            ),
+          ].map((p) => ({
+            name: `${p.name} (${p.region})`,
+            value: p,
+          }));
+          const answers: Answers = await inquirer.prompt([
+            {
+              type: "list",
+              name: "project",
+              message: "Select the project you want to generate the SDK for:",
+              choices: options,
+            },
+          ]);
+          configuration = await YamlProjectConfiguration.create({
+            name: answers.project.name,
+            region: answers.project.region,
+          });
+          await configuration.writeToFile(source);
+        } else {
+          exit(1);
+        }
+      } else {
+        throw error;
       }
-    );
+    }
+    const name = configuration.name;
+    const configurationRegion = configuration.region;
+    GenezioTelemetry.sendEvent({
+      eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK,
+      commandOptions: JSON.stringify(options),
+    });
+    await generateRemoteSdkHandler(
+      language,
+      sdkPath,
+      name,
+      stage,
+      configurationRegion
+    ).catch((error: Error) => {
+      GenezioTelemetry.sendEvent({
+        eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK_ERROR,
+        errorTrace: error.message,
+        commandOptions: JSON.stringify(options),
+      });
+      log.error(error.message);
+      exit(1);
+    });
   }
 
   console.log("Your SDK has been generated successfully in " + sdkPath + "");
-}
-
-async function generateLocalSdkHandler(
-  language: string,
-  source: string,
-  sdkPath: string,
-  port: number
-) {
-  const configuration = await getProjectConfiguration(source);
-
-  configuration.sdk.language = language as Language;
-  configuration.sdk.path = sdkPath;
-
-  // check if there are classes in the configuration
-  if (configuration.classes.length === 0) {
-    throw new Error(GENEZIO_NO_CLASSES_FOUND);
-  }
-
-  // get the sdk from the sdk generator api
-  // temporarily move working directory to the project directory
-  const cwd = process.cwd();
-  const configurationDirectory = path.dirname(source);
-  process.chdir(configurationDirectory);
-  const sdkResponse = await sdkGeneratorApiHandler(configuration).catch(
-    (error) => {
-      throw error;
-    }
-  );
-  process.chdir(cwd);
-
-  // replace the placeholder urls in the sdk with the actual cloud urls
-  await replaceUrlsInSdk(
-    sdkResponse,
-    sdkResponse.files.map((c) => ({
-      name: c.className,
-      cloudUrl: `http://127.0.0.1:${port}/${c.className}`,
-    }))
-  );
-  // write the sdk to disk in the specified path
-  await writeSdkToDisk(
-    sdkResponse,
-    configuration.sdk.language,
-    configuration.sdk.path
-  );
 }
 
 async function generateRemoteSdkHandler(
