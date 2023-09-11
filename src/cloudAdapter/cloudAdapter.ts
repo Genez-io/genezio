@@ -7,9 +7,13 @@ export type GenezioCloudInput = {
   archivePath: string;
   filePath: string;
   methods: MethodConfiguration[];
+  dependenciesSize: {
+    name: string;
+    totalSize: number;
+  };
   filesSize: {
-    dependenciesSize: object;
-    filesSize: object;
+    name: string;
+    totalSize: number;
   };
 
   unzippedBundleSize: {

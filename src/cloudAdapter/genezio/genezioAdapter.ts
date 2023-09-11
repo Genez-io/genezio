@@ -31,14 +31,15 @@ export class GenezioCloudAdapter implements CloudAdapter {
         }, cliProgress.Presets.shades_grey);
 
         const promisesDeploy = input.map(async (element) => {
-            console.log(element.filesSize.dependenciesSize, "dependenciesSize -> get biggest 5 from here");
-            console.log(element.filesSize.filesSize, "nonjsfilessize -> get biggest 5 from here");
+            console.log(element, "element")
+            const {dependenciesSize, filesSize} = element;
 
+            // TODO: display only biggest 5 files
             if (element.unzippedBundleSize.totalSize > BUNDLE_SIZE_LIMIT) {
                 throw new Error(`
 Class ${element.name} is too big: ${(element.unzippedBundleSize.totalSize/1048576).toFixed(2)}MB. The maximum size is ${BUNDLE_SIZE_LIMIT/1048576}MB. Try to reduce the size of your class.
-Your biggest dependencies are: ${JSON.stringify(element.unzippedBundleSize.folderSize.dependenciesSize)}.
-Your biggest files are:  ${JSON.stringify(element.unzippedBundleSize.folderSize.filesSize)}.
+Your biggest dependencies are: ${JSON.stringify(dependenciesSize)}.
+Your biggest files are:  ${JSON.stringify(filesSize)}.
                 `);
             }
 

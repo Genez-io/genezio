@@ -28,8 +28,8 @@ import {
   deleteFolder,
   getBundleFolderSizeLimit,
   readEnvironmentVariablesFile,
-  calculateBiggestFiles,
 } from "../utils/file.js";
+import { calculateBiggestFiles } from "../utils/calculateBiggestProjectFiles.js"
 import { printAdaptiveLog, debugLogger } from "../utils/logging.js";
 import { runNewProcess } from "../utils/process.js";
 import { reportSuccess } from "../utils/reporter.js";
@@ -286,10 +286,8 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
         `genezioDeploy.zip`
       );
 
-      // check here the errors for size and get the folder size of node deps with the function named getBundleFolderSizeLimit
 
         const filesSize = await calculateBiggestFiles(
-          output.path,
           output.extra.dependenciesInfo,
           output.extra.allNonJsFilesPaths
         );
@@ -313,7 +311,8 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
         methods: element.methods,
         totalSize: unzippedBundleSize,
         unzippedBundleSize: unzippedBundleSize,
-        filesSize: filesSize,
+        dependenciesSize: filesSize.dependenciesSize,
+        filesSize: filesSize.filesSize,
       };
     });
 

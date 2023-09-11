@@ -163,53 +163,6 @@ export async function getFileSize(filePath: string): Promise<number> {
   });
 }
 
-export async function calculateBiggestFiles(directoryPath: string, dependencies: any, allNonJsFilesPaths: any) {
-  const files = await getAllFilesRecursively(directoryPath);
-  const totalSize = files.reduce((acc, file) => acc + fs.statSync(file).size, 0);
-
-  interface FileSizeInfo {
-    name: string;
-    sizeInBytes: number;
-  }
-  const fileSizes: FileSizeInfo[] = [];
-  const nodeModulesData: { name: string; totalSize: number }[] = [];
-
-  const promises = dependencies.map(async (file: any) => {
-    const filePath = file.path;
-    const depSize: any = await getBundleFolderSizeLimit(filePath);
-
-    const { totalSize }  = depSize
-
-    const moduleData = {
-      name: file.name,
-      totalSize: totalSize,
-    };
-    nodeModulesData.push(moduleData);
-  });
-  await Promise.all(promises);
-
-  allNonJsFilesPaths.forEach((fileInfo: any) => {
-    const filePath = fileInfo.path;
-
-    const stats = fs.statSync(filePath);
-      if (stats.isFile()) {
-        const sizeInBytes = stats.size;
-        fileSizes.push({
-          name: fileInfo.name + fileInfo.extension,
-          sizeInBytes,
-        });
-      }
-    
-  });
-
-  debugLogger.debug(`Total size of the bundle: ${totalSize} bytes`);
-
-  return {
-    dependenciesSize: nodeModulesData,
-    filesSize: fileSizes, 
-  };
-}
-
 export async function getBundleFolderSizeLimit(directoryPath: string): Promise<object> {
   const files = await getAllFilesRecursively(directoryPath);
   const totalSize = files.reduce((acc, file) => acc + fs.statSync(file).size, 0);
