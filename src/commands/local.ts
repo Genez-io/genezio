@@ -167,7 +167,9 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             "Local configuration file is missing required fields"
           );
         }
-        if (!Language[options.language as keyof typeof Language]) {
+        if (
+          !Language[yamlLocalConfiguration.language as keyof typeof Language]
+        ) {
           log.info(
             "This sdk.language is not supported by default. It will be treated as a custom language."
           );
@@ -191,6 +193,50 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         options.path
       );
     }
+
+    if (!yamlProjectConfiguration.sdk) {
+      const answer: Answers = await inquirer.prompt([
+        {
+          type: "confirm",
+          name: "generateSdk",
+          message:
+            "It appears you don't have any SDK configured yet. Would you like to set one up now?",
+        },
+      ]);
+      if (answer.generateSdk) {
+        const sdkConfiguration: Answers = await inquirer.prompt([
+          {
+            type: "input",
+            name: "sdkPath",
+            message:
+              "Specify the path of your frontend. The SDK will be generated in /<your_project_path>/sdk.",
+            default: "./",
+          },
+          {
+            type: "list",
+            name: "sdkLanguage",
+            message: "In which programming language is your frontend written?",
+            choices: Object.keys(Language).filter((key) => isNaN(Number(key))),
+          },
+        ]);
+        const localConfiguration = await YamlLocalConfiguration.create({
+          generateSdk: true,
+          path: path.join(sdkConfiguration.sdkPath, "sdk"),
+          language: sdkConfiguration.sdkLanguage,
+        });
+        yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
+          Language[sdkConfiguration.sdkLanguage as keyof typeof Language],
+          path.join(sdkConfiguration.sdkPath, "sdk")
+        );
+        await localConfiguration.writeToFile();
+      } else {
+        const localConfiguration = await YamlLocalConfiguration.create({
+          generateSdk: false,
+        });
+        await localConfiguration.writeToFile();
+      }
+    }
+
     let sdk: SdkGeneratorResponse;
     let processForClasses: Map<string, ClassProcess>;
     let projectConfiguration: ProjectConfiguration;
@@ -269,42 +315,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         projectConfiguration.sdk.language,
         projectConfiguration.sdk.path
       );
-    } else if (!yamlLocalConfiguration) {
-      const answer: Answers = await inquirer.prompt([
-        {
-          type: "confirm",
-          name: "generateSdk",
-          message:
-            "You have not provided any sdk configuration. Do you wish to generate one?",
-        },
-      ]);
-      if (answer.generateSdk) {
-        const sdkConfiguration: Answers = await inquirer.prompt([
-          {
-            type: "input",
-            name: "sdkPath",
-            message: "Where do you want to generate the sdk?",
-            default: "./sdk",
-          },
-          {
-            type: "list",
-            name: "sdkLanguage",
-            message: "What language do you want to generate the sdk in?",
-            choices: Object.keys(Language).filter((key) => isNaN(Number(key))),
-          },
-        ]);
-        const localConfiguration = await YamlLocalConfiguration.create({
-          generateSdk: true,
-          path: sdkConfiguration.sdkPath,
-          language: sdkConfiguration.sdkLanguage,
-        });
-        await localConfiguration.writeToFile();
-      } else {
-        const localConfiguration = await YamlLocalConfiguration.create({
-          generateSdk: false,
-        });
-        await localConfiguration.writeToFile();
-      }
     }
 
     reportSuccess(projectConfiguration, sdk, options.port);
