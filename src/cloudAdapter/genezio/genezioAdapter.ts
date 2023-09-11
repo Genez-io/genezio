@@ -31,7 +31,6 @@ export class GenezioCloudAdapter implements CloudAdapter {
         }, cliProgress.Presets.shades_grey);
 
         const promisesDeploy = input.map(async (element) => {
-            console.log(element, "element")
             const {dependenciesSize, filesSize} = element;
 
             // TODO: display only biggest 5 files
