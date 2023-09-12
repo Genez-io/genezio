@@ -29,7 +29,6 @@ import {
   getBundleFolderSizeLimit,
   readEnvironmentVariablesFile,
 } from "../utils/file.js";
-import { calculateBiggestFiles } from "../utils/calculateBiggestProjectFiles.js"
 import { printAdaptiveLog, debugLogger } from "../utils/logging.js";
 import { runNewProcess } from "../utils/process.js";
 import { reportSuccess } from "../utils/reporter.js";
@@ -287,20 +286,12 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
       );
 
 
-        const filesSize = await calculateBiggestFiles(
-          output.extra.dependenciesInfo,
-          output.extra.allNonJsFilesPaths
-        );
-
-
       // check if the unzipped folder is smaller than 250MB
-      const unzippedBundleSize: object = await getBundleFolderSizeLimit(output.path);
+      const unzippedBundleSize: number = await getBundleFolderSizeLimit(output.path);
       debugLogger.debug(`The unzippedBundleSize for class ${element.path} is ${unzippedBundleSize}.`);
 
       debugLogger.debug(`Zip the directory ${output.path}.`);
       await zipDirectory(output.path, archivePath);
-
-
 
       await deleteFolder(output.path);
 
@@ -309,10 +300,9 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
         archivePath: archivePath,
         filePath: element.path,
         methods: element.methods,
-        totalSize: unzippedBundleSize,
         unzippedBundleSize: unzippedBundleSize,
-        dependenciesSize: filesSize.dependenciesSize,
-        filesSize: filesSize.filesSize,
+        dependenciesInfo: output.extra.dependenciesInfo,
+        allNonJsFilesPaths: output.extra.allNonJsFilesPaths,
       };
     });
 
@@ -320,11 +310,9 @@ export async function deployClasses(configuration: YamlProjectConfiguration, clo
 
   printAdaptiveLog("Bundling your code", "end");
 
-  const result = await cloudAdapter.deploy(
-    bundlerResultArray as any,
-    projectConfiguration,
-    { stage: stage }
-  );
+  const result = await cloudAdapter.deploy(bundlerResultArray as any, projectConfiguration, {
+    stage: stage,
+  });
 
   reportSuccess(result.classes, sdkResponse);
 

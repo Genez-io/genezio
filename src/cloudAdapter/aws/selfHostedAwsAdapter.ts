@@ -191,8 +191,8 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
     const bucketName = await this.#getValueForKeyFromOutput(cloudFormationClient, stackName, "GenezioDeploymentBucketName");
 
     const uploadFilesPromises = input.map(async (inputItem) => {
-      if (inputItem.unzippedBundleSize.totalSize > BUNDLE_SIZE_LIMIT) {
-        throw new Error(`Class ${inputItem.name} is too big: ${(inputItem.unzippedBundleSize.totalSize/1048576).toFixed(2)}MB. The maximum size is ${BUNDLE_SIZE_LIMIT/1048576}MB. Try to reduce the size of your class.`);
+      if (inputItem.unzippedBundleSize > BUNDLE_SIZE_LIMIT) {
+        throw new Error(`Class ${inputItem.name} is too big: ${(inputItem.unzippedBundleSize/1048576).toFixed(2)}MB. The maximum size is ${BUNDLE_SIZE_LIMIT/1048576}MB. Try to reduce the size of your class.`);
     }
 
       const bucketKey = this.#getBackendBucketKey(projectConfiguration.name, inputItem.name);

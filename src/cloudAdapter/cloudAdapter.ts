@@ -7,22 +7,22 @@ export type GenezioCloudInput = {
   archivePath: string;
   filePath: string;
   methods: MethodConfiguration[];
-  dependenciesSize: {
+  dependenciesInfo: {
     name: string;
-    totalSize: number;
+    path: string
+  };
+  allNonJsFilesPaths: {
+    name: string;
+    extension: string;
+    path: string;
+    filePath: string;
   };
   filesSize: {
     name: string;
     totalSize: number;
   };
 
-  unzippedBundleSize: {
-    totalSize: number;
-    folderSize: {
-      dependenciesSize: object;
-      filesSize: object;
-    };
-  };
+  unzippedBundleSize: number;
 };
 
 export type GenezioCloudResultClass = {

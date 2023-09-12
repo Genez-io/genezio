@@ -1,43 +1,46 @@
 import fs from "fs"
 import { getBundleFolderSizeLimit } from './file.js';
 
+
+type PackageInfo = {
+  name: string;
+  totalSize: number;
+};
+
+function getTop5LargestPackages(packages: PackageInfo[]): string[] {
+  const sortedPackages = packages.sort((a, b) => b.totalSize - a.totalSize);
+  const top5Packages = sortedPackages.slice(0, 5);
+  const formattedPackages = top5Packages.map((pkg) => `${pkg.name} -> ${pkg.totalSize}mb`);
+  return formattedPackages;
+}
+
 export async function calculateBiggestFiles(dependencies: any, allNonJsFilesPaths: any) {
-  interface FileSizeInfo {
-    name: string;
-    totalSize: number;
-  }
-  const fileSizes: FileSizeInfo[] = [];
+  const fileSizes: {name: string; totalSize: number}[] = [];
   const nodeModulesData: { name: string; totalSize: number }[] = [];
 
-  const promises = dependencies.map(async (file: any) => {
-    const filePath = file.path;
-    const depSize: any = await getBundleFolderSizeLimit(filePath);
-
-    const { totalSize } = depSize;
-
+  const promises = dependencies.map(async (file: {name: string; path: string;}) => {
+    const depSize: number = await getBundleFolderSizeLimit(file.path);
     const moduleData = {
       name: file.name,
-      totalSize: totalSize,
+      totalSize: depSize / 1024 ** 2,
     };
     nodeModulesData.push(moduleData);
   });
   await Promise.all(promises);
 
   allNonJsFilesPaths.forEach((fileInfo: any) => {
-    const filePath = fileInfo.path;
-
-    const stats = fs.statSync(filePath);
+    const stats = fs.statSync(fileInfo.path);
     if (stats.isFile()) {
       const totalSize = stats.size;
       fileSizes.push({
         name: fileInfo.name + fileInfo.extension,
-        totalSize,
+        totalSize: totalSize / 1024 ** 2,
       });
     }
   });
 
   return {
-    dependenciesSize: nodeModulesData,
-    filesSize: fileSizes,
+    dependenciesSize: getTop5LargestPackages(nodeModulesData),
+    filesSize: getTop5LargestPackages(fileSizes),
   };
 }
