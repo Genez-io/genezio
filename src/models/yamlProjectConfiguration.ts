@@ -481,9 +481,9 @@ export class YamlLocalConfiguration {
 
   static async create(
     yamlLocalConfiguration: any
-  ): Promise<YamlLocalConfiguration> {
+  ): Promise<YamlLocalConfiguration | undefined> {
     if (yamlLocalConfiguration.generateSdk === undefined) {
-      throw new Error("generateSdk is not set.");
+      return undefined;
     }
     const generateSdk: boolean = yamlLocalConfiguration.generateSdk;
     const path: string | undefined = yamlLocalConfiguration.path;

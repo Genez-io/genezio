@@ -159,25 +159,25 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
   while (true) {
     // Read the project configuration every time because it might change
     const yamlProjectConfiguration = await getProjectConfiguration();
-    const yamlLocalConfiguration = await getLocalConfiguration();
+    let yamlLocalConfiguration = await getLocalConfiguration();
     if (yamlLocalConfiguration) {
       if (yamlLocalConfiguration.generateSdk) {
         if (!(yamlLocalConfiguration.path && yamlLocalConfiguration.language)) {
-          throw new Error(
-            "Local configuration file is missing required fields"
+          yamlProjectConfiguration.sdk = undefined;
+          yamlLocalConfiguration = undefined;
+        } else {
+          if (
+            !Language[yamlLocalConfiguration.language as keyof typeof Language]
+          ) {
+            log.info(
+              "This sdk.language is not supported by default. It will be treated as a custom language."
+            );
+          }
+          yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
+            Language[yamlLocalConfiguration.language as keyof typeof Language],
+            yamlLocalConfiguration.path
           );
         }
-        if (
-          !Language[yamlLocalConfiguration.language as keyof typeof Language]
-        ) {
-          log.info(
-            "This sdk.language is not supported by default. It will be treated as a custom language."
-          );
-        }
-        yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
-          Language[yamlLocalConfiguration.language as keyof typeof Language],
-          yamlLocalConfiguration.path
-        );
       } else {
         yamlProjectConfiguration.sdk = undefined;
       }
@@ -228,11 +228,17 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
           Language[sdkConfiguration.sdkLanguage as keyof typeof Language],
           path.join(sdkConfiguration.sdkPath, "sdk")
         );
+        if (!localConfiguration) {
+          throw new Error("Could not create local configuration file.");
+        }
         await localConfiguration.writeToFile();
       } else {
         const localConfiguration = await YamlLocalConfiguration.create({
           generateSdk: false,
         });
+        if (!localConfiguration) {
+          throw new Error("Could not create local configuration file.");
+        }
         await localConfiguration.writeToFile();
       }
     }

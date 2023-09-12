@@ -45,6 +45,9 @@ export async function getLocalConfiguration(
   } catch (error) {
     throw new Error(`The configuration yaml file is not valid.\n${error}`);
   }
+  if (!configurationFileContent) {
+    return undefined;
+  }
   const localConfiguration = await YamlLocalConfiguration.create(
     configurationFileContent
   );
