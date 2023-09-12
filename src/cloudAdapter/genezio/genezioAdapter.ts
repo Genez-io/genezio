@@ -53,7 +53,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
 
             for (let i = 0; i < maxLength; i++) {
             const formatedDep: string = allfilesSize.dependenciesSize[i] ? allfilesSize.dependenciesSize[i] : "";
-            const formatedNonJsFile: string = allfilesSize.dependenciesSize[i] ? allfilesSize.dependenciesSize[i] : "";
+            const formatedNonJsFile: string = allfilesSize.filesSize[i] ? allfilesSize.filesSize[i] : "";
 
             table.push([formatedDep, formatedNonJsFile]);
             }

@@ -10,8 +10,8 @@ type PackageInfo = {
 function getTop5LargestPackages(packages: PackageInfo[]): string[] {
   const sortedPackages = packages.sort((a, b) => b.totalSize - a.totalSize);
   const top5Packages = sortedPackages.slice(0, 5);
-  const formattedPackages = top5Packages.map((pkg) => `${pkg.name} -> ${pkg.totalSize}mb`);
-  return formattedPackages;
+  const formatedSizes = top5Packages.map((pkg) => `${pkg.name} -> ${pkg.totalSize.toFixed(3)}mb`);
+  return formatedSizes;
 }
 
 export async function calculateBiggestFiles(dependencies: any, allNonJsFilesPaths: any) {
@@ -30,13 +30,16 @@ export async function calculateBiggestFiles(dependencies: any, allNonJsFilesPath
 
   allNonJsFilesPaths.forEach((fileInfo: any) => {
     const stats = fs.statSync(fileInfo.path);
-    if (stats.isFile()) {
+
+    if(!stats.isFile()) {
+      return 
+    }
+
       const totalSize = stats.size;
       fileSizes.push({
         name: fileInfo.name + fileInfo.extension,
         totalSize: totalSize / 1024 ** 2,
       });
-    }
   });
 
   return {
