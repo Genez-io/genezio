@@ -167,8 +167,6 @@ export async function getBundleFolderSizeLimit(directoryPath: string): Promise<n
   const files = await getAllFilesRecursively(directoryPath);
   const totalSize = files.reduce((acc, file) => acc + fs.statSync(file).size, 0);
 
-  debugLogger.debug(`Total size of the bundle: ${totalSize} bytes`);
-
   return totalSize
 }
 
