@@ -194,7 +194,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       );
     }
 
-    if (!yamlProjectConfiguration.sdk) {
+    if (!yamlProjectConfiguration.sdk && !yamlLocalConfiguration) {
       const answer: Answers = await inquirer.prompt([
         {
           type: "confirm",
