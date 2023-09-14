@@ -172,8 +172,20 @@ if (!genezioClass) {
 
             const requestId = body.id;
             const errorPromise = new Promise((resolve) => {
-                process.on("uncaughtException", function (err) {
+                process.removeAllListeners("uncaughtException")
+                process.on("uncaughtException", async function (err) {
                     console.error(err);
+                    try {
+                        const { createRequire } = await import("module");
+                        const require = createRequire(import.meta.url);
+                        const Sentry = require("@sentry/node");
+                        Sentry.init({
+                            dsn: process.env.SENTRY_DSN,
+                            tracesSampleRate: process.env.SENTRY_TRACES_SAMPLE_RATE
+                        });
+                        Sentry.captureException(err);
+                        await Sentry.flush();
+                    } catch (e) {}
                     resolve({
                         statusCode: 500,
                         body: JSON.stringify({
@@ -200,8 +212,19 @@ if (!genezioClass) {
                             headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
                         };
                     })
-                    .catch((err) => {
+                    .catch(async (err) => {
                         console.error(err);
+                        try {
+                            const { createRequire } = await import("module");
+                            const require = createRequire(import.meta.url);
+                            const Sentry = require("@sentry/node");
+                            Sentry.init({
+                                dsn: process.env.SENTRY_DSN,
+                                tracesSampleRate: process.env.SENTRY_TRACES_SAMPLE_RATE
+                            });
+                            Sentry.captureException(err);
+                            await Sentry.flush();
+                        } catch (e) {}
                         return {
                             statusCode: 500,
                             body: JSON.stringify({
@@ -214,7 +237,6 @@ if (!genezioClass) {
                     });
 
                 const result = await Promise.race([errorPromise, response]);
-                process.removeAllListeners("uncaughtException");
                 return result;
             } catch (err) {
                 console.error(err);
