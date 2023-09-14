@@ -28,9 +28,23 @@ if (!genezioClass) {
             }),
             headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
         };
-    }
+    };
 } else {
     const object = new genezioClass();
+
+    const sendSentryError = async function (err) {
+        try {
+            const { createRequire } = await import("module");
+            const require = createRequire(import.meta.url);
+            const Sentry = require("@sentry/node");
+            Sentry.init({
+                dsn: process.env.SENTRY_DSN,
+                tracesSampleRate: process.env.SENTRY_TRACES_SAMPLE_RATE
+            });
+            Sentry.captureException(err);
+            await Sentry.flush();
+        } catch (e) {}
+    };
 
     handler = async function (event, context) {
         if (event.genezioEventType === "cron") {
@@ -172,20 +186,10 @@ if (!genezioClass) {
 
             const requestId = body.id;
             const errorPromise = new Promise((resolve) => {
-                process.removeAllListeners("uncaughtException")
+                process.removeAllListeners("uncaughtException");
                 process.on("uncaughtException", async function (err) {
                     console.error(err);
-                    try {
-                        const { createRequire } = await import("module");
-                        const require = createRequire(import.meta.url);
-                        const Sentry = require("@sentry/node");
-                        Sentry.init({
-                            dsn: process.env.SENTRY_DSN,
-                            tracesSampleRate: process.env.SENTRY_TRACES_SAMPLE_RATE
-                        });
-                        Sentry.captureException(err);
-                        await Sentry.flush();
-                    } catch (e) {}
+                    await sendSentryError(err);
                     resolve({
                         statusCode: 500,
                         body: JSON.stringify({
@@ -214,17 +218,7 @@ if (!genezioClass) {
                     })
                     .catch(async (err) => {
                         console.error(err);
-                        try {
-                            const { createRequire } = await import("module");
-                            const require = createRequire(import.meta.url);
-                            const Sentry = require("@sentry/node");
-                            Sentry.init({
-                                dsn: process.env.SENTRY_DSN,
-                                tracesSampleRate: process.env.SENTRY_TRACES_SAMPLE_RATE
-                            });
-                            Sentry.captureException(err);
-                            await Sentry.flush();
-                        } catch (e) {}
+                        await sendSentryError(err);
                         return {
                             statusCode: 500,
                             body: JSON.stringify({
@@ -240,17 +234,7 @@ if (!genezioClass) {
                 return result;
             } catch (err) {
                 console.error(err);
-                try {
-                    const { createRequire } = await import("module");
-                    const require = createRequire(import.meta.url);
-                    const Sentry = require("@sentry/node");
-                    Sentry.init({
-                        dsn: process.env.SENTRY_DSN,
-                        tracesSampleRate: process.env.SENTRY_TRACES_SAMPLE_RATE
-                    });
-                    Sentry.captureException(err);
-                    await Sentry.flush();
-                } catch (e) {}
+                await sendSentryError(err);
                 return {
                     statusCode: 500,
                     body: JSON.stringify({
