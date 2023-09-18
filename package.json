@@ -99,7 +99,7 @@
     "@types/jest": "^29.5.4",
     "@types/mime-types": "^2.1.1",
     "@types/mustache": "^4.2.2",
-    "@types/node": "^20.5.1",
+    "@types/node": "^20.6.2",
     "@types/node-cron": "^3.0.8",
     "@types/uuid": "^9.0.2",
     "@types/whatwg-mimetype": "~3.0.0",
