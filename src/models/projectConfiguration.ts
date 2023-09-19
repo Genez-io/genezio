@@ -7,11 +7,13 @@ import { Language, TriggerType, YamlProjectConfiguration } from "./yamlProjectCo
 
 export class ParameterType {
     name: string;
-    type: string;
+    type: any;
+    optional: boolean;
 
-    constructor(name: string, type: string) {
+    constructor(name: string, type: any, optional = false) {
         this.name = name
         this.type = type
+        this.optional = optional
     }
 }
 
@@ -20,12 +22,14 @@ export class MethodConfiguration {
     parameters: ParameterType[]
     cronString?: string;
     type: TriggerType;
+    returnType: any;
 
-    constructor(name: string, parameters: string[], type?: TriggerType, cronString?: string) {
+    constructor(name: string, parameters: string[], returnType: any, type?: TriggerType, cronString?: string) {
         this.name = name;
         this.parameters = parameters.map((parameter) => new ParameterType(parameter, "any"));
         this.type = type ?? TriggerType.jsonrpc;
         this.cronString = cronString;
+        this.returnType = returnType;
     }
 }
 
@@ -35,19 +39,25 @@ export class ClassConfiguration {
     type: TriggerType;
     language: string;
     methods: MethodConfiguration[];
+    types: any[];
+    version: string;
 
     constructor(
         name: string,
         path: string,
         type: TriggerType,
         language: string,
-        methods: MethodConfiguration[]
+        methods: MethodConfiguration[],
+        types: any[],
+        version: string
     ) {
         this.name = name;
         this.path = path;
         this.type = type;
         this.methods = methods;
         this.language = language;
+        this.types = types;
+        this.version = version;
     }
 }
 
@@ -69,7 +79,7 @@ export class SdkConfiguration {
 export class ProjectConfiguration {
     name: string;
     region: string;
-    sdk: SdkConfiguration;
+    sdk?: SdkConfiguration;
     options?: NodeOptions;
     cloudProvider: CloudProviderIdentifier;
     astSummary: AstSummary;
@@ -87,22 +97,23 @@ export class ProjectConfiguration {
 
         // Generate AST Summary
         this.astSummary = {
-            version: "1.0.0",
+            version: "2",
             classes: getAstSummary(sdkGeneratorResponse.sdkGeneratorInput.classesInfo)
         };
 
         this.classes = this.astSummary.classes.map((c) => {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const yamlClass = yamlConfiguration.classes.find((yamlC) => yamlC.path === c.path)!;
+            const yamlClass = yamlConfiguration.classes!.find((yamlC) => yamlC.path === c.path)!;
             const methods = c?.methods.map((m) => {
                 const yamlMethod = yamlClass.methods.find((yamlM) => yamlM.name === m.name)
 
                 return {
                     name: m.name,
-                    parameters: m.params.map((p) => new ParameterType(p.name, p.type)),
+                    parameters: m.params.map((p) => new ParameterType(p.name, p.type, p.optional)),
                     cronString: yamlMethod?.cronString,
                     language: c.language,
-                    type: yamlClass?.getMethodType(m.name)
+                    type: yamlClass?.getMethodType(m.name),
+                    returnType: m.returnType
                 }
             })
 
@@ -112,6 +123,8 @@ export class ProjectConfiguration {
                 type: yamlClass?.type ?? TriggerType.jsonrpc,
                 language: yamlClass.language,
                 methods: methods,
+                types: c.types,
+                version: this.astSummary.version
             }
         });
     }

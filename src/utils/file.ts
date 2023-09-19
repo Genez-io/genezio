@@ -9,6 +9,8 @@ import { exit } from "process";
 import awsCronParser from "aws-cron-parser";
 import log from "loglevel";
 import { promises as fsPromises } from 'fs';
+import { debugLogger } from "./logging.js";
+import { EnvironmentVariable } from "../models/environmentVariables.js";
 
 export async function getAllFilesRecursively(folderPath: string): Promise<string[]> {
   let files: string[] = [];
@@ -40,7 +42,7 @@ export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
   const genezioIgnorePath = path.join(process.cwd(), ".genezioignore");
   if (fs.existsSync(genezioIgnorePath)) {
     const genezioIgnoreContent = await readUTF8File(genezioIgnorePath);
-    genezioIgnore = genezioIgnoreContent.split("\n").filter(
+    genezioIgnore = genezioIgnoreContent.split(os.EOL).filter(
       (line) => line !== "" && !line.startsWith("#")
     )
   }
@@ -159,6 +161,13 @@ export async function getFileSize(filePath: string): Promise<number> {
       resolve(stats.size);
     });
   });
+}
+
+export async function getBundleFolderSizeLimit(directoryPath: string): Promise<number> {
+  const files = await getAllFilesRecursively(directoryPath);
+  const totalSize = files.reduce((acc, file) => acc + fs.statSync(file).size, 0);
+  debugLogger.debug(`Total size of the bundle: ${totalSize} bytes`);
+  return totalSize;
 }
 
 export async function directoryContainsIndexHtmlFiles(directoryPath: string): Promise<boolean> {
@@ -288,12 +297,8 @@ export function writeToFile(
 
 export async function checkYamlFileExists(yamlPath = "./genezio.yaml") {
   if (!(await fileExists(yamlPath))) {
-    log.error(
-      "genezio.yaml file does not exist. Please run `genezio init` to initialize a project."
-    );
     return false;
   }
-
   return true;
 }
 
@@ -342,4 +347,32 @@ export async function validateYamlFile() {
       }
     }
   }
+}
+
+export async function readEnvironmentVariablesFile(envFilePath: string): Promise<EnvironmentVariable[]> {
+  const envVars = new Array<EnvironmentVariable>();
+
+  const envFileContent = await readUTF8File(envFilePath);
+  const envFileLines = envFileContent.split(os.EOL);
+
+  for (const line of envFileLines) {
+    if (line === "") {
+      continue;
+    }
+
+    const [key, value] = line.split("=");
+
+    if (key === undefined || value === undefined) {
+      log.warn(`The environment variable '${line}' is not valid.`);
+      continue;
+    }
+
+    // key and value should not be surrounded by whitespaces or quotes
+    envVars.push({
+      name: key.trim(),
+      value: value.replace(/['"]+/g, "").trim(),
+    });
+  }
+
+  return envVars;
 }

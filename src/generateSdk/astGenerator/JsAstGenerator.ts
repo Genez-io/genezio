@@ -68,7 +68,7 @@ class AstGenerator implements AstGeneratorInterface {
             })
           });
         } else if (
-          // arrow function declaration synntax
+          // arrow function declaration syntax
           path.type === "ClassProperty" &&
           path.node?.value?.type === "ArrowFunctionExpression"
         ) {

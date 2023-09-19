@@ -1,15 +1,14 @@
 import log from "loglevel";
 import path from "path";
 
-import { TriggerType } from "../models/yamlProjectConfiguration.js";
-import { GenezioTelemetry } from "../telemetry/telemetry.js";
+import { TriggerType, YamlClassConfiguration } from "../models/yamlProjectConfiguration.js";
+import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
 import { fileExists, writeToFile } from "../utils/file.js";
 import { supportedExtensions } from "../utils/languages.js";
-import { DependencyInstaller } from "../bundlers/node/dependencyInstaller.js";
 
 export async function addClassCommand(classPath: string, classType: string) {
-  GenezioTelemetry.sendEvent({eventType: "GENEZIO_ADD_CLASS"});
+  GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_ADD_CLASS});
 
   if (classType === undefined) {
     classType = "jsonrpc";
@@ -48,8 +47,7 @@ export async function addClassCommand(classPath: string, classType: string) {
   // check if class already exists
   if (projectConfiguration.classes.length > 0) {
     if (
-      projectConfiguration.classes
-        .map((c) => c.path.split(path.sep).pop())
+      projectConfiguration.classes.map((c: YamlClassConfiguration) => c.path.split(path.sep).pop())
         .includes(className)
     ) {
       throw new Error("Class already exists.");
@@ -60,7 +58,7 @@ export async function addClassCommand(classPath: string, classType: string) {
   if (!(await fileExists(classPath))) {
     await writeToFile(".", classPath, "", true).catch((error) => {
       log.error(error.toString());
-      GenezioTelemetry.sendEvent({eventType: "GENEZIO_ADD_CLASS_ERROR", errorTrace: error.toString()});
+      GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_ADD_CLASS_ERROR, errorTrace: error.toString()});
       throw error;
     });
   }

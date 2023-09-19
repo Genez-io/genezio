@@ -53,14 +53,18 @@ export class NodeJsBundler implements BundlerInterface {
   async #copyNonJsFiles(tempFolderPath: string) {
     const allNonJsFilesPaths = (await getAllFilesFromCurrentPath()).filter(
       (file: FileDetails) => {
+        // create a regex to match any .env files
+        const envFileRegex = new RegExp(/\.env(\..+)?$/);
+
         // filter js files, node_modules and folders
         return (
-          file.extension !== ".ts" &&
-          file.extension !== ".js" &&
-          file.extension !== ".tsx" &&
-          file.extension !== ".jsx" &&
-          !file.path.includes("node_modules") &&
-          !file.path.includes(".git") &&
+          file.extension !== '.ts' &&
+          file.extension !== '.js' &&
+          file.extension !== '.tsx' &&
+          file.extension !== '.jsx' &&
+          !file.path.includes('node_modules') &&
+          !file.path.includes('.git') &&
+          !envFileRegex.test(file.path) &&
           !fs.lstatSync(file.path).isDirectory()
         );
       }
@@ -131,6 +135,18 @@ export class NodeJsBundler implements BundlerInterface {
           // Check if file doesn't use require()
           if (!contents.includes("require(")) {
             return { contents, loader };
+          }
+
+          // Check if file uses require() for relative paths
+          const regex = /require\(['"]\.\.?(?:\/[\w.-]+)+['"]\);?/g;
+          const matches = contents.match(regex);
+
+          if (matches) {
+            return {
+              errors: [{
+                text: `genezio does not support require() for relative paths. Please use import statements instead.`
+              }]
+            }
           }
 
           return {

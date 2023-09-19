@@ -171,7 +171,7 @@ export function getApiGatewayIntegrationResource(apiGatewayResourceName: string,
     }
 }
 
-export function getLambdaFunctionResource(name: string, runtime: string, roleResourceName: string, bucketName: string, bucketKey: string, latestObjectVection: string) {
+export function getLambdaFunctionResource(name: string, runtime: string, roleResourceName: string, bucketName: string, bucketKey: string, latestObjectVersion: string) {
     return {
         "Type": "AWS::Lambda::Function",
         "Properties": {
@@ -185,7 +185,7 @@ export function getLambdaFunctionResource(name: string, runtime: string, roleRes
             "Code": {
                 "S3Bucket": bucketName,
                 "S3Key": bucketKey,
-                "S3ObjectVersion": latestObjectVection
+                "S3ObjectVersion": latestObjectVersion
             },
             "MemorySize": 1024,
             "Timeout": 10

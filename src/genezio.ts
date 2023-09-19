@@ -21,7 +21,7 @@ import { logoutCommand } from "./commands/logout.js";
 import { lsCommand } from "./commands/ls.js";
 import { GenezioDeployOptions, GenezioLocalOptions } from "./models/commandOptions.js";
 import version, { logOutdatedVersion } from "./utils/version.js";
-import { GenezioTelemetry } from "./telemetry/telemetry.js";
+import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js";
 
 const program = new Command();
 
@@ -71,7 +71,7 @@ program
 
     await initCommand().catch((error: Error) => {
       log.error(error.message);
-      GenezioTelemetry.sendEvent({eventType: "GENEZIO_INIT_ERROR", errorTrace: error.message});
+      GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_INIT_ERROR, errorTrace: error.message});
       exit(1);
     });
     await logOutdatedVersion();
@@ -88,7 +88,7 @@ program
 
     await loginCommand(accessToken).catch((error: Error) => {
       log.error(error.message);
-      GenezioTelemetry.sendEvent({eventType: "GENEZIO_LOGIN_ERROR", errorTrace: error.message});
+      GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_LOGIN_ERROR, errorTrace: error.message});
       exit(1);
     });
     await logOutdatedVersion();
@@ -101,8 +101,9 @@ program
   .option("--frontend", "Deploy only the frontend application.")
   .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .option("--install-deps", "Automatically install missing dependencies.", false)
+  .option("--env <envFile>", "Load environment variables from a given file.", undefined)
   .option("--stage <stage>", "Stage to deploy to. Default: 'production'.")
-  .description(`Deploy your project to the genezio infrastructure. Use --frontend to deploy only the frontend application. 
+  .description(`Deploy your project to the genezio infrastructure. Use --frontend to deploy only the frontend application.
 Use --backend to deploy only the backend application.`)
   .action(async (options: GenezioDeployOptions) => {
     setDebuggingLoggerLogLevel(options.logLevel);
@@ -127,7 +128,7 @@ program
 
     await addClassCommand(classPath, classType).catch((error: Error) => {
       log.error(error.message);
-      GenezioTelemetry.sendEvent({eventType: "GENEZIO_ADD_CLASS_ERROR", errorTrace: error.message});
+      GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_ADD_CLASS_ERROR, errorTrace: error.message});
       exit(1);
     });
     await logOutdatedVersion();
@@ -144,9 +145,11 @@ program
   )
   .option(
     "--env <envFile>",
-    "Set a custom environment variables file.",
+    "Load environment variables from a given .env file.",
     undefined
   )
+  .option("--path <path>", "Path where to generate your local sdk.")
+  .option("-l --language <language>", "Language of the generated sdk.")
   .option("--install-deps", "Automatically install missing dependencies.", false)
   .description("Run a local environment for your functions.")
   .action(async (options: GenezioLocalOptions) => {
@@ -155,7 +158,7 @@ program
     await startLocalEnvironment(options).catch((error: any) => {
       if (error.message) {
         log.error(error.message);
-        GenezioTelemetry.sendEvent({eventType: "GENEZIO_LOCAL_ERROR", errorTrace: error.message});
+        GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_LOCAL_ERROR, errorTrace: error.message, commandOptions: JSON.stringify(options)});
       }
       exit(1);
     });
@@ -221,16 +224,23 @@ program
 
 // genezio generateSdk command
 program
-  .command("generateSdk")
+  .command("sdk")
+  .argument("[projectName]", "Name of the project you want to generate an SDK for.")
   .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
-  .option("-lang, --language <language>", "Language of the SDK to generate.")
-  .option("-p, --path <path>", "Path to the directory where the SDK will be generated.")
-  .option("--stage <stage>", "Stage to deploy to. Default: 'production'.")
-  .description("Generate an SDK corresponding to a deployed project.")
-  .action(async (options: any) => {
+  .option("--language <language>", "Language of the SDK.", "ts")
+  .option("-s, --source <source>", "Path to the genezio.yaml file on your disk. Used for loading project details from a genezio.yaml file, instead of command argumments like --name", "./")
+  .option("-p, --path <path>", "Path to the directory where the SDK will be generated.", "./sdk")
+  .option("--stage <stage>", "Stage of the project.", "prod")
+  .option("--region <region>", "Region where your project is deployed.", "us-east-1")
+  .description("Generate an SDK corresponding to a deployed or local project.\n\nProvide the project name to generate an SDK for a deployed project.\nEx: genezio sdk my-project --stage prod --region us-east-1\n\nProvide the path to the genezio.yaml on your disk to load project details (name and region) from that file instead of command arguments.\nEx: genezio sdk --source ../my-project")
+  .action(async (projectName = "", options: any) => {
     setDebuggingLoggerLogLevel(options.logLevel);
 
-    await generateSdkCommand(options);
+    await generateSdkCommand(projectName, options).catch((error: Error) => {
+      log.error(error.message);
+      GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK_ERROR, errorTrace: error.message, commandOptions: JSON.stringify(options)});
+      exit(1);
+    });
     await logOutdatedVersion();
   });
 

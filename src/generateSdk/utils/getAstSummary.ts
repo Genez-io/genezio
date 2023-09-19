@@ -31,13 +31,21 @@ export function getAstSummary(
         return elem.type === "ClassDefinition";
       }) as ClassDefinition;
 
+      // get the types
+      const types: Object[] = body?.filter((elem) => {
+        return elem.type !== "ClassDefinition";
+      }).map((elem) => {
+        return elem;
+      }) || [];
+
       const methods: AstSummaryMethod[] = classElem.methods.map(
         (method: MethodDefinition) => {
           const params: AstSummaryParam[] = method.params.map(
             (param: ParameterDefinition) => {
               return {
                 name: param.name,
-                type: JSON.stringify(param.paramType)
+                type: param.paramType,
+                optional: param.optional
               };
             }
           );
@@ -45,7 +53,8 @@ export function getAstSummary(
           const methodInfo: AstSummaryMethod = {
             name: method.name,
             type: classConfiguration.classConfiguration.getMethodType(method.name),
-            params: params
+            params: params,
+            returnType: method.returnType
           };
           return methodInfo;
         }
@@ -55,10 +64,10 @@ export function getAstSummary(
         name: classElem.name,
         path: classConfiguration.classConfiguration.path,
         language: classConfiguration.classConfiguration.language,
-        methods: methods
+        methods: methods,
+        types: types
       };
       return classInfo;
     });
-
   return classes;
 }

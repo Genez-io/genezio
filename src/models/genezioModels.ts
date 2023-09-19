@@ -259,7 +259,7 @@ export type SdkGeneratorClassesInfoInput = {
 
 export type SdkGeneratorInput = {
   classesInfo: SdkGeneratorClassesInfoInput[];
-  sdk: {
+  sdk?: {
     language: string;
   }
 };

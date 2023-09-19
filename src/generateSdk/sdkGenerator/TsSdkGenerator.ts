@@ -102,7 +102,7 @@ const TYPESCRIPT_RESERVED_WORDS = [
 ];
 
 const modelTemplate = `/**
-* This is an auto generated code. This code should not be modified since the file can be overwriten
+* This is an auto generated code. This code should not be modified since the file can be overwritten
 * if new genezio commands are executed.
 */
 
@@ -116,7 +116,7 @@ export {{{type}}}
 `;
 
 const template = `/**
-* This is an auto generated code. This code should not be modified since the file can be overwriten
+* This is an auto generated code. This code should not be modified since the file can be overwritten
 * if new genezio commands are executed.
 */
 
@@ -529,7 +529,7 @@ class SdkGenerator implements SdkGeneratorInterface {
       }
       if (!currentView.imports.find((e: any) => e.path === relativePath)) {
         currentView.imports.push({
-          path: relativePath,
+          path: relativePath.replace(/\\/g, "/"),
           models: [{ name: (externalType as any).name }]
         });
       }

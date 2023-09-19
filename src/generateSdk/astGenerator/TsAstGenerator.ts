@@ -63,9 +63,9 @@ export class AstGenerator implements AstGeneratorInterface {
           return { type: AstNodeType.DateType };
         }
         const typeAtLocation = typeChecker.getTypeAtLocation((type as any).typeName);
-        const typeAtLocationPath = (typeAtLocation.aliasSymbol as any).parent.escapedName;
+        const typeAtLocationPath = (typeAtLocation.aliasSymbol as any).declarations?.[0].getSourceFile().symbol.escapedName;
         const trimmedPath = typeAtLocationPath.substring(1, typeAtLocationPath.length - 1);
-        const pathFile = path.relative(process.cwd(), trimmedPath);
+        const pathFile = path.relative(process.cwd(), trimmedPath).replace(/\\/g, "/");
         if (!this.isDeclarationInList(escapedText, pathFile, declarations)) {
           let declaredNode: StructLiteral | TypeAlias | Enum;
           if (typeAtLocation.aliasSymbol?.declarations?.[0].kind === typescript.SyntaxKind.TypeAliasDeclaration) {
@@ -176,7 +176,7 @@ export class AstGenerator implements AstGeneratorInterface {
   parseMethodSignature(methodSignature: typescript.Node, typeChecker: typescript.TypeChecker, declarations: Node[]): MethodDefinition | undefined {
     const parameters: ParameterDefinition[] = [];
     const methodSignatureCopy: any = { ...methodSignature };
-    if (methodSignatureCopy.name.kind === typescript.SyntaxKind.PrivateIdentifier) {
+    if (methodSignatureCopy.name.kind === typescript.SyntaxKind.PrivateIdentifier || methodSignatureCopy.modifiers?.[0].kind === typescript.SyntaxKind.PrivateKeyword) {
       return undefined;
     }
     if (methodSignatureCopy.parameters) {

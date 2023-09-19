@@ -1,10 +1,15 @@
-import path from "path"
-import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js"
-import { checkYamlFileExists, readUTF8File } from "./file.js"
-import { parse } from "yaml"
+import path from "path";
+import {
+  YamlLocalConfiguration,
+  YamlProjectConfiguration,
+} from "../models/yamlProjectConfiguration.js";
+import { checkYamlFileExists, readUTF8File } from "./file.js";
+import { parse } from "yaml";
 
-export async function getProjectConfiguration(configurationFilePath = "./genezio.yaml"): Promise<YamlProjectConfiguration> {
-  if (!await checkYamlFileExists()) {
+export async function getProjectConfiguration(
+  configurationFilePath = "./genezio.yaml"
+): Promise<YamlProjectConfiguration> {
+  if (!(await checkYamlFileExists(configurationFilePath))) {
     throw new Error("The configuration file does not exist.");
   }
 
@@ -14,11 +19,38 @@ export async function getProjectConfiguration(configurationFilePath = "./genezio
 
   try {
     configurationFileContent = await parse(configurationFileContentUTF8);
-  }
-  catch (error) {
+  } catch (error) {
     throw new Error(`The configuration yaml file is not valid.\n${error}`);
   }
-  const projectConfiguration = await YamlProjectConfiguration.create(configurationFileContent)
+  const projectConfiguration = await YamlProjectConfiguration.create(
+    configurationFileContent
+  );
 
-  return projectConfiguration
+  return projectConfiguration;
+}
+
+export async function getLocalConfiguration(
+  configurationFilePath = "./genezio.local.yaml"
+): Promise<YamlLocalConfiguration | undefined> {
+  if (!(await checkYamlFileExists(configurationFilePath))) {
+    return undefined;
+  }
+
+  const genezioYamlPath = path.join(configurationFilePath);
+  const configurationFileContentUTF8 = await readUTF8File(genezioYamlPath);
+  let configurationFileContent = null;
+
+  try {
+    configurationFileContent = await parse(configurationFileContentUTF8);
+  } catch (error) {
+    throw new Error(`The configuration yaml file is not valid.\n${error}`);
+  }
+  if (!configurationFileContent) {
+    return undefined;
+  }
+  const localConfiguration = await YamlLocalConfiguration.create(
+    configurationFileContent
+  );
+
+  return localConfiguration;
 }

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "@jest/globals";
 import {
   YamlProjectConfiguration,
-  TriggerType
+  TriggerType,
 } from "../src/models/yamlProjectConfiguration";
 import { rectifyCronString } from "../src/utils/rectifyCronString";
 
@@ -12,40 +12,6 @@ describe("project configuration", () => {
       await YamlProjectConfiguration.create(yaml);
     }).rejects.toThrowError("The name property is missing from the configuration file.");
   });
-
-  test("missing sdk should throw error", async () => {
-    await expect(async () => {
-      const yaml = {
-        name: "test"
-      };
-      await YamlProjectConfiguration.create(yaml);
-    }).rejects.toThrowError("The sdk property is missing from the configuration file.");
-  });
-
-  test("missing sdk.language should throw error", async () => {
-    await expect(async () => {
-      const yaml = {
-        name: "test",
-        sdk: {
-          path: "/"
-        }
-      };
-      await YamlProjectConfiguration.create(yaml);
-    }).rejects.toThrowError("The sdk.language property is missing.");
-  });
-
-  test("missing sdk.path should throw error", async () => {
-    await expect(async () => {
-      const yaml = {
-        name: "test",
-        sdk: {
-          language: "js"
-        }
-      };
-      await YamlProjectConfiguration.create(yaml);
-    }).rejects.toThrowError("The sdk.path property is missing from the configuration file.");
-  });
-
 
   test('invalid region should throw error', async () => {
       await expect(async () => {
@@ -89,22 +55,6 @@ describe("project configuration", () => {
       const configuration = await YamlProjectConfiguration.create(yaml)
       expect(configuration.region).toEqual("us-east-1")
   });
-
-    test('missing class should throw error', async () => {
-        await expect(async () => {
-            const yaml = {
-                name: "test",
-                sdk: {
-                    path: "/",
-                    language: "js",
-                    options: {
-                      runtime: "node",
-                    },
-                  },
-            }
-            await YamlProjectConfiguration.create(yaml)
-        }).rejects.toThrowError()
-    });
 
     test('missing cronString in cron method should throw error', async () => {
         await expect(async () => {

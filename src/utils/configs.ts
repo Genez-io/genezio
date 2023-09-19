@@ -43,18 +43,3 @@ export const regions = [
   "eu-north-1",
   "sa-east-1"
 ];
-
-export const packagejson = `{
-    "name": "temp-typescript",
-    "version": "1.0.0",
-    "description": "",
-    "main": "index.js",
-    "scripts": {
-        "test": "echo \\"Error: no test specified\\" && exit 1"
-    },
-    "author": "",
-    "license": "ISC",
-    "dependencies": {
-        "ts-loader": "^9.4.1"
-    }
-}`;

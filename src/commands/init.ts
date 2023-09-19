@@ -1,12 +1,10 @@
 import log from "loglevel";
 import { Document } from "yaml";
-import { GenezioTelemetry } from "../telemetry/telemetry.js";
+import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import { regions } from "../utils/configs.js";
 import { writeToFile } from "../utils/file.js";
-import { languages } from "../utils/languages.js";
 import { askQuestion } from "../utils/prompt.js";
 import {cyan, red} from "../utils/strings.js";
-
 
 export async function initCommand() {
   let projectName = "";
@@ -38,34 +36,13 @@ export async function initCommand() {
     }
   }
 
-  let sdkLanguage = "";
-  while (!languages.includes(sdkLanguage)) {
-    sdkLanguage = await askQuestion(
-      `In what programming language do you want your SDK? (${languages}) [default value: ts]: `,
-      "ts"
-    );
-
-    if (!languages.includes(sdkLanguage)) {
-      log.error(red, `We don't currently support the ${sdkLanguage} language. You can open an issue ticket at https://github.com/Genez-io/genezio/issues.`);
-    }
-  }
-
-  const path = await askQuestion(
-    `Where do you want to save your SDK? [default value: ./sdk/]: `,
-    "./sdk/"
-  );
-
   const configFile: any = {
     name: projectName,
     region: region,
-    sdk: {
-      language: sdkLanguage,
-      path: path
-    },
     classes: []
   };
 
-  GenezioTelemetry.sendEvent({eventType: "GENEZIO_INIT"});
+  GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_INIT});
 
 
   const doc = new Document(configFile);
@@ -73,7 +50,7 @@ export async function initCommand() {
 
   await writeToFile(`./${projectName}`, "genezio.yaml", yamlConfigurationFileContent, true).catch(
     (error) => {
-      GenezioTelemetry.sendEvent({eventType: "GENEZIO_INIT_ERROR", errorTrace: error.toString()});
+      GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_INIT_ERROR, errorTrace: error.toString()});
       log.error(red, error.toString());
     }
   );

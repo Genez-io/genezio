@@ -2,31 +2,36 @@ import { AxiosError } from "axios";
 import log from "loglevel";
 import { exit } from "process";
 import { languages } from "../utils/languages.js";
+import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import {
-  GENEZIO_NOT_AUTH_ERROR_MSG,
-  GENEZIO_NO_CLASSES_FOUND
-} from "../errors.js";
-import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
-import { Language } from "../models/yamlProjectConfiguration.js";
+  Language,
+  TriggerType,
+  YamlProjectConfiguration,
+} from "../models/yamlProjectConfiguration.js";
 import getProjectInfo from "../requests/getProjectInfo.js";
 import listProjects from "../requests/listProjects.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
 import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
-import { GenezioTelemetry } from "../telemetry/telemetry.js";
+import {
+  GenezioTelemetry,
+  TelemetryEventTypes,
+} from "../telemetry/telemetry.js";
+import path from "path";
+import {
+  SdkGeneratorClassesInfoInput,
+  SdkGeneratorInput,
+} from "../models/genezioModels.js";
+import { AstSummaryClassResponse } from "../models/astSummary.js";
+import { mapDbAstToSdkGeneratorAst } from "../generateSdk/utils/mapDbAstToFullAst.js";
+import { generateSdk } from "../generateSdk/sdkGeneratorHandler.js";
+import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
+import inquirer, { Answers } from "inquirer";
 
-export async function generateSdkCommand(options: any) {
+export async function generateSdkCommand(projectName: string, options: any) {
   const language = options.language;
   const sdkPath = options.path;
-  const stage = options.stage || "prod";
-
-  GenezioTelemetry.sendEvent({eventType: "GENEZIO_GENERATE_SDK"});
-
-  if (!language) {
-    log.error(
-      `Please specify a language for the SDK to generate using --language <language>. Please use one of the following: ${languages}.`
-    );
-    exit(1);
-  }
+  const stage = options.stage;
+  const region = options.region;
 
   // check if language is supported using languages array
   if (!languages.includes(language)) {
@@ -36,45 +41,114 @@ export async function generateSdkCommand(options: any) {
     exit(1);
   }
 
-  // check if path is specified
-  if (!sdkPath) {
-    log.error(
-      "Please specify a path for the SDK to generate using --path <path>."
-    );
-    exit(1);
-  }
-
-  await generateSdkHandler(language, sdkPath, stage).catch((error: AxiosError) => {
-    if (error.response?.status == 401) {
-      log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-    } else {
-      GenezioTelemetry.sendEvent({eventType: "GENEZIO_GENERATE_SDK_ERROR", errorTrace: error.message});
-      log.error(error.message);
+  if (projectName) {
+    GenezioTelemetry.sendEvent({
+      eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK,
+      commandOptions: JSON.stringify(options),
+    });
+    await generateRemoteSdkHandler(
+      language,
+      sdkPath,
+      projectName,
+      stage,
+      region
+    ).catch((error: AxiosError) => {
+      if (error.response?.status == 401) {
+        log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
+      } else {
+        GenezioTelemetry.sendEvent({
+          eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK_ERROR,
+          errorTrace: error.message,
+          commandOptions: JSON.stringify(options),
+        });
+        log.error(error.message);
+      }
+      exit(1);
+    });
+  } else {
+    let source = options.source;
+    // check if path ends in .genezio.yaml or else append it
+    if (!source.endsWith("genezio.yaml")) {
+      source = path.join(source, "genezio.yaml");
     }
-    exit(1);
-  });
+    let configuration: YamlProjectConfiguration | undefined;
+    try {
+      configuration = await getProjectConfiguration(source);
+    } catch (error: any) {
+      if (error.message === "The configuration file does not exist.") {
+        const answers: Answers = await inquirer.prompt([
+          {
+            type: "confirm",
+            name: "createConfig",
+            message:
+              "Oops! The configuration file does not exist at the specified path. Do you want us to create one for you?",
+          },
+        ]);
+        if (answers.createConfig) {
+          const projects = await listProjects(0).catch((error: any) => {
+            throw error;
+          });
+          const options = [
+            ...new Set(
+              projects.map((p) => ({ name: p.name, region: p.region }))
+            ),
+          ].map((p) => ({
+            name: `${p.name} (${p.region})`,
+            value: p,
+          }));
+          const answers: Answers = await inquirer.prompt([
+            {
+              type: "list",
+              name: "project",
+              message: "Select the project you want to generate the SDK for:",
+              choices: options,
+            },
+          ]);
+          configuration = await YamlProjectConfiguration.create({
+            name: answers.project.name,
+            region: answers.project.region,
+          });
+          await configuration.writeToFile(source);
+        } else {
+          exit(1);
+        }
+      } else {
+        throw error;
+      }
+    }
+    const name = configuration.name;
+    const configurationRegion = configuration.region;
+    GenezioTelemetry.sendEvent({
+      eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK,
+      commandOptions: JSON.stringify(options),
+    });
+    await generateRemoteSdkHandler(
+      language,
+      sdkPath,
+      name,
+      stage,
+      configurationRegion
+    ).catch((error: Error) => {
+      GenezioTelemetry.sendEvent({
+        eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK_ERROR,
+        errorTrace: error.message,
+        commandOptions: JSON.stringify(options),
+      });
+      log.error(error.message);
+      exit(1);
+    });
+  }
 
   console.log("Your SDK has been generated successfully in " + sdkPath + "");
 }
 
-async function generateSdkHandler(language: string, path: string, stage: string) {
-  const configuration = await getProjectConfiguration();
-
-  configuration.sdk.language = language as Language;
-  configuration.sdk.path = path;
-
-  // check if there are classes in the configuration
-  if (configuration.classes.length === 0) {
-    throw new Error(GENEZIO_NO_CLASSES_FOUND);
-  }
-
-  // get the sdk from the sdk generator api
-  const sdkResponse = await sdkGeneratorApiHandler(configuration).catch(
-    (error) => {
-      throw error;
-    }
-  );
-
+async function generateRemoteSdkHandler(
+  language: string,
+  sdkPath: string,
+  projectName: string,
+  stage: string,
+  region: string
+) {
   // get all project classes
   const projects = await listProjects(0).catch((error: any) => {
     throw error;
@@ -83,15 +157,15 @@ async function generateSdkHandler(language: string, path: string, stage: string)
   // check if the project exists with the configuration project name, region
   const project = projects.find(
     (project: any) =>
-      project.name === configuration.name &&
-      project.region === configuration.region &&
+      project.name === projectName &&
+      project.region === region &&
       project.stage === stage
   );
 
   // if the project doesn't exist, throw an error
   if (!project) {
     throw new Error(
-      `The project ${configuration.name} doesn't exist in the region ${configuration.region}. You must deploy it first with 'genezio deploy'.`
+      `The project ${projectName} on stage ${stage} doesn't exist in the region ${region}. You must deploy it first with 'genezio deploy'.`
     );
   }
 
@@ -102,23 +176,50 @@ async function generateSdkHandler(language: string, path: string, stage: string)
     }
   );
 
+  const sdkGeneratorInput: SdkGeneratorInput = {
+    classesInfo: completeProjectInfo.classes.map(
+      (c: any): SdkGeneratorClassesInfoInput => ({
+        program: mapDbAstToSdkGeneratorAst(c.ast as AstSummaryClassResponse),
+        classConfiguration: {
+          path: c.ast.path,
+          type: TriggerType.jsonrpc,
+          methods: [],
+          language: path.extname(c.ast.path),
+          getMethodType: () => TriggerType.jsonrpc,
+        },
+        fileName: path.basename(c.ast.path),
+      })
+    ),
+    sdk: {
+      language: language as Language,
+    },
+  };
+
+  const sdkGeneratorOutput = await generateSdk(
+    sdkGeneratorInput,
+    undefined
+  ).catch((error: any) => {
+    throw error;
+  });
+
+  const sdkGeneratorResponse: SdkGeneratorResponse = {
+    files: sdkGeneratorOutput.files,
+    sdkGeneratorInput: sdkGeneratorInput,
+  };
+
+  // replace the placeholder urls in the sdk with the actual cloud urls
   const classUrlMap: ClassUrlMap[] = [];
 
   // populate a map of class name and cloud url
   completeProjectInfo.classes.forEach((classInfo: any) => {
     classUrlMap.push({
       name: classInfo.name,
-      cloudUrl: classInfo.cloudUrl
+      cloudUrl: classInfo.cloudUrl,
     });
   });
 
-  // replace the placeholder urls in the sdk with the actual cloud urls
-  await replaceUrlsInSdk(sdkResponse, classUrlMap);
+  await replaceUrlsInSdk(sdkGeneratorResponse, classUrlMap);
 
   // write the sdk to disk in the specified path
-  await writeSdkToDisk(
-    sdkResponse,
-    configuration.sdk.language,
-    configuration.sdk.path
-  );
+  await writeSdkToDisk(sdkGeneratorResponse, language as Language, sdkPath);
 }

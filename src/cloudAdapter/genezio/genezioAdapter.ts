@@ -15,7 +15,8 @@ import { FRONTEND_DOMAIN } from "../../constants.js";
 import { getFileSize } from "../../utils/file.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 
-export const BUNDLE_SIZE_LIMIT = 262144000;
+const BUNDLE_SIZE_LIMIT = 256901120;
+
 
 export class GenezioCloudAdapter implements CloudAdapter {
     async deploy(input: GenezioCloudInput[], projectConfiguration: ProjectConfiguration, cloudAdapterOptions: CloudAdapterOptions): Promise<GenezioCloudOutput> {
@@ -29,6 +30,10 @@ export class GenezioCloudAdapter implements CloudAdapter {
         }, cliProgress.Presets.shades_grey);
 
         const promisesDeploy = input.map(async (element) => {
+            if (element.unzippedBundleSize > BUNDLE_SIZE_LIMIT) {
+                throw new Error(`Class ${element.name} is too big: ${(element.unzippedBundleSize/1048576).toFixed(2)}MB. The maximum size is ${BUNDLE_SIZE_LIMIT/1048576}MB. Try to reduce the size of your class.`);
+            }
+
             debugLogger.debug(
                 `Get the presigned URL for class name ${element.name}.`
             );
@@ -108,12 +113,12 @@ export class GenezioCloudAdapter implements CloudAdapter {
 
         if (!result.presignedURL) {
             throw new Error(
-                "An error occured (missing presignedUrl). Please try again!"
+                "An error occurred (missing presignedUrl). Please try again!"
             );
         }
 
         if (!result.userId) {
-            throw new Error("An error occured (missing userId). Please try again!");
+            throw new Error("An error occurred (missing userId). Please try again!");
         }
 
         debugLogger.debug("Content of the folder zipped. Uploading to S3.");

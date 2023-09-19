@@ -7,6 +7,7 @@ export type GenezioCloudInput = {
     archivePath: string;
     filePath: string
     methods: MethodConfiguration[];
+    unzippedBundleSize: number;
 };
 
 export type GenezioCloudResultClass = {

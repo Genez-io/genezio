@@ -1,5 +1,5 @@
 /**
-* This is an auto generated code. This code should not be modified since the file can be overwriten 
+* This is an auto generated code. This code should not be modified since the file can be overwritten
 * if new genezio commands are executed.
 */
 
@@ -18,6 +18,7 @@ async function importModules() {
 }
 
 async function makeRequestBrowser(request: any, url: any) {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const response = await fetch(`${url}`, {
         method: 'POST',
@@ -72,12 +73,12 @@ async function makeRequestNode(request: any, url: any, agent: any) {
 
 /**
  * The class through which all request to the Genezio backend will be passed.
- * 
+ *
  */
  export class Remote {
     url: any = undefined;
     agent: any = undefined;
- 
+
     constructor(url: any) {
         this.url = url;
         if (http !== null && https !== null) {

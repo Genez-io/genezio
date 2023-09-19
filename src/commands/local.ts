@@ -10,13 +10,16 @@ import url from "url";
 import * as http from "http";
 import {
   ProjectConfiguration,
-  ClassConfiguration
+  ClassConfiguration,
 } from "../models/projectConfiguration.js";
 import { LOCAL_TEST_INTERFACE_URL } from "../constants.js";
 import { GENEZIO_NO_CLASSES_FOUND, PORT_ALREADY_USED } from "../errors.js";
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
 import { AstSummary } from "../models/astSummary.js";
-import { getProjectConfiguration } from "../utils/configuration.js";
+import {
+  getLocalConfiguration,
+  getProjectConfiguration,
+} from "../utils/configuration.js";
 import { BundlerInterface } from "../bundlers/bundler.interface.js";
 import { NodeJsLocalBundler } from "../bundlers/node/nodeJsLocalBundler.js";
 import { BundlerComposer } from "../bundlers/bundlerComposer.js";
@@ -24,7 +27,11 @@ import { genezioRequestParser } from "../utils/genezioRequestParser.js";
 import { debugLogger } from "../utils/logging.js";
 import { rectifyCronString } from "../utils/rectifyCronString.js";
 import cron from "node-cron";
-import { createTemporaryFolder, fileExists, readUTF8File } from "../utils/file.js";
+import {
+  createTemporaryFolder,
+  fileExists,
+  readUTF8File,
+} from "../utils/file.js";
 import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 import { reportSuccess as _reportSuccess } from "../utils/reporter.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
@@ -32,11 +39,21 @@ import { GenezioLocalOptions } from "../models/commandOptions.js";
 import { DartBundler } from "../bundlers/dart/localDartBundler.js";
 import axios, { AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
-import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js";
-import hash from 'hash-it';
-import { GenezioTelemetry } from "../telemetry/telemetry.js";
-import dotenv from 'dotenv';
+import {
+  Language,
+  YamlLocalConfiguration,
+  YamlProjectConfiguration,
+  YamlSdkConfiguration,
+} from "../models/yamlProjectConfiguration.js";
+import hash from "hash-it";
+import {
+  GenezioTelemetry,
+  TelemetryEventTypes,
+} from "../telemetry/telemetry.js";
+import dotenv from "dotenv";
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
+import inquirer, { Answers } from "inquirer";
+import { EOL } from "os";
 
 type ClassProcess = {
   process: ChildProcess;
@@ -58,20 +75,25 @@ type LocalBundlerOutput = {
   sdk: SdkGeneratorResponse;
 };
 
-export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProjectConfiguration, options: GenezioLocalOptions): Promise<BundlerRestartResponse> {
+export async function prepareLocalEnvironment(
+  yamlProjectConfiguration: YamlProjectConfiguration,
+  options: GenezioLocalOptions
+): Promise<BundlerRestartResponse> {
   // eslint-disable-next-line no-async-promise-executor
   return new Promise<BundlerRestartResponse>(async (resolve) => {
     try {
-      if (yamlProjectConfiguration.classes.length === 0) {
+      if (yamlProjectConfiguration.classes!.length === 0) {
         throw new Error(GENEZIO_NO_CLASSES_FOUND);
       }
 
       const sdk = await sdkGeneratorApiHandler(yamlProjectConfiguration).catch(
         (error) => {
           debugLogger.log("An error occurred", error);
-          if (error.code === 'ENOENT') {
-            log.error(`The file ${error.path} does not exist. Please check your genezio.yaml configuration and make sure that all the file paths are correct.`)
-            throw error
+          if (error.code === "ENOENT") {
+            log.error(
+              `The file ${error.path} does not exist. Please check your genezio.yaml configuration and make sure that all the file paths are correct.`
+            );
+            throw error;
           }
 
           // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
@@ -94,15 +116,19 @@ export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProj
         sdk
       );
 
-      const processForClasses = await startProcesses(projectConfiguration, sdk, options);
+      const processForClasses = await startProcesses(
+        projectConfiguration,
+        sdk,
+        options
+      );
       resolve({
         shouldRestartBundling: false,
         bundlerOutput: {
           success: true,
           projectConfiguration,
           processForClasses,
-          sdk
-        }
+          sdk,
+        },
       });
     } catch (error: any) {
       log.error(error.message);
@@ -110,12 +136,12 @@ export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProj
         `Fix the errors and genezio local will restart automatically. Waiting for changes...`
       );
       // If there was an error generating the SDK, wait for changes and try again.
-      const { watcher } =  await listenForChanges(undefined);
+      const { watcher } = await listenForChanges(undefined);
       logChangeDetection();
       resolve({
         shouldRestartBundling: true,
         bundlerOutput: undefined,
-        watcher
+        watcher,
       });
     }
   });
@@ -124,24 +150,119 @@ export async function prepareLocalEnvironment(yamlProjectConfiguration: YamlProj
 // Function that starts the local environment.
 // It also monitors for changes in the user's code and restarts the environment when changes are detected.
 export async function startLocalEnvironment(options: GenezioLocalOptions) {
-  GenezioTelemetry.sendEvent({eventType: "GENEZIO_LOCAL"});
+  GenezioTelemetry.sendEvent({
+    eventType: TelemetryEventTypes.GENEZIO_LOCAL,
+    commandOptions: JSON.stringify(options),
+  });
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
     // Read the project configuration every time because it might change
     const yamlProjectConfiguration = await getProjectConfiguration();
+    let yamlLocalConfiguration = await getLocalConfiguration();
+    if (yamlLocalConfiguration) {
+      if (yamlLocalConfiguration.generateSdk) {
+        if (!(yamlLocalConfiguration.path && yamlLocalConfiguration.language)) {
+          yamlProjectConfiguration.sdk = undefined;
+          yamlLocalConfiguration = undefined;
+        } else {
+          if (
+            !Language[yamlLocalConfiguration.language as keyof typeof Language]
+          ) {
+            log.info(
+              "This sdk.language is not supported by default. It will be treated as a custom language."
+            );
+          }
+          yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
+            Language[yamlLocalConfiguration.language as keyof typeof Language],
+            yamlLocalConfiguration.path
+          );
+        }
+      } else {
+        yamlProjectConfiguration.sdk = undefined;
+      }
+    }
+    if (options.path && options.language) {
+      if (!Language[options.language as keyof typeof Language]) {
+        log.info(
+          "This sdk.language is not supported by default. It will be treated as a custom language."
+        );
+      }
+      yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
+        Language[options.language as keyof typeof Language],
+        options.path
+      );
+    }
+
+    if (!yamlProjectConfiguration.sdk && !yamlLocalConfiguration) {
+      const answer: Answers = await inquirer.prompt([
+        {
+          type: "confirm",
+          name: "generateSdk",
+          message:
+            "It appears you don't have any SDK configured yet. Would you like to set one up now?",
+        },
+      ]);
+      if (answer.generateSdk) {
+        const sdkConfiguration: Answers = await inquirer.prompt([
+          {
+            type: "input",
+            name: "sdkPath",
+            message:
+              "Specify the path of your frontend. The SDK will be generated in /<your_project_path>/sdk.",
+            default: "./",
+          },
+          {
+            type: "list",
+            name: "sdkLanguage",
+            message: "In which programming language is your frontend written?",
+            choices: Object.keys(Language).filter((key) => isNaN(Number(key))),
+          },
+        ]);
+        const localConfiguration = await YamlLocalConfiguration.create({
+          generateSdk: true,
+          path: path.join(sdkConfiguration.sdkPath, "sdk"),
+          language: sdkConfiguration.sdkLanguage,
+        });
+        yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
+          Language[sdkConfiguration.sdkLanguage as keyof typeof Language],
+          path.join(sdkConfiguration.sdkPath, "sdk")
+        );
+        if (!localConfiguration) {
+          throw new Error("Could not create local configuration file.");
+        }
+        await localConfiguration.writeToFile();
+      } else {
+        const localConfiguration = await YamlLocalConfiguration.create({
+          generateSdk: false,
+        });
+        if (!localConfiguration) {
+          throw new Error("Could not create local configuration file.");
+        }
+        await localConfiguration.writeToFile();
+      }
+    }
+
     let sdk: SdkGeneratorResponse;
     let processForClasses: Map<string, ClassProcess>;
     let projectConfiguration: ProjectConfiguration;
 
-    const promiseListenForChanges: Promise<BundlerRestartResponse> = listenForChanges(undefined);
-    const bundlerPromise: Promise<BundlerRestartResponse> = prepareLocalEnvironment(yamlProjectConfiguration, options);
+    const promiseListenForChanges: Promise<BundlerRestartResponse> =
+      listenForChanges(undefined);
+    const bundlerPromise: Promise<BundlerRestartResponse> =
+      prepareLocalEnvironment(yamlProjectConfiguration, options);
 
-    let promiseRes: BundlerRestartResponse = await Promise.race([bundlerPromise, promiseListenForChanges]);
+    let promiseRes: BundlerRestartResponse = await Promise.race([
+      bundlerPromise,
+      promiseListenForChanges,
+    ]);
 
     if (promiseRes.shouldRestartBundling === false) {
       // There was no change in the user's code during the bundling process
-      if (!promiseRes.bundlerOutput || promiseRes.bundlerOutput.success === false) {
+      if (
+        !promiseRes.bundlerOutput ||
+        promiseRes.bundlerOutput.success === false
+      ) {
         continue;
       }
 
@@ -155,7 +276,10 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       // so we need to restart the bundler process after the bundling process is finished
       promiseRes = await bundlerPromise;
 
-      if (!promiseRes.bundlerOutput || promiseRes.bundlerOutput.success === false) {
+      if (
+        !promiseRes.bundlerOutput ||
+        promiseRes.bundlerOutput.success === false
+      ) {
         continue;
       }
 
@@ -184,23 +308,25 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     // Start cron jobs
     const crons = await startCronJobs(projectConfiguration, processForClasses);
 
-    await replaceUrlsInSdk(
-      sdk,
-      sdk.files.map((c) => ({
-        name: c.className,
-        cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`
-      }))
-    );
-    await writeSdkToDisk(
-      sdk,
-      projectConfiguration.sdk.language,
-      projectConfiguration.sdk.path
-    );
+    if (projectConfiguration.sdk) {
+      await replaceUrlsInSdk(
+        sdk,
+        sdk.files.map((c) => ({
+          name: c.className,
+          cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`,
+        }))
+      );
+      await writeSdkToDisk(
+        sdk,
+        projectConfiguration.sdk.language,
+        projectConfiguration.sdk.path
+      );
+    }
 
     reportSuccess(projectConfiguration, sdk, options.port);
 
     // Start listening for changes in user's code
-    const { watcher } = await listenForChanges(projectConfiguration.sdk.path);
+    const { watcher } = await listenForChanges(projectConfiguration.sdk?.path);
     if (watcher) {
       watcher.close();
     }
@@ -208,7 +334,10 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 
     // When new changes are detected, close everything and restart the process
     clearAllResources(server, processForClasses, crons);
-    GenezioTelemetry.sendEvent({eventType: "GENEZIO_LOCAL_RELOAD"});
+    GenezioTelemetry.sendEvent({
+      eventType: TelemetryEventTypes.GENEZIO_LOCAL_RELOAD,
+      commandOptions: JSON.stringify(options),
+    });
   }
 }
 
@@ -237,8 +366,7 @@ async function startProcesses(
     }
 
     const ast = sdk.sdkGeneratorInput.classesInfo.find(
-      (c) =>
-        c.classConfiguration.path === classInfo.path
+      (c) => c.classConfiguration.path === classInfo.path
     )!.program;
 
     debugLogger.log("Start bundling...");
@@ -299,7 +427,11 @@ function getBundler(
       const requiredDepsBundler = new TsRequiredDepsBundler();
       const nodeJsBundler = new NodeJsBundler();
       const localBundler = new NodeJsLocalBundler();
-      bundler = new BundlerComposer([requiredDepsBundler, nodeJsBundler, localBundler]);
+      bundler = new BundlerComposer([
+        requiredDepsBundler,
+        nodeJsBundler,
+        localBundler,
+      ]);
       break;
     }
     case ".js": {
@@ -348,8 +480,8 @@ async function startServerHttp(
         body: JSON.stringify({
           jsonrpc: "2.0",
           id: 0,
-          error: { code: -32000, message: "Class not found!" }
-        })
+          error: { code: -32000, message: "Class not found!" },
+        }),
       });
       return;
     }
@@ -364,11 +496,11 @@ async function startServerHttp(
       sendResponse(res, response.data);
     } catch (error: any) {
       sendResponse(res, {
-        "body": JSON.stringify({
+        body: JSON.stringify({
           jsonrpc: "2.0",
           id: 0,
-          error: { code: -32000, message: "Internal error" }
-        })
+          error: { code: -32000, message: "Internal error" },
+        }),
       });
       return;
     }
@@ -432,7 +564,7 @@ async function startCronJobs(
           methodName: method.name,
           cronString: rectifyCronString(method.cronString),
           cronObject: null,
-          process: processForClasses.get(classElement.name)!
+          process: processForClasses.get(classElement.name)!,
         };
 
         cronHandler.cronObject = cron.schedule(
@@ -441,7 +573,7 @@ async function startCronJobs(
             const reqToFunction = {
               genezioEventType: "cron",
               methodName: cronHandler.methodName,
-              cronString: cronHandler.cronString
+              cronString: cronHandler.cronString,
             };
 
             communicateWithProcess(
@@ -488,9 +620,9 @@ function getEventObjectFromRequest(request: any) {
         path: urlDetails.pathname,
         protocol: request.httpVersion,
         sourceIp: request.socket.remoteAddress,
-        userAgent: request.headers["user-agent"]
-      }
-    }
+        userAgent: request.headers["user-agent"],
+      },
+    },
   };
 }
 
@@ -545,8 +677,8 @@ async function listenForChanges(sdkPathRelative: any | undefined) {
   if (await fileExists(ignoreFilePath)) {
     // read the file as a string
     const ignoreFile = await readUTF8File(ignoreFilePath);
-    // split the string by new line \n
-    const ignoreFileLines = ignoreFile.split("\n");
+    // split the string by newline - CRLF or LF
+    const ignoreFileLines = ignoreFile.split(EOL);
     // remove empty lines
     const ignoreFileLinesWithoutEmptyLines = ignoreFileLines.filter(
       (line) => line !== "" && !line.startsWith("#")
@@ -575,10 +707,9 @@ async function listenForChanges(sdkPathRelative: any | undefined) {
     if (sdkPath) {
       ignoredPaths = [
         "**/node_modules/*",
-        // "**/node_modules/**/*",
         sdkPath + "/**/*",
         sdkPath + "/*",
-        ...ignoredPathsFromGenezioIgnore
+        ...ignoredPathsFromGenezioIgnore,
       ];
     } else {
       ignoredPaths = ["**/node_modules/*", ...ignoredPathsFromGenezioIgnore];
@@ -588,7 +719,7 @@ async function listenForChanges(sdkPathRelative: any | undefined) {
       const watch = chokidar
         .watch(watchPaths, {
           ignored: ignoredPaths,
-          ignoreInitial: true
+          ignoreInitial: true,
         })
         .on("all", async (event: any, path: any) => {
           if (sdkPath) {
@@ -598,7 +729,7 @@ async function listenForChanges(sdkPathRelative: any | undefined) {
           }
           resolve({
             shouldRestartBundling: true,
-            watcher: watch
+            watcher: watch,
           });
         });
     };
@@ -617,9 +748,14 @@ function reportSuccess(
       name: m.name,
       type: m.type,
       cronString: m.cronString,
-      functionUrl: getFunctionUrl(`http://127.0.0.1:${port}`, m.type, c.name, m.name),
+      functionUrl: getFunctionUrl(
+        `http://127.0.0.1:${port}`,
+        m.type,
+        c.name,
+        m.name
+      ),
     })),
-    functionUrl: `http://127.0.0.1:${port}/${c.name}`
+    functionUrl: `http://127.0.0.1:${port}/${c.name}`,
   }));
 
   _reportSuccess(classesInfo, sdk);
@@ -630,7 +766,12 @@ function reportSuccess(
   );
 }
 
-function getFunctionUrl(baseUrl: string, methodType: string, className: string, methodName: string): string {
+function getFunctionUrl(
+  baseUrl: string,
+  methodType: string,
+  className: string,
+  methodName: string
+): string {
   if (methodType === "http") {
     return `${baseUrl}/${className}/${methodName}`;
   } else {
@@ -638,7 +779,11 @@ function getFunctionUrl(baseUrl: string, methodType: string, className: string, 
   }
 }
 
-async function clearAllResources(server: http.Server, processForClasses: Map<string, ClassProcess>, crons: LocalEnvCronHandler[]) {
+async function clearAllResources(
+  server: http.Server,
+  processForClasses: Map<string, ClassProcess>,
+  crons: LocalEnvCronHandler[]
+) {
   server.close();
   await stopCronJobs(crons);
 
@@ -652,16 +797,20 @@ async function startClassProcess(
   parameters: string[],
   className: string,
   processForClasses: Map<string, ClassProcess>,
-  envVars: dotenv.DotenvPopulateInput = {},
+  envVars: dotenv.DotenvPopulateInput = {}
 ) {
   const availablePort = await findAvailablePort();
-  debugLogger.debug(`[START_CLASS_PROCESS] Starting class ${className} on port ${availablePort}`);
-  debugLogger.debug(`[START_CLASS_PROCESS] Starting command: ${startingCommand}`);
+  debugLogger.debug(
+    `[START_CLASS_PROCESS] Starting class ${className} on port ${availablePort}`
+  );
+  debugLogger.debug(
+    `[START_CLASS_PROCESS] Starting command: ${startingCommand}`
+  );
   debugLogger.debug(`[START_CLASS_PROCESS] Parameters: ${parameters}`);
   const processParameters = [...parameters, availablePort.toString()];
   const classProcess = spawn(startingCommand, processParameters, {
     stdio: ["pipe", "pipe", "pipe"],
-    env: { ...process.env, ...envVars, NODE_OPTIONS: "--enable-source-maps" }
+    env: { ...process.env, ...envVars, NODE_OPTIONS: "--enable-source-maps" },
   });
   classProcess.stdout.pipe(process.stdout);
   classProcess.stderr.pipe(process.stderr);
@@ -670,7 +819,7 @@ async function startClassProcess(
     process: classProcess,
     listeningPort: availablePort,
     startingCommand: startingCommand,
-    parameters: parameters
+    parameters: parameters,
   });
 }
 
