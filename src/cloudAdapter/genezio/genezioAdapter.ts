@@ -53,7 +53,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
                    });
 
                    const filesTable = new Table({
-                     head: ["BIggest Non-JS Files", "Size"],
+                     head: ["Biggest Non-JS Files", "Size"],
                    });
 
                    const maxLength = Math.max(
