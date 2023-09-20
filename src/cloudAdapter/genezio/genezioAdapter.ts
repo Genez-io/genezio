@@ -17,7 +17,8 @@ import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js
 import { calculateBiggestFiles } from "../../utils/calculateBiggestProjectFiles.js";
 import Table from "cli-table";
 
-const BUNDLE_SIZE_LIMIT = 256901120;
+// const BUNDLE_SIZE_LIMIT = 256901120;
+const BUNDLE_SIZE_LIMIT = 10010;
 
 
 export class GenezioCloudAdapter implements CloudAdapter {
@@ -35,6 +36,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
             const { dependenciesInfo, allNonJsFilesPaths } = element;
             
                  if (element.unzippedBundleSize > BUNDLE_SIZE_LIMIT) {
+                    // Throw this error if bundle size is too big and the user is not using js or ts files.
                     if (!dependenciesInfo) {
                         throw new Error(
                           `Your class ${element.name} is too big: ${element.unzippedBundleSize} bytes. The maximum size is 250MB. Try to reduce the size of your class.`
@@ -46,8 +48,12 @@ export class GenezioCloudAdapter implements CloudAdapter {
                         allNonJsFilesPaths
                       );
 
-                   const table = new Table({
-                     head: ["Dependencies", "Non-JS Files"],
+                   const dependenciesTable = new Table({
+                     head: ["Biggest Dependencies", "Size"],
+                   });
+
+                   const filesTable = new Table({
+                     head: ["BIggest Non-JS Files", "Size"],
                    });
 
                    const maxLength = Math.max(
@@ -63,10 +69,12 @@ export class GenezioCloudAdapter implements CloudAdapter {
                        ? allfilesSize.filesSize[i]
                        : "";
 
-                     table.push([formatedDep, formatedNonJsFile]);
+                     dependenciesTable.push([formatedDep.split("->")[0], formatedDep.split("->")[1]]);
+                     filesTable.push([formatedNonJsFile.split("->")[0], formatedNonJsFile.split("->")[1]]);
                    }
 
-                   console.log(table.toString());
+                   console.log(dependenciesTable.toString());
+                   console.log(filesTable.toString());
                    throw new Error(`
 Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFixed(
                      2
