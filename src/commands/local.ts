@@ -8,6 +8,7 @@ import { ChildProcess, spawn } from "child_process";
 import path from "path";
 import url from "url";
 import * as http from "http";
+import colors from "colors";
 import {
   ProjectConfiguration,
   ClassConfiguration,
@@ -54,6 +55,7 @@ import dotenv from "dotenv";
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
 import inquirer, { Answers } from "inquirer";
 import { EOL } from "os";
+import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
 
 type ClassProcess = {
   process: ChildProcess;
@@ -757,6 +759,31 @@ function reportSuccess(
     })),
     functionUrl: `http://127.0.0.1:${port}/${c.name}`,
   }));
+
+  // get installed version of node
+  const nodeVersion = process.version;
+
+  // get only the major version
+  const nodeMajorVersion = nodeVersion.split(".")[0].slice(1);
+
+  // get server used version
+  let serverRuntime: string = DEFAULT_NODE_RUNTIME as string;
+  if (projectConfiguration.options?.nodeRuntime) {
+    serverRuntime = projectConfiguration.options.nodeRuntime;
+  }
+
+  const serverVersion = serverRuntime.split(".")[0].split("nodejs")[1];
+
+  log.debug(`Node version: ${nodeVersion}`);
+  log.debug(`Server version: ${serverRuntime}`);
+
+  // check if server version is different from installed version
+  if (nodeMajorVersion !== serverVersion) {
+    log.warn(`${colors.yellow(`Warning: You are using node version ${nodeVersion} but your server is using ${serverRuntime}. This might cause unexpected behavior.
+To change the server version, go to your ${colors.cyan("genezio.yaml")} file and change the ${colors.cyan("optins.nodeRuntime")} property to the version you want to use.`)}`);
+  }
+
+
 
   _reportSuccess(classesInfo, sdk);
 
