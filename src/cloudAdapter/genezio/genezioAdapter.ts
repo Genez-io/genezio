@@ -17,8 +17,7 @@ import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js
 import { calculateBiggestFiles } from "../../utils/calculateBiggestProjectFiles.js";
 import Table from "cli-table";
 
-// const BUNDLE_SIZE_LIMIT = 256901120;
-const BUNDLE_SIZE_LIMIT = 10010;
+const BUNDLE_SIZE_LIMIT = 256901120;
 
 
 export class GenezioCloudAdapter implements CloudAdapter {
@@ -53,7 +52,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
                    });
 
                    const filesTable = new Table({
-                     head: ["Biggest Non-JS Files", "Size"],
+                     head: [`Biggest Non-${projectConfiguration.sdk && projectConfiguration.sdk.language.toUpperCase()} Files`, "Size"],
                    });
 
                    const maxLength = Math.max(
