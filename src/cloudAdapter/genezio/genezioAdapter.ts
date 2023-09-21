@@ -17,7 +17,7 @@ import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js
 import { calculateBiggestFiles } from "../../utils/calculateBiggestProjectFiles.js";
 import Table from "cli-table";
 
-const BUNDLE_SIZE_LIMIT = 256901120;
+const BUNDLE_SIZE_LIMIT = 100;
 
 
 export class GenezioCloudAdapter implements CloudAdapter {
@@ -68,8 +68,8 @@ export class GenezioCloudAdapter implements CloudAdapter {
                        ? allfilesSize.filesSize[i]
                        : "";
 
-                     dependenciesTable.push([formatedDep.split("->")[0], formatedDep.split("->")[1]]);
-                     filesTable.push([formatedNonJsFile.split("->")[0], formatedNonJsFile.split("->")[1]]);
+                     dependenciesTable.push([formatedDep.split("->")[0] ? formatedDep.split("->")[0] : "", formatedDep.split("->")[1] ? formatedDep.split("->")[1] : ""]);
+                     filesTable.push([formatedNonJsFile.split("->")[0] ? formatedNonJsFile.split("->")[0] : "", formatedNonJsFile.split("->")[1] ? formatedNonJsFile.split("->")[1] : ""]);
                    }
 
                    console.log(dependenciesTable.toString());
