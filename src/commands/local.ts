@@ -782,9 +782,6 @@ function reportSuccess(
     log.warn(`${colors.yellow(`Warning: You are using node version ${nodeVersion} but your server is using ${serverRuntime}. This might cause unexpected behavior.
 To change the server version, go to your ${colors.cyan("genezio.yaml")} file and change the ${colors.cyan("optins.nodeRuntime")} property to the version you want to use.`)}`);
   }
-
-
-
   _reportSuccess(classesInfo, sdk);
 
   log.info(
