@@ -372,6 +372,8 @@ export async function deployClasses(
       filePath: element.path,
       methods: element.methods,
       unzippedBundleSize: unzippedBundleSize,
+      dependenciesInfo: output.extra.dependenciesInfo,
+      allNonJsFilesPaths: output.extra.allNonJsFilesPaths,
     };
   });
 
@@ -379,11 +381,9 @@ export async function deployClasses(
 
   printAdaptiveLog("Bundling your code", "end");
 
-  const result = await cloudAdapter.deploy(
-    bundlerResultArray,
-    projectConfiguration,
-    { stage: stage }
-  );
+ const result = await cloudAdapter.deploy(bundlerResultArray as any, projectConfiguration, {
+   stage: stage,
+ });
 
   reportSuccess(result.classes, sdkResponse);
 

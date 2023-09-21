@@ -14,6 +14,8 @@ import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL.
 import { FRONTEND_DOMAIN } from "../../constants.js";
 import { getFileSize } from "../../utils/file.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
+import { calculateBiggestFiles } from "../../utils/calculateBiggestProjectFiles.js";
+import Table from "cli-table";
 
 const BUNDLE_SIZE_LIMIT = 256901120;
 
@@ -30,9 +32,68 @@ export class GenezioCloudAdapter implements CloudAdapter {
         }, cliProgress.Presets.shades_grey);
 
         const promisesDeploy = input.map(async (element) => {
-            if (element.unzippedBundleSize > BUNDLE_SIZE_LIMIT) {
-                throw new Error(`Class ${element.name} is too big: ${(element.unzippedBundleSize/1048576).toFixed(2)}MB. The maximum size is ${BUNDLE_SIZE_LIMIT/1048576}MB. Try to reduce the size of your class.`);
-            }
+            const { dependenciesInfo, allNonJsFilesPaths } = element;
+            
+                 if (element.unzippedBundleSize > BUNDLE_SIZE_LIMIT) {
+                    // Throw this error if bundle size is too big and the user is not using js or ts files.
+                    if (!dependenciesInfo) {
+                        throw new Error(
+                          `Your class ${element.name} is too big: ${element.unzippedBundleSize} bytes. The maximum size is 250MB. Try to reduce the size of your class.`
+                        );
+                    }
+
+                      const allfilesSize = await calculateBiggestFiles(
+                        dependenciesInfo,
+                        allNonJsFilesPaths
+                      );
+
+                   const dependenciesTable = new Table({
+                     head: ["Biggest Dependencies", "Size"],
+                   });
+
+                   const filesTable = new Table({
+                     head: [`Biggest Non-${projectConfiguration.classes[0].language.split(".")[1].toUpperCase()} Files`, "Size"],
+                   });
+
+                   const maxLength = Math.max(
+                     allfilesSize.dependenciesSize.length,
+                     allfilesSize.filesSize.length
+                   );
+
+                   for (let i = 0; i < maxLength; i++) {
+                     const formatedDep: string = allfilesSize.dependenciesSize[i]
+                       ? allfilesSize.dependenciesSize[i]
+                       : "";
+                     const formatedNonJsFile: string = allfilesSize.filesSize[i]
+                       ? allfilesSize.filesSize[i]
+                       : "";
+
+                        if (formatedDep.split("->")[0] && formatedDep.split("->")[1]){
+                           dependenciesTable.push([
+                             formatedDep.split("->")[0],
+                             formatedDep.split("->")[1],
+                           ]);
+                        }
+
+                        if(formatedNonJsFile.split("->")[0] && formatedNonJsFile.split("->")[1]){
+                           filesTable.push([
+                             formatedNonJsFile.split("->")[0],
+                             formatedNonJsFile.split("->")[1],
+                           ]);
+                        }
+                    
+                   }
+
+                   console.log(dependenciesTable.toString());
+                   console.log(filesTable.toString());
+                   throw new Error(`
+Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFixed(
+                     2
+                   )}MB. The maximum size is ${
+                     BUNDLE_SIZE_LIMIT / 1048576
+                   }MB. Try to reduce the size of your class.
+            `);
+                 }
 
             debugLogger.debug(
                 `Get the presigned URL for class name ${element.name}.`
