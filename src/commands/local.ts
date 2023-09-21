@@ -774,12 +774,12 @@ function reportSuccess(
 
   const serverVersion = serverRuntime.split(".")[0].split("nodejs")[1];
 
-  log.debug(`Node version: ${nodeVersion}`);
-  log.debug(`Server version: ${serverRuntime}`);
+  debugLogger.debug(`Node version: ${nodeVersion}`);
+  debugLogger.debug(`Server version: ${serverRuntime}`);
 
   // check if server version is different from installed version
   if (nodeMajorVersion !== serverVersion) {
-    log.warn(`${colors.yellow(`Warning: You are using node version ${nodeVersion} but your server is using ${serverRuntime}. This might cause unexpected behavior.
+    log.warn(`${colors.yellow(`Warning: You are using node version ${nodeVersion} but your server is configured to use ${serverRuntime}. This might cause unexpected behavior.
 To change the server version, go to your ${colors.cyan("genezio.yaml")} file and change the ${colors.cyan("options.nodeRuntime")} property to the version you want to use.`)}`);
   }
   _reportSuccess(classesInfo, sdk);
