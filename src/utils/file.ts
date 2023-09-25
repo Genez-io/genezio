@@ -360,6 +360,11 @@ export async function readEnvironmentVariablesFile(envFilePath: string): Promise
       continue;
     }
 
+    // ignore lines starting with #
+    if (line.startsWith("#")) {
+      continue;
+    }
+
     const [key, value] = line.split("=");
 
     if (key === undefined || value === undefined) {

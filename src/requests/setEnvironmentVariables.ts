@@ -35,6 +35,7 @@ export async function setEnvironmentVariables(
     throw error;
   });
 
+
   if (response.data.status === 'error') {
     throw new Error(response.data.message);
   }
