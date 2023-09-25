@@ -1,7 +1,7 @@
 import { AxiosError } from "axios";
 import log from "loglevel";
 import path from "path";
-import { exit } from "process";
+import {  exit } from "process";
 import { BundlerInterface } from "../bundlers/bundler.interface.js";
 import { BundlerComposer } from "../bundlers/bundlerComposer.js";
 import { DartBundler } from "../bundlers/dart/dartBundler.js";
@@ -472,7 +472,7 @@ export async function deployClasses(
           });
 
           log.info("")
-          log.info(`${colors.yellow("Go to the dashboard ")}${colors.cyan(REACT_APP_BASE_URL)} ${colors.yellow("to set your environment variables.")}`);
+          log.info(`${colors.yellow("Go to the dashboard ")}${colors.cyan(REACT_APP_BASE_URL)} ${colors.yellow("to set your environment variables or run ")} ${colors.cyan("genezio deploy --env .env")}`);
           log.info("")
         }
       }
