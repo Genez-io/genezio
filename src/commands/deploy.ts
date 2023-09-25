@@ -50,6 +50,7 @@ import {
 } from "../telemetry/telemetry.js";
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
 import { setEnvironmentVariables } from "../requests/setEnvironmentVariables.js";
+import colors from "colors";
 
 export async function deployCommand(options: GenezioDeployOptions) {
   let configuration;
@@ -421,14 +422,14 @@ export async function deployClasses(
       } else {
         // Read environment variables from .env file
         const envVars = await readEnvironmentVariablesFile(envFile);
-        debugLogger.debug(`Environment variables:`, envVars);
 
         // Upload environment variables to the project
         await setEnvironmentVariables(projectId, envVars)
           .then(() => {
             debugLogger.debug(
-              `Environment variables uploaded to project ${projectId}`
+              `Environment variables from ${envFile} uploaded to project ${projectId}`
             );
+            log.info(`The environment variables were uploaded to the project successfully.`);
             GenezioTelemetry.sendEvent({
               eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS,
             });
@@ -438,13 +439,17 @@ export async function deployClasses(
               `Loading environment variables failed with: ${error.message}`
             );
             log.error(
-              `You can also try to set the environment variables using the dashboard.`
+              `Try to set the environment variables using the dashboard ${colors.cyan(REACT_APP_BASE_URL)}`
             );
             GenezioTelemetry.sendEvent({
               eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
               errorTrace: error.toString(),
             });
           });
+      }
+    } else {
+      if (await fileExists(".env")) {
+        log.info(`${colors.yellow("Warning: .env file found in your project directory. Go to the genezio dashboard ")}${colors.cyan(REACT_APP_BASE_URL)} ${colors.yellow("to set your environment variables.")}`);
       }
     }
 
