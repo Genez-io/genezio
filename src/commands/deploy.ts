@@ -439,13 +439,17 @@ export async function deployClasses(
               `Loading environment variables failed with: ${error.message}`
             );
             log.error(
-              `Try to set the environment variables using the dashboard ${colors.cyan("https://app.genez.io")}`
+              `Try to set the environment variables using the dashboard ${colors.cyan(REACT_APP_BASE_URL)}`
             );
             GenezioTelemetry.sendEvent({
               eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
               errorTrace: error.toString(),
             });
           });
+      }
+    } else {
+      if (await fileExists(".env")) {
+        log.info(`${colors.yellow("Warning: .env file found in your project directory. Go to the genezio dashboard ")}${colors.cyan(REACT_APP_BASE_URL)} ${colors.yellow("to set your environment variables.")}`);
       }
     }
 
