@@ -51,6 +51,7 @@ import {
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
 import { setEnvironmentVariables } from "../requests/setEnvironmentVariables.js";
 import colors from "colors";
+import { getEnvironmentVariables } from "../requests/getEnvironmentVariables.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
   let configuration;
@@ -449,7 +450,31 @@ export async function deployClasses(
       }
     } else {
       if (await fileExists(".env")) {
-        log.info(`${colors.yellow("Warning: .env file found in your project directory. Go to the genezio dashboard ")}${colors.cyan(REACT_APP_BASE_URL)} ${colors.yellow("to set your environment variables.")}`);
+        // read envVars from file
+        const envVars = await readEnvironmentVariablesFile(".env");
+
+        // get remoteEnvVars from project
+        const remoteEnvVars = await getEnvironmentVariables(
+          projectId
+        );
+
+        // check if all envVars from file are in remoteEnvVars
+        const missingEnvVars = envVars.filter(
+          (envVar) =>
+            !remoteEnvVars.find((remoteEnvVar) => remoteEnvVar.name === envVar.name)
+        );
+
+        // Print missing env vars
+        if (missingEnvVars.length > 0) {
+          log.info(`${colors.yellow("Warning: The following environment variables are not set on your project: ")}`);
+          missingEnvVars.forEach((envVar) => {
+            log.info(`${colors.yellow(envVar.name)}`);
+          });
+
+          log.info("")
+          log.info(`${colors.yellow("Go to the dashboard ")}${colors.cyan(REACT_APP_BASE_URL)} ${colors.yellow("to set your environment variables.")}`);
+          log.info("")
+        }
       }
     }
 
