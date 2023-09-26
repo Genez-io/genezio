@@ -138,3 +138,5 @@ dist
 
 **/__pycache__
 **/.env*
+
+.idea
