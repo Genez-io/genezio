@@ -64,7 +64,7 @@ program
 // genezio init command
 program
   .command("init")
-  .argument("[path]", "Path where to generate the genezio.yaml file.")
+  .argument("[path]", "Path to the directory where the project will be created.")
   .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
   .description("Create the initial configuration file for a genezio project.")
   .action(async (path:string,options: any) => {
