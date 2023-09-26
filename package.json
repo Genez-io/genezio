@@ -12,6 +12,7 @@
     "build": "npx tsc && node solveEnvVariables.js build/src/constants.js",
     "install-locally-dev": "npm run install-locally -- dev",
     "build-dev": "npx tsc && node solveEnvVariables.js build/src/constants.js -- dev",
+    "lint": "./scripts/lint",
     "checkChangesInVariables": "./scripts/checkConstants",
     "checkUnwantedLogs": "./scripts/checkUnwantedLogs",
     "release": "npm run build && npm publish",
@@ -19,6 +20,11 @@
   },
   "files": [
     "/build"
+  ],
+  "pre-commit": [
+    "lint",
+    "checkChangesInVariables",
+    "checkUnwantedLogs"
   ],
   "author": "Genezio",
   "license": "GPL-3",
