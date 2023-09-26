@@ -33,7 +33,7 @@
     "@aws-sdk/client-s3": "^3.414.0",
     "@babel/core": "^7.22.20",
     "@babel/parser": "^7.22.16",
-    "@babel/preset-env": "^7.22.5",
+    "@babel/preset-env": "^7.22.20",
     "@babel/traverse": "^7.22.5",
     "@types/body": "^5.1.2",
     "@types/cli-table": "^0.3.2",
