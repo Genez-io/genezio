@@ -47,7 +47,7 @@ describe("init", () => {
     const doc = new Document(configFile);
     const yamlConfigurationFileContent = doc.toString();
 
-    await expect(initCommand()).resolves.toBeUndefined();
+    await expect(initCommand("./project-name")).resolves.toBeUndefined();
 
     expect(mockedWriteToFile).toBeCalledTimes(1);
     expect(mockedAskQuestion).toBeCalledTimes(2);
@@ -78,7 +78,7 @@ describe("init", () => {
     const doc = new Document(configFile);
     const yamlConfigurationFileContent = doc.toString();
 
-    await expect(initCommand()).resolves.toBeUndefined();
+    await expect(initCommand("./project-name")).resolves.toBeUndefined();
 
     expect(mockedLogError).toBeCalledTimes(1);
     expect(mockedLogError).toBeCalledWith(red, `The project name can't be empty. Please provide one.`);
@@ -112,7 +112,7 @@ describe("init", () => {
     const doc = new Document(configFile);
     const yamlConfigurationFileContent = doc.toString();
 
-    await expect(initCommand()).resolves.toBeUndefined();
+    await expect(initCommand("./project-name")).resolves.toBeUndefined();
 
     expect(mockedLogError).toBeCalledTimes(1);
     expect(mockedLogError).toBeCalledWith(red, `The region is invalid. Please use a valid region.\n Region list: ${regions}`);
@@ -136,7 +136,11 @@ describe("addClassCommand", () => {
   });
 
   test("throws if extension is not supported", async () => {
-    await expect(addClassCommand("./test", "jsonrpc")).rejects.toThrowError("Please provide a class name with a valid class extension.");
+    await expect(addClassCommand("test.py", "jsonrpc")).rejects.toThrowError("Class language(py) not supported. Currently supporting: ts, js and dart");
+  });
+
+  test("throws if extension is not supported", async () => {
+    await expect(addClassCommand("test", "jsonrpc")).rejects.toThrowError("Please provide a class name with a valid class extension.");
   });
 
   test("throws if class already exists", async () => {
