@@ -103,16 +103,20 @@ npm install genezio -g
 genezio login
 ```
 
-3. **Clone our `Hello World` example.** Copy the following command in your terminal:
+3. **Clone our `Getting Started` example.** Copy one of the following command in your terminal:
 
 ```bash
-git clone https://github.com/Genez-io/genezio-examples.git
+git clone https://github.com/Genez-io/genezio-getting-started-typescript
+git clone https://github.com/Genez-io/genezio-getting-started-javascript
+git clone https://github.com/Genez-io/genezio-getting-started-dart
 ```
 
-4. **Navigate to the project folder.** Copy the following command in your terminal to go to the "Hello World" project folder:
+4. **Navigate to the project folder.** Copy one of the following command in your terminal to go to the "getting-started" project folder:
 
 ```bash
-cd ./genezio-examples/javascript/getting-started/server/
+cd ./genezio-getting-started-typescript/server/
+cd ./genezio-getting-started-javascript/server/
+cd ./genezio-getting-started-dart/server/
 ```
 
 5. **Deploy your code.** Use the command below to deploy the code using `genezio`:
