@@ -8,6 +8,7 @@ import { DartBundler } from "../bundlers/dart/dartBundler.js";
 import { NodeJsBinaryDependenciesBundler } from "../bundlers/node/nodeJsBinaryDependenciesBundler.js";
 import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
 import { REACT_APP_BASE_URL } from "../constants.js";
+import { KotlinBundler } from "../bundlers/kotlin/kotlinBundler.js";
 import {
   GENEZIO_NOT_AUTH_ERROR_MSG,
   GENEZIO_NO_CLASSES_FOUND,
@@ -297,34 +298,33 @@ export async function deployClasses(
 
     let bundler: BundlerInterface;
 
-    switch (element.language) {
-      case ".ts": {
-        const requiredDepsBundler = new TsRequiredDepsBundler();
-        const typeCheckerBundler = new TypeCheckerBundler();
-        const standardBundler = new NodeJsBundler();
-        const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
-        bundler = new BundlerComposer([
-          requiredDepsBundler,
-          typeCheckerBundler,
-          standardBundler,
-          binaryDepBundler,
-        ]);
-        break;
+      switch (element.language) {
+        case ".ts": {
+          const requiredDepsBundler = new TsRequiredDepsBundler();
+          const typeCheckerBundler = new TypeCheckerBundler();
+          const standardBundler = new NodeJsBundler();
+          const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
+          bundler = new BundlerComposer([requiredDepsBundler, typeCheckerBundler, standardBundler, binaryDepBundler]);
+          break;
+        }
+        case ".js": {
+          const standardBundler = new NodeJsBundler();
+          const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
+          bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
+          break;
+        }
+        case ".dart": {
+          bundler = new DartBundler();
+          break;
+        }
+        case ".kt": {
+          bundler = new KotlinBundler();
+          break;
+        }
+        default:
+          log.error(`Unsupported ${element.language}`);
+          throw new Error(`Unsupported ${element.language}`);
       }
-      case ".js": {
-        const standardBundler = new NodeJsBundler();
-        const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
-        bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
-        break;
-      }
-      case ".dart": {
-        bundler = new DartBundler();
-        break;
-      }
-      default:
-        log.error(`Unsupported ${element.language}`);
-        throw new Error(`Unsupported ${element.language}`);
-    }
 
     debugLogger.debug(
       `The bundling process has started for file ${element.path}...`
@@ -352,16 +352,20 @@ export async function deployClasses(
       `The bundling process finished successfully for file ${element.path}.`
     );
 
+    // check if the unzipped folder is smaller than 250MB
+    const unzippedBundleSize: number = await getBundleFolderSizeLimit(output.path);
+    debugLogger.debug(`The unzippedBundleSize for class ${element.path} is ${unzippedBundleSize}.`);
+
+    // .jar files cannot be parsed by AWS Lambda, skip this step for AWS Lambda
+    if(element.language === ".kt" && (configuration.cloudProvider === "aws" || configuration.cloudProvider === undefined)) {
+      console.debug("Skipping ZIP due to .jar file")
+      console.debug(path.join(output.path, "app-standalone.jar"))
+      return { name: element.name, archivePath: path.join(output.path, "app-standalone.jar"), filePath: element.path, methods: element.methods, unzippedBundleSize };
+    }
+
     const archivePathTempFolder = await createTemporaryFolder();
     const archivePath = path.join(archivePathTempFolder, `genezioDeploy.zip`);
 
-    // check if the unzipped folder is smaller than 250MB
-    const unzippedBundleSize: number = await getBundleFolderSizeLimit(
-      output.path
-    );
-    debugLogger.debug(
-      `The unzippedBundleSize for class ${element.path} is ${unzippedBundleSize}.`
-    );
 
     debugLogger.debug(`Zip the directory ${output.path}.`);
     await zipDirectory(output.path, archivePath);

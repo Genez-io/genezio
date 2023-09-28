@@ -4,6 +4,7 @@ import { AstGeneratorOutput, File } from "../models/genezioModels.js";
 import { AstGeneratorInput } from "../models/genezioModels.js";
 import JsAstGenerator from "./astGenerator/JsAstGenerator.js";
 import TsAstGenerator from "./astGenerator/TsAstGenerator.js";
+import KotlinAstGenerator from "./astGenerator/KotlinAstGenerator.js";
 import { exit } from "process";
 import DartAstGenerator from "./astGenerator/DartAstGenerator.js";
 import { debugLogger } from "../utils/logging.js";
@@ -37,6 +38,7 @@ export async function generateAst(
   pluginsImported.push(JsAstGenerator);
   pluginsImported.push(TsAstGenerator);
   pluginsImported.push(DartAstGenerator);
+  pluginsImported.push(KotlinAstGenerator);
 
   const plugin = pluginsImported.find((plugin: any) => {
     return plugin.supportedExtensions.includes(extension);
