@@ -17,7 +17,8 @@ import {
   PromiseType,
   MethodDefinition,
   ParameterDefinition,
-  ModelView
+  ModelView,
+  IndexModel,
 } from "../../models/genezioModels.js";
 import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 import { nodeSdkTs } from "../templates/nodeSdkTs.js";
@@ -98,8 +99,20 @@ const TYPESCRIPT_RESERVED_WORDS = [
   "yield",
   "async",
   "await",
-  "of"
+  "of",
 ];
+
+const indexTemplate = `/**
+* This is an auto generated code. This code should not be modified since the file can be overwritten
+* if new genezio commands are executed.
+*/
+
+{{#imports}}
+import { {{#models}}{{{name}}}{{^last}}, {{/last}}{{/models}} } from "./{{{path}}}";
+{{/imports}}
+
+export { {{#exports}}{{{name}}}{{^last}}, {{/last}}{{/exports}} };
+`;
 
 const modelTemplate = `/**
 * This is an auto generated code. This code should not be modified since the file can be overwritten
@@ -147,10 +160,14 @@ class SdkGenerator implements SdkGeneratorInterface {
     sdkGeneratorInput: SdkGeneratorInput
   ): Promise<SdkGeneratorOutput> {
     const generateSdkOutput: SdkGeneratorOutput = {
-      files: []
+      files: [],
     };
 
     const modelViews: ModelView[] = [];
+    const indexModel: IndexModel = {
+      imports: [],
+      exports: [],
+    };
 
     for (const classInfo of sdkGeneratorInput.classesInfo) {
       const externalTypes: Node[] = [];
@@ -174,12 +191,14 @@ class SdkGenerator implements SdkGeneratorInterface {
         continue;
       }
 
+      this.addClassItemsToIndex(indexModel, classInfo.program.body);
+
       const view: any = {
         className: classDefinition.name,
         _url: _url,
         methods: [],
         externalTypes: [],
-        imports: []
+        imports: [],
       };
 
       let exportClassChecker = false;
@@ -205,7 +224,7 @@ class SdkGenerator implements SdkGeneratorInterface {
           methodCaller:
             methodDefinition.params.length === 0
               ? `"${classDefinition.name}.${methodDefinition.name}"`
-              : `"${classDefinition.name}.${methodDefinition.name}", `
+              : `"${classDefinition.name}.${methodDefinition.name}", `,
         };
 
         methodView.parameters = methodDefinition.params.map((e) => {
@@ -223,7 +242,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                     ? "'" + e.defaultValue.value + "'"
                     : e.defaultValue.value)
                 : ""),
-            last: false
+            last: false,
           };
         });
 
@@ -232,7 +251,7 @@ class SdkGenerator implements SdkGeneratorInterface {
             name: TYPESCRIPT_RESERVED_WORDS.includes(e.name)
               ? e.name + "_"
               : e.name,
-            last: false
+            last: false,
           };
         });
 
@@ -300,7 +319,7 @@ class SdkGenerator implements SdkGeneratorInterface {
           ) {
             currentView?.externalTypes.push({
               type: this.generateExternalType(externalType),
-              name: (externalType as any).name
+              name: (externalType as any).name,
             });
           }
         }
@@ -331,14 +350,14 @@ class SdkGenerator implements SdkGeneratorInterface {
       generateSdkOutput.files.push({
         path: sdkClassName,
         data: Mustache.render(template, view),
-        className: classDefinition.name
+        className: classDefinition.name,
       });
 
       for (const modelView of modelViews) {
         generateSdkOutput.files.push({
           path: modelView.path + ".ts",
           data: Mustache.render(modelTemplate, modelView),
-          className: ""
+          className: "",
         });
       }
     }
@@ -347,7 +366,14 @@ class SdkGenerator implements SdkGeneratorInterface {
     generateSdkOutput.files.push({
       className: "Remote",
       path: "remote.ts",
-      data: nodeSdkTs.replace("%%%url%%%", "undefined")
+      data: nodeSdkTs.replace("%%%url%%%", "undefined"),
+    });
+
+    // generate index.ts
+    generateSdkOutput.files.push({
+      className: "index.ts",
+      path: "index.ts",
+      data: Mustache.render(indexTemplate, indexModel),
     });
 
     return generateSdkOutput;
@@ -530,8 +556,36 @@ class SdkGenerator implements SdkGeneratorInterface {
       if (!currentView.imports.find((e: any) => e.path === relativePath)) {
         currentView.imports.push({
           path: relativePath.replace(/\\/g, "/"),
-          models: [{ name: (externalType as any).name }]
+          models: [{ name: (externalType as any).name }],
         });
+      }
+    }
+  }
+
+  addClassItemsToIndex(indexModel: IndexModel, classItems: Node[]) {
+    for (const classItem of classItems) {
+      const index = indexModel.imports.findIndex(
+        (i) => i.path === classItem.path
+      );
+      if (index !== -1) {
+        if (
+          indexModel.imports[index].models.find(
+            (i) => i.name === (classItem as any).name
+          )
+        ) {
+          continue;
+        } else {
+          indexModel.imports[index].models.push({
+            name: (classItem as any).name,
+          });
+          indexModel.exports.push({ name: (classItem as any).name });
+        }
+      } else {
+        indexModel.imports.push({
+          path: classItem.path || "",
+          models: [{ name: (classItem as any).name }],
+        });
+        indexModel.exports.push({ name: (classItem as any).name });
       }
     }
   }
@@ -556,7 +610,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         currentView = {
           path: type.path || "",
           externalTypes: [],
-          imports: []
+          imports: [],
         };
         modelViews.push(currentView);
       } else {
