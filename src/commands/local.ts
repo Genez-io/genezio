@@ -513,7 +513,7 @@ async function startServerHttp(
     }
   });
 
-  app.all(`/:className/:methodName`, async (req: any, res: any) => {
+  async function handlerHttpMethod(req: any, res: any) {
     const reqToFunction = getEventObjectFromRequest(req);
 
     const localProcess = processForClasses.get(req.params.className);
@@ -531,6 +531,14 @@ async function startServerHttp(
       processForClasses
     );
     sendResponse(res, response.data);
+  }
+
+  app.all(`/:className/:methodName`, async (req: any, res: any) => {
+    await handlerHttpMethod(req, res);
+  });
+
+  app.all(`/:className/:methodName/*`, async (req: any, res: any) => {
+    await handlerHttpMethod(req, res);
   });
 
   return await new Promise((resolve, reject) => {
