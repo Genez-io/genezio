@@ -12,11 +12,16 @@ import {
 } from "../../models/genezioModels.js";
 import parser from "@babel/parser";
 import traverse from "@babel/traverse";
+import path from "path";
+import transformDecorators from "../../utils/transformDecorators.js";
+
 
 class AstGenerator implements AstGeneratorInterface {
+
   async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
-    const fileData = input.class.data;
-    const result = parser.parse(fileData.toString(), {
+    const transformedCode = await transformDecorators(input.class.data);
+
+    const result = parser.parse(transformedCode.toString(), {
       // parse in strict mode and allow module declarations
       sourceType: "module",
 
