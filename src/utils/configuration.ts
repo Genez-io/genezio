@@ -4,7 +4,9 @@ import {
     TriggerType,
     YamlClassConfiguration,
   YamlLocalConfiguration,
+  YamlMethodConfiguration,
   YamlProjectConfiguration,
+  getTriggerTypeFromString,
 } from "../models/yamlProjectConfiguration.js";
 import { checkYamlFileExists, getAllFilesFromCurrentPath, readUTF8File } from "./file.js";
 import { parse } from "yaml";
@@ -12,22 +14,63 @@ import babel from '@babel/core';
 import fs from "fs"
 import FileDetails from "../models/fileDetails.js";
 
+type MethodDecoratorInfo = {
+    name: string,
+    arguments?: {[key: string]: string;}
+}
 
-async function getDecoratorsFromFile(file: string) {
+type MethodInfo = {
+    name: string,
+    decorators: MethodDecoratorInfo[]
+}
+
+type ClassDecoratorInfo = {
+    name: string,
+    arguments?: {[key: string]: string;}
+}
+
+type ClassInfo = {
+    path: string,
+    name: string,
+    decorators: ClassDecoratorInfo[],
+    methods: MethodInfo[]
+}
+
+function parseArguments(args: any): {[key: string]: string;} {
+    if (!args) {
+        return {};
+    }
+
+    return args.map((a: any) => {
+        if (a.type === "ObjectExpression") {
+            return a.properties.reduce((acc: any, curr: any) => {
+                return [...acc, {"key": curr.key.name, "value": curr.value.value}];
+            }, [])
+        } else {
+            throw new Error("Unsupported argument for decorator")
+        }
+    }).flat().reduce((acc: any, curr: any) => {
+        acc[curr["key"]] = curr["value"] 
+        return acc
+    }, {})
+}
+
+
+async function getDecoratorsFromFile(file: string): Promise<ClassInfo[]> {
     const inputCode = fs.readFileSync(file, 'utf8'); 
-    const classes:any = []
+    const classes: ClassInfo[] = []
     const extractorFunction = function extract() {
         return {
             name: "extract-decorators",
             visitor: {
                 ClassDeclaration(path:any) {
                     if (path.node.decorators) {
-                        const info = {path: file, name: path.node.id.name, decorators: [] as any, methods: []}
+                        const info: ClassInfo = {path: file, name: path.node.id.name, decorators: [], methods: []}
                         for (const decorator of path.node.decorators) {
                             if (decorator.expression.type === "Identifier") {
                                 info.decorators = [...info.decorators ?? [], { name: decorator.expression.name }];
                             } else if (decorator.expression.type === "CallExpression") {
-                                info.decorators = [...info.decorators ?? [], { name: decorator.expression.callee.name, arguments: decorator.expression.arguments.map((a: any) => a.value) }];
+                                info.decorators = [...info.decorators ?? [], { name: decorator.expression.callee.name, arguments: parseArguments(decorator.expression.arguments) }];
                             }
                         }
                         classes.push(info)
@@ -38,8 +81,8 @@ async function getDecoratorsFromFile(file: string) {
                         const className = path.context.parentPath.container.id.name
                         const methodName = path.node.key.name
                         for (const decorator of path.node.decorators) {
-                            const info = { name: methodName, decorators: [] as any }
-                            let existingClass = classes.find((c: any) => c.name === className);
+                            const info: MethodInfo = { name: methodName, decorators: [] }
+                            let existingClass = classes.find((c) => c.name === className);
                             if (!existingClass) {
                                 existingClass = {path: file, name: path.node.id.name, decorators: [] as any, methods: []}
                                 classes.push(existingClass)
@@ -48,16 +91,7 @@ async function getDecoratorsFromFile(file: string) {
                             if (decorator.expression.type === "Identifier") {
                                 info.decorators = [...info.decorators ?? [], { name: decorator.expression.name }];
                             } else if (decorator.expression.type === "CallExpression") {
-                                info.decorators = [...info.decorators ?? [], { name: decorator.expression.callee.name, arguments: decorator.expression.arguments.map((a: any) => {
-                                    if (a.type === "StringLiteral") {
-                                        return a.value
-                                    } else if (a.type === "ObjectExpression") {
-                                        return a.properties.reduce((acc: any, curr: any) => {
-                                            acc[curr.key.value] = curr.value.value;
-                                            return acc;
-                                        }, {})
-                                    }
-                                }) }];
+                                info.decorators = [...info.decorators ?? [], { name: decorator.expression.callee.name, arguments: parseArguments(decorator.expression.arguments) }];
                             }
 
                             existingClass.methods.push(info);
@@ -118,7 +152,7 @@ export async function getProjectConfiguration(
 
   const result = await tryToReadClassInformationFromDecorators(projectConfiguration)
 
-  result.forEach((classInfo: any) => {
+  result.forEach((classInfo) => {
       if (classInfo.length < 1) {
           return
       }
@@ -127,7 +161,27 @@ export async function getProjectConfiguration(
         const deployDecoratorFound = classInfo[0].decorators.find((d: any) => d.name === "GenezioDeploy")
 
         if (!r && deployDecoratorFound) {
-            projectConfiguration.classes.push(new YamlClassConfiguration(classInfo[0].path, TriggerType.jsonrpc, ".js", []))
+            let type = TriggerType.jsonrpc
+            const methods = classInfo[0].methods.map((m) => {
+                const genezioMethodDecorator = m.decorators.find((d) => d.name === "GenezioMethod");
+
+                if (!genezioMethodDecorator || !genezioMethodDecorator.arguments) {
+                    return undefined;
+                }
+
+                const methodType = genezioMethodDecorator.arguments["type"] ? getTriggerTypeFromString(genezioMethodDecorator.arguments["type"]): TriggerType.jsonrpc
+                const cronString = genezioMethodDecorator.arguments["cronString"]
+                return new YamlMethodConfiguration(m.name, methodType, cronString) 
+            }).filter((m) => m !== undefined) as YamlMethodConfiguration[] ; 
+
+            if (deployDecoratorFound.arguments) {
+                const classType = deployDecoratorFound.arguments["type"]
+                if (classType) {
+                    type = getTriggerTypeFromString(classType)
+                }
+            }
+
+            projectConfiguration.classes.push(new YamlClassConfiguration(classInfo[0].path, type, ".js", methods))
         }
      }
   });
