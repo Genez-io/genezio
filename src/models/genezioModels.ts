@@ -184,7 +184,7 @@ export interface Enum extends Node {
 export interface PropertyDefinition {
   name: string;
   optional: boolean;
-  type: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | TypeLiteral | CustomAstNodeType | DateType | ArrayType | UnionType | PromiseType | VoidType | EnumType;
+  type: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | TypeLiteral | CustomAstNodeType | DateType | ArrayType | UnionType | PromiseType | VoidType | EnumType | MapType;
 }
 
 export interface TypeLiteral extends Node {
@@ -201,7 +201,7 @@ export interface StructLiteral extends Node {
 export interface TypeAlias extends Node {
   type: AstNodeType.TypeAlias;
   name: string;
-  aliasType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | CustomAstNodeType | DateType | ArrayType | TypeLiteral | UnionType | PromiseType | VoidType | EnumType;
+  aliasType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | CustomAstNodeType | DateType | ArrayType | TypeLiteral | UnionType | PromiseType | VoidType | EnumType | MapType;
 }
 
 export interface UnionType extends Node {
@@ -213,7 +213,7 @@ export interface ParameterDefinition extends Node {
   type: AstNodeType.ParameterDefinition;
   name: string;
   rawType: string;
-  paramType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | MapType | CustomAstNodeType | DateType | TypeLiteral | UnionType | PromiseType | VoidType | EnumType;
+  paramType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | MapType | CustomAstNodeType | DateType | TypeLiteral | UnionType | PromiseType | VoidType | EnumType | MapType;
   optional: boolean;
   defaultValue?: {
     value: string;
@@ -227,7 +227,7 @@ export interface MethodDefinition extends Node {
   params: ParameterDefinition[];
   kind: MethodKindEnum;
   static: boolean;
-  returnType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | MapType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType | VoidType | EnumType | DateType;
+  returnType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | MapType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType | VoidType | EnumType | DateType | MapType;
 }
 
 export interface ClassDefinition extends Node {
