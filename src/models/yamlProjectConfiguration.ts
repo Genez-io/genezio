@@ -40,6 +40,7 @@ export enum Language {
   swift = "swift",
   python = "python",
   dart = "dart",
+  kt = "kotlin"
 }
 
 export class YamlSdkConfiguration {

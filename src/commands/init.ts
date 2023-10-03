@@ -6,7 +6,7 @@ import { writeToFile } from "../utils/file.js";
 import { askQuestion } from "../utils/prompt.js";
 import {cyan, red} from "../utils/strings.js";
 
-export async function initCommand() {
+export async function initCommand(path:string) {
   let projectName = "";
   let projectNameValidated = false
   while (!projectNameValidated) {
@@ -48,7 +48,7 @@ export async function initCommand() {
   const doc = new Document(configFile);
   const yamlConfigurationFileContent = doc.toString();
 
-  await writeToFile(`./${projectName}`, "genezio.yaml", yamlConfigurationFileContent, true).catch(
+  await writeToFile(path ? path : `./${projectName}`, "genezio.yaml", yamlConfigurationFileContent, true).catch(
     (error) => {
       GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_INIT_ERROR, errorTrace: error.toString()});
       log.error(red, error.toString());

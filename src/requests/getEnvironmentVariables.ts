@@ -4,10 +4,9 @@ import { BACKEND_ENDPOINT } from '../constants.js';
 import version from '../utils/version.js';
 import { EnvironmentVariable } from '../models/environmentVariables.js';
 
-export async function setEnvironmentVariables(
+export async function getEnvironmentVariables(
   projectId: string,
-  environmentVariablesData: EnvironmentVariable[],
-) {
+): Promise<EnvironmentVariable[]> {
   // validate parameters
   if (!projectId) {
     throw new Error('Missing required parameters');
@@ -21,12 +20,9 @@ export async function setEnvironmentVariables(
     );
   }
 
-  const data = JSON.stringify({environmentVariables: environmentVariablesData});
-
   const response: any = await axios({
-    method: 'POST',
+    method: 'GET',
     url: `${BACKEND_ENDPOINT}/projects/${projectId}/environment-variables`,
-    data: data,
     headers: {
       Authorization: `Bearer ${authToken}`,
       'Accept-Version': `genezio-cli/${version}`,
@@ -44,4 +40,5 @@ export async function setEnvironmentVariables(
     throw new Error(response.data.error.message);
   }
 
+  return response.data.environmentVariables;
 }

@@ -3,11 +3,26 @@ import { MethodConfiguration, ProjectConfiguration } from "../models/projectConf
 import { YamlFrontend } from "../models/yamlProjectConfiguration.js";
 
 export type GenezioCloudInput = {
+  name: string;
+  archivePath: string;
+  filePath: string;
+  methods: MethodConfiguration[];
+  dependenciesInfo: {
     name: string;
-    archivePath: string;
-    filePath: string
-    methods: MethodConfiguration[];
-    unzippedBundleSize: number;
+    path: string;
+  };
+  allNonJsFilesPaths: {
+    name: string;
+    extension: string;
+    path: string;
+    filePath: string;
+  };
+  filesSize: {
+    name: string;
+    totalSize: number;
+  };
+
+  unzippedBundleSize: number;
 };
 
 export type GenezioCloudResultClass = {

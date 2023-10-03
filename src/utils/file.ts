@@ -11,6 +11,7 @@ import log from "loglevel";
 import { promises as fsPromises } from 'fs';
 import { debugLogger } from "./logging.js";
 import { EnvironmentVariable } from "../models/environmentVariables.js";
+import dotenv from "dotenv";
 
 export async function getAllFilesRecursively(folderPath: string): Promise<string[]> {
   let files: string[] = [];
@@ -352,27 +353,14 @@ export async function validateYamlFile() {
 export async function readEnvironmentVariablesFile(envFilePath: string): Promise<EnvironmentVariable[]> {
   const envVars = new Array<EnvironmentVariable>();
 
-  const envFileContent = await readUTF8File(envFilePath);
-  const envFileLines = envFileContent.split(os.EOL);
-
-  for (const line of envFileLines) {
-    if (line === "") {
-      continue;
-    }
-
-    const [key, value] = line.split("=");
-
-    if (key === undefined || value === undefined) {
-      log.warn(`The environment variable '${line}' is not valid.`);
-      continue;
-    }
-
-    // key and value should not be surrounded by whitespaces or quotes
-    envVars.push({
-      name: key.trim(),
-      value: value.replace(/['"]+/g, "").trim(),
-    });
+  // Read environment variables from .env file
+  const dotenvVars = dotenv.config({ path: envFilePath}).parsed;
+  if (!dotenvVars) {
+    log.warn(`No environment variables found in ${envFilePath}.`);
   }
 
+  for (const [key, value] of Object.entries(dotenvVars || {})) {
+    envVars.push({ name: key, value: value });
+  }
   return envVars;
 }

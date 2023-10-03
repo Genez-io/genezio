@@ -1,5 +1,6 @@
 import log from "loglevel";
 import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
+import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
 import express from "express";
 import chokidar from "chokidar";
 import cors from "cors";
@@ -8,6 +9,7 @@ import { ChildProcess, spawn } from "child_process";
 import path from "path";
 import url from "url";
 import * as http from "http";
+import colors from "colors";
 import {
   ProjectConfiguration,
   ClassConfiguration,
@@ -54,6 +56,7 @@ import dotenv from "dotenv";
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
 import inquirer, { Answers } from "inquirer";
 import { EOL } from "os";
+import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
 
 type ClassProcess = {
   process: ChildProcess;
@@ -444,6 +447,10 @@ function getBundler(
       bundler = new DartBundler();
       break;
     }
+    case ".kt": {
+      bundler = new KotlinBundler();
+      break;
+    }
     default: {
       log.error(
         `Unsupported language ${classConfiguration.language}. Skipping class `
@@ -506,7 +513,7 @@ async function startServerHttp(
     }
   });
 
-  app.all(`/:className/:methodName`, async (req: any, res: any) => {
+  async function handlerHttpMethod(req: any, res: any) {
     const reqToFunction = getEventObjectFromRequest(req);
 
     const localProcess = processForClasses.get(req.params.className);
@@ -524,6 +531,14 @@ async function startServerHttp(
       processForClasses
     );
     sendResponse(res, response.data);
+  }
+
+  app.all(`/:className/:methodName`, async (req: any, res: any) => {
+    await handlerHttpMethod(req, res);
+  });
+
+  app.all(`/:className/:methodName/*`, async (req: any, res: any) => {
+    await handlerHttpMethod(req, res);
   });
 
   return await new Promise((resolve, reject) => {
@@ -758,6 +773,28 @@ function reportSuccess(
     functionUrl: `http://127.0.0.1:${port}/${c.name}`,
   }));
 
+  // get installed version of node
+  const nodeVersion = process.version;
+
+  // get only the major version
+  const nodeMajorVersion = nodeVersion.split(".")[0].slice(1);
+
+  // get server used version
+  let serverRuntime: string = DEFAULT_NODE_RUNTIME as string;
+  if (projectConfiguration.options?.nodeRuntime) {
+    serverRuntime = projectConfiguration.options.nodeRuntime;
+  }
+
+  const serverVersion = serverRuntime.split(".")[0].split("nodejs")[1];
+
+  debugLogger.debug(`Node version: ${nodeVersion}`);
+  debugLogger.debug(`Server version: ${serverRuntime}`);
+
+  // check if server version is different from installed version
+  if (nodeMajorVersion !== serverVersion) {
+    log.warn(`${colors.yellow(`Warning: You are using node version ${nodeVersion} but your server is configured to use ${serverRuntime}. This might cause unexpected behavior.
+To change the server version, go to your ${colors.cyan("genezio.yaml")} file and change the ${colors.cyan("options.nodeRuntime")} property to the version you want to use.`)}`);
+  }
   _reportSuccess(classesInfo, sdk);
 
   log.info(
