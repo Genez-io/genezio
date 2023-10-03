@@ -191,7 +191,12 @@ class SdkGenerator implements SdkGeneratorInterface {
         continue;
       }
 
-      this.addClassItemsToIndex(indexModel, classInfo.program.body);
+      this.addClassItemsToIndex(
+        indexModel,
+        classInfo.program.body,
+        classDefinition.path ?? "",
+        classDefinition.name
+      );
 
       const view: any = {
         className: classDefinition.name,
@@ -370,6 +375,14 @@ class SdkGenerator implements SdkGeneratorInterface {
     });
 
     // generate index.ts
+    if (indexModel.exports.length > 0) {
+      indexModel.exports[indexModel.exports.length - 1].last = true;
+    }
+    for (const importStatement of indexModel.imports) {
+      if (importStatement.models.length > 0) {
+        importStatement.models[importStatement.models.length - 1].last = true;
+      }
+    }
     generateSdkOutput.files.push({
       className: "index.ts",
       path: "index.ts",
@@ -562,8 +575,19 @@ class SdkGenerator implements SdkGeneratorInterface {
     }
   }
 
-  addClassItemsToIndex(indexModel: IndexModel, classItems: Node[]) {
+  addClassItemsToIndex(
+    indexModel: IndexModel,
+    classItems: Node[],
+    classPath: string,
+    className: string
+  ) {
     for (const classItem of classItems) {
+      if (classItem.path === classPath) {
+        const rawSdkClassPath = `${className}.sdk`;
+        const sdkClassPath =
+          rawSdkClassPath.charAt(0).toLowerCase() + rawSdkClassPath.slice(1);
+        classItem.path = sdkClassPath;
+      }
       const index = indexModel.imports.findIndex(
         (i) => i.path === classItem.path
       );
