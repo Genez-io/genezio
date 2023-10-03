@@ -17,7 +17,8 @@ import {
   PromiseType,
   MethodDefinition,
   ParameterDefinition,
-  ModelView
+  ModelView,
+  MapType,
 } from "../../models/genezioModels.js";
 import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 import { nodeSdkTs } from "../templates/nodeSdkTs.js";
@@ -98,7 +99,7 @@ const TYPESCRIPT_RESERVED_WORDS = [
   "yield",
   "async",
   "await",
-  "of"
+  "of",
 ];
 
 const modelTemplate = `/**
@@ -147,7 +148,7 @@ class SdkGenerator implements SdkGeneratorInterface {
     sdkGeneratorInput: SdkGeneratorInput
   ): Promise<SdkGeneratorOutput> {
     const generateSdkOutput: SdkGeneratorOutput = {
-      files: []
+      files: [],
     };
 
     const modelViews: ModelView[] = [];
@@ -179,7 +180,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         _url: _url,
         methods: [],
         externalTypes: [],
-        imports: []
+        imports: [],
       };
 
       let exportClassChecker = false;
@@ -205,7 +206,7 @@ class SdkGenerator implements SdkGeneratorInterface {
           methodCaller:
             methodDefinition.params.length === 0
               ? `"${classDefinition.name}.${methodDefinition.name}"`
-              : `"${classDefinition.name}.${methodDefinition.name}", `
+              : `"${classDefinition.name}.${methodDefinition.name}", `,
         };
 
         methodView.parameters = methodDefinition.params.map((e) => {
@@ -223,7 +224,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                     ? "'" + e.defaultValue.value + "'"
                     : e.defaultValue.value)
                 : ""),
-            last: false
+            last: false,
           };
         });
 
@@ -232,7 +233,7 @@ class SdkGenerator implements SdkGeneratorInterface {
             name: TYPESCRIPT_RESERVED_WORDS.includes(e.name)
               ? e.name + "_"
               : e.name,
-            last: false
+            last: false,
           };
         });
 
@@ -300,7 +301,7 @@ class SdkGenerator implements SdkGeneratorInterface {
           ) {
             currentView?.externalTypes.push({
               type: this.generateExternalType(externalType),
-              name: (externalType as any).name
+              name: (externalType as any).name,
             });
           }
         }
@@ -331,14 +332,14 @@ class SdkGenerator implements SdkGeneratorInterface {
       generateSdkOutput.files.push({
         path: sdkClassName,
         data: Mustache.render(template, view),
-        className: classDefinition.name
+        className: classDefinition.name,
       });
 
       for (const modelView of modelViews) {
         generateSdkOutput.files.push({
           path: modelView.path + ".ts",
           data: Mustache.render(modelTemplate, modelView),
-          className: ""
+          className: "",
         });
       }
     }
@@ -347,7 +348,7 @@ class SdkGenerator implements SdkGeneratorInterface {
     generateSdkOutput.files.push({
       className: "Remote",
       path: "remote.ts",
-      data: nodeSdkTs.replace("%%%url%%%", "undefined")
+      data: nodeSdkTs.replace("%%%url%%%", "undefined"),
     });
 
     return generateSdkOutput;
@@ -395,10 +396,17 @@ class SdkGenerator implements SdkGeneratorInterface {
         .join(" | ");
     } else if (elem.type === AstNodeType.TypeLiteral) {
       return `{${(elem as TypeLiteral).properties
-        .map(
-          (e: PropertyDefinition) =>
-            `${e.name}${e.optional ? "?" : ""}: ${this.getParamType(e.type)}`
-        )
+        .map((e: PropertyDefinition) => {
+          if (e.type.type === AstNodeType.MapType) {
+            return `[key: ${this.getParamType(
+              (e.type as MapType).genericKey
+            )}]: ${this.getParamType((e.type as MapType).genericValue)}`;
+          } else {
+            return `${e.name}${e.optional ? "?" : ""}: ${this.getParamType(
+              e.type
+            )}`;
+          }
+        })
         .join(", ")}}`;
     } else if (elem.type === AstNodeType.DateType) {
       return "Date";
@@ -530,7 +538,7 @@ class SdkGenerator implements SdkGeneratorInterface {
       if (!currentView.imports.find((e: any) => e.path === relativePath)) {
         currentView.imports.push({
           path: relativePath.replace(/\\/g, "/"),
-          models: [{ name: (externalType as any).name }]
+          models: [{ name: (externalType as any).name }],
         });
       }
     }
@@ -556,7 +564,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         currentView = {
           path: type.path || "",
           externalTypes: [],
-          imports: []
+          imports: [],
         };
         modelViews.push(currentView);
       } else {
