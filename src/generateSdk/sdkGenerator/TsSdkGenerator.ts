@@ -581,7 +581,8 @@ class SdkGenerator implements SdkGeneratorInterface {
     classPath: string,
     className: string
   ) {
-    for (const classItem of classItems) {
+    for (const originalClassItem of classItems) {
+      const classItem = {...originalClassItem};
       if (classItem.path === classPath) {
         const rawSdkClassPath = `${className}.sdk`;
         const sdkClassPath =
