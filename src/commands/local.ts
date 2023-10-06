@@ -4,7 +4,7 @@ import express from "express";
 import chokidar from "chokidar";
 import cors from "cors";
 import bodyParser from "body-parser";
-import { ChildProcess, spawn } from "child_process";
+import { ChildProcess, spawn, exec } from "child_process";
 import path from "path";
 import url from "url";
 import * as http from "http";
@@ -29,9 +29,11 @@ import { debugLogger } from "../utils/logging.js";
 import { rectifyCronString } from "../utils/rectifyCronString.js";
 import cron from "node-cron";
 import {
+  createLocalTempFolder,
   createTemporaryFolder,
   fileExists,
   readUTF8File,
+  writeToFile,
 } from "../utils/file.js";
 import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 import { reportSuccess as _reportSuccess } from "../utils/reporter.js";
@@ -42,6 +44,7 @@ import axios, { AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
 import {
   Language,
+  PackageManager,
   YamlLocalConfiguration,
   YamlProjectConfiguration,
   YamlSdkConfiguration,
@@ -56,6 +59,9 @@ import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBu
 import inquirer, { Answers } from "inquirer";
 import { EOL } from "os";
 import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
+import util from "util";
+import { getNodeModulePackageJson } from "../generateSdk/templates/packageJson.js";
+const asyncExec = util.promisify(exec);
 
 type ClassProcess = {
   process: ChildProcess;
@@ -208,32 +214,57 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       if (answer.generateSdk) {
         const sdkConfiguration: Answers = await inquirer.prompt([
           {
-            type: "input",
-            name: "sdkPath",
-            message:
-              "Specify the path of your frontend. The SDK will be generated in /<your_project_path>/sdk.",
-            default: "./",
-          },
-          {
             type: "list",
             name: "sdkLanguage",
             message: "In which programming language is your frontend written?",
             choices: Object.keys(Language).filter((key) => isNaN(Number(key))),
           },
         ]);
+        let sdkPath: string | undefined = undefined;
+        let packageManager: string | undefined = undefined;
+        if (sdkConfiguration.sdkLanguage != "ts") {
+          const optionalSdkPath: Answers = await inquirer.prompt([
+            {
+              type: "input",
+              name: "sdkPath",
+              message:
+                "Specify the path of your frontend. The SDK will be generated in /<your_project_path>/sdk.",
+              default: "./",
+            },
+          ]);
+          sdkPath = optionalSdkPath.sdkPath;
+        } else {
+          const optionalPackageManager: Answers = await inquirer.prompt([
+            {
+              type: "list",
+              name: "packageManager",
+              message:
+                "Which package manager are you using to install your frontend dependencies?",
+              choices: Object.keys(PackageManager).filter((key) =>
+                isNaN(Number(key))
+              ),
+            },
+          ]);
+          packageManager = optionalPackageManager.packageManager;
+        }
+        if (!sdkPath) {
+          sdkPath = await createLocalTempFolder();
+        }
         const localConfiguration = await YamlLocalConfiguration.create({
           generateSdk: true,
-          path: path.join(sdkConfiguration.sdkPath, "sdk"),
+          path: path.join(sdkPath, "sdk"),
           language: sdkConfiguration.sdkLanguage,
+          packageManager: packageManager,
         });
         yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
           Language[sdkConfiguration.sdkLanguage as keyof typeof Language],
-          path.join(sdkConfiguration.sdkPath, "sdk")
+          path.join(sdkPath, "sdk")
         );
         if (!localConfiguration) {
           throw new Error("Could not create local configuration file.");
         }
         await localConfiguration.writeToFile();
+        yamlLocalConfiguration = await getLocalConfiguration();
       } else {
         const localConfiguration = await YamlLocalConfiguration.create({
           generateSdk: false,
@@ -323,6 +354,14 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         projectConfiguration.sdk.language,
         projectConfiguration.sdk.path
       );
+      if (projectConfiguration.sdk.language === Language.ts) {
+        // compile the sdk
+        await compileSdk(
+          projectConfiguration.sdk.path,
+          projectConfiguration.name,
+          yamlLocalConfiguration?.pagckageManager
+        );
+      }
     }
 
     reportSuccess(projectConfiguration, sdk, options.port);
@@ -341,6 +380,30 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       commandOptions: JSON.stringify(options),
     });
   }
+}
+
+async function compileSdk(
+  sdkPath: string,
+  projectName: string,
+  packageManager: PackageManager = PackageManager.npm
+) {
+  await asyncExec("tsc -b tsconfig.esm.json tsconfig.cjs.json", {
+    cwd: sdkPath,
+  });
+  const modulePath = path.resolve(sdkPath, "..", "genezio-sdk");
+  await writeToFile(
+    modulePath,
+    "package.json",
+    getNodeModulePackageJson(projectName)
+  );
+  await asyncExec(packageManager + " link", { cwd: modulePath });
+  log.info(
+    "\x1b[32m%s\x1b[0m",
+    `Your SDK is ready to be used. We already created a link using ${packageManager}. To import it in your client project, run ${colors.cyan(
+      `${packageManager} link @genezio/${projectName}`
+    )}`,
+    `${colors.green("in your client's root folder.")}`
+  );
 }
 
 function logChangeDetection() {
@@ -779,8 +842,14 @@ function reportSuccess(
 
   // check if server version is different from installed version
   if (nodeMajorVersion !== serverVersion) {
-    log.warn(`${colors.yellow(`Warning: You are using node version ${nodeVersion} but your server is configured to use ${serverRuntime}. This might cause unexpected behavior.
-To change the server version, go to your ${colors.cyan("genezio.yaml")} file and change the ${colors.cyan("options.nodeRuntime")} property to the version you want to use.`)}`);
+    log.warn(
+      `${colors.yellow(`Warning: You are using node version ${nodeVersion} but your server is configured to use ${serverRuntime}. This might cause unexpected behavior.
+To change the server version, go to your ${colors.cyan(
+        "genezio.yaml"
+      )} file and change the ${colors.cyan(
+        "options.nodeRuntime"
+      )} property to the version you want to use.`)}`
+    );
   }
   _reportSuccess(classesInfo, sdk);
 

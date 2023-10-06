@@ -8,12 +8,15 @@ import { parse } from "yaml";
 import { exit } from "process";
 import awsCronParser from "aws-cron-parser";
 import log from "loglevel";
-import { promises as fsPromises } from 'fs';
+import { promises as fsPromises } from "fs";
 import { debugLogger } from "./logging.js";
 import { EnvironmentVariable } from "../models/environmentVariables.js";
 import dotenv from "dotenv";
+import { execSync } from "child_process";
 
-export async function getAllFilesRecursively(folderPath: string): Promise<string[]> {
+export async function getAllFilesRecursively(
+  folderPath: string
+): Promise<string[]> {
   let files: string[] = [];
   const items = await fsPromises.readdir(folderPath, { withFileTypes: true });
 
@@ -33,8 +36,8 @@ export async function getAllFilesRecursively(folderPath: string): Promise<string
 
 export function ensureRelativePaths(file: string) {
   const absolutePath = path.resolve(file);
-  const relativePath = path.relative('.', absolutePath);
-  return './' + relativePath;
+  const relativePath = path.relative(".", absolutePath);
+  return "./" + relativePath;
 }
 
 export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
@@ -43,12 +46,12 @@ export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
   const genezioIgnorePath = path.join(process.cwd(), ".genezioignore");
   if (fs.existsSync(genezioIgnorePath)) {
     const genezioIgnoreContent = await readUTF8File(genezioIgnorePath);
-    genezioIgnore = genezioIgnoreContent.split(os.EOL).filter(
-      (line) => line !== "" && !line.startsWith("#")
-    )
+    genezioIgnore = genezioIgnoreContent
+      .split(os.EOL)
+      .filter((line) => line !== "" && !line.startsWith("#"));
   }
 
-  genezioIgnore = genezioIgnore.map((p) => ensureRelativePaths(p))
+  genezioIgnore = genezioIgnore.map((p) => ensureRelativePaths(p));
 
   return new Promise((resolve, reject) => {
     const pattern = `**`;
@@ -72,7 +75,7 @@ export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
           };
         });
         resolve(fileDetails);
-      },
+      }
     );
   });
 }
@@ -128,7 +131,9 @@ export async function fileExists(filePath: string): Promise<boolean> {
   });
 }
 
-export async function isDirectoryEmpty(directoryPath: string): Promise<boolean> {
+export async function isDirectoryEmpty(
+  directoryPath: string
+): Promise<boolean> {
   return new Promise((resolve) => {
     fs.readdir(directoryPath, (error, files) => {
       if (error) {
@@ -140,11 +145,13 @@ export async function isDirectoryEmpty(directoryPath: string): Promise<boolean> 
   });
 }
 
-export async function directoryContainsHtmlFiles(directoryPath: string): Promise<boolean> {
+export async function directoryContainsHtmlFiles(
+  directoryPath: string
+): Promise<boolean> {
   return new Promise((resolve, reject) => {
     fs.readdir(directoryPath, (error, files) => {
       if (error) {
-        reject(error)
+        reject(error);
       }
 
       resolve(files.some((file) => file.endsWith(".html")));
@@ -164,25 +171,31 @@ export async function getFileSize(filePath: string): Promise<number> {
   });
 }
 
-export async function getBundleFolderSizeLimit(directoryPath: string): Promise<number> {
+export async function getBundleFolderSizeLimit(
+  directoryPath: string
+): Promise<number> {
   const files = await getAllFilesRecursively(directoryPath);
-  const totalSize = files.reduce((acc, file) => acc + fs.statSync(file).size, 0);
+  const totalSize = files.reduce(
+    (acc, file) => acc + fs.statSync(file).size,
+    0
+  );
   debugLogger.debug(`Total size of the bundle: ${totalSize} bytes`);
   return totalSize;
 }
 
-export async function directoryContainsIndexHtmlFiles(directoryPath: string): Promise<boolean> {
+export async function directoryContainsIndexHtmlFiles(
+  directoryPath: string
+): Promise<boolean> {
   return new Promise((resolve, reject) => {
     fs.readdir(directoryPath, (error, files) => {
       if (error) {
-        reject(error)
+        reject(error);
       }
 
       resolve(files.some((file) => file === "index.html"));
     });
   });
 }
-
 
 /**
  * Removes the temporary root folder of the process.
@@ -196,7 +209,6 @@ export async function cleanupTemporaryFolders() {
     fs.rmSync(path.join(os.tmpdir(), folderName), { recursive: true });
   }
 }
-
 
 /**
  * Creates a temporary folder with a given name or a random name of 6 characters if no name is provided.
@@ -215,6 +227,53 @@ export async function createTemporaryFolder(
 
     if (!fs.existsSync(path.join(os.tmpdir(), folderName))) {
       fs.mkdirSync(path.join(os.tmpdir(), folderName));
+    }
+
+    if (name === undefined) {
+      // Generate a random name of 6 characters
+      name = Math.random().toString(36).substring(2, 8);
+    }
+
+    const tempFolder = path.join(os.tmpdir(), folderName, name);
+    if (fs.existsSync(tempFolder)) {
+      if (shouldDeleteContents) {
+        fs.rmSync(tempFolder, { recursive: true });
+      } else {
+        resolve(tempFolder);
+        return;
+      }
+    }
+
+    fs.mkdir(tempFolder, (error: any) => {
+      if (error) {
+        reject(error);
+      }
+
+      resolve(tempFolder);
+    });
+  });
+}
+
+export async function createLocalTempFolder(
+  name?: string,
+  shouldDeleteContents?: boolean
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const folderName = `local-genezio`;
+
+    if (!fs.existsSync(path.join(os.tmpdir(), folderName))) {
+      fs.mkdirSync(path.join(os.tmpdir(), folderName));
+    }
+
+    // install @types/node in root folder to be accessible by all projects
+    if (
+      !fs.existsSync(
+        path.join(os.tmpdir(), folderName, "node_modules", "@types/node")
+      )
+    ) {
+      execSync("npm install @types/node", {
+        cwd: path.join(os.tmpdir(), folderName),
+      });
     }
 
     if (name === undefined) {
@@ -310,8 +369,7 @@ export async function validateYamlFile() {
 
   try {
     configurationFileContent = await parse(configurationFileContentUTF8);
-  }
-  catch (error) {
+  } catch (error) {
     throw new Error(`The configuration yaml file is not valid.\n${error}`);
   }
 
@@ -350,11 +408,13 @@ export async function validateYamlFile() {
   }
 }
 
-export async function readEnvironmentVariablesFile(envFilePath: string): Promise<EnvironmentVariable[]> {
+export async function readEnvironmentVariablesFile(
+  envFilePath: string
+): Promise<EnvironmentVariable[]> {
   const envVars = new Array<EnvironmentVariable>();
 
   // Read environment variables from .env file
-  const dotenvVars = dotenv.config({ path: envFilePath}).parsed;
+  const dotenvVars = dotenv.config({ path: envFilePath }).parsed;
   if (!dotenvVars) {
     log.warn(`No environment variables found in ${envFilePath}.`);
   }

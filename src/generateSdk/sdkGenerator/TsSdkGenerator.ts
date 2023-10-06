@@ -23,6 +23,9 @@ import {
 import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 import { nodeSdkTs } from "../templates/nodeSdkTs.js";
 import path from "path";
+import { mainTsConfig } from "../templates/tsconfigs/mainTsconfig.js";
+import { esmTsconfig } from "../templates/tsconfigs/esmTsconfig.js";
+import { cjsTsconfig } from "../templates/tsconfigs/cjsTsconfig.js";
 
 const TYPESCRIPT_RESERVED_WORDS = [
   "abstract",
@@ -389,6 +392,23 @@ class SdkGenerator implements SdkGeneratorInterface {
       data: Mustache.render(indexTemplate, indexModel),
     });
 
+    // generate tsconfig files
+    generateSdkOutput.files.push({
+      className: "tsconfig.json",
+      path: "tsconfig.json",
+      data: mainTsConfig,
+    });
+    generateSdkOutput.files.push({
+      className: "tsconfig.esm.json",
+      path: "tsconfig.esm.json",
+      data: esmTsconfig,
+    });
+    generateSdkOutput.files.push({
+      className: "tsconfig.cjs.json",
+      path: "tsconfig.cjs.json",
+      data: cjsTsconfig,
+    });
+
     return generateSdkOutput;
   }
 
@@ -582,7 +602,7 @@ class SdkGenerator implements SdkGeneratorInterface {
     className: string
   ) {
     for (const originalClassItem of classItems) {
-      const classItem = {...originalClassItem};
+      const classItem = { ...originalClassItem };
       if (classItem.path === classPath) {
         const rawSdkClassPath = `${className}.sdk`;
         const sdkClassPath =

@@ -24,6 +24,12 @@ export enum Language {
   dart = "dart",
 }
 
+export enum PackageManager {
+  npm = "npm",
+  yarn = "yarn",
+  pnpm = "pnpm",
+}
+
 export class YamlSdkConfiguration {
   language: Language;
   path: string;
@@ -468,15 +474,18 @@ export class YamlLocalConfiguration {
   generateSdk: boolean;
   path?: string | undefined;
   language?: Language | undefined;
+  pagckageManager?: PackageManager | undefined;
 
   constructor(
     generateSdk: boolean,
     path: string | undefined = undefined,
-    language: Language | undefined = undefined
+    language: Language | undefined = undefined,
+    packageManager: PackageManager | undefined = undefined
   ) {
     this.generateSdk = generateSdk;
     this.path = path;
     this.language = language;
+    this.pagckageManager = packageManager;
   }
 
   static async create(
@@ -488,8 +497,15 @@ export class YamlLocalConfiguration {
     const generateSdk: boolean = yamlLocalConfiguration.generateSdk;
     const path: string | undefined = yamlLocalConfiguration.path;
     const language: Language | undefined = yamlLocalConfiguration.language;
+    const packageManager: PackageManager | undefined =
+      yamlLocalConfiguration.packageManager;
 
-    return new YamlLocalConfiguration(generateSdk, path, language);
+    return new YamlLocalConfiguration(
+      generateSdk,
+      path,
+      language,
+      packageManager
+    );
   }
 
   async writeToFile(path = "./genezio.local.yaml") {
@@ -497,6 +513,7 @@ export class YamlLocalConfiguration {
       generateSdk: this.generateSdk,
       path: this.path,
       language: this.language,
+      packageManager: this.pagckageManager,
     };
 
     const fileDetails = getFileDetails(path);
