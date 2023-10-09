@@ -35,6 +35,8 @@
     "@babel/parser": "^7.22.16",
     "@babel/preset-env": "^7.22.20",
     "@babel/traverse": "^7.22.5",
+    "@sentry/node": "^7.73.0",
+    "@sentry/profiling-node": "^1.2.1",
     "@types/body": "^5.1.2",
     "@types/cli-table": "^0.3.2",
     "@types/inquirer": "^9.0.3",
