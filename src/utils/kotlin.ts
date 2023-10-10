@@ -9,7 +9,7 @@ export function checkIfKotlinReqsAreInstalled() {
     try {
         execSync("javac -version")
     } catch (error) {
-        let java_err = new Error(JavaNotFoundError)
+        const java_err = new Error(JavaNotFoundError)
         java_err.stack = ""
         throw java_err;
     }
@@ -19,7 +19,7 @@ export function checkIfKotlinReqsAreInstalled() {
     try {
         execSync("kotlin -version")
     } catch (error) {
-        let kotlin_err = new Error(KotlinNotFoundError)
+        const kotlin_err = new Error(KotlinNotFoundError)
         kotlin_err.stack = ""
         throw kotlin_err;
       }
@@ -29,7 +29,7 @@ export function checkIfKotlinReqsAreInstalled() {
     try {
         execSync("gradle -version")
     } catch (error) {
-        let gradle_err = new Error(GradleNotFoundError)
+        const gradle_err = new Error(GradleNotFoundError)
         gradle_err.stack = ""
         throw gradle_err;
     }
