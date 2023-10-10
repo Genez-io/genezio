@@ -19,6 +19,7 @@ import {
   ParameterDefinition,
   ModelView,
   IndexModel,
+  MapType,
 } from "../../models/genezioModels.js";
 import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 import { nodeSdkTs } from "../templates/nodeSdkTs.js";
@@ -454,10 +455,17 @@ class SdkGenerator implements SdkGeneratorInterface {
         .join(" | ");
     } else if (elem.type === AstNodeType.TypeLiteral) {
       return `{${(elem as TypeLiteral).properties
-        .map(
-          (e: PropertyDefinition) =>
-            `${e.name}${e.optional ? "?" : ""}: ${this.getParamType(e.type)}`
-        )
+        .map((e: PropertyDefinition) => {
+          if (e.type.type === AstNodeType.MapType) {
+            return `[key: ${this.getParamType(
+              (e.type as MapType).genericKey
+            )}]: ${this.getParamType((e.type as MapType).genericValue)}`;
+          } else {
+            return `${e.name}${e.optional ? "?" : ""}: ${this.getParamType(
+              e.type
+            )}`;
+          }
+        })
         .join(", ")}}`;
     } else if (elem.type === AstNodeType.DateType) {
       return "Date";

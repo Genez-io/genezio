@@ -1,5 +1,6 @@
 import log from "loglevel";
 import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
+import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
 import express from "express";
 import chokidar from "chokidar";
 import cors from "cors";
@@ -509,6 +510,10 @@ function getBundler(
       bundler = new DartBundler();
       break;
     }
+    case ".kt": {
+      bundler = new KotlinBundler();
+      break;
+    }
     default: {
       log.error(
         `Unsupported language ${classConfiguration.language}. Skipping class `
@@ -571,7 +576,7 @@ async function startServerHttp(
     }
   });
 
-  app.all(`/:className/:methodName`, async (req: any, res: any) => {
+  async function handlerHttpMethod(req: any, res: any) {
     const reqToFunction = getEventObjectFromRequest(req);
 
     const localProcess = processForClasses.get(req.params.className);
@@ -589,6 +594,14 @@ async function startServerHttp(
       processForClasses
     );
     sendResponse(res, response.data);
+  }
+
+  app.all(`/:className/:methodName`, async (req: any, res: any) => {
+    await handlerHttpMethod(req, res);
+  });
+
+  app.all(`/:className/:methodName/*`, async (req: any, res: any) => {
+    await handlerHttpMethod(req, res);
   });
 
   return await new Promise((resolve, reject) => {

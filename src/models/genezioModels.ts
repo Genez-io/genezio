@@ -211,7 +211,8 @@ export interface PropertyDefinition {
     | UnionType
     | PromiseType
     | VoidType
-    | EnumType;
+    | EnumType
+    | MapType;
 }
 
 export interface TypeLiteral extends Node {
@@ -242,7 +243,8 @@ export interface TypeAlias extends Node {
     | UnionType
     | PromiseType
     | VoidType
-    | EnumType;
+    | EnumType
+    | MapType;
 }
 
 export interface UnionType extends Node {
@@ -269,7 +271,8 @@ export interface ParameterDefinition extends Node {
     | UnionType
     | PromiseType
     | VoidType
-    | EnumType;
+    | EnumType
+    | MapType;
   optional: boolean;
   defaultValue?: {
     value: string;
@@ -298,7 +301,8 @@ export interface MethodDefinition extends Node {
     | PromiseType
     | VoidType
     | EnumType
-    | DateType;
+    | DateType
+    | MapType;
 }
 
 export interface ClassDefinition extends Node {

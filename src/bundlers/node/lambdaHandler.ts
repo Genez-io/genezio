@@ -81,9 +81,16 @@ if (!genezioClass) {
             body = JSON.parse(event.body);
         } catch (error) { }
 
-        const components = event.requestContext.http.path.split("/");
+        const components = event.requestContext.http.path.substring(1).split("/");
         if (!body || (body && body["jsonrpc"] !== "2.0")) {
-            const method = components.slice(-1);
+            if (!components[1]) {
+                return {
+                    statusCode: 404,
+                    headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' },
+                    body: JSON.stringify({ error: "Method not found" }),
+                };
+            }
+            const method = components[1];
             const req = {
                 headers: event.headers,
                 http: event.requestContext.http,

@@ -27,6 +27,7 @@ import {
   VoidType,
   EnumType,
   DateType,
+  MapType,
 } from "../../models/genezioModels.js";
 
 import typescript from "typescript";
@@ -55,7 +56,8 @@ export class AstGenerator implements AstGeneratorInterface {
     | UnionType
     | PromiseType
     | VoidType
-    | EnumType {
+    | EnumType
+    | MapType {
     switch ((type as any).kind) {
       case typescript.SyntaxKind.StringKeyword:
         return { type: AstNodeType.StringLiteral };
@@ -152,13 +154,16 @@ export class AstGenerator implements AstGeneratorInterface {
         for (const member of (type as any).members) {
           if (member.type) {
             const property: PropertyDefinition = {
-              name: member.name.escapedText,
+              name: member.name?.escapedText,
               optional: member.questionToken ? true : false,
-              type: this.mapTypesToParamType(
-                member.type,
-                typeChecker,
-                declarations
-              ),
+              type:
+                member.kind === typescript.SyntaxKind.IndexSignature
+                  ? this.mapTypesToParamType(member, typeChecker, declarations)
+                  : this.mapTypesToParamType(
+                      member.type,
+                      typeChecker,
+                      declarations
+                    ),
             };
             properties.push(property);
           }
@@ -173,6 +178,21 @@ export class AstGenerator implements AstGeneratorInterface {
           );
         }
         return { type: AstNodeType.UnionType, params: params };
+      }
+      case typescript.SyntaxKind.IndexSignature: {
+        return {
+          type: AstNodeType.MapType,
+          genericKey: this.mapTypesToParamType(
+            (type as any).locals.get("key").valueDeclaration.type,
+            typeChecker,
+            declarations
+          ),
+          genericValue: this.mapTypesToParamType(
+            (type as any).type,
+            typeChecker,
+            declarations
+          ),
+        };
       }
       default:
         return { type: AstNodeType.AnyLiteral };
@@ -263,13 +283,16 @@ export class AstGenerator implements AstGeneratorInterface {
       for (const member of typeAliasDeclarationCopy.type.members) {
         if (member.type) {
           const field: PropertyDefinition = {
-            name: member.name.escapedText,
+            name: member.name?.escapedText,
             optional: member.questionToken ? true : false,
-            type: this.mapTypesToParamType(
-              member.type,
-              typeChecker,
-              declarations
-            ),
+            type:
+              member.kind === typescript.SyntaxKind.IndexSignature
+                ? this.mapTypesToParamType(member, typeChecker, declarations)
+                : this.mapTypesToParamType(
+                    member.type,
+                    typeChecker,
+                    declarations
+                  ),
           };
           structLiteral.typeLiteral.properties.push(field);
         }

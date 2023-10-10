@@ -44,8 +44,47 @@ describe("init", () => {
       classes: []
     };
 
-    const doc = new Document(configFile);
-    const yamlConfigurationFileContent = doc.toString();
+    const yamlConfigurationFileContent = `# Visit https://docs.genez.io/genezio-documentation/yaml-configuration-file to read more about this file
+
+name: ${configFile.name}
+
+# Configure where you want your project to be deployed. Choose the closest location to your users.
+region: ${configFile.region}
+
+#sdk:
+#  language: ts                                                                              # The supported languages are: "js", "ts", "dart", "swift".
+#  path: ../client/src/sdk/                                                                  # The path to the SDK folder. The SDK will be generated in this folder.
+
+#frontend:
+#  path: ../client/build/                                                                    # The path to the frontend build folder.
+#  subdomain: your-awesome-domain                                                            # Uncomment if you want to specify a subdomain
+
+# Define scripts that run at different stages of deployment.
+#scripts:
+#  preBackendDeploy: "echo 'preBackendDeploy'"                                               # The script that will run before the backend is deployed.
+#  postBackendDeploy: "echo 'postBackendDeploy'"                                             # The script that will run after the backend is deployed.
+#  preFrontendDeploy: "echo 'preFrontendDeploy'"                                             # The script that will run before the frontend is deployed.
+#  postFrontendDeploy: "echo 'postFrontendDeploy'"                                           # The script that will run after the frontend is deployed.
+
+# Specify the classes that will be handled by the genezio CLI.
+#classes:
+#  - path: "./index.js"                                                                      # The path to the class file.
+#    type: jsonrpc
+#    methods:
+#      - name: "sayHiEveryMinute"
+#        type: cron
+#        cronString: "* * * * *"                                                             # The cron string that defines the schedule of the method.
+#      - name: "helloWorldOverHttp"
+#        type: http
+#      - name: "helloWorldOverJsonrpc"
+#        type: jsonrpc
+#      - name: "helloWorldOverJsonrpcByDefault"
+classes: []
+
+# Specify the Node runtime version to be used by your application.
+#options:
+#  nodeRuntime: nodejs18.x                                                                   # The supported values are nodejs16.x, nodejs18.x.`;
+
 
     await expect(initCommand("./project-name")).resolves.toBeUndefined();
 
@@ -75,8 +114,48 @@ describe("init", () => {
       classes: []
     };
 
-    const doc = new Document(configFile);
-    const yamlConfigurationFileContent = doc.toString();
+    const yamlConfigurationFileContent = `# Visit https://docs.genez.io/genezio-documentation/yaml-configuration-file to read more about this file
+
+name: ${configFile.name}
+
+# Configure where you want your project to be deployed. Choose the closest location to your users.
+region: ${configFile.region}
+
+#sdk:
+#  language: ts                                                                              # The supported languages are: "js", "ts", "dart", "swift".
+#  path: ../client/src/sdk/                                                                  # The path to the SDK folder. The SDK will be generated in this folder.
+
+#frontend:
+#  path: ../client/build/                                                                    # The path to the frontend build folder.
+#  subdomain: your-awesome-domain                                                            # Uncomment if you want to specify a subdomain
+
+# Define scripts that run at different stages of deployment.
+#scripts:
+#  preBackendDeploy: "echo 'preBackendDeploy'"                                               # The script that will run before the backend is deployed.
+#  postBackendDeploy: "echo 'postBackendDeploy'"                                             # The script that will run after the backend is deployed.
+#  preFrontendDeploy: "echo 'preFrontendDeploy'"                                             # The script that will run before the frontend is deployed.
+#  postFrontendDeploy: "echo 'postFrontendDeploy'"                                           # The script that will run after the frontend is deployed.
+
+# Specify the classes that will be handled by the genezio CLI.
+#classes:
+#  - path: "./index.js"                                                                      # The path to the class file.
+#    type: jsonrpc
+#    methods:
+#      - name: "sayHiEveryMinute"
+#        type: cron
+#        cronString: "* * * * *"                                                             # The cron string that defines the schedule of the method.
+#      - name: "helloWorldOverHttp"
+#        type: http
+#      - name: "helloWorldOverJsonrpc"
+#        type: jsonrpc
+#      - name: "helloWorldOverJsonrpcByDefault"
+classes: []
+
+# Specify the Node runtime version to be used by your application.
+#options:
+#  nodeRuntime: nodejs18.x                                                                   # The supported values are nodejs16.x, nodejs18.x.`;
+
+
 
     await expect(initCommand("./project-name")).resolves.toBeUndefined();
 
@@ -109,8 +188,48 @@ describe("init", () => {
       classes: []
     };
 
-    const doc = new Document(configFile);
-    const yamlConfigurationFileContent = doc.toString();
+    const yamlConfigurationFileContent = `# Visit https://docs.genez.io/genezio-documentation/yaml-configuration-file to read more about this file
+
+name: ${configFile.name}
+
+# Configure where you want your project to be deployed. Choose the closest location to your users.
+region: ${configFile.region}
+
+#sdk:
+#  language: ts                                                                              # The supported languages are: "js", "ts", "dart", "swift".
+#  path: ../client/src/sdk/                                                                  # The path to the SDK folder. The SDK will be generated in this folder.
+
+#frontend:
+#  path: ../client/build/                                                                    # The path to the frontend build folder.
+#  subdomain: your-awesome-domain                                                            # Uncomment if you want to specify a subdomain
+
+# Define scripts that run at different stages of deployment.
+#scripts:
+#  preBackendDeploy: "echo 'preBackendDeploy'"                                               # The script that will run before the backend is deployed.
+#  postBackendDeploy: "echo 'postBackendDeploy'"                                             # The script that will run after the backend is deployed.
+#  preFrontendDeploy: "echo 'preFrontendDeploy'"                                             # The script that will run before the frontend is deployed.
+#  postFrontendDeploy: "echo 'postFrontendDeploy'"                                           # The script that will run after the frontend is deployed.
+
+# Specify the classes that will be handled by the genezio CLI.
+#classes:
+#  - path: "./index.js"                                                                      # The path to the class file.
+#    type: jsonrpc
+#    methods:
+#      - name: "sayHiEveryMinute"
+#        type: cron
+#        cronString: "* * * * *"                                                             # The cron string that defines the schedule of the method.
+#      - name: "helloWorldOverHttp"
+#        type: http
+#      - name: "helloWorldOverJsonrpc"
+#        type: jsonrpc
+#      - name: "helloWorldOverJsonrpcByDefault"
+classes: []
+
+# Specify the Node runtime version to be used by your application.
+#options:
+#  nodeRuntime: nodejs18.x                                                                   # The supported values are nodejs16.x, nodejs18.x.`;
+
+
 
     await expect(initCommand("./project-name")).resolves.toBeUndefined();
 
@@ -136,7 +255,7 @@ describe("addClassCommand", () => {
   });
 
   test("throws if extension is not supported", async () => {
-    await expect(addClassCommand("test.py", "jsonrpc")).rejects.toThrowError("Class language(py) not supported. Currently supporting: ts, js and dart");
+    await expect(addClassCommand("test.py", "jsonrpc")).rejects.toThrowError("Class language(py) not supported. Currently supporting: ts, js, dart and kt");
   });
 
   test("throws if extension is not supported", async () => {

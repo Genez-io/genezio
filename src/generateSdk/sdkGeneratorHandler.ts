@@ -3,6 +3,7 @@ import TsSdkGenerator from "./sdkGenerator/TsSdkGenerator.js";
 import SwiftSdkGenerator from "./sdkGenerator/SwiftSdkGenerator.js";
 import PythonSdkGenerator from "./sdkGenerator/PythonSdkGenerator.js";
 import DartSdkGenerator from "./sdkGenerator/DartSdkGenerator.js";
+import KotlinSdkGenerator from "./sdkGenerator/KotlinSdkGenerator.js";
 import {
   SdkGeneratorInput,
   SdkGeneratorOutput,
@@ -40,6 +41,7 @@ export async function generateSdk(
   pluginsImported.push(SwiftSdkGenerator);
   pluginsImported.push(PythonSdkGenerator);
   pluginsImported.push(DartSdkGenerator);
+  pluginsImported.push(KotlinSdkGenerator);
 
   const sdkGeneratorElem = pluginsImported.find((plugin: any) => {
     return plugin.supportedLanguages.includes(sdkGeneratorInput.sdk?.language);
