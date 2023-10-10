@@ -34,9 +34,21 @@ Fork this repository and clone it on your machine.
 To run the steps below, you should have [npm and node](https://nodejs.org/en/download) installed on your machine. 
 Tip: You can check out [`nvm`](https://github.com/nvm-sh/nvm#installing-and-updating) to manage node installations.
 
-Run the following commands in the repository root directory:
+Clone the forked repository on your machine:
 ```bash
-cd <repository_root_path>
+git clone <forked_repository>
+cd genezio
+```
+
+Checkout into our dev branch for the latest features:
+```bash
+git remote add upstream https://github.com/genez-io/genezio
+git fetch upstream
+git checkout -b dev upstream/dev
+```
+
+Install genezio and its dependencies:
+```bash
 npm install
 npm run install-locally-dev
 genezio login
