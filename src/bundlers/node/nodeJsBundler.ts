@@ -22,6 +22,7 @@ import { nodeExternalsPlugin } from "esbuild-node-externals";
 import colors from "colors"
 import { DependencyInstaller } from "./dependencyInstaller.js";
 import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE } from "../../errors.js";
+import transformDecorators from "../../utils/transformDecorators.js";
 
 export class NodeJsBundler implements BundlerInterface {
   async #copyDependencies(dependenciesInfo: Dependency[] | undefined, tempFolderPath: string, mode: "development" | "production") {
@@ -160,6 +161,7 @@ export class NodeJsBundler implements BundlerInterface {
         });
       },
     };
+    const outputFilePath = path.join(tempFolderPath, outputFile); 
 
     // eslint-disable-next-line no-async-promise-executor
     const output: BuildResult = await esbuild.build({
@@ -168,7 +170,7 @@ export class NodeJsBundler implements BundlerInterface {
       metafile: true,
       format: "esm",
       platform: "node",
-      outfile: path.join(tempFolderPath, outputFile),
+      outfile: outputFilePath,
       plugins: [nodeExternalsPlugin(), supportRequireInESM],
       sourcemap: "inline",
     });
@@ -206,6 +208,11 @@ export class NodeJsBundler implements BundlerInterface {
       });
       throw "Compilation failed";
     }
+
+    const fileData = fs.readFileSync(outputFilePath, 'utf8');
+    const transformedCode = await transformDecorators(fileData);
+
+    fs.writeFileSync(outputFilePath, transformedCode);
   }
 
   async #handleMissingDependencies(error: BuildFailure, try_count: number, MAX_TRIES: number) {

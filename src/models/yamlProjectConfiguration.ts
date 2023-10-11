@@ -16,6 +16,24 @@ export enum TriggerType {
   http = "http",
 }
 
+export function getTriggerTypeFromString(string: string): TriggerType {
+    if (
+        string &&
+        !TriggerType[string as keyof typeof TriggerType]
+    ) {
+        const triggerTypes: string = Object.keys(TriggerType).join(", ");
+        throw new Error(
+            "Specified class type for " +
+                    string +
+                        " is incorrect. Accepted values: " +
+                            triggerTypes +
+                                "."
+        );
+    }
+    
+    return TriggerType[string as keyof typeof TriggerType];
+}
+
 export enum Language {
   js = "js",
   ts = "ts",
@@ -151,25 +169,10 @@ export class YamlClassConfiguration {
       throw new Error("Path is missing from class.");
     }
 
-    if (
-      classConfigurationYaml.type &&
-      !TriggerType[classConfigurationYaml.type as keyof typeof TriggerType]
-    ) {
-      const triggerTypes: string = Object.keys(TriggerType).join(", ");
-      throw new Error(
-        "Specified class type for " +
-          classConfigurationYaml.path +
-          " is incorrect. Accepted values: " +
-          triggerTypes +
-          "."
-      );
-    }
-
     let triggerType = TriggerType.jsonrpc;
 
     if (classConfigurationYaml.type) {
-      triggerType =
-        TriggerType[classConfigurationYaml.type as keyof typeof TriggerType];
+      triggerType = getTriggerTypeFromString(classConfigurationYaml.type)
     }
 
     const unparsedMethods: any[] = classConfigurationYaml.methods || [];

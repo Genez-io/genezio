@@ -55,6 +55,7 @@ import { getEnvironmentVariables } from "../requests/getEnvironmentVariables.js"
 import { exec } from "child_process";
 import util from "util";
 import { getNodeModulePackageJson } from "../generateSdk/templates/packageJson.js";
+import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 const asyncExec = util.promisify(exec);
 
 export async function deployCommand(options: GenezioDeployOptions) {
@@ -461,9 +462,10 @@ export async function deployClasses(
       } else {
         // Read environment variables from .env file
         const envVars = await readEnvironmentVariablesFile(envFile);
+        const projectEnv = await getProjectEnvFromProject(projectId, stage);
 
         // Upload environment variables to the project
-        await setEnvironmentVariables(projectId, envVars)
+        await setEnvironmentVariables(projectId, projectEnv.id, envVars)
           .then(() => {
             debugLogger.debug(
               `Environment variables from ${envFile} uploaded to project ${projectId}`
@@ -494,9 +496,13 @@ export async function deployClasses(
       if (await fileExists(".env")) {
         // read envVars from file
         const envVars = await readEnvironmentVariablesFile(".env");
+        const projectEnv = await getProjectEnvFromProject(projectId, stage);
 
         // get remoteEnvVars from project
-        const remoteEnvVars = await getEnvironmentVariables(projectId);
+        const remoteEnvVars = await getEnvironmentVariables(
+          projectId,
+          projectEnv.id
+        );
 
         // check if all envVars from file are in remoteEnvVars
         const missingEnvVars = envVars.filter(

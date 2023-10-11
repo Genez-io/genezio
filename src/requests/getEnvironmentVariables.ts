@@ -6,6 +6,7 @@ import { EnvironmentVariable } from '../models/environmentVariables.js';
 
 export async function getEnvironmentVariables(
   projectId: string,
+  projectEnvId: string,
 ): Promise<EnvironmentVariable[]> {
   // validate parameters
   if (!projectId) {
@@ -22,7 +23,7 @@ export async function getEnvironmentVariables(
 
   const response: any = await axios({
     method: 'GET',
-    url: `${BACKEND_ENDPOINT}/projects/${projectId}/environment-variables`,
+    url: `${BACKEND_ENDPOINT}/projects/${projectId}/${projectEnvId}/environment-variables`,
     headers: {
       Authorization: `Bearer ${authToken}`,
       'Accept-Version': `genezio-cli/${version}`,
