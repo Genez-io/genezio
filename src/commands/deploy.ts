@@ -1,7 +1,7 @@
 import { AxiosError } from "axios";
 import log from "loglevel";
 import path from "path";
-import {  exit } from "process";
+import { exit } from "process";
 import { BundlerInterface } from "../bundlers/bundler.interface.js";
 import { BundlerComposer } from "../bundlers/bundlerComposer.js";
 import { DartBundler } from "../bundlers/dart/dartBundler.js";
@@ -29,6 +29,7 @@ import {
   deleteFolder,
   getBundleFolderSizeLimit,
   readEnvironmentVariablesFile,
+  writeToFile,
 } from "../utils/file.js";
 import { printAdaptiveLog, debugLogger } from "../utils/logging.js";
 import { runNewProcess } from "../utils/process.js";
@@ -36,9 +37,7 @@ import { reportSuccess } from "../utils/reporter.js";
 import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 import { generateRandomSubdomain } from "../utils/yaml.js";
 import cliProgress from "cli-progress";
-import {
-  YamlProjectConfiguration,
-} from "../models/yamlProjectConfiguration.js";
+import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js";
 import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter.js";
 import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter.js";
 import { CloudAdapter } from "../cloudAdapter/cloudAdapter.js";
@@ -53,6 +52,10 @@ import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBu
 import { setEnvironmentVariables } from "../requests/setEnvironmentVariables.js";
 import colors from "colors";
 import { getEnvironmentVariables } from "../requests/getEnvironmentVariables.js";
+import { exec } from "child_process";
+import util from "util";
+import { getNodeModulePackageJson } from "../generateSdk/templates/packageJson.js";
+const asyncExec = util.promisify(exec);
 
 export async function deployCommand(options: GenezioDeployOptions) {
   let configuration;
@@ -298,33 +301,38 @@ export async function deployClasses(
 
     let bundler: BundlerInterface;
 
-      switch (element.language) {
-        case ".ts": {
-          const requiredDepsBundler = new TsRequiredDepsBundler();
-          const typeCheckerBundler = new TypeCheckerBundler();
-          const standardBundler = new NodeJsBundler();
-          const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
-          bundler = new BundlerComposer([requiredDepsBundler, typeCheckerBundler, standardBundler, binaryDepBundler]);
-          break;
-        }
-        case ".js": {
-          const standardBundler = new NodeJsBundler();
-          const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
-          bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
-          break;
-        }
-        case ".dart": {
-          bundler = new DartBundler();
-          break;
-        }
-        case ".kt": {
-          bundler = new KotlinBundler();
-          break;
-        }
-        default:
-          log.error(`Unsupported ${element.language}`);
-          throw new Error(`Unsupported ${element.language}`);
+    switch (element.language) {
+      case ".ts": {
+        const requiredDepsBundler = new TsRequiredDepsBundler();
+        const typeCheckerBundler = new TypeCheckerBundler();
+        const standardBundler = new NodeJsBundler();
+        const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
+        bundler = new BundlerComposer([
+          requiredDepsBundler,
+          typeCheckerBundler,
+          standardBundler,
+          binaryDepBundler,
+        ]);
+        break;
       }
+      case ".js": {
+        const standardBundler = new NodeJsBundler();
+        const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
+        bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
+        break;
+      }
+      case ".dart": {
+        bundler = new DartBundler();
+        break;
+      }
+      case ".kt": {
+        bundler = new KotlinBundler();
+        break;
+      }
+      default:
+        log.error(`Unsupported ${element.language}`);
+        throw new Error(`Unsupported ${element.language}`);
+    }
 
     debugLogger.debug(
       `The bundling process has started for file ${element.path}...`
@@ -353,19 +361,32 @@ export async function deployClasses(
     );
 
     // check if the unzipped folder is smaller than 250MB
-    const unzippedBundleSize: number = await getBundleFolderSizeLimit(output.path);
-    debugLogger.debug(`The unzippedBundleSize for class ${element.path} is ${unzippedBundleSize}.`);
+    const unzippedBundleSize: number = await getBundleFolderSizeLimit(
+      output.path
+    );
+    debugLogger.debug(
+      `The unzippedBundleSize for class ${element.path} is ${unzippedBundleSize}.`
+    );
 
     // .jar files cannot be parsed by AWS Lambda, skip this step for AWS Lambda
-    if(element.language === ".kt" && (configuration.cloudProvider === "aws" || configuration.cloudProvider === undefined)) {
-      console.debug("Skipping ZIP due to .jar file")
-      console.debug(path.join(output.path, "app-standalone.jar"))
-      return { name: element.name, archivePath: path.join(output.path, "app-standalone.jar"), filePath: element.path, methods: element.methods, unzippedBundleSize };
+    if (
+      element.language === ".kt" &&
+      (configuration.cloudProvider === "aws" ||
+        configuration.cloudProvider === undefined)
+    ) {
+      console.debug("Skipping ZIP due to .jar file");
+      console.debug(path.join(output.path, "app-standalone.jar"));
+      return {
+        name: element.name,
+        archivePath: path.join(output.path, "app-standalone.jar"),
+        filePath: element.path,
+        methods: element.methods,
+        unzippedBundleSize,
+      };
     }
 
     const archivePathTempFolder = await createTemporaryFolder();
     const archivePath = path.join(archivePathTempFolder, `genezioDeploy.zip`);
-
 
     debugLogger.debug(`Zip the directory ${output.path}.`);
     await zipDirectory(output.path, archivePath);
@@ -387,9 +408,13 @@ export async function deployClasses(
 
   printAdaptiveLog("Bundling your code", "end");
 
- const result = await cloudAdapter.deploy(bundlerResultArray as any, projectConfiguration, {
-   stage: stage,
- });
+  const result = await cloudAdapter.deploy(
+    bundlerResultArray as any,
+    projectConfiguration,
+    {
+      stage: stage,
+    }
+  );
 
   reportSuccess(result.classes, sdkResponse);
 
@@ -406,6 +431,15 @@ export async function deployClasses(
       configuration.sdk.language,
       configuration.sdk.path
     );
+    if (configuration.sdk.language === "ts") {
+      // compile the sdk
+      await compileSdk(
+        configuration.sdk.path,
+        configuration.name,
+        configuration.region,
+        stage
+      );
+    }
   }
 
   const projectId = result.classes[0].projectId;
@@ -434,7 +468,9 @@ export async function deployClasses(
             debugLogger.debug(
               `Environment variables from ${envFile} uploaded to project ${projectId}`
             );
-            log.info(`The environment variables were uploaded to the project successfully.`);
+            log.info(
+              `The environment variables were uploaded to the project successfully.`
+            );
             GenezioTelemetry.sendEvent({
               eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS,
             });
@@ -444,7 +480,9 @@ export async function deployClasses(
               `Loading environment variables failed with: ${error.message}`
             );
             log.error(
-              `Try to set the environment variables using the dashboard ${colors.cyan(REACT_APP_BASE_URL)}`
+              `Try to set the environment variables using the dashboard ${colors.cyan(
+                REACT_APP_BASE_URL
+              )}`
             );
             GenezioTelemetry.sendEvent({
               eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
@@ -458,26 +496,36 @@ export async function deployClasses(
         const envVars = await readEnvironmentVariablesFile(".env");
 
         // get remoteEnvVars from project
-        const remoteEnvVars = await getEnvironmentVariables(
-          projectId
-        );
+        const remoteEnvVars = await getEnvironmentVariables(projectId);
 
         // check if all envVars from file are in remoteEnvVars
         const missingEnvVars = envVars.filter(
           (envVar) =>
-            !remoteEnvVars.find((remoteEnvVar) => remoteEnvVar.name === envVar.name)
+            !remoteEnvVars.find(
+              (remoteEnvVar) => remoteEnvVar.name === envVar.name
+            )
         );
 
         // Print missing env vars
         if (missingEnvVars.length > 0) {
-          log.info(`${colors.yellow("Warning: The following environment variables are not set on your project: ")}`);
+          log.info(
+            `${colors.yellow(
+              "Warning: The following environment variables are not set on your project: "
+            )}`
+          );
           missingEnvVars.forEach((envVar) => {
             log.info(`${colors.yellow(envVar.name)}`);
           });
 
-          log.info("")
-          log.info(`${colors.yellow("Go to the dashboard ")}${colors.cyan(REACT_APP_BASE_URL)} ${colors.yellow("to set your environment variables or run ")} ${colors.cyan("genezio deploy --env .env")}`);
-          log.info("")
+          log.info("");
+          log.info(
+            `${colors.yellow("Go to the dashboard ")}${colors.cyan(
+              REACT_APP_BASE_URL
+            )} ${colors.yellow(
+              "to set your environment variables or run "
+            )} ${colors.cyan("genezio deploy --env .env")}`
+          );
+          log.info("");
         }
       }
     }
@@ -561,4 +609,29 @@ function getCloudProvider(provider: string): CloudAdapter {
     default:
       throw new Error(`Unsupported cloud provider: ${provider}`);
   }
+}
+
+async function compileSdk(
+  sdkPath: string,
+  projectName: string,
+  region: string,
+  stage: string
+) {
+  await asyncExec("tsc -b tsconfig.esm.json tsconfig.cjs.json", {
+    cwd: sdkPath,
+  });
+  const modulePath = path.resolve(sdkPath, "..", "genezio-sdk");
+  await writeToFile(
+    modulePath,
+    "package.json",
+    getNodeModulePackageJson(projectName, region, stage)
+  );
+  await asyncExec("npm publish", { cwd: modulePath });
+  log.info(
+    "\x1b[32m%s\x1b[0m",
+    `Your SDK is ready to be used. To import it in your client project, run ${colors.cyan(
+      `npm install @genezio-sdk/${projectName}_${region}@1.0.0-${stage}`
+    )}`,
+    `${colors.green("in your client's root folder.")}`
+  );
 }

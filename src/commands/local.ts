@@ -61,7 +61,7 @@ import inquirer, { Answers } from "inquirer";
 import { EOL } from "os";
 import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
 import util from "util";
-import { getNodeModulePackageJson } from "../generateSdk/templates/packageJson.js";
+import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJson.js";
 const asyncExec = util.promisify(exec);
 
 type ClassProcess = {
@@ -395,7 +395,7 @@ async function compileSdk(
   await writeToFile(
     modulePath,
     "package.json",
-    getNodeModulePackageJson(projectName)
+    getNodeModulePackageJsonLocal(projectName)
   );
   await asyncExec(packageManager + " link", { cwd: modulePath });
   log.info(
