@@ -8,7 +8,7 @@ import {
   TriggerType,
   YamlProjectConfiguration,
 } from "../models/yamlProjectConfiguration.js";
-import getProjectInfo from "../requests/getProjectInfo.js";
+import getProjectInfo, { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import listProjects from "../requests/listProjects.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
 import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
@@ -158,26 +158,21 @@ async function generateRemoteSdkHandler(
   const project = projects.find(
     (project: any) =>
       project.name === projectName &&
-      project.region === region &&
-      project.stage === stage
+      project.region === region 
   );
 
+  // get project info
+  const projectEnv = await getProjectEnvFromProject(project.id, stage);
+
   // if the project doesn't exist, throw an error
-  if (!project) {
+  if (!project || !projectEnv) {
     throw new Error(
       `The project ${projectName} on stage ${stage} doesn't exist in the region ${region}. You must deploy it first with 'genezio deploy'.`
     );
   }
 
-  // get project info
-  const completeProjectInfo = await getProjectInfo(project.id).catch(
-    (error: any) => {
-      throw error;
-    }
-  );
-
   const sdkGeneratorInput: SdkGeneratorInput = {
-    classesInfo: completeProjectInfo.classes.map(
+    classesInfo: projectEnv.classes.map(
       (c: any): SdkGeneratorClassesInfoInput => ({
         program: mapDbAstToSdkGeneratorAst(c.ast as AstSummaryClassResponse),
         classConfiguration: {
@@ -211,7 +206,7 @@ async function generateRemoteSdkHandler(
   const classUrlMap: ClassUrlMap[] = [];
 
   // populate a map of class name and cloud url
-  completeProjectInfo.classes.forEach((classInfo: any) => {
+  projectEnv.classes.forEach((classInfo: any) => {
     classUrlMap.push({
       name: classInfo.name,
       cloudUrl: classInfo.cloudUrl,

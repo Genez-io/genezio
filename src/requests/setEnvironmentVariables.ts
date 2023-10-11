@@ -6,6 +6,7 @@ import { EnvironmentVariable } from '../models/environmentVariables.js';
 
 export async function setEnvironmentVariables(
   projectId: string,
+  projectEnvId: string,
   environmentVariablesData: EnvironmentVariable[],
 ) {
   // validate parameters
@@ -25,7 +26,7 @@ export async function setEnvironmentVariables(
 
   const response: any = await axios({
     method: 'POST',
-    url: `${BACKEND_ENDPOINT}/projects/${projectId}/environment-variables`,
+    url: `${BACKEND_ENDPOINT}/projects/${projectId}/${projectEnvId}/environment-variables`,
     data: data,
     headers: {
       Authorization: `Bearer ${authToken}`,
