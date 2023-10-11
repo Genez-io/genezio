@@ -36,3 +36,12 @@ export default async function getProjectInfo(
 
   return response.data.project;
 }
+
+export async function getProjectEnvFromProject(projectId: string, stageName: string) {
+    const completeProjectInfo = await getProjectInfo(projectId)
+    const projectEnv = completeProjectInfo.projectEnvs.find((projectEnv: any) =>
+                                                            projectEnv.name == stageName)
+
+    return projectEnv
+}
+
