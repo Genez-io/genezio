@@ -360,6 +360,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         await compileSdk(
           projectConfiguration.sdk.path,
           projectConfiguration.name,
+          projectConfiguration.region,
           yamlLocalConfiguration?.pagckageManager
         );
       }
@@ -386,6 +387,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 async function compileSdk(
   sdkPath: string,
   projectName: string,
+  region: string,
   packageManager: PackageManager = PackageManager.npm
 ) {
   await asyncExec("tsc -b tsconfig.esm.json tsconfig.cjs.json", {
@@ -395,13 +397,13 @@ async function compileSdk(
   await writeToFile(
     modulePath,
     "package.json",
-    getNodeModulePackageJsonLocal(projectName)
+    getNodeModulePackageJsonLocal(projectName, region)
   );
   await asyncExec(packageManager + " link", { cwd: modulePath });
   log.info(
     "\x1b[32m%s\x1b[0m",
     `Your SDK is ready to be used. We already created a link using ${packageManager}. To import it in your client project, run ${colors.cyan(
-      `${packageManager} link @genezio/${projectName}`
+      `${packageManager} link @genezio-sdk/${projectName}_${region}`
     )}`,
     `${colors.green("in your client's root folder.")}`
   );
