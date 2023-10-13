@@ -104,11 +104,14 @@ async function getDecoratorsFromFile(file: string): Promise<ClassInfo[]> {
 
     const require = createRequire(import.meta.url);
     const packagePath = path.dirname(require.resolve("@babel/plugin-syntax-decorators"));
+    // const presetTypescript = path.dirname(require.resolve("@babel/preset-typescript"));
     await babel.transformAsync(inputCode, {
+        presets: [require.resolve("@babel/preset-typescript")],
         plugins: [
             [packagePath, { version: "2023-05", decoratorsBeforeExport: false}],
             extractorFunction,
-        ]
+        ],
+        filename: file,
     })
 
     return classes;
@@ -118,7 +121,7 @@ async function tryToReadClassInformationFromDecorators(projectConfiguration: Yam
     const allJsFilesPaths = (await getAllFilesFromCurrentPath()).filter(
         (file: FileDetails) => {
             return (
-                file.extension === ".js" &&
+                (file.extension === ".js" || file.extension === ".ts") &&
                     !file.path.includes('node_modules') &&
                     !file.path.includes('.git') 
             );
