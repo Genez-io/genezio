@@ -1,15 +1,29 @@
-
 import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 import {
   SdkGeneratorInterface,
   ClassDefinition,
   AstNodeType,
   SdkGeneratorInput,
-  SdkGeneratorOutput
+  SdkGeneratorOutput,
+  IndexModel,
 } from "../../models/genezioModels.js";
 import { nodeSdkJs } from "../templates/nodeSdkJs.js";
 import Mustache from "mustache";
+import { cjsTsconfig } from "../templates/tsconfigs/cjsTsconfig.js";
+import { esmTsconfig } from "../templates/tsconfigs/esmTsconfig.js";
+import { mainTsConfig } from "../templates/tsconfigs/mainTsconfig.js";
 
+const indexTemplate = `/**
+* This is an auto generated code. This code should not be modified since the file can be overwritten
+* if new genezio commands are executed.
+*/
+
+{{#imports}}
+import { {{#models}}{{{name}}}{{^last}}, {{/last}}{{/models}} } from "./{{{path}}}";
+{{/imports}}
+
+export { {{#exports}}{{{name}}}{{^last}}, {{/last}}{{/exports}} };
+`;
 
 const template = `/**
 * This is an auto generated code. This code should not be modified since the file can be overwritten
@@ -32,10 +46,15 @@ export class {{{className}}} {
 
 class SdkGenerator implements SdkGeneratorInterface {
   async generateSdk(
-    sdkGeneratorInput: SdkGeneratorInput
+    sdkGeneratorInput: SdkGeneratorInput,
   ): Promise<SdkGeneratorOutput> {
     const generateSdkOutput: SdkGeneratorOutput = {
-      files: []
+      files: [],
+    };
+
+    const indexModel: IndexModel = {
+      imports: [],
+      exports: [],
     };
 
     for (const classInfo of sdkGeneratorInput.classesInfo) {
@@ -57,19 +76,24 @@ class SdkGenerator implements SdkGeneratorInterface {
         continue;
       }
 
+      this.addClassToIndex(indexModel, classDefinition.name);
+
       const view: any = {
         className: classDefinition.name,
         _url: _url,
-        methods: []
+        methods: [],
       };
 
       let exportClassChecker = false;
 
       for (const methodDefinition of classDefinition.methods) {
-        const methodConfigurationType = classConfiguration.getMethodType(methodDefinition.name);
+        const methodConfigurationType = classConfiguration.getMethodType(
+          methodDefinition.name,
+        );
 
-        if (methodConfigurationType !== TriggerType.jsonrpc
-            || classConfiguration.type !== TriggerType.jsonrpc
+        if (
+          methodConfigurationType !== TriggerType.jsonrpc ||
+          classConfiguration.type !== TriggerType.jsonrpc
         ) {
           continue;
         }
@@ -79,16 +103,17 @@ class SdkGenerator implements SdkGeneratorInterface {
         const methodView: any = {
           name: methodDefinition.name,
           parameters: [],
-          methodCaller: methodDefinition.params.length === 0 ?
-            `"${classDefinition.name}.${methodDefinition.name}"`
-            : `"${classDefinition.name}.${methodDefinition.name}", `
+          methodCaller:
+            methodDefinition.params.length === 0
+              ? `"${classDefinition.name}.${methodDefinition.name}"`
+              : `"${classDefinition.name}.${methodDefinition.name}", `,
         };
 
         methodView.parameters = methodDefinition.params.map((e) => {
           return {
             name: e.name,
-            last: false
-          }
+            last: false,
+          };
         });
 
         if (methodView.parameters.length > 0) {
@@ -103,12 +128,13 @@ class SdkGenerator implements SdkGeneratorInterface {
       }
 
       const rawSdkClassName = `${classDefinition.name}.sdk.js`;
-      const sdkClassName = rawSdkClassName.charAt(0).toLowerCase() + rawSdkClassName.slice(1)
+      const sdkClassName =
+        rawSdkClassName.charAt(0).toLowerCase() + rawSdkClassName.slice(1);
 
       generateSdkOutput.files.push({
         path: sdkClassName,
         data: Mustache.render(template, view),
-        className: classDefinition.name
+        className: classDefinition.name,
       });
     }
 
@@ -116,14 +142,58 @@ class SdkGenerator implements SdkGeneratorInterface {
     generateSdkOutput.files.push({
       className: "Remote",
       path: "remote.js",
-      data: nodeSdkJs.replace("%%%url%%%", "undefined")
+      data: nodeSdkJs.replace("%%%url%%%", "undefined"),
+    });
+
+    // generate index.js
+    if (indexModel.exports.length > 0) {
+      indexModel.exports[indexModel.exports.length - 1].last = true;
+    }
+    generateSdkOutput.files.push({
+      className: "index",
+      path: "index.js",
+      data: Mustache.render(indexTemplate, indexModel),
+    });
+
+    // generate tsconfig files
+    generateSdkOutput.files.push({
+      className: "tsconfig.json",
+      path: "tsconfig.json",
+      data: mainTsConfig,
+    });
+    generateSdkOutput.files.push({
+      className: "tsconfig.esm.json",
+      path: "tsconfig.esm.json",
+      data: esmTsconfig,
+    });
+    generateSdkOutput.files.push({
+      className: "tsconfig.cjs.json",
+      path: "tsconfig.cjs.json",
+      data: cjsTsconfig,
     });
 
     return generateSdkOutput;
+  }
+
+  addClassToIndex(indexModel: IndexModel, className: string) {
+    const rawPath = `${className}.sdk`;
+    const path = rawPath.charAt(0).toLowerCase() + rawPath.slice(1);
+    indexModel.imports.push({
+      path: path,
+      models: [
+        {
+          name: className,
+          last: true,
+        },
+      ],
+    });
+    indexModel.exports.push({
+      name: className,
+      last: false,
+    });
   }
 }
 
 const supportedLanguages = ["js"];
 
-
-export default { SdkGenerator, supportedLanguages }
+export default { SdkGenerator, supportedLanguages };

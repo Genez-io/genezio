@@ -30,6 +30,7 @@ import {
   getBundleFolderSizeLimit,
   readEnvironmentVariablesFile,
   writeToFile,
+  createLocalTempFolder,
 } from "../utils/file.js";
 import { printAdaptiveLog, debugLogger } from "../utils/logging.js";
 import { runNewProcess } from "../utils/process.js";
@@ -37,7 +38,10 @@ import { reportSuccess } from "../utils/reporter.js";
 import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 import { generateRandomSubdomain } from "../utils/yaml.js";
 import cliProgress from "cli-progress";
-import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js";
+import {
+  Language,
+  YamlProjectConfiguration,
+} from "../models/yamlProjectConfiguration.js";
 import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter.js";
 import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter.js";
 import { CloudAdapter } from "../cloudAdapter/cloudAdapter.js";
@@ -83,19 +87,19 @@ export async function deployCommand(options: GenezioDeployOptions) {
   }
 
   const cloudAdapter = getCloudProvider(
-    configuration.cloudProvider || CloudProviderIdentifier.AWS
+    configuration.cloudProvider || CloudProviderIdentifier.AWS,
   );
 
   if (!options.frontend || options.backend) {
     if (configuration.classes.length === 0) {
       log.error(
-        "No classes were found in your genezio.yaml. Add some to be able to deploy your backend."
+        "No classes were found in your genezio.yaml. Add some to be able to deploy your backend.",
       );
     } else {
       if (configuration.scripts?.preBackendDeploy) {
         log.info("Running preBackendDeploy script...");
         const output = await runNewProcess(
-          configuration.scripts?.preBackendDeploy
+          configuration.scripts?.preBackendDeploy,
         );
         if (!output) {
           GenezioTelemetry.sendEvent({
@@ -146,7 +150,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
               break;
           }
           exit(1);
-        }
+        },
       );
       GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_END,
@@ -158,7 +162,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
         log.info("Running postBackendDeploy script...");
         log.info(configuration.scripts?.postBackendDeploy);
         const output = await runNewProcess(
-          configuration.scripts?.postBackendDeploy
+          configuration.scripts?.postBackendDeploy,
         );
         if (!output) {
           GenezioTelemetry.sendEvent({
@@ -178,7 +182,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
       log.info("Running preFrontendDeploy script...");
       log.info(configuration.scripts?.preFrontendDeploy);
       const output = await runNewProcess(
-        configuration.scripts?.preFrontendDeploy
+        configuration.scripts?.preFrontendDeploy,
       );
       if (!output) {
         GenezioTelemetry.sendEvent({
@@ -223,7 +227,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
       log.info("Running postFrontendDeploy script...");
       log.info(configuration.scripts?.postFrontendDeploy);
       const output = await runNewProcess(
-        configuration.scripts?.postFrontendDeploy
+        configuration.scripts?.postFrontendDeploy,
       );
       if (!output) {
         GenezioTelemetry.sendEvent({
@@ -241,7 +245,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
 export async function deployClasses(
   configuration: YamlProjectConfiguration,
   cloudAdapter: CloudAdapter,
-  options: GenezioDeployOptions
+  options: GenezioDeployOptions,
 ) {
   if (configuration.classes.length === 0) {
     throw new Error(GENEZIO_NO_CLASSES_FOUND);
@@ -252,7 +256,7 @@ export async function deployClasses(
   const stage: string = options.stage || "prod";
 
   const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
-    configuration
+    configuration,
   ).catch((error) => {
     // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
     if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
@@ -267,14 +271,14 @@ export async function deployClasses(
   });
   const projectConfiguration = new ProjectConfiguration(
     configuration,
-    sdkResponse
+    sdkResponse,
   );
 
   const classesWithNoMethods = getNoMethodClasses(projectConfiguration.classes);
   if (classesWithNoMethods.length) {
     const errorClasses = classesWithNoMethods.join(", ");
     throw new Error(
-      `Unable to deploy classes [${errorClasses}] as they do not have any methods.`
+      `Unable to deploy classes [${errorClasses}] as they do not have any methods.`,
     );
   }
 
@@ -284,7 +288,7 @@ export async function deployClasses(
       hideCursor: true,
       format: "Uploading {filename}: {bar} | {value}% | {eta_formatted}",
     },
-    cliProgress.Presets.shades_grey
+    cliProgress.Presets.shades_grey,
   );
 
   printAdaptiveLog("Bundling your code", "start");
@@ -292,11 +296,11 @@ export async function deployClasses(
     if (!(await fileExists(element.path))) {
       printAdaptiveLog("Bundling your code and uploading it", "error");
       log.error(
-        `\`${element.path}\` file does not exist at the indicated path.`
+        `\`${element.path}\` file does not exist at the indicated path.`,
       );
 
       throw new Error(
-        `\`${element.path}\` file does not exist at the indicated path.`
+        `\`${element.path}\` file does not exist at the indicated path.`,
       );
     }
 
@@ -336,12 +340,12 @@ export async function deployClasses(
     }
 
     debugLogger.debug(
-      `The bundling process has started for file ${element.path}...`
+      `The bundling process has started for file ${element.path}...`,
     );
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const ast = sdkResponse.sdkGeneratorInput.classesInfo.find(
-      (classInfo) => classInfo.classConfiguration.path === element.path
+      (classInfo) => classInfo.classConfiguration.path === element.path,
     )!.program;
 
     const tmpFolder = await createTemporaryFolder();
@@ -358,15 +362,15 @@ export async function deployClasses(
       },
     });
     debugLogger.debug(
-      `The bundling process finished successfully for file ${element.path}.`
+      `The bundling process finished successfully for file ${element.path}.`,
     );
 
     // check if the unzipped folder is smaller than 250MB
     const unzippedBundleSize: number = await getBundleFolderSizeLimit(
-      output.path
+      output.path,
     );
     debugLogger.debug(
-      `The unzippedBundleSize for class ${element.path} is ${unzippedBundleSize}.`
+      `The unzippedBundleSize for class ${element.path} is ${unzippedBundleSize}.`,
     );
 
     // .jar files cannot be parsed by AWS Lambda, skip this step for AWS Lambda
@@ -414,33 +418,44 @@ export async function deployClasses(
     projectConfiguration,
     {
       stage: stage,
-    }
+    },
   );
 
   reportSuccess(result.classes, sdkResponse);
 
+  await replaceUrlsInSdk(
+    sdkResponse,
+    result.classes.map((c: any) => ({
+      name: c.className,
+      cloudUrl: c.functionUrl,
+    })),
+  );
+
   if (configuration.sdk) {
-    await replaceUrlsInSdk(
-      sdkResponse,
-      result.classes.map((c: any) => ({
-        name: c.className,
-        cloudUrl: c.functionUrl,
-      }))
-    );
     await writeSdkToDisk(
       sdkResponse,
       configuration.sdk.language,
-      configuration.sdk.path
+      configuration.sdk.path,
     );
-    if (configuration.sdk.language === "ts") {
-      // compile the sdk
-      await compileSdk(
-        configuration.sdk.path,
-        configuration.name,
-        configuration.region,
-        stage
-      );
-    }
+  } else if (
+    configuration.language === Language.ts ||
+    configuration.language === Language.js
+  ) {
+    const localPath = await createLocalTempFolder(
+      `${projectConfiguration.name}-${projectConfiguration.region}`,
+    );
+    await writeSdkToDisk(
+      sdkResponse,
+      configuration.language,
+      path.join(localPath, "sdk"),
+    );
+    // compile the sdk
+    await compileSdk(
+      path.join(localPath, "sdk"),
+      configuration.name,
+      configuration.region,
+      stage,
+    );
   }
 
   const projectId = result.classes[0].projectId;
@@ -453,7 +468,7 @@ export async function deployClasses(
       if (!(await fileExists(envFile))) {
         // There is no need to exit the process here, as the project has been deployed
         log.error(
-          `File ${envFile} does not exists. Please provide the correct path.`
+          `File ${envFile} does not exists. Please provide the correct path.`,
         );
         GenezioTelemetry.sendEvent({
           eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
@@ -468,10 +483,10 @@ export async function deployClasses(
         await setEnvironmentVariables(projectId, projectEnv.id, envVars)
           .then(() => {
             debugLogger.debug(
-              `Environment variables from ${envFile} uploaded to project ${projectId}`
+              `Environment variables from ${envFile} uploaded to project ${projectId}`,
             );
             log.info(
-              `The environment variables were uploaded to the project successfully.`
+              `The environment variables were uploaded to the project successfully.`,
             );
             GenezioTelemetry.sendEvent({
               eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS,
@@ -479,12 +494,12 @@ export async function deployClasses(
           })
           .catch((error: AxiosError) => {
             log.error(
-              `Loading environment variables failed with: ${error.message}`
+              `Loading environment variables failed with: ${error.message}`,
             );
             log.error(
               `Try to set the environment variables using the dashboard ${colors.cyan(
-                REACT_APP_BASE_URL
-              )}`
+                REACT_APP_BASE_URL,
+              )}`,
             );
             GenezioTelemetry.sendEvent({
               eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
@@ -501,23 +516,23 @@ export async function deployClasses(
         // get remoteEnvVars from project
         const remoteEnvVars = await getEnvironmentVariables(
           projectId,
-          projectEnv.id
+          projectEnv.id,
         );
 
         // check if all envVars from file are in remoteEnvVars
         const missingEnvVars = envVars.filter(
           (envVar) =>
             !remoteEnvVars.find(
-              (remoteEnvVar) => remoteEnvVar.name === envVar.name
-            )
+              (remoteEnvVar) => remoteEnvVar.name === envVar.name,
+            ),
         );
 
         // Print missing env vars
         if (missingEnvVars.length > 0) {
           log.info(
             `${colors.yellow(
-              "Warning: The following environment variables are not set on your project: "
-            )}`
+              "Warning: The following environment variables are not set on your project: ",
+            )}`,
           );
           missingEnvVars.forEach((envVar) => {
             log.info(`${colors.yellow(envVar.name)}`);
@@ -526,10 +541,10 @@ export async function deployClasses(
           log.info("");
           log.info(
             `${colors.yellow("Go to the dashboard ")}${colors.cyan(
-              REACT_APP_BASE_URL
+              REACT_APP_BASE_URL,
             )} ${colors.yellow(
-              "to set your environment variables or run "
-            )} ${colors.cyan("genezio deploy --env .env")}`
+              "to set your environment variables or run ",
+            )} ${colors.cyan("genezio deploy --env .env")}`,
           );
           log.info("");
         }
@@ -537,7 +552,7 @@ export async function deployClasses(
     }
 
     console.log(
-      `Your backend project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`
+      `Your backend project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`,
     );
   }
 }
@@ -545,7 +560,7 @@ export async function deployClasses(
 export async function deployFrontend(
   configuration: YamlProjectConfiguration,
   cloudAdapter: CloudAdapter,
-  options: GenezioDeployOptions
+  options: GenezioDeployOptions,
 ) {
   const stage: string = options.stage || "";
   if (configuration.frontend) {
@@ -555,20 +570,20 @@ export async function deployFrontend(
       !configuration.frontend.subdomain.match(/^[a-z0-9-]+$/)
     ) {
       throw new Error(
-        `The subdomain can only contain letters, numbers and hyphens.`
+        `The subdomain can only contain letters, numbers and hyphens.`,
       );
     }
     // check if the build folder exists
     if (!(await fileExists(configuration.frontend.path))) {
       throw new Error(
-        `The build folder does not exist. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`
+        `The build folder does not exist. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
       );
     }
 
     // check if the build folder is empty
     if (await isDirectoryEmpty(configuration.frontend.path)) {
       throw new Error(
-        `The build folder is empty. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`
+        `The build folder is empty. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
       );
     }
 
@@ -584,7 +599,7 @@ export async function deployFrontend(
 
     if (!configuration.frontend.subdomain) {
       log.info(
-        "No subdomain specified in the genezio.yaml configuration file. We will provide a random one for you."
+        "No subdomain specified in the genezio.yaml configuration file. We will provide a random one for you.",
       );
       configuration.frontend.subdomain = generateRandomSubdomain();
 
@@ -596,7 +611,7 @@ export async function deployFrontend(
       configuration.name,
       configuration.region,
       configuration.frontend,
-      stage
+      stage,
     );
     return url;
   } else {
@@ -621,7 +636,7 @@ async function compileSdk(
   sdkPath: string,
   projectName: string,
   region: string,
-  stage: string
+  stage: string,
 ) {
   await asyncExec("tsc -b tsconfig.esm.json tsconfig.cjs.json", {
     cwd: sdkPath,
@@ -630,14 +645,14 @@ async function compileSdk(
   await writeToFile(
     modulePath,
     "package.json",
-    getNodeModulePackageJson(projectName, region, stage)
+    getNodeModulePackageJson(projectName, region, stage),
   );
   await asyncExec("npm publish", { cwd: modulePath });
   log.info(
     "\x1b[32m%s\x1b[0m",
     `Your SDK is ready to be used. To import it in your client project, run ${colors.cyan(
-      `npm install @genezio-sdk/${projectName}_${region}@1.0.0-${stage}`
+      `npm install @genezio-sdk/${projectName}_${region}@1.0.0-${stage}`,
     )}`,
-    `${colors.green("in your client's root folder.")}`
+    `${colors.green("in your client's root folder.")}`,
   );
 }

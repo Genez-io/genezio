@@ -17,21 +17,18 @@ export enum TriggerType {
 }
 
 export function getTriggerTypeFromString(string: string): TriggerType {
-    if (
-        string &&
-        !TriggerType[string as keyof typeof TriggerType]
-    ) {
-        const triggerTypes: string = Object.keys(TriggerType).join(", ");
-        throw new Error(
-            "Specified class type for " +
-                    string +
-                        " is incorrect. Accepted values: " +
-                            triggerTypes +
-                                "."
-        );
-    }
-    
-    return TriggerType[string as keyof typeof TriggerType];
+  if (string && !TriggerType[string as keyof typeof TriggerType]) {
+    const triggerTypes: string = Object.keys(TriggerType).join(", ");
+    throw new Error(
+      "Specified class type for " +
+        string +
+        " is incorrect. Accepted values: " +
+        triggerTypes +
+        ".",
+    );
+  }
+
+  return TriggerType[string as keyof typeof TriggerType];
 }
 
 export enum Language {
@@ -40,7 +37,7 @@ export enum Language {
   swift = "swift",
   python = "python",
   dart = "dart",
-  kt = "kotlin"
+  kt = "kotlin",
 }
 
 export enum PackageManager {
@@ -80,7 +77,7 @@ export class YamlMethodConfiguration {
 
   static async create(
     methodConfigurationYaml: any,
-    classType: TriggerType
+    classType: TriggerType,
   ): Promise<YamlMethodConfiguration> {
     if (!methodConfigurationYaml.name) {
       throw new Error("Missing method name in configuration file.");
@@ -107,14 +104,14 @@ export class YamlMethodConfiguration {
     if (type == TriggerType.cron) {
       if (!isValidCron(methodConfigurationYaml.cronString)) {
         throw new Error(
-          "The cron string is not valid. Check https://crontab.guru/ for more information."
+          "The cron string is not valid. Check https://crontab.guru/ for more information.",
         );
       }
 
       const cronParts = methodConfigurationYaml.cronString.split(" ");
       if (cronParts[2] != "*" && cronParts[4] != "*") {
         throw new Error(
-          "The cron string is not valid. The day of the month and day of the week cannot be specified at the same time."
+          "The cron string is not valid. The day of the month and day of the week cannot be specified at the same time.",
         );
       }
     }
@@ -122,7 +119,7 @@ export class YamlMethodConfiguration {
     return new YamlMethodConfiguration(
       methodConfigurationYaml.name,
       type,
-      methodConfigurationYaml.cronString
+      methodConfigurationYaml.cronString,
     );
   }
 }
@@ -139,7 +136,7 @@ export class YamlClassConfiguration {
     type: TriggerType,
     language: string,
     methods: YamlMethodConfiguration[],
-    name?: string
+    name?: string,
   ) {
     this.path = path;
     this.type = type;
@@ -163,7 +160,7 @@ export class YamlClassConfiguration {
   }
 
   static async create(
-    classConfigurationYaml: any
+    classConfigurationYaml: any,
   ): Promise<YamlClassConfiguration> {
     if (!classConfigurationYaml.path) {
       throw new Error("Path is missing from class.");
@@ -172,14 +169,14 @@ export class YamlClassConfiguration {
     let triggerType = TriggerType.jsonrpc;
 
     if (classConfigurationYaml.type) {
-      triggerType = getTriggerTypeFromString(classConfigurationYaml.type)
+      triggerType = getTriggerTypeFromString(classConfigurationYaml.type);
     }
 
     const unparsedMethods: any[] = classConfigurationYaml.methods || [];
     const methods = await Promise.all(
       unparsedMethods.map((method: any) =>
-        YamlMethodConfiguration.create(method, triggerType)
-      )
+        YamlMethodConfiguration.create(method, triggerType),
+      ),
     );
     const language = path.parse(classConfigurationYaml.path).ext;
 
@@ -188,7 +185,7 @@ export class YamlClassConfiguration {
       triggerType,
       language,
       methods,
-      classConfigurationYaml.name
+      classConfigurationYaml.name,
     );
   }
 }
@@ -208,7 +205,7 @@ export class YamlScriptsConfiguration {
     preBackendDeploy: string,
     postBackendDeploy: string,
     postFrontendDeploy: string,
-    preFrontendDeploy: string
+    preFrontendDeploy: string,
   ) {
     this.preBackendDeploy = preBackendDeploy;
     this.postBackendDeploy = postBackendDeploy;
@@ -235,6 +232,7 @@ const supportedNodeRuntimes: string[] = ["nodejs16.x", "nodejs18.x"];
 export class YamlProjectConfiguration {
   name: string;
   region: string;
+  language: Language;
   sdk?: YamlSdkConfiguration;
   cloudProvider?: CloudProviderIdentifier;
   options?: NodeOptions;
@@ -246,16 +244,18 @@ export class YamlProjectConfiguration {
   constructor(
     name: string,
     region: string,
+    language: Language,
     sdk: YamlSdkConfiguration | undefined = undefined,
     cloudProvider: CloudProviderIdentifier,
     classes: YamlClassConfiguration[],
     frontend: YamlFrontend | undefined = undefined,
     scripts: YamlScriptsConfiguration | undefined = undefined,
     plugins: YamlPluginsConfiguration | undefined = undefined,
-    options: NodeOptions | undefined = undefined
+    options: NodeOptions | undefined = undefined,
   ) {
     this.name = name;
     this.region = region;
+    this.language = language;
     this.sdk = sdk;
     this.cloudProvider = cloudProvider;
     this.classes = classes;
@@ -267,7 +267,7 @@ export class YamlProjectConfiguration {
 
   getClassConfiguration(path: string): YamlClassConfiguration {
     const classConfiguration = this.classes?.find(
-      (classConfiguration) => classConfiguration.path === path
+      (classConfiguration) => classConfiguration.path === path,
     );
 
     if (!classConfiguration) {
@@ -278,18 +278,18 @@ export class YamlProjectConfiguration {
   }
 
   static async create(
-    configurationFileContent: any
+    configurationFileContent: any,
   ): Promise<YamlProjectConfiguration> {
     if (!configurationFileContent.name) {
       throw new Error(
-        "The name property is missing from the configuration file."
+        "The name property is missing from the configuration file.",
       );
     }
 
     const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
     if (!nameRegex.test(configurationFileContent.name)) {
       throw new Error(
-        "The project name is not valid. It must be [a-zA-Z][-a-zA-Z0-9]*"
+        "The project name is not valid. It must be [a-zA-Z][-a-zA-Z0-9]*",
       );
     }
 
@@ -299,14 +299,18 @@ export class YamlProjectConfiguration {
       configurationFileContent.options &&
       configurationFileContent.options.nodeRuntime &&
       !supportedNodeRuntimes.includes(
-        configurationFileContent.options.nodeRuntime
+        configurationFileContent.options.nodeRuntime,
       )
     ) {
       throw new Error(
         "The node version in the genezio.yaml configuration file is not valid. The value must be one of the following: " +
-          supportedNodeRuntimes.join(", ")
+          supportedNodeRuntimes.join(", "),
       );
     }
+
+    const projectLanguage = configurationFileContent.language
+      ? Language[configurationFileContent.language as keyof typeof Language]
+      : Language.ts;
 
     if (
       configurationFileContent.sdk &&
@@ -317,7 +321,7 @@ export class YamlProjectConfiguration {
 
       if (!Language[language as keyof typeof Language]) {
         log.info(
-          "This sdk.language is not supported by default. It will be treated as a custom language."
+          "This sdk.language is not supported by default. It will be treated as a custom language.",
         );
       }
 
@@ -325,7 +329,7 @@ export class YamlProjectConfiguration {
         Language[
           configurationFileContent.sdk.language as keyof typeof Language
         ],
-        configurationFileContent.sdk.path
+        configurationFileContent.sdk.path,
       );
     }
 
@@ -338,7 +342,7 @@ export class YamlProjectConfiguration {
 
     if (unparsedClasses && Array.isArray(unparsedClasses)) {
       classes = await Promise.all(
-        unparsedClasses.map((c) => YamlClassConfiguration.create(c))
+        unparsedClasses.map((c) => YamlClassConfiguration.create(c)),
       );
     }
 
@@ -361,7 +365,7 @@ export class YamlProjectConfiguration {
     if (configurationFileContent.cloudProvider) {
       if (!cloudProviders.includes(configurationFileContent.cloudProvider)) {
         throw new Error(
-          `The cloud provider ${configurationFileContent.cloudProvider} is invalid. Please use ${CloudProviderIdentifier.GENEZIO} or ${CloudProviderIdentifier.SELF_HOSTED_AWS}.`
+          `The cloud provider ${configurationFileContent.cloudProvider} is invalid. Please use ${CloudProviderIdentifier.GENEZIO} or ${CloudProviderIdentifier.SELF_HOSTED_AWS}.`,
         );
       }
     }
@@ -372,7 +376,7 @@ export class YamlProjectConfiguration {
     if (configurationFileContent.region) {
       if (!regions.includes(configurationFileContent.region)) {
         throw new Error(
-          `The region is invalid. Please use a valid region.\n Region list: ${regions}`
+          `The region is invalid. Please use a valid region.\n Region list: ${regions}`,
         );
       }
     }
@@ -386,13 +390,14 @@ export class YamlProjectConfiguration {
     return new YamlProjectConfiguration(
       configurationFileContent.name,
       configurationFileContent.region || "us-east-1",
+      projectLanguage,
       sdk,
       configurationFileContent.cloudProvider || CloudProviderIdentifier.GENEZIO,
       classes,
       configurationFileContent.frontend,
       scripts,
       plugins,
-      configurationFileContent.options
+      configurationFileContent.options,
     );
   }
 
@@ -407,11 +412,11 @@ export class YamlProjectConfiguration {
   addClass(
     classPath: string,
     type: TriggerType,
-    methods: YamlMethodConfiguration[]
+    methods: YamlMethodConfiguration[],
   ) {
     const language = path.parse(classPath).ext;
     this.classes?.push(
-      new YamlClassConfiguration(classPath, type, language, methods)
+      new YamlClassConfiguration(classPath, type, language, methods),
     );
   }
 
@@ -419,6 +424,7 @@ export class YamlProjectConfiguration {
     const content = {
       name: this.name,
       region: this.region,
+      language: this.language,
       cloudProvider: this.cloudProvider ? this.cloudProvider : undefined,
       options: this.options ? this.options : undefined,
       sdk: this.sdk
@@ -461,7 +467,7 @@ export class YamlProjectConfiguration {
     await writeToFile(fileDetails.path, fileDetails.filename, yamlString).catch(
       (error) => {
         console.error(error.toString());
-      }
+      },
     );
   }
 
@@ -484,7 +490,7 @@ export class YamlLocalConfiguration {
     generateSdk: boolean,
     path: string | undefined = undefined,
     language: Language | undefined = undefined,
-    packageManager: PackageManager | undefined = undefined
+    packageManager: PackageManager | undefined = undefined,
   ) {
     this.generateSdk = generateSdk;
     this.path = path;
@@ -493,7 +499,7 @@ export class YamlLocalConfiguration {
   }
 
   static async create(
-    yamlLocalConfiguration: any
+    yamlLocalConfiguration: any,
   ): Promise<YamlLocalConfiguration | undefined> {
     if (yamlLocalConfiguration.generateSdk === undefined) {
       return undefined;
@@ -508,7 +514,7 @@ export class YamlLocalConfiguration {
       generateSdk,
       path,
       language,
-      packageManager
+      packageManager,
     );
   }
 
@@ -526,7 +532,7 @@ export class YamlLocalConfiguration {
     await writeToFile(fileDetails.path, fileDetails.filename, yamlString).catch(
       (error) => {
         console.error(error.toString());
-      }
+      },
     );
   }
 }
