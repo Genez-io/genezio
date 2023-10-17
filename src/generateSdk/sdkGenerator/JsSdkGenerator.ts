@@ -9,9 +9,6 @@ import {
 } from "../../models/genezioModels.js";
 import { nodeSdkJs } from "../templates/nodeSdkJs.js";
 import Mustache from "mustache";
-import { cjsTsconfig } from "../templates/tsconfigs/cjsTsconfig.js";
-import { esmTsconfig } from "../templates/tsconfigs/esmTsconfig.js";
-import { mainTsConfig } from "../templates/tsconfigs/mainTsconfig.js";
 
 const indexTemplate = `/**
 * This is an auto generated code. This code should not be modified since the file can be overwritten
@@ -153,23 +150,6 @@ class SdkGenerator implements SdkGeneratorInterface {
       className: "index",
       path: "index.js",
       data: Mustache.render(indexTemplate, indexModel),
-    });
-
-    // generate tsconfig files
-    generateSdkOutput.files.push({
-      className: "tsconfig.json",
-      path: "tsconfig.json",
-      data: mainTsConfig,
-    });
-    generateSdkOutput.files.push({
-      className: "tsconfig.esm.json",
-      path: "tsconfig.esm.json",
-      data: esmTsconfig,
-    });
-    generateSdkOutput.files.push({
-      className: "tsconfig.cjs.json",
-      path: "tsconfig.cjs.json",
-      data: cjsTsconfig,
     });
 
     return generateSdkOutput;

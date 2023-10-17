@@ -6,7 +6,7 @@ import chokidar from "chokidar";
 import cors from "cors";
 import bodyParser from "body-parser";
 import { ChildProcess, spawn, exec } from "child_process";
-import path from "path";
+import path, { resolve } from "path";
 import url from "url";
 import * as http from "http";
 import colors from "colors";
@@ -62,6 +62,9 @@ import { EOL } from "os";
 import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
 import util from "util";
 import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJson.js";
+import { build } from "esbuild";
+import { Generator } from "npm-dts";
+import ts from "typescript";
 const asyncExec = util.promisify(exec);
 
 type ClassProcess = {
@@ -370,6 +373,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
           projectConfiguration.name,
           projectConfiguration.region,
           yamlLocalConfiguration?.pagckageManager,
+          projectConfiguration.sdk.language,
         );
       }
     }
@@ -397,10 +401,36 @@ async function compileSdk(
   projectName: string,
   region: string,
   packageManager: PackageManager = PackageManager.npm,
+  language: Language,
 ) {
-  await asyncExec("tsc -b tsconfig.esm.json tsconfig.cjs.json", {
-    cwd: sdkPath,
-  });
+  const cjsOptions = {
+    outDir: path.resolve(sdkPath, "..", "genezio-sdk", "cjs"),
+    module: ts.ModuleKind.CommonJS,
+    rootDir: sdkPath,
+    allowJs: true,
+    declaration: true,
+  };
+  const cjsHost = ts.createCompilerHost(cjsOptions);
+  const cjsProgram = ts.createProgram(
+    [path.join(sdkPath, `index.${language}`)],
+    cjsOptions,
+    cjsHost,
+  );
+  cjsProgram.emit();
+  const esmOptions = {
+    outDir: path.resolve(sdkPath, "..", "genezio-sdk", "esm"),
+    module: ts.ModuleKind.ESNext,
+    rootDir: sdkPath,
+    allowJs: true,
+    declaration: true,
+  };
+  const esmHost = ts.createCompilerHost(esmOptions);
+  const esmProgram = ts.createProgram(
+    [path.join(sdkPath, `index.${language}`)],
+    esmOptions,
+    esmHost,
+  );
+  esmProgram.emit();
   const modulePath = path.resolve(sdkPath, "..", "genezio-sdk");
   await writeToFile(
     modulePath,

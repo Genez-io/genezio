@@ -24,9 +24,6 @@ import {
 import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 import { nodeSdkTs } from "../templates/nodeSdkTs.js";
 import path from "path";
-import { mainTsConfig } from "../templates/tsconfigs/mainTsconfig.js";
-import { esmTsconfig } from "../templates/tsconfigs/esmTsconfig.js";
-import { cjsTsconfig } from "../templates/tsconfigs/cjsTsconfig.js";
 
 const TYPESCRIPT_RESERVED_WORDS = [
   "abstract",
@@ -161,7 +158,7 @@ export { Remote };
 
 class SdkGenerator implements SdkGeneratorInterface {
   async generateSdk(
-    sdkGeneratorInput: SdkGeneratorInput
+    sdkGeneratorInput: SdkGeneratorInput,
   ): Promise<SdkGeneratorOutput> {
     const generateSdkOutput: SdkGeneratorOutput = {
       files: [],
@@ -199,7 +196,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         indexModel,
         classInfo.program.body,
         classDefinition.path ?? "",
-        classDefinition.name
+        classDefinition.name,
       );
 
       const view: any = {
@@ -214,7 +211,7 @@ class SdkGenerator implements SdkGeneratorInterface {
 
       for (const methodDefinition of classDefinition.methods) {
         const methodConfigurationType = classConfiguration.getMethodType(
-          methodDefinition.name
+          methodDefinition.name,
         );
 
         if (
@@ -279,7 +276,7 @@ class SdkGenerator implements SdkGeneratorInterface {
           for (const parentType of externalTypes) {
             const isUsed = this.isExternalTypeUsedByOtherType(
               externalType,
-              parentType
+              parentType,
             );
             if (
               isUsed &&
@@ -290,7 +287,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                 modelViews,
                 parentType,
                 view,
-                classInfo
+                classInfo,
               );
             }
             if (
@@ -303,7 +300,7 @@ class SdkGenerator implements SdkGeneratorInterface {
           if (
             this.isExternalTypeUsedInMethod(
               externalType,
-              classDefinition.methods
+              classDefinition.methods,
             )
           ) {
             currentView = view;
@@ -319,11 +316,11 @@ class SdkGenerator implements SdkGeneratorInterface {
             modelViews,
             externalType,
             view,
-            classInfo
+            classInfo,
           );
           if (
             !currentView?.externalTypes.find(
-              (e) => e.name === (externalType as any).name
+              (e) => e.name === (externalType as any).name,
             )
           ) {
             currentView?.externalTypes.push({
@@ -393,23 +390,6 @@ class SdkGenerator implements SdkGeneratorInterface {
       data: Mustache.render(indexTemplate, indexModel),
     });
 
-    // generate tsconfig files
-    generateSdkOutput.files.push({
-      className: "tsconfig.json",
-      path: "tsconfig.json",
-      data: mainTsConfig,
-    });
-    generateSdkOutput.files.push({
-      className: "tsconfig.esm.json",
-      path: "tsconfig.esm.json",
-      data: esmTsconfig,
-    });
-    generateSdkOutput.files.push({
-      className: "tsconfig.cjs.json",
-      path: "tsconfig.cjs.json",
-      data: cjsTsconfig,
-    });
-
     return generateSdkOutput;
   }
 
@@ -458,11 +438,11 @@ class SdkGenerator implements SdkGeneratorInterface {
         .map((e: PropertyDefinition) => {
           if (e.type.type === AstNodeType.MapType) {
             return `[key: ${this.getParamType(
-              (e.type as MapType).genericKey
+              (e.type as MapType).genericKey,
             )}]: ${this.getParamType((e.type as MapType).genericValue)}`;
           } else {
             return `${e.name}${e.optional ? "?" : ""}: ${this.getParamType(
-              e.type
+              e.type,
             )}`;
           }
         })
@@ -477,7 +457,7 @@ class SdkGenerator implements SdkGeneratorInterface {
     if (type.type === AstNodeType.TypeAlias) {
       const typeAlias = type as TypeAlias;
       return `type ${typeAlias.name} = ${this.getParamType(
-        typeAlias.aliasType
+        typeAlias.aliasType,
       )};`;
     } else if (type.type === AstNodeType.Enum) {
       const enumType = type as Enum;
@@ -497,7 +477,7 @@ class SdkGenerator implements SdkGeneratorInterface {
     } else if (type.type === AstNodeType.StructLiteral) {
       const typeAlias = type as StructLiteral;
       return `type ${typeAlias.name} = ${this.getParamType(
-        typeAlias.typeLiteral
+        typeAlias.typeLiteral,
       )};`;
     }
     return "";
@@ -508,7 +488,7 @@ class SdkGenerator implements SdkGeneratorInterface {
       const typeAlias = type as TypeAlias;
       return this.isExternalTypeUsedByOtherType(
         externalType,
-        typeAlias.aliasType
+        typeAlias.aliasType,
       );
     } else if (type.type === AstNodeType.Enum) {
       return false;
@@ -516,25 +496,25 @@ class SdkGenerator implements SdkGeneratorInterface {
       const typeAlias = type as StructLiteral;
       return this.isExternalTypeUsedByOtherType(
         externalType,
-        typeAlias.typeLiteral
+        typeAlias.typeLiteral,
       );
     } else if (type.type === AstNodeType.ArrayType) {
       return this.isExternalTypeUsedByOtherType(
         externalType,
-        (type as ArrayType).generic
+        (type as ArrayType).generic,
       );
     } else if (type.type === AstNodeType.PromiseType) {
       return this.isExternalTypeUsedByOtherType(
         externalType,
-        (type as PromiseType).generic
+        (type as PromiseType).generic,
       );
     } else if (type.type === AstNodeType.UnionType) {
       return (type as UnionType).params.some((e: Node) =>
-        this.isExternalTypeUsedByOtherType(externalType, e)
+        this.isExternalTypeUsedByOtherType(externalType, e),
       );
     } else if (type.type === AstNodeType.TypeLiteral) {
       return (type as TypeLiteral).properties.some((e: PropertyDefinition) =>
-        this.isExternalTypeUsedByOtherType(externalType, e.type)
+        this.isExternalTypeUsedByOtherType(externalType, e.type),
       );
     } else if (type.type === AstNodeType.DateType) {
       return false;
@@ -561,14 +541,14 @@ class SdkGenerator implements SdkGeneratorInterface {
 
   isExternalTypeUsedInMethod(
     externalType: Node,
-    methods: MethodDefinition[]
+    methods: MethodDefinition[],
   ): boolean {
     return methods.some(
       (m) =>
         this.isExternalTypeUsedByOtherType(externalType, m.returnType) ||
         m.params.some((p: ParameterDefinition) =>
-          this.isExternalTypeUsedByOtherType(externalType, p.paramType)
-        )
+          this.isExternalTypeUsedByOtherType(externalType, p.paramType),
+        ),
     );
   }
 
@@ -578,7 +558,7 @@ class SdkGenerator implements SdkGeneratorInterface {
       if (
         importType.path === externalType.path &&
         !importType.models.find(
-          (e: any) => e.name === (externalType as any).name
+          (e: any) => e.name === (externalType as any).name,
         )
       ) {
         importType.models.push({ name: (externalType as any).name });
@@ -589,7 +569,7 @@ class SdkGenerator implements SdkGeneratorInterface {
     if (!found) {
       let relativePath = path.relative(
         currentView.path || ".",
-        externalType.path || "."
+        externalType.path || ".",
       );
       if (relativePath.substring(0, 3) == "../") {
         relativePath = relativePath.substring(3);
@@ -607,7 +587,7 @@ class SdkGenerator implements SdkGeneratorInterface {
     indexModel: IndexModel,
     classItems: Node[],
     classPath: string,
-    className: string
+    className: string,
   ) {
     for (const originalClassItem of classItems) {
       const classItem = { ...originalClassItem };
@@ -618,12 +598,12 @@ class SdkGenerator implements SdkGeneratorInterface {
         classItem.path = sdkClassPath;
       }
       const index = indexModel.imports.findIndex(
-        (i) => i.path === classItem.path
+        (i) => i.path === classItem.path,
       );
       if (index !== -1) {
         if (
           indexModel.imports[index].models.find(
-            (i) => i.name === (classItem as any).name
+            (i) => i.name === (classItem as any).name,
           )
         ) {
           continue;
@@ -647,7 +627,7 @@ class SdkGenerator implements SdkGeneratorInterface {
     modelViews: ModelView[],
     type: Node,
     classView: any,
-    classInfo: any
+    classInfo: any,
   ) {
     let found = false;
     let currentView: ModelView | undefined = undefined;

@@ -60,6 +60,7 @@ import { exec } from "child_process";
 import util from "util";
 import { getNodeModulePackageJson } from "../generateSdk/templates/packageJson.js";
 import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
+import ts from "typescript";
 const asyncExec = util.promisify(exec);
 
 export async function deployCommand(options: GenezioDeployOptions) {
@@ -455,6 +456,7 @@ export async function deployClasses(
       configuration.name,
       configuration.region,
       stage,
+      configuration.language,
     );
   }
 
@@ -637,10 +639,36 @@ async function compileSdk(
   projectName: string,
   region: string,
   stage: string,
+  language: Language,
 ) {
-  await asyncExec("tsc -b tsconfig.esm.json tsconfig.cjs.json", {
-    cwd: sdkPath,
-  });
+  const cjsOptions = {
+    outDir: path.resolve(sdkPath, "..", "genezio-sdk", "cjs"),
+    module: ts.ModuleKind.CommonJS,
+    rootDir: sdkPath,
+    allowJs: true,
+    declaration: true,
+  };
+  const cjsHost = ts.createCompilerHost(cjsOptions);
+  const cjsProgram = ts.createProgram(
+    [path.join(sdkPath, `index.${language}`)],
+    cjsOptions,
+    cjsHost,
+  );
+  cjsProgram.emit();
+  const esmOptions = {
+    outDir: path.resolve(sdkPath, "..", "genezio-sdk", "esm"),
+    module: ts.ModuleKind.ESNext,
+    rootDir: sdkPath,
+    allowJs: true,
+    declaration: true,
+  };
+  const esmHost = ts.createCompilerHost(esmOptions);
+  const esmProgram = ts.createProgram(
+    [path.join(sdkPath, `index.${language}`)],
+    esmOptions,
+    esmHost,
+  );
+  esmProgram.emit();
   const modulePath = path.resolve(sdkPath, "..", "genezio-sdk");
   await writeToFile(
     modulePath,
