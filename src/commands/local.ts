@@ -62,8 +62,6 @@ import { EOL } from "os";
 import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
 import util from "util";
 import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJson.js";
-import { build } from "esbuild";
-import { Generator } from "npm-dts";
 import ts from "typescript";
 const asyncExec = util.promisify(exec);
 
