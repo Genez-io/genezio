@@ -54,6 +54,8 @@ export async function initCommand(path: string) {
     );
   }
 
+  GenezioTelemetry.sendEvent({ eventType: TelemetryEventTypes.GENEZIO_INIT });
+
   const yamlConfigurationFileContent = `# Visit https://docs.genez.io/genezio-documentation/yaml-configuration-file to read more about this file
 
 name: ${projectName}
