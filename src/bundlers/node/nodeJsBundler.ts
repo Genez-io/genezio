@@ -209,8 +209,7 @@ export class NodeJsBundler implements BundlerInterface {
       throw "Compilation failed";
     }
 
-    const fileData = fs.readFileSync(outputFilePath, 'utf8');
-    const transformedCode = await transformDecorators(fileData);
+    const transformedCode = await transformDecorators(outputFilePath);
 
     fs.writeFileSync(outputFilePath, transformedCode);
   }

@@ -19,7 +19,7 @@ import transformDecorators from "../../utils/transformDecorators.js";
 class AstGenerator implements AstGeneratorInterface {
 
   async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
-    const transformedCode = await transformDecorators(input.class.data);
+    const transformedCode = await transformDecorators(input.class.path);
 
     const result = parser.parse(transformedCode.toString(), {
       // parse in strict mode and allow module declarations
