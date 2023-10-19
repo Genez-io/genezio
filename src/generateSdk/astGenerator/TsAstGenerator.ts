@@ -238,10 +238,24 @@ export class AstGenerator implements AstGeneratorInterface {
               }
             }
           }
+          const typeAtLocation = typeChecker.getTypeAtLocation(
+            (classDeclaration as any).name
+          );
+          const typeAtLocationPath = (
+            typeAtLocation.symbol as any
+          ).declarations?.[0].getSourceFile().symbol.escapedName;
+          const trimmedPath = typeAtLocationPath.substring(
+            1,
+            typeAtLocationPath.length - 1
+          );
+          const pathFile = path
+            .relative(process.cwd(), trimmedPath)
+            .replace(/\\/g, "/");
           return {
             type: AstNodeType.ClassDefinition,
             name: copy.name.escapedText,
             methods: methods,
+            path: pathFile,
           };
         }
       }
@@ -423,10 +437,7 @@ export class AstGenerator implements AstGeneratorInterface {
     let classDefinition: ClassDefinition | undefined = undefined;
     const declarations: Node[] = [];
     this.rootNode.forEachChild((child) => {
-      if (typescript.isEnumDeclaration(child)) {
-        const enumDeclaration = this.parseEnumDeclaration(child);
-        declarations.push(enumDeclaration);
-      } else if (typescript.isClassDeclaration(child)) {
+      if (typescript.isClassDeclaration(child)) {
         const classDeclaration = this.parseClassDeclaration(
           child,
           typeChecker,

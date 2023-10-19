@@ -34,6 +34,7 @@ describe("init", () => {
     mockedAskQuestion
     .mockResolvedValueOnce("project-name")
     .mockResolvedValueOnce("us-east-1")
+    .mockResolvedValueOnce("ts")
 
     const mockedWriteToFile = jest.mocked(writeToFile, { shallow: true });
     mockedWriteToFile.mockResolvedValue();
@@ -41,6 +42,7 @@ describe("init", () => {
     const configFile : any = {
       name: "project-name",
       region: "us-east-1",
+      language: "ts",
       classes: []
     };
 
@@ -51,8 +53,11 @@ name: ${configFile.name}
 # Configure where you want your project to be deployed. Choose the closest location to your users.
 region: ${configFile.region}
 
+# Configure the language of your project. The supported languages are: "js", "ts", "dart".
+language: ${configFile.language}
+
 #sdk:
-#  language: ts                                                                              # The supported languages are: "js", "ts", "dart", "swift".
+#  language: ts                                                                              # The supported languages are: "js", "ts", "dart", "python".
 #  path: ../client/src/sdk/                                                                  # The path to the SDK folder. The SDK will be generated in this folder.
 
 #frontend:
@@ -89,7 +94,7 @@ classes: []
     await expect(initCommand("./project-name")).resolves.toBeUndefined();
 
     expect(mockedWriteToFile).toBeCalledTimes(1);
-    expect(mockedAskQuestion).toBeCalledTimes(2);
+    expect(mockedAskQuestion).toBeCalledTimes(3);
     expect(mockedWriteToFile).toBeCalledWith("./project-name", "genezio.yaml", yamlConfigurationFileContent, true)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
@@ -103,6 +108,7 @@ classes: []
     .mockResolvedValueOnce("")
     .mockResolvedValueOnce("project-name")
     .mockResolvedValueOnce("us-east-1")
+    .mockResolvedValueOnce("ts")
 
     const mockedWriteToFile = jest.mocked(writeToFile, { shallow: true });
     mockedWriteToFile.mockResolvedValue();
@@ -111,6 +117,7 @@ classes: []
     const configFile : any = {
       name: "project-name",
       region: "us-east-1",
+      language: "ts",
       classes: []
     };
 
@@ -121,8 +128,11 @@ name: ${configFile.name}
 # Configure where you want your project to be deployed. Choose the closest location to your users.
 region: ${configFile.region}
 
+# Configure the language of your project. The supported languages are: "js", "ts", "dart".
+language: ${configFile.language}
+
 #sdk:
-#  language: ts                                                                              # The supported languages are: "js", "ts", "dart", "swift".
+#  language: ts                                                                              # The supported languages are: "js", "ts", "dart", "python".
 #  path: ../client/src/sdk/                                                                  # The path to the SDK folder. The SDK will be generated in this folder.
 
 #frontend:
@@ -162,7 +172,7 @@ classes: []
     expect(mockedLogError).toBeCalledTimes(1);
     expect(mockedLogError).toBeCalledWith(red, `The project name can't be empty. Please provide one.`);
     expect(mockedWriteToFile).toBeCalledTimes(1);
-    expect(mockedAskQuestion).toBeCalledTimes(3);
+    expect(mockedAskQuestion).toBeCalledTimes(4);
     expect(mockedWriteToFile).toBeCalledWith("./project-name", "genezio.yaml", yamlConfigurationFileContent, true)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What is the name of the project: `)
@@ -178,6 +188,7 @@ classes: []
     .mockResolvedValueOnce("project-name")
     .mockResolvedValueOnce(notSupported)
     .mockResolvedValueOnce("us-east-1")
+    .mockResolvedValueOnce("ts")
 
     const mockedWriteToFile = jest.mocked(writeToFile, { shallow: true });
     mockedWriteToFile.mockResolvedValue();
@@ -185,6 +196,7 @@ classes: []
     const configFile : any = {
       name: "project-name",
       region: "us-east-1",
+      language: "ts",
       classes: []
     };
 
@@ -195,8 +207,11 @@ name: ${configFile.name}
 # Configure where you want your project to be deployed. Choose the closest location to your users.
 region: ${configFile.region}
 
+# Configure the language of your project. The supported languages are: "js", "ts", "dart".
+language: ${configFile.language}
+
 #sdk:
-#  language: ts                                                                              # The supported languages are: "js", "ts", "dart", "swift".
+#  language: ts                                                                              # The supported languages are: "js", "ts", "dart", "python".
 #  path: ../client/src/sdk/                                                                  # The path to the SDK folder. The SDK will be generated in this folder.
 
 #frontend:
@@ -236,7 +251,7 @@ classes: []
     expect(mockedLogError).toBeCalledTimes(1);
     expect(mockedLogError).toBeCalledWith(red, `The region is invalid. Please use a valid region.\n Region list: ${regions}`);
     expect(mockedWriteToFile).toBeCalledTimes(1);
-    expect(mockedAskQuestion).toBeCalledTimes(3);
+    expect(mockedAskQuestion).toBeCalledTimes(4);
     expect(mockedWriteToFile).toBeCalledWith("./project-name", "genezio.yaml", yamlConfigurationFileContent, true)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(1, `What is the name of the project: `)
     expect(mockedAskQuestion).toHaveBeenNthCalledWith(2, `What region do you want to deploy your project to? [default value: us-east-1]: `, "us-east-1")
@@ -275,6 +290,7 @@ describe("addClassCommand", () => {
     const projectConfiguration = new YamlProjectConfiguration(
       "test",
       "us-east-1",
+      Language.js,
       new YamlSdkConfiguration(Language.js, "./test.js"),
       CloudProviderIdentifier.GENEZIO,
       [new YamlClassConfiguration("./test.js", TriggerType.jsonrpc, Language.js, [])] as YamlClassConfiguration[],
@@ -304,6 +320,7 @@ describe("addClassCommand", () => {
     const projectConfiguration = new YamlProjectConfiguration(
       "test",
       "us-east-1",
+      Language.js,
       new YamlSdkConfiguration(Language.js, "./test.js"),
       CloudProviderIdentifier.GENEZIO,
       []
@@ -333,6 +350,7 @@ describe("addClassCommand", () => {
     const projectConfiguration = new YamlProjectConfiguration(
       "test",
       "us-east-1",
+      Language.js,
       new YamlSdkConfiguration(Language.js, "./test.js"),
       CloudProviderIdentifier.GENEZIO,
       []

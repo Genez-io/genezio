@@ -5,8 +5,8 @@ import express from "express";
 import chokidar from "chokidar";
 import cors from "cors";
 import bodyParser from "body-parser";
-import { ChildProcess, spawn } from "child_process";
-import path from "path";
+import { ChildProcess, spawn, exec } from "child_process";
+import path, { resolve } from "path";
 import url from "url";
 import * as http from "http";
 import colors from "colors";
@@ -30,9 +30,11 @@ import { debugLogger } from "../utils/logging.js";
 import { rectifyCronString } from "../utils/rectifyCronString.js";
 import cron from "node-cron";
 import {
+  createLocalTempFolder,
   createTemporaryFolder,
   fileExists,
   readUTF8File,
+  writeToFile,
 } from "../utils/file.js";
 import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 import { reportSuccess as _reportSuccess } from "../utils/reporter.js";
@@ -43,6 +45,7 @@ import axios, { AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
 import {
   Language,
+  PackageManager,
   YamlLocalConfiguration,
   YamlProjectConfiguration,
   YamlSdkConfiguration,
@@ -57,6 +60,10 @@ import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBu
 import inquirer, { Answers } from "inquirer";
 import { EOL } from "os";
 import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
+import util from "util";
+import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJson.js";
+import ts from "typescript";
+const asyncExec = util.promisify(exec);
 
 type ClassProcess = {
   process: ChildProcess;
@@ -80,7 +87,7 @@ type LocalBundlerOutput = {
 
 export async function prepareLocalEnvironment(
   yamlProjectConfiguration: YamlProjectConfiguration,
-  options: GenezioLocalOptions
+  options: GenezioLocalOptions,
 ): Promise<BundlerRestartResponse> {
   // eslint-disable-next-line no-async-promise-executor
   return new Promise<BundlerRestartResponse>(async (resolve) => {
@@ -94,7 +101,7 @@ export async function prepareLocalEnvironment(
           debugLogger.log("An error occurred", error);
           if (error.code === "ENOENT") {
             log.error(
-              `The file ${error.path} does not exist. Please check your genezio.yaml configuration and make sure that all the file paths are correct.`
+              `The file ${error.path} does not exist. Please check your genezio.yaml configuration and make sure that all the file paths are correct.`,
             );
             throw error;
           }
@@ -104,25 +111,25 @@ export async function prepareLocalEnvironment(
             log.error("Syntax error:");
             log.error(`Reason Code: ${error.reasonCode}`);
             log.error(
-              `File: ${error.path}:${error.loc.line}:${error.loc.column}`
+              `File: ${error.path}:${error.loc.line}:${error.loc.column}`,
             );
 
             throw error;
           }
 
           throw error;
-        }
+        },
       );
 
       const projectConfiguration = new ProjectConfiguration(
         yamlProjectConfiguration,
-        sdk
+        sdk,
       );
 
       const processForClasses = await startProcesses(
         projectConfiguration,
         sdk,
-        options
+        options,
       );
       resolve({
         shouldRestartBundling: false,
@@ -136,7 +143,7 @@ export async function prepareLocalEnvironment(
     } catch (error: any) {
       log.error(error.message);
       log.error(
-        `Fix the errors and genezio local will restart automatically. Waiting for changes...`
+        `Fix the errors and genezio local will restart automatically. Waiting for changes...`,
       );
       // If there was an error generating the SDK, wait for changes and try again.
       const { watcher } = await listenForChanges(undefined);
@@ -173,12 +180,12 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             !Language[yamlLocalConfiguration.language as keyof typeof Language]
           ) {
             log.info(
-              "This sdk.language is not supported by default. It will be treated as a custom language."
+              "This sdk.language is not supported by default. It will be treated as a custom language.",
             );
           }
           yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
             Language[yamlLocalConfiguration.language as keyof typeof Language],
-            yamlLocalConfiguration.path
+            yamlLocalConfiguration.path,
           );
         }
       } else {
@@ -188,12 +195,12 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     if (options.path && options.language) {
       if (!Language[options.language as keyof typeof Language]) {
         log.info(
-          "This sdk.language is not supported by default. It will be treated as a custom language."
+          "This sdk.language is not supported by default. It will be treated as a custom language.",
         );
       }
       yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
         Language[options.language as keyof typeof Language],
-        options.path
+        options.path,
       );
     }
 
@@ -209,32 +216,62 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       if (answer.generateSdk) {
         const sdkConfiguration: Answers = await inquirer.prompt([
           {
-            type: "input",
-            name: "sdkPath",
-            message:
-              "Specify the path of your frontend. The SDK will be generated in /<your_project_path>/sdk.",
-            default: "./",
-          },
-          {
             type: "list",
             name: "sdkLanguage",
             message: "In which programming language is your frontend written?",
             choices: Object.keys(Language).filter((key) => isNaN(Number(key))),
           },
         ]);
+        let sdkPath: string | undefined = undefined;
+        let packageManager: string | undefined = undefined;
+        if (
+          sdkConfiguration.sdkLanguage != "ts" &&
+          sdkConfiguration.sdkLanguage != "js"
+        ) {
+          const optionalSdkPath: Answers = await inquirer.prompt([
+            {
+              type: "input",
+              name: "sdkPath",
+              message:
+                "Specify the path of your frontend. The SDK will be generated in /<your_project_path>/sdk.",
+              default: "./",
+            },
+          ]);
+          sdkPath = optionalSdkPath.sdkPath;
+        } else {
+          const optionalPackageManager: Answers = await inquirer.prompt([
+            {
+              type: "list",
+              name: "packageManager",
+              message:
+                "Which package manager are you using to install your frontend dependencies?",
+              choices: Object.keys(PackageManager).filter((key) =>
+                isNaN(Number(key)),
+              ),
+            },
+          ]);
+          packageManager = optionalPackageManager.packageManager;
+        }
+        if (!sdkPath) {
+          sdkPath = await createLocalTempFolder(
+            `${yamlProjectConfiguration.name}-${yamlProjectConfiguration.region}`,
+          );
+        }
         const localConfiguration = await YamlLocalConfiguration.create({
           generateSdk: true,
-          path: path.join(sdkConfiguration.sdkPath, "sdk"),
+          path: path.join(sdkPath, "sdk"),
           language: sdkConfiguration.sdkLanguage,
+          packageManager: packageManager,
         });
         yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
           Language[sdkConfiguration.sdkLanguage as keyof typeof Language],
-          path.join(sdkConfiguration.sdkPath, "sdk")
+          path.join(sdkPath, "sdk"),
         );
         if (!localConfiguration) {
           throw new Error("Could not create local configuration file.");
         }
         await localConfiguration.writeToFile();
+        yamlLocalConfiguration = await getLocalConfiguration();
       } else {
         const localConfiguration = await YamlLocalConfiguration.create({
           generateSdk: false,
@@ -305,7 +342,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       options.port,
       projectConfiguration.astSummary,
       yamlProjectConfiguration.name,
-      processForClasses
+      processForClasses,
     );
 
     // Start cron jobs
@@ -317,13 +354,26 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         sdk.files.map((c) => ({
           name: c.className,
           cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`,
-        }))
+        })),
       );
       await writeSdkToDisk(
         sdk,
         projectConfiguration.sdk.language,
-        projectConfiguration.sdk.path
+        projectConfiguration.sdk.path,
       );
+      if (
+        projectConfiguration.sdk.language === Language.ts ||
+        projectConfiguration.sdk.language === Language.js
+      ) {
+        // compile the sdk
+        await compileSdk(
+          projectConfiguration.sdk.path,
+          projectConfiguration.name,
+          projectConfiguration.region,
+          yamlLocalConfiguration?.pagckageManager,
+          projectConfiguration.sdk.language,
+        );
+      }
     }
 
     reportSuccess(projectConfiguration, sdk, options.port);
@@ -344,6 +394,57 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
   }
 }
 
+async function compileSdk(
+  sdkPath: string,
+  projectName: string,
+  region: string,
+  packageManager: PackageManager = PackageManager.npm,
+  language: Language,
+) {
+  const cjsOptions = {
+    outDir: path.resolve(sdkPath, "..", "genezio-sdk", "cjs"),
+    module: ts.ModuleKind.CommonJS,
+    rootDir: sdkPath,
+    allowJs: true,
+    declaration: true,
+  };
+  const cjsHost = ts.createCompilerHost(cjsOptions);
+  const cjsProgram = ts.createProgram(
+    [path.join(sdkPath, `index.${language}`)],
+    cjsOptions,
+    cjsHost,
+  );
+  cjsProgram.emit();
+  const esmOptions = {
+    outDir: path.resolve(sdkPath, "..", "genezio-sdk", "esm"),
+    module: ts.ModuleKind.ESNext,
+    rootDir: sdkPath,
+    allowJs: true,
+    declaration: true,
+  };
+  const esmHost = ts.createCompilerHost(esmOptions);
+  const esmProgram = ts.createProgram(
+    [path.join(sdkPath, `index.${language}`)],
+    esmOptions,
+    esmHost,
+  );
+  esmProgram.emit();
+  const modulePath = path.resolve(sdkPath, "..", "genezio-sdk");
+  await writeToFile(
+    modulePath,
+    "package.json",
+    getNodeModulePackageJsonLocal(projectName, region),
+  );
+  await asyncExec(packageManager + " link", { cwd: modulePath });
+  log.info(
+    "\x1b[32m%s\x1b[0m",
+    `Your SDK is ready to be used. We already created a link using ${packageManager}. To import it in your client project, run ${colors.cyan(
+      `${packageManager} link @genezio-sdk/${projectName}_${region}`,
+    )}`,
+    `${colors.green("in your client's root folder.")}`,
+  );
+}
+
 function logChangeDetection() {
   console.clear();
   log.info("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
@@ -355,7 +456,7 @@ function logChangeDetection() {
 async function startProcesses(
   projectConfiguration: ProjectConfiguration,
   sdk: SdkGeneratorResponse,
-  options: GenezioLocalOptions
+  options: GenezioLocalOptions,
 ): Promise<Map<string, ClassProcess>> {
   const classes = projectConfiguration.classes;
   const processForClasses = new Map<string, ClassProcess>();
@@ -369,12 +470,12 @@ async function startProcesses(
     }
 
     const ast = sdk.sdkGeneratorInput.classesInfo.find(
-      (c) => c.classConfiguration.path === classInfo.path
+      (c) => c.classConfiguration.path === classInfo.path,
     )!.program;
 
     debugLogger.log("Start bundling...");
     return createTemporaryFolder(
-      `${classInfo.name}-${hash(classInfo.path)}`
+      `${classInfo.name}-${hash(classInfo.path)}`,
     ).then(async (tmpFolder) => {
       const bundlerOutput = await bundler.bundle({
         projectConfiguration,
@@ -413,7 +514,7 @@ async function startProcesses(
       extra.commandParameters ? extra.commandParameters : [],
       bundlerOutput.configuration.name,
       processForClasses,
-      envVars
+      envVars,
     );
   }
 
@@ -422,7 +523,7 @@ async function startProcesses(
 
 // Function that returns the correct bundler for the local environment based on language.
 function getBundler(
-  classConfiguration: ClassConfiguration
+  classConfiguration: ClassConfiguration,
 ): BundlerInterface | undefined {
   let bundler: BundlerInterface | undefined;
   switch (classConfiguration.language) {
@@ -453,7 +554,7 @@ function getBundler(
     }
     default: {
       log.error(
-        `Unsupported language ${classConfiguration.language}. Skipping class `
+        `Unsupported language ${classConfiguration.language}. Skipping class `,
       );
     }
   }
@@ -465,7 +566,7 @@ async function startServerHttp(
   port: number,
   astSummary: AstSummary,
   projectName: string,
-  processForClasses: Map<string, ClassProcess>
+  processForClasses: Map<string, ClassProcess>,
 ): Promise<http.Server> {
   const app = express();
   app.use(cors());
@@ -498,7 +599,7 @@ async function startServerHttp(
         localProcess,
         req.params.className,
         reqToFunction,
-        processForClasses
+        processForClasses,
       );
       sendResponse(res, response.data);
     } catch (error: any) {
@@ -528,7 +629,7 @@ async function startServerHttp(
       localProcess,
       req.params.className,
       reqToFunction,
-      processForClasses
+      processForClasses,
     );
     sendResponse(res, response.data);
   }
@@ -567,7 +668,7 @@ export type LocalEnvCronHandler = {
 
 async function startCronJobs(
   projectConfiguration: ProjectConfiguration,
-  processForClasses: Map<string, ClassProcess>
+  processForClasses: Map<string, ClassProcess>,
 ): Promise<LocalEnvCronHandler[]> {
   const cronHandlers: LocalEnvCronHandler[] = [];
   for (const classElement of projectConfiguration.classes) {
@@ -595,9 +696,9 @@ async function startCronJobs(
               cronHandler.process,
               cronHandler.className,
               reqToFunction,
-              processForClasses
+              processForClasses,
             );
-          }
+          },
         );
 
         cronHandler.cronObject.start();
@@ -696,7 +797,7 @@ async function listenForChanges(sdkPathRelative: any | undefined) {
     const ignoreFileLines = ignoreFile.split(EOL);
     // remove empty lines
     const ignoreFileLinesWithoutEmptyLines = ignoreFileLines.filter(
-      (line) => line !== "" && !line.startsWith("#")
+      (line) => line !== "" && !line.startsWith("#"),
     );
 
     ignoredPathsFromGenezioIgnore = ignoreFileLinesWithoutEmptyLines.map(
@@ -705,7 +806,7 @@ async function listenForChanges(sdkPathRelative: any | undefined) {
           return line;
         }
         return path.join(cwd, line);
-      }
+      },
     );
   }
 
@@ -755,7 +856,7 @@ async function listenForChanges(sdkPathRelative: any | undefined) {
 function reportSuccess(
   projectConfiguration: ProjectConfiguration,
   sdk: SdkGeneratorResponse,
-  port: number
+  port: number,
 ) {
   const classesInfo = projectConfiguration.classes.map((c) => ({
     className: c.name,
@@ -767,7 +868,7 @@ function reportSuccess(
         `http://127.0.0.1:${port}`,
         m.type,
         c.name,
-        m.name
+        m.name,
       ),
     })),
     functionUrl: `http://127.0.0.1:${port}/${c.name}`,
@@ -792,14 +893,20 @@ function reportSuccess(
 
   // check if server version is different from installed version
   if (nodeMajorVersion !== serverVersion) {
-    log.warn(`${colors.yellow(`Warning: You are using node version ${nodeVersion} but your server is configured to use ${serverRuntime}. This might cause unexpected behavior.
-To change the server version, go to your ${colors.cyan("genezio.yaml")} file and change the ${colors.cyan("options.nodeRuntime")} property to the version you want to use.`)}`);
+    log.warn(
+      `${colors.yellow(`Warning: You are using node version ${nodeVersion} but your server is configured to use ${serverRuntime}. This might cause unexpected behavior.
+To change the server version, go to your ${colors.cyan(
+        "genezio.yaml",
+      )} file and change the ${colors.cyan(
+        "options.nodeRuntime",
+      )} property to the version you want to use.`)}`,
+    );
   }
   _reportSuccess(classesInfo, sdk);
 
   log.info(
     "\x1b[32m%s\x1b[0m",
-    `Test your code at ${LOCAL_TEST_INTERFACE_URL}?port=${port}`
+    `Test your code at ${LOCAL_TEST_INTERFACE_URL}?port=${port}`,
   );
 }
 
@@ -807,7 +914,7 @@ function getFunctionUrl(
   baseUrl: string,
   methodType: string,
   className: string,
-  methodName: string
+  methodName: string,
 ): string {
   if (methodType === "http") {
     return `${baseUrl}/${className}/${methodName}`;
@@ -819,7 +926,7 @@ function getFunctionUrl(
 async function clearAllResources(
   server: http.Server,
   processForClasses: Map<string, ClassProcess>,
-  crons: LocalEnvCronHandler[]
+  crons: LocalEnvCronHandler[],
 ) {
   server.close();
   await stopCronJobs(crons);
@@ -834,14 +941,14 @@ async function startClassProcess(
   parameters: string[],
   className: string,
   processForClasses: Map<string, ClassProcess>,
-  envVars: dotenv.DotenvPopulateInput = {}
+  envVars: dotenv.DotenvPopulateInput = {},
 ) {
   const availablePort = await findAvailablePort();
   debugLogger.debug(
-    `[START_CLASS_PROCESS] Starting class ${className} on port ${availablePort}`
+    `[START_CLASS_PROCESS] Starting class ${className} on port ${availablePort}`,
   );
   debugLogger.debug(
-    `[START_CLASS_PROCESS] Starting command: ${startingCommand}`
+    `[START_CLASS_PROCESS] Starting command: ${startingCommand}`,
   );
   debugLogger.debug(`[START_CLASS_PROCESS] Parameters: ${parameters}`);
   const processParameters = [...parameters, availablePort.toString()];
@@ -864,12 +971,12 @@ async function communicateWithProcess(
   localProcess: ClassProcess,
   className: string,
   data: any,
-  processForClasses: Map<string, ClassProcess>
+  processForClasses: Map<string, ClassProcess>,
 ): Promise<AxiosResponse> {
   try {
     return await axios.post(
       `http://127.0.0.1:${localProcess?.listeningPort}`,
-      data
+      data,
     );
   } catch (error: any) {
     if (error.code === "ECONNRESET" || error.code === "ECONNREFUSED") {
@@ -877,7 +984,7 @@ async function communicateWithProcess(
         localProcess.startingCommand,
         localProcess.parameters,
         className,
-        processForClasses
+        processForClasses,
       );
     }
     throw error;
