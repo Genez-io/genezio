@@ -59,14 +59,6 @@ export async function sdkGeneratorApiHandler(
     });
   }
 
-  // Generate SDK if the yaml sdk field is present
-  // if (!sdkGeneratorInput.sdk) {
-  //   return {
-  //     files: [],
-  //     sdkGeneratorInput: sdkGeneratorInput,
-  //   }
-  // }
-
   const sdkOutput: SdkGeneratorOutput = await generateSdk(
     sdkGeneratorInput,
     projectConfiguration.plugins?.sdkGenerator,
