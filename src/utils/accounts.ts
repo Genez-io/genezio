@@ -21,14 +21,28 @@ function getNpmConfigFileContent(token: string) {
     return `@genezio-sdk:registry=https://${GENEZIO_REGISTRY}/npm\n//${GENEZIO_REGISTRY}/:_authToken=${token}`
 }
 
-export async function saveAuthToken(token: string) {
+export async function addAuthTokenToNpmConfig(token: string) {
     const homeDirectory = os.homedir();
-    const loginConfigFile = ".geneziorc"
     const npmConfigFile = ".npmrc"
     const npmConfigContent = getNpmConfigFileContent(token);
 
+    if (fs.existsSync(path.join(homeDirectory, npmConfigFile))) {
+        const npmConfigFileContent = await readUTF8File(path.join(homeDirectory, npmConfigFile));
+        if (npmConfigFileContent.includes(getNpmConfigFileContent(""))) {
+            return;
+        }
+        await writeToFile(homeDirectory, npmConfigFile, npmConfigFileContent + "\n" + npmConfigContent, true);
+    } else {
+        await writeToFile(homeDirectory, npmConfigFile, npmConfigContent, true);
+    }
+}
+
+export async function saveAuthToken(token: string) {
+    const homeDirectory = os.homedir();
+    const loginConfigFile = ".geneziorc"
+
     await writeToFile(homeDirectory, loginConfigFile, token, true);
-    await writeToFile(homeDirectory, npmConfigFile, npmConfigContent, true);
+    await addAuthTokenToNpmConfig(token);
 }
 
 export async function removeAuthToken(): Promise<[void, void]> {
