@@ -16,7 +16,7 @@ import {
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
-import { getAuthToken } from "../utils/accounts.js";
+import { addAuthTokenToNpmConfig, getAuthToken } from "../utils/accounts.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
 import { getNoMethodClasses } from "../utils/getNoMethodClasses.js";
 import {
@@ -85,6 +85,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
       log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
       exit(1);
     }
+    await addAuthTokenToNpmConfig(authToken);
   }
 
   const cloudAdapter = getCloudProvider(
