@@ -13,6 +13,9 @@ import { parse } from "yaml";
 import babel from '@babel/core';
 import fs from "fs"
 import FileDetails from "../models/fileDetails.js";
+import { debugLogger } from "./logging.js";
+import { error } from "console";
+import { exit } from "process";
 
 type MethodDecoratorInfo = {
     name: string,
@@ -129,7 +132,14 @@ async function tryToReadClassInformationFromDecorators(projectConfiguration: Yam
     );
 
    return await Promise.all(allJsFilesPaths.map((file) => {
-        return getDecoratorsFromFile(file.path);
+        return getDecoratorsFromFile(file.path)
+            .catch((error)=>{ 
+                if (error.reasonCode == "MissingOneOfPlugins") {
+                    return []
+                } else {
+                    throw error
+                }
+            })
     }))
 }
 
