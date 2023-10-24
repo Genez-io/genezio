@@ -176,7 +176,6 @@ export class NodeJsBundler implements BundlerInterface {
       sourcemap: "inline",
     });
 
-    console.log(output.errors.length)
     if (output.errors.length > 0) {
       output.errors.forEach((error: any) => {
         log.error("\x1b[31m", "Syntax error:");
@@ -329,7 +328,6 @@ export class NodeJsBundler implements BundlerInterface {
     const mode = input.extra.mode;
     const tmpFolder = input.extra.tmpFolder;
     const cwd = input.projectConfiguration.workspace?.backend || process.cwd()
-    console.log("cwd is", cwd)
 
     if (mode === "development" && !tmpFolder) {
       throw new Error("tmpFolder is required in development mode.")
