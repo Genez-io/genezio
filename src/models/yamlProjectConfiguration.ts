@@ -315,7 +315,7 @@ export class YamlProjectConfiguration {
           const backendScripts: YamlScriptsConfiguration | undefined =
               {
               preBackendDeploy: backendFileContent.scripts.preBackendDeploy,
-              postBackendDeploy: backendFileContent.scripts.preFrontendDeploy,
+              postBackendDeploy: backendFileContent.scripts.postBackendDeploy,
           }
 
           return {
@@ -341,7 +341,7 @@ export class YamlProjectConfiguration {
     const frontendFileContent = parse(frontendFileContentUTF8)
     const frontendScripts: YamlScriptsConfiguration = {
         preFrontendDeploy: frontendFileContent.scripts?.preFrontendDeploy,
-        postFrontendDeploy:frontendFileContent.scripts?.preFrontendDeploy,
+        postFrontendDeploy:frontendFileContent.scripts?.postFrontendDeploy,
     }
 
     if (frontendFileContent.frontend) {
