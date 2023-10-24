@@ -445,6 +445,7 @@ export async function deployClasses(
   ) {
     const localPath = await createLocalTempFolder(
       `${projectConfiguration.name}-${projectConfiguration.region}`,
+      true
     );
     await writeSdkToDisk(
       sdkResponse,

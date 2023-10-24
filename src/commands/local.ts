@@ -255,6 +255,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         if (!sdkPath) {
           sdkPath = await createLocalTempFolder(
             `${yamlProjectConfiguration.name}-${yamlProjectConfiguration.region}`,
+            true,
           );
         }
         const localConfiguration = await YamlLocalConfiguration.create({
@@ -356,6 +357,15 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
           cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`,
         })),
       );
+      if (
+        projectConfiguration.sdk.language === Language.ts ||
+        projectConfiguration.sdk.language === Language.js
+      ) {
+        createLocalTempFolder(
+          `${yamlProjectConfiguration.name}-${yamlProjectConfiguration.region}`,
+          true,
+        );
+      }
       await writeSdkToDisk(
         sdk,
         projectConfiguration.sdk.language,
