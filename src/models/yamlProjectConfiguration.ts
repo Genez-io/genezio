@@ -338,7 +338,6 @@ export class YamlProjectConfiguration {
     }
 
     const frontendFileContentUTF8 = await readUTF8File(path.join(workspace.frontend, "genezio.yaml"));
-    console.log(frontendFileContentUTF8)
     const frontendFileContent = parse(frontendFileContentUTF8)
     const frontendScripts: YamlScriptsConfiguration = {
         preFrontendDeploy: frontendFileContent.scripts?.preFrontendDeploy,
@@ -396,7 +395,6 @@ export class YamlProjectConfiguration {
        
     const backend = await this.parseBackendYaml(workspace)
     const frontend = await this.parseFrontendYaml(workspace)
-    console.log(frontend)
 
     return new YamlProjectConfiguration(
       name,
