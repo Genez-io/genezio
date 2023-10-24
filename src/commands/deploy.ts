@@ -471,7 +471,10 @@ export async function deployClasses(
   if (projectId) {
     // Deploy environment variables if --upload-env is true
     if (options.env) {
-      const envFile = path.join(process.cwd(), options.env);
+      const cwd = projectConfiguration.workspace?.backend ? 
+          path.resolve(projectConfiguration.workspace.backend) 
+              : process.cwd()
+      const envFile = path.join(cwd, options.env);
       debugLogger.debug(`Loading environment variables from ${envFile}.`);
 
       if (!(await fileExists(envFile))) {
