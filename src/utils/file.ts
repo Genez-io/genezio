@@ -40,10 +40,10 @@ export function ensureRelativePaths(file: string) {
   return "./" + relativePath;
 }
 
-export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
+export async function getAllFilesFromPath(inputPath: string): Promise<FileDetails[]> {
   // get genezioIgnore file
   let genezioIgnore: string[] = [];
-  const genezioIgnorePath = path.join(process.cwd(), ".genezioignore");
+  const genezioIgnorePath = path.join(inputPath, ".genezioignore");
   if (fs.existsSync(genezioIgnorePath)) {
     const genezioIgnoreContent = await readUTF8File(genezioIgnorePath);
     genezioIgnore = genezioIgnoreContent
@@ -60,6 +60,7 @@ export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
       {
         dot: true,
         ignore: genezioIgnore,
+        cwd: inputPath,
       },
       (err, files) => {
         if (err) {
@@ -70,7 +71,7 @@ export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
           return {
             name: path.parse(file).name,
             extension: path.parse(file).ext,
-            path: file,
+            path: path.join(inputPath, file),
             filename: file,
           };
         });
@@ -78,6 +79,9 @@ export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
       }
     );
   });
+}
+export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
+    return getAllFilesFromPath(process.cwd())
 }
 
 export async function zipDirectory(

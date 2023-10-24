@@ -1,6 +1,6 @@
 import path from "path";
-import yaml from "yaml";
-import { getFileDetails, writeToFile } from "../utils/file.js";
+import yaml, { parse } from "yaml";
+import { fileExists, getFileDetails, readUTF8File, writeToFile } from "../utils/file.js";
 import { regions } from "../utils/configs.js";
 import { isValidCron } from "cron-validator";
 import log from "loglevel";
@@ -224,6 +224,16 @@ export class YamlPluginsConfiguration {
   }
 }
 
+export class YamlWorkspace {
+    backend: string;
+    frontend: string;
+
+    constructor(backend: string, frontend: string) {
+        this.backend = backend;
+        this.frontend = frontend;
+    }
+}
+
 const supportedNodeRuntimes: string[] = ["nodejs16.x", "nodejs18.x"];
 
 /**
@@ -233,6 +243,7 @@ export class YamlProjectConfiguration {
   name: string;
   region: string;
   language: Language;
+  workspace?: YamlWorkspace;
   sdk?: YamlSdkConfiguration;
   cloudProvider?: CloudProviderIdentifier;
   options?: NodeOptions;
@@ -252,6 +263,7 @@ export class YamlProjectConfiguration {
     scripts: YamlScriptsConfiguration | undefined = undefined,
     plugins: YamlPluginsConfiguration | undefined = undefined,
     options: NodeOptions | undefined = undefined,
+    workspace: YamlWorkspace | undefined = undefined,
   ) {
     this.name = name;
     this.region = region;
@@ -263,6 +275,7 @@ export class YamlProjectConfiguration {
     this.scripts = scripts;
     this.plugins = plugins;
     this.options = options;
+    this.workspace = workspace;
   }
 
   getClassConfiguration(path: string): YamlClassConfiguration {
@@ -277,9 +290,138 @@ export class YamlProjectConfiguration {
     return classConfiguration;
   }
 
+  static async parseBackendYaml(workspace: any) {
+      if (!fileExists(workspace.backend)) {
+          throw new Error(
+              `The folder ${workspace.backend} specified in genezio.yaml in workspace.backend does not exist.`,
+          );
+      }
+      try {
+          const backendFileContentUTF8 = await readUTF8File(path.join(workspace.backend, "genezio.yaml"));
+          const backendFileContent = parse(backendFileContentUTF8)
+          let classes: YamlClassConfiguration[] = [];
+          const unparsedClasses: any[] = backendFileContent.classes;
+
+          // check if unparsedClasses is an array
+          if (unparsedClasses && !Array.isArray(unparsedClasses)) {
+              throw new Error("The classes property must be an array.");
+          }
+
+          if (unparsedClasses && Array.isArray(unparsedClasses)) {
+              classes = await Promise.all(
+                  unparsedClasses.map((c) => YamlClassConfiguration.create(c)),
+              );
+          }
+          const backendScripts: YamlScriptsConfiguration | undefined =
+              {
+              preBackendDeploy: backendFileContent.scripts.preBackendDeploy,
+              postBackendDeploy: backendFileContent.scripts.preFrontendDeploy,
+          }
+
+          return {
+              classes,
+              backendScripts
+          }
+      } catch {
+          return {    
+              classes: []
+          }
+      }
+
+  }
+
+  static async parseFrontendYaml(workspace: any) {
+    if (!fileExists(workspace.frontend)) {
+        throw new Error(
+          `The folder ${workspace.frontend} specified in genezio.yaml in workspace.backend does not exist.`,
+        );
+    }
+
+    const frontendFileContentUTF8 = await readUTF8File(path.join(workspace.frontend, "genezio.yaml"));
+    console.log(frontendFileContentUTF8)
+    const frontendFileContent = parse(frontendFileContentUTF8)
+    const frontendScripts: YamlScriptsConfiguration = {
+        preFrontendDeploy: frontendFileContent.scripts?.preFrontendDeploy,
+        postFrontendDeploy:frontendFileContent.scripts?.preFrontendDeploy,
+    }
+
+    if (frontendFileContent.frontend) {
+      if (!frontendFileContent.frontend.path) {
+        throw new Error("The frontend.path value is not set.");
+      }
+    }
+
+    return {
+        frontendScripts,
+        frontend: frontendFileContent.frontend
+    }
+  }
+
+  static async parseWorkflowYaml(
+    configurationFileContent: any,
+  ): Promise<YamlProjectConfiguration> {
+    if (!configurationFileContent.name) {
+      throw new Error(
+        "The name property is missing from the configuration file.",
+      );
+    }
+
+    const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
+    if (!nameRegex.test(configurationFileContent.name)) {
+      throw new Error(
+        "The project name is not valid. It must be [a-zA-Z][-a-zA-Z0-9]*",
+      );
+    }
+
+    if (configurationFileContent.cloudProvider) {
+      if (!cloudProviders.includes(configurationFileContent.cloudProvider)) {
+        throw new Error(
+          `The cloud provider ${configurationFileContent.cloudProvider} is invalid. Please use ${CloudProviderIdentifier.GENEZIO} or ${CloudProviderIdentifier.SELF_HOSTED_AWS}.`,
+        );
+      }
+    }
+
+    if (configurationFileContent.region) {
+      if (!regions.includes(configurationFileContent.region)) {
+        throw new Error(
+          `The region is invalid. Please use a valid region.\n Region list: ${regions}`,
+        );
+      }
+    }
+
+    const name = configurationFileContent.name
+    const cloudProvider = configurationFileContent.cloudProvider || CloudProviderIdentifier.GENEZIO 
+    const language = configurationFileContent.language
+    const workspace = new YamlWorkspace(path.resolve(configurationFileContent.workspace.backend), path.resolve(configurationFileContent.workspace.frontend))
+       
+    const backend = await this.parseBackendYaml(workspace)
+    const frontend = await this.parseFrontendYaml(workspace)
+    console.log(frontend)
+
+    return new YamlProjectConfiguration(
+      name,
+      configurationFileContent.region,
+      language,
+      undefined,
+      cloudProvider,
+      backend.classes,
+      frontend.frontend,
+      { 
+          ...backend.backendScripts,
+          ...frontend.frontendScripts,
+      },
+      undefined,
+      configurationFileContent.options,
+      workspace
+    );
+  }
+
   static async create(
     configurationFileContent: any,
   ): Promise<YamlProjectConfiguration> {
+      if (configurationFileContent.workspace) {
+        return this.parseWorkflowYaml(configurationFileContent)
+      }
     if (!configurationFileContent.name) {
       throw new Error(
         "The name property is missing from the configuration file.",
@@ -421,45 +563,64 @@ export class YamlProjectConfiguration {
   }
 
   async writeToFile(path = "./genezio.yaml") {
-    const content = {
-      name: this.name,
-      region: this.region,
-      language: this.language,
-      cloudProvider: this.cloudProvider ? this.cloudProvider : undefined,
-      options: this.options ? this.options : undefined,
-      sdk: this.sdk
-        ? {
-            language: this.sdk?.language,
-            path: this.sdk?.path,
-          }
-        : undefined,
-      scripts: this.scripts
-        ? {
-            preBackendDeploy: this.scripts?.preBackendDeploy,
-            preFrontendDeploy: this.scripts?.preFrontendDeploy,
-            postBackendDeploy: this.scripts?.postBackendDeploy,
-            postFrontendDeploy: this.scripts?.postFrontendDeploy,
-          }
-        : undefined,
-      frontend: this.frontend
-        ? {
-            path: this.frontend?.path,
-            subdomain: this.frontend?.subdomain,
-          }
-        : undefined,
-      classes: this.classes.length
-        ? this.classes?.map((c) => ({
-            path: c.path,
-            type: c.type,
-            name: c.name ? c.name : undefined,
-            methods: c.methods.map((m) => ({
-              name: m.name,
-              type: m.type,
-              cronString: m.cronString,
-            })),
-          }))
-        : undefined,
-    };
+    let content;
+
+    if (this.workspace) {
+      content = {
+        scripts: this.scripts
+          ? {
+              preFrontendDeploy: this.scripts?.preFrontendDeploy,
+              postFrontendDeploy: this.scripts?.postFrontendDeploy,
+            }
+          : undefined,
+        frontend: this.frontend
+          ? {
+              path: this.frontend?.path,
+              subdomain: this.frontend?.subdomain,
+            }
+          : undefined,
+      };
+    } else {
+      content = {
+        name: this.name,
+        region: this.region,
+        language: this.language,
+        cloudProvider: this.cloudProvider ? this.cloudProvider : undefined,
+        options: this.options ? this.options : undefined,
+        sdk: this.sdk
+          ? {
+              language: this.sdk?.language,
+              path: this.sdk?.path,
+            }
+          : undefined,
+        scripts: this.scripts
+          ? {
+              preBackendDeploy: this.scripts?.preBackendDeploy,
+              preFrontendDeploy: this.scripts?.preFrontendDeploy,
+              postBackendDeploy: this.scripts?.postBackendDeploy,
+              postFrontendDeploy: this.scripts?.postFrontendDeploy,
+            }
+          : undefined,
+        frontend: this.frontend
+          ? {
+              path: this.frontend?.path,
+              subdomain: this.frontend?.subdomain,
+            }
+          : undefined,
+        classes: this.classes.length
+          ? this.classes?.map((c) => ({
+              path: c.path,
+              type: c.type,
+              name: c.name ? c.name : undefined,
+              methods: c.methods.map((m) => ({
+                name: m.name,
+                type: m.type,
+                cronString: m.cronString,
+              })),
+            }))
+          : undefined,
+      };
+    }
 
     const fileDetails = getFileDetails(path);
     const yamlString = yaml.stringify(content);
@@ -471,12 +632,12 @@ export class YamlProjectConfiguration {
     );
   }
 
-  async addSubdomain(subdomain: string) {
+  async addSubdomain(subdomain: string, cwd: string) {
     this.frontend = {
       path: this.frontend?.path || "./frontend/build",
       subdomain: subdomain,
     };
-    await this.writeToFile();
+    await this.writeToFile(path.join(cwd, "genezio.yaml"));
   }
 }
 

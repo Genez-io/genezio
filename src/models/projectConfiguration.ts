@@ -71,6 +71,16 @@ export class SdkConfiguration {
     }
 }
 
+export class Worksace {
+    backend: string;
+    frontend: string;
+
+    constructor(backend: string, frontend: string) {
+        this.backend = backend;
+        this.frontend = frontend;
+    }
+}
+
 /**
  * This class represents the complete image of the project.
  * 
@@ -84,6 +94,7 @@ export class ProjectConfiguration {
     cloudProvider: CloudProviderIdentifier;
     astSummary: AstSummary;
     classes: ClassConfiguration[];
+    workspace?: Worksace;
 
     constructor(
         yamlConfiguration: YamlProjectConfiguration,
@@ -94,6 +105,7 @@ export class ProjectConfiguration {
         this.sdk = yamlConfiguration.sdk;
         this.options = yamlConfiguration.options;
         this.cloudProvider = yamlConfiguration.cloudProvider || CloudProviderIdentifier.GENEZIO;
+        this,this.workspace = yamlConfiguration.workspace
 
         // Generate AST Summary
         this.astSummary = {

@@ -8,7 +8,7 @@ import {
   YamlProjectConfiguration,
   getTriggerTypeFromString,
 } from "../models/yamlProjectConfiguration.js";
-import { checkYamlFileExists, getAllFilesFromCurrentPath, readUTF8File } from "./file.js";
+import { checkYamlFileExists, getAllFilesFromPath, readUTF8File } from "./file.js";
 import { parse } from "yaml";
 import babel from '@babel/core';
 import fs from "fs"
@@ -118,7 +118,8 @@ async function getDecoratorsFromFile(file: string): Promise<ClassInfo[]> {
 }
 
 async function tryToReadClassInformationFromDecorators(projectConfiguration: YamlProjectConfiguration) {
-    const allJsFilesPaths = (await getAllFilesFromCurrentPath()).filter(
+    const cwd = projectConfiguration.workspace?.backend || process.cwd()
+    const allJsFilesPaths = (await getAllFilesFromPath(cwd)).filter(
         (file: FileDetails) => {
             return (
                 (file.extension === ".js" || file.extension === ".ts") &&
@@ -152,6 +153,7 @@ export async function getProjectConfiguration(
   const projectConfiguration = await YamlProjectConfiguration.create(
     configurationFileContent
   );
+  
 
   const result = await tryToReadClassInformationFromDecorators(projectConfiguration)
 
