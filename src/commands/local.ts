@@ -171,7 +171,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     const yamlProjectConfiguration = await getProjectConfiguration();
     const localConfPath = yamlProjectConfiguration.workspace?.backend 
         ? path.join(yamlProjectConfiguration.workspace.backend, "genezio.local.yaml") 
-        : process.cwd() 
+        : undefined 
     let yamlLocalConfiguration = await getLocalConfiguration(localConfPath);
     if (yamlLocalConfiguration) {
       if (yamlLocalConfiguration.generateSdk) {
