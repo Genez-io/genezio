@@ -98,7 +98,7 @@ export class NodeJsBundler implements BundlerInterface {
   async #bundleNodeJSCode(
     filePath: string,
     tempFolderPath: string,
-    cwd: string,
+    cwd?: string, 
   ): Promise<void> {
     const outputFile = `module.mjs`;
 
@@ -164,6 +164,20 @@ export class NodeJsBundler implements BundlerInterface {
     };
     const outputFilePath = path.join(tempFolderPath, outputFile); 
 
+    /*
+     * If genezio was executed from the root of the workspace,
+     * we need to pass the path to the package.json file.
+     * However, if the file does not exist, it will crash.
+     * To avoid this, we make this check based on the information
+     * if this command was executed from within a workspace or not.
+     */
+    let nodeExternalPlugin
+    if (cwd) {
+      nodeExternalPlugin = nodeExternalsPlugin({packagePath: path.join(cwd, "package.json")})
+    } else {
+      nodeExternalPlugin = nodeExternalsPlugin()
+    }
+
     // eslint-disable-next-line no-async-promise-executor
     const output: BuildResult = await esbuild.build({
       entryPoints: [filePath],
@@ -172,7 +186,7 @@ export class NodeJsBundler implements BundlerInterface {
       format: "esm",
       platform: "node",
       outfile: outputFilePath,
-      plugins: [nodeExternalsPlugin({packagePath: path.join(cwd, "package.json")}), supportRequireInESM],
+      plugins: [nodeExternalPlugin, supportRequireInESM],
       sourcemap: "inline",
     });
 
@@ -342,7 +356,7 @@ export class NodeJsBundler implements BundlerInterface {
       this.#bundleNodeJSCode(
         input.configuration.path,
         temporaryFolder,
-        cwd,
+        input.projectConfiguration.workspace?.backend,
       ),
       mode === "development" ? this.#copyDependencies(undefined, temporaryFolder, mode, cwd) : Promise.resolve(),
       mode === "production" ? this.#getDependenciesInfo(input.configuration.path, input, cwd) : Promise.resolve(),
