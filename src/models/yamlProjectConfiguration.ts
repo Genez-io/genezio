@@ -296,36 +296,50 @@ export class YamlProjectConfiguration {
               `The folder ${workspace.backend} specified in genezio.yaml in workspace.backend does not exist.`,
           );
       }
+      let backendFileContent
       try {
           const backendFileContentUTF8 = await readUTF8File(path.join(workspace.backend, "genezio.yaml"));
-          const backendFileContent = parse(backendFileContentUTF8)
-          let classes: YamlClassConfiguration[] = [];
-          const unparsedClasses: any[] = backendFileContent.classes;
-
-          // check if unparsedClasses is an array
-          if (unparsedClasses && !Array.isArray(unparsedClasses)) {
-              throw new Error("The classes property must be an array.");
-          }
-
-          if (unparsedClasses && Array.isArray(unparsedClasses)) {
-              classes = await Promise.all(
-                  unparsedClasses.map((c) => YamlClassConfiguration.create(c)),
-              );
-          }
-          const backendScripts: YamlScriptsConfiguration | undefined =
-              {
-              preBackendDeploy: backendFileContent.scripts.preBackendDeploy,
-              postBackendDeploy: backendFileContent.scripts.postBackendDeploy,
-          }
-
-          return {
-              classes,
-              backendScripts
-          }
+          backendFileContent = parse(backendFileContentUTF8)
       } catch {
           return {    
               classes: []
           }
+      }
+      let classes: YamlClassConfiguration[] = [];
+      const unparsedClasses: any[] = backendFileContent.classes;
+
+      // check if unparsedClasses is an array
+      if (unparsedClasses && !Array.isArray(unparsedClasses)) {
+          throw new Error("The classes property must be an array.");
+      }
+
+      if (unparsedClasses && Array.isArray(unparsedClasses)) {
+          classes = await Promise.all(
+              unparsedClasses.map((c) => YamlClassConfiguration.create(c)),
+          );
+      }
+      const backendScripts: YamlScriptsConfiguration | undefined =
+          {
+          preBackendDeploy: backendFileContent.scripts.preBackendDeploy,
+          postBackendDeploy: backendFileContent.scripts.postBackendDeploy,
+      }
+      if (
+          backendFileContent.options &&
+          backendFileContent.options.nodeRuntime &&
+      !supportedNodeRuntimes.includes(
+          backendFileContent.options.nodeRuntime,
+          )
+      ) {
+          throw new Error(
+              "The node version in the genezio.yaml configuration file is not valid. The value must be one of the following: " +
+                  supportedNodeRuntimes.join(", "),
+          );
+      }
+
+      return {
+          options: backendFileContent.options,
+          classes,
+          backendScripts
       }
 
   }
@@ -418,7 +432,7 @@ export class YamlProjectConfiguration {
           ...frontend.frontendScripts,
       },
       undefined,
-      configurationFileContent.options,
+      backend.options,
       workspace
     );
   }
