@@ -83,7 +83,7 @@ export class NodeJsBundler implements BundlerInterface {
         }
 
         // copy file to tmp folder
-        const fileDestinationPath = path.join(tempFolderPath, filePath.path);
+        const fileDestinationPath = path.join(tempFolderPath, filePath.filename);
         return fs.promises.copyFile(filePath.path, fileDestinationPath).catch((error) => {
           if (error.code === "EACCES") {
             throw new Error(GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE(filePath.path))
@@ -229,7 +229,7 @@ export class NodeJsBundler implements BundlerInterface {
     fs.writeFileSync(outputFilePath, transformedCode);
   }
 
-  async #handleMissingDependencies(error: BuildFailure, try_count: number, MAX_TRIES: number) {
+  async #handleMissingDependencies(error: BuildFailure, try_count: number, MAX_TRIES: number, cwd: string) {
     // If there is a build failure, check if it is caused by missing library dependencies
     // If it is, install them and try again
     const resolveRegex = /Could not resolve "(?<dependencyName>.+)"/;
@@ -262,11 +262,11 @@ export class NodeJsBundler implements BundlerInterface {
     const dependencyInstaller: DependencyInstaller = new DependencyInstaller();
 
     if (npmInstallRequired) {
-      await dependencyInstaller.installAll();
+      await dependencyInstaller.installAll(cwd);
     }
 
     if (libraryDependencies.length > 0) {
-      await dependencyInstaller.install(libraryDependencies, true);
+      await dependencyInstaller.install(libraryDependencies, cwd, true);
     }
 
     if (errToDeps.some((dependencyName: string | undefined | null) => dependencyName === undefined)) {
@@ -299,7 +299,7 @@ export class NodeJsBundler implements BundlerInterface {
             });
             break;
         } catch (error: BuildFailure | any) {
-            await this.#handleMissingDependencies(error, try_count, MAX_TRIES);
+            await this.#handleMissingDependencies(error, try_count, MAX_TRIES, cwd);
         }
 
       try_count++;
