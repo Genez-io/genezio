@@ -421,7 +421,7 @@ export class YamlProjectConfiguration {
 
     return new YamlProjectConfiguration(
       name,
-      configurationFileContent.region,
+      configurationFileContent.region || "us-east-1",
       language,
       undefined,
       cloudProvider,
