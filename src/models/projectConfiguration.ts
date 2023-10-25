@@ -71,7 +71,7 @@ export class SdkConfiguration {
     }
 }
 
-export class Worksace {
+export class Workspace {
     backend: string;
     frontend: string;
 
