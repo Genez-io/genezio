@@ -391,6 +391,15 @@ export class YamlProjectConfiguration {
     const name = configurationFileContent.name
     const cloudProvider = configurationFileContent.cloudProvider || CloudProviderIdentifier.GENEZIO 
     const language = configurationFileContent.language
+
+    if (!configurationFileContent.workspace.frontend) {
+        throw new Error("\"frontend\" property is missing from workspace in genezio.yaml.")
+    }
+
+    if (!configurationFileContent.workspace.backend) {
+        throw new Error("\"backend\" property is missing from workspace in genezio.yaml.")
+    }
+
     const workspace = new YamlWorkspace(path.resolve(configurationFileContent.workspace.backend), path.resolve(configurationFileContent.workspace.frontend))
        
     const backend = await this.parseBackendYaml(workspace)
