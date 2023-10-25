@@ -3,7 +3,7 @@ import fs from "fs";
 import {
   createTemporaryFolder,
   deleteFolder,
-  getAllFilesFromCurrentPath,
+  getAllFilesFromPath,
   writeToFile,
 } from "../../utils/file.js";
 import {
@@ -25,20 +25,20 @@ import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE } from "../../errors.js";
 import transformDecorators from "../../utils/transformDecorators.js";
 
 export class NodeJsBundler implements BundlerInterface {
-  async #copyDependencies(dependenciesInfo: Dependency[] | undefined, tempFolderPath: string, mode: "development" | "production") {
+  async #copyDependencies(dependenciesInfo: Dependency[] | undefined, tempFolderPath: string, mode: "development" | "production", cwd: string) {
     const nodeModulesPath = path.join(tempFolderPath, "node_modules");
 
     if (mode === "development") {
       // copy node_modules folder to tmp folder if node_modules folder does not exist
-      if (!fs.existsSync(nodeModulesPath) && fs.existsSync(path.join(process.cwd(), "node_modules"))) {
-        await fsExtra.copy(path.join(process.cwd(), "node_modules"), nodeModulesPath);
+      if (!fs.existsSync(nodeModulesPath) && fs.existsSync(path.join(cwd, "node_modules"))) {
+        await fsExtra.copy(path.join(cwd, "node_modules"), nodeModulesPath);
       }
       return;
     }
 
     // Copy all dependencies from node_modules folder to tmp/node_modules folder
     if (!dependenciesInfo) {
-      await fsExtra.copy(path.join(process.cwd(), "node_modules"), nodeModulesPath);
+      await fsExtra.copy(path.join(cwd, "node_modules"), nodeModulesPath);
       return;
     }
 
@@ -51,8 +51,8 @@ export class NodeJsBundler implements BundlerInterface {
     );
   }
 
-  async #copyNonJsFiles(tempFolderPath: string, bundlerInput: BundlerInput) {
-    const allNonJsFilesPaths = (await getAllFilesFromCurrentPath()).filter(
+  async #copyNonJsFiles(tempFolderPath: string, bundlerInput: BundlerInput, cwd: string) {
+    const allNonJsFilesPaths = (await getAllFilesFromPath(cwd)).filter(
       (file: FileDetails) => {
         // create a regex to match any .env files
         const envFileRegex = new RegExp(/\.env(\..+)?$/);
@@ -98,6 +98,7 @@ export class NodeJsBundler implements BundlerInterface {
   async #bundleNodeJSCode(
     filePath: string,
     tempFolderPath: string,
+    cwd: string,
   ): Promise<void> {
     const outputFile = `module.mjs`;
 
@@ -171,7 +172,7 @@ export class NodeJsBundler implements BundlerInterface {
       format: "esm",
       platform: "node",
       outfile: outputFilePath,
-      plugins: [nodeExternalsPlugin(), supportRequireInESM],
+      plugins: [nodeExternalsPlugin({packagePath: path.join(cwd, "package.json")}), supportRequireInESM],
       sourcemap: "inline",
     });
 
@@ -259,7 +260,7 @@ export class NodeJsBundler implements BundlerInterface {
     }
   }
 
-  async #getDependenciesInfo(filePath: string, bundlerInput: BundlerInput) {
+  async #getDependenciesInfo(filePath: string, bundlerInput: BundlerInput, cwd: string) {
     const tempFolderPath = await createTemporaryFolder();
     let output: BuildResult;
     let try_count = 0;
@@ -271,21 +272,21 @@ export class NodeJsBundler implements BundlerInterface {
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      try {
-        // Building with `metafile` field set to true will return a JSON object with information about the dependencies
-        output = await esbuild.build({
-          entryPoints: [filePath],
-          bundle: true,
-          metafile: true,
-          platform: "node",
-          outfile: path.join(tempFolderPath, "module.mjs"),
-          logLevel: "silent",
-          sourcemap: "inline",
-        });
-        break;
-      } catch (error: BuildFailure | any) {
-        await this.#handleMissingDependencies(error, try_count, MAX_TRIES);
-      }
+        try {
+            // Building with `metafile` field set to true will return a JSON object with information about the dependencies
+            output = await esbuild.build({
+                entryPoints: [filePath],
+                bundle: true,
+                metafile: true,
+                platform: "node",
+                outfile: path.join(tempFolderPath, "module.mjs"),
+                logLevel: "silent",
+                sourcemap: "inline",
+            });
+            break;
+        } catch (error: BuildFailure | any) {
+            await this.#handleMissingDependencies(error, try_count, MAX_TRIES);
+        }
 
       try_count++;
     }
@@ -296,13 +297,18 @@ export class NodeJsBundler implements BundlerInterface {
 
     const dependencyMap: Map<string, string> = new Map();
     Object.keys(output.metafile.inputs).forEach((value) => {
-      if (!value.startsWith("node_modules")) {
+      // We are filtering out all the node_modules that are resolved outside of the 
+      // genezio backend framework. This is because we had problems in the past
+      // where bundler was returning deps that were causing errors.
+      if (value.startsWith("..") || !value.includes("node_modules")) {
         return;
       }
 
       // We use '/' as a separator regardless the platform because esbuild returns '/' separated paths
-      const dependencyName = value.split("/")[1];
-      const dependencyPath = path.resolve(path.join("node_modules", dependencyName));
+      // The name of the dependency is right after the "node_modules" component.
+      const components = value.split("/")
+      const dependencyName = components[components.indexOf("node_modules") + 1];
+      const dependencyPath = path.resolve(path.join(cwd, "node_modules", dependencyName));
 
       // This should not ever happen. If you got here... Good luck!
       const existingDependencyPath = dependencyMap.get(dependencyName);
@@ -321,6 +327,7 @@ export class NodeJsBundler implements BundlerInterface {
   async bundle(input: BundlerInput): Promise<BundlerOutput> {
     const mode = input.extra.mode;
     const tmpFolder = input.extra.tmpFolder;
+    const cwd = input.projectConfiguration.workspace?.backend || process.cwd()
 
     if (mode === "development" && !tmpFolder) {
       throw new Error("tmpFolder is required in development mode.")
@@ -335,17 +342,18 @@ export class NodeJsBundler implements BundlerInterface {
       this.#bundleNodeJSCode(
         input.configuration.path,
         temporaryFolder,
+        cwd,
       ),
-      mode === "development" ? this.#copyDependencies(undefined, temporaryFolder, mode) : Promise.resolve(),
-      mode === "production" ? this.#getDependenciesInfo(input.configuration.path, input) : Promise.resolve(),
+      mode === "development" ? this.#copyDependencies(undefined, temporaryFolder, mode, cwd) : Promise.resolve(),
+      mode === "production" ? this.#getDependenciesInfo(input.configuration.path, input, cwd) : Promise.resolve(),
     ]);
 
     debugLogger.debug(`[NodeJSBundler] Copy non js files and node_modules for file ${input.path}.`)
     // 2. Copy non js files and node_modules and write index.mjs file
     await Promise.all([
-      this.#copyNonJsFiles(temporaryFolder, input),
+      this.#copyNonJsFiles(temporaryFolder, input, cwd),
       mode === "production"
-        ? this.#copyDependencies(input.extra.dependenciesInfo, temporaryFolder, mode)
+        ? this.#copyDependencies(input.extra.dependenciesInfo, temporaryFolder, mode, cwd)
         : Promise.resolve(),
       writeToFile(temporaryFolder, "index.mjs", lambdaHandler(`"${input.configuration.name}"`)),
     ]);

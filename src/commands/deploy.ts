@@ -77,6 +77,8 @@ export async function deployCommand(options: GenezioDeployOptions) {
     });
     exit(1);
   }
+  const backendCwd = configuration.workspace?.backend || process.cwd()
+  const frontendCwd = configuration.workspace?.frontend || process.cwd()
 
   // check if user is logged in
   if (configuration.cloudProvider !== CloudProviderIdentifier.SELF_HOSTED_AWS) {
@@ -98,10 +100,11 @@ export async function deployCommand(options: GenezioDeployOptions) {
         "No classes were found in your genezio.yaml. Add some to be able to deploy your backend.",
       );
     } else {
-      if (configuration.scripts?.preBackendDeploy) {
+     if (configuration.scripts?.preBackendDeploy) {
         log.info("Running preBackendDeploy script...");
         const output = await runNewProcess(
           configuration.scripts?.preBackendDeploy,
+          backendCwd
         );
         if (!output) {
           GenezioTelemetry.sendEvent({
@@ -165,6 +168,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
         log.info(configuration.scripts?.postBackendDeploy);
         const output = await runNewProcess(
           configuration.scripts?.postBackendDeploy,
+          backendCwd
         );
         if (!output) {
           GenezioTelemetry.sendEvent({
@@ -185,6 +189,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
       log.info(configuration.scripts?.preFrontendDeploy);
       const output = await runNewProcess(
         configuration.scripts?.preFrontendDeploy,
+        frontendCwd
       );
       if (!output) {
         GenezioTelemetry.sendEvent({
@@ -205,7 +210,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
     log.info("Deploying your frontend to genezio infrastructure...");
     let url;
     try {
-      url = await deployFrontend(configuration, cloudAdapter, options);
+      url = await deployFrontend(configuration, cloudAdapter, options, frontendCwd);
     } catch (error: any) {
       log.error(error.message);
       if (error.message == "No frontend entry in genezio configuration file.") {
@@ -230,6 +235,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
       log.info(configuration.scripts?.postFrontendDeploy);
       const output = await runNewProcess(
         configuration.scripts?.postFrontendDeploy,
+        frontendCwd
       );
       if (!output) {
         GenezioTelemetry.sendEvent({
@@ -466,7 +472,10 @@ export async function deployClasses(
   if (projectId) {
     // Deploy environment variables if --upload-env is true
     if (options.env) {
-      const envFile = path.join(process.cwd(), options.env);
+      const cwd = projectConfiguration.workspace?.backend ? 
+          path.resolve(projectConfiguration.workspace.backend) 
+              : process.cwd()
+      const envFile = path.join(cwd, options.env);
       debugLogger.debug(`Loading environment variables from ${envFile}.`);
 
       if (!(await fileExists(envFile))) {
@@ -565,6 +574,7 @@ export async function deployFrontend(
   configuration: YamlProjectConfiguration,
   cloudAdapter: CloudAdapter,
   options: GenezioDeployOptions,
+  cwd: string,
 ) {
   const stage: string = options.stage || "";
   if (configuration.frontend) {
@@ -578,24 +588,25 @@ export async function deployFrontend(
       );
     }
     // check if the build folder exists
-    if (!(await fileExists(configuration.frontend.path))) {
+    const frontendPath = path.join(cwd, configuration.frontend?.path)
+    if (!(await fileExists(frontendPath))) {
       throw new Error(
         `The build folder does not exist. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
       );
     }
 
     // check if the build folder is empty
-    if (await isDirectoryEmpty(configuration.frontend.path)) {
+    if (await isDirectoryEmpty(frontendPath)) {
       throw new Error(
         `The build folder is empty. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
       );
     }
 
     // check if there are any .html files in the build folder
-    if (!(await directoryContainsHtmlFiles(configuration.frontend.path))) {
+    if (!(await directoryContainsHtmlFiles(frontendPath))) {
       log.info("WARNING: No .html files found in the build folder");
     } else if (
-      !(await directoryContainsIndexHtmlFiles(configuration.frontend.path))
+      !(await directoryContainsIndexHtmlFiles(frontendPath))
     ) {
       // check if there is no index.html file in the build folder
       log.info("WARNING: No index.html file found in the build folder");
@@ -608,8 +619,10 @@ export async function deployFrontend(
       configuration.frontend.subdomain = generateRandomSubdomain();
 
       // write the configuration in yaml file
-      await configuration.addSubdomain(configuration.frontend.subdomain);
+      await configuration.addSubdomain(configuration.frontend.subdomain, cwd);
     }
+
+    configuration.frontend.path = path.join(cwd, configuration.frontend.path)
 
     const url = await cloudAdapter.deployFrontend(
       configuration.name,

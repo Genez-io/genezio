@@ -169,7 +169,10 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
   while (true) {
     // Read the project configuration every time because it might change
     const yamlProjectConfiguration = await getProjectConfiguration();
-    let yamlLocalConfiguration = await getLocalConfiguration();
+    const localConfPath = yamlProjectConfiguration.workspace?.backend 
+        ? path.join(yamlProjectConfiguration.workspace.backend, "genezio.local.yaml") 
+        : undefined 
+    let yamlLocalConfiguration = await getLocalConfiguration(localConfPath);
     if (yamlLocalConfiguration) {
       if (yamlLocalConfiguration.generateSdk) {
         if (!(yamlLocalConfiguration.path && yamlLocalConfiguration.language)) {
@@ -271,7 +274,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         if (!localConfiguration) {
           throw new Error("Could not create local configuration file.");
         }
-        await localConfiguration.writeToFile();
+        await localConfiguration.writeToFile(localConfPath);
         yamlLocalConfiguration = await getLocalConfiguration();
       } else {
         const localConfiguration = await YamlLocalConfiguration.create({
@@ -280,7 +283,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         if (!localConfiguration) {
           throw new Error("Could not create local configuration file.");
         }
-        await localConfiguration.writeToFile();
+        await localConfiguration.writeToFile(localConfPath);
       }
     }
 
@@ -507,7 +510,8 @@ async function startProcesses(
   const bundlersOutput = await Promise.all(bundlersOutputPromise);
 
   const envVars: dotenv.DotenvPopulateInput = {};
-  dotenv.config({ path: options.env, processEnv: envVars });
+  const cwd = projectConfiguration.workspace?.backend ? path.join(projectConfiguration.workspace.backend, ".env") : path.join(process.cwd(), ".env")
+  dotenv.config({ path: options.env || cwd, processEnv: envVars });
   for (const bundlerOutput of bundlersOutput) {
     const extra = bundlerOutput.extra;
 
