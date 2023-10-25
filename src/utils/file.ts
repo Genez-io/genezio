@@ -291,6 +291,14 @@ export async function createLocalTempFolder(
         resolve(tempFolder);
         return;
       }
+    } else {
+      fs.mkdir(tempFolder, (error: any) => {
+        if (error) {
+          reject(error);
+        }
+
+        resolve(tempFolder);
+      });
     }
   });
 }
