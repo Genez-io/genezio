@@ -94,7 +94,7 @@ export class ProjectConfiguration {
     cloudProvider: CloudProviderIdentifier;
     astSummary: AstSummary;
     classes: ClassConfiguration[];
-    workspace?: Worksace;
+    workspace?: Workspace;
 
     constructor(
         yamlConfiguration: YamlProjectConfiguration,
