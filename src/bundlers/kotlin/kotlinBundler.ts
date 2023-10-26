@@ -82,15 +82,11 @@ export class KotlinBundler implements BundlerInterface {
     }) as ClassDefinition;
     const classConfigPath = path.dirname(classConfiguration.path)
 
-    // Error check: User is using Windows but paths are unix style (possible when cloning projects from git)
-    if (process.platform === "win32" && classConfigPath.includes("/")) {
-      throw new Error("Error: You are using Windows but your project contains unix style paths. Please use Windows style paths in genezio.yaml instead.");
-    }
-
     const moustacheViewForMain = {
       packageName: classConfigPath.substring(classConfigPath.lastIndexOf(path.sep) + 1),
       classFileName: path.basename(classConfiguration.path, path.extname(classConfiguration.path)),
       className: classConfiguration.name,
+      imports: classConfiguration.types.filter((t) => t.path !== undefined).map((p) => p.path),
       jsonRpcMethods: classConfiguration.methods
         .filter((m) => m.type === TriggerType.jsonrpc)
         .map((m) => ({

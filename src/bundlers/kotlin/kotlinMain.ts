@@ -27,6 +27,9 @@ import org.http4k.server.asServer
 import com.amazonaws.services.lambda.runtime.Context
 import com.amazonaws.services.lambda.runtime.RequestHandler
 import kotlinx.coroutines.runBlocking
+{{#imports}}
+import {{.}}
+{{/imports}}
 
 @Serializable
 data class JsonRpcRequest(

@@ -1,7 +1,7 @@
 import { execSync } from 'child_process';
 
 export function checkIfKotlinReqsAreInstalled() {
-    const JavaNotFoundError = `Error: Java not found`;
+    const JavaNotFoundError = `Error: Java Development Kit not found`;
     const KotlinNotFoundError = `Error: Kotlin not found! See https://kotlinlang.org/docs/command-line.html for installation instructions`;
     const GradleNotFoundError = "Error: Gradle not found! See https://gradle.org/install/ for installation instructions";
 

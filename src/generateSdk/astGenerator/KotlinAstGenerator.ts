@@ -45,7 +45,11 @@ interface KotlinAstClassDescription {
     classMethods: KotlinAstMethodDefinition[];
 }
 interface KotlinAstGeneratorOutput {
-    projectClasses: Map<string, KotlinAstClassDescription>;
+    projectClasses: {[key: string]: KotlinAstClassDescription};
+    packageName: string;
+    imports: {[key: string]: string};
+    successfulParse: boolean;
+    errorMessages: string[];
 }
 export class AstGenerator implements AstGeneratorInterface {
 
@@ -177,13 +181,17 @@ export class AstGenerator implements AstGeneratorInterface {
         const result = await runNewProcessWithResult(`java -jar ${genezioAstGeneratorPath} ${classAbsolutePath}`)
         // Map serialization workaround because JavaScript...
         const ast: KotlinAstGeneratorOutput = {
-            projectClasses: {} as Map<string, KotlinAstClassDescription>
+            projectClasses: {},
+            packageName: "",
+            imports: {} ,
+            successfulParse: false,
+            errorMessages: [],
         };
-        ast.projectClasses = new Map(Object.entries(JSON.parse(result).projectClasses))
 
+        const parse_result : KotlinAstGeneratorOutput = JSON.parse(result)
+        ast.projectClasses = parse_result.projectClasses
         // Convert the Kotlin AST to Genezio AST
-        const mainClass = ast.projectClasses.get(input.class.name || "") as KotlinAstClassDescription;
-
+        const mainClass = ast.projectClasses[input.class.name || ""] as KotlinAstClassDescription;
         if (!mainClass) {
             throw new Error(`No class named ${input.class.name} found. Check in the 'genezio.yaml' file and make sure the path is correct.`);
         }
@@ -213,7 +221,9 @@ export class AstGenerator implements AstGeneratorInterface {
         const body: [Node] = [genezioClass];
 
         // Parse other data classes
-        ast.projectClasses.forEach((c: KotlinAstClassDescription) => {
+        const class_keys = Object.keys(ast.projectClasses);
+        class_keys.forEach((key: string) => {
+            const c : KotlinAstClassDescription= ast.projectClasses[key];
             // Skip main class defined earlier
             if (c.className === mainClass.className) {
                 return;
@@ -222,7 +232,9 @@ export class AstGenerator implements AstGeneratorInterface {
             const genezioClass: StructLiteral = {
                 type: AstNodeType.StructLiteral,
                 name: c.className,
-                path: c.className,
+                // undefined means the class is in the same package
+                // else we need to import it in the generated caller code
+                path: parse_result.imports[c.className],
                 typeLiteral: {
                     type: AstNodeType.TypeLiteral,
                     properties: c.classConstructor.map((p: KotlinAstParameterDefinition) => {
