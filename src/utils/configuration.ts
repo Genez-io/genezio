@@ -130,7 +130,8 @@ async function tryToReadClassInformationFromDecorators(projectConfiguration: Yam
     );
 
    return await Promise.all(allJsFilesPaths.map((file) => {
-        return getDecoratorsFromFile(file.path);
+        const filePath = path.join(cwd, file.path)
+        return getDecoratorsFromFile(filePath);
     }))
 }
 

@@ -72,7 +72,7 @@ export async function getAllFilesFromPath(inputPath: string): Promise<FileDetail
           return {
             name: path.parse(file).name,
             extension: path.parse(file).ext,
-            path: path.join(inputPath, file),
+            path: file,
             filename: file,
           };
         });
