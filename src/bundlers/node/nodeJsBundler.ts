@@ -57,6 +57,7 @@ export class NodeJsBundler implements BundlerInterface {
         // create a regex to match any .env files
         const envFileRegex = new RegExp(/\.env(\..+)?$/);
 
+        const folderPath = path.join(cwd, file.path);
         // filter js files, node_modules and folders
         return (
           file.extension !== '.ts' &&
@@ -66,7 +67,7 @@ export class NodeJsBundler implements BundlerInterface {
           !file.path.includes('node_modules') &&
           !file.path.includes('.git') &&
           !envFileRegex.test(file.path) &&
-          !fs.lstatSync(file.path).isDirectory()
+          !fs.lstatSync(folderPath).isDirectory()
         );
       }
     );
@@ -84,7 +85,8 @@ export class NodeJsBundler implements BundlerInterface {
 
         // copy file to tmp folder
         const fileDestinationPath = path.join(tempFolderPath, filePath.filename);
-        return fs.promises.copyFile(filePath.path, fileDestinationPath).catch((error) => {
+        const sourceFilePath = path.join(cwd, filePath.path);
+        return fs.promises.copyFile(sourceFilePath, fileDestinationPath).catch((error) => {
           if (error.code === "EACCES") {
             throw new Error(GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE(filePath.path))
           }
