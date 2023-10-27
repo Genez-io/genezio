@@ -5,6 +5,7 @@ import { debugLogger, printAdaptiveLog, printUninformativeLog } from "../utils/l
 import { AbortController } from "node-abort-controller";
 import version from "../utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
+import log from "loglevel";
 
 export default async function deleteProject(
   projectId: string,
@@ -48,7 +49,7 @@ export default async function deleteProject(
   }
 
   if (response.data.status !== 'ok') {
-    console.log('Unknown error in `delete project` response from server.');
+    log.error('Unknown error in `delete project` response from server.');
     return false;
   }
 

@@ -84,8 +84,8 @@ export class GenezioCloudAdapter implements CloudAdapter {
                     
                    }
 
-                   console.log(dependenciesTable.toString());
-                   console.log(filesTable.toString());
+                   log.info(dependenciesTable.toString());
+                   log.info(filesTable.toString());
                    throw new Error(`
 Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFixed(
                      2

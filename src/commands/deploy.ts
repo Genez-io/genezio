@@ -564,7 +564,7 @@ export async function deployClasses(
       }
     }
 
-    console.log(
+    log.info(
       `Your backend project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`,
     );
   }
