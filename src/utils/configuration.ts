@@ -149,6 +149,7 @@ export async function getProjectConfiguration(
   } catch (error) {
     throw new Error(`The configuration yaml file is not valid.\n${error}`);
   }
+
   const projectConfiguration = await YamlProjectConfiguration.create(
     configurationFileContent
   );

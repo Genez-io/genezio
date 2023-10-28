@@ -571,7 +571,8 @@ export class YamlProjectConfiguration {
       scripts,
       plugins,
       configurationFileContent.options,
-
+      undefined,
+      configurationFileContent.packageManager,
     );
   }
 

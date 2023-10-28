@@ -73,7 +73,7 @@ export async function genezioCommand() {
     {
       type: "input",
       name: "projectName",
-      message: colors.magenta("Please enter a name for your app:"),
+      message: colors.magenta("Please enter a name for your project:"),
       default: "genezio-getting-started",
       validate: (input: string) => {
         const regex = /^[a-zA-Z][-a-zA-Z0-9]*$/;

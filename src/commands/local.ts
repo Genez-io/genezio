@@ -169,15 +169,11 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
   while (true) {
     // Read the project configuration every time because it might change
     const yamlProjectConfiguration = await getProjectConfiguration();
-    if (!Language[options.language as keyof typeof Language]) {
+    if (!Language[yamlProjectConfiguration.language as keyof typeof Language]) {
       log.info(
         "This sdk.language is not supported by default. It will be treated as a custom language.",
       );
     }
-    yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
-      Language[options.language as keyof typeof Language],
-      options.path || process.cwd(),
-    );
 
     if (!yamlProjectConfiguration.packageManager) {
       const optionalPackageManager: Answers = await inquirer.prompt([
@@ -194,6 +190,16 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       yamlProjectConfiguration.packageManager = optionalPackageManager.packageManager;
       await yamlProjectConfiguration.writeToFile("./genezio.yaml", YamlProjectConfigurationType.ROOT);
     }
+
+    const sdkPath = await createLocalTempFolder(
+      `${yamlProjectConfiguration.name}-${yamlProjectConfiguration.region}`,
+      true,
+    );
+
+    yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
+      Language[yamlProjectConfiguration.language as keyof typeof Language],
+      sdkPath,
+    );
 
     let sdk: SdkGeneratorResponse;
     let processForClasses: Map<string, ClassProcess>;
