@@ -169,19 +169,17 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
   while (true) {
     // Read the project configuration every time because it might change
     const yamlProjectConfiguration = await getProjectConfiguration();
-    if (options.path && options.language) {
-      if (!Language[options.language as keyof typeof Language]) {
-        log.info(
-          "This sdk.language is not supported by default. It will be treated as a custom language.",
-        );
-      }
-      yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
-        Language[options.language as keyof typeof Language],
-        options.path,
+    if (!Language[options.language as keyof typeof Language]) {
+      log.info(
+        "This sdk.language is not supported by default. It will be treated as a custom language.",
       );
     }
+    yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
+      Language[options.language as keyof typeof Language],
+      options.path || process.cwd(),
+    );
 
-    if (!yamlProjectConfiguration.sdk && !yamlProjectConfiguration.packageManager) {
+    if (!yamlProjectConfiguration.packageManager) {
       const optionalPackageManager: Answers = await inquirer.prompt([
         {
           type: "list",
@@ -199,7 +197,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 
     let sdk: SdkGeneratorResponse;
     let processForClasses: Map<string, ClassProcess>;
-    let projectConfiguration: ProjectConfiguration;
+    ProjectConfiguration;
 
     const promiseListenForChanges: Promise<BundlerRestartResponse> =
       listenForChanges(undefined);

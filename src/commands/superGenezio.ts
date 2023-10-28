@@ -67,12 +67,21 @@ export async function genezioCommand() {
 
   log.info(colors.cyan(`Your project will start from the ${colors.green(templateAnswer.template)} template.\n`));
 
+  // must match regex [a-zA-Z][-a-zA-Z0-9]*
+
   const projectNameAnswer: Answers = await inquirer.prompt([
     {
       type: "input",
       name: "projectName",
       message: colors.magenta("Please enter a name for your app:"),
-      default: "genezio-getting-started"
+      default: "genezio-getting-started",
+      validate: (input: string) => {
+        const regex = /^[a-zA-Z][-a-zA-Z0-9]*$/;
+        if (!regex.test(input)) {
+          return colors.red("The name must match the regex [a-zA-Z][-a-zA-Z0-9]*");
+        }
+        return true;
+      }
     },
   ]);
 
@@ -131,24 +140,12 @@ export async function genezioCommand() {
 
   printAdaptiveLog("Creating the project", "end");
 
-  const deployAnswer: Answers = await inquirer.prompt([
-    {
-      type: "confirm",
-      name: "deploy",
-      message: colors.magenta("Do you want us to deploy your project?"),
-      default: true
-    },
-  ]);
+  log.info(colors.green(`Deploying your project...\n`));
+  // change cwd to the new project folder
+  process.chdir(path.join(process.cwd(), directoryName));
+  await deployCommand({installDeps: true});
+  return;
 
-  if (deployAnswer.deploy) {
-    log.info(colors.green(`Deploying your project...\n`));
-    // change cwd to the new project folder
-    process.chdir(path.join(process.cwd(), directoryName));
-    await deployCommand({installDeps: true});
-    return;
-  }
-
-  log.info(colors.green(`\nYour project is ready! You can deploy it with the command ${colors.cyan("genezio deploy")}.`));
 }
 
 export async function prepareProjectFolder(

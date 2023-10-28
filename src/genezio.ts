@@ -61,6 +61,8 @@ program
       GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_COMMAND_ERROR, errorTrace: error.message});
       exit(1);
     });
+
+    exit(0);
   });
 
 
@@ -96,6 +98,7 @@ program
       exit(1);
     });
     await logOutdatedVersion();
+    exit(0);
   });
 
 // genezio deploy command
