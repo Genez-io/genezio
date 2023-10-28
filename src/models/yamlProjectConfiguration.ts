@@ -236,6 +236,12 @@ export class YamlWorkspace {
 
 const supportedNodeRuntimes: string[] = ["nodejs16.x", "nodejs18.x"];
 
+export enum YamlProjectConfigurationType {
+    FRONTEND,
+    BACKEND,
+    ROOT
+}
+
 /**
  * This class represents the model for the YAML configuration file.
  */
@@ -588,25 +594,42 @@ export class YamlProjectConfiguration {
     );
   }
 
-  async writeToFile(path = "./genezio.yaml") {
+  // The type parameter is used only if the yaml is a root type of genezio.yaml.
+  // It is used to decide if the genezio.yaml file that will be written is a frontend or
+  // a root type of genezio.yaml.
+  //
+  // TODO: this yaml mutation is becoming a mess and we should reconsider how
+  // we implement it.
+  async writeToFile(path = "./genezio.yaml", type?: YamlProjectConfigurationType) {
     let content;
 
     if (this.workspace) {
-      content = {
-        scripts: this.scripts
-          ? {
-              preFrontendDeploy: this.scripts?.preFrontendDeploy,
-              postFrontendDeploy: this.scripts?.postFrontendDeploy,
-            }
-          : undefined,
-        frontend: this.frontend
-          ? {
-              path: this.frontend?.path,
-              subdomain: this.frontend?.subdomain,
-            }
-          : undefined,
-        packageManager: this.packageManager,
-      };
+        if (type === YamlProjectConfigurationType.FRONTEND) {
+          content = {
+            scripts: this.scripts
+              ? {
+                  preFrontendDeploy: this.scripts?.preFrontendDeploy,
+                  postFrontendDeploy: this.scripts?.postFrontendDeploy,
+                }
+              : undefined,
+            frontend: this.frontend
+              ? {
+                  path: this.frontend?.path,
+                  subdomain: this.frontend?.subdomain,
+                }
+              : undefined,
+            packageManager: this.packageManager,
+          };
+        } else if (type === YamlProjectConfigurationType.ROOT) {
+          content = {  
+            name: this.name,
+            region: this.region,
+            language: this.language,
+            packageManager: this.packageManager,
+            cloudProvider: this.cloudProvider ? this.cloudProvider : undefined,
+            workspace: this.workspace
+          }
+        }
     } else {
       content = {
         name: this.name,
@@ -665,6 +688,6 @@ export class YamlProjectConfiguration {
       path: this.frontend?.path || "./frontend/build",
       subdomain: subdomain,
     };
-    await this.writeToFile(path.join(cwd, "genezio.yaml"));
+    await this.writeToFile(path.join(cwd, "genezio.yaml"), YamlProjectConfigurationType.FRONTEND);
   }
 }

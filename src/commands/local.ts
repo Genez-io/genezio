@@ -46,6 +46,7 @@ import {
   Language,
   PackageManager,
   YamlProjectConfiguration,
+  YamlProjectConfigurationType,
   YamlSdkConfiguration,
 } from "../models/yamlProjectConfiguration.js";
 import hash from "hash-it";
@@ -168,9 +169,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
   while (true) {
     // Read the project configuration every time because it might change
     const yamlProjectConfiguration = await getProjectConfiguration();
-    const localConfPath = yamlProjectConfiguration.workspace?.backend 
-        ? path.join(yamlProjectConfiguration.workspace.backend, "genezio.local.yaml") 
-        : undefined 
     if (options.path && options.language) {
       if (!Language[options.language as keyof typeof Language]) {
         log.info(
@@ -196,7 +194,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         },
       ]);
       yamlProjectConfiguration.packageManager = optionalPackageManager.packageManager;
-      await yamlProjectConfiguration.writeToFile();
+      await yamlProjectConfiguration.writeToFile("./genezio.yaml", YamlProjectConfigurationType.ROOT);
     }
 
     let sdk: SdkGeneratorResponse;
