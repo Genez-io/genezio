@@ -197,7 +197,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 
     let sdk: SdkGeneratorResponse;
     let processForClasses: Map<string, ClassProcess>;
-    ProjectConfiguration;
+    let projectConfiguration: ProjectConfiguration;
 
     const promiseListenForChanges: Promise<BundlerRestartResponse> =
       listenForChanges(undefined);
