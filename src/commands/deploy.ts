@@ -34,7 +34,7 @@ import {
 } from "../utils/file.js";
 import { printAdaptiveLog, debugLogger } from "../utils/logging.js";
 import { runNewProcess } from "../utils/process.js";
-import { reportSuccess } from "../utils/reporter.js";
+import { GenezioCommand, reportSuccess } from "../utils/reporter.js";
 import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 import { generateRandomSubdomain } from "../utils/yaml.js";
 import cliProgress from "cli-progress";
@@ -434,8 +434,6 @@ export async function deployClasses(
     },
   );
 
-  reportSuccess(result.classes, sdkResponse);
-
   await replaceUrlsInSdk(
     sdkResponse,
     result.classes.map((c: any) => ({
@@ -472,6 +470,12 @@ export async function deployClasses(
       configuration.language,
     );
   }
+
+  reportSuccess(result.classes, sdkResponse, GenezioCommand.deploy, {
+    name: configuration.name,
+    region: configuration.region,
+    stage: stage,
+  });
 
   const projectId = result.classes[0].projectId;
   if (projectId) {
@@ -694,11 +698,4 @@ async function compileSdk(
     getNodeModulePackageJson(projectName, region, stage),
   );
   await asyncExec("npm publish", { cwd: modulePath });
-  log.info(
-    "\x1b[32m%s\x1b[0m",
-    `Your SDK is ready to be used. To import it in your client project, run ${colors.cyan(
-      `npm install @genezio-sdk/${projectName}_${region}@1.0.0-${stage}`,
-    )}`,
-    `${colors.green("in your client's root folder.")}`,
-  );
 }
