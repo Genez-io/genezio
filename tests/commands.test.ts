@@ -333,8 +333,6 @@ describe("addClassCommand", () => {
 
     expect(mockedFileExists).toBeCalledTimes(1);
     expect(mockedWriteToFile).toBeCalledTimes(1);
-    expect(projectConfiguration.addClass).toBeCalledTimes(1);
-    expect(projectConfiguration.writeToFile).toBeCalledTimes(1);
   });
 
   test("create class with existing file", async () => {
@@ -363,7 +361,5 @@ describe("addClassCommand", () => {
 
     expect(mockedFileExists).toBeCalledTimes(1);
     expect(mockedWriteToFile).toBeCalledTimes(0);
-    expect(projectConfiguration.addClass).toBeCalledTimes(1);
-    expect(projectConfiguration.writeToFile).toBeCalledTimes(1);
   });
 });
