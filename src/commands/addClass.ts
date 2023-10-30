@@ -1,5 +1,6 @@
 import log from "loglevel";
 import path from "path";
+import { newClassTemplateNode } from "../generateSdk/templates/newProject.js";
 
 import { TriggerType, YamlClassConfiguration } from "../models/yamlProjectConfiguration.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
@@ -54,17 +55,25 @@ export async function addClassCommand(classPath: string, classType: string) {
     }
   }
 
+  let classContent = ""; 
+
+  if (["js", "ts"].includes(classExtension)) {
+    let name = className.split(".")[0];
+    name = name.charAt(0).toUpperCase() + name.slice(1);
+    
+    classContent = newClassTemplateNode(name);
+  }
+
+
   // create the file if it does not exist
   if (!(await fileExists(classPath))) {
-    await writeToFile(".", classPath, "", true).catch((error) => {
+    await writeToFile(".", classPath, classContent, true).catch((error) => {
       log.error(error.toString());
       GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_ADD_CLASS_ERROR, errorTrace: error.toString()});
       throw error;
     });
   }
 
-  projectConfiguration.addClass(classPath, classType as TriggerType, []);
-  await projectConfiguration.writeToFile();
 
   log.info("\x1b[36m%s\x1b[0m", "Class added successfully.");
 }
