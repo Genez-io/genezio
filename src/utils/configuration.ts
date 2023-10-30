@@ -3,12 +3,11 @@ import { createRequire } from 'module';
 import {
     TriggerType,
     YamlClassConfiguration,
-  YamlLocalConfiguration,
   YamlMethodConfiguration,
   YamlProjectConfiguration,
   getTriggerTypeFromString,
 } from "../models/yamlProjectConfiguration.js";
-import { checkYamlFileExists, getAllFilesFromCurrentPath, readUTF8File } from "./file.js";
+import { checkYamlFileExists, getAllFilesFromPath, readUTF8File } from "./file.js";
 import { parse } from "yaml";
 import babel from '@babel/core';
 import fs from "fs"
@@ -120,7 +119,8 @@ async function getDecoratorsFromFile(file: string): Promise<ClassInfo[]> {
 }
 
 async function tryToReadClassInformationFromDecorators(projectConfiguration: YamlProjectConfiguration) {
-    const allJsFilesPaths = (await getAllFilesFromCurrentPath()).filter(
+    const cwd = projectConfiguration.workspace?.backend || process.cwd()
+    const allJsFilesPaths = (await getAllFilesFromPath(cwd)).filter(
         (file: FileDetails) => {
             return (
                 (file.extension === ".js" || file.extension === ".ts") &&
@@ -131,7 +131,8 @@ async function tryToReadClassInformationFromDecorators(projectConfiguration: Yam
     );
 
    return await Promise.all(allJsFilesPaths.map((file) => {
-        return getDecoratorsFromFile(file.path)
+        const filePath = path.join(cwd, file.path)
+        return getDecoratorsFromFile(filePath)
             .catch((error)=>{ 
                 if (error.reasonCode == "MissingOneOfPlugins") {
                     debugLogger.error(`Error while parsing the file ${file.path}`, error) 
@@ -159,9 +160,11 @@ export async function getProjectConfiguration(
   } catch (error) {
     throw new Error(`The configuration yaml file is not valid.\n${error}`);
   }
+
   const projectConfiguration = await YamlProjectConfiguration.create(
     configurationFileContent
   );
+  
 
   const result = await tryToReadClassInformationFromDecorators(projectConfiguration)
 
@@ -200,30 +203,4 @@ export async function getProjectConfiguration(
   });
 
   return projectConfiguration;
-}
-
-export async function getLocalConfiguration(
-  configurationFilePath = "./genezio.local.yaml"
-): Promise<YamlLocalConfiguration | undefined> {
-  if (!(await checkYamlFileExists(configurationFilePath))) {
-    return undefined;
-  }
-
-  const genezioYamlPath = path.join(configurationFilePath);
-  const configurationFileContentUTF8 = await readUTF8File(genezioYamlPath);
-  let configurationFileContent = null;
-
-  try {
-    configurationFileContent = await parse(configurationFileContentUTF8);
-  } catch (error) {
-    throw new Error(`The configuration yaml file is not valid.\n${error}`);
-  }
-  if (!configurationFileContent) {
-    return undefined;
-  }
-  const localConfiguration = await YamlLocalConfiguration.create(
-    configurationFileContent
-  );
-
-  return localConfiguration;
 }

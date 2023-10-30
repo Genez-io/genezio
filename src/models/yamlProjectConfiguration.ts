@@ -1,6 +1,6 @@
 import path from "path";
-import yaml from "yaml";
-import { getFileDetails, writeToFile } from "../utils/file.js";
+import yaml, { parse } from "yaml";
+import { fileExists, getFileDetails, readUTF8File, writeToFile } from "../utils/file.js";
 import { regions } from "../utils/configs.js";
 import { isValidCron } from "cron-validator";
 import log from "loglevel";
@@ -224,7 +224,23 @@ export class YamlPluginsConfiguration {
   }
 }
 
+export class YamlWorkspace {
+    backend: string;
+    frontend: string;
+
+    constructor(backend: string, frontend: string) {
+        this.backend = backend;
+        this.frontend = frontend;
+    }
+}
+
 const supportedNodeRuntimes: string[] = ["nodejs16.x", "nodejs18.x"];
+
+export enum YamlProjectConfigurationType {
+    FRONTEND,
+    BACKEND,
+    ROOT
+}
 
 /**
  * This class represents the model for the YAML configuration file.
@@ -233,6 +249,7 @@ export class YamlProjectConfiguration {
   name: string;
   region: string;
   language: Language;
+  workspace?: YamlWorkspace;
   sdk?: YamlSdkConfiguration;
   cloudProvider?: CloudProviderIdentifier;
   options?: NodeOptions;
@@ -240,6 +257,7 @@ export class YamlProjectConfiguration {
   frontend?: YamlFrontend;
   scripts?: YamlScriptsConfiguration;
   plugins?: YamlPluginsConfiguration;
+  packageManager?: PackageManager | undefined;
 
   constructor(
     name: string,
@@ -252,6 +270,8 @@ export class YamlProjectConfiguration {
     scripts: YamlScriptsConfiguration | undefined = undefined,
     plugins: YamlPluginsConfiguration | undefined = undefined,
     options: NodeOptions | undefined = undefined,
+    workspace: YamlWorkspace | undefined = undefined,
+    packageManager: PackageManager | undefined = undefined,
   ) {
     this.name = name;
     this.region = region;
@@ -263,6 +283,8 @@ export class YamlProjectConfiguration {
     this.scripts = scripts;
     this.plugins = plugins;
     this.options = options;
+    this.workspace = workspace;
+    this.packageManager = packageManager;
   }
 
   getClassConfiguration(path: string): YamlClassConfiguration {
@@ -277,9 +299,160 @@ export class YamlProjectConfiguration {
     return classConfiguration;
   }
 
+  static async parseBackendYaml(workspace: any) {
+      if (!fileExists(workspace.backend)) {
+          throw new Error(
+              `The folder ${workspace.backend} specified in genezio.yaml in workspace.backend does not exist.`,
+          );
+      }
+      let backendFileContent
+      try {
+          const backendFileContentUTF8 = await readUTF8File(path.join(workspace.backend, "genezio.yaml"));
+          backendFileContent = parse(backendFileContentUTF8)
+      } catch {
+          return {    
+              classes: []
+          }
+      }
+      let classes: YamlClassConfiguration[] = [];
+      const unparsedClasses: any[] = backendFileContent.classes;
+
+      // check if unparsedClasses is an array
+      if (unparsedClasses && !Array.isArray(unparsedClasses)) {
+          throw new Error("The classes property must be an array.");
+      }
+
+      if (unparsedClasses && Array.isArray(unparsedClasses)) {
+          classes = await Promise.all(
+              unparsedClasses.map((c) => YamlClassConfiguration.create(c)),
+          );
+      }
+      const backendScripts: YamlScriptsConfiguration | undefined =
+          {
+          preBackendDeploy: backendFileContent.scripts.preBackendDeploy,
+          postBackendDeploy: backendFileContent.scripts.postBackendDeploy,
+      }
+      if (
+          backendFileContent.options &&
+          backendFileContent.options.nodeRuntime &&
+      !supportedNodeRuntimes.includes(
+          backendFileContent.options.nodeRuntime,
+          )
+      ) {
+          throw new Error(
+              "The node version in the genezio.yaml configuration file is not valid. The value must be one of the following: " +
+                  supportedNodeRuntimes.join(", "),
+          );
+      }
+
+      return {
+          options: backendFileContent.options,
+          classes,
+          backendScripts
+      }
+
+  }
+
+  static async parseFrontendYaml(workspace: any) {
+    if (!fileExists(workspace.frontend)) {
+        throw new Error(
+          `The folder ${workspace.frontend} specified in genezio.yaml in workspace.backend does not exist.`,
+        );
+    }
+
+    const frontendFileContentUTF8 = await readUTF8File(path.join(workspace.frontend, "genezio.yaml"));
+    const frontendFileContent = parse(frontendFileContentUTF8)
+    const frontendScripts: YamlScriptsConfiguration = {
+        preFrontendDeploy: frontendFileContent.scripts?.preFrontendDeploy,
+        postFrontendDeploy:frontendFileContent.scripts?.postFrontendDeploy,
+    }
+
+    if (frontendFileContent.frontend) {
+      if (!frontendFileContent.frontend.path) {
+        throw new Error("The frontend.path value is not set.");
+      }
+    }
+
+    return {
+        frontendScripts,
+        frontend: frontendFileContent.frontend
+    }
+  }
+
+  static async parseWorkflowYaml(
+    configurationFileContent: any,
+  ): Promise<YamlProjectConfiguration> {
+    if (!configurationFileContent.name) {
+      throw new Error(
+        "The name property is missing from the configuration file.",
+      );
+    }
+
+    const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
+    if (!nameRegex.test(configurationFileContent.name)) {
+      throw new Error(
+        "The project name is not valid. It must be [a-zA-Z][-a-zA-Z0-9]*",
+      );
+    }
+
+    if (configurationFileContent.cloudProvider) {
+      if (!cloudProviders.includes(configurationFileContent.cloudProvider)) {
+        throw new Error(
+          `The cloud provider ${configurationFileContent.cloudProvider} is invalid. Please use ${CloudProviderIdentifier.GENEZIO} or ${CloudProviderIdentifier.SELF_HOSTED_AWS}.`,
+        );
+      }
+    }
+
+    if (configurationFileContent.region) {
+      if (!regions.includes(configurationFileContent.region)) {
+        throw new Error(
+          `The region is invalid. Please use a valid region.\n Region list: ${regions}`,
+        );
+      }
+    }
+
+    const name = configurationFileContent.name
+    const cloudProvider = configurationFileContent.cloudProvider || CloudProviderIdentifier.GENEZIO 
+    const language = configurationFileContent.language
+
+    if (!configurationFileContent.workspace.frontend) {
+        throw new Error("\"frontend\" property is missing from workspace in genezio.yaml.")
+    }
+
+    if (!configurationFileContent.workspace.backend) {
+        throw new Error("\"backend\" property is missing from workspace in genezio.yaml.")
+    }
+
+    const workspace = new YamlWorkspace(path.resolve(configurationFileContent.workspace.backend), path.resolve(configurationFileContent.workspace.frontend))
+       
+    const backend = await this.parseBackendYaml(workspace)
+    const frontend = await this.parseFrontendYaml(workspace)
+
+    return new YamlProjectConfiguration(
+      name,
+      configurationFileContent.region || "us-east-1",
+      language,
+      undefined,
+      cloudProvider,
+      backend.classes,
+      frontend.frontend,
+      { 
+          ...backend.backendScripts,
+          ...frontend.frontendScripts,
+      },
+      undefined,
+      backend.options,
+      workspace,
+      configurationFileContent.packageManager,
+    );
+  }
+
   static async create(
     configurationFileContent: any,
   ): Promise<YamlProjectConfiguration> {
+      if (configurationFileContent.workspace) {
+        return this.parseWorkflowYaml(configurationFileContent)
+      }
     if (!configurationFileContent.name) {
       throw new Error(
         "The name property is missing from the configuration file.",
@@ -398,6 +571,8 @@ export class YamlProjectConfiguration {
       scripts,
       plugins,
       configurationFileContent.options,
+      undefined,
+      configurationFileContent.packageManager,
     );
   }
 
@@ -420,46 +595,84 @@ export class YamlProjectConfiguration {
     );
   }
 
-  async writeToFile(path = "./genezio.yaml") {
-    const content = {
-      name: this.name,
-      region: this.region,
-      language: this.language,
-      cloudProvider: this.cloudProvider ? this.cloudProvider : undefined,
-      options: this.options ? this.options : undefined,
-      sdk: this.sdk
-        ? {
-            language: this.sdk?.language,
-            path: this.sdk?.path,
+  // The type parameter is used only if the yaml is a root type of genezio.yaml.
+  // It is used to decide if the genezio.yaml file that will be written is a frontend or
+  // a root type of genezio.yaml.
+  //
+  // TODO: this yaml mutation is becoming a mess and we should reconsider how
+  // we implement it.
+  async writeToFile(path = "./genezio.yaml", type?: YamlProjectConfigurationType) {
+    let content;
+
+    if (this.workspace) {
+        if (type === YamlProjectConfigurationType.FRONTEND) {
+          content = {
+            scripts: this.scripts
+              ? {
+                  preFrontendDeploy: this.scripts?.preFrontendDeploy,
+                  postFrontendDeploy: this.scripts?.postFrontendDeploy,
+                }
+              : undefined,
+            frontend: this.frontend
+              ? {
+                  path: this.frontend?.path,
+                  subdomain: this.frontend?.subdomain,
+                }
+              : undefined,
+            packageManager: this.packageManager,
+          };
+        } else if (type === YamlProjectConfigurationType.ROOT) {
+          content = {  
+            name: this.name,
+            region: this.region,
+            language: this.language,
+            packageManager: this.packageManager,
+            cloudProvider: this.cloudProvider ? this.cloudProvider : undefined,
+            workspace: this.workspace
           }
-        : undefined,
-      scripts: this.scripts
-        ? {
-            preBackendDeploy: this.scripts?.preBackendDeploy,
-            preFrontendDeploy: this.scripts?.preFrontendDeploy,
-            postBackendDeploy: this.scripts?.postBackendDeploy,
-            postFrontendDeploy: this.scripts?.postFrontendDeploy,
-          }
-        : undefined,
-      frontend: this.frontend
-        ? {
-            path: this.frontend?.path,
-            subdomain: this.frontend?.subdomain,
-          }
-        : undefined,
-      classes: this.classes.length
-        ? this.classes?.map((c) => ({
-            path: c.path,
-            type: c.type,
-            name: c.name ? c.name : undefined,
-            methods: c.methods.map((m) => ({
-              name: m.name,
-              type: m.type,
-              cronString: m.cronString,
-            })),
-          }))
-        : undefined,
-    };
+        }
+    } else {
+      content = {
+        name: this.name,
+        region: this.region,
+        language: this.language,
+        cloudProvider: this.cloudProvider ? this.cloudProvider : undefined,
+        options: this.options ? this.options : undefined,
+        sdk: this.sdk
+          ? {
+              language: this.sdk?.language,
+              path: this.sdk?.path,
+            }
+          : undefined,
+        scripts: this.scripts
+          ? {
+              preBackendDeploy: this.scripts?.preBackendDeploy,
+              preFrontendDeploy: this.scripts?.preFrontendDeploy,
+              postBackendDeploy: this.scripts?.postBackendDeploy,
+              postFrontendDeploy: this.scripts?.postFrontendDeploy,
+            }
+          : undefined,
+        frontend: this.frontend
+          ? {
+              path: this.frontend?.path,
+              subdomain: this.frontend?.subdomain,
+            }
+          : undefined,
+        classes: this.classes.length
+          ? this.classes?.map((c) => ({
+              path: c.path,
+              type: c.type,
+              name: c.name ? c.name : undefined,
+              methods: c.methods.map((m) => ({
+                name: m.name,
+                type: m.type,
+                cronString: m.cronString,
+              })),
+            }))
+          : undefined,
+        packageManager: this.packageManager ? this.packageManager : undefined,
+      };
+    }
 
     const fileDetails = getFileDetails(path);
     const yamlString = yaml.stringify(content);
@@ -471,68 +684,11 @@ export class YamlProjectConfiguration {
     );
   }
 
-  async addSubdomain(subdomain: string) {
+  async addSubdomain(subdomain: string, cwd: string) {
     this.frontend = {
       path: this.frontend?.path || "./frontend/build",
       subdomain: subdomain,
     };
-    await this.writeToFile();
-  }
-}
-
-export class YamlLocalConfiguration {
-  generateSdk: boolean;
-  path?: string | undefined;
-  language?: Language | undefined;
-  pagckageManager?: PackageManager | undefined;
-
-  constructor(
-    generateSdk: boolean,
-    path: string | undefined = undefined,
-    language: Language | undefined = undefined,
-    packageManager: PackageManager | undefined = undefined,
-  ) {
-    this.generateSdk = generateSdk;
-    this.path = path;
-    this.language = language;
-    this.pagckageManager = packageManager;
-  }
-
-  static async create(
-    yamlLocalConfiguration: any,
-  ): Promise<YamlLocalConfiguration | undefined> {
-    if (yamlLocalConfiguration.generateSdk === undefined) {
-      return undefined;
-    }
-    const generateSdk: boolean = yamlLocalConfiguration.generateSdk;
-    const path: string | undefined = yamlLocalConfiguration.path;
-    const language: Language | undefined = yamlLocalConfiguration.language;
-    const packageManager: PackageManager | undefined =
-      yamlLocalConfiguration.packageManager;
-
-    return new YamlLocalConfiguration(
-      generateSdk,
-      path,
-      language,
-      packageManager,
-    );
-  }
-
-  async writeToFile(path = "./genezio.local.yaml") {
-    const content = {
-      generateSdk: this.generateSdk,
-      path: this.path,
-      language: this.language,
-      packageManager: this.pagckageManager,
-    };
-
-    const fileDetails = getFileDetails(path);
-    const yamlString = yaml.stringify(content);
-
-    await writeToFile(fileDetails.path, fileDetails.filename, yamlString).catch(
-      (error) => {
-        console.error(error.toString());
-      },
-    );
+    await this.writeToFile(path.join(cwd, "genezio.yaml"), YamlProjectConfigurationType.FRONTEND);
   }
 }

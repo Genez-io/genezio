@@ -1,5 +1,10 @@
 import { YamlClassConfiguration } from "./yamlProjectConfiguration.js";
 
+export enum GenezioCommandTemplates {
+  FULLSTACK = "Fullstack",
+  BACKEND = "Backend-Only"
+}
+
 export type ModelView = {
   path: string;
   externalTypes: {
