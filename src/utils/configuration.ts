@@ -3,7 +3,6 @@ import { createRequire } from 'module';
 import {
     TriggerType,
     YamlClassConfiguration,
-  YamlLocalConfiguration,
   YamlMethodConfiguration,
   YamlProjectConfiguration,
   getTriggerTypeFromString,
@@ -151,6 +150,7 @@ export async function getProjectConfiguration(
   } catch (error) {
     throw new Error(`The configuration yaml file is not valid.\n${error}`);
   }
+
   const projectConfiguration = await YamlProjectConfiguration.create(
     configurationFileContent
   );
@@ -193,30 +193,4 @@ export async function getProjectConfiguration(
   });
 
   return projectConfiguration;
-}
-
-export async function getLocalConfiguration(
-  configurationFilePath = "./genezio.local.yaml"
-): Promise<YamlLocalConfiguration | undefined> {
-  if (!(await checkYamlFileExists(configurationFilePath))) {
-    return undefined;
-  }
-
-  const genezioYamlPath = path.join(configurationFilePath);
-  const configurationFileContentUTF8 = await readUTF8File(genezioYamlPath);
-  let configurationFileContent = null;
-
-  try {
-    configurationFileContent = await parse(configurationFileContentUTF8);
-  } catch (error) {
-    throw new Error(`The configuration yaml file is not valid.\n${error}`);
-  }
-  if (!configurationFileContent) {
-    return undefined;
-  }
-  const localConfiguration = await YamlLocalConfiguration.create(
-    configurationFileContent
-  );
-
-  return localConfiguration;
 }

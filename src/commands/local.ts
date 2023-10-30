@@ -6,7 +6,7 @@ import chokidar from "chokidar";
 import cors from "cors";
 import bodyParser from "body-parser";
 import { ChildProcess, spawn, exec } from "child_process";
-import path, { resolve } from "path";
+import path from "path";
 import url from "url";
 import * as http from "http";
 import colors from "colors";
@@ -19,7 +19,6 @@ import { GENEZIO_NO_CLASSES_FOUND, PORT_ALREADY_USED } from "../errors.js";
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
 import { AstSummary } from "../models/astSummary.js";
 import {
-  getLocalConfiguration,
   getProjectConfiguration,
 } from "../utils/configuration.js";
 import { BundlerInterface } from "../bundlers/bundler.interface.js";
@@ -46,8 +45,8 @@ import { findAvailablePort } from "../utils/findAvailablePort.js";
 import {
   Language,
   PackageManager,
-  YamlLocalConfiguration,
   YamlProjectConfiguration,
+  YamlProjectConfigurationType,
   YamlSdkConfiguration,
 } from "../models/yamlProjectConfiguration.js";
 import hash from "hash-it";
@@ -63,6 +62,7 @@ import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
 import util from "util";
 import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJson.js";
 import ts from "typescript";
+
 const asyncExec = util.promisify(exec);
 
 type ClassProcess = {
@@ -169,123 +169,37 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
   while (true) {
     // Read the project configuration every time because it might change
     const yamlProjectConfiguration = await getProjectConfiguration();
-    const localConfPath = yamlProjectConfiguration.workspace?.backend 
-        ? path.join(yamlProjectConfiguration.workspace.backend, "genezio.local.yaml") 
-        : undefined 
-    let yamlLocalConfiguration = await getLocalConfiguration(localConfPath);
-    if (yamlLocalConfiguration) {
-      if (yamlLocalConfiguration.generateSdk) {
-        if (!(yamlLocalConfiguration.path && yamlLocalConfiguration.language)) {
-          yamlProjectConfiguration.sdk = undefined;
-          yamlLocalConfiguration = undefined;
-        } else {
-          if (
-            !Language[yamlLocalConfiguration.language as keyof typeof Language]
-          ) {
-            log.info(
-              "This sdk.language is not supported by default. It will be treated as a custom language.",
-            );
-          }
-          yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
-            Language[yamlLocalConfiguration.language as keyof typeof Language],
-            yamlLocalConfiguration.path,
-          );
-        }
-      } else {
-        yamlProjectConfiguration.sdk = undefined;
-      }
-    }
-    if (options.path && options.language) {
-      if (!Language[options.language as keyof typeof Language]) {
-        log.info(
-          "This sdk.language is not supported by default. It will be treated as a custom language.",
-        );
-      }
-      yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
-        Language[options.language as keyof typeof Language],
-        options.path,
+    if (!Language[yamlProjectConfiguration.language as keyof typeof Language]) {
+      log.info(
+        "This sdk.language is not supported by default. It will be treated as a custom language.",
       );
     }
 
-    if (!yamlProjectConfiguration.sdk && !yamlLocalConfiguration) {
-      const answer: Answers = await inquirer.prompt([
+    if (!yamlProjectConfiguration.packageManager) {
+      const optionalPackageManager: Answers = await inquirer.prompt([
         {
-          type: "confirm",
-          name: "generateSdk",
+          type: "list",
+          name: "packageManager",
           message:
-            "It appears you don't have any SDK configured yet. Would you like to set one up now?",
+            "Which package manager are you using to install your frontend dependencies?",
+          choices: Object.keys(PackageManager).filter((key) =>
+            isNaN(Number(key)),
+          ),
         },
       ]);
-      if (answer.generateSdk) {
-        const sdkConfiguration: Answers = await inquirer.prompt([
-          {
-            type: "list",
-            name: "sdkLanguage",
-            message: "In which programming language is your frontend written?",
-            choices: Object.keys(Language).filter((key) => isNaN(Number(key))),
-          },
-        ]);
-        let sdkPath: string | undefined = undefined;
-        let packageManager: string | undefined = undefined;
-        if (
-          sdkConfiguration.sdkLanguage != "ts" &&
-          sdkConfiguration.sdkLanguage != "js"
-        ) {
-          const optionalSdkPath: Answers = await inquirer.prompt([
-            {
-              type: "input",
-              name: "sdkPath",
-              message:
-                "Specify the path of your frontend. The SDK will be generated in /<your_project_path>/sdk.",
-              default: "./",
-            },
-          ]);
-          sdkPath = optionalSdkPath.sdkPath;
-        } else {
-          const optionalPackageManager: Answers = await inquirer.prompt([
-            {
-              type: "list",
-              name: "packageManager",
-              message:
-                "Which package manager are you using to install your frontend dependencies?",
-              choices: Object.keys(PackageManager).filter((key) =>
-                isNaN(Number(key)),
-              ),
-            },
-          ]);
-          packageManager = optionalPackageManager.packageManager;
-        }
-        if (!sdkPath) {
-          sdkPath = await createLocalTempFolder(
-            `${yamlProjectConfiguration.name}-${yamlProjectConfiguration.region}`,
-            true,
-          );
-        }
-        const localConfiguration = await YamlLocalConfiguration.create({
-          generateSdk: true,
-          path: path.join(sdkPath, "sdk"),
-          language: sdkConfiguration.sdkLanguage,
-          packageManager: packageManager,
-        });
-        yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
-          Language[sdkConfiguration.sdkLanguage as keyof typeof Language],
-          path.join(sdkPath, "sdk"),
-        );
-        if (!localConfiguration) {
-          throw new Error("Could not create local configuration file.");
-        }
-        await localConfiguration.writeToFile(localConfPath);
-        yamlLocalConfiguration = await getLocalConfiguration();
-      } else {
-        const localConfiguration = await YamlLocalConfiguration.create({
-          generateSdk: false,
-        });
-        if (!localConfiguration) {
-          throw new Error("Could not create local configuration file.");
-        }
-        await localConfiguration.writeToFile(localConfPath);
-      }
+      yamlProjectConfiguration.packageManager = optionalPackageManager.packageManager;
+      await yamlProjectConfiguration.writeToFile("./genezio.yaml", YamlProjectConfigurationType.ROOT);
     }
+
+    const sdkPath = await createLocalTempFolder(
+      `${yamlProjectConfiguration.name}-${yamlProjectConfiguration.region}`,
+      true,
+    );
+
+    yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
+      Language[yamlProjectConfiguration.language as keyof typeof Language],
+      sdkPath,
+    );
 
     let sdk: SdkGeneratorResponse;
     let processForClasses: Map<string, ClassProcess>;
@@ -383,7 +297,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
           projectConfiguration.sdk.path,
           projectConfiguration.name,
           projectConfiguration.region,
-          yamlLocalConfiguration?.pagckageManager,
+          yamlProjectConfiguration.packageManager || PackageManager.npm,
           projectConfiguration.sdk.language,
         );
       }

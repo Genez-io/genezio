@@ -20,8 +20,9 @@ import { loginCommand } from "./commands/login.js";
 import { logoutCommand } from "./commands/logout.js";
 import { lsCommand } from "./commands/ls.js";
 import { GenezioDeployOptions, GenezioLocalOptions } from "./models/commandOptions.js";
-import version, { logOutdatedVersion } from "./utils/version.js";
+import { logOutdatedVersion } from "./utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js";
+import { genezioCommand } from "./commands/superGenezio.js";
 
 const program = new Command();
 
@@ -50,16 +51,20 @@ if (ENABLE_DEBUG_LOGS_BY_DEFAULT) {
 program
   .name("genezio")
   .usage("[command]")
-  .description("CLI tool to interact with the genezio infrastructure!")
-  .exitOverride((err: CommanderError) => {
-    if (err.code === "commander.help" || err.code === "commander.version" || err.code === "commander.helpDisplayed") {
-      exit(0);
-    } else {
-      console.log(`Type 'genezio --help' or 'genezio [command] --help'.`);
-    }
-  })
-  .addHelpText("afterAll", `\nUse 'genezio [command] --help' for more information about a command.`)
-  .version(version);
+  .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
+  .action(async (options: any) => {
+    setDebuggingLoggerLogLevel(options.logLevel);
+    GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_COMMAND});
+
+    await genezioCommand().catch((error: Error) => {
+      log.error(error.message);
+      GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_COMMAND_ERROR, errorTrace: error.message});
+      exit(1);
+    });
+
+    exit(0);
+  });
+
 
 // genezio init command
 program
@@ -93,6 +98,7 @@ program
       exit(1);
     });
     await logOutdatedVersion();
+    exit(0);
   });
 
 // genezio deploy command

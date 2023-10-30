@@ -236,6 +236,12 @@ export class YamlWorkspace {
 
 const supportedNodeRuntimes: string[] = ["nodejs16.x", "nodejs18.x"];
 
+export enum YamlProjectConfigurationType {
+    FRONTEND,
+    BACKEND,
+    ROOT
+}
+
 /**
  * This class represents the model for the YAML configuration file.
  */
@@ -251,6 +257,7 @@ export class YamlProjectConfiguration {
   frontend?: YamlFrontend;
   scripts?: YamlScriptsConfiguration;
   plugins?: YamlPluginsConfiguration;
+  packageManager?: PackageManager | undefined;
 
   constructor(
     name: string,
@@ -264,6 +271,7 @@ export class YamlProjectConfiguration {
     plugins: YamlPluginsConfiguration | undefined = undefined,
     options: NodeOptions | undefined = undefined,
     workspace: YamlWorkspace | undefined = undefined,
+    packageManager: PackageManager | undefined = undefined,
   ) {
     this.name = name;
     this.region = region;
@@ -276,6 +284,7 @@ export class YamlProjectConfiguration {
     this.plugins = plugins;
     this.options = options;
     this.workspace = workspace;
+    this.packageManager = packageManager;
   }
 
   getClassConfiguration(path: string): YamlClassConfiguration {
@@ -433,7 +442,8 @@ export class YamlProjectConfiguration {
       },
       undefined,
       backend.options,
-      workspace
+      workspace,
+      configurationFileContent.packageManager,
     );
   }
 
@@ -561,6 +571,8 @@ export class YamlProjectConfiguration {
       scripts,
       plugins,
       configurationFileContent.options,
+      undefined,
+      configurationFileContent.packageManager,
     );
   }
 
@@ -583,24 +595,42 @@ export class YamlProjectConfiguration {
     );
   }
 
-  async writeToFile(path = "./genezio.yaml") {
+  // The type parameter is used only if the yaml is a root type of genezio.yaml.
+  // It is used to decide if the genezio.yaml file that will be written is a frontend or
+  // a root type of genezio.yaml.
+  //
+  // TODO: this yaml mutation is becoming a mess and we should reconsider how
+  // we implement it.
+  async writeToFile(path = "./genezio.yaml", type?: YamlProjectConfigurationType) {
     let content;
 
     if (this.workspace) {
-      content = {
-        scripts: this.scripts
-          ? {
-              preFrontendDeploy: this.scripts?.preFrontendDeploy,
-              postFrontendDeploy: this.scripts?.postFrontendDeploy,
-            }
-          : undefined,
-        frontend: this.frontend
-          ? {
-              path: this.frontend?.path,
-              subdomain: this.frontend?.subdomain,
-            }
-          : undefined,
-      };
+        if (type === YamlProjectConfigurationType.FRONTEND) {
+          content = {
+            scripts: this.scripts
+              ? {
+                  preFrontendDeploy: this.scripts?.preFrontendDeploy,
+                  postFrontendDeploy: this.scripts?.postFrontendDeploy,
+                }
+              : undefined,
+            frontend: this.frontend
+              ? {
+                  path: this.frontend?.path,
+                  subdomain: this.frontend?.subdomain,
+                }
+              : undefined,
+            packageManager: this.packageManager,
+          };
+        } else if (type === YamlProjectConfigurationType.ROOT) {
+          content = {  
+            name: this.name,
+            region: this.region,
+            language: this.language,
+            packageManager: this.packageManager,
+            cloudProvider: this.cloudProvider ? this.cloudProvider : undefined,
+            workspace: this.workspace
+          }
+        }
     } else {
       content = {
         name: this.name,
@@ -640,6 +670,7 @@ export class YamlProjectConfiguration {
               })),
             }))
           : undefined,
+        packageManager: this.packageManager ? this.packageManager : undefined,
       };
     }
 
@@ -658,63 +689,6 @@ export class YamlProjectConfiguration {
       path: this.frontend?.path || "./frontend/build",
       subdomain: subdomain,
     };
-    await this.writeToFile(path.join(cwd, "genezio.yaml"));
-  }
-}
-
-export class YamlLocalConfiguration {
-  generateSdk: boolean;
-  path?: string | undefined;
-  language?: Language | undefined;
-  pagckageManager?: PackageManager | undefined;
-
-  constructor(
-    generateSdk: boolean,
-    path: string | undefined = undefined,
-    language: Language | undefined = undefined,
-    packageManager: PackageManager | undefined = undefined,
-  ) {
-    this.generateSdk = generateSdk;
-    this.path = path;
-    this.language = language;
-    this.pagckageManager = packageManager;
-  }
-
-  static async create(
-    yamlLocalConfiguration: any,
-  ): Promise<YamlLocalConfiguration | undefined> {
-    if (yamlLocalConfiguration.generateSdk === undefined) {
-      return undefined;
-    }
-    const generateSdk: boolean = yamlLocalConfiguration.generateSdk;
-    const path: string | undefined = yamlLocalConfiguration.path;
-    const language: Language | undefined = yamlLocalConfiguration.language;
-    const packageManager: PackageManager | undefined =
-      yamlLocalConfiguration.packageManager;
-
-    return new YamlLocalConfiguration(
-      generateSdk,
-      path,
-      language,
-      packageManager,
-    );
-  }
-
-  async writeToFile(path = "./genezio.local.yaml") {
-    const content = {
-      generateSdk: this.generateSdk,
-      path: this.path,
-      language: this.language,
-      packageManager: this.pagckageManager,
-    };
-
-    const fileDetails = getFileDetails(path);
-    const yamlString = yaml.stringify(content);
-
-    await writeToFile(fileDetails.path, fileDetails.filename, yamlString).catch(
-      (error) => {
-        console.error(error.toString());
-      },
-    );
+    await this.writeToFile(path.join(cwd, "genezio.yaml"), YamlProjectConfigurationType.FRONTEND);
   }
 }
