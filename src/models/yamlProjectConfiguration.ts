@@ -227,10 +227,14 @@ export class YamlPluginsConfiguration {
 export class YamlWorkspace {
     backend: string;
     frontend: string;
+    rawPathBackend: string;
+    rawPathFrontend: string;
 
     constructor(backend: string, frontend: string) {
-        this.backend = backend;
-        this.frontend = frontend;
+        this.backend = path.resolve(backend);
+        this.frontend = path.resolve(frontend);
+        this.rawPathBackend = backend;
+        this.rawPathFrontend = frontend;
     }
 }
 
@@ -423,7 +427,7 @@ export class YamlProjectConfiguration {
         throw new Error("\"backend\" property is missing from workspace in genezio.yaml.")
     }
 
-    const workspace = new YamlWorkspace(path.resolve(configurationFileContent.workspace.backend), path.resolve(configurationFileContent.workspace.frontend))
+    const workspace = new YamlWorkspace(configurationFileContent.workspace.backend, configurationFileContent.workspace.frontend)
        
     const backend = await this.parseBackendYaml(workspace)
     const frontend = await this.parseFrontendYaml(workspace)
@@ -628,7 +632,9 @@ export class YamlProjectConfiguration {
             language: this.language,
             packageManager: this.packageManager,
             cloudProvider: this.cloudProvider ? this.cloudProvider : undefined,
-            workspace: this.workspace
+            workspace: {
+                backend: this.workspace.rawPathBackend,
+                frontend: this.workspace.rawPathFrontend
           }
         }
     } else {
@@ -678,10 +684,11 @@ export class YamlProjectConfiguration {
     const yamlString = yaml.stringify(content);
 
     await writeToFile(fileDetails.path, fileDetails.filename, yamlString).catch(
-      (error) => {
-        console.error(error.toString());
-      },
+        (error) => {
+            console.error(error.toString());
+        },
     );
+    }
   }
 
   async addSubdomain(subdomain: string, cwd: string) {
