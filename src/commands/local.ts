@@ -36,7 +36,10 @@ import {
   writeToFile,
 } from "../utils/file.js";
 import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
-import { reportSuccess as _reportSuccess } from "../utils/reporter.js";
+import {
+  GenezioCommand,
+  reportSuccess as _reportSuccess,
+} from "../utils/reporter.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import { GenezioLocalOptions } from "../models/commandOptions.js";
 import { DartBundler } from "../bundlers/dart/localDartBundler.js";
@@ -363,13 +366,6 @@ async function compileSdk(
     getNodeModulePackageJsonLocal(projectName, region),
   );
   await asyncExec(packageManager + " link", { cwd: modulePath });
-  log.info(
-    "\x1b[32m%s\x1b[0m",
-    `Your SDK is ready to be used. We already created a link using ${packageManager}. To import it in your client project, run ${colors.cyan(
-      `${packageManager} link @genezio-sdk/${projectName}_${region}`,
-    )}`,
-    `${colors.green("in your client's root folder.")}`,
-  );
 }
 
 function logChangeDetection() {
@@ -424,7 +420,9 @@ async function startProcesses(
   const bundlersOutput = await Promise.all(bundlersOutputPromise);
 
   const envVars: dotenv.DotenvPopulateInput = {};
-  const cwd = projectConfiguration.workspace?.backend ? path.join(projectConfiguration.workspace.backend, ".env") : path.join(process.cwd(), ".env")
+  const cwd = projectConfiguration.workspace?.backend
+    ? path.join(projectConfiguration.workspace.backend, ".env")
+    : path.join(process.cwd(), ".env");
   dotenv.config({ path: options.env || cwd, processEnv: envVars });
   for (const bundlerOutput of bundlersOutput) {
     const extra = bundlerOutput.extra;
@@ -830,7 +828,10 @@ To change the server version, go to your ${colors.cyan(
       )} property to the version you want to use.`)}`,
     );
   }
-  _reportSuccess(classesInfo, sdk);
+  _reportSuccess(classesInfo, sdk, GenezioCommand.local, {
+    name: projectConfiguration.name,
+    region: projectConfiguration.region,
+  });
 
   log.info(
     "\x1b[32m%s\x1b[0m",
