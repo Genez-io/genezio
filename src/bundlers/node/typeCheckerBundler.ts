@@ -15,7 +15,7 @@ export class TypeCheckerBundler implements BundlerInterface {
         if (fs.existsSync("tsconfig.json")) {
             return;
         } else {
-            console.log("No tsconfig.json file found. We will create one...")
+            log.info("No tsconfig.json file found. We will create one...")
             tsconfig.compilerOptions.rootDir = ".";
             tsconfig.compilerOptions.outDir = path.join(".", "build");
             tsconfig.include = [path.join(".", "**/*")];

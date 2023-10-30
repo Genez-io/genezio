@@ -22,3 +22,7 @@ export const GENEZIO_NO_SUPPORT_FOR_BUILT_IN_TYPE = `Our AST doesn't currently s
 export const GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE = function (filePath: string) {
   return `You don't have enough permissions to access the file ${filePath}. There are two possible solutions:\n1. Add the ${filePath} file to .genezioignore file.\n2. Please adjust the permissions of the file located at ${filePath} to ensure the 'genezio' process has the appropriate access rights.\n`;
 }
+
+
+export const GENEZIO_GIT_NOT_FOUND = `Git is not installed. Please install it and try again.
+https://git-scm.com/book/en/v2/Getting-Started-Installing-Git`;

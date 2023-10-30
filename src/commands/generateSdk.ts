@@ -139,7 +139,7 @@ export async function generateSdkCommand(projectName: string, options: any) {
     });
   }
 
-  console.log("Your SDK has been generated successfully in " + sdkPath + "");
+  log.info("Your SDK has been generated successfully in " + sdkPath + "");
 }
 
 async function generateRemoteSdkHandler(
