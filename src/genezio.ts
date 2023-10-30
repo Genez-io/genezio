@@ -7,7 +7,7 @@ import {
 } from "./constants.js";
 import log from "loglevel";
 import prefix from 'loglevel-plugin-prefix';
-
+import latestVersion from "latest-version";
 // commands imports
 import { accountCommand } from "./commands/account.js";
 import { addClassCommand } from "./commands/addClass.js";
@@ -46,6 +46,11 @@ prefix.apply(log.getLogger("debuggingLogger"), {
 if (ENABLE_DEBUG_LOGS_BY_DEFAULT) {
   setDebuggingLoggerLogLevel("debug");
 }
+
+// make genezio --version
+program.version(await latestVersion("genezio"), "-v, --version", "Output the current version of genezio.");
+
+
 
 // program setup
 program
