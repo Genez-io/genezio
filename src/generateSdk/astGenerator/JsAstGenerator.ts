@@ -8,16 +8,14 @@ import {
   MethodKindEnum,
   AnyType,
   ParameterDefinition,
-  SourceType
+  SourceType,
 } from "../../models/genezioModels.js";
 import parser from "@babel/parser";
 import traverse from "@babel/traverse";
 import path from "path";
 import transformDecorators from "../../utils/transformDecorators.js";
 
-
 class AstGenerator implements AstGeneratorInterface {
-
   async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
     const transformedCode = await transformDecorators(input.class.path);
 
@@ -28,8 +26,8 @@ class AstGenerator implements AstGeneratorInterface {
       plugins: [
         // enable jsx and flow syntax
         "jsx",
-        "flow"
-      ]
+        "flow",
+      ],
     });
 
     let classDefinition: ClassDefinition | undefined = undefined;
@@ -40,7 +38,8 @@ class AstGenerator implements AstGeneratorInterface {
           classDefinition = {
             type: AstNodeType.ClassDefinition,
             name: path.node.id.name,
-            methods: []
+            methods: [],
+            path: input.class.path,
           };
         } else if (
           // old school function declaration syntax
@@ -66,11 +65,11 @@ class AstGenerator implements AstGeneratorInterface {
                 rawType: "any",
                 paramType: astType,
                 optional: false,
-                defaultValue: param.right ? param.right.value : undefined
+                defaultValue: param.right ? param.right.value : undefined,
               };
 
               return astParam;
-            })
+            }),
           });
         } else if (
           // arrow function declaration syntax
@@ -96,14 +95,14 @@ class AstGenerator implements AstGeneratorInterface {
                 rawType: "any",
                 paramType: astType,
                 optional: false,
-                defaultValue: param.right ? param.right.value : undefined
+                defaultValue: param.right ? param.right.value : undefined,
               };
 
               return astParam;
-            })
+            }),
           });
         }
-      }
+      },
     });
 
     if (classDefinition == undefined) {
@@ -113,8 +112,8 @@ class AstGenerator implements AstGeneratorInterface {
         program: {
           body: [classDefinition],
           originalLanguage: "js",
-          sourceType: SourceType.module
-        }
+          sourceType: SourceType.module,
+        },
       };
     }
   }
@@ -122,4 +121,4 @@ class AstGenerator implements AstGeneratorInterface {
 
 const supportedExtensions = ["js"];
 
-export default { supportedExtensions, AstGenerator }
+export default { supportedExtensions, AstGenerator };
