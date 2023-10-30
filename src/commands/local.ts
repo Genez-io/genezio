@@ -198,12 +198,11 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 
     const sdkPath = await createLocalTempFolder(
       `${yamlProjectConfiguration.name}-${yamlProjectConfiguration.region}`,
-      true,
     );
 
     yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
       Language[yamlProjectConfiguration.language as keyof typeof Language],
-      path.join(sdkPath, "sdk")
+      path.join(sdkPath, "sdk"),
     );
 
     let sdk: SdkGeneratorResponse;
@@ -285,7 +284,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       ) {
         createLocalTempFolder(
           `${yamlProjectConfiguration.name}-${yamlProjectConfiguration.region}`,
-          true,
         );
       }
       await writeSdkToDisk(
