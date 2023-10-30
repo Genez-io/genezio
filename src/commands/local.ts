@@ -18,9 +18,7 @@ import { LOCAL_TEST_INTERFACE_URL } from "../constants.js";
 import { GENEZIO_NO_CLASSES_FOUND, PORT_ALREADY_USED } from "../errors.js";
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
 import { AstSummary } from "../models/astSummary.js";
-import {
-  getProjectConfiguration,
-} from "../utils/configuration.js";
+import { getProjectConfiguration } from "../utils/configuration.js";
 import { BundlerInterface } from "../bundlers/bundler.interface.js";
 import { NodeJsLocalBundler } from "../bundlers/node/nodeJsLocalBundler.js";
 import { BundlerComposer } from "../bundlers/bundlerComposer.js";
@@ -190,8 +188,12 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
           ),
         },
       ]);
-      yamlProjectConfiguration.packageManager = optionalPackageManager.packageManager;
-      await yamlProjectConfiguration.writeToFile("./genezio.yaml", YamlProjectConfigurationType.ROOT);
+      yamlProjectConfiguration.packageManager =
+        optionalPackageManager.packageManager;
+      await yamlProjectConfiguration.writeToFile(
+        "./genezio.yaml",
+        YamlProjectConfigurationType.ROOT,
+      );
     }
 
     const sdkPath = await createLocalTempFolder(
@@ -201,7 +203,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 
     yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
       Language[yamlProjectConfiguration.language as keyof typeof Language],
-      sdkPath,
+      path.join(sdkPath, "sdk")
     );
 
     let sdk: SdkGeneratorResponse;

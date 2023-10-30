@@ -54,7 +54,7 @@ export function reportSuccess(
     if (sdkResponse.files.length > 0) {
       log.info(
         "\x1b[36m%s\x1b[0m",
-        "Yout local server is running and the SDK was successfully generated!",
+        "Your local server is running and the SDK was successfully generated!",
       );
       log.info(
         boxen(
