@@ -455,13 +455,6 @@ async function compileSdk(
     getNodeModulePackageJsonLocal(projectName, region),
   );
   await asyncExec(packageManager + " link", { cwd: modulePath });
-  log.info(
-    "\x1b[32m%s\x1b[0m",
-    `Your SDK is ready to be used. We already created a link using ${packageManager}. To import it in your client project, run ${colors.cyan(
-      `${packageManager} link @genezio-sdk/${projectName}_${region}`,
-    )}`,
-    `${colors.green("in your client's root folder.")}`,
-  );
 }
 
 function logChangeDetection() {
