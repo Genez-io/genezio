@@ -230,13 +230,17 @@ export class YamlPluginsConfiguration {
 }
 
 export class YamlWorkspace {
-  backend: string;
-  frontend: string;
+    backend: string;
+    frontend: string;
+    rawPathBackend: string;
+    rawPathFrontend: string;
 
-  constructor(backend: string, frontend: string) {
-    this.backend = backend;
-    this.frontend = frontend;
-  }
+    constructor(backend: string, frontend: string) {
+        this.backend = path.resolve(backend);
+        this.frontend = path.resolve(frontend);
+        this.rawPathBackend = backend;
+        this.rawPathFrontend = frontend;
+    }
 }
 
 const supportedNodeRuntimes: string[] = ["nodejs16.x", "nodejs18.x"];
@@ -437,13 +441,10 @@ export class YamlProjectConfiguration {
       );
     }
 
-    const workspace = new YamlWorkspace(
-      path.resolve(configurationFileContent.workspace.backend),
-      path.resolve(configurationFileContent.workspace.frontend),
-    );
-
-    const backend = await this.parseBackendYaml(workspace);
-    const frontend = await this.parseFrontendYaml(workspace);
+    const workspace = new YamlWorkspace(configurationFileContent.workspace.backend, configurationFileContent.workspace.frontend)
+       
+    const backend = await this.parseBackendYaml(workspace)
+    const frontend = await this.parseFrontendYaml(workspace)
 
     return new YamlProjectConfiguration(
       name,
@@ -625,32 +626,34 @@ export class YamlProjectConfiguration {
     let content;
 
     if (this.workspace) {
-      if (type === YamlProjectConfigurationType.FRONTEND) {
-        content = {
-          scripts: this.scripts
-            ? {
-                preFrontendDeploy: this.scripts?.preFrontendDeploy,
-                postFrontendDeploy: this.scripts?.postFrontendDeploy,
-              }
-            : undefined,
-          frontend: this.frontend
-            ? {
-                path: this.frontend?.path,
-                subdomain: this.frontend?.subdomain,
-              }
-            : undefined,
-          packageManager: this.packageManager,
-        };
-      } else if (type === YamlProjectConfigurationType.ROOT) {
-        content = {
-          name: this.name,
-          region: this.region,
-          language: this.language,
-          packageManager: this.packageManager,
-          cloudProvider: this.cloudProvider ? this.cloudProvider : undefined,
-          workspace: this.workspace,
-        };
-      }
+        if (type === YamlProjectConfigurationType.FRONTEND) {
+          content = {
+            scripts: this.scripts
+              ? {
+                  preFrontendDeploy: this.scripts?.preFrontendDeploy,
+                  postFrontendDeploy: this.scripts?.postFrontendDeploy,
+                }
+              : undefined,
+            frontend: this.frontend
+              ? {
+                  path: this.frontend?.path,
+                  subdomain: this.frontend?.subdomain,
+                }
+              : undefined,
+            packageManager: this.packageManager,
+          };
+        } else if (type === YamlProjectConfigurationType.ROOT) {
+          content = {  
+            name: this.name,
+            region: this.region,
+            language: this.language,
+            packageManager: this.packageManager,
+            cloudProvider: this.cloudProvider ? this.cloudProvider : undefined,
+            workspace: {
+                backend: this.workspace.rawPathBackend,
+                frontend: this.workspace.rawPathFrontend
+          }
+        }
     } else {
       content = {
         name: this.name,
@@ -698,10 +701,11 @@ export class YamlProjectConfiguration {
     const yamlString = yaml.stringify(content);
 
     await writeToFile(fileDetails.path, fileDetails.filename, yamlString).catch(
-      (error) => {
-        console.error(error.toString());
-      },
+        (error) => {
+            console.error(error.toString());
+        },
     );
+    }
   }
 
   async addSubdomain(subdomain: string, cwd: string) {
