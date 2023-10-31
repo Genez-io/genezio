@@ -290,10 +290,11 @@ class SdkGenerator implements SdkGeneratorInterface {
                 classInfo,
               );
             }
-            if (
-              currentView &&
-              !classInfo.classConfiguration.path.includes(externalType.path)
-            ) {
+            const classPath = classInfo.classConfiguration.path.replace(
+              /\\/g,
+              "/",
+            );
+            if (currentView && !classPath.includes(externalType.path)) {
               this.addImportToCurrentView(currentView, externalType);
             }
           }
@@ -304,10 +305,11 @@ class SdkGenerator implements SdkGeneratorInterface {
             )
           ) {
             currentView = view;
-            if (
-              currentView &&
-              !classInfo.classConfiguration.path.includes(externalType.path)
-            ) {
+            const classPath = classInfo.classConfiguration.path.replace(
+              /\\/g,
+              "/",
+            );
+            if (currentView && !classPath.includes(externalType.path)) {
               this.addImportToCurrentView(currentView, externalType);
             }
           }
@@ -571,7 +573,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         currentView.path || ".",
         externalType.path || ".",
       );
-      if (relativePath.substring(0, 3) == "../") {
+      while (relativePath.substring(0, 3) == "../") {
         relativePath = relativePath.substring(3);
       }
       if (!currentView.imports.find((e: any) => e.path === relativePath)) {
@@ -639,7 +641,8 @@ class SdkGenerator implements SdkGeneratorInterface {
       }
     }
     if (!found) {
-      if (!classInfo.classConfiguration.path.includes(type.path)) {
+      const classPath = classInfo.classConfiguration.path.replace(/\\/g, "/");
+      if (!classPath.includes(type.path)) {
         currentView = {
           path: type.path || "",
           externalTypes: [],
