@@ -305,7 +305,6 @@ class SdkGenerator implements SdkGeneratorInterface {
             )
           ) {
             currentView = view;
-            // replace all \ with /
             const classPath = classInfo.classConfiguration.path.replace(
               /\\/g,
               "/",
