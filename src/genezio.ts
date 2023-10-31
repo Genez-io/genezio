@@ -7,7 +7,6 @@ import {
 } from "./constants.js";
 import log from "loglevel";
 import prefix from 'loglevel-plugin-prefix';
-
 // commands imports
 import { accountCommand } from "./commands/account.js";
 import { addClassCommand } from "./commands/addClass.js";
@@ -20,12 +19,11 @@ import { loginCommand } from "./commands/login.js";
 import { logoutCommand } from "./commands/logout.js";
 import { lsCommand } from "./commands/ls.js";
 import { GenezioDeployOptions, GenezioLocalOptions } from "./models/commandOptions.js";
-import { logOutdatedVersion } from "./utils/version.js";
+import currentGenezioVersion, { logOutdatedVersion } from "./utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js";
 import { genezioCommand } from "./commands/superGenezio.js";
 
 const program = new Command();
-
 
 // logging setup
 log.setDefaultLevel("INFO");
@@ -47,24 +45,37 @@ if (ENABLE_DEBUG_LOGS_BY_DEFAULT) {
   setDebuggingLoggerLogLevel("debug");
 }
 
-// program setup
+// super-genezio command
+// commander is displaying help by default for calling `genezio` without a subcommand
+// this is a workaround to avoid that
+// Note: no options can be added to this command
+if (process.argv.length === 2) {
+  GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_COMMAND});
+
+  await genezioCommand().catch((error: Error) => {
+    log.error(error.message);
+    GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_COMMAND_ERROR, errorTrace: error.message});
+    exit(1);
+  });
+}
+
+// make genezio --version
+program.version(currentGenezioVersion, "-v, --version", "Output the current version of genezio.");
+
+// program setup - used to display help and version
 program
   .name("genezio")
   .usage("[command]")
-  .option("--logLevel <logLevel>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
-  .action(async (options: any) => {
-    setDebuggingLoggerLogLevel(options.logLevel);
-    GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_COMMAND});
-
-    await genezioCommand().catch((error: Error) => {
-      log.error(error.message);
-      GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_COMMAND_ERROR, errorTrace: error.message});
-      exit(1);
-    });
-
-    exit(0);
-  });
-
+  .description("CLI tool to interact with the genezio infrastructure!")
+  .exitOverride((err: CommanderError) => {
+    if (err.code === "commander.help" || err.code === "commander.version" || err.code === "commander.helpDisplayed") {
+      exit(0);
+    } else {
+      log.info("")
+      program.outputHelp();
+    }
+  })
+  .addHelpText("afterAll", `\nUse 'genezio [command] --help' for more information about a command.`);
 
 // genezio init command
 program

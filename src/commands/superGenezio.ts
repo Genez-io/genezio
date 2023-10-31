@@ -7,7 +7,7 @@ import { deployCommand } from "./deploy.js";
 import log from "loglevel";
 import colors from "colors";
 import inquirer, { Answers } from "inquirer";
-import { regions } from "../utils/configs.js";
+import { regions, regionNames } from "../utils/configs.js";
 import { runNewProcessWithResultAndReturnCode } from "../utils/process.js";
 import { GENEZIO_GIT_NOT_FOUND } from "../errors.js";
 import { GenezioCommandTemplates } from "../models/genezioModels.js";
@@ -92,9 +92,9 @@ export async function genezioCommand() {
       type: "list",
       name: "region",
       message: colors.magenta("Choose a region for your project"),
-      choices: regions,
+      choices: regionNames,
       // show full list 
-      pageSize: regions.length
+      pageSize: regionNames.length
     },
   ]);
 
@@ -116,7 +116,7 @@ export async function genezioCommand() {
   let directoryName = ".";
   const template: string = templateAnswer.template;
   const projectName = projectNameAnswer.projectName;
-  const region = regionAnswer.region;
+  const region = regions[regionNames.indexOf(regionAnswer.region)];
 
   if (!emptyDirectory) {
     const confirmAnswer: Answers = await inquirer.prompt([
@@ -124,7 +124,7 @@ export async function genezioCommand() {
         type: "input",
         name: "directoryName",
         message: colors.magenta("Please enter a name for your directory:"),
-        default: "genezio-getting-started"
+        default: projectName
       },
     ]);
 

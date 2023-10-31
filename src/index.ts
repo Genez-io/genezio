@@ -18,7 +18,6 @@ Sentry.init({
   profilesSampleRate: 1.0, // Capture 100% of the transactions, reduce in production!
 });
 
-
 // Set-up SIGINT and exit handlers that clean up the temporary folder structure
 process.on('SIGINT', async () => {
     GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_CANCEL, errorTrace: "", commandOptions: ""});

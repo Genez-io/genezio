@@ -43,3 +43,23 @@ export const regions = [
   "eu-north-1",
   "sa-east-1"
 ];
+
+export const regionNames = [
+"US East (N. Virginia)",
+"US East (Ohio)",
+"US West (N. California)",
+"US West (Oregon)",
+"Asia Pacific (Mumbai)",
+"Asia Pacific (Osaka)",
+"Asia Pacific (Seoul)",
+"Asia Pacific (Singapore)",
+"Asia Pacific (Sydney)",
+"Asia Pacific (Tokyo)",
+"Canada (Central)",
+"Europe (Frankfurt)",
+"Europe (Ireland)",
+"Europe (London)",
+"Europe (Paris)",
+"Europe (Stockholm)",
+"South America (São Paulo)"
+];

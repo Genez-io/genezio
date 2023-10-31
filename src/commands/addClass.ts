@@ -59,7 +59,7 @@ export async function addClassCommand(classPath: string, classType: string) {
 
   if (["js", "ts"].includes(classExtension)) {
     let name = className.split(".")[0];
-    name = name.charAt(0).toUpperCase() + name.slice(1);
+    name = (name.charAt(0).toUpperCase() + name.slice(1)).replaceAll("-", "").replaceAll("_", "").replaceAll(" ", "").replaceAll(".", "");
     
     classContent = newClassTemplateNode(name);
   }
