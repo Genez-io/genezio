@@ -21,6 +21,7 @@ export function reportSuccess(
   sdkResponse: SdkGeneratorResponse,
   command: GenezioCommand,
   projectConfiguration: ProjectPrimaryKeys,
+  newVersion: boolean,
 ) {
   if (command === GenezioCommand.deploy) {
     if (sdkResponse.files.length > 0) {
@@ -28,56 +29,61 @@ export function reportSuccess(
         "\x1b[36m%s\x1b[0m",
         "Your code was deployed and the SDK was successfully generated!",
       );
-      log.info(
-        boxen(
-          `${colors.green(
-            "To install the SDK in your client, run this command in your client's root:",
-          )}\n${colors.magenta(
-            `npm install @genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}@1.0.0-${projectConfiguration.stage}`,
-          )}\n\n${colors.green(
-            "Then import your classes like this:",
-          )}\n${colors.magenta(
-            `import { ${classesInfo[0].className} } from "@genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}"`,
-          )}`,
-          {
-            padding: 1,
-            margin: 1,
-            borderStyle: "round",
-            borderColor: "magentaBright",
-          },
-        ),
-      );
+      
+      if (newVersion) {
+          log.info(
+              boxen(
+                  `${colors.green(
+                      "To install the SDK in your client, run this command in your client's root:",
+                  )}\n${colors.magenta(
+                  `npm install @genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}@1.0.0-${projectConfiguration.stage}`,
+                  )}\n\n${colors.green(
+                  "Then import your classes like this:",
+                  )}\n${colors.magenta(
+                  `import { ${classesInfo[0].className} } from "@genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}"`,
+                  )}`,
+                  {
+                      padding: 1,
+                      margin: 1,
+                      borderStyle: "round",
+                      borderColor: "magentaBright",
+                  },
+              ),
+          );
+      }
     } else {
-      log.info("\x1b[36m%s\x1b[0m", "Your code was successfully deployed!");
+        log.info("\x1b[36m%s\x1b[0m", "Your code was successfully deployed!");
     }
   } else {
-    if (sdkResponse.files.length > 0) {
-      log.info(
-        "\x1b[36m%s\x1b[0m",
-        "Your local server is running and the SDK was successfully generated!",
-      );
-      log.info(
-        boxen(
-          `${colors.green(
-            "To install the SDK in your client, run this command in your client's root:",
-          )}\n${colors.magenta(
-            `npm link @genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}`,
-          )}\n\n${colors.green(
-            "Then import your classes like this:",
-          )}\n${colors.magenta(
-            `import { ${classesInfo[0].className} } from "@genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}"`,
-          )}`,
-          {
-            padding: 1,
-            margin: 1,
-            borderStyle: "round",
-            borderColor: "magentaBright",
-          },
-        ),
-      );
-    } else {
-      log.info("\x1b[36m%s\x1b[0m", "Your local server is running!");
-    }
+      if (sdkResponse.files.length > 0) {
+          log.info(
+              "\x1b[36m%s\x1b[0m",
+                  "Your local server is running and the SDK was successfully generated!",
+          );
+          if (newVersion) {
+              log.info(
+                  boxen(
+                      `${colors.green(
+                          "To install the SDK in your client, run this command in your client's root:",
+                      )}\n${colors.magenta(
+                      `npm link @genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}`,
+                      )}\n\n${colors.green(
+                      "Then import your classes like this:",
+                      )}\n${colors.magenta(
+                      `import { ${classesInfo[0].className} } from "@genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}"`,
+                      )}`,
+                      {
+                          padding: 1,
+                          margin: 1,
+                          borderStyle: "round",
+                          borderColor: "magentaBright",
+                      },
+                  ),
+              );
+          }
+      } else {
+          log.info("\x1b[36m%s\x1b[0m", "Your local server is running!");
+      }
   }
 
   // print function urls

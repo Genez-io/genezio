@@ -475,7 +475,7 @@ export async function deployClasses(
     name: configuration.name,
     region: configuration.region,
     stage: stage,
-  });
+  }, !configuration.sdk);
 
   const projectId = result.classes[0].projectId;
   if (projectId) {
