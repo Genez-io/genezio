@@ -13,6 +13,7 @@ import colors from "colors";
 import {
   ProjectConfiguration,
   ClassConfiguration,
+  SdkConfiguration,
 } from "../models/projectConfiguration.js";
 import { LOCAL_TEST_INTERFACE_URL } from "../constants.js";
 import { GENEZIO_NO_CLASSES_FOUND, PORT_ALREADY_USED } from "../errors.js";
@@ -176,7 +177,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       );
     }
 
-    if (!yamlProjectConfiguration.packageManager) {
+    if (!yamlProjectConfiguration.packageManager && !yamlProjectConfiguration.sdk)  {
       const optionalPackageManager: Answers = await inquirer.prompt([
         {
           type: "list",
@@ -196,14 +197,17 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       );
     }
 
-    const sdkPath = await createLocalTempFolder(
-      `${yamlProjectConfiguration.name}-${yamlProjectConfiguration.region}`,
-    );
+    let sdkConfiguration = yamlProjectConfiguration.sdk
+    if (!yamlProjectConfiguration.sdk) {
+        const sdkPath = await createLocalTempFolder(
+            `${yamlProjectConfiguration.name}-${yamlProjectConfiguration.region}`,
+        );
 
-    yamlProjectConfiguration.sdk = new YamlSdkConfiguration(
-      Language[yamlProjectConfiguration.language as keyof typeof Language],
-      path.join(sdkPath, "sdk"),
-    );
+        sdkConfiguration = new YamlSdkConfiguration(
+            Language[yamlProjectConfiguration.language as keyof typeof Language],
+            path.join(sdkPath, "sdk"),
+        );
+    }
 
     let sdk: SdkGeneratorResponse;
     let processForClasses: Map<string, ClassProcess>;
@@ -270,7 +274,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     // Start cron jobs
     const crons = await startCronJobs(projectConfiguration, processForClasses);
 
-    if (projectConfiguration.sdk) {
+    if (sdkConfiguration) {
       await replaceUrlsInSdk(
         sdk,
         sdk.files.map((c) => ({
@@ -278,35 +282,28 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
           cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`,
         })),
       );
-      if (
-        projectConfiguration.sdk.language === Language.ts ||
-        projectConfiguration.sdk.language === Language.js
-      ) {
-        createLocalTempFolder(
-          `${yamlProjectConfiguration.name}-${yamlProjectConfiguration.region}`,
-        );
-      }
       await writeSdkToDisk(
         sdk,
-        projectConfiguration.sdk.language,
-        projectConfiguration.sdk.path,
+        sdkConfiguration.language,
+        sdkConfiguration.path,
       );
       if (
-        projectConfiguration.sdk.language === Language.ts ||
-        projectConfiguration.sdk.language === Language.js
+          !yamlProjectConfiguration.sdk && 
+        (sdkConfiguration.language === Language.ts ||
+        sdkConfiguration.language === Language.js)
       ) {
         // compile the sdk
         await compileSdk(
-          projectConfiguration.sdk.path,
+          sdkConfiguration.path,
           projectConfiguration.name,
           projectConfiguration.region,
           yamlProjectConfiguration.packageManager || PackageManager.npm,
-          projectConfiguration.sdk.language,
+          sdkConfiguration.language,
         );
       }
     }
 
-    reportSuccess(projectConfiguration, sdk, options.port);
+    reportSuccess(projectConfiguration, sdk, options.port, !yamlProjectConfiguration.sdk);
 
     // Start listening for changes in user's code
     const { watcher } = await listenForChanges(projectConfiguration.sdk?.path);
@@ -783,6 +780,7 @@ function reportSuccess(
   projectConfiguration: ProjectConfiguration,
   sdk: SdkGeneratorResponse,
   port: number,
+  newVersion: boolean
 ) {
   const classesInfo = projectConfiguration.classes.map((c) => ({
     className: c.name,
@@ -831,7 +829,7 @@ To change the server version, go to your ${colors.cyan(
   _reportSuccess(classesInfo, sdk, GenezioCommand.local, {
     name: projectConfiguration.name,
     region: projectConfiguration.region,
-  });
+  }, newVersion);
 
   log.info(
     "\x1b[32m%s\x1b[0m",
