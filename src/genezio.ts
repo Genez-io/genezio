@@ -57,6 +57,7 @@ if (process.argv.length === 2) {
     GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_COMMAND_ERROR, errorTrace: error.message});
     exit(1);
   });
+  exit(0);
 }
 
 // make genezio --version
