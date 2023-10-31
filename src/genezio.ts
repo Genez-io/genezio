@@ -7,7 +7,6 @@ import {
 } from "./constants.js";
 import log from "loglevel";
 import prefix from 'loglevel-plugin-prefix';
-import latestVersion from "latest-version";
 // commands imports
 import { accountCommand } from "./commands/account.js";
 import { addClassCommand } from "./commands/addClass.js";
@@ -20,7 +19,7 @@ import { loginCommand } from "./commands/login.js";
 import { logoutCommand } from "./commands/logout.js";
 import { lsCommand } from "./commands/ls.js";
 import { GenezioDeployOptions, GenezioLocalOptions } from "./models/commandOptions.js";
-import { logOutdatedVersion } from "./utils/version.js";
+import currentGenezioVersion, { logOutdatedVersion } from "./utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js";
 import { genezioCommand } from "./commands/superGenezio.js";
 
@@ -48,7 +47,7 @@ if (ENABLE_DEBUG_LOGS_BY_DEFAULT) {
 }
 
 // make genezio --version
-program.version(await latestVersion("genezio"), "-v, --version", "Output the current version of genezio.");
+program.version(currentGenezioVersion, "-v, --version", "Output the current version of genezio.");
 
 
 
