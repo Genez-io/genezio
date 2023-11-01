@@ -597,7 +597,6 @@ export async function deployFrontend(
       );
     }
     // check if the build folder exists
-    // const frontendPath = path.join(cwd, configuration.frontend?.path);
     const frontendPath = configuration.frontend?.path
     if (!(await fileExists(frontendPath))) {
       throw new Error(
