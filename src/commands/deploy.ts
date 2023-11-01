@@ -629,8 +629,6 @@ export async function deployFrontend(
       await configuration.addSubdomain(configuration.frontend.subdomain);
     }
 
-    configuration.frontend.path = path.join(cwd, configuration.frontend.path);
-
     const url = await cloudAdapter.deployFrontend(
       configuration.name,
       configuration.region,
