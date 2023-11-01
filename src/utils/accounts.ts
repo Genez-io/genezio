@@ -24,17 +24,21 @@ function getNpmConfigFileContent(token: string) {
 export async function addAuthTokenToNpmConfig(token: string) {
     const homeDirectory = os.homedir();
     const npmConfigFile = ".npmrc"
-    const npmConfigContent = getNpmConfigFileContent(token);
+    let npmConfigContent = getNpmConfigFileContent(token);
 
     if (fs.existsSync(path.join(homeDirectory, npmConfigFile))) {
         const npmConfigFileContent = await readUTF8File(path.join(homeDirectory, npmConfigFile));
         if (npmConfigFileContent.includes(getNpmConfigFileContent(""))) {
-            return;
+            npmConfigContent = npmConfigFileContent.replace(
+                new RegExp(`(@genezio-sdk:registry=https://${GENEZIO_REGISTRY}/npm\n//${GENEZIO_REGISTRY}/:_authToken=)(.*)(\n?)`),
+                `$1${token}$3`
+            );
+        } else {
+            npmConfigContent = npmConfigFileContent + "\n" + npmConfigContent;
         }
-        await writeToFile(homeDirectory, npmConfigFile, npmConfigFileContent + "\n" + npmConfigContent, true);
-    } else {
-        await writeToFile(homeDirectory, npmConfigFile, npmConfigContent, true);
     }
+
+    await writeToFile(homeDirectory, npmConfigFile, npmConfigContent, true);
 }
 
 export async function saveAuthToken(token: string) {
@@ -60,15 +64,16 @@ export async function removeAuthToken(): Promise<[void, void]> {
         });
     });
 
-    const npmrcPromise: Promise<void> = new Promise((resolve, reject) => {
-        fs.unlink(npmConfigFilePath, (error) => {
-            if (error) {
-                reject(error)
-            }
+    let updateNpmConfigPromise = Promise.resolve();
+    if (fs.existsSync(npmConfigFilePath)) {
+        const configContent = await readUTF8File(npmConfigFilePath);
+        const configContentWithoutRegistry = configContent.replace(
+            RegExp(`@genezio-sdk:registry=https://${GENEZIO_REGISTRY}/npm\n//${GENEZIO_REGISTRY}/:_authToken=.*\n?`),
+            ""
+        );
 
-            resolve();
-        });
-    });
+        updateNpmConfigPromise = fs.promises.writeFile(npmConfigFilePath, configContentWithoutRegistry);
+    }
 
-    return Promise.all([geneziorcPromise, npmrcPromise])
+    return Promise.all([geneziorcPromise, updateNpmConfigPromise]);
 }
