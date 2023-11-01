@@ -164,7 +164,6 @@ export async function getProjectConfiguration(
   const projectConfiguration = await YamlProjectConfiguration.create(
     configurationFileContent
   );
-  
 
   const result = await tryToReadClassInformationFromDecorators(projectConfiguration)
 
@@ -197,7 +196,7 @@ export async function getProjectConfiguration(
                 }
             }
 
-            projectConfiguration.classes.push(new YamlClassConfiguration(classInfo[0].path, type, ".js", methods))
+            projectConfiguration.classes.push(new YamlClassConfiguration(classInfo[0].path, type, ".js", methods, undefined, true))
         }
      }
   });

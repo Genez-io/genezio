@@ -597,7 +597,8 @@ export async function deployFrontend(
       );
     }
     // check if the build folder exists
-    const frontendPath = path.join(cwd, configuration.frontend?.path);
+    // const frontendPath = path.join(cwd, configuration.frontend?.path);
+    const frontendPath = configuration.frontend?.path
     if (!(await fileExists(frontendPath))) {
       throw new Error(
         `The build folder does not exist. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
@@ -626,7 +627,7 @@ export async function deployFrontend(
       configuration.frontend.subdomain = generateRandomSubdomain();
 
       // write the configuration in yaml file
-      await configuration.addSubdomain(configuration.frontend.subdomain, cwd);
+      await configuration.addSubdomain(configuration.frontend.subdomain);
     }
 
     configuration.frontend.path = path.join(cwd, configuration.frontend.path);

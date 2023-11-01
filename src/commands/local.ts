@@ -191,10 +191,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       ]);
       yamlProjectConfiguration.packageManager =
         optionalPackageManager.packageManager;
-      await yamlProjectConfiguration.writeToFile(
-        "./genezio.yaml",
-        YamlProjectConfigurationType.ROOT,
-      );
+      await yamlProjectConfiguration.writeToFile();
     }
 
     let sdkConfiguration = yamlProjectConfiguration.sdk

@@ -181,6 +181,7 @@ async function generateRemoteSdkHandler(
           methods: [],
           language: path.extname(c.ast.path),
           getMethodType: () => TriggerType.jsonrpc,
+          fromDecorator: false,
         },
         fileName: path.basename(c.ast.path),
       })
