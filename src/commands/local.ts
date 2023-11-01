@@ -64,6 +64,8 @@ import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
 import util from "util";
 import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJson.js";
 import ts from "typescript";
+import { Worker } from "worker_threads";
+import { compilerWorkerScript } from "../utils/compiler-worker.js";
 
 const asyncExec = util.promisify(exec);
 
@@ -177,7 +179,10 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       );
     }
 
-    if (!yamlProjectConfiguration.packageManager && !yamlProjectConfiguration.sdk)  {
+    if (
+      !yamlProjectConfiguration.packageManager &&
+      !yamlProjectConfiguration.sdk
+    ) {
       const optionalPackageManager: Answers = await inquirer.prompt([
         {
           type: "list",
@@ -197,16 +202,16 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       );
     }
 
-    let sdkConfiguration = yamlProjectConfiguration.sdk
+    let sdkConfiguration = yamlProjectConfiguration.sdk;
     if (!yamlProjectConfiguration.sdk) {
-        const sdkPath = await createLocalTempFolder(
-            `${yamlProjectConfiguration.name}-${yamlProjectConfiguration.region}`,
-        );
+      const sdkPath = await createLocalTempFolder(
+        `${yamlProjectConfiguration.name}-${yamlProjectConfiguration.region}`,
+      );
 
-        sdkConfiguration = new YamlSdkConfiguration(
-            Language[yamlProjectConfiguration.language as keyof typeof Language],
-            path.join(sdkPath, "sdk"),
-        );
+      sdkConfiguration = new YamlSdkConfiguration(
+        Language[yamlProjectConfiguration.language as keyof typeof Language],
+        path.join(sdkPath, "sdk"),
+      );
     }
 
     let sdk: SdkGeneratorResponse;
@@ -288,9 +293,9 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         sdkConfiguration.path,
       );
       if (
-          !yamlProjectConfiguration.sdk && 
+        !yamlProjectConfiguration.sdk &&
         (sdkConfiguration.language === Language.ts ||
-        sdkConfiguration.language === Language.js)
+          sdkConfiguration.language === Language.js)
       ) {
         // compile the sdk
         await compileSdk(
@@ -303,7 +308,12 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       }
     }
 
-    reportSuccess(projectConfiguration, sdk, options.port, !yamlProjectConfiguration.sdk);
+    reportSuccess(
+      projectConfiguration,
+      sdk,
+      options.port,
+      !yamlProjectConfiguration.sdk,
+    );
 
     // Start listening for changes in user's code
     const { watcher } = await listenForChanges(projectConfiguration.sdk?.path);
@@ -321,6 +331,19 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
   }
 }
 
+function createWorker(workerData: any) {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(compilerWorkerScript, { workerData, eval: true });
+    worker.on("message", resolve);
+    worker.on("error", reject);
+    worker.on("exit", (code: any) => {
+      if (code !== 0) {
+        reject(new Error(`Worker stopped with exit code ${code}`));
+      }
+    });
+  });
+}
+
 async function compileSdk(
   sdkPath: string,
   projectName: string,
@@ -328,6 +351,8 @@ async function compileSdk(
   packageManager: PackageManager = PackageManager.npm,
   language: Language,
 ) {
+  const now = new Date();
+  const workers = [];
   const cjsOptions = {
     outDir: path.resolve(sdkPath, "..", "genezio-sdk", "cjs"),
     module: ts.ModuleKind.CommonJS,
@@ -335,13 +360,19 @@ async function compileSdk(
     allowJs: true,
     declaration: true,
   };
-  const cjsHost = ts.createCompilerHost(cjsOptions);
-  const cjsProgram = ts.createProgram(
-    [path.join(sdkPath, `index.${language}`)],
-    cjsOptions,
-    cjsHost,
+  // const cjsHost = ts.createCompilerHost(cjsOptions);
+  // const cjsProgram = ts.createProgram(
+  //   [path.join(sdkPath, `index.${language}`)],
+  //   cjsOptions,
+  //   cjsHost,
+  // );
+  // cjsProgram.emit();
+  workers.push(
+    createWorker({
+      fileNames: [path.join(sdkPath, `index.${language}`)],
+      compilerOptions: cjsOptions,
+    }),
   );
-  cjsProgram.emit();
   const esmOptions = {
     outDir: path.resolve(sdkPath, "..", "genezio-sdk", "esm"),
     module: ts.ModuleKind.ESNext,
@@ -349,13 +380,22 @@ async function compileSdk(
     allowJs: true,
     declaration: true,
   };
-  const esmHost = ts.createCompilerHost(esmOptions);
-  const esmProgram = ts.createProgram(
-    [path.join(sdkPath, `index.${language}`)],
-    esmOptions,
-    esmHost,
+  // const esmHost = ts.createCompilerHost(esmOptions);
+  // const esmProgram = ts.createProgram(
+  //   [path.join(sdkPath, `index.${language}`)],
+  //   esmOptions,
+  //   esmHost,
+  // );
+  // esmProgram.emit();
+  workers.push(
+    createWorker({
+      fileNames: [path.join(sdkPath, `index.${language}`)],
+      compilerOptions: esmOptions,
+    }),
   );
-  esmProgram.emit();
+  await Promise.all(workers);
+  const after = new Date();
+  log.info(`SDK compiled in ${after.getTime() - now.getTime()}ms`);
   const modulePath = path.resolve(sdkPath, "..", "genezio-sdk");
   await writeToFile(
     modulePath,
@@ -780,7 +820,7 @@ function reportSuccess(
   projectConfiguration: ProjectConfiguration,
   sdk: SdkGeneratorResponse,
   port: number,
-  newVersion: boolean
+  newVersion: boolean,
 ) {
   const classesInfo = projectConfiguration.classes.map((c) => ({
     className: c.name,
@@ -826,10 +866,16 @@ To change the server version, go to your ${colors.cyan(
       )} property to the version you want to use.`)}`,
     );
   }
-  _reportSuccess(classesInfo, sdk, GenezioCommand.local, {
-    name: projectConfiguration.name,
-    region: projectConfiguration.region,
-  }, newVersion);
+  _reportSuccess(
+    classesInfo,
+    sdk,
+    GenezioCommand.local,
+    {
+      name: projectConfiguration.name,
+      region: projectConfiguration.region,
+    },
+    newVersion,
+  );
 
   log.info(
     "\x1b[32m%s\x1b[0m",
