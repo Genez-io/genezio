@@ -135,7 +135,8 @@ export class NodeJsBundler implements BundlerInterface {
             }
           }
 
-          const relativePath = path.relative(cwd!, args.path)
+          const _cwd = cwd ?? process.cwd()
+          const relativePath = path.relative(_cwd, args.path)
           const components = relativePath.split(path.sep)
           const contents = await fs.promises.readFile(args.path, "utf8");
           const loader = getLoader(args.path.split(".").pop()!);
