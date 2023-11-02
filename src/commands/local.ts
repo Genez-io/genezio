@@ -5,7 +5,7 @@ import express from "express";
 import chokidar from "chokidar";
 import cors from "cors";
 import bodyParser from "body-parser";
-import { ChildProcess, spawn, exec } from "child_process";
+import { ChildProcess, spawn } from "child_process";
 import path from "path";
 import url from "url";
 import * as http from "http";
@@ -13,7 +13,6 @@ import colors from "colors";
 import {
   ProjectConfiguration,
   ClassConfiguration,
-  SdkConfiguration,
 } from "../models/projectConfiguration.js";
 import { LOCAL_TEST_INTERFACE_URL } from "../constants.js";
 import { GENEZIO_NO_CLASSES_FOUND, PORT_ALREADY_USED } from "../errors.js";
@@ -32,7 +31,6 @@ import {
   createTemporaryFolder,
   fileExists,
   readUTF8File,
-  writeToFile,
 } from "../utils/file.js";
 import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 import {
@@ -61,13 +59,8 @@ import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBu
 import inquirer, { Answers } from "inquirer";
 import { EOL } from "os";
 import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
-import util from "util";
 import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJson.js";
-import ts from "typescript";
-import { Worker } from "worker_threads";
-import { compilerWorkerScript } from "../utils/compiler-worker.js";
-
-const asyncExec = util.promisify(exec);
+import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 
 type ClassProcess = {
   process: ChildProcess;
@@ -298,12 +291,16 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
           sdkConfiguration.language === Language.js)
       ) {
         // compile the sdk
-        await compileSdk(
-          sdkConfiguration.path,
+        const packajeJson: string = getNodeModulePackageJsonLocal(
           projectConfiguration.name,
           projectConfiguration.region,
-          yamlProjectConfiguration.packageManager || PackageManager.npm,
+        );
+        await compileSdk(
+          sdkConfiguration.path,
+          packajeJson,
           sdkConfiguration.language,
+          GenezioCommand.local,
+          yamlProjectConfiguration.packageManager || PackageManager.npm,
         );
       }
     }
@@ -331,80 +328,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
   }
 }
 
-function createWorker(workerData: any) {
-  return new Promise((resolve, reject) => {
-    const worker = new Worker(compilerWorkerScript, { workerData, eval: true });
-    worker.on("message", resolve);
-    worker.on("error", reject);
-    worker.on("exit", (code: any) => {
-      if (code !== 0) {
-        reject(new Error(`Worker stopped with exit code ${code}`));
-      }
-    });
-  });
-}
-
-async function compileSdk(
-  sdkPath: string,
-  projectName: string,
-  region: string,
-  packageManager: PackageManager = PackageManager.npm,
-  language: Language,
-) {
-  const now = new Date();
-  const workers = [];
-  const cjsOptions = {
-    outDir: path.resolve(sdkPath, "..", "genezio-sdk", "cjs"),
-    module: ts.ModuleKind.CommonJS,
-    rootDir: sdkPath,
-    allowJs: true,
-    declaration: true,
-  };
-  // const cjsHost = ts.createCompilerHost(cjsOptions);
-  // const cjsProgram = ts.createProgram(
-  //   [path.join(sdkPath, `index.${language}`)],
-  //   cjsOptions,
-  //   cjsHost,
-  // );
-  // cjsProgram.emit();
-  workers.push(
-    createWorker({
-      fileNames: [path.join(sdkPath, `index.${language}`)],
-      compilerOptions: cjsOptions,
-    }),
-  );
-  const esmOptions = {
-    outDir: path.resolve(sdkPath, "..", "genezio-sdk", "esm"),
-    module: ts.ModuleKind.ESNext,
-    rootDir: sdkPath,
-    allowJs: true,
-    declaration: true,
-  };
-  // const esmHost = ts.createCompilerHost(esmOptions);
-  // const esmProgram = ts.createProgram(
-  //   [path.join(sdkPath, `index.${language}`)],
-  //   esmOptions,
-  //   esmHost,
-  // );
-  // esmProgram.emit();
-  workers.push(
-    createWorker({
-      fileNames: [path.join(sdkPath, `index.${language}`)],
-      compilerOptions: esmOptions,
-    }),
-  );
-  await Promise.all(workers);
-  const after = new Date();
-  log.info(`SDK compiled in ${after.getTime() - now.getTime()}ms`);
-  const modulePath = path.resolve(sdkPath, "..", "genezio-sdk");
-  await writeToFile(
-    modulePath,
-    "package.json",
-    getNodeModulePackageJsonLocal(projectName, region),
-  );
-  await asyncExec(packageManager + " link", { cwd: modulePath });
-}
-
+// async function compileSdk
 function logChangeDetection() {
   console.clear();
   log.info("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
