@@ -5,7 +5,7 @@ import express from "express";
 import chokidar from "chokidar";
 import cors from "cors";
 import bodyParser from "body-parser";
-import { ChildProcess, spawn, exec } from "child_process";
+import { ChildProcess, spawn } from "child_process";
 import path from "path";
 import url from "url";
 import * as http from "http";
@@ -13,7 +13,6 @@ import colors from "colors";
 import {
   ProjectConfiguration,
   ClassConfiguration,
-  SdkConfiguration,
 } from "../models/projectConfiguration.js";
 import { LOCAL_TEST_INTERFACE_URL } from "../constants.js";
 import { GENEZIO_NO_CLASSES_FOUND, PORT_ALREADY_USED } from "../errors.js";
@@ -32,7 +31,6 @@ import {
   createTemporaryFolder,
   fileExists,
   readUTF8File,
-  writeToFile,
 } from "../utils/file.js";
 import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 import {
@@ -61,11 +59,8 @@ import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBu
 import inquirer, { Answers } from "inquirer";
 import { EOL } from "os";
 import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
-import util from "util";
 import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJson.js";
-import ts from "typescript";
-
-const asyncExec = util.promisify(exec);
+import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 
 type ClassProcess = {
   process: ChildProcess;
@@ -177,7 +172,10 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       );
     }
 
-    if (!yamlProjectConfiguration.packageManager && !yamlProjectConfiguration.sdk)  {
+    if (
+      !yamlProjectConfiguration.packageManager &&
+      !yamlProjectConfiguration.sdk
+    ) {
       const optionalPackageManager: Answers = await inquirer.prompt([
         {
           type: "list",
@@ -194,16 +192,16 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       await yamlProjectConfiguration.writeToFile();
     }
 
-    let sdkConfiguration = yamlProjectConfiguration.sdk
+    let sdkConfiguration = yamlProjectConfiguration.sdk;
     if (!yamlProjectConfiguration.sdk) {
-        const sdkPath = await createLocalTempFolder(
-            `${yamlProjectConfiguration.name}-${yamlProjectConfiguration.region}`,
-        );
+      const sdkPath = await createLocalTempFolder(
+        `${yamlProjectConfiguration.name}-${yamlProjectConfiguration.region}`,
+      );
 
-        sdkConfiguration = new YamlSdkConfiguration(
-            Language[yamlProjectConfiguration.language as keyof typeof Language],
-            path.join(sdkPath, "sdk"),
-        );
+      sdkConfiguration = new YamlSdkConfiguration(
+        Language[yamlProjectConfiguration.language as keyof typeof Language],
+        path.join(sdkPath, "sdk"),
+      );
     }
 
     let sdk: SdkGeneratorResponse;
@@ -285,22 +283,31 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         sdkConfiguration.path,
       );
       if (
-          !yamlProjectConfiguration.sdk && 
+        !yamlProjectConfiguration.sdk &&
         (sdkConfiguration.language === Language.ts ||
-        sdkConfiguration.language === Language.js)
+          sdkConfiguration.language === Language.js)
       ) {
         // compile the sdk
-        await compileSdk(
-          sdkConfiguration.path,
+        const packajeJson: string = getNodeModulePackageJsonLocal(
           projectConfiguration.name,
           projectConfiguration.region,
-          yamlProjectConfiguration.packageManager || PackageManager.npm,
+        );
+        await compileSdk(
+          sdkConfiguration.path,
+          packajeJson,
           sdkConfiguration.language,
+          GenezioCommand.local,
+          yamlProjectConfiguration.packageManager || PackageManager.npm,
         );
       }
     }
 
-    reportSuccess(projectConfiguration, sdk, options.port, !yamlProjectConfiguration.sdk);
+    reportSuccess(
+      projectConfiguration,
+      sdk,
+      options.port,
+      !yamlProjectConfiguration.sdk,
+    );
 
     // Start listening for changes in user's code
     const { watcher } = await listenForChanges(projectConfiguration.sdk?.path);
@@ -316,50 +323,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
       commandOptions: JSON.stringify(options),
     });
   }
-}
-
-async function compileSdk(
-  sdkPath: string,
-  projectName: string,
-  region: string,
-  packageManager: PackageManager = PackageManager.npm,
-  language: Language,
-) {
-  const cjsOptions = {
-    outDir: path.resolve(sdkPath, "..", "genezio-sdk", "cjs"),
-    module: ts.ModuleKind.CommonJS,
-    rootDir: sdkPath,
-    allowJs: true,
-    declaration: true,
-  };
-  const cjsHost = ts.createCompilerHost(cjsOptions);
-  const cjsProgram = ts.createProgram(
-    [path.join(sdkPath, `index.${language}`)],
-    cjsOptions,
-    cjsHost,
-  );
-  cjsProgram.emit();
-  const esmOptions = {
-    outDir: path.resolve(sdkPath, "..", "genezio-sdk", "esm"),
-    module: ts.ModuleKind.ESNext,
-    rootDir: sdkPath,
-    allowJs: true,
-    declaration: true,
-  };
-  const esmHost = ts.createCompilerHost(esmOptions);
-  const esmProgram = ts.createProgram(
-    [path.join(sdkPath, `index.${language}`)],
-    esmOptions,
-    esmHost,
-  );
-  esmProgram.emit();
-  const modulePath = path.resolve(sdkPath, "..", "genezio-sdk");
-  await writeToFile(
-    modulePath,
-    "package.json",
-    getNodeModulePackageJsonLocal(projectName, region),
-  );
-  await asyncExec(packageManager + " link", { cwd: modulePath });
 }
 
 function logChangeDetection() {
@@ -777,7 +740,7 @@ function reportSuccess(
   projectConfiguration: ProjectConfiguration,
   sdk: SdkGeneratorResponse,
   port: number,
-  newVersion: boolean
+  newVersion: boolean,
 ) {
   const classesInfo = projectConfiguration.classes.map((c) => ({
     className: c.name,
@@ -823,10 +786,16 @@ To change the server version, go to your ${colors.cyan(
       )} property to the version you want to use.`)}`,
     );
   }
-  _reportSuccess(classesInfo, sdk, GenezioCommand.local, {
-    name: projectConfiguration.name,
-    region: projectConfiguration.region,
-  }, newVersion);
+  _reportSuccess(
+    classesInfo,
+    sdk,
+    GenezioCommand.local,
+    {
+      name: projectConfiguration.name,
+      region: projectConfiguration.region,
+    },
+    newVersion,
+  );
 
   log.info(
     "\x1b[32m%s\x1b[0m",

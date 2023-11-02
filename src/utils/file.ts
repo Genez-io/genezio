@@ -41,7 +41,9 @@ export function ensureRelativePaths(file: string) {
   return "./" + relativePath;
 }
 
-export async function getAllFilesFromPath(inputPath: string): Promise<FileDetails[]> {
+export async function getAllFilesFromPath(
+  inputPath: string,
+): Promise<FileDetails[]> {
   // get genezioIgnore file
   let genezioIgnore: string[] = [];
   const genezioIgnorePath = path.join(inputPath, ".genezioignore");
@@ -82,7 +84,7 @@ export async function getAllFilesFromPath(inputPath: string): Promise<FileDetail
   });
 }
 export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
-    return getAllFilesFromPath(process.cwd())
+  return getAllFilesFromPath(process.cwd());
 }
 
 export async function zipDirectory(
@@ -300,7 +302,6 @@ export async function createLocalTempFolder(
         if (error) {
           reject(error);
         }
-
         resolve(tempFolder);
       });
     }

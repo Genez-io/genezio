@@ -29,7 +29,6 @@ import {
   deleteFolder,
   getBundleFolderSizeLimit,
   readEnvironmentVariablesFile,
-  writeToFile,
   createLocalTempFolder,
 } from "../utils/file.js";
 import { printAdaptiveLog, debugLogger } from "../utils/logging.js";
@@ -56,12 +55,9 @@ import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBu
 import { setEnvironmentVariables } from "../requests/setEnvironmentVariables.js";
 import colors from "colors";
 import { getEnvironmentVariables } from "../requests/getEnvironmentVariables.js";
-import { exec } from "child_process";
-import util from "util";
 import { getNodeModulePackageJson } from "../generateSdk/templates/packageJson.js";
 import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
-import ts from "typescript";
-const asyncExec = util.promisify(exec);
+import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
   let configuration;
@@ -454,28 +450,36 @@ export async function deployClasses(
   ) {
     const localPath = await createLocalTempFolder(
       `${projectConfiguration.name}-${projectConfiguration.region}`,
-      true,
     );
     await writeSdkToDisk(
       sdkResponse,
       configuration.language,
       path.join(localPath, "sdk"),
     );
-    // compile the sdk
-    await compileSdk(
-      path.join(localPath, "sdk"),
+    const packageJson: string = getNodeModulePackageJson(
       configuration.name,
       configuration.region,
       stage,
+    );
+    await compileSdk(
+      path.join(localPath, "sdk"),
+      packageJson,
       configuration.language,
+      GenezioCommand.deploy,
     );
   }
 
-  reportSuccess(result.classes, sdkResponse, GenezioCommand.deploy, {
-    name: configuration.name,
-    region: configuration.region,
-    stage: stage,
-  }, !configuration.sdk);
+  reportSuccess(
+    result.classes,
+    sdkResponse,
+    GenezioCommand.deploy,
+    {
+      name: configuration.name,
+      region: configuration.region,
+      stage: stage,
+    },
+    !configuration.sdk,
+  );
 
   const projectId = result.classes[0].projectId;
   if (projectId) {
@@ -654,48 +658,4 @@ function getCloudProvider(provider: string): CloudAdapter {
     default:
       throw new Error(`Unsupported cloud provider: ${provider}`);
   }
-}
-
-async function compileSdk(
-  sdkPath: string,
-  projectName: string,
-  region: string,
-  stage: string,
-  language: Language,
-) {
-  const cjsOptions = {
-    outDir: path.resolve(sdkPath, "..", "genezio-sdk", "cjs"),
-    module: ts.ModuleKind.CommonJS,
-    rootDir: sdkPath,
-    allowJs: true,
-    declaration: true,
-  };
-  const cjsHost = ts.createCompilerHost(cjsOptions);
-  const cjsProgram = ts.createProgram(
-    [path.join(sdkPath, `index.${language}`)],
-    cjsOptions,
-    cjsHost,
-  );
-  cjsProgram.emit();
-  const esmOptions = {
-    outDir: path.resolve(sdkPath, "..", "genezio-sdk", "esm"),
-    module: ts.ModuleKind.ESNext,
-    rootDir: sdkPath,
-    allowJs: true,
-    declaration: true,
-  };
-  const esmHost = ts.createCompilerHost(esmOptions);
-  const esmProgram = ts.createProgram(
-    [path.join(sdkPath, `index.${language}`)],
-    esmOptions,
-    esmHost,
-  );
-  esmProgram.emit();
-  const modulePath = path.resolve(sdkPath, "..", "genezio-sdk");
-  await writeToFile(
-    modulePath,
-    "package.json",
-    getNodeModulePackageJson(projectName, region, stage),
-  );
-  await asyncExec("npm publish", { cwd: modulePath });
 }
