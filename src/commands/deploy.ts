@@ -647,6 +647,8 @@ function getCloudProvider(provider: string): CloudAdapter {
     case CloudProviderIdentifier.GENEZIO:
     case CloudProviderIdentifier.CAPYBARA:
       return new GenezioCloudAdapter();
+    case CloudProviderIdentifier.CAPYBARA_LINUX:
+      return new GenezioCloudAdapter();
     case CloudProviderIdentifier.SELF_HOSTED_AWS:
       return new SelfHostedAwsAdapter();
     default:
