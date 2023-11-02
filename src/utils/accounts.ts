@@ -28,9 +28,9 @@ export async function addAuthTokenToNpmConfig(token: string) {
 
     if (fs.existsSync(path.join(homeDirectory, npmConfigFile))) {
         const npmConfigFileContent = await readUTF8File(path.join(homeDirectory, npmConfigFile));
-        if (npmConfigFileContent.includes(getNpmConfigFileContent(""))) {
-            npmConfigContent = npmConfigFileContent.replace(
-                new RegExp(`(@genezio-sdk:registry=https://${GENEZIO_REGISTRY}/npm\n//${GENEZIO_REGISTRY}/:_authToken=)(.*)(\n?)`),
+        if (npmConfigFileContent.includes(`//${GENEZIO_REGISTRY}/:_authToken=`)) {
+            npmConfigContent = npmConfigFileContent.replaceAll(
+                new RegExp(`(//${GENEZIO_REGISTRY}/:_authToken=)(.*)(\n?)`, "g"),
                 `$1${token}$3`
             );
         } else {
@@ -67,11 +67,12 @@ export async function removeAuthToken(): Promise<[void, void]> {
     let updateNpmConfigPromise = Promise.resolve();
     if (fs.existsSync(npmConfigFilePath)) {
         const configContent = await readUTF8File(npmConfigFilePath);
-        const configContentWithoutRegistry = configContent.replace(
-            RegExp(`@genezio-sdk:registry=https://${GENEZIO_REGISTRY}/npm\n//${GENEZIO_REGISTRY}/:_authToken=.*\n?`),
+        const configContentWithoutRegistry = configContent
+          .replaceAll(
+            RegExp(`@genezio-sdk:registry=https://${GENEZIO_REGISTRY}/npm\n?`, "g"),
             ""
-        );
-
+          )
+          .replaceAll(RegExp(`//${GENEZIO_REGISTRY}/:_authToken=.*\n?`, "g"), "");
         updateNpmConfigPromise = fs.promises.writeFile(npmConfigFilePath, configContentWithoutRegistry);
     }
 
