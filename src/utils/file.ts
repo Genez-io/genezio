@@ -294,10 +294,6 @@ export async function createLocalTempFolder(
         fsExtra.emptyDirSync(tempFolder);
         resolve(tempFolder);
       } else {
-        // create genezio-sdk folder
-        // if (!fs.existsSync(path.join(tempFolder, "genezio-sdk"))) {
-        //   fs.mkdirSync(path.join(tempFolder, "genezio-sdk"));
-        // }
         resolve(tempFolder);
         return;
       }
@@ -306,9 +302,6 @@ export async function createLocalTempFolder(
         if (error) {
           reject(error);
         }
-        // create genezio-sdk folder
-        // fs.mkdirSync(path.join(tempFolder, "genezio-sdk"));
-
         resolve(tempFolder);
       });
     }
