@@ -135,8 +135,15 @@ export class NodeJsBundler implements BundlerInterface {
             }
           }
 
+          const relativePath = path.relative(cwd!, args.path)
+          const components = relativePath.split(path.sep)
           const contents = await fs.promises.readFile(args.path, "utf8");
           const loader = getLoader(args.path.split(".").pop()!);
+
+          // Check if file comes from node_modules
+          if (components.length >= 1 && components[0] === "node_modules") {
+              return { contents, loader }
+          }
 
           // Check if file doesn't use require()
           if (!contents.includes("require(")) {
