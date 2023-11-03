@@ -25,6 +25,38 @@ If you spot a problem with the docs, [search if an issue already exists](https:/
 
 Scan through our [existing issues](https://github.com/Genez-io/genezio/issues) to find one that interests you. You can narrow down the search using `labels` as filters.
 
+#### Genezio setup
+To test your solution on your machine to an existing issue you need to set up genezio.
+Follow the steps below:
+
+Fork this repository and clone it on your machine.
+
+To run the steps below, you should have [npm and node](https://nodejs.org/en/download) installed on your machine. 
+Tip: You can check out [`nvm`](https://github.com/nvm-sh/nvm#installing-and-updating) to manage node installations.
+
+Clone the forked repository on your machine:
+```bash
+git clone <forked_repository>
+cd genezio
+```
+
+Checkout into our dev branch for the latest features:
+```bash
+git remote add upstream https://github.com/genez-io/genezio
+git fetch upstream
+git checkout -b dev upstream/dev
+```
+
+Install genezio and its dependencies:
+```bash
+npm install
+npm run install-locally-dev
+genezio login
+genezio --help
+```
+
+Each time you modify the genezio codebase, rerun `npm run install-locally-dev` to build the latest source code.
+
 ### Pull Request
 
 When you're finished with the changes, create a pull request, also known as a PR.
