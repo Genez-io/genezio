@@ -34,7 +34,7 @@ if (environment === "dev") {
     DART_COMPILATION_ENDPOINT = "https://cniedue5ht4eylr4qtdp4w4qum0rgzgi.lambda-url.us-east-1.on.aws/";
     SENTRY_DSN = "https://4b80c74e91269ae9ae55cb43ad1de80a@o4504060250488832.ingest.sentry.io/4506022249627648";
     ENVIRONMENT = "prod";
-    GENEZIO_REGISTRY = "TODO";
+    GENEZIO_REGISTRY = "rt3ersglfpyjlkzcjgql3s7xju0nuzym.lambda-url.us-east-1.on.aws/RegistryHTTPHandler";
 }
 
 export { REACT_APP_BASE_URL, FRONTEND_DOMAIN, BACKEND_ENDPOINT, PORT_LOCAL_ENVIRONMENT, ENABLE_DEBUG_LOGS_BY_DEFAULT, LOCAL_TEST_INTERFACE_URL, DART_COMPILATION_ENDPOINT, GENEZIO_TELEMETRY_ENDPOINT, ENVIRONMENT, SENTRY_DSN, GENEZIO_REGISTRY };
