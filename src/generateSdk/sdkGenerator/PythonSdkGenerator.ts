@@ -19,7 +19,8 @@ import {
   TypeLiteral,
   ParameterDefinition,
   MethodDefinition,
-  ModelView
+  ModelView,
+  SdkVersion
 } from "../../models/genezioModels.js";
 import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 import { pythonSdk } from "../templates/pythonSdk.js";
@@ -108,7 +109,8 @@ class {{{className}}}:
 
 class SdkGenerator implements SdkGeneratorInterface {
   async generateSdk(
-    sdkGeneratorInput: SdkGeneratorInput
+    sdkGeneratorInput: SdkGeneratorInput,
+    sdkVersion: SdkVersion,
   ): Promise<SdkGeneratorOutput> {
 
     const generateSdkOutput: SdkGeneratorOutput = {

@@ -11,6 +11,7 @@ import {
     Node,
     MapType,
     SdkFileClass,
+    SdkVersion,
 } from "../../models/genezioModels.js";
 import { TriggerType, YamlClassConfiguration } from "../../models/yamlProjectConfiguration.js";
 import { dartSdk } from "../templates/dartSdk.js";
@@ -158,7 +159,8 @@ class {{{className}}} {
 
 class SdkGenerator implements SdkGeneratorInterface {
     async generateSdk(
-        sdkGeneratorInput: SdkGeneratorInput
+        sdkGeneratorInput: SdkGeneratorInput,
+        sdkVersion: SdkVersion,
     ): Promise<SdkGeneratorOutput> {
         const generateSdkOutput: SdkGeneratorOutput = {
             files: []

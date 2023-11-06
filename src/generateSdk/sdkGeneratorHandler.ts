@@ -7,6 +7,7 @@ import KotlinSdkGenerator from "./sdkGenerator/KotlinSdkGenerator.js";
 import {
   SdkGeneratorInput,
   SdkGeneratorOutput,
+  SdkVersion,
 } from "../models/genezioModels.js";
 import log from "loglevel";
 import { exit } from "process";
@@ -21,7 +22,8 @@ import { exit } from "process";
  */
 export async function generateSdk(
   sdkGeneratorInput: SdkGeneratorInput,
-  plugins: string[] | undefined
+  plugins: string[] | undefined,
+  sdkVersion: SdkVersion,
 ): Promise<SdkGeneratorOutput> {
   let pluginsImported: any = [];
 
@@ -29,7 +31,7 @@ export async function generateSdk(
     pluginsImported = plugins?.map(async (plugin) => {
       return await import(plugin).catch((err: any) => {
         log.error(
-          `Plugin(${plugin}) not found. Install it with npm install ${plugin}`
+          `Plugin(${plugin}) not found. Install it with npm install ${plugin}`,
         );
         exit(1);
       });
@@ -49,11 +51,11 @@ export async function generateSdk(
 
   if (!sdkGeneratorElem && sdkGeneratorInput.sdk) {
     throw new Error(
-      `SDK language(${sdkGeneratorInput.sdk.language}) not supported`
+      `SDK language(${sdkGeneratorInput.sdk.language}) not supported`,
     );
   }
 
   const sdkGeneratorClass = new sdkGeneratorElem.SdkGenerator();
 
-  return await sdkGeneratorClass.generateSdk(sdkGeneratorInput);
+  return await sdkGeneratorClass.generateSdk(sdkGeneratorInput, sdkVersion);
 }

@@ -7,7 +7,8 @@ import {
   SdkGeneratorOutput,
   Node,
   ArrayType,
-  PromiseType
+  PromiseType,
+  SdkVersion,
 } from "../../models/genezioModels.js";
 import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 import { swiftSdk } from "../templates/swiftSdk.js";
@@ -39,7 +40,7 @@ const SWIFT_RESERVED_WORDS = [
   "Type",
   "unowned",
   "weak",
-  "willSet"
+  "willSet",
 ];
 
 const template = `/**
@@ -61,14 +62,13 @@ class {{{className}}} {
 }
 `;
 
-
 class SdkGenerator implements SdkGeneratorInterface {
   async generateSdk(
-    sdkGeneratorInput: SdkGeneratorInput
+    sdkGeneratorInput: SdkGeneratorInput,
+    sdkVersion: SdkVersion,
   ): Promise<SdkGeneratorOutput> {
-
     const generateSdkOutput: SdkGeneratorOutput = {
-      files: []
+      files: [],
     };
 
     for (const classInfo of sdkGeneratorInput.classesInfo) {
@@ -94,16 +94,19 @@ class SdkGenerator implements SdkGeneratorInterface {
         className: classDefinition.name,
         _url: _url,
         methods: [],
-        externalTypes: []
+        externalTypes: [],
       };
 
       let exportClassChecker = false;
 
       for (const methodDefinition of classDefinition.methods) {
-        const methodConfigurationType = classConfiguration.getMethodType(methodDefinition.name);
+        const methodConfigurationType = classConfiguration.getMethodType(
+          methodDefinition.name,
+        );
 
-        if (methodConfigurationType !== TriggerType.jsonrpc
-          || classConfiguration.type !== TriggerType.jsonrpc
+        if (
+          methodConfigurationType !== TriggerType.jsonrpc ||
+          classConfiguration.type !== TriggerType.jsonrpc
         ) {
           continue;
         }
@@ -114,28 +117,33 @@ class SdkGenerator implements SdkGeneratorInterface {
           name: methodDefinition.name,
           parameters: [],
           returnType: this.getParamType(methodDefinition.returnType),
-          methodCaller: methodDefinition.params.length === 0 ?
-            `"${classDefinition.name}.${methodDefinition.name}"`
-            : `"${classDefinition.name}.${methodDefinition.name}", args:`
+          methodCaller:
+            methodDefinition.params.length === 0
+              ? `"${classDefinition.name}.${methodDefinition.name}"`
+              : `"${classDefinition.name}.${methodDefinition.name}", args:`,
         };
 
         methodView.parameters = methodDefinition.params.map((e) => {
           return {
-            name: (SWIFT_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name) + ": " + this.getParamType(e.paramType),
-            last: false
-          }
+            name:
+              (SWIFT_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name) +
+              ": " +
+              this.getParamType(e.paramType),
+            last: false,
+          };
         });
 
         methodView.sendParameters = methodDefinition.params.map((e) => {
           return {
-            name: (SWIFT_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
-            last: false
-          }
+            name: SWIFT_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name,
+            last: false,
+          };
         });
 
         if (methodView.parameters.length > 0) {
           methodView.parameters[methodView.parameters.length - 1].last = true;
-          methodView.sendParameters[methodView.sendParameters.length - 1].last = true;
+          methodView.sendParameters[methodView.sendParameters.length - 1].last =
+            true;
         }
 
         view.methods.push(methodView);
@@ -146,12 +154,13 @@ class SdkGenerator implements SdkGeneratorInterface {
       }
 
       const rawSdkClassName = `${classDefinition.name}.sdk.swift`;
-      const sdkClassName = rawSdkClassName.charAt(0).toLowerCase() + rawSdkClassName.slice(1)
+      const sdkClassName =
+        rawSdkClassName.charAt(0).toLowerCase() + rawSdkClassName.slice(1);
 
       generateSdkOutput.files.push({
         path: sdkClassName,
         data: Mustache.render(template, view),
-        className: classDefinition.name
+        className: classDefinition.name,
       });
     }
 
@@ -159,12 +168,11 @@ class SdkGenerator implements SdkGeneratorInterface {
     generateSdkOutput.files.push({
       className: "Remote",
       path: "remote.swift",
-      data: swiftSdk
+      data: swiftSdk,
     });
 
     return generateSdkOutput;
   }
-
 
   getParamType(elem: Node): string {
     if (elem.type === AstNodeType.CustomNodeLiteral) {
@@ -192,5 +200,4 @@ class SdkGenerator implements SdkGeneratorInterface {
 
 const supportedLanguages = ["swift"];
 
-
-export default { SdkGenerator, supportedLanguages }
+export default { SdkGenerator, supportedLanguages };
