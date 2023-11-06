@@ -23,7 +23,7 @@ if (environment === "dev") {
     DART_COMPILATION_ENDPOINT = "https://2uweph47zqvpgmiurihpnybdba0loxje.lambda-url.us-east-1.on.aws/";
     SENTRY_DSN = "https://949de0f5bbdf979b9b51d11d2291c1df@o4504060250488832.ingest.sentry.io/4506022210961408";
     ENVIRONMENT = "dev";
-    GENEZIO_REGISTRY = "5lraaxyjfn2jjgroseiwuzn3h40hmjxf.lambda-url.us-east-1.on.aws/RegistryHTTPHandler";
+    GENEZIO_REGISTRY = "yptt62gzkhog5xuxtuwxvb6ohi0dtfhg.lambda-url.us-east-1.on.aws/RegistryHTTPHandler";
 } else {
     REACT_APP_BASE_URL = "https://app.genez.io";
     FRONTEND_DOMAIN = "app.genez.io";
