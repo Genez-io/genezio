@@ -6,6 +6,7 @@ import {
   SdkGeneratorInput,
   SdkGeneratorOutput,
   IndexModel,
+  SdkVersion,
 } from "../../models/genezioModels.js";
 import { nodeSdkJs } from "../templates/nodeSdkJs.js";
 import Mustache from "mustache";
@@ -44,6 +45,7 @@ export class {{{className}}} {
 class SdkGenerator implements SdkGeneratorInterface {
   async generateSdk(
     sdkGeneratorInput: SdkGeneratorInput,
+    sdkVersion: SdkVersion,
   ): Promise<SdkGeneratorOutput> {
     const generateSdkOutput: SdkGeneratorOutput = {
       files: [],
@@ -72,8 +74,6 @@ class SdkGenerator implements SdkGeneratorInterface {
       if (classDefinition === undefined) {
         continue;
       }
-
-      this.addClassToIndex(indexModel, classDefinition.name);
 
       const view: any = {
         className: classDefinition.name,
@@ -124,6 +124,8 @@ class SdkGenerator implements SdkGeneratorInterface {
         continue;
       }
 
+      this.addClassToIndex(indexModel, classDefinition.name);
+
       const rawSdkClassName = `${classDefinition.name}.sdk.js`;
       const sdkClassName =
         rawSdkClassName.charAt(0).toLowerCase() + rawSdkClassName.slice(1);
@@ -143,14 +145,16 @@ class SdkGenerator implements SdkGeneratorInterface {
     });
 
     // generate index.js
-    if (indexModel.exports.length > 0) {
-      indexModel.exports[indexModel.exports.length - 1].last = true;
+    if (sdkVersion === SdkVersion.NEW_SDK) {
+      if (indexModel.exports.length > 0) {
+        indexModel.exports[indexModel.exports.length - 1].last = true;
+      }
+      generateSdkOutput.files.push({
+        className: "index",
+        path: "index.js",
+        data: Mustache.render(indexTemplate, indexModel),
+      });
     }
-    generateSdkOutput.files.push({
-      className: "index",
-      path: "index.js",
-      data: Mustache.render(indexTemplate, indexModel),
-    });
 
     return generateSdkOutput;
   }

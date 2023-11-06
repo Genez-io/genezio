@@ -2,7 +2,7 @@ import { YamlClassConfiguration } from "./yamlProjectConfiguration.js";
 
 export enum GenezioCommandTemplates {
   FULLSTACK = "Fullstack",
-  BACKEND = "Backend-Only"
+  BACKEND = "Backend-Only",
 }
 
 export type ModelView = {
@@ -347,11 +347,17 @@ export type SdkGeneratorOutput = {
   files: SdkFileClass[];
 };
 
+export enum SdkVersion {
+  OLD_SDK,
+  NEW_SDK,
+}
+
 /**
  * A class implementing this interface will create the sdk for a given language.
  */
 export interface SdkGeneratorInterface {
   generateSdk: (
-    sdkGeneratorInput: SdkGeneratorInput
+    sdkGeneratorInput: SdkGeneratorInput,
+    sdkVersion: SdkVersion,
   ) => Promise<SdkGeneratorOutput>;
 }
