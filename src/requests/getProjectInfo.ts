@@ -2,6 +2,7 @@ import axios from "./axios.js";
 import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
+import log from "loglevel";
 
 export default async function getProjectInfo(
   projectId: string,
@@ -30,9 +31,18 @@ export default async function getProjectInfo(
   }
 
   if (response.data.status !== 'ok') {
-    console.log('Unknown error in getting the project info from the server.');
+    log.error('Unknown error in getting the project info from the server.');
     return null;
   }
 
   return response.data.project;
 }
+
+export async function getProjectEnvFromProject(projectId: string, stageName: string) {
+    const completeProjectInfo = await getProjectInfo(projectId)
+    const projectEnv = completeProjectInfo.projectEnvs.find((projectEnv: any) =>
+                                                            projectEnv.name == stageName)
+
+    return projectEnv
+}
+

@@ -8,12 +8,16 @@ import { parse } from "yaml";
 import { exit } from "process";
 import awsCronParser from "aws-cron-parser";
 import log from "loglevel";
-import { promises as fsPromises } from 'fs';
+import { promises as fsPromises } from "fs";
 import { debugLogger } from "./logging.js";
 import { EnvironmentVariable } from "../models/environmentVariables.js";
 import dotenv from "dotenv";
+import { execSync } from "child_process";
+import fsExtra from "fs-extra";
 
-export async function getAllFilesRecursively(folderPath: string): Promise<string[]> {
+export async function getAllFilesRecursively(
+  folderPath: string,
+): Promise<string[]> {
   let files: string[] = [];
   const items = await fsPromises.readdir(folderPath, { withFileTypes: true });
 
@@ -33,22 +37,24 @@ export async function getAllFilesRecursively(folderPath: string): Promise<string
 
 export function ensureRelativePaths(file: string) {
   const absolutePath = path.resolve(file);
-  const relativePath = path.relative('.', absolutePath);
-  return './' + relativePath;
+  const relativePath = path.relative(".", absolutePath);
+  return "./" + relativePath;
 }
 
-export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
+export async function getAllFilesFromPath(
+  inputPath: string,
+): Promise<FileDetails[]> {
   // get genezioIgnore file
   let genezioIgnore: string[] = [];
-  const genezioIgnorePath = path.join(process.cwd(), ".genezioignore");
+  const genezioIgnorePath = path.join(inputPath, ".genezioignore");
   if (fs.existsSync(genezioIgnorePath)) {
     const genezioIgnoreContent = await readUTF8File(genezioIgnorePath);
-    genezioIgnore = genezioIgnoreContent.split(os.EOL).filter(
-      (line) => line !== "" && !line.startsWith("#")
-    )
+    genezioIgnore = genezioIgnoreContent
+      .split(os.EOL)
+      .filter((line) => line !== "" && !line.startsWith("#"));
   }
 
-  genezioIgnore = genezioIgnore.map((p) => ensureRelativePaths(p))
+  genezioIgnore = genezioIgnore.map((p) => ensureRelativePaths(p));
 
   return new Promise((resolve, reject) => {
     const pattern = `**`;
@@ -57,6 +63,7 @@ export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
       {
         dot: true,
         ignore: genezioIgnore,
+        cwd: inputPath,
       },
       (err, files) => {
         if (err) {
@@ -76,10 +83,13 @@ export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
     );
   });
 }
+export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
+  return getAllFilesFromPath(process.cwd());
+}
 
 export async function zipDirectory(
   sourceDir: string,
-  outPath: string
+  outPath: string,
 ): Promise<void> {
   const archive = archiver("zip", { zlib: { level: 9 } });
   const stream = fs.createWriteStream(outPath);
@@ -98,7 +108,7 @@ export async function zipDirectory(
 export async function zipDirectoryToDestinationPath(
   sourceDir: string,
   destinationPath: string,
-  outPath: string
+  outPath: string,
 ): Promise<void> {
   const archive = archiver("zip", { zlib: { level: 9 } });
   const stream = fs.createWriteStream(outPath);
@@ -128,7 +138,9 @@ export async function fileExists(filePath: string): Promise<boolean> {
   });
 }
 
-export async function isDirectoryEmpty(directoryPath: string): Promise<boolean> {
+export async function isDirectoryEmpty(
+  directoryPath: string,
+): Promise<boolean> {
   return new Promise((resolve) => {
     fs.readdir(directoryPath, (error, files) => {
       if (error) {
@@ -140,11 +152,13 @@ export async function isDirectoryEmpty(directoryPath: string): Promise<boolean> 
   });
 }
 
-export async function directoryContainsHtmlFiles(directoryPath: string): Promise<boolean> {
+export async function directoryContainsHtmlFiles(
+  directoryPath: string,
+): Promise<boolean> {
   return new Promise((resolve, reject) => {
     fs.readdir(directoryPath, (error, files) => {
       if (error) {
-        reject(error)
+        reject(error);
       }
 
       resolve(files.some((file) => file.endsWith(".html")));
@@ -164,25 +178,31 @@ export async function getFileSize(filePath: string): Promise<number> {
   });
 }
 
-export async function getBundleFolderSizeLimit(directoryPath: string): Promise<number> {
+export async function getBundleFolderSizeLimit(
+  directoryPath: string,
+): Promise<number> {
   const files = await getAllFilesRecursively(directoryPath);
-  const totalSize = files.reduce((acc, file) => acc + fs.statSync(file).size, 0);
+  const totalSize = files.reduce(
+    (acc, file) => acc + fs.statSync(file).size,
+    0,
+  );
   debugLogger.debug(`Total size of the bundle: ${totalSize} bytes`);
   return totalSize;
 }
 
-export async function directoryContainsIndexHtmlFiles(directoryPath: string): Promise<boolean> {
+export async function directoryContainsIndexHtmlFiles(
+  directoryPath: string,
+): Promise<boolean> {
   return new Promise((resolve, reject) => {
     fs.readdir(directoryPath, (error, files) => {
       if (error) {
-        reject(error)
+        reject(error);
       }
 
       resolve(files.some((file) => file === "index.html"));
     });
   });
 }
-
 
 /**
  * Removes the temporary root folder of the process.
@@ -197,7 +217,6 @@ export async function cleanupTemporaryFolders() {
   }
 }
 
-
 /**
  * Creates a temporary folder with a given name or a random name of 6 characters if no name is provided.
  * The folder is created inside a parent folder with a unique name based on the current process ID.
@@ -208,7 +227,7 @@ export async function cleanupTemporaryFolders() {
  */
 export async function createTemporaryFolder(
   name?: string,
-  shouldDeleteContents?: boolean
+  shouldDeleteContents?: boolean,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const folderName = `genezio-${process.pid}`;
@@ -239,6 +258,53 @@ export async function createTemporaryFolder(
 
       resolve(tempFolder);
     });
+  });
+}
+
+export async function createLocalTempFolder(
+  name?: string,
+  shouldDeleteContents?: boolean,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const folderName = `local-genezio`;
+
+    if (!fs.existsSync(path.join(os.tmpdir(), folderName))) {
+      fs.mkdirSync(path.join(os.tmpdir(), folderName));
+    }
+
+    // install @types/node in root folder to be accessible by all projects
+    if (
+      !fs.existsSync(
+        path.join(os.tmpdir(), folderName, "node_modules", "@types/node"),
+      )
+    ) {
+      execSync("npm install @types/node", {
+        cwd: path.join(os.tmpdir(), folderName),
+      });
+    }
+
+    if (name === undefined) {
+      // Generate a random name of 6 characters
+      name = Math.random().toString(36).substring(2, 8);
+    }
+
+    const tempFolder = path.join(os.tmpdir(), folderName, name);
+    if (fs.existsSync(tempFolder)) {
+      if (shouldDeleteContents) {
+        fsExtra.emptyDirSync(tempFolder);
+        resolve(tempFolder);
+      } else {
+        resolve(tempFolder);
+        return;
+      }
+    } else {
+      fs.mkdir(tempFolder, (error: any) => {
+        if (error) {
+          reject(error);
+        }
+        resolve(tempFolder);
+      });
+    }
   });
 }
 
@@ -275,7 +341,7 @@ export function writeToFile(
   folderPath: string,
   filename: string,
   content: any,
-  createPathIfNeeded = false
+  createPathIfNeeded = false,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const fullPath = path.join(folderPath, filename);
@@ -310,14 +376,13 @@ export async function validateYamlFile() {
 
   try {
     configurationFileContent = await parse(configurationFileContentUTF8);
-  }
-  catch (error) {
+  } catch (error) {
     throw new Error(`The configuration yaml file is not valid.\n${error}`);
   }
 
   if (configurationFileContent.classes.length === 0) {
     log.info(
-      "You don't have any classes in your genezio.yaml file. You can add classes using the 'genezio addClass <className> <classType>' command."
+      "You don't have any classes in your genezio.yaml file. You can add classes using the 'genezio addClass <className> <classType>' command.",
     );
     exit(1);
   }
@@ -330,7 +395,7 @@ export async function validateYamlFile() {
       if (method.type === "cron") {
         if (method.cronString === undefined) {
           log.warn(
-            `You need to specify a cronString for the method ${elem.path}.${method.name}.`
+            `You need to specify a cronString for the method ${elem.path}.${method.name}.`,
           );
           exit(1);
         } else {
@@ -338,7 +403,7 @@ export async function validateYamlFile() {
             const cron = awsCronParser.parse(method.cronString);
           } catch (error: any) {
             log.error(
-              `The cronString ${method.cronString} for the method ${elem.path}.${method.name} is not valid.`
+              `The cronString ${method.cronString} for the method ${elem.path}.${method.name} is not valid.`,
             );
             log.error("You must use a 6-part cron expression.");
             log.error(error.toString());
@@ -350,11 +415,13 @@ export async function validateYamlFile() {
   }
 }
 
-export async function readEnvironmentVariablesFile(envFilePath: string): Promise<EnvironmentVariable[]> {
+export async function readEnvironmentVariablesFile(
+  envFilePath: string,
+): Promise<EnvironmentVariable[]> {
   const envVars = new Array<EnvironmentVariable>();
 
   // Read environment variables from .env file
-  const dotenvVars = dotenv.config({ path: envFilePath}).parsed;
+  const dotenvVars = dotenv.config({ path: envFilePath }).parsed;
   if (!dotenvVars) {
     log.warn(`No environment variables found in ${envFilePath}.`);
   }

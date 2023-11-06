@@ -7,10 +7,11 @@ export class TsRequiredDepsBundler implements BundlerInterface {
 
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
         const exists = await fileExists("node_modules/@types/node")
+        const cwd = input.projectConfiguration.workspace?.backend || process.cwd()
 
         // Install @types/node for typescript if it is not already installed
         if (!exists) {
-          await new DependencyInstaller().install(["@types/node"], true);
+          await new DependencyInstaller().install(["@types/node"], cwd, true);
         }
 
         return input;

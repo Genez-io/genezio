@@ -84,8 +84,8 @@ export class GenezioCloudAdapter implements CloudAdapter {
                     
                    }
 
-                   console.log(dependenciesTable.toString());
-                   console.log(filesTable.toString());
+                   log.info(dependenciesTable.toString());
+                   log.info(filesTable.toString());
                    throw new Error(`
 Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFixed(
                      2
@@ -205,6 +205,10 @@ Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFix
 
 function getFunctionUrl(baseUrl: string, methodType: string, className: string, methodName: string): string {
     if (methodType === "http") {
+        // trim the last slash of baseUrl if it exists
+        if (baseUrl.endsWith("/")) {
+            baseUrl = baseUrl.slice(0, -1);
+        }
         return `${baseUrl}/${className}/${methodName}`;
     } else {
         return `${baseUrl}/${className}`;

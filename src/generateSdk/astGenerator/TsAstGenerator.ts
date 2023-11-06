@@ -41,7 +41,7 @@ export class AstGenerator implements AstGeneratorInterface {
   mapTypesToParamType(
     type: typescript.Node,
     typeChecker: typescript.TypeChecker,
-    declarations: Node[]
+    declarations: Node[],
   ):
     | DoubleType
     | IntegerType
@@ -72,7 +72,7 @@ export class AstGenerator implements AstGeneratorInterface {
           generic: this.mapTypesToParamType(
             (type as any).elementType,
             typeChecker,
-            declarations
+            declarations,
           ),
         };
       case typescript.SyntaxKind.AnyKeyword:
@@ -88,7 +88,7 @@ export class AstGenerator implements AstGeneratorInterface {
             generic: this.mapTypesToParamType(
               (type as any).typeArguments[0],
               typeChecker,
-              declarations
+              declarations,
             ),
           };
         } else if (escapedText === "Array") {
@@ -97,21 +97,26 @@ export class AstGenerator implements AstGeneratorInterface {
             generic: this.mapTypesToParamType(
               (type as any).typeArguments[0],
               typeChecker,
-              declarations
+              declarations,
             ),
           };
         } else if (escapedText === "Date") {
           return { type: AstNodeType.DateType };
         }
         const typeAtLocation = typeChecker.getTypeAtLocation(
-          (type as any).typeName
+          (type as any).typeName,
         );
         const typeAtLocationPath = (
           typeAtLocation.aliasSymbol as any
-        ).declarations?.[0].getSourceFile().symbol.escapedName;
+        )?.declarations?.[0].getSourceFile().symbol.escapedName;
+        if (!typeAtLocationPath) {
+          throw new Error(
+            `Type ${escapedText} is not supported by genezio. Take a look at the documentation to see the supported types. https://docs.genez.io/`,
+          );
+        }
         const trimmedPath = typeAtLocationPath.substring(
           1,
-          typeAtLocationPath.length - 1
+          typeAtLocationPath.length - 1,
         );
         const pathFile = path
           .relative(process.cwd(), trimmedPath)
@@ -125,14 +130,14 @@ export class AstGenerator implements AstGeneratorInterface {
             declaredNode = this.parseTypeAliasDeclaration(
               typeAtLocation.aliasSymbol?.declarations?.[0] as any,
               typeChecker,
-              declarations
+              declarations,
             );
           } else if (
             typeAtLocation.aliasSymbol?.declarations?.[0].kind ===
             typescript.SyntaxKind.EnumDeclaration
           ) {
             declaredNode = this.parseEnumDeclaration(
-              typeAtLocation.aliasSymbol?.declarations?.[0] as any
+              typeAtLocation.aliasSymbol?.declarations?.[0] as any,
             );
           } else {
             return {
@@ -162,7 +167,7 @@ export class AstGenerator implements AstGeneratorInterface {
                   : this.mapTypesToParamType(
                       member.type,
                       typeChecker,
-                      declarations
+                      declarations,
                     ),
             };
             properties.push(property);
@@ -174,7 +179,7 @@ export class AstGenerator implements AstGeneratorInterface {
         const params: Node[] = [];
         for (const typeNode of (type as any).types) {
           params.push(
-            this.mapTypesToParamType(typeNode, typeChecker, declarations)
+            this.mapTypesToParamType(typeNode, typeChecker, declarations),
           );
         }
         return { type: AstNodeType.UnionType, params: params };
@@ -185,12 +190,12 @@ export class AstGenerator implements AstGeneratorInterface {
           genericKey: this.mapTypesToParamType(
             (type as any).locals.get("key").valueDeclaration.type,
             typeChecker,
-            declarations
+            declarations,
           ),
           genericValue: this.mapTypesToParamType(
             (type as any).type,
             typeChecker,
-            declarations
+            declarations,
           ),
         };
       }
@@ -202,7 +207,7 @@ export class AstGenerator implements AstGeneratorInterface {
   isDeclarationInList(
     name: string,
     path: string,
-    declarations: Node[]
+    declarations: Node[],
   ): boolean {
     for (const declarationInList of declarations) {
       if (
@@ -218,7 +223,7 @@ export class AstGenerator implements AstGeneratorInterface {
   parseClassDeclaration(
     classDeclaration: typescript.Node,
     typeChecker: typescript.TypeChecker,
-    declarations: Node[]
+    declarations: Node[],
   ): ClassDefinition | undefined {
     const copy: any = { ...classDeclaration };
     if (copy.modifiers) {
@@ -231,17 +236,31 @@ export class AstGenerator implements AstGeneratorInterface {
               const method = this.parseMethodSignature(
                 memberCopy,
                 typeChecker,
-                declarations
+                declarations,
               );
               if (method) {
                 methods.push(method);
               }
             }
           }
+          const typeAtLocation = typeChecker.getTypeAtLocation(
+            (classDeclaration as any).name,
+          );
+          const typeAtLocationPath = (
+            typeAtLocation.symbol as any
+          ).declarations?.[0].getSourceFile().symbol.escapedName;
+          const trimmedPath = typeAtLocationPath.substring(
+            1,
+            typeAtLocationPath.length - 1,
+          );
+          const pathFile = path
+            .relative(process.cwd(), trimmedPath)
+            .replace(/\\/g, "/");
           return {
             type: AstNodeType.ClassDefinition,
             name: copy.name.escapedText,
             methods: methods,
+            path: pathFile,
           };
         }
       }
@@ -252,7 +271,7 @@ export class AstGenerator implements AstGeneratorInterface {
   parseTypeAliasDeclaration(
     typeAliasDeclaration: typescript.Node,
     typeChecker: typescript.TypeChecker,
-    declarations: Node[]
+    declarations: Node[],
   ): StructLiteral | TypeAlias {
     const typeAliasDeclarationCopy: any = { ...typeAliasDeclaration };
     if (
@@ -277,7 +296,7 @@ export class AstGenerator implements AstGeneratorInterface {
                 : this.mapTypesToParamType(
                     member.type,
                     typeChecker,
-                    declarations
+                    declarations,
                   ),
           };
           structLiteral.typeLiteral.properties.push(field);
@@ -291,7 +310,7 @@ export class AstGenerator implements AstGeneratorInterface {
         aliasType: this.mapTypesToParamType(
           typeAliasDeclarationCopy.type,
           typeChecker,
-          declarations
+          declarations,
         ),
       };
     }
@@ -300,7 +319,7 @@ export class AstGenerator implements AstGeneratorInterface {
   parseMethodSignature(
     methodSignature: typescript.Node,
     typeChecker: typescript.TypeChecker,
-    declarations: Node[]
+    declarations: Node[],
   ): MethodDefinition | undefined {
     const parameters: ParameterDefinition[] = [];
     const methodSignatureCopy: any = { ...methodSignature };
@@ -322,7 +341,7 @@ export class AstGenerator implements AstGeneratorInterface {
             paramType: this.mapTypesToParamType(
               parameter.type,
               typeChecker,
-              declarations
+              declarations,
             ),
             optional: parameter.questionToken ? true : false,
             defaultValue: parameter.initializer
@@ -347,7 +366,7 @@ export class AstGenerator implements AstGeneratorInterface {
         ? this.mapTypesToParamType(
             methodSignatureCopy.type,
             typeChecker,
-            declarations
+            declarations,
           )
         : { type: AstNodeType.VoidLiteral },
       static: false,
@@ -423,14 +442,11 @@ export class AstGenerator implements AstGeneratorInterface {
     let classDefinition: ClassDefinition | undefined = undefined;
     const declarations: Node[] = [];
     this.rootNode.forEachChild((child) => {
-      if (typescript.isEnumDeclaration(child)) {
-        const enumDeclaration = this.parseEnumDeclaration(child);
-        declarations.push(enumDeclaration);
-      } else if (typescript.isClassDeclaration(child)) {
+      if (typescript.isClassDeclaration(child)) {
         const classDeclaration = this.parseClassDeclaration(
           child,
           typeChecker,
-          declarations
+          declarations,
         );
         if (classDeclaration && !classDefinition) {
           classDefinition = classDeclaration;

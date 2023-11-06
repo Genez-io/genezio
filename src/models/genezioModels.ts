@@ -1,39 +1,58 @@
 import { YamlClassConfiguration } from "./yamlProjectConfiguration.js";
 
-export type ModelView = {
-  path: string,
-  externalTypes: {
-    name: string,
-    type: string
-  }[],
-  imports: {
-    path: string,
-    models: {
-      name: string,
-      last?: boolean
-    }[]
-  }[]
+export enum GenezioCommandTemplates {
+  FULLSTACK = "Fullstack",
+  BACKEND = "Backend-Only"
 }
 
+export type ModelView = {
+  path: string;
+  externalTypes: {
+    name: string;
+    type: string;
+  }[];
+  imports: {
+    path: string;
+    models: {
+      name: string;
+      last?: boolean;
+    }[];
+  }[];
+};
+
+export type IndexModel = {
+  imports: {
+    path: string;
+    models: {
+      name: string;
+      last?: boolean;
+    }[];
+  }[];
+  exports: {
+    name: string;
+    last?: boolean;
+  }[];
+};
+
 export class File {
-  path: string
-  data: string
+  path: string;
+  data: string;
 
   constructor(path: string, data: string) {
-      this.path = path
-      this.data = data
+    this.path = path;
+    this.data = data;
   }
 }
 
 export class SdkFileClass {
-  path: string
-  data: string
-  className: string
+  path: string;
+  data: string;
+  className: string;
 
   constructor(path: string, data: string, className: string) {
-    this.path = path
-    this.data = data
-    this.className = className
+    this.path = path;
+    this.data = data;
+    this.className = className;
   }
 }
 
@@ -62,7 +81,7 @@ export enum AstNodeType {
   ParameterDefinition = "ParameterDefinition",
   MethodDefinition = "MethodDefinition",
   ClassDefinition = "ClassDefinition",
-  PropertyDefinition = "PropertyDefinition"
+  PropertyDefinition = "PropertyDefinition",
 }
 
 export interface CustomAstNodeType extends Node {
@@ -72,14 +91,14 @@ export interface CustomAstNodeType extends Node {
 
 export enum SourceType {
   script = "script",
-  module = "module"
+  module = "module",
 }
 
 export enum MethodKindEnum {
   constructor = "constructor",
   method = "method",
   get = "get",
-  set = "set"
+  set = "set",
 }
 
 /**
@@ -137,7 +156,7 @@ export interface VoidType extends Node {
 
 export interface EnumType extends Node {
   type: AstNodeType.Enum;
-  name: string
+  name: string;
 }
 
 export interface NullType extends Node {
@@ -168,7 +187,6 @@ export interface PromiseType extends Node {
   generic: Node;
 }
 
-
 export interface EnumCase {
   name: string;
   value: string;
@@ -184,7 +202,22 @@ export interface Enum extends Node {
 export interface PropertyDefinition {
   name: string;
   optional: boolean;
-  type: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | TypeLiteral | CustomAstNodeType | DateType | ArrayType | UnionType | PromiseType | VoidType | EnumType | MapType;
+  type:
+    | DoubleType
+    | IntegerType
+    | StringType
+    | BooleanType
+    | FloatType
+    | AnyType
+    | TypeLiteral
+    | CustomAstNodeType
+    | DateType
+    | ArrayType
+    | UnionType
+    | PromiseType
+    | VoidType
+    | EnumType
+    | MapType;
 }
 
 export interface TypeLiteral extends Node {
@@ -201,7 +234,22 @@ export interface StructLiteral extends Node {
 export interface TypeAlias extends Node {
   type: AstNodeType.TypeAlias;
   name: string;
-  aliasType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | CustomAstNodeType | DateType | ArrayType | TypeLiteral | UnionType | PromiseType | VoidType | EnumType | MapType;
+  aliasType:
+    | DoubleType
+    | IntegerType
+    | StringType
+    | BooleanType
+    | FloatType
+    | AnyType
+    | CustomAstNodeType
+    | DateType
+    | ArrayType
+    | TypeLiteral
+    | UnionType
+    | PromiseType
+    | VoidType
+    | EnumType
+    | MapType;
 }
 
 export interface UnionType extends Node {
@@ -213,7 +261,23 @@ export interface ParameterDefinition extends Node {
   type: AstNodeType.ParameterDefinition;
   name: string;
   rawType: string;
-  paramType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | MapType | CustomAstNodeType | DateType | TypeLiteral | UnionType | PromiseType | VoidType | EnumType | MapType;
+  paramType:
+    | DoubleType
+    | IntegerType
+    | StringType
+    | BooleanType
+    | FloatType
+    | AnyType
+    | ArrayType
+    | MapType
+    | CustomAstNodeType
+    | DateType
+    | TypeLiteral
+    | UnionType
+    | PromiseType
+    | VoidType
+    | EnumType
+    | MapType;
   optional: boolean;
   defaultValue?: {
     value: string;
@@ -227,7 +291,23 @@ export interface MethodDefinition extends Node {
   params: ParameterDefinition[];
   kind: MethodKindEnum;
   static: boolean;
-  returnType: DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | MapType | CustomAstNodeType | TypeLiteral | UnionType | PromiseType | VoidType | EnumType | DateType | MapType;
+  returnType:
+    | DoubleType
+    | IntegerType
+    | StringType
+    | BooleanType
+    | FloatType
+    | AnyType
+    | ArrayType
+    | MapType
+    | CustomAstNodeType
+    | TypeLiteral
+    | UnionType
+    | PromiseType
+    | VoidType
+    | EnumType
+    | DateType
+    | MapType;
 }
 
 export interface ClassDefinition extends Node {
@@ -240,7 +320,7 @@ export type Program = {
   originalLanguage: string;
   sourceType: SourceType;
   body: Node[] | undefined;
-}
+};
 
 /**
  * A class implementing this interface will create the ast for a given language.
@@ -248,7 +328,6 @@ export type Program = {
 export interface AstGeneratorInterface {
   generateAst: (input: AstGeneratorInput) => Promise<AstGeneratorOutput>;
 }
-
 
 // types for SDK Generator
 export type SdkGeneratorClassesInfoInput = {
@@ -261,13 +340,12 @@ export type SdkGeneratorInput = {
   classesInfo: SdkGeneratorClassesInfoInput[];
   sdk?: {
     language: string;
-  }
+  };
 };
 
 export type SdkGeneratorOutput = {
   files: SdkFileClass[];
-}
-
+};
 
 /**
  * A class implementing this interface will create the sdk for a given language.

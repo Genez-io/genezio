@@ -4,6 +4,7 @@ export enum CloudProviderIdentifier {
     GENEZIO = "genezio",
     SELF_HOSTED_AWS = "selfHostedAws",
     CAPYBARA = "capybara",
+    CAPYBARA_LINUX = "capybaraLinux",
 }
 
 export const cloudProviders = [
@@ -12,4 +13,5 @@ export const cloudProviders = [
     CloudProviderIdentifier.GENEZIO,
     CloudProviderIdentifier.SELF_HOSTED_AWS,
     CloudProviderIdentifier.CAPYBARA,
+    CloudProviderIdentifier.CAPYBARA_LINUX,
 ]

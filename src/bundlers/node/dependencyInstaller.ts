@@ -25,7 +25,7 @@ class DependencyInstaller {
      * @param {boolean} [noSave] - If true, the installed dependencies will not be saved to the package.json file.
      * @returns {Promise<void>} A promise that resolves when all specified dependencies have been installed.
      */
-    async install(dependencyList: string[], noSave?: boolean): Promise<void> {
+    async install(dependencyList: string[], cwd: string, noSave?: boolean): Promise<void> {
         const toBeInstalled: string[] = [];
 
         await this.mutex.runExclusive(async () => {
@@ -53,12 +53,12 @@ class DependencyInstaller {
      * This method is thread-safe and will only install dependencies once.
      * @returns {Promise<void>} A promise that resolves when all dependencies have been installed.
      */
-    async installAll(): Promise<void> {
+    async installAll(cwd: string): Promise<void> {
         await this.mutex.runExclusive(async () => {
             const command = this.getInstallCommand();
             debugLogger.debug("Running command: " + command);
 
-            await exec(command);
+            await exec(command, { cwd });
         })
     }
 

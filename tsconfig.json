@@ -1,9 +1,10 @@
 {
     "compilerOptions": {
-        "target": "es6",
+        "target": "es2017",
         "module": "NodeNext",
         "lib": [
-            "es6"
+            "es6",
+            "ES2021.String"
         ],
         "outDir": "build",
         "rootDir": ".",
@@ -18,3 +19,4 @@
         "test.js"
     ]
 }
+
