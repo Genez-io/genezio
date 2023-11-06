@@ -5,6 +5,7 @@ import { getGenerateAstInputs } from "./utils/getFiles.js";
 import {
   SdkGeneratorInput,
   SdkGeneratorOutput,
+  SdkVersion,
 } from "../models/genezioModels.js";
 import path from "path";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
@@ -62,6 +63,7 @@ export async function sdkGeneratorApiHandler(
   const sdkOutput: SdkGeneratorOutput = await generateSdk(
     sdkGeneratorInput,
     projectConfiguration.plugins?.sdkGenerator,
+    projectConfiguration.sdk ? SdkVersion.OLD_SDK : SdkVersion.NEW_SDK,
   );
 
   return {
