@@ -482,6 +482,7 @@ export async function deployClasses(
   );
 
   const projectId = result.classes[0].projectId;
+  const projectEnvId = result.projectEnvId;
   if (projectId) {
     // Deploy environment variables if --upload-env is true
     if (options.env) {
@@ -578,7 +579,7 @@ export async function deployClasses(
     }
 
     log.info(
-      `Your backend project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}`,
+      `Your backend project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}/${projectEnvId}`,
     );
   }
 }

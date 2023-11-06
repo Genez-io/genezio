@@ -16,5 +16,6 @@ export type DeployCodeClassResponse = {
 export type DeployCodeResponse = {
     status: string,
     projectId: string,
+    projectEnvId: string,
     classes: DeployCodeClassResponse[]
 }

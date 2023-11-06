@@ -278,7 +278,8 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
       })
     }
 
-    return {
+    return {    
+      projectEnvId: "",
       classes: classes,
     }
   }
