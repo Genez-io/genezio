@@ -33,6 +33,7 @@ export type GenezioCloudResultClass = {
 };
 
 export type GenezioCloudOutput = {
+    projectEnvId: string;
     classes: GenezioCloudResultClass[];
 }
 

@@ -132,7 +132,6 @@ Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFix
         log.info("")
 
         const response = await deployRequest(projectConfiguration, stage)
-
         const classesInfo = response.classes.map((c) => ({
             className: c.name,
             methods: c.methods.map((m) => ({
@@ -146,6 +145,7 @@ Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFix
         }));
 
         return {
+            projectEnvId: response.projectEnvId,
             classes: classesInfo,
         };
     }
