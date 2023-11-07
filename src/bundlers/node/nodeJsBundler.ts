@@ -1,5 +1,6 @@
 import path from "path";
 import fs from "fs";
+import os from "os";
 import {
   createTemporaryFolder,
   deleteFolder,
@@ -17,20 +18,34 @@ import { default as fsExtra } from "fs-extra";
 import { lambdaHandler } from "./lambdaHandler.js";
 import log from "loglevel";
 import { debugLogger } from "../../utils/logging.js";
-import esbuild, { BuildResult, Plugin, BuildFailure, Message, Loader } from "esbuild";
+import esbuild, {
+  BuildResult,
+  Plugin,
+  BuildFailure,
+  Message,
+  Loader,
+} from "esbuild";
 import { nodeExternalsPlugin } from "esbuild-node-externals";
-import colors from "colors"
+import colors from "colors";
 import { DependencyInstaller } from "./dependencyInstaller.js";
 import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE } from "../../errors.js";
 import transformDecorators from "../../utils/transformDecorators.js";
 
 export class NodeJsBundler implements BundlerInterface {
-  async #copyDependencies(dependenciesInfo: Dependency[] | undefined, tempFolderPath: string, mode: "development" | "production", cwd: string) {
+  async #copyDependencies(
+    dependenciesInfo: Dependency[] | undefined,
+    tempFolderPath: string,
+    mode: "development" | "production",
+    cwd: string,
+  ) {
     const nodeModulesPath = path.join(tempFolderPath, "node_modules");
 
     if (mode === "development") {
       // copy node_modules folder to tmp folder if node_modules folder does not exist
-      if (!fs.existsSync(nodeModulesPath) && fs.existsSync(path.join(cwd, "node_modules"))) {
+      if (
+        !fs.existsSync(nodeModulesPath) &&
+        fs.existsSync(path.join(cwd, "node_modules"))
+      ) {
         await fsExtra.copy(path.join(cwd, "node_modules"), nodeModulesPath);
       }
       return;
@@ -47,11 +62,15 @@ export class NodeJsBundler implements BundlerInterface {
       dependenciesInfo.map((dependency: Dependency) => {
         const dependencyPath = path.join(nodeModulesPath, dependency.name);
         return fsExtra.copy(dependency.path, dependencyPath);
-      })
+      }),
     );
   }
 
-  async #copyNonJsFiles(tempFolderPath: string, bundlerInput: BundlerInput, cwd: string) {
+  async #copyNonJsFiles(
+    tempFolderPath: string,
+    bundlerInput: BundlerInput,
+    cwd: string,
+  ) {
     const allNonJsFilesPaths = (await getAllFilesFromPath(cwd)).filter(
       (file: FileDetails) => {
         // create a regex to match any .env files
@@ -60,16 +79,16 @@ export class NodeJsBundler implements BundlerInterface {
         const folderPath = path.join(cwd, file.path);
         // filter js files, node_modules and folders
         return (
-          file.extension !== '.ts' &&
-          file.extension !== '.js' &&
-          file.extension !== '.tsx' &&
-          file.extension !== '.jsx' &&
-          !file.path.includes('node_modules') &&
-          !file.path.includes('.git') &&
+          file.extension !== ".ts" &&
+          file.extension !== ".js" &&
+          file.extension !== ".tsx" &&
+          file.extension !== ".jsx" &&
+          !file.path.includes("node_modules") &&
+          !file.path.includes(".git") &&
           !envFileRegex.test(file.path) &&
           !fs.lstatSync(folderPath).isDirectory()
         );
-      }
+      },
     );
 
     bundlerInput.extra.allNonJsFilesPaths = allNonJsFilesPaths;
@@ -78,29 +97,39 @@ export class NodeJsBundler implements BundlerInterface {
     await Promise.all(
       allNonJsFilesPaths.map((filePath: FileDetails) => {
         // create folder structure in tmp folder
-        const folderPath = path.join(tempFolderPath, path.dirname(filePath.path));
+        const folderPath = path.join(
+          tempFolderPath,
+          path.dirname(filePath.path),
+        );
         if (!fs.existsSync(folderPath)) {
           fs.mkdirSync(folderPath, { recursive: true });
         }
 
         // copy file to tmp folder
-        const fileDestinationPath = path.join(tempFolderPath, filePath.filename);
+        const fileDestinationPath = path.join(
+          tempFolderPath,
+          filePath.filename,
+        );
         const sourceFilePath = path.join(cwd, filePath.path);
-        return fs.promises.copyFile(sourceFilePath, fileDestinationPath).catch((error) => {
-          if (error.code === "EACCES") {
-            throw new Error(GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE(filePath.path))
-          }
+        return fs.promises
+          .copyFile(sourceFilePath, fileDestinationPath)
+          .catch((error) => {
+            if (error.code === "EACCES") {
+              throw new Error(
+                GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE(filePath.path),
+              );
+            }
 
-          throw error;
-        });
-      })
+            throw error;
+          });
+      }),
     );
   }
 
   async #bundleNodeJSCode(
     filePath: string,
     tempFolderPath: string,
-    cwd?: string, 
+    cwd?: string,
   ): Promise<void> {
     const outputFile = `module.mjs`;
 
@@ -135,15 +164,15 @@ export class NodeJsBundler implements BundlerInterface {
             }
           }
 
-          const _cwd = cwd ?? process.cwd()
-          const relativePath = path.relative(_cwd, args.path)
-          const components = relativePath.split(path.sep)
+          const _cwd = cwd ?? process.cwd();
+          const relativePath = path.relative(_cwd, args.path);
+          const components = relativePath.split(path.sep);
           const contents = await fs.promises.readFile(args.path, "utf8");
           const loader = getLoader(args.path.split(".").pop()!);
 
           // Check if file comes from node_modules
-          if (components.length >= 1 && components[0] === "node_modules") {
-              return { contents, loader }
+          if (components.length >= 1 && components.includes("node_modules")) {
+            return { contents, loader };
           }
 
           // Check if file doesn't use require()
@@ -153,13 +182,23 @@ export class NodeJsBundler implements BundlerInterface {
 
           // Check if file uses require() for relative paths
           const regex = /require\(['"]\.\.?(?:\/[\w.-]+)+['"]\);?/g;
-          const matches = contents.match(regex);
-
-          if (matches) {
-            return {
-              errors: [{
-                text: `genezio does not support require() for relative paths. Please use import statements instead.`
-              }]
+          const lineContents = contents.split(os.EOL);
+          for (let i = 0; i < lineContents.length; i++) {
+            const line = lineContents[i];
+            if (regex.test(line)) {
+              return {
+                errors: [
+                  {
+                    text: `genezio does not support require() for relative paths. Please use import statements instead. For example: "const a = require("./b");" should be "import a from "./b";" or "const a = await import("./b");"`,
+                    location: {
+                      file: args.path,
+                      namespace: "file",
+                      lineText: line,
+                      line: i + 1,
+                    },
+                  },
+                ],
+              };
             }
           }
 
@@ -167,12 +206,12 @@ export class NodeJsBundler implements BundlerInterface {
             contents: `import { createRequire } from 'module';
             const require = createRequire(import.meta.url);
             ${contents}`,
-            loader
+            loader,
           };
         });
       },
     };
-    const outputFilePath = path.join(tempFolderPath, outputFile); 
+    const outputFilePath = path.join(tempFolderPath, outputFile);
 
     /*
      * If genezio was executed from the root of the workspace,
@@ -181,11 +220,13 @@ export class NodeJsBundler implements BundlerInterface {
      * To avoid this, we make this check based on the information
      * if this command was executed from within a workspace or not.
      */
-    let nodeExternalPlugin
+    let nodeExternalPlugin;
     if (cwd) {
-      nodeExternalPlugin = nodeExternalsPlugin({packagePath: path.join(cwd, "package.json")})
+      nodeExternalPlugin = nodeExternalsPlugin({
+        packagePath: path.join(cwd, "package.json"),
+      });
     } else {
-      nodeExternalPlugin = nodeExternalsPlugin()
+      nodeExternalPlugin = nodeExternalsPlugin();
     }
 
     // eslint-disable-next-line no-async-promise-executor
@@ -208,13 +249,13 @@ export class NodeJsBundler implements BundlerInterface {
           log.info(
             "\x1b[37m",
             "file: " +
-            error.moduleIdentifier?.split("|")[1] +
-            ":" +
-            error.loc?.split(":")[0]
+              error.moduleIdentifier?.split("|")[1] +
+              ":" +
+              error.loc?.split(":")[0],
           );
         } else {
           log.info(
-            "file: " + error.moduleIdentifier + ":" + error.loc?.split(":")[0]
+            "file: " + error.moduleIdentifier + ":" + error.loc?.split(":")[0],
           );
         }
 
@@ -239,7 +280,12 @@ export class NodeJsBundler implements BundlerInterface {
     fs.writeFileSync(outputFilePath, transformedCode);
   }
 
-  async #handleMissingDependencies(error: BuildFailure, try_count: number, MAX_TRIES: number, cwd: string) {
+  async #handleMissingDependencies(
+    error: BuildFailure,
+    try_count: number,
+    MAX_TRIES: number,
+    cwd: string,
+  ) {
     // If there is a build failure, check if it is caused by missing library dependencies
     // If it is, install them and try again
     const resolveRegex = /Could not resolve "(?<dependencyName>.+)"/;
@@ -255,15 +301,15 @@ export class NodeJsBundler implements BundlerInterface {
     });
     const libraryDependencies: string[] = errToDeps.filter(
       (dependencyName: string | undefined | null): dependencyName is string =>
-        !!dependencyName
+        !!dependencyName,
     );
 
     if (try_count >= MAX_TRIES) {
       if (libraryDependencies.length > 0 || npmInstallRequired) {
         log.info(
           `You have some missing dependencies. If you want to install them automatically, please run with ${colors.green(
-            "--install-deps"
-          )} flag`
+            "--install-deps",
+          )} flag`,
         );
       }
       throw error;
@@ -279,12 +325,21 @@ export class NodeJsBundler implements BundlerInterface {
       await dependencyInstaller.install(libraryDependencies, cwd, true);
     }
 
-    if (errToDeps.some((dependencyName: string | undefined | null) => dependencyName === undefined)) {
+    if (
+      errToDeps.some(
+        (dependencyName: string | undefined | null) =>
+          dependencyName === undefined,
+      )
+    ) {
       throw error;
     }
   }
 
-  async #getDependenciesInfo(filePath: string, bundlerInput: BundlerInput, cwd: string) {
+  async #getDependenciesInfo(
+    filePath: string,
+    bundlerInput: BundlerInput,
+    cwd: string,
+  ) {
     const tempFolderPath = await createTemporaryFolder();
     let output: BuildResult;
     let try_count = 0;
@@ -296,21 +351,21 @@ export class NodeJsBundler implements BundlerInterface {
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
-        try {
-            // Building with `metafile` field set to true will return a JSON object with information about the dependencies
-            output = await esbuild.build({
-                entryPoints: [filePath],
-                bundle: true,
-                metafile: true,
-                platform: "node",
-                outfile: path.join(tempFolderPath, "module.mjs"),
-                logLevel: "silent",
-                sourcemap: "inline",
-            });
-            break;
-        } catch (error: BuildFailure | any) {
-            await this.#handleMissingDependencies(error, try_count, MAX_TRIES, cwd);
-        }
+      try {
+        // Building with `metafile` field set to true will return a JSON object with information about the dependencies
+        output = await esbuild.build({
+          entryPoints: [filePath],
+          bundle: true,
+          metafile: true,
+          platform: "node",
+          outfile: path.join(tempFolderPath, "module.mjs"),
+          logLevel: "silent",
+          sourcemap: "inline",
+        });
+        break;
+      } catch (error: BuildFailure | any) {
+        await this.#handleMissingDependencies(error, try_count, MAX_TRIES, cwd);
+      }
 
       try_count++;
     }
@@ -321,7 +376,7 @@ export class NodeJsBundler implements BundlerInterface {
 
     const dependencyMap: Map<string, string> = new Map();
     Object.keys(output.metafile.inputs).forEach((value) => {
-      // We are filtering out all the node_modules that are resolved outside of the 
+      // We are filtering out all the node_modules that are resolved outside of the
       // genezio backend framework. This is because we had problems in the past
       // where bundler was returning deps that were causing errors.
       if (value.startsWith("..") || !value.includes("node_modules")) {
@@ -330,20 +385,29 @@ export class NodeJsBundler implements BundlerInterface {
 
       // We use '/' as a separator regardless the platform because esbuild returns '/' separated paths
       // The name of the dependency is right after the "node_modules" component.
-      const components = value.split("/")
+      const components = value.split("/");
       const dependencyName = components[components.indexOf("node_modules") + 1];
-      const dependencyPath = path.resolve(path.join(cwd, "node_modules", dependencyName));
+      const dependencyPath = path.resolve(
+        path.join(cwd, "node_modules", dependencyName),
+      );
 
       // This should not ever happen. If you got here... Good luck!
       const existingDependencyPath = dependencyMap.get(dependencyName);
-      if (existingDependencyPath !== undefined && existingDependencyPath !== dependencyPath) {
-        throw new Error(`Dependency ${dependencyName} has two different paths: ${existingDependencyPath} and ${dependencyPath}`);
+      if (
+        existingDependencyPath !== undefined &&
+        existingDependencyPath !== dependencyPath
+      ) {
+        throw new Error(
+          `Dependency ${dependencyName} has two different paths: ${existingDependencyPath} and ${dependencyPath}`,
+        );
       }
 
       dependencyMap.set(dependencyName, dependencyPath);
     });
 
-    bundlerInput.extra.dependenciesInfo = Array.from(dependencyMap.entries()).map(([name, path]) => ({ name, path }));
+    bundlerInput.extra.dependenciesInfo = Array.from(
+      dependencyMap.entries(),
+    ).map(([name, path]) => ({ name, path }));
 
     await deleteFolder(tempFolderPath);
   }
@@ -351,35 +415,53 @@ export class NodeJsBundler implements BundlerInterface {
   async bundle(input: BundlerInput): Promise<BundlerOutput> {
     const mode = input.extra.mode;
     const tmpFolder = input.extra.tmpFolder;
-    const cwd = input.projectConfiguration.workspace?.backend || process.cwd()
+    const cwd = input.projectConfiguration.workspace?.backend || process.cwd();
 
     if (mode === "development" && !tmpFolder) {
-      throw new Error("tmpFolder is required in development mode.")
+      throw new Error("tmpFolder is required in development mode.");
     }
 
-    const temporaryFolder = mode === "production" ? await createTemporaryFolder() : tmpFolder!;
+    const temporaryFolder =
+      mode === "production" ? await createTemporaryFolder() : tmpFolder!;
     input.extra.dependenciesInfo = [];
 
     // 1. Run esbuild to get dependenciesInfo and the bundled file
-    debugLogger.debug(`[NodeJSBundler] Get the list of node modules and bundling the javascript code for file ${input.path}.`)
+    debugLogger.debug(
+      `[NodeJSBundler] Get the list of node modules and bundling the javascript code for file ${input.path}.`,
+    );
     await Promise.all([
       this.#bundleNodeJSCode(
         input.configuration.path,
         temporaryFolder,
         input.projectConfiguration.workspace?.backend,
       ),
-      mode === "development" ? this.#copyDependencies(undefined, temporaryFolder, mode, cwd) : Promise.resolve(),
-      mode === "production" ? this.#getDependenciesInfo(input.configuration.path, input, cwd) : Promise.resolve(),
+      mode === "development"
+        ? this.#copyDependencies(undefined, temporaryFolder, mode, cwd)
+        : Promise.resolve(),
+      mode === "production"
+        ? this.#getDependenciesInfo(input.configuration.path, input, cwd)
+        : Promise.resolve(),
     ]);
 
-    debugLogger.debug(`[NodeJSBundler] Copy non js files and node_modules for file ${input.path}.`)
+    debugLogger.debug(
+      `[NodeJSBundler] Copy non js files and node_modules for file ${input.path}.`,
+    );
     // 2. Copy non js files and node_modules and write index.mjs file
     await Promise.all([
       this.#copyNonJsFiles(temporaryFolder, input, cwd),
       mode === "production"
-        ? this.#copyDependencies(input.extra.dependenciesInfo, temporaryFolder, mode, cwd)
+        ? this.#copyDependencies(
+            input.extra.dependenciesInfo,
+            temporaryFolder,
+            mode,
+            cwd,
+          )
         : Promise.resolve(),
-      writeToFile(temporaryFolder, "index.mjs", lambdaHandler(`"${input.configuration.name}"`)),
+      writeToFile(
+        temporaryFolder,
+        "index.mjs",
+        lambdaHandler(`"${input.configuration.name}"`),
+      ),
     ]);
 
     return {
