@@ -19,7 +19,8 @@
     "test": "jest --testPathPattern tests"
   },
   "files": [
-    "/build"
+    "/build",
+    ".npmrc"
   ],
   "pre-commit": [
     "lint",
