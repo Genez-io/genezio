@@ -1,11 +1,10 @@
-export default function() {
+export default function () {
     return {
-      name: "strip-decorators",
-      visitor: {
-        Decorator(path: any) {
-          path.remove();
-        }
-      }
+        name: "strip-decorators",
+        visitor: {
+            Decorator(path: any) {
+                path.remove();
+            },
+        },
     };
-  }
-  
+}

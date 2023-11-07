@@ -32,20 +32,20 @@ const server = http.createServer((req, res) => {
 
 server.listen(port, hostname, () => {
 });
-`
+`;
 
 // Adds a wrapper to the user's code that allows it to be run in a separate process.
 export class NodeJsLocalBundler implements BundlerInterface {
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
-        await writeToFile(input.path, "local.mjs", localWrapperCode, true)
+        await writeToFile(input.path, "local.mjs", localWrapperCode, true);
 
         return {
             ...input,
             extra: {
                 ...input.extra,
                 startingCommand: "node",
-                commandParameters: [path.resolve(input.path, 'local.mjs')],
-            }
-        }
+                commandParameters: [path.resolve(input.path, "local.mjs")],
+            },
+        };
     }
 }

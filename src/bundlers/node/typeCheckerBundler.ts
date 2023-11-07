@@ -15,7 +15,7 @@ export class TypeCheckerBundler implements BundlerInterface {
         if (fs.existsSync("tsconfig.json")) {
             return;
         } else {
-            log.info("No tsconfig.json file found. We will create one...")
+            log.info("No tsconfig.json file found. We will create one...");
             tsconfig.compilerOptions.rootDir = ".";
             tsconfig.compilerOptions.outDir = path.join(".", "build");
             tsconfig.include = [path.join(".", "**/*")];
@@ -37,20 +37,25 @@ export class TypeCheckerBundler implements BundlerInterface {
 
         const configFile = ts.readConfigFile("tsconfig.json", ts.sys.readFile);
         const config = ts.parseJsonConfigFileContent(configFile.config, ts.sys, process.cwd());
-        const program = ts.createProgram({rootNames: config.fileNames, options: config.options});
+        const program = ts.createProgram({
+            rootNames: config.fileNames,
+            options: config.options,
+        });
 
-        debugLogger.log("Typechecking Typescript files...")
+        debugLogger.log("Typechecking Typescript files...");
         const diagnostics = ts.getPreEmitDiagnostics(program);
-        
+
         if (diagnostics.length > 0) {
             diagnostics.forEach((diagnostic) => {
                 if (diagnostic.category === ts.DiagnosticCategory.Error) {
                     // Format the diagnostic and write it to stderr
-                    log.error(ts.formatDiagnostic(diagnostic, {
-                        getCanonicalFileName: (fileName) => fileName,
-                        getCurrentDirectory: ts.sys.getCurrentDirectory,
-                        getNewLine: () => ts.sys.newLine,
-                    }));
+                    log.error(
+                        ts.formatDiagnostic(diagnostic, {
+                            getCanonicalFileName: (fileName) => fileName,
+                            getCurrentDirectory: ts.sys.getCurrentDirectory,
+                            getNewLine: () => ts.sys.newLine,
+                        }),
+                    );
                 }
             });
 

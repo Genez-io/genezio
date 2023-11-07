@@ -6,25 +6,25 @@ jest.mock("../../src/utils/accounts");
 const mockedGetAuthToken = jest.mocked(getAuthToken, { shallow: true });
 
 beforeEach(() => {
-  mockedGetAuthToken.mockClear();
+    mockedGetAuthToken.mockClear();
 });
 
 test("should throw error if presigned URL is missing", async () => {
-  await expect(async () => {
-    await uploadContentToS3("", "test.zip");
-  }).rejects.toThrowError();
+    await expect(async () => {
+        await uploadContentToS3("", "test.zip");
+    }).rejects.toThrowError();
 });
 
 test("should throw error if archive path is missing", async () => {
-  await expect(async () => {
-    await uploadContentToS3("https://test.com", "");
-  }).rejects.toThrowError();
+    await expect(async () => {
+        await uploadContentToS3("https://test.com", "");
+    }).rejects.toThrowError();
 });
 
 test("should throw error if auth token is missing", async () => {
-  await expect(async () => {
-    mockedGetAuthToken.mockResolvedValue("");
+    await expect(async () => {
+        mockedGetAuthToken.mockResolvedValue("");
 
-    await uploadContentToS3("https://test.com", "test.zip");
-  }).rejects.toThrowError();
+        await uploadContentToS3("https://test.com", "test.zip");
+    }).rejects.toThrowError();
 });

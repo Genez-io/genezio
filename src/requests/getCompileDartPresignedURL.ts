@@ -9,10 +9,10 @@ export async function getCompileDartPresignedURL(archiveName: string) {
     }
 
     // Check if user is authenticated
-    const authToken = await getAuthToken()
+    const authToken = await getAuthToken();
     if (!authToken) {
         throw new Error(
-            "You are not logged in. Run 'genezio login' before you deploy your function."
+            "You are not logged in. Run 'genezio login' before you deploy your function.",
         );
     }
 
@@ -26,13 +26,13 @@ export async function getCompileDartPresignedURL(archiveName: string) {
         data: json,
         headers: {
             Authorization: `Bearer ${authToken}`,
-            "Accept-Version": `genezio-cli/${version}`
+            "Accept-Version": `genezio-cli/${version}`,
         },
         maxContentLength: Infinity,
-        maxBodyLength: Infinity
-      }).catch((error: Error) => {
+        maxBodyLength: Infinity,
+    }).catch((error: Error) => {
         throw error;
-      });
+    });
 
     if (response.data.status === "error") {
         throw new Error(response.data.message);

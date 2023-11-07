@@ -3,7 +3,7 @@ import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
 
-export async function getPresignedURL (
+export async function getPresignedURL(
     region = "us-east-1",
     archiveName = "genezioDeploy.zip",
     projectName: string,
@@ -14,10 +14,10 @@ export async function getPresignedURL (
     }
 
     // Check if user is authenticated
-    const authToken = await getAuthToken()
+    const authToken = await getAuthToken();
     if (!authToken) {
         throw new Error(
-            "You are not logged in. Run 'genezio login' before you deploy your function."
+            "You are not logged in. Run 'genezio login' before you deploy your function.",
         );
     }
 
@@ -25,7 +25,7 @@ export async function getPresignedURL (
         projectName: projectName,
         className: className,
         filename: archiveName,
-        region : region,
+        region: region,
     });
 
     const response: any = await axios({
@@ -34,13 +34,13 @@ export async function getPresignedURL (
         data: json,
         headers: {
             Authorization: `Bearer ${authToken}`,
-            "Accept-Version": `genezio-cli/${version}`
+            "Accept-Version": `genezio-cli/${version}`,
         },
         maxContentLength: Infinity,
-        maxBodyLength: Infinity
-      }).catch((error: Error) => {
+        maxBodyLength: Infinity,
+    }).catch((error: Error) => {
         throw error;
-      });
+    });
 
     if (response.data.status === "error") {
         throw new Error(response.data.message);

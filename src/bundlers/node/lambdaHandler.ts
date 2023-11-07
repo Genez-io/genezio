@@ -6,7 +6,7 @@ export const lambdaHandler = (className: string): string => `
  *  if new genezio commands are executed.
  */
 
-import {  ${className.replace(/["]/g, '')} as genezioClass } from "./module.mjs";
+import {  ${className.replace(/["]/g, "")} as genezioClass } from "./module.mjs";
 
 var handler = undefined;
 

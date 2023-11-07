@@ -1,4 +1,11 @@
-import { ArrayType, AstNodeType, CustomAstNodeType, MapType, Node, PromiseType } from "../models/genezioModels.js";
+import {
+    ArrayType,
+    AstNodeType,
+    CustomAstNodeType,
+    MapType,
+    Node,
+    PromiseType,
+} from "../models/genezioModels.js";
 
 function castNodeRecursively(node: Node): string {
     let implementation = "";
@@ -17,14 +24,15 @@ function castNodeRecursively(node: Node): string {
             implementation += `Integer.parseInt(e.toString())`;
             break;
         case AstNodeType.CustomNodeLiteral:
-            implementation += `Json.decodeFromString<${(node as CustomAstNodeType).rawValue}>(e.toString())`;
+            implementation += `Json.decodeFromString<${
+                (node as CustomAstNodeType).rawValue
+            }>(e.toString())`;
             break;
         case AstNodeType.ArrayType:
             implementation += castArrayRecursively((node as ArrayType).generic);
             break;
         case AstNodeType.MapType:
             implementation += castMapRecursively((node as MapType).genericValue);
-
     }
 
     return implementation;
@@ -32,7 +40,9 @@ function castNodeRecursively(node: Node): string {
 
 export function castMapRecursivelyInitial(mapType: MapType, name: string): string {
     let implementation = "run {";
-    implementation += `var map = mutableMapOf<${getParamType(mapType.genericKey)}, ${getParamType(mapType.genericValue)}>(`
+    implementation += `var map = mutableMapOf<${getParamType(mapType.genericKey)}, ${getParamType(
+        mapType.genericValue,
+    )}>(`;
     implementation += `*${name}.jsonObject.map{map_entry -> `;
     implementation += `var key = map_entry.key; var e = map_entry.value;`;
     implementation += `Pair(key, `;
@@ -58,16 +68,16 @@ export function castArrayRecursivelyInitial(arrayType: ArrayType, name: string):
 function castArrayRecursively(node: Node): string {
     let implementation = "";
 
-    implementation += '(e.jsonArray.map{e -> ';
-    implementation += castNodeRecursively(node)
-    implementation += '} )';
+    implementation += "(e.jsonArray.map{e -> ";
+    implementation += castNodeRecursively(node);
+    implementation += "} )";
 
     return implementation;
 }
 
 function castMapRecursively(node: Node): string {
     let implementation = "run {";
-    implementation += `var map = mutableMapOf<String, Any>(`
+    implementation += `var map = mutableMapOf<String, Any>(`;
     implementation += `*e.jsonObject.map{map_entry -> `;
     implementation += `var key = map_entry.key; var e = map_entry.value;`;
     implementation += `Pair(key, `;
@@ -95,7 +105,9 @@ export function getParamType(elem: Node): string {
         case AstNodeType.ArrayType:
             return `List<${getParamType((elem as ArrayType).generic)}>`;
         case AstNodeType.MapType:
-            return `Map<${getParamType((elem as MapType).genericKey)}, ${getParamType((elem as MapType).genericValue)}>`;
+            return `Map<${getParamType((elem as MapType).genericKey)}, ${getParamType(
+                (elem as MapType).genericValue,
+            )}>`;
         case AstNodeType.CustomNodeLiteral:
             return (elem as CustomAstNodeType).rawValue;
         case AstNodeType.PromiseType:

@@ -1,8 +1,8 @@
-import { Mutex } from 'async-mutex'
-import { debugLogger } from '../../utils/logging.js';
+import { Mutex } from "async-mutex";
+import { debugLogger } from "../../utils/logging.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import exec from 'await-exec';
+import exec from "await-exec";
 
 /**
  * The `DependencyInstaller` class provides a thread-safe way to install dependencies for a Node.js project.
@@ -34,7 +34,7 @@ class DependencyInstaller {
                     this.alreadyInstalled.add(dependency);
                     toBeInstalled.push(dependency);
                 }
-            })
+            });
 
             if (toBeInstalled.length === 0) {
                 return;
@@ -45,7 +45,7 @@ class DependencyInstaller {
             debugLogger.debug("Running command: " + command);
 
             await exec(command);
-        })
+        });
     }
 
     /**
@@ -59,7 +59,7 @@ class DependencyInstaller {
             debugLogger.debug("Running command: " + command);
 
             await exec(command, { cwd });
-        })
+        });
     }
 
     getInstallPackageCommand(noSave?: boolean): string {

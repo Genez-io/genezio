@@ -14,11 +14,11 @@
 
 <!-- Please delete options that are not relevant. -->
 
-- [ ] 🍕 New feature
-- [ ] 🐛 Bug Fix
-- [ ] 🔥 Breaking change
-- [ ] 🧑‍💻 Improvement
-- [ ] 📝 Documentation Update
+-   [ ] 🍕 New feature
+-   [ ] 🐛 Bug Fix
+-   [ ] 🔥 Breaking change
+-   [ ] 🧑‍💻 Improvement
+-   [ ] 📝 Documentation Update
 
 ## Description
 
@@ -32,7 +32,7 @@ List any dependencies that are required for this change.
 
 ## Checklist
 
-- [ ] My code follows the contributor guidelines of this project;
-- [ ] I have updated the documentation;
-- [ ] I have added tests;
-- [ ] New and existing unit tests pass locally with my changes;
+-   [ ] My code follows the contributor guidelines of this project;
+-   [ ] I have updated the documentation;
+-   [ ] I have added tests;
+-   [ ] New and existing unit tests pass locally with my changes;

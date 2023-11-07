@@ -4,9 +4,14 @@ import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
 
-export async function createFrontendProject(genezioDomain: string, projectName: string, region: string, stage: string) {
+export async function createFrontendProject(
+    genezioDomain: string,
+    projectName: string,
+    region: string,
+    stage: string,
+) {
     // Check if user is authenticated
-    const authToken = await getAuthToken()
+    const authToken = await getAuthToken();
     if (!authToken) {
         throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
@@ -15,7 +20,7 @@ export async function createFrontendProject(genezioDomain: string, projectName: 
         genezioDomain,
         projectName,
         region,
-        stage
+        stage,
     });
 
     const response: any = await axios({
@@ -24,11 +29,11 @@ export async function createFrontendProject(genezioDomain: string, projectName: 
         data: json,
         headers: {
             Authorization: `Bearer ${authToken}`,
-            "Accept-Version": `genezio-cli/${version}`
+            "Accept-Version": `genezio-cli/${version}`,
         },
         maxContentLength: Infinity,
-        maxBodyLength: Infinity
-    })
+        maxBodyLength: Infinity,
+    });
 
     if (response.data.status === "error") {
         throw new Error(response.data.message);

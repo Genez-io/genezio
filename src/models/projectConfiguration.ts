@@ -11,20 +11,26 @@ export class ParameterType {
     optional: boolean;
 
     constructor(name: string, type: any, optional = false) {
-        this.name = name
-        this.type = type
-        this.optional = optional
+        this.name = name;
+        this.type = type;
+        this.optional = optional;
     }
 }
 
 export class MethodConfiguration {
     name: string;
-    parameters: ParameterType[]
+    parameters: ParameterType[];
     cronString?: string;
     type: TriggerType;
     returnType: any;
 
-    constructor(name: string, parameters: string[], returnType: any, type?: TriggerType, cronString?: string) {
+    constructor(
+        name: string,
+        parameters: string[],
+        returnType: any,
+        type?: TriggerType,
+        cronString?: string,
+    ) {
         this.name = name;
         this.parameters = parameters.map((parameter) => new ParameterType(parameter, "any"));
         this.type = type ?? TriggerType.jsonrpc;
@@ -49,7 +55,7 @@ export class ClassConfiguration {
         language: string,
         methods: MethodConfiguration[],
         types: any[],
-        version: string
+        version: string,
     ) {
         this.name = name;
         this.path = path;
@@ -83,7 +89,7 @@ export class Workspace {
 
 /**
  * This class represents the complete image of the project.
- * 
+ *
  * It combines information from the YAML configuration with the information from the AST Summary.
  */
 export class ProjectConfiguration {
@@ -105,19 +111,19 @@ export class ProjectConfiguration {
         this.sdk = yamlConfiguration.sdk;
         this.options = yamlConfiguration.options;
         this.cloudProvider = yamlConfiguration.cloudProvider || CloudProviderIdentifier.GENEZIO;
-        this,this.workspace = yamlConfiguration.workspace
+        this, (this.workspace = yamlConfiguration.workspace);
 
         // Generate AST Summary
         this.astSummary = {
             version: "2",
-            classes: getAstSummary(sdkGeneratorResponse.sdkGeneratorInput.classesInfo)
+            classes: getAstSummary(sdkGeneratorResponse.sdkGeneratorInput.classesInfo),
         };
 
         this.classes = this.astSummary.classes.map((c) => {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const yamlClass = yamlConfiguration.classes!.find((yamlC) => yamlC.path === c.path)!;
             const methods = c?.methods.map((m) => {
-                const yamlMethod = yamlClass.methods.find((yamlM) => yamlM.name === m.name)
+                const yamlMethod = yamlClass.methods.find((yamlM) => yamlM.name === m.name);
 
                 return {
                     name: m.name,
@@ -125,9 +131,9 @@ export class ProjectConfiguration {
                     cronString: yamlMethod?.cronString,
                     language: c.language,
                     type: yamlClass?.getMethodType(m.name),
-                    returnType: m.returnType
-                }
-            })
+                    returnType: m.returnType,
+                };
+            });
 
             return {
                 name: c.name,
@@ -136,8 +142,8 @@ export class ProjectConfiguration {
                 language: yamlClass.language,
                 methods: methods,
                 types: c.types,
-                version: this.astSummary.version
-            }
+                version: this.astSummary.version,
+            };
         });
     }
 }
