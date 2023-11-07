@@ -14,4 +14,4 @@ export const cloudProviders = [
     CloudProviderIdentifier.SELF_HOSTED_AWS,
     CloudProviderIdentifier.CAPYBARA,
     CloudProviderIdentifier.CAPYBARA_LINUX,
-]
+];

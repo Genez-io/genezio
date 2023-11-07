@@ -5,18 +5,21 @@ import MIMETypeParser from "whatwg-mimetype";
  * Check if the body is of type binary.
  * @param contentType The content type of the request
  * @returns True if the body is binary, false otherwise.
-*/
+ */
 function bodyIsBinary(rawContentType: string) {
     if (!rawContentType) {
-        return true
+        return true;
     }
     const contentType = new MIMETypeParser(rawContentType);
 
     if (contentType.type === "text") {
-        return false
+        return false;
     } else if (contentType.type !== "application") {
-        return true
-    } else return !["json", "ld+json", "x-httpd-php", "x-sh", "x-csh", "xhtml+xml", "xml"].includes(contentType.subtype)
+        return true;
+    } else
+        return !["json", "ld+json", "x-httpd-php", "x-sh", "x-csh", "xhtml+xml", "xml"].includes(
+            contentType.subtype,
+        );
 }
 
 /**
@@ -27,20 +30,20 @@ function bodyIsBinary(rawContentType: string) {
  * @param next
  */
 export function genezioRequestParser(request: any, response: any, next: any) {
-    const headers = request.headers
-    const contentType = headers["content-type"]
+    const headers = request.headers;
+    const contentType = headers["content-type"];
 
     if (request.body && request.body.length > 0) {
         if (bodyIsBinary(contentType)) {
-            request.body = request.body.toString('base64');
-            request.isBase64Encoded = true
+            request.body = request.body.toString("base64");
+            request.isBase64Encoded = true;
         } else {
-            request.body = request.body.toString()
-            request.isBase64Encoded = false
+            request.body = request.body.toString();
+            request.isBase64Encoded = false;
         }
     } else {
-        request.body = undefined
+        request.body = undefined;
     }
 
-    next()
+    next();
 }

@@ -4,19 +4,36 @@ import { createTemporaryFolder, deleteFolder, writeToFile } from "../../utils/fi
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface.js";
 import { checkIfDartIsInstalled } from "../../utils/dart.js";
 import { debugLogger } from "../../utils/logging.js";
-import { ClassConfiguration, MethodConfiguration, ParameterType } from "../../models/projectConfiguration.js";
+import {
+    ClassConfiguration,
+    MethodConfiguration,
+    ParameterType,
+} from "../../models/projectConfiguration.js";
 import { template } from "./localDartMain.js";
 import { default as fsExtra } from "fs-extra";
-import { spawnSync } from 'child_process';
+import { spawnSync } from "child_process";
 import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 import log from "loglevel";
-import { ArrayType, AstNodeType, ClassDefinition, CustomAstNodeType, MapType, Node, Program, PromiseType } from "../../models/genezioModels.js";
-import { castArrayRecursivelyInitial, castMapRecursivelyInitial } from "../../utils/dartAstCasting.js";
+import {
+    ArrayType,
+    AstNodeType,
+    ClassDefinition,
+    CustomAstNodeType,
+    MapType,
+    Node,
+    Program,
+    PromiseType,
+} from "../../models/genezioModels.js";
+import {
+    castArrayRecursivelyInitial,
+    castMapRecursivelyInitial,
+} from "../../utils/dartAstCasting.js";
 
 export class DartBundler implements BundlerInterface {
-
     async #analyze(path: string) {
-        const result = spawnSync("dart", ["analyze", "--no-fatal-warnings"], { cwd: path });
+        const result = spawnSync("dart", ["analyze", "--no-fatal-warnings"], {
+            cwd: path,
+        });
 
         if (result.status != 0) {
             log.info(result.stdout.toString().split("\n").slice(1).join("\n"));
@@ -45,10 +62,15 @@ export class DartBundler implements BundlerInterface {
                 implementation += `${variableName} as int`;
                 break;
             case AstNodeType.PromiseType:
-                implementation += this.#castParameterToPropertyType((node as PromiseType).generic, variableName);
+                implementation += this.#castParameterToPropertyType(
+                    (node as PromiseType).generic,
+                    variableName,
+                );
                 break;
             case AstNodeType.CustomNodeLiteral:
-                implementation += `${(node as CustomAstNodeType).rawValue}.fromJson(${variableName} as Map<String, dynamic>)`;
+                implementation += `${
+                    (node as CustomAstNodeType).rawValue
+                }.fromJson(${variableName} as Map<String, dynamic>)`;
                 break;
             case AstNodeType.ArrayType:
                 implementation += castArrayRecursivelyInitial(node as ArrayType, variableName);
@@ -60,18 +82,35 @@ export class DartBundler implements BundlerInterface {
         return implementation;
     }
 
-    #getProperCast(mainClass: ClassDefinition, method: MethodConfiguration, parameterType: ParameterType, index: number): string {
-        const type = mainClass.methods.find((m) => m.name == method.name)!.params.find((p) => p.name == parameterType.name)
-        return `${this.#castParameterToPropertyType(type!.paramType, `params[${index}]`)}`
+    #getProperCast(
+        mainClass: ClassDefinition,
+        method: MethodConfiguration,
+        parameterType: ParameterType,
+        index: number,
+    ): string {
+        const type = mainClass.methods
+            .find((m) => m.name == method.name)!
+            .params.find((p) => p.name == parameterType.name);
+        return `${this.#castParameterToPropertyType(type!.paramType, `params[${index}]`)}`;
     }
 
-    async #createRouterFileForClass(classConfiguration: ClassConfiguration, ast: Program, folderPath: string): Promise<void> {
+    async #createRouterFileForClass(
+        classConfiguration: ClassConfiguration,
+        ast: Program,
+        folderPath: string,
+    ): Promise<void> {
         const mainClass = ast.body?.find((element) => {
-            return element.type === AstNodeType.ClassDefinition && (element as ClassDefinition).name === classConfiguration.name
+            return (
+                element.type === AstNodeType.ClassDefinition &&
+                (element as ClassDefinition).name === classConfiguration.name
+            );
         }) as ClassDefinition;
 
         const moustacheViewForMain = {
-            classFileName: path.basename(classConfiguration.path, path.extname(classConfiguration.path)),
+            classFileName: path.basename(
+                classConfiguration.path,
+                path.extname(classConfiguration.path),
+            ),
             className: classConfiguration.name,
             jsonRpcMethods: classConfiguration.methods
                 .filter((m) => m.type === TriggerType.jsonrpc)
@@ -92,15 +131,17 @@ export class DartBundler implements BundlerInterface {
                 .map((m) => ({
                     name: m.name,
                 })),
-            imports: ast.body?.map((element) => ({ name: element.path }))
-        }
+            imports: ast.body?.map((element) => ({ name: element.path })),
+        };
 
         const routerFileContent = Mustache.render(template, moustacheViewForMain);
         await writeToFile(folderPath, "main.dart", routerFileContent);
     }
 
     async #compile(folderPath: string) {
-        const result = spawnSync("dart", ["compile", "exe", "main.dart"], { cwd: folderPath });
+        const result = spawnSync("dart", ["compile", "exe", "main.dart"], {
+            cwd: folderPath,
+        });
         if (result.status != 0) {
             log.info(result.stderr.toString());
             log.info(result.stdout.toString());
@@ -115,12 +156,14 @@ export class DartBundler implements BundlerInterface {
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
         // Create a temporary folder were we copy user code to prepare everything.
         const folderPath = input.genezioConfigurationFilePath;
-        const inputTemporaryFolder = await createTemporaryFolder()
+        const inputTemporaryFolder = await createTemporaryFolder();
         await fsExtra.copy(folderPath, inputTemporaryFolder);
         debugLogger.info(`Copy files in temp folder ${inputTemporaryFolder}`);
 
         // Create the router class
-        const userClass = input.projectConfiguration.classes.find((c: ClassConfiguration) => c.path == input.path)!;
+        const userClass = input.projectConfiguration.classes.find(
+            (c: ClassConfiguration) => c.path == input.path,
+        )!;
         await this.#createRouterFileForClass(userClass, input.ast, inputTemporaryFolder);
 
         // Check if dart is installed
@@ -130,9 +173,9 @@ export class DartBundler implements BundlerInterface {
         await this.#analyze(inputTemporaryFolder);
 
         // Compile the Dart code on the server
-        debugLogger.info("Compiling Dart...")
-        await this.#compile(inputTemporaryFolder)
-        debugLogger.info("Compiling Dart finished.")
+        debugLogger.info("Compiling Dart...");
+        await this.#compile(inputTemporaryFolder);
+        debugLogger.info("Compiling Dart finished.");
 
         return {
             ...input,
@@ -141,7 +184,7 @@ export class DartBundler implements BundlerInterface {
                 ...input.extra,
                 startingCommand: path.join(inputTemporaryFolder, "main.exe"),
                 commandParameters: [],
-            }
+            },
         };
     }
 }

@@ -17,56 +17,54 @@ export async function uploadContentToS3(
     }
 
     // Check if user is authenticated
-    const authToken = await getAuthToken()
+    const authToken = await getAuthToken();
     if (!authToken) {
         throw new Error(
-            "You are not logged in. Run 'genezio login' before you deploy your function."
+            "You are not logged in. Run 'genezio login' before you deploy your function.",
         );
     }
     const url = new URL(presignedURL);
 
     const headers: any = {
-        'Content-Type': 'application/octet-stream',
-        'Content-Length': fs.statSync(archivePath).size
-    }
+        "Content-Type": "application/octet-stream",
+        "Content-Length": fs.statSync(archivePath).size,
+    };
     if (userId) {
-        headers["x-amz-meta-userid"] = userId
+        headers["x-amz-meta-userid"] = userId;
     }
 
     const options = {
         hostname: url.hostname,
         path: url.href,
         port: 443,
-        method: 'PUT',
-        headers: headers
+        method: "PUT",
+        headers: headers,
     };
 
     return await new Promise<void>((resolve, reject) => {
         const req = https.request(options, (res) => {
             // If we don't consume the data, the "end" event will not fire
             // eslint-disable-next-line @typescript-eslint/no-empty-function
-            res.on('data', () => {});
+            res.on("data", () => {});
 
-            res.on('end', () => {
-                resolve()
+            res.on("end", () => {
+                resolve();
             });
         });
 
-        req.on('error', (error) => {
+        req.on("error", (error) => {
             reject(error);
         });
-    
+
         const { size } = fs.statSync(archivePath);
         const fileStream = fs.createReadStream(archivePath);
 
         let total = 0;
         fileStream
-            .on('data', (data) => {
+            .on("data", (data) => {
                 total += data.length;
-                if (progress)
-                    progress(total / size)
+                if (progress) progress(total / size);
             })
             .pipe(req);
-    })
-
+    });
 }

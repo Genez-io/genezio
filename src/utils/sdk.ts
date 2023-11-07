@@ -1,49 +1,51 @@
-import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js"
-import { Language } from "../models/yamlProjectConfiguration.js"
-import { writeToFile } from "./file.js"
-import { debugLogger } from "./logging.js"
-import { File, SdkFileClass } from "../models/genezioModels.js"
+import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
+import { Language } from "../models/yamlProjectConfiguration.js";
+import { writeToFile } from "./file.js";
+import { debugLogger } from "./logging.js";
+import { File, SdkFileClass } from "../models/genezioModels.js";
 
 export type ClassUrlMap = {
-    name: string
-    cloudUrl: string
-}
+    name: string;
+    cloudUrl: string;
+};
 
 /**
  * Replace the temporary markdowns from the SDK with actual URLs.
  */
-export async function replaceUrlsInSdk(sdkResponse: SdkGeneratorResponse, classUrlMap: ClassUrlMap[]) {
-    sdkResponse.files.forEach((c : SdkFileClass) => {
+export async function replaceUrlsInSdk(
+    sdkResponse: SdkGeneratorResponse,
+    classUrlMap: ClassUrlMap[],
+) {
+    sdkResponse.files.forEach((c: SdkFileClass) => {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const classContent = classUrlMap.find((classFile) => {
-            return classFile.name === c.className
-        })!
+            return classFile.name === c.className;
+        })!;
 
         if (classContent) {
-            c.data = c.data.replace("%%%link_to_be_replace%%%", classContent.cloudUrl)
+            c.data = c.data.replace("%%%link_to_be_replace%%%", classContent.cloudUrl);
         }
-    })
+    });
 }
 
 /**
  * Write the SDK files to disk.
  */
-export async function writeSdkToDisk(sdk: SdkGeneratorResponse, language: Language, outputPath: string) {
+export async function writeSdkToDisk(
+    sdk: SdkGeneratorResponse,
+    language: Language,
+    outputPath: string,
+) {
     if (sdk.files.length == 0) {
-        debugLogger.debug("No SDK classes found...")
-        return 
+        debugLogger.debug("No SDK classes found...");
+        return;
     }
 
-    debugLogger.debug("Writing the SDK to files...")
+    debugLogger.debug("Writing the SDK to files...");
     await Promise.all(
         sdk.files.map((file: File) => {
-            return writeToFile(
-                outputPath,
-                file.path,
-                file.data,
-                true
-            );
-        })
+            return writeToFile(outputPath, file.path, file.data, true);
+        }),
     );
-    debugLogger.debug("The SDK was successfully written to files.")
+    debugLogger.debug("The SDK was successfully written to files.");
 }

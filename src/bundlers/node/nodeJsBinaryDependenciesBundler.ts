@@ -1,13 +1,12 @@
-import path from 'path'
-import fs from 'fs'
-import { BundlerInput, BundlerInterface, BundlerOutput, Dependency } from "../bundler.interface.js"
-import { fileExists } from '../../utils/file.js';
+import path from "path";
+import fs from "fs";
+import { BundlerInput, BundlerInterface, BundlerOutput, Dependency } from "../bundler.interface.js";
+import { fileExists } from "../../utils/file.js";
 import log from "loglevel";
-import { debugLogger } from '../../utils/logging.js';
+import { debugLogger } from "../../utils/logging.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import exec from "await-exec";
-
 
 export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
     async #handleBinaryDependencies(dependenciesInfo: Dependency[], tempFolderPath: string) {
@@ -31,13 +30,11 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
                 for (const file of files) {
                     const packageJsonPath = path.join(dependencyPath, file, "package.json");
                     if (await fileExists(packageJsonPath)) {
-                        const packageJson = JSON.parse(
-                            fs.readFileSync(packageJsonPath, "utf8")
-                        );
+                        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
                         if (packageJson.binary) {
                             binaryDependencies.push({
                                 path: path.join(dependencyPath, file),
-                                name: file
+                                name: file,
                             });
                         }
                     }
@@ -45,15 +42,13 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
             } else {
                 const packageJsonPath = path.join(dependencyPath, "package.json");
                 if (await fileExists(packageJsonPath)) {
-                    const packageJson = JSON.parse(
-                        fs.readFileSync(packageJsonPath, "utf8")
-                    );
+                    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
 
                     // check if package.json has binary property
                     if (packageJson.binary) {
                         binaryDependencies.push({
                             path: dependencyPath,
-                            name: dependency.name
+                            name: dependency.name,
                         });
                     }
                 }
@@ -62,10 +57,10 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
 
         if (binaryDependencies.length > 0) {
             await exec("npm i node-addon-api", {
-                cwd: tempFolderPath
+                cwd: tempFolderPath,
             });
             await exec("npm i @mapbox/node-pre-gyp", {
-                cwd: tempFolderPath
+                cwd: tempFolderPath,
             });
         }
 
@@ -73,32 +68,36 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
             try {
                 const { stdout, stderr } = await exec(
                     "npx node-pre-gyp --update-binary --fallback-to-build --target_arch=arm64 --target_platform=linux --target_libc=glibc clean install " +
-                    dependency.name,
-                    { cwd: dependency.path }
+                        dependency.name,
+                    { cwd: dependency.path },
                 );
                 debugLogger.debug("[BinaryDepStdOut]", stdout);
                 debugLogger.debug("[BinaryDepStdErr]", stderr);
             } catch (error) {
                 debugLogger.debug("[BinaryDepStdOut]", error);
-                log.error(
-                    "An error has occurred while installing binary dependencies."
-                );
-                throw new Error("An error has occurred while installing binary dependencies.")
+                log.error("An error has occurred while installing binary dependencies.");
+                throw new Error("An error has occurred while installing binary dependencies.");
             }
         }
     }
 
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
         if (!input.extra.dependenciesInfo) {
-            debugLogger.debug(`[NodeJSBinaryDependenciesBundler] No dependencies info for file ${input.path}... Something might be wrong.`)
-            return Promise.resolve(input)
+            debugLogger.debug(
+                `[NodeJSBinaryDependenciesBundler] No dependencies info for file ${input.path}... Something might be wrong.`,
+            );
+            return Promise.resolve(input);
         }
 
-        debugLogger.debug(`[NodeJSBinaryDependenciesBundler] Redownload binary dependencies if necessary for file ${input.path}...`)
+        debugLogger.debug(
+            `[NodeJSBinaryDependenciesBundler] Redownload binary dependencies if necessary for file ${input.path}...`,
+        );
         // 4. Redownload binary dependencies if necessary
-        await this.#handleBinaryDependencies(input.extra.dependenciesInfo, input.path)
-        debugLogger.debug(`[NodeJSBinaryDependenciesBundler] Redownload binary dependencies done for file ${input.path}.`)
+        await this.#handleBinaryDependencies(input.extra.dependenciesInfo, input.path);
+        debugLogger.debug(
+            `[NodeJSBinaryDependenciesBundler] Redownload binary dependencies done for file ${input.path}.`,
+        );
 
-        return Promise.resolve(input)
+        return Promise.resolve(input);
     }
 }

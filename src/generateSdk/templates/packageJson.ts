@@ -1,7 +1,4 @@
-export const getNodeModulePackageJsonLocal = (
-  projectName: string,
-  region: string,
-): string => `{
+export const getNodeModulePackageJsonLocal = (projectName: string, region: string): string => `{
   "name": "@genezio-sdk/${projectName}_${region}",
   "version": "1.0.0",
   "description": "",
@@ -11,9 +8,9 @@ export const getNodeModulePackageJsonLocal = (
 `;
 
 export const getNodeModulePackageJson = (
-  projectName: string,
-  region: string,
-  stage: string,
+    projectName: string,
+    region: string,
+    stage: string,
 ): string => `{
   "name": "@genezio-sdk/${projectName}_${region}",
   "version": "1.0.0-${stage}",

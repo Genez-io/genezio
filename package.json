@@ -122,6 +122,10 @@
     "ts-jest": "^29.1.1",
     "ts-jest-mock-import-meta": "^1.1.0"
   },
+  "prettier": {
+    "tabWidth": 4,
+    "printWidth": 100
+  },
   "engines": {
     "node": ">= 16"
   }

@@ -8,12 +8,12 @@ if (process.argv.length == 4) {
 }
 console.log("Environment installed: " + process.env.NODE_ENV);
 
-var data = ""
-fs.createReadStream(process.argv[2], { encoding: 'utf8' })
+var data = "";
+fs.createReadStream(process.argv[2], { encoding: "utf8" })
     .pipe(envify(process.argv[2]))
     .on("data", (chunk) => {
-        data += chunk
+        data += chunk;
     })
     .on("end", () => {
-        fs.writeFileSync(process.argv[2], data)
-    })
+        fs.writeFileSync(process.argv[2], data);
+    });

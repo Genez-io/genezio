@@ -8,7 +8,7 @@ import version from "../utils/version.js";
 export async function getFrontendPresignedURL(
     subdomain: string,
     projectName: string,
-    stage: string
+    stage: string,
 ) {
     const region = "us-east-1";
     if (!subdomain || !projectName) {
@@ -16,7 +16,7 @@ export async function getFrontendPresignedURL(
     }
 
     // Check if user is authenticated
-    const authToken = await getAuthToken()
+    const authToken = await getAuthToken();
     if (!authToken) {
         throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
@@ -25,7 +25,7 @@ export async function getFrontendPresignedURL(
         subdomainName: subdomain,
         projectName: projectName,
         region: region,
-        stage: stage
+        stage: stage,
     });
 
     const response: any = await axios({
@@ -34,12 +34,12 @@ export async function getFrontendPresignedURL(
         data: json,
         headers: {
             Authorization: `Bearer ${authToken}`,
-            "Accept-Version": `genezio-cli/${version}`
+            "Accept-Version": `genezio-cli/${version}`,
         },
         maxContentLength: Infinity,
-        maxBodyLength: Infinity
+        maxBodyLength: Infinity,
     }).catch((error: AxiosError) => {
-        throw new Error((error.response?.data as any).error.message)
+        throw new Error((error.response?.data as any).error.message);
     });
 
     if (response.data.status === "error") {

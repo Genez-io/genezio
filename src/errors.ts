@@ -1,11 +1,11 @@
 // Constant strings used for output/error messages
 export const GENEZIO_NOT_AUTH_ERROR_MSG =
-  "You are not logged in or your token is invalid. Please run `genezio login` before running this command.";
+    "You are not logged in or your token is invalid. Please run `genezio login` before running this command.";
 export const PORT_ALREADY_USED = function (port: number) {
-  return `The port ${port} is already in use. Please use a different port by specifying --port <port> to start your local server.`;
+    return `The port ${port} is already in use. Please use a different port by specifying --port <port> to start your local server.`;
 };
 export const GENEZIO_NO_CLASSES_FOUND =
-  "You don't have any class in specified in the genezio.yaml configuration file. Add a class with 'genezio addClass <className> <classType>' field and then call again 'genezio deploy'.";
+    "You don't have any class in specified in the genezio.yaml configuration file. Add a class with 'genezio addClass <className> <classType>' field and then call again 'genezio deploy'.";
 export const GENEZIO_DART_NOT_FOUND = `
 Error: Dart not found
 
@@ -20,9 +20,8 @@ export const GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART = `We don't currently support 
 export const GENEZIO_NO_SUPPORT_FOR_BUILT_IN_TYPE = `Our AST doesn't currently support this specific Dart built-in type. Check the documentation for more details https://docs.genez.io/genezio-documentation/programming-languages/dart\n\nPlease add a Github issue to https://github.com/Genez-io/genezio/issues describing your use case for this type or feel free to contribute yourself with an improvement.`;
 
 export const GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE = function (filePath: string) {
-  return `You don't have enough permissions to access the file ${filePath}. There are two possible solutions:\n1. Add the ${filePath} file to .genezioignore file.\n2. Please adjust the permissions of the file located at ${filePath} to ensure the 'genezio' process has the appropriate access rights.\n`;
-}
-
+    return `You don't have enough permissions to access the file ${filePath}. There are two possible solutions:\n1. Add the ${filePath} file to .genezioignore file.\n2. Please adjust the permissions of the file located at ${filePath} to ensure the 'genezio' process has the appropriate access rights.\n`;
+};
 
 export const GENEZIO_GIT_NOT_FOUND = `Git is not installed. Please install it and try again.
 https://git-scm.com/book/en/v2/Getting-Started-Installing-Git`;

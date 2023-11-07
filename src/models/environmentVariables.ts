@@ -1,6 +1,6 @@
 export type EnvironmentVariable = {
-    name: string,
-    value: string,
-    lastAccessedAt?: string,
-    type?: string,
-}
+    name: string;
+    value: string;
+    lastAccessedAt?: string;
+    type?: string;
+};
