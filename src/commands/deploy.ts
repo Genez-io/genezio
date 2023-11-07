@@ -89,11 +89,12 @@ export async function deployCommand(options: GenezioDeployOptions) {
         } else {
             if (configuration.scripts?.preBackendDeploy) {
                 log.info("Running preBackendDeploy script...");
-                const output = await runNewProcess(
-                    configuration.scripts?.preBackendDeploy,
+                log.info(configuration.scripts.preBackendDeploy);
+                const success = await runNewProcess(
+                    configuration.scripts.preBackendDeploy,
                     backendCwd,
                 );
-                if (!output) {
+                if (!success) {
                     GenezioTelemetry.sendEvent({
                         eventType: TelemetryEventTypes.GENEZIO_PRE_BACKEND_DEPLOY_SCRIPT_ERROR,
                         commandOptions: JSON.stringify(options),
@@ -151,12 +152,12 @@ export async function deployCommand(options: GenezioDeployOptions) {
 
             if (configuration.scripts?.postBackendDeploy) {
                 log.info("Running postBackendDeploy script...");
-                log.info(configuration.scripts?.postBackendDeploy);
-                const output = await runNewProcess(
-                    configuration.scripts?.postBackendDeploy,
+                log.info(configuration.scripts.postBackendDeploy);
+                const success = await runNewProcess(
+                    configuration.scripts.postBackendDeploy,
                     backendCwd,
                 );
-                if (!output) {
+                if (!success) {
                     GenezioTelemetry.sendEvent({
                         eventType: TelemetryEventTypes.GENEZIO_POST_BACKEND_DEPLOY_SCRIPT_ERROR,
                         commandOptions: JSON.stringify(options),
@@ -171,12 +172,12 @@ export async function deployCommand(options: GenezioDeployOptions) {
     if (!options.backend || options.frontend) {
         if (configuration.scripts?.preFrontendDeploy) {
             log.info("Running preFrontendDeploy script...");
-            log.info(configuration.scripts?.preFrontendDeploy);
-            const output = await runNewProcess(
-                configuration.scripts?.preFrontendDeploy,
+            log.info(configuration.scripts.preFrontendDeploy);
+            const success = await runNewProcess(
+                configuration.scripts.preFrontendDeploy,
                 frontendCwd,
             );
-            if (!output) {
+            if (!success) {
                 GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_PRE_FRONTEND_DEPLOY_SCRIPT_ERROR,
                     commandOptions: JSON.stringify(options),
@@ -216,12 +217,12 @@ export async function deployCommand(options: GenezioDeployOptions) {
 
         if (configuration.scripts?.postFrontendDeploy) {
             log.info("Running postFrontendDeploy script...");
-            log.info(configuration.scripts?.postFrontendDeploy);
-            const output = await runNewProcess(
-                configuration.scripts?.postFrontendDeploy,
+            log.info(configuration.scripts.postFrontendDeploy);
+            const success = await runNewProcess(
+                configuration.scripts.postFrontendDeploy,
                 frontendCwd,
             );
-            if (!output) {
+            if (!success) {
                 GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_POST_FRONTEND_DEPLOY_SCRIPT_ERROR,
                     commandOptions: JSON.stringify(options),

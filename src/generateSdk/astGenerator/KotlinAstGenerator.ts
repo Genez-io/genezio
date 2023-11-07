@@ -50,11 +50,11 @@ interface KotlinAstGeneratorOutput {
 export class AstGenerator implements AstGeneratorInterface {
     async #compileGenezioKotlinAstExtractor() {
         const folder = await createTemporaryFolder();
-        const ast_clone_result = await runNewProcess(
+        const ast_clone_success = await runNewProcess(
             "git clone --quiet https://github.com/Genez-io/kotlin-ast.git .",
             folder,
         );
-        if (!ast_clone_result) {
+        if (!ast_clone_success) {
             throw new Error(
                 "Error: Failed to clone Kotlin AST parser repository to " +
                     folder +
@@ -63,8 +63,8 @@ export class AstGenerator implements AstGeneratorInterface {
         }
 
         const gradlew = "." + path.sep + "gradlew" + (os.platform() === "win32" ? ".bat" : "");
-        const gradle_build_result = await runNewProcess(gradlew + " --quiet fatJar", folder);
-        if (!gradle_build_result) {
+        const gradle_build_success = await runNewProcess(gradlew + " --quiet fatJar", folder);
+        if (!gradle_build_success) {
             throw new Error(
                 'Error: Failed to build Kotlin AST parser while executing "./gradlew --quiet fatJar" in ' +
                     folder +
