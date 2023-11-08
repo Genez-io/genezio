@@ -5,23 +5,23 @@
 
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    target-branch: "dev"
-    directory: "/"
-    open-pull-requests-limit: 5
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "10:00"
-      timezone: Europe/Bucharest
-    versioning-strategy: increase
-  - package-ecosystem: "gitsubmodule"
-    target-branch: "master"
-    directory: "/"
-    schedule:
-      interval: "daily"
-  - package-ecosystem: "gitsubmodule"
-    target-branch: "dev"
-    directory: "/"
-    schedule:
-      interval: "daily"
+    - package-ecosystem: "npm"
+      target-branch: "dev"
+      directory: "/"
+      open-pull-requests-limit: 5
+      schedule:
+          interval: "weekly"
+          day: "monday"
+          time: "10:00"
+          timezone: Europe/Bucharest
+      versioning-strategy: increase
+    - package-ecosystem: "gitsubmodule"
+      target-branch: "master"
+      directory: "/"
+      schedule:
+          interval: "daily"
+    - package-ecosystem: "gitsubmodule"
+      target-branch: "dev"
+      directory: "/"
+      schedule:
+          interval: "daily"

@@ -3,21 +3,21 @@ description: Create an issue that is not a bug or a feature request
 title: "[Issue]: "
 labels: ["issue"]
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thanks for taking the time to fill out this report!
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for taking the time to fill out this report!
 
-        For questions, concerns or help with running genezio, please check out our additional resources:
+              For questions, concerns or help with running genezio, please check out our additional resources:
 
-        * [genezio documentation](https://genez.io/docs)
-        * [genezio official examples](https://github.com/Genez-io/genezio-examples)
-        * [genezio Troubleshooting section](https://docs.genez.io/genezio-documentation/troubleshooting)
+              * [genezio documentation](https://genez.io/docs)
+              * [genezio official examples](https://github.com/Genez-io/genezio-examples)
+              * [genezio Troubleshooting section](https://docs.genez.io/genezio-documentation/troubleshooting)
 
-  - type: textarea
-    id: issue-description
-    attributes:
-      label: Describe your issue
-      description: Describe your issue here, including as many details as necessary to understand your needs.
-    validations:
-      required: true
+    - type: textarea
+      id: issue-description
+      attributes:
+          label: Describe your issue
+          description: Describe your issue here, including as many details as necessary to understand your needs.
+      validations:
+          required: true
