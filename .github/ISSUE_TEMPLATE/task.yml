@@ -3,22 +3,22 @@ description: Define an improvement task
 title: "[Improvement task]: "
 labels: ["contributions"]
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thanks for taking the time to fill out this task description!
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for taking the time to fill out this task description!
 
-        For questions, concerns or help with running genezio, please check out our additional resources:
+              For questions, concerns or help with running genezio, please check out our additional resources:
 
-        * [contributions guide](https://github.com/Genez-io/genezio/blob/master/CONTRIBUTING.md)
-        * [genezio documentation](https://genez.io/docs)
-        * [genezio official examples](https://github.com/Genez-io/genezio-examples)
-        * [genezio Troubleshooting section](https://docs.genez.io/genezio-documentation/troubleshooting)
+              * [contributions guide](https://github.com/Genez-io/genezio/blob/master/CONTRIBUTING.md)
+              * [genezio documentation](https://genez.io/docs)
+              * [genezio official examples](https://github.com/Genez-io/genezio-examples)
+              * [genezio Troubleshooting section](https://docs.genez.io/genezio-documentation/troubleshooting)
 
-  - type: textarea
-    id: task-description
-    attributes:
-      label: Describe your task
-      description: A clear description of what the task is.
-    validations:
-      required: true
+    - type: textarea
+      id: task-description
+      attributes:
+          label: Describe your task
+          description: A clear description of what the task is.
+      validations:
+          required: true

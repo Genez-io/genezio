@@ -2,10 +2,7 @@
     "compilerOptions": {
         "target": "es2017",
         "module": "NodeNext",
-        "lib": [
-            "es6",
-            "ES2021.String"
-        ],
+        "lib": ["es6", "ES2021.String"],
         "outDir": "build",
         "rootDir": ".",
         "strict": true,
@@ -15,8 +12,5 @@
         "skipLibCheck": true
     },
     "include": ["src/**/*", "package.json"],
-    "exclude": [
-        "test.js"
-    ]
+    "exclude": ["test.js"]
 }
-
