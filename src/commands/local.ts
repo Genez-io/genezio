@@ -338,10 +338,10 @@ async function startProcesses(
     const bundlersOutput = await Promise.all(bundlersOutputPromise);
 
     const envVars: dotenv.DotenvPopulateInput = {};
-    const cwd = projectConfiguration.workspace?.backend
+    const envFile = projectConfiguration.workspace?.backend
         ? path.join(projectConfiguration.workspace.backend, ".env")
         : path.join(process.cwd(), ".env");
-    dotenv.config({ path: options.env || cwd, processEnv: envVars });
+    dotenv.config({ path: options.env || envFile, processEnv: envVars });
     for (const bundlerOutput of bundlersOutput) {
         const extra = bundlerOutput.extra;
 
