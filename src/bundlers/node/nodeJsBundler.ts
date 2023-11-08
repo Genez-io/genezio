@@ -137,7 +137,7 @@ export class NodeJsBundler implements BundlerInterface {
                     const loader = getLoader(args.path.split(".").pop()!);
 
                     // Check if file comes from node_modules
-                    if (components.length >= 1 && components[0] === "node_modules") {
+                    if (components.length >= 1 && components.includes("node_modules")) {
                         return { contents, loader };
                     }
 
@@ -148,22 +148,29 @@ export class NodeJsBundler implements BundlerInterface {
 
                     // Check if file uses require() for relative paths
                     const regex = /require\(['"]\.\.?(?:\/[\w.-]+)+['"]\);?/g;
-                    const matches = contents.match(regex);
-
-                    if (matches) {
-                        return {
-                            errors: [
-                                {
-                                    text: `genezio does not support require() for relative paths. Please use import statements instead.`,
-                                },
-                            ],
-                        };
+                    const lineContents = contents.split(os.EOL);
+                    for (let i = 0; i < lineContents.length; i++) {
+                        const line = lineContents[i];
+                        if (regex.test(line)) {
+                            return {
+                                errors: [
+                                    {
+                                        text: `genezio does not support require() for relative paths. Please use import statements instead. For example: "const a = require("./b");" should be "import a from "./b";" or "const a = await import("./b");"`,
+                                        location: {
+                                            file: args.path,
+                                            namespace: "file",
+                                            lineText: line,
+                                            line: i + 1,
+                                        },
+                                    },
+                                ],
+                            };
+                        }
                     }
-
                     return {
                         contents: `import { createRequire } from 'module';
-            const require = createRequire(import.meta.url);
-            ${contents}`,
+                    const require = createRequire(import.meta.url);
+                    ${contents}`,
                         loader,
                     };
                 });

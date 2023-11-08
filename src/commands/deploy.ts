@@ -439,10 +439,7 @@ export async function deployClasses(
     if (projectId) {
         // Deploy environment variables if --upload-env is true
         if (options.env) {
-            const cwd = projectConfiguration.workspace?.backend
-                ? path.resolve(projectConfiguration.workspace.backend)
-                : process.cwd();
-            const envFile = path.join(cwd, options.env);
+            const envFile = path.join(process.cwd(), options.env);
             debugLogger.debug(`Loading environment variables from ${envFile}.`);
 
             if (!(await fileExists(envFile))) {
@@ -484,9 +481,13 @@ export async function deployClasses(
                     });
             }
         } else {
-            if (await fileExists(".env")) {
+            const cwd = projectConfiguration.workspace?.backend
+                ? path.resolve(projectConfiguration.workspace.backend)
+                : process.cwd();
+            const envFile = path.join(cwd, ".env");
+            if (await fileExists(envFile)) {
                 // read envVars from file
-                const envVars = await readEnvironmentVariablesFile(".env");
+                const envVars = await readEnvironmentVariablesFile(envFile);
                 const projectEnv = await getProjectEnvFromProject(projectId, stage);
 
                 // get remoteEnvVars from project
@@ -509,13 +510,18 @@ export async function deployClasses(
                         log.info(`${colors.yellow(envVar.name)}`);
                     });
 
+                    const relativeEnvFilePath = path.join(
+                        ".",
+                        path.relative(path.resolve(process.cwd()), path.resolve(envFile)),
+                    );
+
                     log.info("");
                     log.info(
                         `${colors.yellow("Go to the dashboard ")}${colors.cyan(
                             REACT_APP_BASE_URL,
                         )} ${colors.yellow(
                             "to set your environment variables or run ",
-                        )} ${colors.cyan("genezio deploy --env .env")}`,
+                        )} ${colors.cyan(`genezio deploy --env ${relativeEnvFilePath}`)}`,
                     );
                     log.info("");
                 }
