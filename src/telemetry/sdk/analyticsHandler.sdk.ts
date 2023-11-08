@@ -18,6 +18,7 @@ export type AnalyticsData = {
     genezioVersion?: string;
     commandOptions?: string;
     isCI?: boolean;
+    nodeVersion?: string;
 };
 
 export class AnalyticsHandler {

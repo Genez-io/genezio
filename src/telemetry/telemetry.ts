@@ -99,6 +99,7 @@ export class GenezioTelemetry {
             genezioVersion: version,
             commandOptions: eventRequest.commandOptions || "",
             isCI: process.env.CI ? true : false,
+            nodeVersion: process.version,
         };
 
         await AnalyticsHandler.sendEvent(analyticsData).catch((err) => {
