@@ -1,10 +1,11 @@
 import { exec } from "child_process";
 import log from "loglevel";
+import { debugLogger } from "./logging.js";
 
 export function runNewProcess(
     command: string,
     cwd?: string,
-    showStdoutOutput = true,
+    showStdoutOutput = false,
     showStderrOutput = true,
 ): Promise<boolean> {
     return new Promise(function (resolve, reject) {
@@ -18,6 +19,8 @@ export function runNewProcess(
 
             if (showStdoutOutput) {
                 log.info(stdout);
+            } else {
+                debugLogger.debug(stdout);
             }
 
             if (showStderrOutput) {
