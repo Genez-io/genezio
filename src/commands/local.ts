@@ -145,7 +145,22 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     // eslint-disable-next-line no-constant-condition
     while (true) {
         // Read the project configuration every time because it might change
-        const yamlProjectConfiguration = await getProjectConfiguration();
+        let yamlProjectConfiguration;
+        try {
+            yamlProjectConfiguration = await getProjectConfiguration();
+        } catch (error: any) {
+            log.error(error.message);
+            log.error(
+                `Fix the errors and genezio local will restart automatically. Waiting for changes...`,
+            );
+            // If there was an error while parsing using babel the decorated class, wait for changes and try again.
+            const { watcher } = await listenForChanges(undefined);
+            if (watcher) {
+                watcher.close();
+            }
+            logChangeDetection();
+            continue;
+        }
         if (!Language[yamlProjectConfiguration.language as keyof typeof Language]) {
             log.info(
                 "This sdk.language is not supported by default. It will be treated as a custom language.",
