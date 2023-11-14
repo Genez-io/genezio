@@ -170,7 +170,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         }
 
         if (yamlProjectConfiguration.scripts?.preReloadLocal) {
-            log.info("Running reloadLocal script...");
+            log.info("Running preReloadLocal script...");
             log.info(yamlProjectConfiguration.scripts.preReloadLocal);
             const success = await runNewProcess(yamlProjectConfiguration.scripts.preReloadLocal);
             if (!success) {
