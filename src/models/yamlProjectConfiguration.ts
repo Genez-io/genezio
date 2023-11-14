@@ -197,17 +197,26 @@ export class YamlScriptsConfiguration {
     postBackendDeploy?: string;
     postFrontendDeploy?: string;
     preFrontendDeploy?: string;
+    preStartLocal?: string;
+    postStartLocal?: string;
+    preReloadLocal?: string;
 
     constructor(
         preBackendDeploy: string,
         postBackendDeploy: string,
         postFrontendDeploy: string,
         preFrontendDeploy: string,
+        preStartLocal: string,
+        postStartLocal: string,
+        preReloadLocal: string,
     ) {
         this.preBackendDeploy = preBackendDeploy;
         this.postBackendDeploy = postBackendDeploy;
         this.postFrontendDeploy = postFrontendDeploy;
         this.preFrontendDeploy = preFrontendDeploy;
+        this.preStartLocal = preStartLocal;
+        this.postStartLocal = postStartLocal;
+        this.preReloadLocal = preReloadLocal;
     }
 }
 
