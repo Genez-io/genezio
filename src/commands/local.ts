@@ -151,7 +151,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         const success = await runNewProcess(yamlProjectConfiguration.scripts.preStartLocal);
         if (!success) {
             GenezioTelemetry.sendEvent({
-                eventType: TelemetryEventTypes.GENEZIO_PRE_START_LOCAL_SCRIPT,
+                eventType: TelemetryEventTypes.GENEZIO_PRE_START_LOCAL_SCRIPT_ERROR,
                 commandOptions: JSON.stringify(options),
             });
             log.error("preStartLocal script failed.");
@@ -175,7 +175,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             const success = await runNewProcess(yamlProjectConfiguration.scripts.preReloadLocal);
             if (!success) {
                 GenezioTelemetry.sendEvent({
-                    eventType: TelemetryEventTypes.GENEZIO_PRE_RELOAD_LOCAL_SCRIPT,
+                    eventType: TelemetryEventTypes.GENEZIO_PRE_RELOAD_LOCAL_SCRIPT_ERROR,
                     commandOptions: JSON.stringify(options),
                 });
                 log.error("preReloadLocal script failed.");
