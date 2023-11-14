@@ -58,6 +58,7 @@ type ClassProcess = {
     startingCommand: string;
     parameters: string[];
     listeningPort: number;
+    envVars: dotenv.DotenvPopulateInput;
 };
 
 type BundlerRestartResponse = {
@@ -795,6 +796,7 @@ async function startClassProcess(
         listeningPort: availablePort,
         startingCommand: startingCommand,
         parameters: parameters,
+        envVars: envVars,
     });
 }
 
@@ -813,6 +815,7 @@ async function communicateWithProcess(
                 localProcess.parameters,
                 className,
                 processForClasses,
+                localProcess.envVars,
             );
         }
         throw error;
