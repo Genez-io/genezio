@@ -146,7 +146,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     let yamlProjectConfiguration = await getProjectConfiguration();
 
     if (yamlProjectConfiguration.scripts?.preStartLocal) {
-        log.info("Running startLocal script...");
+        log.info("Running preStartLocal script...");
         log.info(yamlProjectConfiguration.scripts.preStartLocal);
         const success = await runNewProcess(yamlProjectConfiguration.scripts.preStartLocal);
         if (!success) {
