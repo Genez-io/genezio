@@ -198,6 +198,7 @@ export class YamlScriptsConfiguration {
     postFrontendDeploy?: string;
     preFrontendDeploy?: string;
     preStartLocal?: string;
+    postStartLocal?: string;
     preReloadLocal?: string;
 
     constructor(
@@ -206,6 +207,7 @@ export class YamlScriptsConfiguration {
         postFrontendDeploy: string,
         preFrontendDeploy: string,
         preStartLocal: string,
+        postStartLocal: string,
         preReloadLocal: string,
     ) {
         this.preBackendDeploy = preBackendDeploy;
@@ -213,6 +215,7 @@ export class YamlScriptsConfiguration {
         this.postFrontendDeploy = postFrontendDeploy;
         this.preFrontendDeploy = preFrontendDeploy;
         this.preStartLocal = preStartLocal;
+        this.postStartLocal = postStartLocal;
         this.preReloadLocal = preReloadLocal;
     }
 }

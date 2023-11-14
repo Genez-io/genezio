@@ -299,6 +299,20 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             }
         }
 
+        if (yamlProjectConfiguration.scripts?.postStartLocal) {
+            log.info("Running postStartLocal script...");
+            log.info(yamlProjectConfiguration.scripts.postStartLocal);
+            const success = await runNewProcess(yamlProjectConfiguration.scripts.postStartLocal);
+            if (!success) {
+                GenezioTelemetry.sendEvent({
+                    eventType: TelemetryEventTypes.GENEZIO_POST_START_LOCAL_SCRIPT_ERROR,
+                    commandOptions: JSON.stringify(options),
+                });
+                log.error("postStartLocal script failed.");
+                exit(1);
+            }
+        }
+
         reportSuccess(projectConfiguration, sdk, options.port, !yamlProjectConfiguration.sdk);
 
         // Start listening for changes in user's code
