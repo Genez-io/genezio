@@ -52,6 +52,7 @@ import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { interruptLocalProcesses } from "../utils/localInterrupt.js";
 import { Status } from "../requests/models.js";
 import { loginCommand } from "./login.js";
+import { ClusterCloudAdapter } from "../cloudAdapter/cluster/clusterAdapter.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -633,6 +634,8 @@ function getCloudProvider(provider: string): CloudAdapter {
             return new GenezioCloudAdapter();
         case CloudProviderIdentifier.CAPYBARA_LINUX:
             return new GenezioCloudAdapter();
+        case CloudProviderIdentifier.CLUSTER:
+            return new ClusterCloudAdapter();
         case CloudProviderIdentifier.SELF_HOSTED_AWS:
             return new SelfHostedAwsAdapter();
         default:

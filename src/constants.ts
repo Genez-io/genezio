@@ -15,9 +15,10 @@ const GENEZIO_TELEMETRY_ENDPOINT =
     "https://c4h2bia7gbokqdxxc6fe5sgj5e0imchy.lambda-url.us-east-1.on.aws/";
 
 if (environment === "dev") {
-    REACT_APP_BASE_URL = "https://dev.app.genez.io";
+    // TODO: TEMPORARY, WILL REVERT ON MERGE
+    REACT_APP_BASE_URL = "http://localhost:3000";
     FRONTEND_DOMAIN = "dev.app.genez.io";
-    BACKEND_ENDPOINT = "https://dev.api.genez.io";
+    BACKEND_ENDPOINT = "http://localhost:8080";
     LOCAL_TEST_INTERFACE_URL = "https://dev.app.genez.io/test-interface/local";
     PORT_LOCAL_ENVIRONMENT = 8083;
     ENABLE_DEBUG_LOGS_BY_DEFAULT = true;
