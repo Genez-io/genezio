@@ -20,6 +20,9 @@ import colors from "colors";
 import { DependencyInstaller } from "./dependencyInstaller.js";
 import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE, UserError } from "../../errors.js";
 import transformDecorators from "../../utils/transformDecorators.js";
+import { spawnSync } from "child_process";
+import { nodeContainerManifest } from "./containerManifest.js";
+import { clusterWrapperCode } from "./clusterHandler.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 
 export class NodeJsBundler implements BundlerInterface {
@@ -382,6 +385,7 @@ export class NodeJsBundler implements BundlerInterface {
     ): ((className: string) => string) | null {
         switch (provider) {
             case CloudProviderIdentifier.GENEZIO:
+            case CloudProviderIdentifier.CLUSTER:
                 return lambdaHandlerGenerator;
             case CloudProviderIdentifier.CAPYBARA:
             case CloudProviderIdentifier.CAPYBARA_LINUX:
@@ -430,6 +434,8 @@ export class NodeJsBundler implements BundlerInterface {
         debugLogger.debug(
             `[NodeJSBundler] Copy non js files and node_modules for file ${input.path}.`,
         );
+
+        const isDeployedToCluster = input.projectConfiguration.cloudProvider === "cluster";
         // 2. Copy non js files and node_modules and write index.mjs file
         await Promise.all([
             this.#copyNonJsFiles(temporaryFolder, input, cwd),
@@ -441,8 +447,37 @@ export class NodeJsBundler implements BundlerInterface {
                 "index.mjs",
                 handlerGenerator(`"${input.configuration.name}"`),
             ),
+            ...(isDeployedToCluster
+                ? [
+                      writeToFile(temporaryFolder, "local.mjs", clusterWrapperCode, true),
+                      writeToFile(temporaryFolder, "Dockerfile", nodeContainerManifest, true),
+                  ]
+                : []),
         ]);
 
+        if (isDeployedToCluster) {
+            debugLogger.log("Writing docker file for container packaging");
+
+            // build image
+            const dockerBuildProcess = spawnSync(
+                "docker",
+                [
+                    "buildx",
+                    "build",
+                    "--load",
+                    "--platform=linux/amd64",
+                    "-t",
+                    input.projectConfiguration.name + "-" + input.configuration.name.toLowerCase(),
+                    temporaryFolder || ".",
+                ],
+                { stdio: "inherit", cwd: temporaryFolder },
+            );
+            if (dockerBuildProcess.status !== 0) {
+                log.error(dockerBuildProcess.stderr);
+                log.error(dockerBuildProcess.stdout);
+                throw new Error("Docker build failed");
+            }
+        }
         return {
             ...input,
             path: temporaryFolder,

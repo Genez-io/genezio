@@ -60,6 +60,7 @@ import { runScript } from "../utils/scripts.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../yamlProjectConfiguration/v2.js";
 import { getRandomCloudProvider, isProjectDeployed } from "../utils/abTesting.js";
+import { ClusterCloudAdapter } from "../cloudAdapter/cluster/clusterAdapter.js";
 import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
 
@@ -634,6 +635,8 @@ function getCloudAdapter(provider: string): CloudAdapter {
             return new GenezioCloudAdapter();
         case CloudProviderIdentifier.CAPYBARA_LINUX:
             return new GenezioCloudAdapter();
+        case CloudProviderIdentifier.CLUSTER:
+            return new ClusterCloudAdapter();
         case CloudProviderIdentifier.SELF_HOSTED_AWS:
             return new SelfHostedAwsAdapter();
         default:

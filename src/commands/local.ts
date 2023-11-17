@@ -900,7 +900,17 @@ async function startClassProcess(
     debugLogger.debug(`[START_CLASS_PROCESS] Starting class ${className} on port ${availablePort}`);
     debugLogger.debug(`[START_CLASS_PROCESS] Starting command: ${startingCommand}`);
     debugLogger.debug(`[START_CLASS_PROCESS] Parameters: ${parameters}`);
-    const processParameters = [...parameters, availablePort.toString()];
+
+    // Docker run command
+    // this will assume that parameters only contains the image name
+    const isContainer = startingCommand === "docker";
+    const portArgs = ["-p", `${availablePort}:8080`];
+    const containerName = parameters[0] + "-" + className.toLowerCase();
+    // All other commands
+    const processParameters = isContainer
+        ? ["run", ...portArgs, "--name", className, containerName]
+        : [...parameters, availablePort.toString()];
+
     const classProcess = spawn(startingCommand, processParameters, {
         stdio: ["pipe", "pipe", "pipe"],
         env: {
