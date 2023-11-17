@@ -8,7 +8,7 @@ export function runNewProcess(
     showStdoutOutput = false,
     showStderrOutput = true,
 ): Promise<boolean> {
-    return new Promise(function (resolve, reject) {
+    return new Promise(function (resolve) {
         exec(command, { cwd }, (err, stdout, stderr) => {
             if (err) {
                 log.error(err);
@@ -31,7 +31,7 @@ export function runNewProcess(
 }
 
 export function runNewProcessWithResult(command: string, cwd?: string): Promise<string> {
-    return new Promise(function (resolve, reject) {
+    return new Promise(function (resolve) {
         exec(command, { cwd }, (err, stdout, stderr) => {
             if (err) {
                 resolve(stderr);
@@ -46,7 +46,7 @@ export function runNewProcessWithResultAndReturnCode(
     command: string,
     cwd?: string,
 ): Promise<{ stdout: string; stderr: string; code: number }> {
-    return new Promise(function (resolve, reject) {
+    return new Promise(function (resolve) {
         exec(command, { cwd }, (err, stdout, stderr) => {
             if (err) {
                 resolve({ stdout, stderr, code: err.code || -1 });

@@ -183,11 +183,11 @@ class SdkGenerator implements SdkGeneratorInterface {
                             (e.optional
                                 ? " = None"
                                 : e.defaultValue
-                                ? " = " +
-                                  (e.defaultValue.type === AstNodeType.StringLiteral
-                                      ? "'" + e.defaultValue.value + "'"
-                                      : e.defaultValue.value)
-                                : ""),
+                                  ? " = " +
+                                    (e.defaultValue.type === AstNodeType.StringLiteral
+                                        ? "'" + e.defaultValue.value + "'"
+                                        : e.defaultValue.value)
+                                  : ""),
                         last: false,
                     };
                 });
@@ -357,11 +357,11 @@ class SdkGenerator implements SdkGeneratorInterface {
         switch (enumType) {
             case AstNodeType.StringLiteral:
                 return `class ${e.name}(str, Enum):\n\t${e.cases
-                    .map((e: EnumCase, i: number) => `${e.name} = "${e.value}"`)
+                    .map((e: EnumCase) => `${e.name} = "${e.value}"`)
                     .join("\n\t")}`;
             case AstNodeType.DoubleLiteral:
                 return `class ${e.name}(IntEnum):\n\t${e.cases
-                    .map((e: EnumCase, i: number) => `${e.name} = ${e.value}`)
+                    .map((e: EnumCase) => `${e.name} = ${e.value}`)
                     .join("\n\t")}`;
             default:
                 throw new Error("Unsupported enum type");

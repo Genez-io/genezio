@@ -33,7 +33,7 @@ process.on("SIGINT", async () => {
     await cleanupTemporaryFolders();
     process.exit();
 });
-process.on("exit", async (code) => {
+process.on("exit", async () => {
     await cleanupTemporaryFolders();
 });
 
