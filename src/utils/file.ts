@@ -375,7 +375,7 @@ export async function validateYamlFile() {
                     exit(1);
                 } else {
                     try {
-                        const cron = awsCronParser.parse(method.cronString);
+                        awsCronParser.parse(method.cronString);
                     } catch (error: any) {
                         log.error(
                             `The cronString ${method.cronString} for the method ${elem.path}.${method.name} is not valid.`,

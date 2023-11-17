@@ -1,7 +1,6 @@
 import { readUTF8File, writeToFile } from "./../utils/file.js";
 import os from "os";
 import path from "path";
-import fs from "fs";
 import { debugLogger } from "../utils/logging.js";
 
 export async function getTelemetrySessionId(): Promise<string | undefined> {

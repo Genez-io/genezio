@@ -21,7 +21,15 @@ import { regions } from "../src/utils/configs";
 jest.mock("../src/utils/file");
 jest.mock("../src/utils/configuration");
 jest.mock("../src/utils/prompt");
-jest.mock("loglevel");
+jest.mock("loglevel", () => {
+    return {
+        ...jest.requireActual("loglevel"),
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+    };
+});
 
 beforeEach(() => {
     jest.clearAllMocks();
@@ -92,7 +100,7 @@ classes: []
 
         await expect(initCommand("./project-name")).resolves.toBeUndefined();
 
-        expect(mockedWriteToFile).toBeCalledTimes(1);
+        expect(mockedWriteToFile).toBeCalledTimes(2);
         expect(mockedAskQuestion).toBeCalledTimes(3);
         expect(mockedWriteToFile).toBeCalledWith(
             "./project-name",
@@ -179,7 +187,7 @@ classes: []
             red,
             `The project name can't be empty. Please provide one.`,
         );
-        expect(mockedWriteToFile).toBeCalledTimes(1);
+        expect(mockedWriteToFile).toBeCalledTimes(2);
         expect(mockedAskQuestion).toBeCalledTimes(4);
         expect(mockedWriteToFile).toBeCalledWith(
             "./project-name",
@@ -268,7 +276,7 @@ classes: []
             red,
             `The region is invalid. Please use a valid region.\n Region list: ${regions}`,
         );
-        expect(mockedWriteToFile).toBeCalledTimes(1);
+        expect(mockedWriteToFile).toBeCalledTimes(2);
         expect(mockedAskQuestion).toBeCalledTimes(4);
         expect(mockedWriteToFile).toBeCalledWith(
             "./project-name",
@@ -347,7 +355,7 @@ describe("addClassCommand", () => {
         );
 
         expect(mockedFileExists).toBeCalledTimes(0);
-        expect(mockedWriteToFile).toBeCalledTimes(0);
+        expect(mockedWriteToFile).toBeCalledTimes(1);
         expect(projectConfiguration.addClass).toBeCalledTimes(0);
         expect(projectConfiguration.writeToFile).toBeCalledTimes(0);
     });
@@ -377,7 +385,7 @@ describe("addClassCommand", () => {
         await expect(addClassCommand("./test.js", "jsonrpc")).resolves.toBeUndefined();
 
         expect(mockedFileExists).toBeCalledTimes(1);
-        expect(mockedWriteToFile).toBeCalledTimes(1);
+        expect(mockedWriteToFile).toBeCalledTimes(2);
     });
 
     test("create class with existing file", async () => {
@@ -405,6 +413,6 @@ describe("addClassCommand", () => {
         await expect(addClassCommand("./test.js", "jsonrpc")).resolves.toBeUndefined();
 
         expect(mockedFileExists).toBeCalledTimes(1);
-        expect(mockedWriteToFile).toBeCalledTimes(0);
+        expect(mockedWriteToFile).toBeCalledTimes(1);
     });
 });

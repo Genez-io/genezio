@@ -46,7 +46,7 @@ import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE } from "../../errors.js";
 
 export class DartBundler implements BundlerInterface {
     async #getDartCompilePresignedUrl(archiveName: string): Promise<string> {
-        return await getCompileDartPresignedURL(archiveName);
+        return (await getCompileDartPresignedURL(archiveName)).presignedURL;
     }
 
     async #analyze(path: string) {
@@ -63,7 +63,7 @@ export class DartBundler implements BundlerInterface {
     async #compile(archiveName: string): Promise<string> {
         const url = DART_COMPILATION_ENDPOINT;
 
-        const response: any = await axios({
+        const response = await axios({
             method: "PUT",
             url: url,
             data: { archiveName },
@@ -201,14 +201,14 @@ export class DartBundler implements BundlerInterface {
     ): Promise<string> {
         const random = Math.random().toString(36).substring(2);
         const archiveName = `${projectName}${className}${random}.zip`;
-        const presignedUrlResult: any = await this.#getDartCompilePresignedUrl(archiveName);
+        const presignedUrl = await this.#getDartCompilePresignedUrl(archiveName);
 
         const archiveDirectoryOutput = await createTemporaryFolder();
         const archivePath = path.join(archiveDirectoryOutput, archiveName);
 
         try {
             await zipDirectory(userCodeFolderPath, archivePath);
-            await uploadContentToS3(presignedUrlResult.presignedURL, archivePath);
+            await uploadContentToS3(presignedUrl, archivePath);
         } finally {
             // remove temporary folder
             await deleteFolder(archiveDirectoryOutput);
