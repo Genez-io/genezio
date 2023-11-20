@@ -60,7 +60,7 @@ export class DartBundler implements BundlerInterface {
         }
     }
 
-    async #compile(archiveName: string): Promise<string> {
+    async #compile(archiveName: string): Promise<{ success: boolean; downloadUrl: string }> {
         const url = DART_COMPILATION_ENDPOINT;
 
         const response = await axios({
@@ -148,9 +148,12 @@ export class DartBundler implements BundlerInterface {
         index: number,
     ): string {
         const type = mainClass.methods
-            .find((m) => m.name == method.name)!
-            .params.find((p) => p.name == parameterType.name);
-        return `${this.#castParameterToPropertyType(type!.paramType, `params[${index}]`)}`;
+            .find((m) => m.name == method.name)
+            ?.params.find((p) => p.name == parameterType.name);
+
+        if (!type) throw new Error("Type not found");
+
+        return `${this.#castParameterToPropertyType(type.paramType, `params[${index}]`)}`;
     }
 
     async #createRouterFileForClass(
@@ -276,7 +279,10 @@ export class DartBundler implements BundlerInterface {
             // Create the router class
             const userClass = input.projectConfiguration.classes.find(
                 (c: ClassConfiguration) => c.path == input.path,
-            )!;
+            );
+
+            if (!userClass) throw new Error("Class not found while bundling");
+
             this.#createRouterFileForClass(userClass, input.ast, inputTemporaryFolder);
 
             // Check if dart is installed
@@ -294,7 +300,7 @@ export class DartBundler implements BundlerInterface {
 
             // Compile the Dart code on the server
             debugLogger.debug("Compiling Dart...");
-            const s3Zip: any = await this.#compile(archiveName);
+            const s3Zip = await this.#compile(archiveName);
             debugLogger.debug("Compiling Dart finished.");
 
             if (s3Zip.success === false) {

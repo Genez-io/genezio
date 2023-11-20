@@ -2,7 +2,7 @@ import log from "loglevel";
 import path from "path";
 import { newClassTemplateNode } from "../generateSdk/templates/newProject.js";
 
-import { TriggerType, YamlClassConfiguration } from "../models/yamlProjectConfiguration.js";
+import { YamlClassConfiguration } from "../models/yamlProjectConfiguration.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
 import { fileExists, writeToFile } from "../utils/file.js";

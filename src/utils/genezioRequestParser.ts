@@ -1,5 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 import MIMETypeParser from "whatwg-mimetype";
+import type { Request, RequestHandler } from "express";
 
 /**
  * Check if the body is of type binary.
@@ -22,19 +23,23 @@ function bodyIsBinary(rawContentType: string) {
         );
 }
 
+interface AwsApiGatewayRequest extends Request {
+    isBase64Encoded?: boolean;
+}
+
 /**
  * Express JS middleware that parses the request similar to how AWS API Gateway does it.
- *
- * @param request
- * @param response
- * @param next
  */
-export function genezioRequestParser(request: any, response: any, next: any) {
+export const genezioRequestParser: RequestHandler = (
+    request: AwsApiGatewayRequest,
+    response,
+    next,
+) => {
     const headers = request.headers;
     const contentType = headers["content-type"];
 
     if (request.body && request.body.length > 0) {
-        if (bodyIsBinary(contentType)) {
+        if (contentType && bodyIsBinary(contentType)) {
             request.body = request.body.toString("base64");
             request.isBase64Encoded = true;
         } else {
@@ -46,4 +51,4 @@ export function genezioRequestParser(request: any, response: any, next: any) {
     }
 
     next();
-}
+};
