@@ -225,7 +225,7 @@ If you find yourself in a pickle using `genezio`, drop us a [GitHub issue](https
 # System requirements
 
 -   `genezio` can be installed and used on macOS, Linux-based distributions and Windows.
--   A version of `node` >= 14.0.0 should be installed on your machine.
+-   A version of `node` >= 16.0.0 should be installed on your machine.
 
 # Troubleshooting
 
