@@ -107,10 +107,7 @@ class {{{className}}}:
 `;
 
 class SdkGenerator implements SdkGeneratorInterface {
-    async generateSdk(
-        sdkGeneratorInput: SdkGeneratorInput,
-        sdkVersion: SdkVersion,
-    ): Promise<SdkGeneratorOutput> {
+    async generateSdk(sdkGeneratorInput: SdkGeneratorInput): Promise<SdkGeneratorOutput> {
         const generateSdkOutput: SdkGeneratorOutput = {
             files: [],
         };
@@ -183,11 +180,11 @@ class SdkGenerator implements SdkGeneratorInterface {
                             (e.optional
                                 ? " = None"
                                 : e.defaultValue
-                                  ? " = " +
-                                    (e.defaultValue.type === AstNodeType.StringLiteral
-                                        ? "'" + e.defaultValue.value + "'"
-                                        : e.defaultValue.value)
-                                  : ""),
+                                ? " = " +
+                                  (e.defaultValue.type === AstNodeType.StringLiteral
+                                      ? "'" + e.defaultValue.value + "'"
+                                      : e.defaultValue.value)
+                                : ""),
                         last: false,
                     };
                 });

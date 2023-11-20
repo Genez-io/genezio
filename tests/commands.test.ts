@@ -1,5 +1,3 @@
-import { Document } from "yaml";
-
 import { fileExists, writeToFile } from "../src/utils/file";
 import { askQuestion } from "../src/utils/prompt";
 import { getProjectConfiguration } from "../src/utils/configuration";
@@ -12,7 +10,6 @@ import {
 } from "../src/models/yamlProjectConfiguration";
 import { initCommand } from "../src/commands/init";
 import { addClassCommand } from "../src/commands/addClass";
-import { languages } from "../src/utils/languages";
 import { CloudProviderIdentifier } from "../src/models/cloudProviderIdentifier";
 import log from "loglevel";
 import { red } from "../src/utils/strings";
@@ -47,7 +44,7 @@ describe("init", () => {
         const mockedWriteToFile = jest.mocked(writeToFile, { shallow: true });
         mockedWriteToFile.mockResolvedValue();
 
-        const configFile: any = {
+        const configFile = {
             name: "project-name",
             region: "us-east-1",
             language: "ts",
@@ -129,7 +126,7 @@ classes: []
         const mockedWriteToFile = jest.mocked(writeToFile, { shallow: true });
         mockedWriteToFile.mockResolvedValue();
 
-        const configFile: any = {
+        const configFile = {
             name: "project-name",
             region: "us-east-1",
             language: "ts",
@@ -218,7 +215,7 @@ classes: []
         const mockedWriteToFile = jest.mocked(writeToFile, { shallow: true });
         mockedWriteToFile.mockResolvedValue();
 
-        const configFile: any = {
+        const configFile = {
             name: "project-name",
             region: "us-east-1",
             language: "ts",

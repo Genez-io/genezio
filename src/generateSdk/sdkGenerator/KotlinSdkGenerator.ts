@@ -10,7 +10,6 @@ import {
     PromiseType,
     Node,
     MapType,
-    SdkVersion,
 } from "../../models/genezioModels.js";
 import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 import { kotlinSdk } from "../templates/kotlinSdk.js";
