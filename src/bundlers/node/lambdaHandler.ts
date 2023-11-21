@@ -30,8 +30,6 @@ if (!genezioClass) {
         };
     };
 } else {
-    const object = new genezioClass();
-
     const sendSentryError = async function (err) {
         try {
             const { createRequire } = await import("module");
@@ -46,7 +44,28 @@ if (!genezioClass) {
         } catch (e) {}
     };
 
-    handler = async function (event, context) {
+    let object;
+    try {
+        object = new genezioClass();
+    } catch (error) {
+        handler = async function (event, context) {
+            await sendSentryError(error);
+            return {
+                statusCode: 500,
+                body: JSON.stringify({
+                    jsonrpc: "2.0",
+                    error: {
+                        code: -1,
+                        message: \`Constructor call failure: \$\{error.message\}\`
+                    },
+                    id: 0,
+                }),
+                headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
+            };
+        };
+    }
+
+    handler = handler ?? async function (event, context) {
         if (event.genezioEventType === "cron") {
             const method = event.methodName;
 

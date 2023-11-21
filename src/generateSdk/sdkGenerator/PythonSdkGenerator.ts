@@ -107,10 +107,7 @@ class {{{className}}}:
 `;
 
 class SdkGenerator implements SdkGeneratorInterface {
-    async generateSdk(
-        sdkGeneratorInput: SdkGeneratorInput,
-        sdkVersion: SdkVersion,
-    ): Promise<SdkGeneratorOutput> {
+    async generateSdk(sdkGeneratorInput: SdkGeneratorInput): Promise<SdkGeneratorOutput> {
         const generateSdkOutput: SdkGeneratorOutput = {
             files: [],
         };
@@ -357,11 +354,11 @@ class SdkGenerator implements SdkGeneratorInterface {
         switch (enumType) {
             case AstNodeType.StringLiteral:
                 return `class ${e.name}(str, Enum):\n\t${e.cases
-                    .map((e: EnumCase, i: number) => `${e.name} = "${e.value}"`)
+                    .map((e: EnumCase) => `${e.name} = "${e.value}"`)
                     .join("\n\t")}`;
             case AstNodeType.DoubleLiteral:
                 return `class ${e.name}(IntEnum):\n\t${e.cases
-                    .map((e: EnumCase, i: number) => `${e.name} = ${e.value}`)
+                    .map((e: EnumCase) => `${e.name} = ${e.value}`)
                     .join("\n\t")}`;
             default:
                 throw new Error("Unsupported enum type");

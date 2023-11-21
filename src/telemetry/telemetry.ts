@@ -20,6 +20,9 @@ export enum TelemetryEventTypes {
     GENEZIO_GENERATE_SDK_ERROR = "GENEZIO_GENERATE_SDK_ERROR",
     GENEZIO_ADD_CLASS = "GENEZIO_ADD_CLASS",
     GENEZIO_DEPLOY_ERROR = "GENEZIO_DEPLOY_ERROR",
+    GENEZIO_PRE_START_LOCAL_SCRIPT_ERROR = "GENEZIO_PRE_START_LOCAL_SCRIPT_ERROR",
+    GENEZIO_POST_START_LOCAL_SCRIPT_ERROR = "GENEZIO_PRE_START_LOCAL_SCRIPT_ERROR",
+    GENEZIO_PRE_RELOAD_LOCAL_SCRIPT_ERROR = "GENEZIO_POST_RELOAD_LOCAL_SCRIPT_ERROR",
     GENEZIO_PRE_BACKEND_DEPLOY_SCRIPT_ERROR = "GENEZIO_PRE_BACKEND_DEPLOY_SCRIPT_ERROR",
     GENEZIO_BACKEND_DEPLOY_START = "GENEZIO_BACKEND_DEPLOY_START",
     GENEZIO_BACKEND_DEPLOY_ERROR = "GENEZIO_BACKEND_DEPLOY_ERROR",
@@ -70,6 +73,7 @@ export class GenezioTelemetry {
         // get user operating system
         const operatingSystem: string = process.platform;
         const sessionId: string = await this.getSessionId().catch((err) => {
+            debugLogger.debug(`[GenezioTelemetry]`, `Error getting session id: ${err}`);
             return "";
         });
 

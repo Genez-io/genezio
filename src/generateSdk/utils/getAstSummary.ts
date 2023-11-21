@@ -26,14 +26,10 @@ export function getAstSummary(classesInfo: SdkGeneratorClassesInfoInput[]): AstS
             }) as ClassDefinition;
 
             // get the types
-            const types: Object[] =
-                body
-                    ?.filter((elem) => {
-                        return elem.type !== "ClassDefinition";
-                    })
-                    .map((elem) => {
-                        return elem;
-                    }) || [];
+            const types: Node[] =
+                body?.filter((elem) => {
+                    return elem.type !== "ClassDefinition";
+                }) || [];
 
             const methods: AstSummaryMethod[] = classElem.methods.map(
                 (method: MethodDefinition) => {

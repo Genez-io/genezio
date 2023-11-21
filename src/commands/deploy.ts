@@ -55,13 +55,15 @@ export async function deployCommand(options: GenezioDeployOptions) {
 
     try {
         configuration = await getProjectConfiguration();
-    } catch (error: any) {
-        log.error(error.message);
-        GenezioTelemetry.sendEvent({
-            eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
-            errorTrace: error.toString(),
-            commandOptions: JSON.stringify(options),
-        });
+    } catch (error) {
+        if (error instanceof Error) {
+            log.error(error.message);
+            GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
+                errorTrace: error.toString(),
+                commandOptions: JSON.stringify(options),
+            });
+        }
         exit(1);
     }
     const backendCwd = configuration.workspace?.backend || process.cwd();
@@ -195,17 +197,19 @@ export async function deployCommand(options: GenezioDeployOptions) {
         log.info("Deploying your frontend to genezio infrastructure...");
         let url;
         try {
-            url = await deployFrontend(configuration, cloudAdapter, options, frontendCwd);
-        } catch (error: any) {
-            log.error(error.message);
-            if (error.message == "No frontend entry in genezio configuration file.") {
-                exit(0);
+            url = await deployFrontend(configuration, cloudAdapter, options);
+        } catch (error) {
+            if (error instanceof Error) {
+                log.error(error.message);
+                if (error.message == "No frontend entry in genezio configuration file.") {
+                    exit(0);
+                }
+                GenezioTelemetry.sendEvent({
+                    eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_ERROR,
+                    errorTrace: error.toString(),
+                    commandOptions: JSON.stringify(options),
+                });
             }
-            GenezioTelemetry.sendEvent({
-                eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_ERROR,
-                errorTrace: error.toString(),
-                commandOptions: JSON.stringify(options),
-            });
             exit(1);
         }
         log.info("\x1b[36m%s\x1b[0m", `Frontend successfully deployed at ${url}.`);
@@ -271,7 +275,7 @@ export async function deployClasses(
         );
     }
 
-    const multibar = new cliProgress.MultiBar(
+    new cliProgress.MultiBar(
         {
             clearOnComplete: false,
             hideCursor: true,
@@ -397,7 +401,7 @@ export async function deployClasses(
 
     await replaceUrlsInSdk(
         sdkResponse,
-        result.classes.map((c: any) => ({
+        result.classes.map((c) => ({
             name: c.className,
             cloudUrl: c.functionUrl,
         })),
@@ -539,7 +543,6 @@ export async function deployFrontend(
     configuration: YamlProjectConfiguration,
     cloudAdapter: CloudAdapter,
     options: GenezioDeployOptions,
-    cwd: string,
 ) {
     const stage: string = options.stage || "";
     if (configuration.frontend) {
@@ -573,14 +576,14 @@ export async function deployFrontend(
             log.info("WARNING: No index.html file found in the build folder");
         }
 
+        configuration.frontend.subdomain = options.subdomain || configuration.frontend.subdomain;
         if (!configuration.frontend.subdomain) {
             log.info(
-                "No subdomain specified in the genezio.yaml configuration file. We will provide a random one for you.",
+                "No subdomain specified in the genezio.yaml configuration file or as an option flag. We will provide a random one for you.",
             );
-            configuration.frontend.subdomain = generateRandomSubdomain();
 
             // write the configuration in yaml file
-            await configuration.addSubdomain(configuration.frontend.subdomain);
+            await configuration.addSubdomain(generateRandomSubdomain());
         }
 
         const url = await cloudAdapter.deployFrontend(

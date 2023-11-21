@@ -7,6 +7,7 @@ import KotlinSdkGenerator from "./sdkGenerator/KotlinSdkGenerator.js";
 import { SdkGeneratorInput, SdkGeneratorOutput, SdkVersion } from "../models/genezioModels.js";
 import log from "loglevel";
 import { exit } from "process";
+import { debugLogger } from "../utils/logging.js";
 
 /**
  * Asynchronously generates an SDK from a given AST array using specified plugins.
@@ -25,8 +26,9 @@ export async function generateSdk(
 
     if (plugins) {
         pluginsImported = plugins?.map(async (plugin) => {
-            return await import(plugin).catch((err: any) => {
+            return await import(plugin).catch((err) => {
                 log.error(`Plugin(${plugin}) not found. Install it with npm install ${plugin}`);
+                debugLogger.debug(err);
                 exit(1);
             });
         });

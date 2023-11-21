@@ -46,7 +46,7 @@ import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE } from "../../errors.js";
 
 export class DartBundler implements BundlerInterface {
     async #getDartCompilePresignedUrl(archiveName: string): Promise<string> {
-        return await getCompileDartPresignedURL(archiveName);
+        return (await getCompileDartPresignedURL(archiveName)).presignedURL;
     }
 
     async #analyze(path: string) {
@@ -60,10 +60,10 @@ export class DartBundler implements BundlerInterface {
         }
     }
 
-    async #compile(archiveName: string): Promise<string> {
+    async #compile(archiveName: string): Promise<{ success: boolean; downloadUrl: string }> {
         const url = DART_COMPILATION_ENDPOINT;
 
-        const response: any = await axios({
+        const response = await axios({
             method: "PUT",
             url: url,
             data: { archiveName },
@@ -148,9 +148,12 @@ export class DartBundler implements BundlerInterface {
         index: number,
     ): string {
         const type = mainClass.methods
-            .find((m) => m.name == method.name)!
-            .params.find((p) => p.name == parameterType.name);
-        return `${this.#castParameterToPropertyType(type!.paramType, `params[${index}]`)}`;
+            .find((m) => m.name == method.name)
+            ?.params.find((p) => p.name == parameterType.name);
+
+        if (!type) throw new Error("Type not found");
+
+        return `${this.#castParameterToPropertyType(type.paramType, `params[${index}]`)}`;
     }
 
     async #createRouterFileForClass(
@@ -201,14 +204,14 @@ export class DartBundler implements BundlerInterface {
     ): Promise<string> {
         const random = Math.random().toString(36).substring(2);
         const archiveName = `${projectName}${className}${random}.zip`;
-        const presignedUrlResult: any = await this.#getDartCompilePresignedUrl(archiveName);
+        const presignedUrl = await this.#getDartCompilePresignedUrl(archiveName);
 
         const archiveDirectoryOutput = await createTemporaryFolder();
         const archivePath = path.join(archiveDirectoryOutput, archiveName);
 
         try {
             await zipDirectory(userCodeFolderPath, archivePath);
-            await uploadContentToS3(presignedUrlResult.presignedURL, archivePath);
+            await uploadContentToS3(presignedUrl, archivePath);
         } finally {
             // remove temporary folder
             await deleteFolder(archiveDirectoryOutput);
@@ -276,7 +279,10 @@ export class DartBundler implements BundlerInterface {
             // Create the router class
             const userClass = input.projectConfiguration.classes.find(
                 (c: ClassConfiguration) => c.path == input.path,
-            )!;
+            );
+
+            if (!userClass) throw new Error("Class not found while bundling");
+
             this.#createRouterFileForClass(userClass, input.ast, inputTemporaryFolder);
 
             // Check if dart is installed
@@ -294,7 +300,7 @@ export class DartBundler implements BundlerInterface {
 
             // Compile the Dart code on the server
             debugLogger.debug("Compiling Dart...");
-            const s3Zip: any = await this.#compile(archiveName);
+            const s3Zip = await this.#compile(archiveName);
             debugLogger.debug("Compiling Dart finished.");
 
             if (s3Zip.success === false) {

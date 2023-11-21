@@ -1,5 +1,6 @@
 import { ClassConfiguration, ProjectConfiguration } from "../models/projectConfiguration.js";
 import { Program } from "../models/genezioModels.js";
+import FileDetails from "../models/fileDetails.js";
 
 /**
  * The input that goes into the bundler.
@@ -19,7 +20,7 @@ export type BundlerInput = {
         startingCommand?: string;
         commandParameters?: string[];
         installDeps?: boolean;
-        allNonJsFilesPaths?: any;
+        allNonJsFilesPaths?: FileDetails[];
     };
 };
 

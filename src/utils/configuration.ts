@@ -154,11 +154,14 @@ async function tryToReadClassInformationFromDecorators(
     projectConfiguration: YamlProjectConfiguration,
 ) {
     const cwd = projectConfiguration.workspace?.backend || process.cwd();
+
     const allJsFilesPaths = (await getAllFilesFromPath(cwd)).filter((file: FileDetails) => {
+        const folderPath = path.join(cwd, file.path);
         return (
             (file.extension === ".js" || file.extension === ".ts") &&
             !file.path.includes("node_modules") &&
-            !file.path.includes(".git")
+            !file.path.includes(".git") &&
+            !fs.lstatSync(folderPath).isDirectory()
         );
     });
 

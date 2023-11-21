@@ -12,7 +12,6 @@ import {
 } from "../../models/genezioModels.js";
 import parser from "@babel/parser";
 import traverse from "@babel/traverse";
-import path from "path";
 import transformDecorators from "../../utils/transformDecorators.js";
 
 class AstGenerator implements AstGeneratorInterface {

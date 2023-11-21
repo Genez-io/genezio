@@ -20,7 +20,7 @@ export async function getCompileDartPresignedURL(archiveName: string) {
         zipName: archiveName,
     });
 
-    const response: any = await axios({
+    const response = await axios({
         method: "GET",
         url: `${BACKEND_ENDPOINT}/core/compile-dart-url`,
         data: json,
@@ -42,5 +42,9 @@ export async function getCompileDartPresignedURL(archiveName: string) {
         throw new Error(response.data.error.message);
     }
 
-    return response.data;
+    if (response.data.presignedURL === undefined) {
+        throw new Error("The endpoint did not return a presigned url.");
+    }
+
+    return { presignedURL: response.data.presignedURL as string };
 }

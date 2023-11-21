@@ -12,7 +12,7 @@
 
 <div align="center">
 <h2>The easiest way to write and host a serverless application</h2>
-<h3>Check out a <u><a href="https://getting-started-typescript.app.genez.io/">live demo deployed with genezio here</a></u> </h3>
+<h3>Check out a <u><a href="https://awesome-purple-capybara.app.genez.io/">live demo deployed with genezio here</a></u> </h3>
 </div>
 
 <br>
@@ -225,7 +225,7 @@ If you find yourself in a pickle using `genezio`, drop us a [GitHub issue](https
 # System requirements
 
 -   `genezio` can be installed and used on macOS, Linux-based distributions and Windows.
--   A version of `node` >= 14.0.0 should be installed on your machine.
+-   A version of `node` >= 16.0.0 should be installed on your machine.
 
 # Troubleshooting
 

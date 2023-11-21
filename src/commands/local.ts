@@ -52,12 +52,15 @@ import { EOL } from "os";
 import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
 import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJson.js";
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
+import { runNewProcess } from "../utils/process.js";
+import { exit } from "process";
 
 type ClassProcess = {
     process: ChildProcess;
     startingCommand: string;
     parameters: string[];
     listeningPort: number;
+    envVars: dotenv.DotenvPopulateInput;
 };
 
 type BundlerRestartResponse = {
@@ -141,6 +144,21 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         eventType: TelemetryEventTypes.GENEZIO_LOCAL,
         commandOptions: JSON.stringify(options),
     });
+    const yamlProjectConfiguration = await getProjectConfiguration();
+
+    if (yamlProjectConfiguration.scripts?.preStartLocal) {
+        log.info("Running preStartLocal script...");
+        log.info(yamlProjectConfiguration.scripts.preStartLocal);
+        const success = await runNewProcess(yamlProjectConfiguration.scripts.preStartLocal);
+        if (!success) {
+            GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_PRE_START_LOCAL_SCRIPT_ERROR,
+                commandOptions: JSON.stringify(options),
+            });
+            log.error("preStartLocal script failed.");
+            exit(1);
+        }
+    }
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -165,6 +183,20 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             log.info(
                 "This sdk.language is not supported by default. It will be treated as a custom language.",
             );
+        }
+
+        if (yamlProjectConfiguration.scripts?.preReloadLocal) {
+            log.info("Running preReloadLocal script...");
+            log.info(yamlProjectConfiguration.scripts.preReloadLocal);
+            const success = await runNewProcess(yamlProjectConfiguration.scripts.preReloadLocal);
+            if (!success) {
+                GenezioTelemetry.sendEvent({
+                    eventType: TelemetryEventTypes.GENEZIO_PRE_RELOAD_LOCAL_SCRIPT_ERROR,
+                    commandOptions: JSON.stringify(options),
+                });
+                log.error("preReloadLocal script failed.");
+                exit(1);
+            }
         }
 
         if (!yamlProjectConfiguration.packageManager && !yamlProjectConfiguration.sdk) {
@@ -280,6 +312,20 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     GenezioCommand.local,
                     yamlProjectConfiguration.packageManager || PackageManager.npm,
                 );
+            }
+        }
+
+        if (yamlProjectConfiguration.scripts?.postStartLocal) {
+            log.info("Running postStartLocal script...");
+            log.info(yamlProjectConfiguration.scripts.postStartLocal);
+            const success = await runNewProcess(yamlProjectConfiguration.scripts.postStartLocal);
+            if (!success) {
+                GenezioTelemetry.sendEvent({
+                    eventType: TelemetryEventTypes.GENEZIO_POST_START_LOCAL_SCRIPT_ERROR,
+                    commandOptions: JSON.stringify(options),
+                });
+                log.error("postStartLocal script failed.");
+                exit(1);
             }
         }
 
@@ -810,6 +856,7 @@ async function startClassProcess(
         listeningPort: availablePort,
         startingCommand: startingCommand,
         parameters: parameters,
+        envVars: envVars,
     });
 }
 
@@ -828,6 +875,7 @@ async function communicateWithProcess(
                 localProcess.parameters,
                 className,
                 processForClasses,
+                localProcess.envVars,
             );
         }
         throw error;

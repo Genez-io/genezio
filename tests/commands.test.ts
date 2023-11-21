@@ -1,5 +1,3 @@
-import { Document } from "yaml";
-
 import { fileExists, writeToFile } from "../src/utils/file";
 import { askQuestion } from "../src/utils/prompt";
 import { getProjectConfiguration } from "../src/utils/configuration";
@@ -12,7 +10,6 @@ import {
 } from "../src/models/yamlProjectConfiguration";
 import { initCommand } from "../src/commands/init";
 import { addClassCommand } from "../src/commands/addClass";
-import { languages } from "../src/utils/languages";
 import { CloudProviderIdentifier } from "../src/models/cloudProviderIdentifier";
 import log from "loglevel";
 import { red } from "../src/utils/strings";
@@ -21,7 +18,15 @@ import { regions } from "../src/utils/configs";
 jest.mock("../src/utils/file");
 jest.mock("../src/utils/configuration");
 jest.mock("../src/utils/prompt");
-jest.mock("loglevel");
+jest.mock("loglevel", () => {
+    return {
+        ...jest.requireActual("loglevel"),
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+    };
+});
 
 beforeEach(() => {
     jest.clearAllMocks();
@@ -39,7 +44,7 @@ describe("init", () => {
         const mockedWriteToFile = jest.mocked(writeToFile, { shallow: true });
         mockedWriteToFile.mockResolvedValue();
 
-        const configFile: any = {
+        const configFile = {
             name: "project-name",
             region: "us-east-1",
             language: "ts",
@@ -92,7 +97,7 @@ classes: []
 
         await expect(initCommand("./project-name")).resolves.toBeUndefined();
 
-        expect(mockedWriteToFile).toBeCalledTimes(1);
+        expect(mockedWriteToFile).toBeCalledTimes(2);
         expect(mockedAskQuestion).toBeCalledTimes(3);
         expect(mockedWriteToFile).toBeCalledWith(
             "./project-name",
@@ -121,7 +126,7 @@ classes: []
         const mockedWriteToFile = jest.mocked(writeToFile, { shallow: true });
         mockedWriteToFile.mockResolvedValue();
 
-        const configFile: any = {
+        const configFile = {
             name: "project-name",
             region: "us-east-1",
             language: "ts",
@@ -179,7 +184,7 @@ classes: []
             red,
             `The project name can't be empty. Please provide one.`,
         );
-        expect(mockedWriteToFile).toBeCalledTimes(1);
+        expect(mockedWriteToFile).toBeCalledTimes(2);
         expect(mockedAskQuestion).toBeCalledTimes(4);
         expect(mockedWriteToFile).toBeCalledWith(
             "./project-name",
@@ -210,7 +215,7 @@ classes: []
         const mockedWriteToFile = jest.mocked(writeToFile, { shallow: true });
         mockedWriteToFile.mockResolvedValue();
 
-        const configFile: any = {
+        const configFile = {
             name: "project-name",
             region: "us-east-1",
             language: "ts",
@@ -268,7 +273,7 @@ classes: []
             red,
             `The region is invalid. Please use a valid region.\n Region list: ${regions}`,
         );
-        expect(mockedWriteToFile).toBeCalledTimes(1);
+        expect(mockedWriteToFile).toBeCalledTimes(2);
         expect(mockedAskQuestion).toBeCalledTimes(4);
         expect(mockedWriteToFile).toBeCalledWith(
             "./project-name",
@@ -347,7 +352,7 @@ describe("addClassCommand", () => {
         );
 
         expect(mockedFileExists).toBeCalledTimes(0);
-        expect(mockedWriteToFile).toBeCalledTimes(0);
+        expect(mockedWriteToFile).toBeCalledTimes(1);
         expect(projectConfiguration.addClass).toBeCalledTimes(0);
         expect(projectConfiguration.writeToFile).toBeCalledTimes(0);
     });
@@ -377,7 +382,7 @@ describe("addClassCommand", () => {
         await expect(addClassCommand("./test.js", "jsonrpc")).resolves.toBeUndefined();
 
         expect(mockedFileExists).toBeCalledTimes(1);
-        expect(mockedWriteToFile).toBeCalledTimes(1);
+        expect(mockedWriteToFile).toBeCalledTimes(2);
     });
 
     test("create class with existing file", async () => {
@@ -405,6 +410,6 @@ describe("addClassCommand", () => {
         await expect(addClassCommand("./test.js", "jsonrpc")).resolves.toBeUndefined();
 
         expect(mockedFileExists).toBeCalledTimes(1);
-        expect(mockedWriteToFile).toBeCalledTimes(0);
+        expect(mockedWriteToFile).toBeCalledTimes(1);
     });
 });

@@ -14,4 +14,5 @@ export type GenezioDeployOptions = {
     installDeps: boolean;
     env?: string;
     stage?: string;
+    subdomain?: string;
 };

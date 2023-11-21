@@ -10,7 +10,6 @@ import {
     PromiseType,
     Node,
     MapType,
-    SdkVersion,
 } from "../../models/genezioModels.js";
 import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 import { kotlinSdk } from "../templates/kotlinSdk.js";
@@ -157,10 +156,7 @@ class {{{className}}} {
 `;
 
 class SdkGenerator implements SdkGeneratorInterface {
-    async generateSdk(
-        sdkGeneratorInput: SdkGeneratorInput,
-        sdkVersion: SdkVersion,
-    ): Promise<SdkGeneratorOutput> {
+    async generateSdk(sdkGeneratorInput: SdkGeneratorInput): Promise<SdkGeneratorOutput> {
         const generateSdkOutput: SdkGeneratorOutput = {
             files: [],
         };
