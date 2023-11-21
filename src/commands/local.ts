@@ -38,7 +38,7 @@ import axios, { AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
 import {
     Language,
-    PackageManager,
+    PackageManagerType,
     YamlProjectConfiguration,
     YamlProjectConfigurationType,
     YamlSdkConfiguration,
@@ -206,7 +206,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     name: "packageManager",
                     message:
                         "Which package manager are you using to install your frontend dependencies?",
-                    choices: Object.keys(PackageManager).filter((key) => isNaN(Number(key))),
+                    choices: Object.keys(PackageManagerType).filter((key) => isNaN(Number(key))),
                 },
             ]);
             yamlProjectConfiguration.packageManager = optionalPackageManager.packageManager;
@@ -310,7 +310,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     packajeJson,
                     sdkConfiguration.language,
                     GenezioCommand.local,
-                    yamlProjectConfiguration.packageManager || PackageManager.npm,
+                    yamlProjectConfiguration.packageManager || PackageManagerType.npm,
                 );
             }
         }

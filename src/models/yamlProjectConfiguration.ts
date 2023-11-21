@@ -37,7 +37,7 @@ export enum Language {
     kt = "kotlin",
 }
 
-export enum PackageManager {
+export enum PackageManagerType {
     npm = "npm",
     yarn = "yarn",
     pnpm = "pnpm",
@@ -267,7 +267,7 @@ export class YamlProjectConfiguration {
     frontend?: YamlFrontend;
     scripts?: YamlScriptsConfiguration;
     plugins?: YamlPluginsConfiguration;
-    packageManager?: PackageManager | undefined;
+    packageManager?: PackageManagerType | undefined;
 
     constructor(
         name: string,
@@ -281,7 +281,7 @@ export class YamlProjectConfiguration {
         plugins: YamlPluginsConfiguration | undefined = undefined,
         options: NodeOptions | undefined = undefined,
         workspace: YamlWorkspace | undefined = undefined,
-        packageManager: PackageManager | undefined = undefined,
+        packageManager: PackageManagerType | undefined = undefined,
     ) {
         this.name = name;
         this.region = region;
