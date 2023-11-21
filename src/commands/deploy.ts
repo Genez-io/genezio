@@ -573,14 +573,14 @@ export async function deployFrontend(
             log.info("WARNING: No index.html file found in the build folder");
         }
 
+        configuration.frontend.subdomain = options.subdomain || configuration.frontend.subdomain;
         if (!configuration.frontend.subdomain) {
             log.info(
-                "No subdomain specified in the genezio.yaml configuration file. We will provide a random one for you.",
+                "No subdomain specified in the genezio.yaml configuration file or as an option flag. We will provide a random one for you.",
             );
-            configuration.frontend.subdomain = generateRandomSubdomain();
 
             // write the configuration in yaml file
-            await configuration.addSubdomain(configuration.frontend.subdomain);
+            await configuration.addSubdomain(generateRandomSubdomain());
         }
 
         const url = await cloudAdapter.deployFrontend(

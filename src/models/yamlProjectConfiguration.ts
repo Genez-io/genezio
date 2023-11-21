@@ -189,7 +189,7 @@ export class YamlClassConfiguration {
 
 export type YamlFrontend = {
     path: string;
-    subdomain: string;
+    subdomain: string | undefined;
 };
 
 export class YamlScriptsConfiguration {

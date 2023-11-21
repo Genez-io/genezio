@@ -146,6 +146,11 @@ program
     .option("--install-deps", "Automatically install missing dependencies.", false)
     .option("--env <envFile>", "Load environment variables from a given file.", undefined)
     .option("--stage <stage>", "Stage to deploy to. Default: 'production'.")
+    .option(
+        "--subdomain <subdomain>",
+        "Subdomain of your frontend deplyoment. If not set, the subdomain will be randomly generated.",
+        undefined,
+    )
     .description(
         `Deploy your project to the genezio infrastructure. Use --frontend to deploy only the frontend application.
 Use --backend to deploy only the backend application.`,
