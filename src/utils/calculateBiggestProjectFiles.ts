@@ -1,5 +1,7 @@
 import fs from "fs";
 import { getBundleFolderSizeLimit } from "./file.js";
+import { Dependency } from "../bundlers/bundler.interface.js";
+import FileDetails from "../models/fileDetails.js";
 
 type PackageInfo = {
     name: string;
@@ -13,11 +15,14 @@ function getTop5LargestPackages(packages: PackageInfo[]): string[] {
     return formatedSizes;
 }
 
-export async function calculateBiggestFiles(dependencies: any, allNonJsFilesPaths: any) {
+export async function calculateBiggestFiles(
+    dependencies: Dependency[],
+    allNonJsFilesPaths: FileDetails[],
+) {
     const fileSizes: { name: string; totalSize: number }[] = [];
     const nodeModulesData: { name: string; totalSize: number }[] = [];
 
-    const promises = dependencies.map(async (file: { name: string; path: string }) => {
+    const promises = dependencies.map(async (file) => {
         const depSize: number = await getBundleFolderSizeLimit(file.path);
         const moduleData = {
             name: file.name,
