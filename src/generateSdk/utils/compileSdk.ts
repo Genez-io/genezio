@@ -1,5 +1,5 @@
 import { createRequire } from "module";
-import { Language, PackageManager } from "../../models/yamlProjectConfiguration.js";
+import { Language, PackageManagerType } from "../../models/yamlProjectConfiguration.js";
 import path from "path";
 import ts from "typescript";
 import { Worker } from "worker_threads";
@@ -38,7 +38,7 @@ export async function compileSdk(
     packageJson: string,
     language: Language,
     environment: GenezioCommand,
-    packageManager: PackageManager = PackageManager.npm,
+    packageManager: PackageManagerType = PackageManagerType.npm,
 ) {
     // compile the sdk to cjs and esm using worker threads
     const workers = [];
