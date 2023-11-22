@@ -7,6 +7,7 @@ import cors from "cors";
 import bodyParser from "body-parser";
 import { ChildProcess, spawn } from "child_process";
 import path from "path";
+import { default as fsExtra } from "fs-extra";
 import url from "url";
 import * as http from "http";
 import colors from "colors";
@@ -54,6 +55,7 @@ import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJ
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { runNewProcess } from "../utils/process.js";
 import { exit } from "process";
+import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 
 type ClassProcess = {
     process: ChildProcess;
@@ -159,6 +161,8 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             exit(1);
         }
     }
+
+    let nodeModulesWatcher: chokidar.FSWatcher | undefined;
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -312,6 +316,51 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     GenezioCommand.local,
                     yamlProjectConfiguration.packageManager || PackageManager.npm,
                 );
+
+                const watchPaths = [];
+                if (yamlProjectConfiguration.workspace) {
+                    const from = path.resolve(sdkConfiguration.path, "..", "genezio-sdk");
+                    const to = path.join(
+                        yamlProjectConfiguration.workspace.frontend,
+                        "node_modules",
+                        "@genezio-sdk",
+                        `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
+                    );
+                    await fsExtra.copy(from, to, { overwrite: true });
+                    watchPaths.push(
+                        path.join(
+                            yamlProjectConfiguration.workspace.frontend,
+                            "node_modules",
+                            "@genezio-sdk",
+                        ),
+                    );
+                } else {
+                    const linkPaths = await getLinkPathsForProject(
+                        yamlProjectConfiguration.name,
+                        yamlProjectConfiguration.region,
+                    );
+                    const from = path.resolve(sdkConfiguration.path, "..", "genezio-sdk");
+                    for (const linkPath of linkPaths) {
+                        const to = path.join(
+                            linkPath,
+                            "node_modules",
+                            "@genezio-sdk",
+                            `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
+                        );
+                        await fsExtra.copy(from, to, { overwrite: true });
+                        watchPaths.push(path.join(linkPath, "node_modules", "@genezio-sdk"));
+                    }
+                }
+
+                nodeModulesWatcher?.close();
+                nodeModulesWatcher = chokidar
+                    .watch(watchPaths, {
+                        ignoreInitial: true,
+                        depth: 1,
+                    })
+                    .on("addDir", async (event: any, path: any) => {
+                        console.log("sdk changed", event, path);
+                    });
             }
         }
 

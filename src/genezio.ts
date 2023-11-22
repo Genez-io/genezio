@@ -19,6 +19,7 @@ import { GenezioDeployOptions, GenezioLocalOptions } from "./models/commandOptio
 import currentGenezioVersion, { logOutdatedVersion } from "./utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js";
 import { genezioCommand } from "./commands/superGenezio.js";
+import { linkCommand, unlinkCommand } from "./commands/link.js";
 
 const program = new Command();
 
@@ -319,5 +320,13 @@ program
         });
         await logOutdatedVersion();
     });
+
+program.command("link").action(() => {
+    linkCommand();
+});
+
+program.command("unlink").action(() => {
+    unlinkCommand();
+});
 
 export default program;
