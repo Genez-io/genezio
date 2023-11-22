@@ -310,7 +310,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     packajeJson,
                     sdkConfiguration.language,
                     GenezioCommand.local,
-                    yamlProjectConfiguration.packageManager || PackageManagerType.npm,
                 );
             }
         }

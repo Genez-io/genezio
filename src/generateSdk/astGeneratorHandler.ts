@@ -1,6 +1,6 @@
 import log from "loglevel";
 import path from "path";
-import { AstGeneratorOutput, File } from "../models/genezioModels.js";
+import { AstGeneratorOutput } from "../models/genezioModels.js";
 import { AstGeneratorInput } from "../models/genezioModels.js";
 import JsAstGenerator from "./astGenerator/JsAstGenerator.js";
 import TsAstGenerator from "./astGenerator/TsAstGenerator.js";

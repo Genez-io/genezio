@@ -19,6 +19,9 @@ import { GenezioDeployOptions, GenezioLocalOptions } from "./models/commandOptio
 import currentGenezioVersion, { logOutdatedVersion } from "./utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js";
 import { genezioCommand } from "./commands/superGenezio.js";
+import { getProjectConfiguration } from "./utils/configuration.js";
+import { setPackageManager } from "./packageManagers/packageManager.js";
+import { PackageManagerType } from "./models/yamlProjectConfiguration.js";
 
 const program = new Command();
 
@@ -40,6 +43,17 @@ prefix.apply(log.getLogger("debuggingLogger"), {
 
 if (ENABLE_DEBUG_LOGS_BY_DEFAULT) {
     setDebuggingLoggerLogLevel("debug");
+}
+
+// setup package manager
+const configuration = await getProjectConfiguration();
+if (configuration.packageManager) {
+    if (configuration.packageManager in Object.keys(PackageManagerType)) {
+        setPackageManager(configuration.packageManager);
+    } else {
+        log.warn(`Unknown package manager '${configuration.packageManager}'. Using 'npm' instead.`);
+        setPackageManager(PackageManagerType.npm);
+    }
 }
 
 // super-genezio command

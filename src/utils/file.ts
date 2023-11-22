@@ -12,8 +12,8 @@ import { promises as fsPromises } from "fs";
 import { debugLogger } from "./logging.js";
 import { EnvironmentVariable } from "../models/environmentVariables.js";
 import dotenv from "dotenv";
-import { execSync } from "child_process";
 import fsExtra from "fs-extra";
+import packageManager from "../packageManagers/packageManager.js";
 
 export async function getAllFilesRecursively(folderPath: string): Promise<string[]> {
     let files: string[] = [];
@@ -253,9 +253,7 @@ export async function createLocalTempFolder(
 
         // install @types/node in root folder to be accessible by all projects
         if (!fs.existsSync(path.join(os.tmpdir(), folderName, "node_modules", "@types/node"))) {
-            execSync("npm install @types/node", {
-                cwd: path.join(os.tmpdir(), folderName),
-            });
+            packageManager.installSync(["@types/node"], path.join(os.tmpdir(), folderName));
         }
 
         if (name === undefined) {
