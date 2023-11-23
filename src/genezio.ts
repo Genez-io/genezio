@@ -48,7 +48,7 @@ if (ENABLE_DEBUG_LOGS_BY_DEFAULT) {
 // setup package manager
 const configuration = await getProjectConfiguration();
 if (configuration.packageManager) {
-    if (configuration.packageManager in Object.keys(PackageManagerType)) {
+    if (Object.keys(PackageManagerType).includes(configuration.packageManager)) {
         setPackageManager(configuration.packageManager);
     } else {
         log.warn(`Unknown package manager '${configuration.packageManager}'. Using 'npm' instead.`);
