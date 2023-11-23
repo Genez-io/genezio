@@ -46,14 +46,20 @@ if (ENABLE_DEBUG_LOGS_BY_DEFAULT) {
 }
 
 // setup package manager
-const configuration = await getProjectConfiguration();
-if (configuration.packageManager) {
-    if (Object.keys(PackageManagerType).includes(configuration.packageManager)) {
+try {
+    const configuration = await getProjectConfiguration();
+    if (configuration.packageManager) {
+        if (!Object.keys(PackageManagerType).includes(configuration.packageManager)) {
+            log.warn(
+                `Unknown package manager '${configuration.packageManager}'. Using 'npm' instead.`,
+            );
+            throw new Error();
+        }
+
         setPackageManager(configuration.packageManager);
-    } else {
-        log.warn(`Unknown package manager '${configuration.packageManager}'. Using 'npm' instead.`);
-        setPackageManager(PackageManagerType.npm);
     }
+} catch (error) {
+    setPackageManager(PackageManagerType.npm);
 }
 
 // super-genezio command
