@@ -45,6 +45,10 @@ export async function setLinkPathForProject(
     await saveLinkContent(content);
 }
 
+export async function deleteAllLinkPaths(): Promise<void> {
+    await saveLinkContent(new Map<string, string[]>());
+}
+
 export async function deleteLinkPathForProject(projectName: string, region: string): Promise<void> {
     const content = await getLinkContent();
     const key = `${projectName}:${region}`;

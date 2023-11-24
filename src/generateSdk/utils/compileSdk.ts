@@ -75,12 +75,6 @@ export async function compileSdk(
     const modulePath = path.resolve(sdkPath, "..", "genezio-sdk");
     const writePackagePromise = writeToFile(modulePath, "package.json", packageJson, true);
     workers.push(writePackagePromise);
-    if (environment === GenezioCommand.local) {
-        const commandPromise = asyncExec(packageManager + " link", {
-            cwd: modulePath,
-        });
-        workers.push(commandPromise);
-    }
     await Promise.all(workers);
     if (environment === GenezioCommand.deploy) {
         await asyncExec(packageManager + " publish", {

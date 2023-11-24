@@ -1,4 +1,5 @@
 import fs from "fs";
+import fsPromise from "fs/promises";
 import os from "os";
 import path from "path";
 import FileDetails from "../models/fileDetails.js";
@@ -405,4 +406,12 @@ export async function readEnvironmentVariablesFile(
         envVars.push({ name: key, value: value });
     }
     return envVars;
+}
+
+export async function interruptLocalProcesses() {
+    const interruptLocalPath = path.join(os.homedir(), ".geneziointerrupt");
+    const interruptLocal = await fsPromise.open(interruptLocalPath, "w");
+    await interruptLocal.close();
+
+    await fsPromise.utimes(interruptLocalPath, new Date(), new Date());
 }

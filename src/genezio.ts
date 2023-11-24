@@ -321,12 +321,27 @@ program
         await logOutdatedVersion();
     });
 
-program.command("link").action(() => {
-    linkCommand();
-});
+program
+    .command("link")
+    .option(
+        "--logLevel <logLevel>",
+        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
+    )
+    .description(
+        "Set this path as the spot for your frontend app within a project that uses multiple repositories. Doing this helps 'genezio local' figure out by itself where to create the SDK.",
+    )
+    .action(async () => {
+        await linkCommand();
+    });
 
-program.command("unlink").action(() => {
-    unlinkCommand();
-});
+program
+    .command("unlink")
+    .option("--all", "Remove all links.")
+    .description(
+        "Clear the previously set path for your frontend app, which is useful when managing a project with multiple repositories. This reset allows 'genezio local' to stop automatically generating the SDK in that location.",
+    )
+    .action(async (options: any) => {
+        await unlinkCommand(options.all);
+    });
 
 export default program;

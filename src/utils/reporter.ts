@@ -63,13 +63,7 @@ export function reportSuccess(
             if (newVersion) {
                 log.info(
                     boxen(
-                        `${colors.green(
-                            "To install the SDK in your client, run this command in your client's root:",
-                        )}\n${colors.magenta(
-                            `npm link @genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}`,
-                        )}\n\n${colors.green(
-                            "Then import your classes like this:",
-                        )}\n${colors.magenta(
+                        `${colors.green("Import your classes like this:")}\n${colors.magenta(
                             `import { ${classesInfo[0].className} } from "@genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}"`,
                         )}`,
                         {

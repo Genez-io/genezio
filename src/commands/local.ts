@@ -1,8 +1,10 @@
-import log from "loglevel";
 import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
 import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
 import express from "express";
 import chokidar from "chokidar";
+import fs from "fs";
+import fsPromises from "fs/promises";
+import os from "os";
 import cors from "cors";
 import bodyParser from "body-parser";
 import { ChildProcess, spawn } from "child_process";
@@ -56,6 +58,7 @@ import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { runNewProcess } from "../utils/process.js";
 import { exit } from "process";
 import { getLinkPathsForProject } from "../utils/linkDatabase.js";
+import log from "loglevel";
 
 type ClassProcess = {
     process: ChildProcess;
@@ -162,7 +165,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         }
     }
 
-    let nodeModulesWatcher: chokidar.FSWatcher | undefined;
+    let nodeModulesFolderWatcher: chokidar.FSWatcher | undefined;
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -317,50 +320,11 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     yamlProjectConfiguration.packageManager || PackageManager.npm,
                 );
 
-                const watchPaths = [];
-                if (yamlProjectConfiguration.workspace) {
-                    const from = path.resolve(sdkConfiguration.path, "..", "genezio-sdk");
-                    const to = path.join(
-                        yamlProjectConfiguration.workspace.frontend,
-                        "node_modules",
-                        "@genezio-sdk",
-                        `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
-                    );
-                    await fsExtra.copy(from, to, { overwrite: true });
-                    watchPaths.push(
-                        path.join(
-                            yamlProjectConfiguration.workspace.frontend,
-                            "node_modules",
-                            "@genezio-sdk",
-                        ),
-                    );
-                } else {
-                    const linkPaths = await getLinkPathsForProject(
-                        yamlProjectConfiguration.name,
-                        yamlProjectConfiguration.region,
-                    );
-                    const from = path.resolve(sdkConfiguration.path, "..", "genezio-sdk");
-                    for (const linkPath of linkPaths) {
-                        const to = path.join(
-                            linkPath,
-                            "node_modules",
-                            "@genezio-sdk",
-                            `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
-                        );
-                        await fsExtra.copy(from, to, { overwrite: true });
-                        watchPaths.push(path.join(linkPath, "node_modules", "@genezio-sdk"));
-                    }
-                }
-
-                nodeModulesWatcher?.close();
-                nodeModulesWatcher = chokidar
-                    .watch(watchPaths, {
-                        ignoreInitial: true,
-                        depth: 1,
-                    })
-                    .on("addDir", async (event: any, path: any) => {
-                        console.log("sdk changed", event, path);
-                    });
+                await writeSdkToNodeModules(yamlProjectConfiguration, sdkConfiguration.path);
+                nodeModulesFolderWatcher = await watchNodeModules(
+                    yamlProjectConfiguration,
+                    sdkConfiguration.path,
+                );
             }
         }
 
@@ -393,6 +357,135 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             eventType: TelemetryEventTypes.GENEZIO_LOCAL_RELOAD,
             commandOptions: JSON.stringify(options),
         });
+        await nodeModulesFolderWatcher?.close();
+    }
+}
+
+function debounce(func: (...args: any[]) => void, timeout = 300): (...args: any[]) => void {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    return (...args: any[]) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => func(...args), timeout);
+    };
+}
+
+async function watchNodeModules(
+    yamlProjectConfiguration: YamlProjectConfiguration,
+    sdkPath: string,
+): Promise<chokidar.FSWatcher> {
+    // We are watching for the following files:
+    // - .geneziointerrupt: this file is used to determine if a genezio deploy occurs when a genezio local process is in progress.
+    // We need to close "genezio local" to avoid publishing an SDK that uses local.
+    // - node_modules/@genezio-sdk/<projectName>_<region>/package.json: this file is used to determine if the SDK was changed (by a npm install or npm update)
+    // - node_modules/.package-lock.json: this file is used by npm to determine if it should update the packages or not. We are removing this file while "genezio local"
+    // is running, because we are modifying node_modules folder manual (reference: https://github.com/npm/cli/blob/653769de359b8d24f0d17b8e7e426708f49cadb8/docs/content/configuring-npm/package-lock-json.md#hidden-lockfiles)
+    const watchPaths: string[] = [path.join(os.homedir(), ".geneziointerrupt")];
+    if (yamlProjectConfiguration.workspace) {
+        watchPaths.push(
+            path.join(
+                yamlProjectConfiguration.workspace.frontend,
+                "node_modules",
+                "@genezio-sdk",
+                `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
+                "package.json",
+            ),
+        );
+        watchPaths.push(
+            path.join(
+                yamlProjectConfiguration.workspace?.frontend,
+                "node_modules",
+                ".package-lock.json",
+            ),
+        );
+    } else {
+        const linkPaths = await getLinkPathsForProject(
+            yamlProjectConfiguration.name,
+            yamlProjectConfiguration.region,
+        );
+        for (const linkPath of linkPaths) {
+            watchPaths.push(
+                path.join(
+                    linkPath,
+                    "node_modules",
+                    "@genezio-sdk",
+                    `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
+                    "package.json",
+                ),
+            );
+            watchPaths.push(path.join(linkPath, "node_modules", ".package-lock.json"));
+        }
+    }
+
+    // Debounce is used to avoid multiple unnecessary SDK writes.
+    const debouncedWriteSdkToNodeModules = debounce(async (_event, path) => {
+        let content;
+        let json;
+        try {
+            content = fs.readFileSync(path);
+            json = JSON.parse(content.toString());
+        } catch (error) {
+            // ignore error
+        }
+
+        if (!content || !json || !json.version.includes("local")) {
+            await writeSdkToNodeModules(yamlProjectConfiguration, sdkPath);
+        }
+    }, 3000);
+
+    const nodeModulesWatcher = chokidar
+        .watch(watchPaths, {
+            ignoreInitial: true,
+        })
+        .on("all", async (event, filePath, stats) => {
+            const components = filePath.split(path.sep);
+            // if the file is .package-lock.json, remove it
+            if (components[components.length - 1] === ".package-lock.json") {
+                await fsPromises.unlink(filePath).catch(() => {
+                    debugLogger.debug(`[WATCH_NODE_MODULES] Error deleting ${filePath}`);
+                });
+                return;
+            }
+
+            // if the file is .geneziointerrupt, stop the process
+            if (components[components.length - 1] === ".geneziointerrupt") {
+                log.info("A deployment is in progress. Stopping local environment...");
+                exit(0);
+            }
+
+            // if the file is package.json, write the SDK to node_modules
+            debouncedWriteSdkToNodeModules(event, filePath, stats);
+        });
+    return nodeModulesWatcher;
+}
+
+async function writeSdkToNodeModules(
+    yamlProjectConfiguration: YamlProjectConfiguration,
+    originSdkPath: string,
+) {
+    if (yamlProjectConfiguration.workspace) {
+        const from = path.resolve(originSdkPath, "..", "genezio-sdk");
+        const to = path.join(
+            yamlProjectConfiguration.workspace.frontend,
+            "node_modules",
+            "@genezio-sdk",
+            `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
+        );
+        await fsExtra.copy(from, to, { overwrite: true });
+    } else {
+        const linkPaths = await getLinkPathsForProject(
+            yamlProjectConfiguration.name,
+            yamlProjectConfiguration.region,
+        );
+        const from = path.resolve(originSdkPath, "..", "genezio-sdk");
+        for (const linkPath of linkPaths) {
+            const to = path.join(
+                linkPath,
+                "node_modules",
+                "@genezio-sdk",
+                `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
+            );
+            await fsExtra.copy(from, to, { overwrite: true });
+        }
     }
 }
 

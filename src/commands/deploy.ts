@@ -27,6 +27,7 @@ import {
     getBundleFolderSizeLimit,
     readEnvironmentVariablesFile,
     createLocalTempFolder,
+    interruptLocalProcesses,
 } from "../utils/file.js";
 import { printAdaptiveLog, debugLogger } from "../utils/logging.js";
 import { runNewProcess } from "../utils/process.js";
@@ -45,12 +46,15 @@ import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
 import { setEnvironmentVariables } from "../requests/setEnvironmentVariables.js";
 import colors from "colors";
+import os from "os";
+import fs from "fs/promises";
 import { getEnvironmentVariables } from "../requests/getEnvironmentVariables.js";
 import { getNodeModulePackageJson } from "../generateSdk/templates/packageJson.js";
 import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
+    await interruptLocalProcesses();
     let configuration;
 
     try {
