@@ -51,7 +51,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
 
             if (element.unzippedBundleSize > BUNDLE_SIZE_LIMIT) {
                 // Throw this error if bundle size is too big and the user is not using js or ts files.
-                if (!dependenciesInfo) {
+                if (!dependenciesInfo || !allNonJsFilesPaths) {
                     throw new Error(
                         `Your class ${element.name} is too big: ${element.unzippedBundleSize} bytes. The maximum size is 250MB. Try to reduce the size of your class.`,
                     );

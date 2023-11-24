@@ -13,7 +13,7 @@ import { GENEZIO_NOT_AUTH_ERROR_MSG, GENEZIO_NO_CLASSES_FOUND } from "../errors.
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
-import { addAuthTokenToNpmConfig, getAuthToken } from "../utils/accounts.js";
+import { setupScopedRepositoryAuth, getAuthToken } from "../utils/accounts.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
 import { getNoMethodClasses } from "../utils/getNoMethodClasses.js";
 import {
@@ -38,7 +38,7 @@ import cliProgress from "cli-progress";
 import { Language, YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js";
 import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter.js";
 import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter.js";
-import { CloudAdapter } from "../cloudAdapter/cloudAdapter.js";
+import { CloudAdapter, GenezioCloudInput } from "../cloudAdapter/cloudAdapter.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { TypeCheckerBundler } from "../bundlers/node/typeCheckerBundler.js";
 import { GenezioDeployOptions } from "../models/commandOptions.js";
@@ -80,7 +80,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
             log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
             exit(1);
         }
-        await addAuthTokenToNpmConfig(authToken);
+        await setupScopedRepositoryAuth(authToken);
     }
 
     const cloudAdapter = getCloudProvider(
@@ -289,117 +289,121 @@ export async function deployClasses(
     );
 
     printAdaptiveLog("Bundling your code", "start");
-    const bundlerResult = projectConfiguration.classes.map(async (element) => {
-        if (!(await fileExists(element.path))) {
-            printAdaptiveLog("Bundling your code and uploading it", "error");
-            log.error(`\`${element.path}\` file does not exist at the indicated path.`);
+    const bundlerResult: Promise<GenezioCloudInput>[] = projectConfiguration.classes.map(
+        async (element) => {
+            if (!(await fileExists(element.path))) {
+                printAdaptiveLog("Bundling your code and uploading it", "error");
+                log.error(`\`${element.path}\` file does not exist at the indicated path.`);
 
-            throw new Error(`\`${element.path}\` file does not exist at the indicated path.`);
-        }
-
-        let bundler: BundlerInterface;
-
-        switch (element.language) {
-            case ".ts": {
-                const requiredDepsBundler = new TsRequiredDepsBundler();
-                const typeCheckerBundler = new TypeCheckerBundler();
-                const standardBundler = new NodeJsBundler();
-                const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
-                bundler = new BundlerComposer([
-                    requiredDepsBundler,
-                    typeCheckerBundler,
-                    standardBundler,
-                    binaryDepBundler,
-                ]);
-                break;
+                throw new Error(`\`${element.path}\` file does not exist at the indicated path.`);
             }
-            case ".js": {
-                const standardBundler = new NodeJsBundler();
-                const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
-                bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
-                break;
+
+            let bundler: BundlerInterface;
+
+            switch (element.language) {
+                case ".ts": {
+                    const requiredDepsBundler = new TsRequiredDepsBundler();
+                    const typeCheckerBundler = new TypeCheckerBundler();
+                    const standardBundler = new NodeJsBundler();
+                    const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
+                    bundler = new BundlerComposer([
+                        requiredDepsBundler,
+                        typeCheckerBundler,
+                        standardBundler,
+                        binaryDepBundler,
+                    ]);
+                    break;
+                }
+                case ".js": {
+                    const standardBundler = new NodeJsBundler();
+                    const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
+                    bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
+                    break;
+                }
+                case ".dart": {
+                    bundler = new DartBundler();
+                    break;
+                }
+                case ".kt": {
+                    bundler = new KotlinBundler();
+                    break;
+                }
+                default:
+                    log.error(`Unsupported ${element.language}`);
+                    throw new Error(`Unsupported ${element.language}`);
             }
-            case ".dart": {
-                bundler = new DartBundler();
-                break;
+
+            debugLogger.debug(`The bundling process has started for file ${element.path}...`);
+
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const ast = sdkResponse.sdkGeneratorInput.classesInfo.find(
+                (classInfo) => classInfo.classConfiguration.path === element.path,
+            )!.program;
+
+            const tmpFolder = await createTemporaryFolder();
+            const output = await bundler.bundle({
+                projectConfiguration: projectConfiguration,
+                genezioConfigurationFilePath: process.cwd(),
+                ast: ast,
+                configuration: element,
+                path: element.path,
+                extra: {
+                    mode: "production",
+                    tmpFolder: tmpFolder,
+                    installDeps,
+                },
+            });
+            debugLogger.debug(
+                `The bundling process finished successfully for file ${element.path}.`,
+            );
+
+            // check if the unzipped folder is smaller than 250MB
+            const unzippedBundleSize: number = await getBundleFolderSizeLimit(output.path);
+            debugLogger.debug(
+                `The unzippedBundleSize for class ${element.path} is ${unzippedBundleSize}.`,
+            );
+
+            // .jar files cannot be parsed by AWS Lambda, skip this step for AWS Lambda
+            if (
+                element.language === ".kt" &&
+                (configuration.cloudProvider === "aws" || configuration.cloudProvider === undefined)
+            ) {
+                console.debug("Skipping ZIP due to .jar file");
+                console.debug(path.join(output.path, "app-standalone.jar"));
+                return {
+                    name: element.name,
+                    archivePath: path.join(output.path, "app-standalone.jar"),
+                    filePath: element.path,
+                    methods: element.methods,
+                    unzippedBundleSize,
+                };
             }
-            case ".kt": {
-                bundler = new KotlinBundler();
-                break;
-            }
-            default:
-                log.error(`Unsupported ${element.language}`);
-                throw new Error(`Unsupported ${element.language}`);
-        }
 
-        debugLogger.debug(`The bundling process has started for file ${element.path}...`);
+            const archivePathTempFolder = await createTemporaryFolder();
+            const archivePath = path.join(archivePathTempFolder, `genezioDeploy.zip`);
 
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const ast = sdkResponse.sdkGeneratorInput.classesInfo.find(
-            (classInfo) => classInfo.classConfiguration.path === element.path,
-        )!.program;
+            debugLogger.debug(`Zip the directory ${output.path}.`);
+            await zipDirectory(output.path, archivePath);
 
-        const tmpFolder = await createTemporaryFolder();
-        const output = await bundler.bundle({
-            projectConfiguration: projectConfiguration,
-            genezioConfigurationFilePath: process.cwd(),
-            ast: ast,
-            configuration: element,
-            path: element.path,
-            extra: {
-                mode: "production",
-                tmpFolder: tmpFolder,
-                installDeps,
-            },
-        });
-        debugLogger.debug(`The bundling process finished successfully for file ${element.path}.`);
+            await deleteFolder(output.path);
 
-        // check if the unzipped folder is smaller than 250MB
-        const unzippedBundleSize: number = await getBundleFolderSizeLimit(output.path);
-        debugLogger.debug(
-            `The unzippedBundleSize for class ${element.path} is ${unzippedBundleSize}.`,
-        );
-
-        // .jar files cannot be parsed by AWS Lambda, skip this step for AWS Lambda
-        if (
-            element.language === ".kt" &&
-            (configuration.cloudProvider === "aws" || configuration.cloudProvider === undefined)
-        ) {
-            console.debug("Skipping ZIP due to .jar file");
-            console.debug(path.join(output.path, "app-standalone.jar"));
             return {
                 name: element.name,
-                archivePath: path.join(output.path, "app-standalone.jar"),
+                archivePath: archivePath,
                 filePath: element.path,
                 methods: element.methods,
-                unzippedBundleSize,
+                unzippedBundleSize: unzippedBundleSize,
+                dependenciesInfo: output.extra.dependenciesInfo,
+                allNonJsFilesPaths: output.extra.allNonJsFilesPaths,
             };
-        }
-
-        const archivePathTempFolder = await createTemporaryFolder();
-        const archivePath = path.join(archivePathTempFolder, `genezioDeploy.zip`);
-
-        debugLogger.debug(`Zip the directory ${output.path}.`);
-        await zipDirectory(output.path, archivePath);
-
-        await deleteFolder(output.path);
-
-        return {
-            name: element.name,
-            archivePath: archivePath,
-            filePath: element.path,
-            methods: element.methods,
-            unzippedBundleSize: unzippedBundleSize,
-            dependenciesInfo: output.extra.dependenciesInfo,
-            allNonJsFilesPaths: output.extra.allNonJsFilesPaths,
-        };
-    });
+        },
+    );
 
     const bundlerResultArray = await Promise.all(bundlerResult);
 
     printAdaptiveLog("Bundling your code", "end");
 
-    const result = await cloudAdapter.deploy(bundlerResultArray as any, projectConfiguration, {
+    const result = await cloudAdapter.deploy(bundlerResultArray, projectConfiguration, {
         stage: stage,
     });
 

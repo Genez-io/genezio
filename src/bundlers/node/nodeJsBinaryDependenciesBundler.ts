@@ -7,6 +7,7 @@ import { debugLogger } from "../../utils/logging.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import exec from "await-exec";
+import packageManager from "../../packageManagers/packageManager.js";
 
 export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
     async #handleBinaryDependencies(dependenciesInfo: Dependency[], tempFolderPath: string) {
@@ -56,12 +57,10 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
         }
 
         if (binaryDependencies.length > 0) {
-            await exec("npm i node-addon-api", {
-                cwd: tempFolderPath,
-            });
-            await exec("npm i @mapbox/node-pre-gyp", {
-                cwd: tempFolderPath,
-            });
+            await packageManager.install(
+                ["node-addon-api", "@mapbox/node-pre-gyp"],
+                tempFolderPath,
+            );
         }
 
         for (const dependency of binaryDependencies) {

@@ -1,5 +1,5 @@
 import { createRequire } from "module";
-import { Language, PackageManager } from "../../models/yamlProjectConfiguration.js";
+import { Language, PackageManagerType } from "../../models/yamlProjectConfiguration.js";
 import path from "path";
 import ts from "typescript";
 import { Worker } from "worker_threads";
@@ -7,6 +7,7 @@ import { writeToFile } from "../../utils/file.js";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { GenezioCommand } from "../../utils/reporter.js";
+import packageManager from "../../packageManagers/packageManager.js";
 const asyncExec = promisify(exec);
 
 const compilerWorkerScript = `const { parentPort, workerData } = require("worker_threads");
@@ -38,7 +39,6 @@ export async function compileSdk(
     packageJson: string,
     language: Language,
     environment: GenezioCommand,
-    packageManager: PackageManager = PackageManager.npm,
 ) {
     // compile the sdk to cjs and esm using worker threads
     const workers = [];
@@ -77,8 +77,6 @@ export async function compileSdk(
     workers.push(writePackagePromise);
     await Promise.all(workers);
     if (environment === GenezioCommand.deploy) {
-        await asyncExec(packageManager + " publish", {
-            cwd: modulePath,
-        });
+        await packageManager.publish(modulePath);
     }
 }

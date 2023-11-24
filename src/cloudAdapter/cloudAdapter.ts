@@ -1,27 +1,16 @@
 import { DeployCodeMethodResponse } from "../models/deployCodeResponse.js";
 import { MethodConfiguration, ProjectConfiguration } from "../models/projectConfiguration.js";
 import { YamlFrontend } from "../models/yamlProjectConfiguration.js";
+import { Dependency } from "../bundlers/bundler.interface.js";
+import FileDetails from "../models/fileDetails.js";
 
 export type GenezioCloudInput = {
     name: string;
     archivePath: string;
     filePath: string;
     methods: MethodConfiguration[];
-    dependenciesInfo: {
-        name: string;
-        path: string;
-    };
-    allNonJsFilesPaths: {
-        name: string;
-        extension: string;
-        path: string;
-        filePath: string;
-    };
-    filesSize: {
-        name: string;
-        totalSize: number;
-    };
-
+    dependenciesInfo?: Dependency[];
+    allNonJsFilesPaths?: FileDetails[];
     unzippedBundleSize: number;
 };
 
