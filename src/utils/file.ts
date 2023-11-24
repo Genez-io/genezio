@@ -406,6 +406,7 @@ export async function readEnvironmentVariablesFile(
     return envVars;
 }
 
+// Inform local processes to interrupt when a deployment has started
 export async function interruptLocalProcesses() {
     const interruptLocalPath = path.join(os.homedir(), ".geneziointerrupt");
     const interruptLocal = await fsPromise.open(interruptLocalPath, "w");
