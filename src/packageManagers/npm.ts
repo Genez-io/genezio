@@ -1,7 +1,9 @@
 import { PackageManager } from "./packageManager.js";
-import { exec, execSync } from "child_process";
+import { ExecOptions, exec, execSync } from "child_process";
+import { homedir } from "os";
 import { promisify } from "util";
-const asyncExec = promisify(exec);
+const asyncExec = (cmd: string, options?: ExecOptions) =>
+    promisify(exec)(cmd, options ?? { cwd: homedir() });
 
 export default class NpmPackageManager implements PackageManager {
     readonly command = "npm";
