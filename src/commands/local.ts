@@ -30,6 +30,7 @@ import {
     createLocalTempFolder,
     createTemporaryFolder,
     fileExists,
+    getPathUntilProjectNodeModules,
     readUTF8File,
 } from "../utils/file.js";
 import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
@@ -379,16 +380,10 @@ async function watchNodeModules(
     // - node_modules/.package-lock.json: this file is used by npm to determine if it should update the packages or not. We are removing this file while "genezio local"
     // is running, because we are modifying node_modules folder manual (reference: https://github.com/npm/cli/blob/653769de359b8d24f0d17b8e7e426708f49cadb8/docs/content/configuring-npm/package-lock-json.md#hidden-lockfiles)
     const watchPaths: string[] = [path.join(os.homedir(), ".geneziointerrupt")];
+    const sdkName = `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`;
+    const nodeModulesPath = path.join("node_modules", "@genezio-sdk", sdkName);
     if (yamlProjectConfiguration.workspace) {
-        watchPaths.push(
-            path.join(
-                yamlProjectConfiguration.workspace.frontend,
-                "node_modules",
-                "@genezio-sdk",
-                `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
-                "package.json",
-            ),
-        );
+        watchPaths.push(path.join(yamlProjectConfiguration.workspace.frontend, nodeModulesPath));
         watchPaths.push(
             path.join(
                 yamlProjectConfiguration.workspace?.frontend,
@@ -402,31 +397,26 @@ async function watchNodeModules(
             yamlProjectConfiguration.region,
         );
         for (const linkPath of linkPaths) {
-            watchPaths.push(
-                path.join(
-                    linkPath,
-                    "node_modules",
-                    "@genezio-sdk",
-                    `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
-                    "package.json",
-                ),
-            );
+            watchPaths.push(path.join(linkPath, nodeModulesPath));
             watchPaths.push(path.join(linkPath, "node_modules", ".package-lock.json"));
         }
     }
 
     // Debounce is used to avoid multiple unnecessary SDK writes.
-    const debouncedWriteSdkToNodeModules = debounce(async (_event, path) => {
+    const debouncedWriteSdkToNodeModules = debounce(async (_event, filePath) => {
+        const baseDir = getPathUntilProjectNodeModules(filePath, sdkName);
+        const jsonPath = path.join(baseDir, "package.json");
         let content;
         let json;
         try {
-            content = fs.readFileSync(path);
+            content = fs.readFileSync(jsonPath);
             json = JSON.parse(content.toString());
         } catch (error) {
             // ignore error
         }
 
-        if (!content || !json || !json.version.includes("local")) {
+        if (!json || !json.version || !json.version.includes("local")) {
+            debugLogger.debug(`[WATCH_NODE_MODULES] Rewriting the SDK to node_modules...`);
             await writeSdkToNodeModules(yamlProjectConfiguration, sdkPath);
         }
     }, 3000);
@@ -434,6 +424,8 @@ async function watchNodeModules(
     const nodeModulesWatcher = chokidar
         .watch(watchPaths, {
             ignoreInitial: true,
+            followSymlinks: true,
+            depth: 1,
         })
         .on("all", async (event, filePath, stats) => {
             const components = filePath.split(path.sep);
@@ -469,6 +461,11 @@ async function writeSdkToNodeModules(
             "@genezio-sdk",
             `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
         );
+        // Check if it's a symbolic link
+        if (fs.existsSync(to) && fs.lstatSync(to).isSymbolicLink()) {
+            // Remove the symbolic link
+            fs.unlinkSync(to);
+        }
         await fsExtra.copy(from, to, { overwrite: true });
     } else {
         const linkPaths = await getLinkPathsForProject(
@@ -483,6 +480,11 @@ async function writeSdkToNodeModules(
                 "@genezio-sdk",
                 `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
             );
+            // Check if it's a symbolic link
+            if (fs.existsSync(to) && fs.lstatSync(to).isSymbolicLink()) {
+                // Remove the symbolic link
+                fs.unlinkSync(to);
+            }
             await fsExtra.copy(from, to, { overwrite: true });
         }
     }

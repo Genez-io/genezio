@@ -48,7 +48,7 @@ if (ENABLE_DEBUG_LOGS_BY_DEFAULT) {
 
 // setup package manager
 try {
-    const configuration = await getProjectConfiguration();
+    const configuration = await getProjectConfiguration("./genezio.yaml", true);
     if (configuration.packageManager) {
         if (!Object.keys(PackageManagerType).includes(configuration.packageManager)) {
             log.warn(
