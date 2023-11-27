@@ -4,7 +4,6 @@ import express from "express";
 import chokidar from "chokidar";
 import fs from "fs";
 import fsPromises from "fs/promises";
-import os from "os";
 import cors from "cors";
 import bodyParser from "body-parser";
 import { ChildProcess, spawn } from "child_process";
@@ -60,10 +59,7 @@ import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 import log from "loglevel";
 import { getInterruptLastModifiedTime, interruptLocalPath } from "../utils/localInterrupt.js";
 
-let scriptStart: number;
-getInterruptLastModifiedTime().then((lastModifiedTime) => {
-    scriptStart = lastModifiedTime;
-});
+const POLLING_INTERVAL = 2000;
 
 type ClassProcess = {
     process: ChildProcess;
@@ -171,6 +167,12 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     }
 
     let nodeModulesFolderWatcher: NodeJS.Timeout | undefined;
+
+    // Check if a deployment is in progress and if it is, stop the local environment
+    chokidar.watch(interruptLocalPath, { ignoreInitial: true }).on("all", async () => {
+        log.info("A deployment is in progress. Stopping local environment...");
+        exit(0);
+    });
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -370,8 +372,6 @@ async function watchNodeModules(
     sdkPath: string,
 ): Promise<NodeJS.Timeout> {
     // We are watching for the following files:
-    // - .geneziointerrupt: this file is used to determine if a genezio deploy occurs when a genezio local process is in progress.
-    // We need to close "genezio local" to avoid publishing an SDK that uses local.
     // - node_modules/@genezio-sdk/<projectName>_<region>/package.json: this file is used to determine if the SDK was changed (by a npm install or npm update)
     // - node_modules/.package-lock.json: this file is used by npm to determine if it should update the packages or not. We are removing this file while "genezio local"
     // is running, because we are modifying node_modules folder manual (reference: https://github.com/npm/cli/blob/653769de359b8d24f0d17b8e7e426708f49cadb8/docs/content/configuring-npm/package-lock-json.md#hidden-lockfiles)
@@ -412,15 +412,6 @@ async function watchNodeModules(
                 return;
             }
 
-            // if the file is .geneziointerrupt, stop the process
-            if (components[components.length - 1] === "geneziointerrupt") {
-                const lastModifiedTime = await getInterruptLastModifiedTime();
-                if (lastModifiedTime > scriptStart) {
-                    log.info("A deployment is in progress. Stopping local environment...");
-                    exit(0);
-                }
-            }
-
             if (components[components.length - 1] === "package.json") {
                 let json;
                 try {
@@ -436,7 +427,7 @@ async function watchNodeModules(
                 }
             }
         }
-    }, 2000);
+    }, POLLING_INTERVAL);
 }
 
 async function writeSdkToNodeModules(
