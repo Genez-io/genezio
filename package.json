@@ -32,7 +32,7 @@
         "@aws-sdk/client-cloudformation": "^3.395.0",
         "@aws-sdk/client-s3": "^3.454.0",
         "@babel/core": "^7.23.2",
-        "@babel/parser": "^7.22.5",
+        "@babel/parser": "^7.23.4",
         "@babel/plugin-proposal-decorators": "^7.23.0",
         "@babel/plugin-syntax-decorators": "^7.23.3",
         "@babel/preset-env": "^7.22.5",
