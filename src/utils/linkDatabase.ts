@@ -3,14 +3,16 @@ import os from "os";
 import path from "path";
 
 async function getLinkContent(): Promise<Map<string, string[]>> {
-    const filePath = path.join(os.homedir(), ".geneziolinks");
+    const directoryPath = path.join(os.homedir(), ".genezio");
+    const filePath = path.join(directoryPath, "geneziolinks");
     try {
         // Try to read the file
         const data = await fs.readFile(filePath, "utf8");
         // Parse the content as JSON and return as a Map
         return new Map(Object.entries(JSON.parse(data)));
     } catch (error: any) {
-        if (error.code === "ENOENT") {
+        if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+            await fs.mkdir(directoryPath, { recursive: true });
             // If the file doesn't exist, create it with an empty object
             await fs.writeFile(filePath, JSON.stringify({}), "utf8");
             return new Map<string, string[]>();
@@ -57,6 +59,7 @@ export async function deleteLinkPathForProject(projectName: string, region: stri
 }
 
 async function saveLinkContent(content: Map<string, string[]>): Promise<void> {
-    const filePath = path.join(os.homedir(), ".geneziolinks");
+    const directoryPath = path.join(os.homedir(), ".genezio");
+    const filePath = path.join(directoryPath, "geneziolinks");
     await fs.writeFile(filePath, JSON.stringify(Object.fromEntries(content)), "utf8");
 }

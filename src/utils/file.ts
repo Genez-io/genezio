@@ -1,5 +1,4 @@
 import fs from "fs";
-import fsPromise from "fs/promises";
 import os from "os";
 import path from "path";
 import FileDetails from "../models/fileDetails.js";
@@ -406,15 +405,6 @@ export async function readEnvironmentVariablesFile(
     return envVars;
 }
 
-// Inform local processes to interrupt when a deployment has started
-export async function interruptLocalProcesses() {
-    const interruptLocalPath = path.join(os.homedir(), ".geneziointerrupt");
-    const interruptLocal = await fsPromise.open(interruptLocalPath, "w");
-    await interruptLocal.close();
-
-    await fsPromise.utimes(interruptLocalPath, new Date(), new Date());
-}
-
 export function getPathUntilProjectNodeModules(absolutePath: string, projectName: string): string {
     // Ensure that the path is absolute
     if (!path.isAbsolute(absolutePath)) {
@@ -430,7 +420,6 @@ export function getPathUntilProjectNodeModules(absolutePath: string, projectName
 
     // If the pattern is not found, return an empty string
     if (patternIndex === -1) {
-        console.log("intra aici");
         return "";
     }
 

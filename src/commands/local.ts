@@ -60,6 +60,7 @@ import { runNewProcess } from "../utils/process.js";
 import { exit } from "process";
 import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 import log from "loglevel";
+import { interruptLocalPath } from "../utils/localInterrupt.js";
 
 type ClassProcess = {
     process: ChildProcess;
@@ -379,7 +380,7 @@ async function watchNodeModules(
     // - node_modules/@genezio-sdk/<projectName>_<region>/package.json: this file is used to determine if the SDK was changed (by a npm install or npm update)
     // - node_modules/.package-lock.json: this file is used by npm to determine if it should update the packages or not. We are removing this file while "genezio local"
     // is running, because we are modifying node_modules folder manual (reference: https://github.com/npm/cli/blob/653769de359b8d24f0d17b8e7e426708f49cadb8/docs/content/configuring-npm/package-lock-json.md#hidden-lockfiles)
-    const watchPaths: string[] = [path.join(os.homedir(), ".geneziointerrupt")];
+    const watchPaths: string[] = [interruptLocalPath];
     const sdkName = `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`;
     const nodeModulesPath = path.join("node_modules", "@genezio-sdk", sdkName);
     if (yamlProjectConfiguration.workspace) {
@@ -438,7 +439,7 @@ async function watchNodeModules(
             }
 
             // if the file is .geneziointerrupt, stop the process
-            if (components[components.length - 1] === ".geneziointerrupt") {
+            if (components[components.length - 1] === "geneziointerrupt") {
                 log.info("A deployment is in progress. Stopping local environment...");
                 exit(0);
             }
