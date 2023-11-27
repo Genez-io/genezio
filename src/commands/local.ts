@@ -30,7 +30,6 @@ import {
     createLocalTempFolder,
     createTemporaryFolder,
     fileExists,
-    getPathUntilProjectNodeModules,
     readUTF8File,
 } from "../utils/file.js";
 import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
@@ -44,7 +43,6 @@ import {
     Language,
     PackageManagerType,
     YamlProjectConfiguration,
-    YamlProjectConfigurationType,
     YamlSdkConfiguration,
 } from "../models/yamlProjectConfiguration.js";
 import hash from "hash-it";
@@ -60,7 +58,12 @@ import { runNewProcess } from "../utils/process.js";
 import { exit } from "process";
 import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 import log from "loglevel";
-import { interruptLocalPath } from "../utils/localInterrupt.js";
+import { getInterruptLastModifiedTime, interruptLocalPath } from "../utils/localInterrupt.js";
+
+let scriptStart: number;
+getInterruptLastModifiedTime().then((lastModifiedTime) => {
+    scriptStart = lastModifiedTime;
+});
 
 type ClassProcess = {
     process: ChildProcess;
@@ -167,7 +170,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         }
     }
 
-    let nodeModulesFolderWatcher: chokidar.FSWatcher | undefined;
+    let nodeModulesFolderWatcher: NodeJS.Timeout | undefined;
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -358,22 +361,14 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             eventType: TelemetryEventTypes.GENEZIO_LOCAL_RELOAD,
             commandOptions: JSON.stringify(options),
         });
-        await nodeModulesFolderWatcher?.close();
+        clearTimeout(nodeModulesFolderWatcher);
     }
-}
-
-function debounce(func: (...args: any[]) => void, timeout = 300): (...args: any[]) => void {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    return (...args: any[]) => {
-        clearTimeout(timer);
-        timer = setTimeout(() => func(...args), timeout);
-    };
 }
 
 async function watchNodeModules(
     yamlProjectConfiguration: YamlProjectConfiguration,
     sdkPath: string,
-): Promise<chokidar.FSWatcher> {
+): Promise<NodeJS.Timeout> {
     // We are watching for the following files:
     // - .geneziointerrupt: this file is used to determine if a genezio deploy occurs when a genezio local process is in progress.
     // We need to close "genezio local" to avoid publishing an SDK that uses local.
@@ -382,7 +377,7 @@ async function watchNodeModules(
     // is running, because we are modifying node_modules folder manual (reference: https://github.com/npm/cli/blob/653769de359b8d24f0d17b8e7e426708f49cadb8/docs/content/configuring-npm/package-lock-json.md#hidden-lockfiles)
     const watchPaths: string[] = [interruptLocalPath];
     const sdkName = `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`;
-    const nodeModulesPath = path.join("node_modules", "@genezio-sdk", sdkName);
+    const nodeModulesPath = path.join("node_modules", "@genezio-sdk", sdkName, "package.json");
     if (yamlProjectConfiguration.workspace) {
         watchPaths.push(path.join(yamlProjectConfiguration.workspace.frontend, nodeModulesPath));
         watchPaths.push(
@@ -403,51 +398,45 @@ async function watchNodeModules(
         }
     }
 
-    // Debounce is used to avoid multiple unnecessary SDK writes.
-    const debouncedWriteSdkToNodeModules = debounce(async (_event, filePath) => {
-        const baseDir = getPathUntilProjectNodeModules(filePath, sdkName);
-        const jsonPath = path.join(baseDir, "package.json");
-        let content;
-        let json;
-        try {
-            content = fs.readFileSync(jsonPath);
-            json = JSON.parse(content.toString());
-        } catch (error) {
-            // ignore error
-        }
-
-        if (!json || !json.version || !json.version.includes("local")) {
-            debugLogger.debug(`[WATCH_NODE_MODULES] Rewriting the SDK to node_modules...`);
-            await writeSdkToNodeModules(yamlProjectConfiguration, sdkPath);
-        }
-    }, 3000);
-
-    const nodeModulesWatcher = chokidar
-        .watch(watchPaths, {
-            ignoreInitial: true,
-            followSymlinks: true,
-            depth: 1,
-        })
-        .on("all", async (event, filePath, stats) => {
-            const components = filePath.split(path.sep);
+    return setInterval(async () => {
+        for (const watchPath of watchPaths) {
+            const components = watchPath.split(path.sep);
             // if the file is .package-lock.json, remove it
-            if (components[components.length - 1] === ".package-lock.json") {
-                await fsPromises.unlink(filePath).catch(() => {
-                    debugLogger.debug(`[WATCH_NODE_MODULES] Error deleting ${filePath}`);
+            if (
+                components[components.length - 1] === ".package-lock.json" &&
+                fs.existsSync(watchPath)
+            ) {
+                await fsPromises.unlink(watchPath).catch(() => {
+                    debugLogger.debug(`[WATCH_NODE_MODULES] Error deleting ${watchPath}`);
                 });
                 return;
             }
 
             // if the file is .geneziointerrupt, stop the process
             if (components[components.length - 1] === "geneziointerrupt") {
-                log.info("A deployment is in progress. Stopping local environment...");
-                exit(0);
+                const lastModifiedTime = await getInterruptLastModifiedTime();
+                if (lastModifiedTime > scriptStart) {
+                    log.info("A deployment is in progress. Stopping local environment...");
+                    exit(0);
+                }
             }
 
-            // if the file is package.json, write the SDK to node_modules
-            debouncedWriteSdkToNodeModules(event, filePath, stats);
-        });
-    return nodeModulesWatcher;
+            if (components[components.length - 1] === "package.json") {
+                let json;
+                try {
+                    const content = fs.readFileSync(watchPath);
+                    json = JSON.parse(content.toString());
+                } catch (error) {
+                    // ignore error
+                }
+
+                if (!json || !json.version || !json.version.includes("local")) {
+                    debugLogger.debug(`[WATCH_NODE_MODULES] Rewriting the SDK to node_modules...`);
+                    await writeSdkToNodeModules(yamlProjectConfiguration, sdkPath);
+                }
+            }
+        }
+    }, 2000);
 }
 
 async function writeSdkToNodeModules(
