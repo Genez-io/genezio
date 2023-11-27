@@ -5,7 +5,7 @@ export const PORT_ALREADY_USED = function (port: number) {
     return `The port ${port} is already in use. Please use a different port by specifying --port <port> to start your local server.`;
 };
 export const GENEZIO_NO_CLASSES_FOUND =
-    "You don't have any class in specified in the genezio.yaml configuration file. Add a class with 'genezio addClass <className> <classType>' field and then call again 'genezio deploy'.";
+    "You don't have any class in specified in the genezio.yaml configuration file.";
 export const GENEZIO_DART_NOT_FOUND = `
 Error: Dart not found
 

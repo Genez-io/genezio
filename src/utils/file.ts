@@ -353,13 +353,6 @@ export async function validateYamlFile() {
         throw new Error(`The configuration yaml file is not valid.\n${error}`);
     }
 
-    if (configurationFileContent.classes.length === 0) {
-        log.info(
-            "You don't have any classes in your genezio.yaml file. You can add classes using the 'genezio addClass <className> <classType>' command.",
-        );
-        exit(1);
-    }
-
     for (const elem of configurationFileContent.classes) {
         if (elem.methods === undefined) {
             continue;

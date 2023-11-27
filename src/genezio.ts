@@ -6,7 +6,6 @@ import log from "loglevel";
 import prefix from "loglevel-plugin-prefix";
 // commands imports
 import { accountCommand } from "./commands/account.js";
-import { addClassCommand } from "./commands/addClass.js";
 import { deleteCommand } from "./commands/delete.js";
 import { deployCommand } from "./commands/deploy.js";
 import { generateSdkCommand } from "./commands/generateSdk.js";
@@ -179,30 +178,6 @@ Use --backend to deploy only the backend application.`,
         setDebuggingLoggerLogLevel(options.logLevel);
 
         await deployCommand(options);
-        await logOutdatedVersion();
-    });
-
-// genezio addClass command
-program
-    .command("addClass")
-    .option(
-        "--logLevel <logLevel>",
-        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
-    )
-    .argument("<classPath>", "Path of the class you want to add.")
-    .argument("[<classType>]", "The type of the class you want to add. [http, jsonrpc, cron]")
-    .description("Add a new class to the 'genezio.yaml' file.")
-    .action(async (classPath: string, classType: string, options: any) => {
-        setDebuggingLoggerLogLevel(options.logLevel);
-
-        await addClassCommand(classPath, classType).catch((error: Error) => {
-            log.error(error.message);
-            GenezioTelemetry.sendEvent({
-                eventType: TelemetryEventTypes.GENEZIO_ADD_CLASS_ERROR,
-                errorTrace: error.message,
-            });
-            exit(1);
-        });
         await logOutdatedVersion();
     });
 

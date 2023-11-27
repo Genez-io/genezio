@@ -530,11 +530,6 @@ export class YamlProjectConfiguration {
         return classElement?.getMethodType(methodName);
     }
 
-    addClass(classPath: string, type: TriggerType, methods: YamlMethodConfiguration[]) {
-        const language = path.parse(classPath).ext;
-        this.classes?.push(new YamlClassConfiguration(classPath, type, language, methods));
-    }
-
     // The type parameter is used only if the yaml is a root type of genezio.yaml.
     // It is used to decide if the genezio.yaml file that will be written is a frontend or
     // a root type of genezio.yaml.

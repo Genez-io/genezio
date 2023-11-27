@@ -4,8 +4,6 @@ import { regions } from "../utils/configs.js";
 import { writeToFile } from "../utils/file.js";
 import { askQuestion } from "../utils/prompt.js";
 import { cyan, red } from "../utils/strings.js";
-import inquirer, { Answers } from "inquirer";
-import { Language } from "../models/yamlProjectConfiguration.js";
 
 export async function initCommand(path: string) {
     let projectName = "";
@@ -113,8 +111,6 @@ classes: []
     log.info("");
     log.info(cyan, "Your genezio project was successfully initialized!");
     log.info("");
-    log.info(
-        "The genezio.yaml configuration file was generated. You can now add the classes that you want to deploy using the 'genezio addClass <className> <classType>' command.",
-    );
+    log.info("The genezio.yaml configuration file was generated.");
     log.info("");
 }
