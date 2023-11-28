@@ -404,28 +404,3 @@ export async function readEnvironmentVariablesFile(
     }
     return envVars;
 }
-
-export function getPathUntilProjectNodeModules(absolutePath: string, projectName: string): string {
-    // Ensure that the path is absolute
-    if (!path.isAbsolute(absolutePath)) {
-        throw new Error("The provided path is not absolute.");
-    }
-
-    // Split the path into components
-    const components = absolutePath.split(path.sep);
-
-    // Find the index of the "node_modules/<project_name>" pattern
-    const pattern = `node_modules${path.sep}@genezio-sdk${path.sep}${projectName}`;
-    const patternIndex = components.join(path.sep).indexOf(pattern);
-
-    // If the pattern is not found, return an empty string
-    if (patternIndex === -1) {
-        return "";
-    }
-
-    // Calculate the end index for the sub-path (add length of the pattern to start index of pattern)
-    const endIndex = patternIndex + pattern.length;
-
-    // Return the sub-path until "node_modules/<project_name>"
-    return absolutePath.substring(0, endIndex);
-}
