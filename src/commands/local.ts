@@ -277,7 +277,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 
         // Start docker container
         if (yamlProjectConfiguration.database) {
-            console.log("we have a db");
+            console.log(`we have a db and the db is ${yamlProjectConfiguration.database}`);
         }
 
         // Start HTTP Server
@@ -461,6 +461,12 @@ function getBundler(classConfiguration: ClassConfiguration): BundlerInterface | 
     }
 
     return bundler;
+}
+
+async function startDockerDatabase(database: string) {
+    if (database == "postgres") {
+        console.log("THe database is postgres");
+    }
 }
 
 async function startServerHttp(
