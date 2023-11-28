@@ -434,20 +434,40 @@ async function writeSdkToNodeModules(
     yamlProjectConfiguration: YamlProjectConfiguration,
     originSdkPath: string,
 ) {
+    const writeSdk = async (from: string, toTemp: string, toFinal: string) => {
+        // Check if it's a symbolic link
+        await fsExtra.copy(from, toTemp, { overwrite: true });
+
+        if (fs.existsSync(toFinal)) {
+            if (fs.lstatSync(toFinal).isSymbolicLink()) {
+                // Remove the symbolic link
+                fs.unlinkSync(toFinal);
+            } else {
+                await fsExtra.remove(toFinal);
+            }
+        }
+        await fsExtra.rename(toTemp, toFinal);
+        await fsExtra.remove(toTemp);
+    };
+
     if (yamlProjectConfiguration.workspace) {
         const from = path.resolve(originSdkPath, "..", "genezio-sdk");
-        const to = path.join(
+        const toTemp = path.join(
+            yamlProjectConfiguration.workspace.frontend,
+            "node_modules",
+            "@genezio-sdk",
+            `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}-temp`,
+        );
+        const toFinal = path.join(
             yamlProjectConfiguration.workspace.frontend,
             "node_modules",
             "@genezio-sdk",
             `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
         );
-        // Check if it's a symbolic link
-        if (fs.existsSync(to) && fs.lstatSync(to).isSymbolicLink()) {
-            // Remove the symbolic link
-            fs.unlinkSync(to);
-        }
-        await fsExtra.copy(from, to, { overwrite: true });
+
+        await writeSdk(from, toTemp, toFinal).catch(() => {
+            debugLogger.debug(`[WRITE_SDK_TO_NODE_MODULES] Error writing SDK to node_modules`);
+        });
     } else {
         const linkPaths = await getLinkPathsForProject(
             yamlProjectConfiguration.name,
@@ -455,18 +475,22 @@ async function writeSdkToNodeModules(
         );
         const from = path.resolve(originSdkPath, "..", "genezio-sdk");
         for (const linkPath of linkPaths) {
-            const to = path.join(
+            const toTemp = path.join(
+                linkPath,
+                "node_modules",
+                "@genezio-sdk",
+                `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}-temp`,
+            );
+            const toFinal = path.join(
                 linkPath,
                 "node_modules",
                 "@genezio-sdk",
                 `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
             );
-            // Check if it's a symbolic link
-            if (fs.existsSync(to) && fs.lstatSync(to).isSymbolicLink()) {
-                // Remove the symbolic link
-                fs.unlinkSync(to);
-            }
-            await fsExtra.copy(from, to, { overwrite: true });
+
+            await writeSdk(from, toTemp, toFinal).catch(() => {
+                debugLogger.debug(`[WRITE_SDK_TO_NODE_MODULES] Error writing SDK to node_modules`);
+            });
         }
     }
 }
