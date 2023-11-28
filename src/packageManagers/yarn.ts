@@ -1,7 +1,10 @@
+import { compare } from "compare-versions";
 import { PackageManager } from "./packageManager.js";
-import { exec, execSync } from "child_process";
+import { ExecOptions, exec, execSync } from "child_process";
 import { promisify } from "util";
-const asyncExec = promisify(exec);
+import { homedir } from "os";
+const asyncExec = (cmd: string, options?: ExecOptions) =>
+    promisify(exec)(cmd, options ?? { cwd: homedir() });
 
 export default class YarnPackageManager implements PackageManager {
     readonly command = "yarn";
@@ -40,11 +43,30 @@ export default class YarnPackageManager implements PackageManager {
     }
 
     async addScopedRegistry(scope: string, url: string, authToken?: string) {
-        throw new Error("Yarn scoped registry is not supported yet.");
+        if (compare(await this.getVersion(), "2.0.0", "<")) {
+            throw new Error(
+                "yarn v1 (classic) is not supported. Please update yarn to v2.0.0 or above.",
+            );
+        }
+
+        const scopeConfig = {
+            npmRegistryServer: url,
+            npmAuthToken: authToken,
+            npmAlwaysAuth: true,
+        };
+        await asyncExec(
+            `yarn config set --home npmScopes.${scope} --json '${JSON.stringify(scopeConfig)}'`,
+        );
     }
 
     async removeScopedRegistry(scope: string) {
-        throw new Error("Yarn scoped registry is not supported yet.");
+        if (compare(await this.getVersion(), "2.0.0", "<")) {
+            throw new Error(
+                "yarn v1 (classic) is not supported. Please update yarn to v2.0.0 or above.",
+            );
+        }
+
+        await asyncExec(`yarn config unset --home npmScopes.${scope}`);
     }
 
     async getVersion(): Promise<string> {
