@@ -435,7 +435,10 @@ async function writeSdkToNodeModules(
     originSdkPath: string,
 ) {
     const writeSdk = async (from: string, toTemp: string, toFinal: string) => {
-        // Check if it's a symbolic link
+        // Firstly, we copy the SDK to a temporary folder
+        // we remove any existing SDK from node_modules and then we rename the temporary folder to the final name
+        //
+        // This is done to avoid any race condition issues with npm install or npm update
         await fsExtra.copy(from, toTemp, { overwrite: true });
 
         if (fs.existsSync(toFinal)) {

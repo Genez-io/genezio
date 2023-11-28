@@ -5,19 +5,38 @@ import {
     setLinkPathForProject,
 } from "../utils/linkDatabase.js";
 
-export async function linkCommand() {
+export async function linkCommand(
+    projectName: string | undefined,
+    projectRegion: string | undefined,
+) {
     const cwd = process.cwd();
-    const projectConfiguration = await getProjectConfiguration("./genezio.yaml", true);
+    let name = projectName;
+    let region = projectRegion;
+    if (!name || !region) {
+        const projectConfiguration = await getProjectConfiguration("./genezio.yaml", true);
+        name = projectConfiguration.name;
+        region = projectConfiguration.region;
+    }
 
-    await setLinkPathForProject(projectConfiguration.name, projectConfiguration.region, cwd);
+    await setLinkPathForProject(name, region, cwd);
 }
 
-export async function unlinkCommand(unlinkAll: boolean) {
+export async function unlinkCommand(
+    unlinkAll: boolean,
+    projectName: string | undefined,
+    projectRegion: string | undefined,
+) {
     if (unlinkAll) {
         await deleteAllLinkPaths();
         return;
     }
-    const projectConfiguration = await getProjectConfiguration("./genezio.yaml", true);
+    let name = projectName;
+    let region = projectRegion;
+    if (!name || !region) {
+        const projectConfiguration = await getProjectConfiguration("./genezio.yaml", true);
+        name = projectConfiguration.name;
+        region = projectConfiguration.region;
+    }
 
-    await deleteLinkPathForProject(projectConfiguration.name, projectConfiguration.region);
+    await deleteLinkPathForProject(name, region);
 }

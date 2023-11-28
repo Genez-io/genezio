@@ -347,21 +347,54 @@ program
         "--logLevel <logLevel>",
         "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
     )
+    .option(
+        "--projectName <projectName>",
+        "The name of the project that you want to communicate with.",
+    )
+    .option("--region <region>", "The region of the project that you want to communicate with.")
     .description(
         "Set this path as the spot for your frontend app within a project that uses multiple repositories. Doing this helps 'genezio local' figure out by itself where to create the SDK.",
     )
-    .action(async () => {
-        await linkCommand();
+    .action(async (options: any) => {
+        await linkCommand(options.projectName, options.region).catch((error: Error) => {
+            log.error(error.message);
+            log.error(
+                "Error: Command execution failed. Please ensure you are running this command from a directory containing 'genezio.yaml' or provide the '--projectName <name>' and '--region <region>' flags.",
+            );
+            exit(1);
+        });
+        log.info("Successfully linked the path to your genezio project.");
     });
 
 program
     .command("unlink")
     .option("--all", "Remove all links.")
+    .option(
+        "--projectName <projectName>",
+        "The name of the project that you want to communicate with. If --all is used, this option is ignored.",
+    )
+    .option(
+        "--region <region>",
+        "The region of the project that you want to communicate with. If --all is used, this option is ignored.",
+    )
     .description(
         "Clear the previously set path for your frontend app, which is useful when managing a project with multiple repositories. This reset allows 'genezio local' to stop automatically generating the SDK in that location.",
     )
     .action(async (options: any) => {
-        await unlinkCommand(options.all);
+        await unlinkCommand(options.all, options.projectName, options.region).catch(
+            (error: Error) => {
+                log.error(error.message);
+                log.error(
+                    "Error: Command execution failed. Please ensure you are running this command from a directory containing 'genezio.yaml' or provide the '--projectName <name>' and '--region <region>' flags.",
+                );
+                exit(1);
+            },
+        );
+        if (options.all) {
+            log.info("Successfully unlinked all paths to your genezio projects.");
+            return;
+        }
+        log.info("Successfully unlinked the path to your genezio project.");
     });
 
 export default program;
