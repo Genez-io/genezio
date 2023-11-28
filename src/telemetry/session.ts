@@ -5,7 +5,7 @@ import { debugLogger } from "../utils/logging.js";
 
 export async function getTelemetrySessionId(): Promise<string | undefined> {
     const homeDirectory = os.homedir();
-    const loginConfigFilePath = path.join(homeDirectory, ".geneziotelemetryrc");
+    const loginConfigFilePath = path.join(homeDirectory, ".genezio", "geneziotelemetryrc");
     try {
         const result = await readUTF8File(loginConfigFilePath);
         return result.trim();
@@ -16,8 +16,8 @@ export async function getTelemetrySessionId(): Promise<string | undefined> {
 }
 
 export async function saveTelemetrySessionId(token: string) {
-    const homeDirectory = os.homedir();
-    const loginConfigFile = ".geneziotelemetryrc";
+    const configDirectory = path.join(os.homedir(), ".genezio");
+    const loginConfigFile = "geneziotelemetryrc";
 
-    await writeToFile(homeDirectory, loginConfigFile, token, true);
+    await writeToFile(configDirectory, loginConfigFile, token, true);
 }

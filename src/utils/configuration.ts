@@ -182,6 +182,7 @@ async function tryToReadClassInformationFromDecorators(
 
 export async function getProjectConfiguration(
     configurationFilePath = "./genezio.yaml",
+    skipClassScan = false,
 ): Promise<YamlProjectConfiguration> {
     if (!(await checkYamlFileExists(configurationFilePath))) {
         throw new Error("The configuration file does not exist.");
@@ -199,6 +200,9 @@ export async function getProjectConfiguration(
 
     const projectConfiguration = await YamlProjectConfiguration.create(configurationFileContent);
 
+    if (skipClassScan) {
+        return projectConfiguration;
+    }
     const result = await tryToReadClassInformationFromDecorators(projectConfiguration);
 
     result.forEach((classInfo) => {

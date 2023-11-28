@@ -1,12 +1,14 @@
-import log from "loglevel";
 import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
 import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
 import express from "express";
 import chokidar from "chokidar";
+import fs from "fs";
+import fsPromises from "fs/promises";
 import cors from "cors";
 import bodyParser from "body-parser";
 import { ChildProcess, spawn } from "child_process";
 import path from "path";
+import { default as fsExtra } from "fs-extra";
 import url from "url";
 import * as http from "http";
 import colors from "colors";
@@ -40,7 +42,6 @@ import {
     Language,
     PackageManagerType,
     YamlProjectConfiguration,
-    YamlProjectConfigurationType,
     YamlSdkConfiguration,
 } from "../models/yamlProjectConfiguration.js";
 import hash from "hash-it";
@@ -54,6 +55,11 @@ import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJ
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { runNewProcess } from "../utils/process.js";
 import { exit } from "process";
+import { getLinkPathsForProject } from "../utils/linkDatabase.js";
+import log from "loglevel";
+import { getInterruptLastModifiedTime, interruptLocalPath } from "../utils/localInterrupt.js";
+
+const POLLING_INTERVAL = 2000;
 
 type ClassProcess = {
     process: ChildProcess;
@@ -159,6 +165,14 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             exit(1);
         }
     }
+
+    let nodeModulesFolderWatcher: NodeJS.Timeout | undefined;
+
+    // Check if a deployment is in progress and if it is, stop the local environment
+    chokidar.watch(interruptLocalPath, { ignoreInitial: true }).on("all", async () => {
+        log.info("A deployment is in progress. Stopping local environment...");
+        exit(0);
+    });
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -311,6 +325,12 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     sdkConfiguration.language,
                     GenezioCommand.local,
                 );
+
+                await writeSdkToNodeModules(yamlProjectConfiguration, sdkConfiguration.path);
+                nodeModulesFolderWatcher = await watchNodeModules(
+                    yamlProjectConfiguration,
+                    sdkConfiguration.path,
+                );
             }
         }
 
@@ -343,6 +363,138 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             eventType: TelemetryEventTypes.GENEZIO_LOCAL_RELOAD,
             commandOptions: JSON.stringify(options),
         });
+        clearTimeout(nodeModulesFolderWatcher);
+    }
+}
+
+async function watchNodeModules(
+    yamlProjectConfiguration: YamlProjectConfiguration,
+    sdkPath: string,
+): Promise<NodeJS.Timeout> {
+    // We are watching for the following files:
+    // - node_modules/@genezio-sdk/<projectName>_<region>/package.json: this file is used to determine if the SDK was changed (by a npm install or npm update)
+    // - node_modules/.package-lock.json: this file is used by npm to determine if it should update the packages or not. We are removing this file while "genezio local"
+    // is running, because we are modifying node_modules folder manual (reference: https://github.com/npm/cli/blob/653769de359b8d24f0d17b8e7e426708f49cadb8/docs/content/configuring-npm/package-lock-json.md#hidden-lockfiles)
+    const watchPaths: string[] = [interruptLocalPath];
+    const sdkName = `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`;
+    const nodeModulesPath = path.join("node_modules", "@genezio-sdk", sdkName, "package.json");
+    if (yamlProjectConfiguration.workspace) {
+        watchPaths.push(path.join(yamlProjectConfiguration.workspace.frontend, nodeModulesPath));
+        watchPaths.push(
+            path.join(
+                yamlProjectConfiguration.workspace?.frontend,
+                "node_modules",
+                ".package-lock.json",
+            ),
+        );
+    } else {
+        const linkPaths = await getLinkPathsForProject(
+            yamlProjectConfiguration.name,
+            yamlProjectConfiguration.region,
+        );
+        for (const linkPath of linkPaths) {
+            watchPaths.push(path.join(linkPath, nodeModulesPath));
+            watchPaths.push(path.join(linkPath, "node_modules", ".package-lock.json"));
+        }
+    }
+
+    return setInterval(async () => {
+        for (const watchPath of watchPaths) {
+            const components = watchPath.split(path.sep);
+            // if the file is .package-lock.json, remove it
+            if (
+                components[components.length - 1] === ".package-lock.json" &&
+                fs.existsSync(watchPath)
+            ) {
+                await fsPromises.unlink(watchPath).catch(() => {
+                    debugLogger.debug(`[WATCH_NODE_MODULES] Error deleting ${watchPath}`);
+                });
+                return;
+            }
+
+            if (components[components.length - 1] === "package.json") {
+                let json;
+                try {
+                    const content = fs.readFileSync(watchPath);
+                    json = JSON.parse(content.toString());
+                } catch (error) {
+                    // ignore error
+                }
+
+                if (!json || !json.version || !json.version.includes("local")) {
+                    debugLogger.debug(`[WATCH_NODE_MODULES] Rewriting the SDK to node_modules...`);
+                    await writeSdkToNodeModules(yamlProjectConfiguration, sdkPath);
+                }
+            }
+        }
+    }, POLLING_INTERVAL);
+}
+
+async function writeSdkToNodeModules(
+    yamlProjectConfiguration: YamlProjectConfiguration,
+    originSdkPath: string,
+) {
+    const writeSdk = async (from: string, toTemp: string, toFinal: string) => {
+        // Firstly, we copy the SDK to a temporary folder
+        // we remove any existing SDK from node_modules and then we rename the temporary folder to the final name
+        //
+        // This is done to avoid any race condition issues with npm install or npm update
+        await fsExtra.copy(from, toTemp, { overwrite: true });
+
+        if (fs.existsSync(toFinal)) {
+            if (fs.lstatSync(toFinal).isSymbolicLink()) {
+                // Remove the symbolic link
+                fs.unlinkSync(toFinal);
+            } else {
+                await fsExtra.remove(toFinal);
+            }
+        }
+        await fsExtra.rename(toTemp, toFinal);
+        await fsExtra.remove(toTemp);
+    };
+
+    if (yamlProjectConfiguration.workspace) {
+        const from = path.resolve(originSdkPath, "..", "genezio-sdk");
+        const toTemp = path.join(
+            yamlProjectConfiguration.workspace.frontend,
+            "node_modules",
+            "@genezio-sdk",
+            `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}-temp`,
+        );
+        const toFinal = path.join(
+            yamlProjectConfiguration.workspace.frontend,
+            "node_modules",
+            "@genezio-sdk",
+            `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
+        );
+
+        await writeSdk(from, toTemp, toFinal).catch(() => {
+            debugLogger.debug(`[WRITE_SDK_TO_NODE_MODULES] Error writing SDK to node_modules`);
+        });
+    } else {
+        const linkPaths = await getLinkPathsForProject(
+            yamlProjectConfiguration.name,
+            yamlProjectConfiguration.region,
+        );
+        const from = path.resolve(originSdkPath, "..", "genezio-sdk");
+        for (const linkPath of linkPaths) {
+            const toTemp = path.join(
+                linkPath,
+                "node_modules",
+                "@genezio-sdk",
+                `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}-temp`,
+            );
+            const toFinal = path.join(
+                linkPath,
+                "node_modules",
+                "@genezio-sdk",
+                `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
+            );
+
+            await writeSdk(from, toTemp, toFinal).catch(() => {
+                debugLogger.debug(`[WRITE_SDK_TO_NODE_MODULES] Error writing SDK to node_modules`);
+            });
+        }
     }
 }
 

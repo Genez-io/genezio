@@ -49,8 +49,10 @@ import { getEnvironmentVariables } from "../requests/getEnvironmentVariables.js"
 import { getNodeModulePackageJson } from "../generateSdk/templates/packageJson.js";
 import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
+import { interruptLocalProcesses } from "../utils/localInterrupt.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
+    await interruptLocalProcesses();
     let configuration;
 
     try {
