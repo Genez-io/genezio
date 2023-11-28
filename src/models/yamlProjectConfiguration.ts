@@ -268,6 +268,7 @@ export class YamlProjectConfiguration {
     scripts?: YamlScriptsConfiguration;
     plugins?: YamlPluginsConfiguration;
     packageManager?: PackageManagerType | undefined;
+    database?: string;
 
     constructor(
         name: string,
@@ -282,6 +283,7 @@ export class YamlProjectConfiguration {
         options: NodeOptions | undefined = undefined,
         workspace: YamlWorkspace | undefined = undefined,
         packageManager: PackageManagerType | undefined = undefined,
+        database: string | undefined = undefined,
     ) {
         this.name = name;
         this.region = region;
@@ -295,6 +297,7 @@ export class YamlProjectConfiguration {
         this.options = options;
         this.workspace = workspace;
         this.packageManager = packageManager;
+        this.database = database;
     }
 
     getClassConfiguration(path: string): YamlClassConfiguration {
@@ -519,6 +522,7 @@ export class YamlProjectConfiguration {
             configurationFileContent.options,
             workspace,
             configurationFileContent.packageManager,
+            configurationFileContent.database,
         );
     }
 
@@ -587,6 +591,7 @@ export class YamlProjectConfiguration {
                       frontend: this.workspace.rawPathFrontend,
                   }
                 : undefined,
+            database: this.database ? this.database : undefined,
         };
 
         const fileDetails = getFileDetails(path);

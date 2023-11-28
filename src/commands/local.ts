@@ -275,6 +275,11 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             continue;
         }
 
+        // Start docker container
+        if (yamlProjectConfiguration.database) {
+            console.log("we have a db");
+        }
+
         // Start HTTP Server
         const server = await startServerHttp(
             options.port,
