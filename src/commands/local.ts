@@ -5,7 +5,7 @@ import express from "express";
 import chokidar from "chokidar";
 import cors from "cors";
 import bodyParser from "body-parser";
-import { ChildProcess, spawn } from "child_process";
+import { ChildProcess, spawn, exec } from "child_process";
 import path from "path";
 import url from "url";
 import * as http from "http";
@@ -39,6 +39,7 @@ import { findAvailablePort } from "../utils/findAvailablePort.js";
 import {
     Language,
     PackageManagerType,
+    YamlDatabaseConfiguration,
     YamlProjectConfiguration,
     YamlProjectConfigurationType,
     YamlSdkConfiguration,
@@ -54,6 +55,8 @@ import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJ
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { runNewProcess } from "../utils/process.js";
 import { exit } from "process";
+import { promisify } from "util";
+const asyncExec = promisify(exec);
 
 type ClassProcess = {
     process: ChildProcess;
@@ -277,8 +280,10 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 
         // Start docker container
         if (yamlProjectConfiguration.database) {
-            console.log(`we have a db and the db is ${yamlProjectConfiguration.database}`);
-            await startDockerDatabase(yamlProjectConfiguration.database);
+            await startDockerDatabase(
+                yamlProjectConfiguration.database,
+                yamlProjectConfiguration.name,
+            );
         }
 
         // Start HTTP Server
@@ -464,9 +469,58 @@ function getBundler(classConfiguration: ClassConfiguration): BundlerInterface | 
     return bundler;
 }
 
-async function startDockerDatabase(database: string) {
-    if (database == "postgres") {
-        console.log("THe database is postgres");
+async function startDockerDatabase(database: YamlDatabaseConfiguration, projectName: string) {
+    let res;
+    try {
+        res = await asyncExec("docker --version");
+    } catch (error: any) {
+        console.log("An error has occured: ", error.toString());
+        return undefined;
+    }
+    if (database.type == "postgres") {
+        const containerName = `genezio-postgres-${projectName}`;
+        const port = 5432;
+        let output;
+        try {
+            output = await asyncExec(`docker ps -a --format "{{.Names}}" `);
+        } catch (error: any) {
+            log.error(`An error has occured: ${error.toString()}`);
+            return undefined;
+        }
+        if (output) {
+            const containerNames = output.stdout.trim().split(`\n`);
+            if (containerNames.includes(containerName)) {
+                let isContainerRunningOutput;
+                try {
+                    isContainerRunningOutput =
+                        await asyncExec(`docker inspect -f '{{.State.Running}}' ${containerName}
+                    `);
+                } catch (error: any) {
+                    log.error(`An error has occured: ${error.toString()}`);
+                    return undefined;
+                }
+                const isContainerRunning = isContainerRunningOutput.stdout.trim() === "true";
+
+                if (!isContainerRunning) {
+                    try {
+                        await asyncExec(`docker start ${containerName}
+                            `);
+                    } catch (error: any) {
+                        log.error(`An error has occured: ${error.toString()}`);
+                        return undefined;
+                    }
+                }
+            } else {
+                try {
+                    await asyncExec(
+                        `docker run -p ${port}:5432 --name ${containerName} -e POSTGRES_PASSWORD=mysecretpassword -d postgres `,
+                    );
+                } catch (error: any) {
+                    log.error(`An error has occured: ${error.toString()}`);
+                    return undefined;
+                }
+            }
+        }
     }
 }
 

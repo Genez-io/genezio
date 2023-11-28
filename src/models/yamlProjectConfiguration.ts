@@ -192,6 +192,16 @@ export type YamlFrontend = {
     subdomain: string | undefined;
 };
 
+export class YamlDatabaseConfiguration {
+    type: string;
+    port: string | undefined;
+
+    constructor(type: string, port: string | undefined) {
+        this.type = type;
+        this.port = port;
+    }
+}
+
 export class YamlScriptsConfiguration {
     preBackendDeploy?: string;
     postBackendDeploy?: string;
@@ -268,7 +278,7 @@ export class YamlProjectConfiguration {
     scripts?: YamlScriptsConfiguration;
     plugins?: YamlPluginsConfiguration;
     packageManager?: PackageManagerType | undefined;
-    database?: string;
+    database?: YamlDatabaseConfiguration;
 
     constructor(
         name: string,
@@ -283,7 +293,7 @@ export class YamlProjectConfiguration {
         options: NodeOptions | undefined = undefined,
         workspace: YamlWorkspace | undefined = undefined,
         packageManager: PackageManagerType | undefined = undefined,
-        database: string | undefined = undefined,
+        database: YamlDatabaseConfiguration | undefined = undefined,
     ) {
         this.name = name;
         this.region = region;
