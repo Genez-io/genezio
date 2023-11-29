@@ -65,7 +65,6 @@ import { getInterruptLastModifiedTime, interruptLocalPath } from "../utils/local
 
 const POLLING_INTERVAL = 2000;
 
-
 type ClassProcess = {
     process: ChildProcess;
     startingCommand: string;
@@ -627,7 +626,11 @@ async function startDockerDatabase(database: YamlDatabaseConfiguration, projectN
     try {
         await asyncExec("docker --version");
     } catch (error: any) {
-        console.log("An error has occured: ", error.toString());
+        log.error("An error has occured: ", error.toString());
+        log.error(
+            "\x1b[33m%s\x1b[0m",
+            "Docker not found, if you want to have a local database for testing, you need to install docker. Go to https://www.docker.com/products/docker-desktop/ to install docker",
+        );
         return undefined;
     }
     if (database.type == "postgres") {
