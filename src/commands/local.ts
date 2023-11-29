@@ -524,12 +524,15 @@ async function startDockerDatabase(database: YamlDatabaseConfiguration, projectN
     }
 }
 
-async function stopDatabaseDocker(projectName: string) {
-    try {
-        await asyncExec(`docker stop genezio-postgres-${projectName} `);
-    } catch (error: any) {
-        log.error(`An error has occured: ${error.toString()}`);
-        return undefined;
+export async function stopDockerDatabase() {
+    const yamlProjectConfiguration = await getProjectConfiguration();
+    if (yamlProjectConfiguration.database?.type) {
+        try {
+            await asyncExec(`docker stop genezio-postgres-${yamlProjectConfiguration.name} `);
+        } catch (error: any) {
+            log.error(`An error has occured: ${error.toString()}`);
+            return undefined;
+        }
     }
 }
 
@@ -897,10 +900,7 @@ async function clearAllResources(
 ) {
     server.close();
     await stopCronJobs(crons);
-
-    if (yamlProjectConfiguration.database?.type) {
-        await stopDatabaseDocker(yamlProjectConfiguration.name);
-    }
+    await stopDockerDatabase();
 
     processForClasses.forEach((classProcess) => {
         classProcess.process.kill();
