@@ -3,7 +3,12 @@ import { setDebuggingLoggerLogLevel } from "./utils/logging.js";
 import { exit } from "process";
 import { PORT_LOCAL_ENVIRONMENT, ENABLE_DEBUG_LOGS_BY_DEFAULT } from "./constants.js";
 import log from "loglevel";
+<<<<<<< Updated upstream
 import prefix from "loglevel-plugin-prefix";
+=======
+import path from "path";
+import prefix from 'loglevel-plugin-prefix';
+>>>>>>> Stashed changes
 // commands imports
 import { accountCommand } from "./commands/account.js";
 import { addClassCommand } from "./commands/addClass.js";
@@ -19,10 +24,23 @@ import { GenezioDeployOptions, GenezioLocalOptions } from "./models/commandOptio
 import currentGenezioVersion, { logOutdatedVersion } from "./utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js";
 import { genezioCommand } from "./commands/superGenezio.js";
+<<<<<<< Updated upstream
 import { linkCommand, unlinkCommand } from "./commands/link.js";
 import { getProjectConfiguration } from "./utils/configuration.js";
 import { setPackageManager } from "./packageManagers/packageManager.js";
 import { PackageManagerType } from "./models/yamlProjectConfiguration.js";
+=======
+import { getProjectConfiguration } from "./utils/configuration.js";
+import { sdkGeneratorApiHandler } from "./generateSdk/generateSdkApi.js";
+import { SdkGeneratorResponse } from "./models/sdkGeneratorResponse.js";
+import { ProjectConfiguration } from "./models/projectConfiguration.js";
+import { replaceUrlsInSdk, writeSdkToDisk } from "./utils/sdk.js";
+import { createLocalTempFolder } from "./utils/file.js";
+import { getNodeModulePackageJson } from "./generateSdk/templates/packageJson.js";
+import { compileSdk } from "./generateSdk/utils/compileSdk.js";
+import { GenezioCommand, reportSuccess } from "./utils/reporter.js";
+import { Language } from "./models/yamlProjectConfiguration.js";
+>>>>>>> Stashed changes
 
 const program = new Command();
 
@@ -396,5 +414,99 @@ program
         }
         log.info("Successfully unlinked the path to your genezio project.");
     });
+
+program
+  .command("publishSdk")
+  .option("--url <url>", "Show debug logs to console. Possible levels: trace/debug/info/warn/error.")
+  .description("Generate an SDK corresponding to a deployed or local project.\n\nProvide the project name to generate an SDK for a deployed project.\nEx: genezio sdk my-project --stage prod --region us-east-1\n\nProvide the path to the genezio.yaml on your disk to load project details (name and region) from that file instead of command arguments.\nEx: genezio sdk --source ../my-project")
+  .action(async (options: any) => {
+      setDebuggingLoggerLogLevel(options.logLevel);
+      let configuration;
+
+      try {
+          configuration = await getProjectConfiguration();
+      } catch (error: any) {
+          log.error(error.message);
+          GenezioTelemetry.sendEvent({
+              eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
+              errorTrace: error.toString(),
+              commandOptions: JSON.stringify(options),
+          });
+          exit(1);
+      }
+
+      const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
+          configuration,
+      ).catch((error) => {
+          // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
+          if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
+              log.error("Syntax error:");
+              log.error(`Reason Code: ${error.reasonCode}`);
+              log.error(`File: ${error.path}:${error.loc.line}:${error.loc.column}`);
+
+              throw error;
+          }
+
+          throw error;
+      });
+      console.log(configuration);
+      const projectConfiguration = new ProjectConfiguration(
+          configuration,
+          sdkResponse,
+      );
+
+      const stage: string = options.stage || "prod";
+      await replaceUrlsInSdk(
+          sdkResponse,
+          sdkResponse.files.map((c: any) => ({
+              name: c.className,
+              cloudUrl: options.url,
+          })),
+      );
+
+      if (configuration.sdk) {
+          await writeSdkToDisk(
+              sdkResponse,
+              configuration.sdk.language,
+              configuration.sdk.path,
+          );
+      } else if (
+          configuration.language === Language.ts ||
+          configuration.language === Language.js
+      ) {
+          const localPath = await createLocalTempFolder(
+              `${projectConfiguration.name}-${projectConfiguration.region}`,
+          );
+          await writeSdkToDisk(
+              sdkResponse,
+              configuration.language,
+              path.join(localPath, "sdk"),
+          );
+          const packageJson: string = getNodeModulePackageJson(
+              configuration.name,
+              configuration.region,
+              stage,
+          );
+          await compileSdk(
+              path.join(localPath, "sdk"),
+              packageJson,
+              configuration.language,
+              GenezioCommand.deploy,
+          );
+      }
+
+      reportSuccess(
+          sdkResponse.files as any,
+          sdkResponse,
+          GenezioCommand.deploy,
+          {
+              name: configuration.name,
+              region: configuration.region,
+              stage: stage,
+          },
+          !configuration.sdk,
+      );
+  });
+
 
 export default program;

@@ -18,6 +18,7 @@ export async function replaceUrlsInSdk(
 ) {
     sdkResponse.files.forEach((c: SdkFileClass) => {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        console.log(classUrlMap);
         const classContent = classUrlMap.find((classFile) => {
             return classFile.name === c.className;
         })!;
@@ -47,5 +48,9 @@ export async function writeSdkToDisk(
             return writeToFile(outputPath, file.path, file.data, true);
         }),
     );
+<<<<<<< Updated upstream
     debugLogger.debug("The SDK was successfully written to files.");
+=======
+    debugLogger.debug("The SDK was successfully written to files.")
+>>>>>>> Stashed changes
 }
