@@ -349,7 +349,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         logChangeDetection();
 
         // When new changes are detected, close everything and restart the process
-        clearAllResources(server, processForClasses, crons, yamlProjectConfiguration);
+        clearAllResources(server, processForClasses, crons);
         GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_LOCAL_RELOAD,
             commandOptions: JSON.stringify(options),
@@ -470,9 +470,8 @@ function getBundler(classConfiguration: ClassConfiguration): BundlerInterface | 
 }
 
 async function startDockerDatabase(database: YamlDatabaseConfiguration, projectName: string) {
-    let res;
     try {
-        res = await asyncExec("docker --version");
+        await asyncExec("docker --version");
     } catch (error: any) {
         console.log("An error has occured: ", error.toString());
         return undefined;
@@ -521,6 +520,7 @@ async function startDockerDatabase(database: YamlDatabaseConfiguration, projectN
                 }
             }
         }
+        log.info(`Local Postgres URL = postgres://postgres:mysecretpassword@localhost:${port}`);
     }
 }
 
@@ -896,12 +896,9 @@ async function clearAllResources(
     server: http.Server,
     processForClasses: Map<string, ClassProcess>,
     crons: LocalEnvCronHandler[],
-    yamlProjectConfiguration: YamlProjectConfiguration,
 ) {
     server.close();
     await stopCronJobs(crons);
-    await stopDockerDatabase();
-
     processForClasses.forEach((classProcess) => {
         classProcess.process.kill();
     });
