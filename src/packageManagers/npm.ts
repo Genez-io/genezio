@@ -35,19 +35,21 @@ export default class NpmPackageManager implements PackageManager {
 
         // Add the authentication token for the registry hostname
         const registryUrl = new URL(url);
-        await asyncExec(`npm config set //${registryUrl.hostname}/:_authToken=${authToken}`);
+        const path = registryUrl.pathname.split("/").slice(0, -1).join("/");
+        await asyncExec(`npm config set //${registryUrl.hostname}${path}/:_authToken=${authToken}`);
     }
 
     async removeScopedRegistry(scope: string): Promise<void> {
         // Get the registry url for the specified scope
         const { stdout } = await asyncExec(`npm config get @${scope}:registry`);
         const registryUrl = new URL(stdout.trim());
+        const path = registryUrl.pathname.split("/").slice(0, -1).join("/");
 
         // Remove the package scoped registry
         await asyncExec(`npm config delete @${scope}:registry`);
 
         // Remove the authentication token for the registry hostname
-        await asyncExec(`npm config delete //${registryUrl.hostname}/:_authToken`);
+        await asyncExec(`npm config delete //${registryUrl.hostname}${path}/:_authToken`);
     }
 
     async getVersion(): Promise<string> {
