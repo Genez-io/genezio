@@ -141,10 +141,7 @@ async function getDecoratorsFromFile(file: string): Promise<ClassInfo[]> {
     // const presetTypescript = path.dirname(require.resolve("@babel/preset-typescript"));
     await babel.transformAsync(inputCode, {
         presets: [require.resolve("@babel/preset-typescript")],
-        plugins: [
-            [packagePath, { version: "2023-05", decoratorsBeforeExport: false }],
-            extractorFunction,
-        ],
+        plugins: [[packagePath, { legacy: true }], extractorFunction],
         filename: file,
     });
 
