@@ -48,9 +48,10 @@ function parseArguments(args: any): { [key: string]: string } {
                     return [...acc, { key: curr.key.name, value: curr.value.value }];
                 }, []);
             } else {
-                throw new Error("Unsupported argument for decorator");
+                return undefined;
             }
         })
+        .filter((a: any) => a !== undefined)
         .flat()
         .reduce((acc: any, curr: any) => {
             acc[curr["key"]] = curr["value"];

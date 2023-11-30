@@ -1,6 +1,5 @@
 import { createRequire } from "module";
 import path from "path";
-import stripDecorator from "./stripDecoratorsPlugin.js";
 import babel from "@babel/core";
 import fs from "fs";
 
@@ -12,10 +11,7 @@ export default async function (filePath: string): Promise<string> {
 
     const babelOutput = await babel.transformAsync(fileData, {
         presets: [presetTypescript],
-        plugins: [
-            [packagePath, { version: "2023-05", decoratorsBeforeExport: false }],
-            stripDecorator,
-        ],
+        plugins: [[packagePath, { version: "2023-05", decoratorsBeforeExport: false }]],
         filename: filePath,
     });
 
