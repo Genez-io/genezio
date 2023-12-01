@@ -11,7 +11,7 @@ export default async function (filePath: string): Promise<string> {
 
     const babelOutput = await babel.transformAsync(fileData, {
         presets: [presetTypescript],
-        plugins: [[packagePath, { legacy: true }]],
+        plugins: [[packagePath, { version: "2023-05", decoratorsBeforeExport: false }]],
         filename: filePath,
     });
 
