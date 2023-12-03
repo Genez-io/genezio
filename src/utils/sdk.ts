@@ -48,9 +48,5 @@ export async function writeSdkToDisk(
             return writeToFile(outputPath, file.path, file.data, true);
         }),
     );
-<<<<<<< Updated upstream
     debugLogger.debug("The SDK was successfully written to files.");
-=======
-    debugLogger.debug("The SDK was successfully written to files.")
->>>>>>> Stashed changes
 }

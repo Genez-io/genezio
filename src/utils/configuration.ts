@@ -203,6 +203,11 @@ export async function getProjectConfiguration(
     if (skipClassScan) {
         return projectConfiguration;
     }
+
+    return await scanClassesForDecorators(projectConfiguration);
+}
+
+export async function scanClassesForDecorators(projectConfiguration: YamlProjectConfiguration) {
     const result = await tryToReadClassInformationFromDecorators(projectConfiguration);
 
     result.forEach((classInfo) => {

@@ -8,9 +8,9 @@ import {
     TriggerType,
     YamlProjectConfiguration,
 } from "../models/yamlProjectConfiguration.js";
-import getProjectInfo, { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
+import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import listProjects from "../requests/listProjects.js";
-import { getProjectConfiguration } from "../utils/configuration.js";
+import { getProjectConfiguration, scanClassesForDecorators } from "../utils/configuration.js";
 import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import path from "path";
@@ -24,8 +24,74 @@ import { mapDbAstToSdkGeneratorAst } from "../generateSdk/utils/mapDbAstToFullAs
 import { generateSdk } from "../generateSdk/sdkGeneratorHandler.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import inquirer, { Answers } from "inquirer";
+import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
 
-export async function generateSdkCommand(projectName: string, options: any) {
+enum SourceType {
+    local,
+    remote,
+}
+
+export type GenerateSdkOptions = {
+    source: SourceType;
+    language: string;
+    path: string;
+    stage: string;
+    region: string;
+    url: string;
+    logLevel?: string;
+};
+
+export async function generateSdkCommand(projectName: string, options: GenerateSdkOptions) {
+    switch (options.source) {
+        case SourceType.local:
+            await generateLocalSdkCommand(options);
+            break;
+        case SourceType.remote:
+            await generateRemoteSdkCommand(projectName, options);
+            break;
+        default:
+            log.error("Invalid source type.");
+            exit(1);
+    }
+}
+
+export async function generateLocalSdkCommand(options: GenerateSdkOptions) {
+    let configuration: YamlProjectConfiguration = await YamlProjectConfiguration.create({
+        language: options.language,
+        sdk: {
+            language: options.language,
+            path: options.path,
+        },
+    });
+    configuration = await scanClassesForDecorators(configuration);
+
+    const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(configuration).catch(
+        (error) => {
+            // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
+            if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
+                log.error("Syntax error:");
+                log.error(`Reason Code: ${error.reasonCode}`);
+                log.error(`File: ${error.path}:${error.loc.line}:${error.loc.column}`);
+
+                throw error;
+            }
+
+            throw error;
+        },
+    );
+
+    await replaceUrlsInSdk(
+        sdkResponse,
+        sdkResponse.files.map((c) => ({
+            name: c.className,
+            cloudUrl: options.url,
+        })),
+    );
+
+    await writeSdkToDisk(sdkResponse, configuration.sdk!.language, configuration.sdk!.path);
+}
+
+export async function generateRemoteSdkCommand(projectName: string, options: any) {
     const language = options.language;
     const sdkPath = options.path;
     const stage = options.stage;
