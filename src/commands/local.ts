@@ -96,6 +96,13 @@ export async function prepareLocalEnvironment(
             if (yamlProjectConfiguration.classes!.length === 0) {
                 throw new Error(GENEZIO_NO_CLASSES_FOUND);
             }
+            // Start docker container
+            if (yamlProjectConfiguration.database) {
+                await startDockerDatabase(
+                    yamlProjectConfiguration.database,
+                    yamlProjectConfiguration.name,
+                );
+            }
 
             const sdk = await sdkGeneratorApiHandler(yamlProjectConfiguration).catch((error) => {
                 debugLogger.log("An error occurred", error);
@@ -296,14 +303,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             continue;
         }
 
-        // Start docker container
-        if (yamlProjectConfiguration.database) {
-            await startDockerDatabase(
-                yamlProjectConfiguration.database,
-                yamlProjectConfiguration.name,
-            );
-        }
-
+        console.log("before http server");
         // Start HTTP Server
         const server = await startServerHttp(
             options.port,
@@ -625,6 +625,56 @@ function getBundler(classConfiguration: ClassConfiguration): BundlerInterface | 
     return bundler;
 }
 
+async function runDockerContainer(
+    databaseType: string,
+    projectName: string,
+    runCommand: string,
+    connectionURL: string,
+) {
+    const containerName = `genezio-${databaseType}-${projectName}`;
+    let output;
+    try {
+        output = await asyncExec(`docker ps -a --format "{{.Names}}" `);
+    } catch (error: any) {
+        log.error(`An error has occured: ${error.toString()}`);
+        return undefined;
+    }
+    if (output) {
+        const containerNames = output.stdout.trim().split(`\n`);
+        if (containerNames.includes(containerName)) {
+            let isContainerRunningOutput;
+            try {
+                isContainerRunningOutput =
+                    await asyncExec(`docker inspect -f '{{.State.Running}}' ${containerName}
+                `);
+            } catch (error: any) {
+                log.error(`An error has occured: ${error.toString()}`);
+                return undefined;
+            }
+            const isContainerRunning =
+                isContainerRunningOutput.stdout.trim().replaceAll("'", "") === "true";
+
+            if (!isContainerRunning) {
+                try {
+                    await asyncExec(`docker start ${containerName}
+                        `);
+                } catch (error: any) {
+                    log.error(`An error has occured: ${error.toString()}`);
+                    return undefined;
+                }
+            }
+        } else {
+            try {
+                await asyncExec(runCommand);
+            } catch (error: any) {
+                log.error(`An error has occured: ${error.toString()}`);
+                return undefined;
+            }
+        }
+    }
+    log.info(connectionURL);
+}
+
 async function startDockerDatabase(database: YamlDatabaseConfiguration, projectName: string) {
     try {
         await asyncExec("docker --version");
@@ -636,54 +686,28 @@ async function startDockerDatabase(database: YamlDatabaseConfiguration, projectN
         );
         return undefined;
     }
-    if (database.type == "postgres") {
-        const containerName = `genezio-postgres-${projectName}`;
-        const port = 5432;
-        let output;
-        try {
-            output = await asyncExec(`docker ps -a --format "{{.Names}}" `);
-        } catch (error: any) {
-            log.error(`An error has occured: ${error.toString()}`);
-            return undefined;
-        }
-        if (output) {
-            const containerNames = output.stdout.trim().split(`\n`);
-            if (containerNames.includes(containerName)) {
-                let isContainerRunningOutput;
-                try {
-                    isContainerRunningOutput =
-                        await asyncExec(`docker inspect -f '{{.State.Running}}' ${containerName}
-                    `);
-                } catch (error: any) {
-                    log.error(`An error has occured: ${error.toString()}`);
-                    return undefined;
-                }
-                const isContainerRunning =
-                    isContainerRunningOutput.stdout.trim().replaceAll("'", "") === "true";
 
-                if (!isContainerRunning) {
-                    try {
-                        await asyncExec(`docker start ${containerName}
-                            `);
-                    } catch (error: any) {
-                        log.error(`An error has occured: ${error.toString()}`);
-                        return undefined;
-                    }
-                }
-            } else {
-                try {
-                    await asyncExec(
-                        `docker run -p ${port}:5432 --name ${containerName} -e POSTGRES_PASSWORD=mysecretpassword -d postgres `,
-                    );
-                } catch (error: any) {
-                    log.error(`An error has occured: ${error.toString()}`);
-                    return undefined;
-                }
-            }
-        }
-        log.info(`Local Postgres URL = postgres://postgres:mysecretpassword@localhost:${port}`);
+    if (database.type == "postgres") {
+        await runDockerContainer(
+            "postgres",
+            projectName,
+            `docker run -p 5432:5432 --name genezio-postgres-${projectName} -e POSTGRES_PASSWORD=mysecretpassword -d postgres `,
+            `Local Postgres URL = postgres://postgres:mysecretpassword@localhost:5432`,
+        );
+    }
+    if (database.type == "redis") {
+        await runDockerContainer(
+            "redis",
+            projectName,
+            `docker run -p 6379:6379 --name genezio-redis-${projectName} -d redis `,
+            `Local Redis URL = redis://localhost:6379`,
+        );
     }
 }
+
+// // async function stopDockerContainer(databaseType:string,){
+
+// }
 
 export async function stopDockerDatabase() {
     const yamlProjectConfiguration = await getProjectConfiguration();
@@ -720,6 +744,42 @@ export async function stopDockerDatabase() {
                         try {
                             await asyncExec(
                                 `docker stop genezio-postgres-${yamlProjectConfiguration.name} `,
+                            );
+                        } catch (error: any) {
+                            log.error(`An error has occured: ${error.toString()}`);
+                            return undefined;
+                        }
+                    }
+                }
+            }
+        }
+        if (yamlProjectConfiguration.database?.type == "redis") {
+            const containerName = `genezio-redis-${yamlProjectConfiguration.name}`;
+            let output;
+            try {
+                output = await asyncExec(`docker ps -a --format "{{.Names}}" `);
+            } catch (error: any) {
+                log.error(`An error has occured: ${error.toString()}`);
+                return undefined;
+            }
+            if (output) {
+                const containerNames = output.stdout.trim().split(`\n`);
+                if (containerNames.includes(containerName)) {
+                    let isContainerRunningOutput;
+                    try {
+                        isContainerRunningOutput =
+                            await asyncExec(`docker inspect -f '{{.State.Running}}' ${containerName}
+                        `);
+                    } catch (error: any) {
+                        log.error(`An error has occured: ${error.toString()}`);
+                        return undefined;
+                    }
+                    const isContainerRunning =
+                        isContainerRunningOutput.stdout.trim().replaceAll("'", "") === "true";
+                    if (isContainerRunning) {
+                        try {
+                            await asyncExec(
+                                `docker stop genezio-redis-${yamlProjectConfiguration.name} `,
                             );
                         } catch (error: any) {
                             log.error(`An error has occured: ${error.toString()}`);
