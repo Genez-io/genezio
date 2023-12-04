@@ -166,6 +166,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                 commandOptions: JSON.stringify(options),
             });
             log.error("preStartLocal script failed.");
+            await stopDockerDatabase();
             exit(1);
         }
     }
@@ -175,6 +176,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     // Check if a deployment is in progress and if it is, stop the local environment
     chokidar.watch(interruptLocalPath, { ignoreInitial: true }).on("all", async () => {
         log.info("A deployment is in progress. Stopping local environment...");
+        await stopDockerDatabase();
         exit(0);
     });
 
@@ -213,6 +215,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     commandOptions: JSON.stringify(options),
                 });
                 log.error("preReloadLocal script failed.");
+                await stopDockerDatabase();
                 exit(1);
             }
         }
@@ -655,7 +658,8 @@ async function startDockerDatabase(database: YamlDatabaseConfiguration, projectN
                     log.error(`An error has occured: ${error.toString()}`);
                     return undefined;
                 }
-                const isContainerRunning = isContainerRunningOutput.stdout.trim() === "true";
+                const isContainerRunning =
+                    isContainerRunningOutput.stdout.trim().replaceAll("'", "") === "true";
 
                 if (!isContainerRunning) {
                     try {
@@ -685,10 +689,45 @@ export async function stopDockerDatabase() {
     const yamlProjectConfiguration = await getProjectConfiguration();
     if (yamlProjectConfiguration.database?.type) {
         try {
-            await asyncExec(`docker stop genezio-postgres-${yamlProjectConfiguration.name} `);
+            await asyncExec("docker --version");
         } catch (error: any) {
-            log.error(`An error has occured: ${error.toString()}`);
             return undefined;
+        }
+        if (yamlProjectConfiguration.database?.type == "postgres") {
+            const containerName = `genezio-postgres-${yamlProjectConfiguration.name}`;
+            let output;
+            try {
+                output = await asyncExec(`docker ps -a --format "{{.Names}}" `);
+            } catch (error: any) {
+                log.error(`An error has occured: ${error.toString()}`);
+                return undefined;
+            }
+            if (output) {
+                const containerNames = output.stdout.trim().split(`\n`);
+                if (containerNames.includes(containerName)) {
+                    let isContainerRunningOutput;
+                    try {
+                        isContainerRunningOutput =
+                            await asyncExec(`docker inspect -f '{{.State.Running}}' ${containerName}
+                        `);
+                    } catch (error: any) {
+                        log.error(`An error has occured: ${error.toString()}`);
+                        return undefined;
+                    }
+                    const isContainerRunning =
+                        isContainerRunningOutput.stdout.trim().replaceAll("'", "") === "true";
+                    if (isContainerRunning) {
+                        try {
+                            await asyncExec(
+                                `docker stop genezio-postgres-${yamlProjectConfiguration.name} `,
+                            );
+                        } catch (error: any) {
+                            log.error(`An error has occured: ${error.toString()}`);
+                            return undefined;
+                        }
+                    }
+                }
+            }
         }
     }
 }
