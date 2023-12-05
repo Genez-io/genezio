@@ -709,6 +709,7 @@ async function startDockerDatabase(database: YamlDatabaseConfiguration, projectN
             break;
         }
         default: {
+            await stopDockerDatabase();
             log.error(
                 "Unsupported database type, please use one of the following types of databases if you want to have a local testing db: [`postgres`,`redis`]",
             );
@@ -765,14 +766,18 @@ export async function stopDockerDatabase() {
         }
         switch (yamlProjectConfiguration.database?.type) {
             case "postgres": {
+                await stopDockerContainer("redis", yamlProjectConfiguration.name);
                 await stopDockerContainer("postgres", yamlProjectConfiguration.name);
                 break;
             }
             case "redis": {
+                await stopDockerContainer("postgres", yamlProjectConfiguration.name);
                 await stopDockerContainer("redis", yamlProjectConfiguration.name);
                 break;
             }
             default: {
+                await stopDockerContainer("postgres", yamlProjectConfiguration.name);
+                await stopDockerContainer("redis", yamlProjectConfiguration.name);
                 log.error(
                     "Unsupported database type, please use one of the following types of databases if you want to have a local testing db: [`postgres`,`redis`]",
                 );
