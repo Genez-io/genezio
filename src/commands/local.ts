@@ -303,7 +303,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             continue;
         }
 
-        console.log("before http server");
         // Start HTTP Server
         const server = await startServerHttp(
             options.port,
@@ -637,6 +636,9 @@ async function runDockerContainer(
         output = await asyncExec(`docker ps -a --format "{{.Names}}" `);
     } catch (error: any) {
         log.error(`An error has occured: ${error.toString()}`);
+        log.error(
+            "This is most likely a docker error, if you want to solve it you can check out their documentation at https://docs.docker.com/ ",
+        );
         return undefined;
     }
     if (output) {
@@ -687,27 +689,71 @@ async function startDockerDatabase(database: YamlDatabaseConfiguration, projectN
         return undefined;
     }
 
-    if (database.type == "postgres") {
-        await runDockerContainer(
-            "postgres",
-            projectName,
-            `docker run -p 5432:5432 --name genezio-postgres-${projectName} -e POSTGRES_PASSWORD=mysecretpassword -d postgres `,
-            `Local Postgres URL = postgres://postgres:mysecretpassword@localhost:5432`,
-        );
-    }
-    if (database.type == "redis") {
-        await runDockerContainer(
-            "redis",
-            projectName,
-            `docker run -p 6379:6379 --name genezio-redis-${projectName} -d redis `,
-            `Local Redis URL = redis://localhost:6379`,
-        );
+    switch (database.type) {
+        case "postgres": {
+            await runDockerContainer(
+                "postgres",
+                projectName,
+                `docker run -p 5432:5432 --name genezio-postgres-${projectName} -e POSTGRES_PASSWORD=mysecretpassword -d postgres `,
+                `Local Postgres URL = postgres://postgres:mysecretpassword@localhost:5432`,
+            );
+            break;
+        }
+        case "redis": {
+            await runDockerContainer(
+                "redis",
+                projectName,
+                `docker run -p 6379:6379 --name genezio-redis-${projectName} -d redis `,
+                `Local Redis URL = redis://localhost:6379`,
+            );
+            break;
+        }
+        default: {
+            log.error(
+                "Unsupported database type, please use one of the following types of databases if you want to have a local testing db: [`postgres`,`redis`]",
+            );
+            break;
+        }
     }
 }
 
-// // async function stopDockerContainer(databaseType:string,){
-
-// }
+async function stopDockerContainer(databaseType: string, projectName: string) {
+    const containerName = `genezio-${databaseType}-${projectName}`;
+    let output;
+    try {
+        output = await asyncExec(`docker ps -a --format "{{.Names}}" `);
+    } catch (error: any) {
+        log.error(`An error has occured: ${error.toString()}`);
+        log.error(
+            "This is most likely a docker error, if you want to solve it you can check out their documentation at https://docs.docker.com/ ",
+        );
+        return undefined;
+    }
+    if (output) {
+        const containerNames = output.stdout.trim().split(`\n`);
+        if (containerNames.includes(containerName)) {
+            let isContainerRunningOutput;
+            try {
+                isContainerRunningOutput =
+                    await asyncExec(`docker inspect -f '{{.State.Running}}' ${containerName}
+                `);
+            } catch (error: any) {
+                log.error(`An error has occured: ${error.toString()}`);
+                return undefined;
+            }
+            const isContainerRunning =
+                isContainerRunningOutput.stdout.trim().replaceAll("'", "") === "true";
+            if (isContainerRunning) {
+                try {
+                    await asyncExec(`docker stop ${containerName} `);
+                } catch (error: any) {
+                    log.error(`An error has occured: ${error.toString()}`);
+                    return undefined;
+                }
+            }
+        }
+    }
+}
 
 export async function stopDockerDatabase() {
     const yamlProjectConfiguration = await getProjectConfiguration();
@@ -717,76 +763,20 @@ export async function stopDockerDatabase() {
         } catch (error: any) {
             return undefined;
         }
-        if (yamlProjectConfiguration.database?.type == "postgres") {
-            const containerName = `genezio-postgres-${yamlProjectConfiguration.name}`;
-            let output;
-            try {
-                output = await asyncExec(`docker ps -a --format "{{.Names}}" `);
-            } catch (error: any) {
-                log.error(`An error has occured: ${error.toString()}`);
-                return undefined;
+        switch (yamlProjectConfiguration.database?.type) {
+            case "postgres": {
+                await stopDockerContainer("postgres", yamlProjectConfiguration.name);
+                break;
             }
-            if (output) {
-                const containerNames = output.stdout.trim().split(`\n`);
-                if (containerNames.includes(containerName)) {
-                    let isContainerRunningOutput;
-                    try {
-                        isContainerRunningOutput =
-                            await asyncExec(`docker inspect -f '{{.State.Running}}' ${containerName}
-                        `);
-                    } catch (error: any) {
-                        log.error(`An error has occured: ${error.toString()}`);
-                        return undefined;
-                    }
-                    const isContainerRunning =
-                        isContainerRunningOutput.stdout.trim().replaceAll("'", "") === "true";
-                    if (isContainerRunning) {
-                        try {
-                            await asyncExec(
-                                `docker stop genezio-postgres-${yamlProjectConfiguration.name} `,
-                            );
-                        } catch (error: any) {
-                            log.error(`An error has occured: ${error.toString()}`);
-                            return undefined;
-                        }
-                    }
-                }
+            case "redis": {
+                await stopDockerContainer("redis", yamlProjectConfiguration.name);
+                break;
             }
-        }
-        if (yamlProjectConfiguration.database?.type == "redis") {
-            const containerName = `genezio-redis-${yamlProjectConfiguration.name}`;
-            let output;
-            try {
-                output = await asyncExec(`docker ps -a --format "{{.Names}}" `);
-            } catch (error: any) {
-                log.error(`An error has occured: ${error.toString()}`);
-                return undefined;
-            }
-            if (output) {
-                const containerNames = output.stdout.trim().split(`\n`);
-                if (containerNames.includes(containerName)) {
-                    let isContainerRunningOutput;
-                    try {
-                        isContainerRunningOutput =
-                            await asyncExec(`docker inspect -f '{{.State.Running}}' ${containerName}
-                        `);
-                    } catch (error: any) {
-                        log.error(`An error has occured: ${error.toString()}`);
-                        return undefined;
-                    }
-                    const isContainerRunning =
-                        isContainerRunningOutput.stdout.trim().replaceAll("'", "") === "true";
-                    if (isContainerRunning) {
-                        try {
-                            await asyncExec(
-                                `docker stop genezio-redis-${yamlProjectConfiguration.name} `,
-                            );
-                        } catch (error: any) {
-                            log.error(`An error has occured: ${error.toString()}`);
-                            return undefined;
-                        }
-                    }
-                }
+            default: {
+                log.error(
+                    "Unsupported database type, please use one of the following types of databases if you want to have a local testing db: [`postgres`,`redis`]",
+                );
+                break;
             }
         }
     }
