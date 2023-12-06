@@ -37,7 +37,7 @@
         "@babel/plugin-syntax-decorators": "^7.23.3",
         "@babel/preset-env": "^7.23.5",
         "@babel/preset-typescript": "^7.23.3",
-        "@babel/traverse": "^7.22.5",
+        "@babel/traverse": "^7.23.5",
         "@sentry/node": "^7.74.1",
         "@sentry/profiling-node": "^1.2.6",
         "@types/body": "^5.1.4",
