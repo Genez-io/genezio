@@ -13,7 +13,7 @@ import { generateSdkCommand } from "./commands/generateSdk.js";
 import { startLocalEnvironment } from "./commands/local.js";
 import { loginCommand } from "./commands/login.js";
 import { logoutCommand } from "./commands/logout.js";
-import { lsCommand } from "./commands/ls.js";
+import { lsCommand } from "./commands/list.js";
 import {
     BaseOptions,
     GenezioDeleteOptions,
@@ -236,7 +236,11 @@ program
     .action(async (options: BaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await logoutCommand();
+        await logoutCommand().catch((error) => {
+            log.error(error.message);
+            exit(1);
+        });
+        log.info("You are now logged out.");
         await logOutdatedVersion();
     });
 
@@ -251,7 +255,12 @@ program
     .action(async (options: BaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await accountCommand();
+        await accountCommand().catch((error) => {
+            log.error(error.message);
+            exit(1);
+        });
+
+        log.info("You are logged in.");
         await logOutdatedVersion();
     });
 
@@ -263,14 +272,23 @@ program
         "--logLevel <logLevel>",
         "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
     )
-    .option("-l, --long-listed", "List more details for each project")
+    .option("-l, --long-listed", "List more details for each project", false)
     .description(
         "Display details of your projects. You can view them all at once or display a particular one by providing its name or ID.",
     )
     .action(async (identifier = "", options: GenezioListOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await lsCommand(identifier, options);
+        await lsCommand(identifier, options).catch((error) => {
+            log.error(error.message);
+            GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_LS_ERROR,
+                errorTrace: error.message,
+                commandOptions: JSON.stringify(options),
+            });
+            exit(1);
+        });
+
         await logOutdatedVersion();
     });
 
@@ -289,7 +307,15 @@ program
     .action(async (projectId = "", options: GenezioDeleteOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await deleteCommand(projectId, options);
+        await deleteCommand(projectId, options).catch((error) => {
+            log.error(error.message);
+            GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_DELETE_PROJECT_ERROR,
+                errorTrace: error.toString(),
+            });
+            exit(1);
+        });
+
         await logOutdatedVersion();
     });
 
@@ -316,7 +342,7 @@ program
     .action(async (projectName = "", options: GenezioSdkOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await generateSdkCommand(projectName, options).catch((error: Error) => {
+        await generateSdkCommand(projectName, options).catch((error) => {
             log.error(error.message);
             GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK_ERROR,

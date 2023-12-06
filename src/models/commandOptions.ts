@@ -20,19 +20,19 @@ export interface GenezioDeployOptions extends BaseOptions {
 }
 
 export interface GenezioListOptions extends BaseOptions {
-    longListed?: boolean;
+    longListed: boolean;
 }
 
 export interface GenezioDeleteOptions extends BaseOptions {
-    force?: boolean;
+    force: boolean;
 }
 
 export interface GenezioSdkOptions extends BaseOptions {
-    source?: string;
-    language?: string;
-    path?: string;
-    stage?: string;
-    region?: string;
+    source: string;
+    language: string;
+    path: string;
+    stage: string;
+    region: string;
 }
 
 export interface GenezioLinkOptions extends BaseOptions {

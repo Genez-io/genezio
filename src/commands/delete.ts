@@ -1,29 +1,26 @@
 import { AxiosError } from "axios";
 import { Spinner } from "cli-spinner";
 import log from "loglevel";
-import { exit } from "process";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import deleteProject from "../requests/deleteProject.js";
 import listProjects from "../requests/listProjects.js";
 import { getAuthToken } from "../utils/accounts.js";
 import { askQuestion } from "../utils/prompt.js";
+import { GenezioDeleteOptions } from "../models/commandOptions.js";
 
-export async function deleteCommand(projectId: string, options: any) {
+export async function deleteCommand(projectId: string, options: GenezioDeleteOptions) {
     // check if user is logged in
     const authToken = await getAuthToken();
     if (!authToken) {
-        log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-        exit(1);
+        throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
 
     const result = await deleteProjectHandler(projectId, options.force).catch(
         (error: AxiosError) => {
             if (error.response?.status == 401) {
-                log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-            } else {
-                log.error(error.message);
+                throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
             }
-            exit(1);
+            throw error;
         },
     );
 
@@ -34,18 +31,21 @@ export async function deleteCommand(projectId: string, options: any) {
     }
 }
 
-async function deleteProjectHandler(projectId: string, forced: boolean) {
+async function deleteProjectHandler(projectId: string, forced: boolean): Promise<boolean> {
     // show prompt if no project id is selected
     if (typeof projectId === "string" && projectId.trim().length === 0) {
         const spinner = new Spinner("%s  ");
         spinner.setSpinnerString("|/-\\");
         spinner.start();
-        const projectsJson = await listProjects();
+        const projectsJson = await listProjects().catch((error) => {
+            throw error;
+        });
+
         spinner.stop();
         // hack to add a newline  after the spinner
         log.info("");
 
-        const projects = projectsJson.map(function (project: any, index: any) {
+        const projects = projectsJson.map(function (project: any, index: number) {
             return `[${1 + index}]: Project name: ${project.name}, Region: ${project.region}, ID: ${
                 project.id
             }`;
@@ -86,6 +86,9 @@ async function deleteProjectHandler(projectId: string, forced: boolean) {
         }
     }
 
-    const status = await deleteProject(projectId);
+    const status = await deleteProject(projectId).catch((error) => {
+        throw error;
+    });
+
     return status;
 }
