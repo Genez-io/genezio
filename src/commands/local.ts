@@ -688,7 +688,7 @@ async function startDockerDatabase(database: YamlDatabaseConfiguration, projectN
         log.error("An error has occured: ", error.toString());
         log.error(
             "\x1b[33m%s\x1b[0m",
-            "Docker not found, if you want to have a local database for testing, you need to install docker. Go to https://www.docker.com/products/docker-desktop/ to install docker",
+            "Docker CLI not found, if you want to have a local database for testing, you need to install docker. Go to https://www.docker.com/products/docker-desktop/ to install docker",
         );
         printAdaptiveLog(`Failed starting local docker ${database.type} database`, "");
         return undefined;
