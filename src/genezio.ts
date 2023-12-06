@@ -10,7 +10,6 @@ import { addClassCommand } from "./commands/addClass.js";
 import { deleteCommand } from "./commands/delete.js";
 import { deployCommand } from "./commands/deploy.js";
 import { generateSdkCommand } from "./commands/generateSdk.js";
-import { initCommand } from "./commands/init.js";
 import { startLocalEnvironment } from "./commands/local.js";
 import { loginCommand } from "./commands/login.js";
 import { logoutCommand } from "./commands/logout.js";
@@ -107,29 +106,6 @@ program
         "afterAll",
         `\nUse 'genezio [command] --help' for more information about a command.`,
     );
-
-// genezio init command
-program
-    .command("init")
-    .argument("[path]", "Path to the directory where the project will be created.")
-    .option(
-        "--logLevel <logLevel>",
-        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
-    )
-    .description("Create the initial configuration file for a genezio project.")
-    .action(async (path: string, options: any) => {
-        setDebuggingLoggerLogLevel(options.logLevel);
-
-        await initCommand(path).catch((error: Error) => {
-            log.error(error.message);
-            GenezioTelemetry.sendEvent({
-                eventType: TelemetryEventTypes.GENEZIO_INIT_ERROR,
-                errorTrace: error.message,
-            });
-            exit(1);
-        });
-        await logOutdatedVersion();
-    });
 
 // genezio login command
 program
