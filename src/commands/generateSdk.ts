@@ -99,9 +99,7 @@ export async function generateSdkCommand(projectName: string, options: GenezioSd
                         name: answers.project.name,
                         region: answers.project.region,
                     });
-                    await configuration.writeToFile(source).catch((error) => {
-                        throw error;
-                    });
+                    await configuration.writeToFile(source);
                 } else {
                     exit(1);
                 }
@@ -112,11 +110,7 @@ export async function generateSdkCommand(projectName: string, options: GenezioSd
         const name = configuration.name;
         const configurationRegion = configuration.region;
 
-        await generateRemoteSdkHandler(language, sdkPath, name, stage, configurationRegion).catch(
-            (error: Error) => {
-                throw error;
-            },
-        );
+        await generateRemoteSdkHandler(language, sdkPath, name, stage, configurationRegion);
     }
 
     log.info("Your SDK has been generated successfully in " + sdkPath + "");
@@ -130,9 +124,7 @@ async function generateRemoteSdkHandler(
     region: string,
 ) {
     // get all project classes
-    const projects = await listProjects(0).catch((error) => {
-        throw error;
-    });
+    const projects = await listProjects(0);
 
     // check if the project exists with the configuration project name, region
     const project = projects.find(
@@ -140,9 +132,7 @@ async function generateRemoteSdkHandler(
     );
 
     // get project info
-    const projectEnv = await getProjectEnvFromProject(project.id, stage).catch((error) => {
-        throw error;
-    });
+    const projectEnv = await getProjectEnvFromProject(project.id, stage);
 
     // if the project doesn't exist, throw an error
     if (!project || !projectEnv) {

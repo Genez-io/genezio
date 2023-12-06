@@ -37,9 +37,7 @@ async function deleteProjectHandler(projectId: string, forced: boolean): Promise
         const spinner = new Spinner("%s  ");
         spinner.setSpinnerString("|/-\\");
         spinner.start();
-        const projectsJson = await listProjects().catch((error) => {
-            throw error;
-        });
+        const projectsJson = await listProjects();
 
         spinner.stop();
         // hack to add a newline  after the spinner
@@ -86,9 +84,7 @@ async function deleteProjectHandler(projectId: string, forced: boolean): Promise
         }
     }
 
-    const status = await deleteProject(projectId).catch((error) => {
-        throw error;
-    });
+    const status = await deleteProject(projectId);
 
     return status;
 }
