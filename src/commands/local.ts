@@ -22,7 +22,7 @@ import { BundlerInterface } from "../bundlers/bundler.interface.js";
 import { NodeJsLocalBundler } from "../bundlers/node/nodeJsLocalBundler.js";
 import { BundlerComposer } from "../bundlers/bundlerComposer.js";
 import { genezioRequestParser } from "../utils/genezioRequestParser.js";
-import { debugLogger } from "../utils/logging.js";
+import { debugLogger, printAdaptiveLog } from "../utils/logging.js";
 import { rectifyCronString } from "../utils/rectifyCronString.js";
 import cron from "node-cron";
 import {
@@ -96,8 +96,13 @@ export async function prepareLocalEnvironment(
             if (yamlProjectConfiguration.classes!.length === 0) {
                 throw new Error(GENEZIO_NO_CLASSES_FOUND);
             }
+
             // Start docker container
             if (yamlProjectConfiguration.database) {
+                printAdaptiveLog(
+                    `Starting local docker ${yamlProjectConfiguration.database?.type} database`,
+                    "start",
+                );
                 await startDockerDatabase(
                     yamlProjectConfiguration.database,
                     yamlProjectConfiguration.name,
@@ -624,17 +629,13 @@ function getBundler(classConfiguration: ClassConfiguration): BundlerInterface | 
     return bundler;
 }
 
-async function runDockerContainer(
-    databaseType: string,
-    projectName: string,
-    runCommand: string,
-    connectionURL: string,
-) {
+async function runDockerContainer(databaseType: string, projectName: string, runCommand: string) {
     const containerName = `genezio-${databaseType}-${projectName}`;
     let output;
     try {
         output = await asyncExec(`docker ps -a --format "{{.Names}}" `);
     } catch (error: any) {
+        printAdaptiveLog(`Failed starting local docker ${databaseType} database`, "");
         log.error(`An error has occured: ${error.toString()}`);
         log.error(
             "This is most likely a docker error, if you want to solve it you can check out their documentation at https://docs.docker.com/ ",
@@ -650,6 +651,7 @@ async function runDockerContainer(
                     await asyncExec(`docker inspect -f '{{.State.Running}}' ${containerName}
                 `);
             } catch (error: any) {
+                printAdaptiveLog(`Failed starting local docker ${databaseType} database`, "");
                 log.error(`An error has occured: ${error.toString()}`);
                 return undefined;
             }
@@ -661,6 +663,7 @@ async function runDockerContainer(
                     await asyncExec(`docker start ${containerName}
                         `);
                 } catch (error: any) {
+                    printAdaptiveLog(`Failed starting local docker ${databaseType} database`, "");
                     log.error(`An error has occured: ${error.toString()}`);
                     return undefined;
                 }
@@ -669,12 +672,13 @@ async function runDockerContainer(
             try {
                 await asyncExec(runCommand);
             } catch (error: any) {
+                printAdaptiveLog(`Failed starting local docker ${databaseType} database`, "");
                 log.error(`An error has occured: ${error.toString()}`);
                 return undefined;
             }
         }
     }
-    log.info(connectionURL);
+    printAdaptiveLog(`Completed starting local docker ${databaseType} database`, "end");
 }
 
 async function startDockerDatabase(database: YamlDatabaseConfiguration, projectName: string) {
@@ -686,6 +690,7 @@ async function startDockerDatabase(database: YamlDatabaseConfiguration, projectN
             "\x1b[33m%s\x1b[0m",
             "Docker not found, if you want to have a local database for testing, you need to install docker. Go to https://www.docker.com/products/docker-desktop/ to install docker",
         );
+        printAdaptiveLog(`Failed starting local docker ${database.type} database`, "");
         return undefined;
     }
 
@@ -695,7 +700,9 @@ async function startDockerDatabase(database: YamlDatabaseConfiguration, projectN
                 "postgres",
                 projectName,
                 `docker run -p 5432:5432 --name genezio-postgres-${projectName} -e POSTGRES_PASSWORD=mysecretpassword -d postgres `,
-                `Local Postgres URL = postgres://postgres:mysecretpassword@localhost:5432`,
+            );
+            log.info(
+                `Your local postgres database is up and running.\nYou can connect to your postgres instance using the following URL: at postgres://postgres:mysecretpassword@localhost:5432`,
             );
             break;
         }
@@ -704,12 +711,15 @@ async function startDockerDatabase(database: YamlDatabaseConfiguration, projectN
                 "redis",
                 projectName,
                 `docker run -p 6379:6379 --name genezio-redis-${projectName} -d redis `,
-                `Local Redis URL = redis://localhost:6379`,
+            );
+            log.info(
+                `Your local redis database is up and running.\nYou can connect to the your redis instance using the following URL: redis://localhost:6379`,
             );
             break;
         }
         default: {
             await stopDockerDatabase();
+            printAdaptiveLog(`Failed starting local docker ${database.type} database`, "");
             log.error(
                 "Unsupported database type, please use one of the following types of databases if you want to have a local testing db: [`postgres`,`redis`]",
             );
