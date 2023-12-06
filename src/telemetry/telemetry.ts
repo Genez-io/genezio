@@ -63,7 +63,7 @@ export class GenezioTelemetry {
     }
 
     public static async sendEvent(eventRequest: EventRequest): Promise<void> {
-        if (process.env.GENEZIO_NO_TELEMETRY == "1") {
+        if (process.env["GENEZIO_NO_TELEMETRY"] == "1") {
             debugLogger.debug(`[GenezioTelemetry]`, `Telemetry disabled by user`);
             return;
         }
@@ -102,7 +102,7 @@ export class GenezioTelemetry {
             timeZone: timeZone,
             genezioVersion: version,
             commandOptions: eventRequest.commandOptions || "",
-            isCI: process.env.CI ? true : false,
+            isCI: process.env["CI"] ? true : false,
             nodeVersion: process.version,
         };
 
