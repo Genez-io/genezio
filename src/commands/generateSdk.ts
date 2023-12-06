@@ -8,7 +8,7 @@ import {
     TriggerType,
     YamlProjectConfiguration,
 } from "../models/yamlProjectConfiguration.js";
-import getProjectInfo, { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
+import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import listProjects from "../requests/listProjects.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
 import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
@@ -24,8 +24,14 @@ import { mapDbAstToSdkGeneratorAst } from "../generateSdk/utils/mapDbAstToFullAs
 import { generateSdk } from "../generateSdk/sdkGeneratorHandler.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import inquirer, { Answers } from "inquirer";
+import { GenezioSdkOptions } from "../models/commandOptions.js";
 
-export async function generateSdkCommand(projectName: string, options: any) {
+export async function generateSdkCommand(projectName: string, options: GenezioSdkOptions) {
+    GenezioTelemetry.sendEvent({
+        eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK,
+        commandOptions: JSON.stringify(options),
+    });
+
     const language = options.language;
     const sdkPath = options.path;
     const stage = options.stage;
@@ -33,30 +39,18 @@ export async function generateSdkCommand(projectName: string, options: any) {
 
     // check if language is supported using languages array
     if (!languages.includes(language)) {
-        log.error(
+        throw new Error(
             `The language you specified is not supported. Please use one of the following: ${languages}.`,
         );
-        exit(1);
     }
 
     if (projectName) {
-        GenezioTelemetry.sendEvent({
-            eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK,
-            commandOptions: JSON.stringify(options),
-        });
         await generateRemoteSdkHandler(language, sdkPath, projectName, stage, region).catch(
             (error: AxiosError) => {
                 if (error.response?.status == 401) {
-                    log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-                } else {
-                    GenezioTelemetry.sendEvent({
-                        eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK_ERROR,
-                        errorTrace: error.message,
-                        commandOptions: JSON.stringify(options),
-                    });
-                    log.error(error.message);
+                    throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
                 }
-                exit(1);
+                throw error;
             },
         );
     } else {
@@ -115,21 +109,8 @@ export async function generateSdkCommand(projectName: string, options: any) {
         }
         const name = configuration.name;
         const configurationRegion = configuration.region;
-        GenezioTelemetry.sendEvent({
-            eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK,
-            commandOptions: JSON.stringify(options),
-        });
-        await generateRemoteSdkHandler(language, sdkPath, name, stage, configurationRegion).catch(
-            (error: Error) => {
-                GenezioTelemetry.sendEvent({
-                    eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK_ERROR,
-                    errorTrace: error.message,
-                    commandOptions: JSON.stringify(options),
-                });
-                log.error(error.message);
-                exit(1);
-            },
-        );
+
+        await generateRemoteSdkHandler(language, sdkPath, name, stage, configurationRegion);
     }
 
     log.info("Your SDK has been generated successfully in " + sdkPath + "");
@@ -143,9 +124,7 @@ async function generateRemoteSdkHandler(
     region: string,
 ) {
     // get all project classes
-    const projects = await listProjects(0).catch((error: any) => {
-        throw error;
-    });
+    const projects = await listProjects(0);
 
     // check if the project exists with the configuration project name, region
     const project = projects.find(

@@ -10,12 +10,20 @@ import { addClassCommand } from "./commands/addClass.js";
 import { deleteCommand } from "./commands/delete.js";
 import { deployCommand } from "./commands/deploy.js";
 import { generateSdkCommand } from "./commands/generateSdk.js";
-import { initCommand } from "./commands/init.js";
 import { startLocalEnvironment } from "./commands/local.js";
 import { loginCommand } from "./commands/login.js";
 import { logoutCommand } from "./commands/logout.js";
-import { lsCommand } from "./commands/ls.js";
-import { GenezioDeployOptions, GenezioLocalOptions } from "./models/commandOptions.js";
+import { lsCommand } from "./commands/list.js";
+import {
+    BaseOptions,
+    GenezioDeleteOptions,
+    GenezioDeployOptions,
+    GenezioLinkOptions,
+    GenezioListOptions,
+    GenezioLocalOptions,
+    GenezioSdkOptions,
+    GenezioUnlinkOptions,
+} from "./models/commandOptions.js";
 import currentGenezioVersion, { logOutdatedVersion } from "./utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js";
 import { genezioCommand } from "./commands/superGenezio.js";
@@ -108,29 +116,6 @@ program
         `\nUse 'genezio [command] --help' for more information about a command.`,
     );
 
-// genezio init command
-program
-    .command("init")
-    .argument("[path]", "Path to the directory where the project will be created.")
-    .option(
-        "--logLevel <logLevel>",
-        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
-    )
-    .description("Create the initial configuration file for a genezio project.")
-    .action(async (path: string, options: any) => {
-        setDebuggingLoggerLogLevel(options.logLevel);
-
-        await initCommand(path).catch((error: Error) => {
-            log.error(error.message);
-            GenezioTelemetry.sendEvent({
-                eventType: TelemetryEventTypes.GENEZIO_INIT_ERROR,
-                errorTrace: error.message,
-            });
-            exit(1);
-        });
-        await logOutdatedVersion();
-    });
-
 // genezio login command
 program
     .command("login")
@@ -140,10 +125,10 @@ program
         "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
     )
     .description("Authenticate with genezio platform to deploy your code.")
-    .action(async (accessToken = "", options: any) => {
+    .action(async (accessToken = "", options: BaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await loginCommand(accessToken).catch((error: Error) => {
+        await loginCommand(accessToken).catch((error) => {
             log.error(error.message);
             GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_LOGIN_ERROR,
@@ -151,6 +136,7 @@ program
             });
             exit(1);
         });
+
         await logOutdatedVersion();
         exit(0);
     });
@@ -193,7 +179,7 @@ program
     .argument("<classPath>", "Path of the class you want to add.")
     .argument("[<classType>]", "The type of the class you want to add. [http, jsonrpc, cron]")
     .description("Add a new class to the 'genezio.yaml' file.")
-    .action(async (classPath: string, classType: string, options: any) => {
+    .action(async (classPath: string, classType: string, options: BaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
         await addClassCommand(classPath, classType).catch((error: Error) => {
@@ -204,6 +190,7 @@ program
             });
             exit(1);
         });
+
         await logOutdatedVersion();
     });
 
@@ -224,7 +211,7 @@ program
     .action(async (options: GenezioLocalOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await startLocalEnvironment(options).catch((error: any) => {
+        await startLocalEnvironment(options).catch((error) => {
             if (error.message) {
                 log.error(error.message);
                 GenezioTelemetry.sendEvent({
@@ -246,10 +233,14 @@ program
         "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
     )
     .description("Logout from Genezio platform.")
-    .action(async (options: any) => {
+    .action(async (options: BaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await logoutCommand();
+        await logoutCommand().catch((error) => {
+            log.error(error.message);
+            exit(1);
+        });
+        log.info("You are now logged out.");
         await logOutdatedVersion();
     });
 
@@ -261,10 +252,15 @@ program
         "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
     )
     .description("Display information about the current account.")
-    .action(async (options: any) => {
+    .action(async (options: BaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await accountCommand();
+        await accountCommand().catch((error) => {
+            log.error(error.message);
+            exit(1);
+        });
+
+        log.info("You are logged in.");
         await logOutdatedVersion();
     });
 
@@ -276,14 +272,23 @@ program
         "--logLevel <logLevel>",
         "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
     )
-    .option("-l, --long-listed", "List more details for each project")
+    .option("-l, --long-listed", "List more details for each project", false)
     .description(
         "Display details of your projects. You can view them all at once or display a particular one by providing its name or ID.",
     )
-    .action(async (identifier = "", options: any) => {
+    .action(async (identifier = "", options: GenezioListOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await lsCommand(identifier, options);
+        await lsCommand(identifier, options).catch((error) => {
+            log.error(error.message);
+            GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_LS_ERROR,
+                errorTrace: error.message,
+                commandOptions: JSON.stringify(options),
+            });
+            exit(1);
+        });
+
         await logOutdatedVersion();
     });
 
@@ -299,10 +304,18 @@ program
     .description(
         "Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs.",
     )
-    .action(async (projectId = "", options: any) => {
+    .action(async (projectId = "", options: GenezioDeleteOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await deleteCommand(projectId, options);
+        await deleteCommand(projectId, options).catch((error) => {
+            log.error(error.message);
+            GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_DELETE_PROJECT_ERROR,
+                errorTrace: error.toString(),
+            });
+            exit(1);
+        });
+
         await logOutdatedVersion();
     });
 
@@ -326,10 +339,10 @@ program
     .description(
         "Generate an SDK corresponding to a deployed or local project.\n\nProvide the project name to generate an SDK for a deployed project.\nEx: genezio sdk my-project --stage prod --region us-east-1\n\nProvide the path to the genezio.yaml on your disk to load project details (name and region) from that file instead of command arguments.\nEx: genezio sdk --source ../my-project",
     )
-    .action(async (projectName = "", options: any) => {
+    .action(async (projectName = "", options: GenezioSdkOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await generateSdkCommand(projectName, options).catch((error: Error) => {
+        await generateSdkCommand(projectName, options).catch((error) => {
             log.error(error.message);
             GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK_ERROR,
@@ -338,6 +351,7 @@ program
             });
             exit(1);
         });
+
         await logOutdatedVersion();
     });
 
@@ -355,8 +369,10 @@ program
     .description(
         "Set this path as the spot for your frontend app within a project that uses multiple repositories. Doing this helps 'genezio local' figure out by itself where to create the SDK.",
     )
-    .action(async (options: any) => {
-        await linkCommand(options.projectName, options.region).catch((error: Error) => {
+    .action(async (options: GenezioLinkOptions) => {
+        setDebuggingLoggerLogLevel(options.logLevel);
+
+        await linkCommand(options.projectName, options.region).catch((error) => {
             log.error(error.message);
             log.error(
                 "Error: Command execution failed. Please ensure you are running this command from a directory containing 'genezio.yaml' or provide the '--projectName <name>' and '--region <region>' flags.",
@@ -364,11 +380,13 @@ program
             exit(1);
         });
         log.info("Successfully linked the path to your genezio project.");
+
+        await logOutdatedVersion();
     });
 
 program
     .command("unlink")
-    .option("--all", "Remove all links.")
+    .option("--all", "Remove all links.", false)
     .option(
         "--projectName <projectName>",
         "The name of the project that you want to communicate with. If --all is used, this option is ignored.",
@@ -380,21 +398,23 @@ program
     .description(
         "Clear the previously set path for your frontend app, which is useful when managing a project with multiple repositories. This reset allows 'genezio local' to stop automatically generating the SDK in that location.",
     )
-    .action(async (options: any) => {
-        await unlinkCommand(options.all, options.projectName, options.region).catch(
-            (error: Error) => {
-                log.error(error.message);
-                log.error(
-                    "Error: Command execution failed. Please ensure you are running this command from a directory containing 'genezio.yaml' or provide the '--projectName <name>' and '--region <region>' flags.",
-                );
-                exit(1);
-            },
-        );
+    .action(async (options: GenezioUnlinkOptions) => {
+        setDebuggingLoggerLogLevel(options.logLevel);
+
+        await unlinkCommand(options.all, options.projectName, options.region).catch((error) => {
+            log.error(error.message);
+            log.error(
+                "Error: Command execution failed. Please ensure you are running this command from a directory containing 'genezio.yaml' or provide the '--projectName <name>' and '--region <region>' flags.",
+            );
+            exit(1);
+        });
         if (options.all) {
             log.info("Successfully unlinked all paths to your genezio projects.");
             return;
         }
         log.info("Successfully unlinked the path to your genezio project.");
+
+        await logOutdatedVersion();
     });
 
 export default program;
