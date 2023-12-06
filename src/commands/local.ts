@@ -702,7 +702,7 @@ async function startDockerDatabase(database: YamlDatabaseConfiguration, projectN
                 `docker run -p 5432:5432 --name genezio-postgres-${projectName} -e POSTGRES_PASSWORD=mysecretpassword -d postgres `,
             );
             log.info(
-                `Your local postgres database is up and running.\nYou can connect to your postgres instance using the following URL: at postgres://postgres:mysecretpassword@localhost:5432`,
+                `Your local postgres database is up and running.\nYou can connect to your postgres instance using the following URL: postgres://postgres:mysecretpassword@localhost:5432`,
             );
             break;
         }
