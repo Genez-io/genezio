@@ -2,9 +2,9 @@ import axios from "./axios.js";
 import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
-import log from "loglevel";
+import { ProjectDetails } from "./models.js";
 
-export default async function getProjectInfo(projectId: string): Promise<any> {
+export default async function getProjectInfo(projectId: string): Promise<ProjectDetails> {
     const authToken = await getAuthToken();
 
     if (!authToken) {
@@ -13,7 +13,7 @@ export default async function getProjectInfo(projectId: string): Promise<any> {
         );
     }
 
-    const response: any = await axios({
+    const response = await axios({
         method: "GET",
         url: `${BACKEND_ENDPOINT}/projects/${projectId}`,
         headers: {
@@ -29,8 +29,7 @@ export default async function getProjectInfo(projectId: string): Promise<any> {
     }
 
     if (response.data.status !== "ok") {
-        log.error("Unknown error in getting the project info from the server.");
-        return null;
+        throw new Error("Unknown error in getting the project info from the server.");
     }
 
     return response.data.project;
@@ -39,7 +38,7 @@ export default async function getProjectInfo(projectId: string): Promise<any> {
 export async function getProjectEnvFromProject(projectId: string, stageName: string) {
     const completeProjectInfo = await getProjectInfo(projectId);
     const projectEnv = completeProjectInfo.projectEnvs.find(
-        (projectEnv: any) => projectEnv.name == stageName,
+        (projectEnv) => projectEnv.name == stageName,
     );
 
     return projectEnv;

@@ -260,8 +260,6 @@ export async function deployClasses(
                 log.error("Syntax error:");
                 log.error(`Reason Code: ${error.reasonCode}`);
                 log.error(`File: ${error.path}:${error.loc.line}:${error.loc.column}`);
-
-                throw error;
             }
 
             throw error;
@@ -465,6 +463,10 @@ export async function deployClasses(
                 const envVars = await readEnvironmentVariablesFile(envFile);
                 const projectEnv = await getProjectEnvFromProject(projectId, stage);
 
+                if (!projectEnv) {
+                    throw new Error("Project environment not found.");
+                }
+
                 // Upload environment variables to the project
                 await setEnvironmentVariables(projectId, projectEnv.id, envVars)
                     .then(() => {
@@ -500,6 +502,10 @@ export async function deployClasses(
                 // read envVars from file
                 const envVars = await readEnvironmentVariablesFile(envFile);
                 const projectEnv = await getProjectEnvFromProject(projectId, stage);
+
+                if (!projectEnv) {
+                    throw new Error("Project environment not found.");
+                }
 
                 // get remoteEnvVars from project
                 const remoteEnvVars = await getEnvironmentVariables(projectId, projectEnv.id);
