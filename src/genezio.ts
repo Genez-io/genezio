@@ -32,7 +32,6 @@ import { getProjectConfiguration } from "./utils/configuration.js";
 import { setPackageManager } from "./packageManagers/packageManager.js";
 import { PackageManagerType } from "./models/yamlProjectConfiguration.js";
 
-let currentCommand: string | undefined;
 const program = new Command();
 
 // logging setup
@@ -80,7 +79,7 @@ if (process.argv.length === 2) {
     GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_COMMAND,
     });
-    currentCommand = "genezio";
+    process.env.CURRENT_COMMAND = "genezio";
 
     await genezioCommand().catch((error: Error) => {
         log.error(error.message);
@@ -110,7 +109,7 @@ program
             exit(0);
         } else {
             log.info("");
-            currentCommand = "help";
+            process.env.CURRENT_COMMAND = "help";
             program.outputHelp();
         }
     })
@@ -118,8 +117,6 @@ program
         "afterAll",
         `\nUse 'genezio [command] --help' for more information about a command.`,
     );
-
-
 
 // genezio login command
 program
@@ -132,9 +129,8 @@ program
     .description("Authenticate with genezio platform to deploy your code.")
     .action(async (accessToken = "", options: BaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
-        currentCommand = "login";
+        process.env.CURRENT_COMMAND = "login";
         await loginCommand(accessToken).catch((error: Error) => {
-
             log.error(error.message);
             GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_LOGIN_ERROR,
@@ -170,7 +166,7 @@ Use --backend to deploy only the backend application.`,
     )
     .action(async (options: GenezioDeployOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
-        currentCommand = "deploy";
+        process.env.CURRENT_COMMAND = "deploy";
         await deployCommand(options);
         await logOutdatedVersion();
     });
@@ -187,7 +183,7 @@ program
     .description("Add a new class to the 'genezio.yaml' file.")
     .action(async (classPath: string, classType: string, options: BaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
-        currentCommand = "addClass";
+        process.env.CURRENT_COMMAND = "addClass";
         await addClassCommand(classPath, classType).catch((error: Error) => {
             log.error(error.message);
             GenezioTelemetry.sendEvent({
@@ -216,7 +212,7 @@ program
     .description("Run a local environment for your functions.")
     .action(async (options: GenezioLocalOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
-        currentCommand = "local";
+        process.env.CURRENT_COMMAND = "local";
         await startLocalEnvironment(options).catch((error: any) => {
             if (error.message) {
                 log.error(error.message);
@@ -241,7 +237,7 @@ program
     .description("Logout from Genezio platform.")
     .action(async (options: BaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
-        currentCommand = "logout";
+        process.env.CURRENT_COMMAND = "logout";
         await logoutCommand().catch((error) => {
             log.error(error.message);
             exit(1);
@@ -260,7 +256,7 @@ program
     .description("Display information about the current account.")
     .action(async (options: BaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
-        currentCommand = "account";
+        process.env.CURRENT_COMMAND = "account";
         await accountCommand().catch((error) => {
             log.error(error.message);
             exit(1);
@@ -286,7 +282,7 @@ program
     .action(async (identifier = "", options: GenezioListOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        currentCommand = "account";
+        process.env.CURRENT_COMMAND = "account";
         await lsCommand(identifier, options).catch((error) => {
             log.error(error.message);
             GenezioTelemetry.sendEvent({
@@ -315,7 +311,7 @@ program
     .action(async (projectId = "", options: GenezioDeleteOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        currentCommand = "delete";
+        process.env.CURRENT_COMMAND = "delete";
         await deleteCommand(projectId, options).catch((error) => {
             log.error(error.message);
             GenezioTelemetry.sendEvent({
@@ -350,7 +346,7 @@ program
     )
     .action(async (projectName = "", options: GenezioSdkOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
-        currentCommand = "sdk";
+        process.env.CURRENT_COMMAND = "sdk";
         await generateSdkCommand(projectName, options).catch((error: Error) => {
             log.error(error.message);
             GenezioTelemetry.sendEvent({
@@ -381,7 +377,7 @@ program
 
     .action(async (options: GenezioLinkOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
-        currentCommand = "link";
+        process.env.CURRENT_COMMAND = "link";
         await linkCommand(options.projectName, options.region).catch((error) => {
             log.error(error.message);
             log.error(
@@ -411,7 +407,7 @@ program
 
     .action(async (options: GenezioUnlinkOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
-        currentCommand = "unlink";
+        process.env.CURRENT_COMMAND = "unlink";
         await unlinkCommand(options.all, options.projectName, options.region).catch((error) => {
             log.error(error.message);
             log.error(
@@ -427,5 +423,4 @@ program
 
         await logOutdatedVersion();
     });
-export { currentCommand };
 export default program;

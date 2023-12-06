@@ -1,7 +1,6 @@
 #! /usr/bin/env node
 
 import program from "./genezio.js";
-import { currentCommand } from "./genezio.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js";
 import { cleanupTemporaryFolders } from "./utils/file.js";
 import { SENTRY_DSN } from "./constants.js";
@@ -33,7 +32,7 @@ process.on("SIGINT", async () => {
         errorTrace: "",
         commandOptions: "",
     });
-    if (currentCommand == "local") {
+    if (process.env.CURRENT_COMMAND == "local") {
         await stopDockerDatabase();
     }
 
@@ -41,7 +40,7 @@ process.on("SIGINT", async () => {
     process.exit();
 });
 process.on("exit", async () => {
-    if (currentCommand == "local") {
+    if (process.env.CURRENT_COMMAND == "local") {
         await stopDockerDatabase();
     }
     await cleanupTemporaryFolders();
