@@ -2,37 +2,29 @@ import { AxiosError } from "axios";
 import { Spinner } from "cli-spinner";
 import log from "loglevel";
 import moment from "moment";
-import { exit } from "process";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import listProjects from "../requests/listProjects.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import { getAuthToken } from "../utils/accounts.js";
+import { GenezioListOptions } from "../models/commandOptions.js";
 
-export async function lsCommand(identifier: string, options: any) {
-    // check if user is logged in
+export async function lsCommand(identifier: string, options: GenezioListOptions) {
     GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_LS,
         commandOptions: JSON.stringify(options),
     });
 
+    // check if user is logged in
     const authToken = await getAuthToken();
     if (!authToken) {
-        log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-        exit(1);
+        throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
 
     await lsHandler(identifier, options.longListed).catch((error: AxiosError) => {
         if (error.response?.status === 401) {
-            log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-        } else {
-            GenezioTelemetry.sendEvent({
-                eventType: TelemetryEventTypes.GENEZIO_LS_ERROR,
-                errorTrace: error.message,
-                commandOptions: JSON.stringify(options),
-            });
-            log.error(error.message);
+            throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
         }
-        exit(1);
+        throw error;
     });
 }
 
@@ -57,7 +49,7 @@ async function lsHandler(identifier: string, l: boolean) {
             return;
         }
     }
-    projectsJson.forEach(function (project: any, index: any) {
+    projectsJson.forEach(function (project: any, index: number) {
         if (l) {
             log.info(
                 `[${1 + index}]: Project name: ${project.name},\n\tRegion: ${

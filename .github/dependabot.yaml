@@ -15,6 +15,9 @@ updates:
           time: "10:00"
           timezone: Europe/Bucharest
       versioning-strategy: increase
+      ignore:
+          - dependency-name: "esbuild"
+            versions: [">= 0.18.0"]
     - package-ecosystem: "gitsubmodule"
       target-branch: "master"
       directory: "/"

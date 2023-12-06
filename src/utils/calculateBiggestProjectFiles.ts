@@ -32,7 +32,7 @@ export async function calculateBiggestFiles(
     });
     await Promise.all(promises);
 
-    allNonJsFilesPaths.forEach((fileInfo: any) => {
+    allNonJsFilesPaths.forEach((fileInfo) => {
         const stats = fs.statSync(fileInfo.path);
 
         if (!stats.isFile()) {

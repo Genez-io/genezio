@@ -6,18 +6,18 @@ import { AbortController } from "node-abort-controller";
 import version from "../utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import log from "loglevel";
+import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 
 export default async function deleteProject(projectId: string): Promise<boolean> {
     GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_DELETE_PROJECT,
     });
+
     printAdaptiveLog("Checking your credentials", "start");
     const authToken = await getAuthToken();
     if (!authToken) {
         printAdaptiveLog("Checking your credentials", "error");
-        throw new Error(
-            "You are not logged in. Run 'genezio login' before you deploy your function.",
-        );
+        throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
     printAdaptiveLog("Checking your credentials", "end");
 
@@ -32,10 +32,6 @@ export default async function deleteProject(projectId: string): Promise<boolean>
         },
     }).catch(async (error: Error) => {
         controller.abort();
-        GenezioTelemetry.sendEvent({
-            eventType: TelemetryEventTypes.GENEZIO_DELETE_PROJECT_ERROR,
-            errorTrace: error.toString(),
-        });
         printAdaptiveLog(await messagePromise, "error");
         debugLogger.debug("Error received", error);
         throw error;
@@ -47,10 +43,6 @@ export default async function deleteProject(projectId: string): Promise<boolean>
     debugLogger.debug("Response received", response.data);
 
     if (response.data?.error?.message) {
-        GenezioTelemetry.sendEvent({
-            eventType: TelemetryEventTypes.GENEZIO_DELETE_PROJECT_ERROR,
-            errorTrace: response.data.error.message,
-        });
         throw new Error(response.data.error.message);
     }
 
