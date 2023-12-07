@@ -115,7 +115,7 @@ Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFix
             }
 
             debugLogger.debug(`Get the presigned URL for class name ${element.name}.`);
-            const resultPresignedUrl = await getPresignedURL(
+            const presignedUrl = await getPresignedURL(
                 projectConfiguration.region,
                 "genezioDeploy.zip",
                 projectConfiguration.name,
@@ -131,19 +131,15 @@ Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFix
 
             const bar = multibar.create(100, 0, { filename: element.name });
             debugLogger.debug(`Upload the content to S3 for file ${element.filePath}.`);
-            await uploadContentToS3(
-                resultPresignedUrl.presignedURL,
-                element.archivePath,
-                (percentage) => {
-                    bar.update(parseFloat((percentage * 100).toFixed(2)), {
-                        filename: element.name,
-                    });
+            await uploadContentToS3(presignedUrl, element.archivePath, (percentage) => {
+                bar.update(parseFloat((percentage * 100).toFixed(2)), {
+                    filename: element.name,
+                });
 
-                    if (percentage == 1) {
-                        bar.stop();
-                    }
-                },
-            );
+                if (percentage == 1) {
+                    bar.stop();
+                }
+            });
 
             debugLogger.debug(`Done uploading the content to S3 for file ${element.filePath}.`);
         });

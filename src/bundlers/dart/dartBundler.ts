@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import fs from "fs";
 import path from "path";
 import Mustache from "mustache";
@@ -43,6 +43,7 @@ import {
     castMapRecursivelyInitial,
 } from "../../utils/dartAstCasting.js";
 import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE } from "../../errors.js";
+import { Status } from "../../requests/models.js";
 
 export class DartBundler implements BundlerInterface {
     async #getDartCompilePresignedUrl(archiveName: string): Promise<string> {
@@ -63,21 +64,16 @@ export class DartBundler implements BundlerInterface {
     async #compile(archiveName: string): Promise<{ success: boolean; downloadUrl: string }> {
         const url = DART_COMPILATION_ENDPOINT;
 
-        const response = await axios({
-            method: "PUT",
-            url: url,
-            data: { archiveName },
-            maxContentLength: Infinity,
-            maxBodyLength: Infinity,
-        }).catch((error: Error) => {
-            throw error;
-        });
+        const response: AxiosResponse<Status<{ success: boolean; downloadUrl: string }>> =
+            await axios({
+                method: "PUT",
+                url: url,
+                data: { archiveName },
+                maxContentLength: Infinity,
+                maxBodyLength: Infinity,
+            });
 
         if (response.data.status === "error") {
-            throw new Error(response.data.message);
-        }
-
-        if (response.data?.error?.message) {
             throw new Error(response.data.error.message);
         }
 

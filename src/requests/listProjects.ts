@@ -3,7 +3,8 @@ import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
-import { ProjectListElement } from "./models.js";
+import { ProjectListElement, Status } from "./models.js";
+import { AxiosResponse } from "axios";
 
 export default async function listProjects(index = 0): Promise<ProjectListElement[]> {
     const limit = 100;
@@ -14,7 +15,7 @@ export default async function listProjects(index = 0): Promise<ProjectListElemen
         throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
 
-    const response = await axios({
+    const response: AxiosResponse<Status<{ projects: ProjectListElement[] }>> = await axios({
         method: "GET",
         url: `${BACKEND_ENDPOINT}/projects?startIndex=${index}&projectsLimit=${limit}`,
         timeout: 15000,
@@ -24,12 +25,8 @@ export default async function listProjects(index = 0): Promise<ProjectListElemen
         },
     });
 
-    if (response.data?.error?.message) {
+    if (response.data.status === "error") {
         throw new Error(response.data.error.message);
-    }
-
-    if (response.data.status !== "ok") {
-        throw new Error("Unknown error in `list projects` response from server.");
     }
 
     const projects = response.data.projects;

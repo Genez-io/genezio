@@ -31,7 +31,7 @@ test("should throw error if server returns data.error object", async () => {
     await expect(async () => {
         mockedGetAuthToken.mockResolvedValue("token");
         mockedAxios.mockResolvedValue({
-            data: { error: { message: "error text" } },
+            data: { status: "error", error: { message: "error text" } },
             status: 200,
             statusText: "Ok",
             headers: {},
@@ -50,12 +50,13 @@ test("should throw error if parameters are missing", async () => {
     }).rejects.toThrowError();
 });
 
-test("should return response.data if everything is ok", async () => {
-    const someObject = { someData: "data" };
+test("should return presignedURL if everything is ok", async () => {
+    const expectedPresignedURL = "https://myURL";
+    const apiResponse = { status: "ok", presignedURL: expectedPresignedURL };
 
     mockedGetAuthToken.mockResolvedValue("token");
     mockedAxios.mockResolvedValue({
-        data: someObject,
+        data: apiResponse,
         status: 200,
         statusText: "Ok",
         headers: {},
@@ -64,15 +65,16 @@ test("should return response.data if everything is ok", async () => {
 
     const response = await getPresignedURL("us-east-1", "genezioDeploy.zip", "test", "test");
 
-    expect(response).toEqual(someObject);
+    expect(response).toEqual(expectedPresignedURL);
 });
 
 test("should read token and pass it to headers", async () => {
-    const someObject = { someData: "data" };
+    const expectedPresignedURL = "https://myURL";
+    const apiResponse = { status: "ok", presignedURL: expectedPresignedURL };
 
     mockedGetAuthToken.mockResolvedValue("token");
     mockedAxios.mockResolvedValue({
-        data: someObject,
+        data: apiResponse,
         status: 200,
         statusText: "Ok",
         headers: {},
@@ -83,7 +85,7 @@ test("should read token and pass it to headers", async () => {
 
     expect(mockedGetAuthToken.mock.calls.length).toBe(1);
 
-    expect(response).toEqual(someObject);
+    expect(response).toEqual(expectedPresignedURL);
 });
 
 test("should throw error if auth token is missing", async () => {

@@ -1,9 +1,10 @@
 import fs from "fs";
 import { getAuthToken } from "../utils/accounts.js";
 import https from "https";
+import { OutgoingHttpHeaders } from "http";
 
 export async function uploadContentToS3(
-    presignedURL: string,
+    presignedURL: string | undefined,
     archivePath: string,
     progress?: (percentage: number) => void,
     userId?: string,
@@ -25,7 +26,7 @@ export async function uploadContentToS3(
     }
     const url = new URL(presignedURL);
 
-    const headers: any = {
+    const headers: OutgoingHttpHeaders = {
         "Content-Type": "application/octet-stream",
         "Content-Length": fs.statSync(archivePath).size,
     };

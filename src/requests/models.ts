@@ -1,5 +1,17 @@
 import { AstSummaryClassResponse } from "../models/astSummary.js";
 
+export type Status<T = object> =
+    | {
+          status: "error";
+          error: {
+              code: number;
+              message: string;
+          };
+      }
+    | ({
+          status: "ok";
+      } & T);
+
 export interface ProjectListElement {
     id: string;
     name: string;
@@ -38,4 +50,11 @@ export interface ClassDetails {
     cloudUrl: string;
     createdAt: number;
     updatedAt: number;
+}
+
+export interface ObfuscatedEnvironmentVariable {
+    id: string;
+    name: string;
+    lastAccessedAt: string;
+    type: string;
 }
