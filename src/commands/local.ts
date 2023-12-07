@@ -145,7 +145,7 @@ export async function prepareLocalEnvironment(
 // Function that starts the local environment.
 // It also monitors for changes in the user's code and restarts the environment when changes are detected.
 export async function startLocalEnvironment(options: GenezioLocalOptions) {
-    GenezioTelemetry.sendEvent({
+    await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_LOCAL,
         commandOptions: JSON.stringify(options),
     });
@@ -156,7 +156,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         log.info(yamlProjectConfiguration.scripts.preStartLocal);
         const success = await runNewProcess(yamlProjectConfiguration.scripts.preStartLocal);
         if (!success) {
-            GenezioTelemetry.sendEvent({
+            await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_PRE_START_LOCAL_SCRIPT_ERROR,
                 commandOptions: JSON.stringify(options),
             });
@@ -205,7 +205,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             log.info(yamlProjectConfiguration.scripts.preReloadLocal);
             const success = await runNewProcess(yamlProjectConfiguration.scripts.preReloadLocal);
             if (!success) {
-                GenezioTelemetry.sendEvent({
+                await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_PRE_RELOAD_LOCAL_SCRIPT_ERROR,
                     commandOptions: JSON.stringify(options),
                 });
@@ -340,7 +340,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             log.info(yamlProjectConfiguration.scripts.postStartLocal);
             const success = await runNewProcess(yamlProjectConfiguration.scripts.postStartLocal);
             if (!success) {
-                GenezioTelemetry.sendEvent({
+                await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_POST_START_LOCAL_SCRIPT_ERROR,
                     commandOptions: JSON.stringify(options),
                 });
@@ -360,7 +360,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 
         // When new changes are detected, close everything and restart the process
         clearAllResources(server, processForClasses, crons);
-        GenezioTelemetry.sendEvent({
+        await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_LOCAL_RELOAD,
             commandOptions: JSON.stringify(options),
         });

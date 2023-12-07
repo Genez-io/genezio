@@ -9,7 +9,7 @@ import { getAuthToken } from "../utils/accounts.js";
 import { GenezioListOptions } from "../models/commandOptions.js";
 
 export async function lsCommand(identifier: string, options: GenezioListOptions) {
-    GenezioTelemetry.sendEvent({
+    await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_LS,
         commandOptions: JSON.stringify(options),
     });

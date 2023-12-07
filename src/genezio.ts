@@ -76,13 +76,13 @@ try {
 // this is a workaround to avoid that
 // Note: no options can be added to this command
 if (process.argv.length === 2) {
-    GenezioTelemetry.sendEvent({
+    await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_COMMAND,
     });
 
-    await genezioCommand().catch((error: Error) => {
+    await genezioCommand().catch(async (error: Error) => {
         log.error(error.message);
-        GenezioTelemetry.sendEvent({
+        await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_COMMAND_ERROR,
             errorTrace: error.message,
         });
@@ -128,9 +128,9 @@ program
     .action(async (accessToken = "", options: BaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await loginCommand(accessToken).catch((error) => {
+        await loginCommand(accessToken).catch(async (error) => {
             log.error(error.message);
-            GenezioTelemetry.sendEvent({
+            await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_LOGIN_ERROR,
                 errorTrace: error.message,
             });
@@ -182,9 +182,9 @@ program
     .action(async (classPath: string, classType: string, options: BaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await addClassCommand(classPath, classType).catch((error: Error) => {
+        await addClassCommand(classPath, classType).catch(async (error: Error) => {
             log.error(error.message);
-            GenezioTelemetry.sendEvent({
+            await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_ADD_CLASS_ERROR,
                 errorTrace: error.message,
             });
@@ -211,10 +211,10 @@ program
     .action(async (options: GenezioLocalOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await startLocalEnvironment(options).catch((error) => {
+        await startLocalEnvironment(options).catch(async (error) => {
             if (error.message) {
                 log.error(error.message);
-                GenezioTelemetry.sendEvent({
+                await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_LOCAL_ERROR,
                     errorTrace: error.message,
                     commandOptions: JSON.stringify(options),
@@ -279,9 +279,9 @@ program
     .action(async (identifier = "", options: GenezioListOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await lsCommand(identifier, options).catch((error) => {
+        await lsCommand(identifier, options).catch(async (error) => {
             log.error(error.message);
-            GenezioTelemetry.sendEvent({
+            await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_LS_ERROR,
                 errorTrace: error.message,
                 commandOptions: JSON.stringify(options),
@@ -307,9 +307,9 @@ program
     .action(async (projectId = "", options: GenezioDeleteOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await deleteCommand(projectId, options).catch((error) => {
+        await deleteCommand(projectId, options).catch(async (error) => {
             log.error(error.message);
-            GenezioTelemetry.sendEvent({
+            await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_DELETE_PROJECT_ERROR,
                 errorTrace: error.toString(),
             });
@@ -342,9 +342,9 @@ program
     .action(async (projectName = "", options: GenezioSdkOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await generateSdkCommand(projectName, options).catch((error) => {
+        await generateSdkCommand(projectName, options).catch(async (error) => {
             log.error(error.message);
-            GenezioTelemetry.sendEvent({
+            await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK_ERROR,
                 errorTrace: error.message,
                 commandOptions: JSON.stringify(options),
