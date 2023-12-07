@@ -282,8 +282,8 @@ This command is useful when the project has dedicated repositories for the backe
             );
             exit(1);
         });
-        log.info("Successfully linked the path to your genezio project.");
 
+        log.info("Successfully linked the path to your genezio project.");
         await logOutdatedVersion();
     });
 

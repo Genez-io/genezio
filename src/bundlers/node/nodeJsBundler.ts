@@ -207,6 +207,7 @@ export class NodeJsBundler implements BundlerInterface {
         });
 
         if (output.errors.length > 0) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             output.errors.forEach((error: any) => {
                 log.error("\x1b[31m", "Syntax error:");
 
@@ -229,6 +230,7 @@ export class NodeJsBundler implements BundlerInterface {
                 //get message line that contains '>' first character
                 const messageLine: string = error.message
                     .split("\n")
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     .filter((line: any) => line.startsWith(">") || line.startsWith("|"))
                     .join("\n");
                 if (messageLine) {
@@ -254,7 +256,8 @@ export class NodeJsBundler implements BundlerInterface {
         const resolveRegex = /Could not resolve "(?<dependencyName>.+)"/;
         let npmInstallRequired = false;
         const errToDeps = error.errors.map((error: Message) => {
-            const packageName = resolveRegex.exec(error.text)?.groups?.dependencyName;
+            const regexGroups = resolveRegex.exec(error.text)?.groups;
+            const packageName = regexGroups ? regexGroups["dependencyName"] : undefined;
             if (packageName && !error.location?.file.startsWith("node_modules/")) {
                 npmInstallRequired = true;
                 return null;
@@ -321,8 +324,13 @@ export class NodeJsBundler implements BundlerInterface {
                     sourcemap: "inline",
                 });
                 break;
-            } catch (error: BuildFailure | any) {
-                await this.#handleMissingDependencies(error, try_count, MAX_TRIES, cwd);
+            } catch (error) {
+                await this.#handleMissingDependencies(
+                    error as BuildFailure,
+                    try_count,
+                    MAX_TRIES,
+                    cwd,
+                );
             }
 
             try_count++;

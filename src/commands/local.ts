@@ -57,7 +57,7 @@ import { runNewProcess } from "../utils/process.js";
 import { exit } from "process";
 import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 import log from "loglevel";
-import { getInterruptLastModifiedTime, interruptLocalPath } from "../utils/localInterrupt.js";
+import { interruptLocalPath } from "../utils/localInterrupt.js";
 
 const POLLING_INTERVAL = 2000;
 
@@ -99,7 +99,6 @@ export async function prepareLocalEnvironment(
                     log.error(
                         `The file ${error.path} does not exist. Please check your genezio.yaml configuration and make sure that all the file paths are correct.`,
                     );
-                    throw error;
                 }
 
                 // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
@@ -107,8 +106,6 @@ export async function prepareLocalEnvironment(
                     log.error("Syntax error:");
                     log.error(`Reason Code: ${error.reasonCode}`);
                     log.error(`File: ${error.path}:${error.loc.line}:${error.loc.column}`);
-
-                    throw error;
                 }
 
                 throw error;
@@ -126,8 +123,10 @@ export async function prepareLocalEnvironment(
                     sdk,
                 },
             });
-        } catch (error: any) {
-            log.error(error.message);
+        } catch (error) {
+            if (error instanceof Error) {
+                log.error(error.message);
+            }
             log.error(
                 `Fix the errors and genezio local will restart automatically. Waiting for changes...`,
             );
@@ -180,8 +179,10 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         let yamlProjectConfiguration;
         try {
             yamlProjectConfiguration = await getProjectConfiguration();
-        } catch (error: any) {
-            log.error(error.message);
+        } catch (error) {
+            if (error instanceof Error) {
+                log.error(error.message);
+            }
             log.error(
                 `Fix the errors and genezio local will restart automatically. Waiting for changes...`,
             );
@@ -223,7 +224,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     choices: Object.keys(PackageManagerType).filter((key) => isNaN(Number(key))),
                 },
             ]);
-            yamlProjectConfiguration.packageManager = optionalPackageManager.packageManager;
+            yamlProjectConfiguration.packageManager = optionalPackageManager["packageManager"];
             await yamlProjectConfiguration.writeToFile();
         }
 
