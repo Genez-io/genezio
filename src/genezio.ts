@@ -240,7 +240,7 @@ program
             log.error(error.message);
             exit(1);
         });
-        log.info("You are now logged out.");
+        log.info("You are now logged out!");
         await logOutdatedVersion();
     });
 
