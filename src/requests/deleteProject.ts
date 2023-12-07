@@ -9,7 +9,7 @@ import log from "loglevel";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 
 export default async function deleteProject(projectId: string): Promise<boolean> {
-    GenezioTelemetry.sendEvent({
+    await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_DELETE_PROJECT,
     });
 

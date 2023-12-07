@@ -26,7 +26,7 @@ import inquirer, { Answers } from "inquirer";
 import { GenezioSdkOptions } from "../models/commandOptions.js";
 
 export async function generateSdkCommand(projectName: string, options: GenezioSdkOptions) {
-    GenezioTelemetry.sendEvent({
+    await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK,
         commandOptions: JSON.stringify(options),
     });

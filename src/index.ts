@@ -25,7 +25,7 @@ try {
 
 // Set-up SIGINT and exit handlers that clean up the temporary folder structure
 process.on("SIGINT", async () => {
-    GenezioTelemetry.sendEvent({
+    await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_CANCEL,
         errorTrace: "",
         commandOptions: "",
