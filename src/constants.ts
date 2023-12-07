@@ -1,4 +1,4 @@
-const environment = process.env.NODE_ENV;
+const environment = process.env["NODE_ENV"];
 
 let REACT_APP_BASE_URL: string;
 let BACKEND_ENDPOINT: string;

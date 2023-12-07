@@ -223,7 +223,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     choices: Object.keys(PackageManagerType).filter((key) => isNaN(Number(key))),
                 },
             ]);
-            yamlProjectConfiguration.packageManager = optionalPackageManager.packageManager;
+            yamlProjectConfiguration.packageManager = optionalPackageManager["packageManager"];
             await yamlProjectConfiguration.writeToFile();
         }
 

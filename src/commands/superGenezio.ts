@@ -79,7 +79,7 @@ export async function genezioCommand() {
 
     log.info(
         colors.cyan(
-            `Your project will start from the ${colors.green(templateAnswer.template)} template.\n`,
+            `Your project will start from the ${colors.green(templateAnswer["template"])} template.\n`,
         ),
     );
 
@@ -102,7 +102,7 @@ export async function genezioCommand() {
     ]);
 
     log.info(
-        colors.cyan(`Your project will be named ${colors.green(projectNameAnswer.projectName)}.\n`),
+        colors.cyan(`Your project will be named ${colors.green(projectNameAnswer["projectName"])}.\n`),
     );
 
     const regionAnswer: Answers = await inquirer.prompt([
@@ -117,7 +117,7 @@ export async function genezioCommand() {
     ]);
 
     log.info(
-        colors.cyan(`Your project will be deployed in ${colors.green(regionAnswer.region)}.\n`),
+        colors.cyan(`Your project will be deployed in ${colors.green(regionAnswer["region"])}.\n`),
     );
 
     // TODO: To be added in the future
@@ -134,9 +134,9 @@ export async function genezioCommand() {
     // log.info(colors.cyan(`Your project will use ${colors.green(packageManagerAnswer.packageManager)} as package manager.\n`));
 
     let directoryName = ".";
-    const template: string = templateAnswer.template;
-    const projectName = projectNameAnswer.projectName;
-    const region = regions[regionNames.indexOf(regionAnswer.region)];
+    const template: string = templateAnswer["template"];
+    const projectName = projectNameAnswer["projectName"];
+    const region = regions[regionNames.indexOf(regionAnswer["region"])];
 
     if (!emptyDirectory) {
         const confirmAnswer: Answers = await inquirer.prompt([
@@ -151,11 +151,11 @@ export async function genezioCommand() {
         log.info(
             colors.cyan(
                 `We are creating the project in ${colors.green(
-                    `./${confirmAnswer.directoryName}`,
+                    `./${confirmAnswer["directoryName"]}`,
                 )}.\n`,
             ),
         );
-        directoryName = confirmAnswer.directoryName;
+        directoryName = confirmAnswer["directoryName"];
     } else {
         log.info(colors.cyan(`We are creating the project in the current directory.\n\n`));
     }

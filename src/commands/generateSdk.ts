@@ -72,8 +72,8 @@ export async function generateSdkCommand(projectName: string, options: GenezioSd
                             "Oops! The configuration file does not exist at the specified path. Do you want us to create one for you?",
                     },
                 ]);
-                if (answers.createConfig) {
-                    const projects = await listProjects(0).catch((error: any) => {
+                if (answers["createConfig"]) {
+                    const projects = await listProjects(0).catch((error) => {
                         throw error;
                     });
                     const options = [
@@ -96,8 +96,8 @@ export async function generateSdkCommand(projectName: string, options: GenezioSd
                         },
                     ]);
                     configuration = await YamlProjectConfiguration.create({
-                        name: answers.project.name,
-                        region: answers.project.region,
+                        name: answers["project"].name,
+                        region: answers["project"].region,
                     });
                     await configuration.writeToFile(source);
                 } else {
