@@ -13,7 +13,7 @@ import colors from "colors";
 export async function loginCommand(accessToken: string, logSuccesMessage = true) {
     log.info(asciiCapybara);
 
-    GenezioTelemetry.sendEvent({
+    await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_LOGIN,
     });
 
