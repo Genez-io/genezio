@@ -5,8 +5,7 @@ import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js"
 import { cleanupTemporaryFolders } from "./utils/file.js";
 import { SENTRY_DSN } from "./constants.js";
 import { debugLogger } from "./utils/logging.js";
-import { getProjectConfiguration } from "./utils/configuration.js";
-import { stopDockerDatabase } from "./commands/local.js";
+import { stopDockerDatabase } from "./utils/localDockerDatabase.js";
 
 try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
