@@ -3,8 +3,9 @@ import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
+import { ProjectListElement } from "./models.js";
 
-export default async function listProjects(index = 0): Promise<Array<any>> {
+export default async function listProjects(index = 0): Promise<ProjectListElement[]> {
     const limit = 100;
 
     const authToken = await getAuthToken();
@@ -21,8 +22,6 @@ export default async function listProjects(index = 0): Promise<Array<any>> {
             Authorization: `Bearer ${authToken}`,
             "Accept-Version": `genezio-cli/${version}`,
         },
-    }).catch((error: Error) => {
-        throw error;
     });
 
     if (response.data?.error?.message) {
