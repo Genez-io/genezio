@@ -24,7 +24,7 @@ export async function runDockerDatabaseContainer(
         printAdaptiveLog(`Failed starting local docker ${databaseType} database`, "");
         log.error(`An error has occured: ${error.toString()}`);
         log.error(
-            "This is most likely a docker error, if you want to solve it you can check out their documentation at https://docs.docker.com/ ",
+            "This is most likely a docker error, check if your docker daemon is running.\nIf it is not running you can learn how to start it by going to the docker documentation at https://docs.docker.com/ ",
         );
         return undefined;
     }
@@ -162,7 +162,7 @@ export async function stopDockerDatabaseContainer(
         printAdaptiveLog(`Failed starting local docker ${databaseType} database`, "");
         log.error(`An error has occured: ${error.toString()}`);
         log.error(
-            "This is most likely a docker error, if you want to solve it you can check out their documentation at https://docs.docker.com/ ",
+            "This is most likely a docker error, check if your docker daemon is running.\nIf it is not running you can learn how to start it by going to the docker documentation at https://docs.docker.com/ ",
         );
         return undefined;
     }
