@@ -6,7 +6,7 @@ import fs from "fs";
 import fsPromises from "fs/promises";
 import cors from "cors";
 import bodyParser from "body-parser";
-import { ChildProcess, spawn, exec } from "child_process";
+import { ChildProcess, spawn } from "child_process";
 import path from "path";
 import { default as fsExtra } from "fs-extra";
 import url from "url";
@@ -41,7 +41,6 @@ import { findAvailablePort } from "../utils/findAvailablePort.js";
 import {
     Language,
     PackageManagerType,
-    YamlDatabaseConfiguration,
     YamlProjectConfiguration,
     YamlSdkConfiguration,
 } from "../models/yamlProjectConfiguration.js";
@@ -56,9 +55,7 @@ import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJ
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { runNewProcess } from "../utils/process.js";
 import { exit } from "process";
-import { promisify } from "util";
 import { startDockerDatabase, stopDockerDatabase } from "../utils/localDockerDatabase.js";
-const asyncExec = promisify(exec);
 
 import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 import log from "loglevel";

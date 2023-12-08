@@ -213,7 +213,7 @@ program
     .action(async (options: GenezioLocalOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
         process.env.CURRENT_COMMAND = "local";
-        await startLocalEnvironment(options).catch((error: any) => {
+        await startLocalEnvironment(options).catch((error) => {
             if (error.message) {
                 log.error(error.message);
                 GenezioTelemetry.sendEvent({
@@ -347,7 +347,7 @@ program
     .action(async (projectName = "", options: GenezioSdkOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
         process.env.CURRENT_COMMAND = "sdk";
-        await generateSdkCommand(projectName, options).catch((error: Error) => {
+        await generateSdkCommand(projectName, options).catch((error) => {
             log.error(error.message);
             GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK_ERROR,
@@ -374,7 +374,6 @@ program
     .description(
         "Set this path as the spot for your frontend app within a project that uses multiple repositories. Doing this helps 'genezio local' figure out by itself where to create the SDK.",
     )
-
     .action(async (options: GenezioLinkOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
         process.env.CURRENT_COMMAND = "link";

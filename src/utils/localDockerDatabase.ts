@@ -1,4 +1,4 @@
-import Docker, { Container, ContainerInfo } from "dockerode";
+import Docker, { Container } from "dockerode";
 import { printAdaptiveLog } from "./logging.js";
 import log from "loglevel";
 import { YamlDatabaseConfiguration } from "../models/yamlProjectConfiguration.js";
@@ -18,11 +18,11 @@ export async function runDockerDatabaseContainer(
                 currentContainer = dockerHandler.getContainer(container.Id);
             }
         });
-
-        // output = await asyncExec(`docker ps -a --format "{{.Names}}" `);
-    } catch (error: any) {
+    } catch (error) {
         printAdaptiveLog(`Failed starting local docker ${databaseType} database`, "");
-        log.error(`An error has occured: ${error.toString()}`);
+        if (error instanceof Error) {
+            log.error(`An error has occured: ${error.toString()}`);
+        }
         log.error(
             "This is most likely a docker error, check if your docker daemon is running.\nIf it is not running you can learn how to start it by going to the docker documentation at https://docs.docker.com/ ",
         );
@@ -34,9 +34,11 @@ export async function runDockerDatabaseContainer(
         if (!isContainerRunning) {
             try {
                 await currentContainer.start();
-            } catch (error: any) {
+            } catch (error) {
                 printAdaptiveLog(`Failed starting local docker ${databaseType} database`, "");
-                log.error(`An error has occured: ${error.toString()}`);
+                if (error instanceof Error) {
+                    log.error(`An error has occured: ${error.toString()}`);
+                }
                 return undefined;
             }
         }
@@ -113,9 +115,11 @@ export async function runDockerDatabaseContainer(
                     break;
                 }
             }
-        } catch (error: any) {
+        } catch (error) {
             printAdaptiveLog(`Failed starting local docker ${databaseType} database`, "");
-            log.error(`An error has occured: ${error.toString()}`);
+            if (error instanceof Error) {
+                log.error(`An error has occured: ${error.toString()}`);
+            }
             return undefined;
         }
     }
@@ -130,8 +134,10 @@ export async function startDockerDatabase(
     let docker;
     try {
         docker = new Docker();
-    } catch (error: any) {
-        log.error("An error has occured: ", error.toString());
+    } catch (error) {
+        if (error instanceof Error) {
+            log.error("An error has occured: ", error.toString());
+        }
         log.error(
             "\x1b[33m%s\x1b[0m",
             "Docker not found, if you want to have a local database for testing, you need to install docker. Go to https://www.docker.com/products/docker-desktop/ to install docker",
@@ -156,11 +162,11 @@ export async function stopDockerDatabaseContainer(
                 currentContainer = dockerHandler.getContainer(container.Id);
             }
         });
-
-        // output = await asyncExec(`docker ps -a --format "{{.Names}}" `);
-    } catch (error: any) {
+    } catch (error) {
         printAdaptiveLog(`Failed starting local docker ${databaseType} database`, "");
-        log.error(`An error has occured: ${error.toString()}`);
+        if (error instanceof Error) {
+            log.error("An error has occured: ", error.toString());
+        }
         log.error(
             "This is most likely a docker error, check if your docker daemon is running.\nIf it is not running you can learn how to start it by going to the docker documentation at https://docs.docker.com/ ",
         );
@@ -172,8 +178,10 @@ export async function stopDockerDatabaseContainer(
         if (isContainerRunning) {
             try {
                 await currentContainer.stop();
-            } catch (error: any) {
-                log.error(`An error has occured: ${error.toString()}`);
+            } catch (error) {
+                if (error instanceof Error) {
+                    log.error("An error has occured: ", error.toString());
+                }
                 return undefined;
             }
         }
@@ -186,8 +194,10 @@ export async function stopDockerDatabase() {
         let docker;
         try {
             docker = new Docker();
-        } catch (error: any) {
-            log.error("An error has occured: ", error.toString());
+        } catch (error) {
+            if (error instanceof Error) {
+                log.error("An error has occured: ", error.toString());
+            }
             log.error(
                 "\x1b[33m%s\x1b[0m",
                 "Docker not found, if you want to have a local database for testing, you need to install docker. Go to https://www.docker.com/products/docker-desktop/ to install docker",

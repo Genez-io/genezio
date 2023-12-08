@@ -194,9 +194,9 @@ export type YamlFrontend = {
 
 export class YamlDatabaseConfiguration {
     type: string;
-    port: string | undefined;
+    port?: string;
 
-    constructor(type: string, port: string | undefined) {
+    constructor(type: string, port?: string) {
         this.type = type;
         this.port = port;
     }
