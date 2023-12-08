@@ -26,6 +26,11 @@ async function makeRequestBrowser(request: any, url: any) {
         },
         body: JSON.stringify(request),
     });
+
+    if (!response.ok) {
+        return response.json().then((error) => Promise.reject(error));
+    }
+
     return response.json();
 }
 

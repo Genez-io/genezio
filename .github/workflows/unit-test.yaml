@@ -1,23 +1,27 @@
 name: Unit Tests
 
 on:
-  push:
-    branches:
-      - master
-      - dev
-    paths-ignore:
-      - "**/*.md"
-  pull_request:
-    types: [opened, reopened, synchronize]
+    push:
+        branches:
+            - master
+            - dev
+        paths-ignore:
+            - "**/*.md"
+    pull_request:
+        types: [opened, reopened, synchronize]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - run: npm ci
-      - run: npm run install-locally
-      - run: npm test
+    build:
+        strategy:
+            matrix:
+                node-version: [16, 18, 20]
+                os: [ubuntu-latest, windows-latest]
+        runs-on: ${{ matrix.os }}
+        steps:
+            - uses: actions/checkout@v3
+            - uses: actions/setup-node@v3
+              with:
+                  node-version: ${{ matrix.node-version }}
+            - run: npm ci
+            - run: npm run install-locally
+            - run: npm test

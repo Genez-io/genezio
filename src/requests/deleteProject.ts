@@ -5,53 +5,47 @@ import { debugLogger, printAdaptiveLog, printUninformativeLog } from "../utils/l
 import { AbortController } from "node-abort-controller";
 import version from "../utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
-import log from "loglevel";
+import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
+import { AxiosResponse } from "axios";
+import { Status } from "./models.js";
 
-export default async function deleteProject(
-  projectId: string,
-) : Promise<boolean> {
-  GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_DELETE_PROJECT});
-  printAdaptiveLog("Checking your credentials", "start");
-  const authToken = await getAuthToken()
-  if (!authToken) {
-    printAdaptiveLog("Checking your credentials", "error");
-    throw new Error(
-      "You are not logged in. Run 'genezio login' before you deploy your function."
-    );
-  }
-  printAdaptiveLog("Checking your credentials", "end");
+export default async function deleteProject(projectId: string): Promise<boolean> {
+    await GenezioTelemetry.sendEvent({
+        eventType: TelemetryEventTypes.GENEZIO_DELETE_PROJECT,
+    });
 
-  const controller = new AbortController();
-  const messagePromise = printUninformativeLog(controller);
-  const response: any = await axios({
-    method: "DELETE",
-    url: `${BACKEND_ENDPOINT}/projects/${projectId}`,
-    headers: {
-      Authorization: `Bearer ${authToken}`,
-      "Accept-Version": `genezio-cli/${version}`
+    printAdaptiveLog("Checking your credentials", "start");
+    const authToken = await getAuthToken();
+    if (!authToken) {
+        printAdaptiveLog("Checking your credentials", "error");
+        throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
-  }).catch(async (error: Error) => {
+    printAdaptiveLog("Checking your credentials", "end");
+
+    const controller = new AbortController();
+    const messagePromise = printUninformativeLog(controller);
+    const response: AxiosResponse<Status> = await axios({
+        method: "DELETE",
+        url: `${BACKEND_ENDPOINT}/projects/${projectId}`,
+        headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Accept-Version": `genezio-cli/${version}`,
+        },
+    }).catch(async (error: Error) => {
+        controller.abort();
+        printAdaptiveLog(await messagePromise, "error");
+        debugLogger.debug("Error received", error);
+        throw error;
+    });
+
     controller.abort();
-    GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_DELETE_PROJECT_ERROR, errorTrace: error.toString()});
-    printAdaptiveLog(await messagePromise, "error");
-    debugLogger.debug("Error received", error)
-    throw error;
-  });
+    printAdaptiveLog(await messagePromise, "end");
 
-  controller.abort();
-  printAdaptiveLog(await messagePromise, "end");
+    debugLogger.debug("Response received", response.data);
 
-  debugLogger.debug("Response received", response.data)
+    if (response.data.status === "error") {
+        throw new Error(response.data.error.message);
+    }
 
-  if (response.data?.error?.message) {
-    GenezioTelemetry.sendEvent({eventType: TelemetryEventTypes.GENEZIO_DELETE_PROJECT_ERROR, errorTrace: response.data.error.message});
-    throw new Error(response.data.error.message);
-  }
-
-  if (response.data.status !== 'ok') {
-    log.error('Unknown error in `delete project` response from server.');
-    return false;
-  }
-
-  return true;
+    return true;
 }

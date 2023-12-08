@@ -16,7 +16,11 @@ import {
 import { TriggerType, YamlClassConfiguration } from "../../models/yamlProjectConfiguration.js";
 import { dartSdk } from "../templates/dartSdk.js";
 import { ArrayType } from "../../models/genezioModels.js";
-import { castArrayRecursivelyInitial, castMapRecursivelyInitial, getParamType } from "../../utils/dartAstCasting.js";
+import {
+    castArrayRecursivelyInitial,
+    castMapRecursivelyInitial,
+    getParamType,
+} from "../../utils/dartAstCasting.js";
 import path from "path";
 
 // https://dart.dev/language/keywords
@@ -158,17 +162,14 @@ class {{{className}}} {
 `;
 
 class SdkGenerator implements SdkGeneratorInterface {
-    async generateSdk(
-        sdkGeneratorInput: SdkGeneratorInput,
-        sdkVersion: SdkVersion,
-    ): Promise<SdkGeneratorOutput> {
+    async generateSdk(sdkGeneratorInput: SdkGeneratorInput): Promise<SdkGeneratorOutput> {
         const generateSdkOutput: SdkGeneratorOutput = {
-            files: []
+            files: [],
         };
 
         // A dictionary where the key is the path of the file and the value is the view object.
         // This dictionary is used to create and aggregate the model views.
-        const modelClassesView: {[key: string]: any} = {};
+        const modelClassesView: { [key: string]: any } = {};
 
         for (const classInfo of sdkGeneratorInput.classesInfo) {
             const _url = "%%%link_to_be_replace%%%";
@@ -188,7 +189,9 @@ class SdkGenerator implements SdkGeneratorInterface {
                 imports: [],
             };
 
-            const mainClass = classInfo.program.body.find((e) => e.type === AstNodeType.ClassDefinition);
+            const mainClass = classInfo.program.body.find(
+                (e) => e.type === AstNodeType.ClassDefinition,
+            );
 
             for (const elem of classInfo.program.body) {
                 if (elem.type === AstNodeType.ClassDefinition) {
@@ -204,12 +207,20 @@ class SdkGenerator implements SdkGeneratorInterface {
                     if (mainClass?.path === elem.path) {
                         view.otherClasses.push({
                             name: structLiteral.name,
-                            fields: structLiteral.typeLiteral.properties.map((e) => ({ type: getParamType(e.type), fieldName: e.name })),
+                            fields: structLiteral.typeLiteral.properties.map((e) => ({
+                                type: getParamType(e.type),
+                                fieldName: e.name,
+                            })),
                             fromJson: fromJson,
-                            toJson: toJson
+                            toJson: toJson,
                         });
                     } else {
-                        this.addModelToModelViews(modelClassesView, structLiteral, fromJson, toJson);
+                        this.addModelToModelViews(
+                            modelClassesView,
+                            structLiteral,
+                            fromJson,
+                            toJson,
+                        );
                     }
                 }
             }
@@ -218,13 +229,15 @@ class SdkGenerator implements SdkGeneratorInterface {
                 continue;
             }
 
-            const rawSdkClassName = `${classDefinition.name}.dart`
-            const sdkClassName = rawSdkClassName.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`).slice(1);
+            const rawSdkClassName = `${classDefinition.name}.dart`;
+            const sdkClassName = rawSdkClassName
+                .replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)
+                .slice(1);
 
             generateSdkOutput.files.push({
                 path: sdkClassName,
                 data: Mustache.render(template, view),
-                className: classDefinition.name
+                className: classDefinition.name,
             });
         }
 
@@ -235,19 +248,24 @@ class SdkGenerator implements SdkGeneratorInterface {
         generateSdkOutput.files.push({
             className: "Remote",
             path: "remote.dart",
-            data: dartSdk
+            data: dartSdk,
         });
 
         return generateSdkOutput;
     }
 
-    populateViewForMainClass(classDefinition: ClassDefinition, classConfiguration: YamlClassConfiguration, view: any) {
+    populateViewForMainClass(
+        classDefinition: ClassDefinition,
+        classConfiguration: YamlClassConfiguration,
+        view: any,
+    ) {
         view.className = classDefinition.name;
         for (const methodDefinition of classDefinition.methods) {
             const methodConfigurationType = classConfiguration.getMethodType(methodDefinition.name);
 
-            if (methodConfigurationType !== TriggerType.jsonrpc
-                || classConfiguration.type !== TriggerType.jsonrpc
+            if (
+                methodConfigurationType !== TriggerType.jsonrpc ||
+                classConfiguration.type !== TriggerType.jsonrpc
             ) {
                 continue;
             }
@@ -255,24 +273,31 @@ class SdkGenerator implements SdkGeneratorInterface {
             const methodView: any = {
                 name: methodDefinition.name,
                 parameters: [],
-                methodCaller: methodDefinition.params.length === 0 ?
-                    `"${classDefinition.name}.${methodDefinition.name}"`
-                    : `"${classDefinition.name}.${methodDefinition.name}"`
+                methodCaller:
+                    methodDefinition.params.length === 0
+                        ? `"${classDefinition.name}.${methodDefinition.name}"`
+                        : `"${classDefinition.name}.${methodDefinition.name}"`,
             };
 
             if (methodDefinition.returnType.type === AstNodeType.VoidLiteral) {
                 methodView.returnType = this.getReturnType(methodDefinition.returnType);
                 methodView.returnTypeCast = undefined;
             } else {
-                methodView.returnTypeCast = this.castReturnTypeToPropertyType(methodDefinition.returnType, "response");
+                methodView.returnTypeCast = this.castReturnTypeToPropertyType(
+                    methodDefinition.returnType,
+                    "response",
+                );
                 methodView.returnType = this.getReturnType(methodDefinition.returnType);
             }
 
             methodView.parameters = methodDefinition.params.map((e) => {
                 return {
-                    name: getParamType(e.paramType) + " " + (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
-                    last: false
-                }
+                    name:
+                        getParamType(e.paramType) +
+                        " " +
+                        (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
+                    last: false,
+                };
             });
 
             if (methodView.parameters.length > 0) {
@@ -281,9 +306,9 @@ class SdkGenerator implements SdkGeneratorInterface {
 
             methodView.sendParameters = methodDefinition.params.map((e) => {
                 return {
-                    name: (DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name),
-                    last: false
-                }
+                    name: DART_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name,
+                    last: false,
+                };
             });
 
             if (methodView.sendParameters.length > 0) {
@@ -294,15 +319,15 @@ class SdkGenerator implements SdkGeneratorInterface {
         }
     }
 
-    getModelFiles(modelClassesView: {[key: string]: any}): SdkFileClass[] {
+    getModelFiles(modelClassesView: { [key: string]: any }): SdkFileClass[] {
         const files: SdkFileClass[] = [];
         Object.entries(modelClassesView).forEach(([key, value]) => {
             files.push({
                 className: "",
                 path: path.join("models", decodeURIComponent(key.split("/").pop()!)),
-                data: Mustache.render(modelTemplate, value)
+                data: Mustache.render(modelTemplate, value),
             });
-        })
+        });
 
         let exportModelsContent = "";
         Object.keys(modelClassesView).forEach((key) => {
@@ -311,7 +336,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         files.push({
             className: "",
             path: path.join("models", "models.dart"),
-            data: exportModelsContent
+            data: exportModelsContent,
         });
 
         return files;
@@ -327,22 +352,33 @@ class SdkGenerator implements SdkGeneratorInterface {
      * @param fromJson
      * @param toJson
      */
-    addModelToModelViews(views: {[key: string]: any}, struct: StructLiteral, fromJson: string, toJson: string) {
+    addModelToModelViews(
+        views: { [key: string]: any },
+        struct: StructLiteral,
+        fromJson: string,
+        toJson: string,
+    ) {
         if (!views[struct.path!]) {
             views[struct.path!] = {
                 classes: [],
-            }
+            };
         }
 
         if (!views[struct.path!].classes.find((e: any) => e.name === struct.name)) {
             views[struct.path!] = {
-                classes: [...views[struct.path!].classes, {
-                    name: struct.name,
-                    fields: struct.typeLiteral.properties.map((e) => ({ type: getParamType(e.type), fieldName: e.name })),
-                    fromJson: fromJson,
-                    toJson: toJson
-                }],
-            }
+                classes: [
+                    ...views[struct.path!].classes,
+                    {
+                        name: struct.name,
+                        fields: struct.typeLiteral.properties.map((e) => ({
+                            type: getParamType(e.type),
+                            fieldName: e.name,
+                        })),
+                        fromJson: fromJson,
+                        toJson: toJson,
+                    },
+                ],
+            };
         }
     }
 
@@ -387,10 +423,15 @@ class SdkGenerator implements SdkGeneratorInterface {
                 implementation += `${variableName} as int`;
                 break;
             case AstNodeType.PromiseType:
-                implementation += this.castReturnTypeToPropertyType((node as PromiseType).generic, variableName);
+                implementation += this.castReturnTypeToPropertyType(
+                    (node as PromiseType).generic,
+                    variableName,
+                );
                 break;
             case AstNodeType.CustomNodeLiteral:
-                implementation += `${(node as CustomAstNodeType).rawValue}.fromJson(${variableName} as Map<String, dynamic>)`;
+                implementation += `${
+                    (node as CustomAstNodeType).rawValue
+                }.fromJson(${variableName} as Map<String, dynamic>)`;
                 break;
             case AstNodeType.ArrayType:
                 implementation += castArrayRecursivelyInitial(node as ArrayType, variableName);
@@ -422,13 +463,17 @@ class SdkGenerator implements SdkGeneratorInterface {
                 implementation += `json['${name}'] as int,`;
                 break;
             case AstNodeType.CustomNodeLiteral:
-                implementation += `${(node as CustomAstNodeType).rawValue}.fromJson(json['${name}'] as Map<String, dynamic>),`;
+                implementation += `${
+                    (node as CustomAstNodeType).rawValue
+                }.fromJson(json['${name}'] as Map<String, dynamic>),`;
                 break;
             case AstNodeType.ArrayType:
-                implementation += castArrayRecursivelyInitial(node as ArrayType, `json['${name}']`) + ",";
+                implementation +=
+                    castArrayRecursivelyInitial(node as ArrayType, `json['${name}']`) + ",";
                 break;
             case AstNodeType.MapType:
-                implementation += castMapRecursivelyInitial(node as MapType, `json['${name}']`) + ",";
+                implementation +=
+                    castMapRecursivelyInitial(node as MapType, `json['${name}']`) + ",";
                 break;
             case AstNodeType.DateType:
                 implementation += `DateTime.parse(json['${name}'].toString()),`;
@@ -456,7 +501,9 @@ class SdkGenerator implements SdkGeneratorInterface {
             case AstNodeType.ArrayType:
                 return `Future<List<${getParamType((elem as ArrayType).generic)}>>`;
             case AstNodeType.MapType:
-                return `Future<Map<${getParamType((elem as MapType).genericKey)}, ${getParamType((elem as MapType).genericValue)}>>`;
+                return `Future<Map<${getParamType((elem as MapType).genericKey)}, ${getParamType(
+                    (elem as MapType).genericValue,
+                )}>>`;
             case AstNodeType.CustomNodeLiteral:
                 return `Future<${(elem as CustomAstNodeType).rawValue}>`;
             case AstNodeType.DateType:
@@ -469,4 +516,4 @@ class SdkGenerator implements SdkGeneratorInterface {
 
 const supportedLanguages = ["dart"];
 
-export default { SdkGenerator, supportedLanguages }
+export default { SdkGenerator, supportedLanguages };

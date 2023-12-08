@@ -2,6 +2,8 @@ import axios from "./axios.js";
 import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
+import { AxiosResponse } from "axios";
+import { Status } from "./models.js";
 
 export async function getCompileDartPresignedURL(archiveName: string) {
     if (!archiveName) {
@@ -9,10 +11,10 @@ export async function getCompileDartPresignedURL(archiveName: string) {
     }
 
     // Check if user is authenticated
-    const authToken = await getAuthToken()
+    const authToken = await getAuthToken();
     if (!authToken) {
         throw new Error(
-            "You are not logged in. Run 'genezio login' before you deploy your function."
+            "You are not logged in. Run 'genezio login' before you deploy your function.",
         );
     }
 
@@ -20,27 +22,26 @@ export async function getCompileDartPresignedURL(archiveName: string) {
         zipName: archiveName,
     });
 
-    const response: any = await axios({
-        method: "GET",
-        url: `${BACKEND_ENDPOINT}/core/compile-dart-url`,
-        data: json,
-        headers: {
-            Authorization: `Bearer ${authToken}`,
-            "Accept-Version": `genezio-cli/${version}`
-        },
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity
-      }).catch((error: Error) => {
-        throw error;
-      });
+    const response: AxiosResponse<Status<{ userId: string; presignedURL: string | undefined }>> =
+        await axios({
+            method: "GET",
+            url: `${BACKEND_ENDPOINT}/core/compile-dart-url`,
+            data: json,
+            headers: {
+                Authorization: `Bearer ${authToken}`,
+                "Accept-Version": `genezio-cli/${version}`,
+            },
+            maxContentLength: Infinity,
+            maxBodyLength: Infinity,
+        });
 
     if (response.data.status === "error") {
-        throw new Error(response.data.message);
-    }
-
-    if (response.data?.error?.message) {
         throw new Error(response.data.error.message);
     }
 
-    return response.data;
+    if (response.data.presignedURL === undefined) {
+        throw new Error("The endpoint did not return a presigned url.");
+    }
+
+    return { ...response.data, presignedURL: response.data.presignedURL };
 }

@@ -48,18 +48,28 @@ interface KotlinAstGeneratorOutput {
     projectClasses: Map<string, KotlinAstClassDescription>;
 }
 export class AstGenerator implements AstGeneratorInterface {
-
     async #compileGenezioKotlinAstExtractor() {
         const folder = await createTemporaryFolder();
-        const ast_clone_result = await runNewProcess("git clone --quiet https://github.com/Genez-io/kotlin-ast.git .", folder)
-        if (!ast_clone_result) {
-          throw new Error("Error: Failed to clone Kotlin AST parser repository to " + folder + " temporary folder!")
-        } 
+        const ast_clone_success = await runNewProcess(
+            "git clone --quiet https://github.com/Genez-io/kotlin-ast.git .",
+            folder,
+        );
+        if (!ast_clone_success) {
+            throw new Error(
+                "Error: Failed to clone Kotlin AST parser repository to " +
+                    folder +
+                    " temporary folder!",
+            );
+        }
 
         const gradlew = "." + path.sep + "gradlew" + (os.platform() === "win32" ? ".bat" : "");
-        const gradle_build_result = await runNewProcess(gradlew + " --quiet fatJar", folder)
-        if (!gradle_build_result) {
-          throw new Error("Error: Failed to build Kotlin AST parser while executing \"./gradlew --quiet fatJar\" in " + folder + " temporary folder!")
+        const gradle_build_success = await runNewProcess(gradlew + " --quiet fatJar", folder);
+        if (!gradle_build_success) {
+            throw new Error(
+                'Error: Failed to build Kotlin AST parser while executing "./gradlew --quiet fatJar" in ' +
+                    folder +
+                    " temporary folder!",
+            );
         }
 
         if (!fs.existsSync(path.join(os.homedir(), ".kotlin_ast_generator"))) {
@@ -67,9 +77,8 @@ export class AstGenerator implements AstGeneratorInterface {
         }
 
         const ast_gen_path = path.join(folder, "app", "build", "libs", "app-standalone.jar");
-        const ast_gen_dest = path.join(os.homedir(), ".kotlin_ast_generator","ast-generator.jar");
+        const ast_gen_dest = path.join(os.homedir(), ".kotlin_ast_generator", "ast-generator.jar");
         fsExtra.copyFileSync(ast_gen_path, ast_gen_dest);
-
     }
 
     #parseList(type: string): ArrayType | undefined {
@@ -79,7 +88,7 @@ export class AstGenerator implements AstGeneratorInterface {
             return {
                 type: AstNodeType.ArrayType,
                 generic: this.#mapTypesToParamType(extractedString),
-            }
+            };
         } else {
             return undefined;
         }
@@ -98,7 +107,7 @@ export class AstGenerator implements AstGeneratorInterface {
                 type: AstNodeType.MapType,
                 genericKey: this.#mapTypesToParamType(key),
                 genericValue: this.#mapTypesToParamType(value),
-            }
+            };
         }
     }
 
@@ -111,17 +120,29 @@ export class AstGenerator implements AstGeneratorInterface {
             return {
                 type: AstNodeType.PromiseType,
                 generic: this.#mapTypesToParamType(extractedString),
-            }
+            };
         }
     }
 
-    #mapTypesToParamType(type: string): DoubleType | IntegerType | StringType | BooleanType | FloatType | AnyType | ArrayType | MapType | CustomAstNodeType | VoidType {
-        const list = this.#parseList(type)
+    #mapTypesToParamType(
+        type: string,
+    ):
+        | DoubleType
+        | IntegerType
+        | StringType
+        | BooleanType
+        | FloatType
+        | AnyType
+        | ArrayType
+        | MapType
+        | CustomAstNodeType
+        | VoidType {
+        const list = this.#parseList(type);
         if (list) {
             return list;
         }
 
-        const map = this.#parseMap(type)
+        const map = this.#parseMap(type);
         if (map) {
             return map;
         }
@@ -130,23 +151,23 @@ export class AstGenerator implements AstGeneratorInterface {
             case "String":
                 return {
                     type: AstNodeType.StringLiteral,
-                }
+                };
             case "Int":
                 return {
                     type: AstNodeType.IntegerLiteral,
-                }
+                };
             case "Double":
                 return {
                     type: AstNodeType.DoubleLiteral,
-                }
+                };
             case "Boolean":
                 return {
                     type: AstNodeType.BooleanLiteral,
-                }
+                };
             case "Void": {
                 return {
                     type: AstNodeType.VoidLiteral,
-                }
+                };
             }
             case "Any":
                 return {
@@ -156,17 +177,20 @@ export class AstGenerator implements AstGeneratorInterface {
                 return {
                     type: AstNodeType.CustomNodeLiteral,
                     rawValue: type,
-                }
+                };
         }
     }
 
     async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
         // Check if java sdk, kotlin and gradle are installed
         checkIfKotlinReqsAreInstalled();
-        
 
         // Check if the kotlin ast extractor is compiled and installed in home.
-        const genezioAstGeneratorPath = path.join(os.homedir(), ".kotlin_ast_generator", "ast-generator.jar");
+        const genezioAstGeneratorPath = path.join(
+            os.homedir(),
+            ".kotlin_ast_generator",
+            "ast-generator.jar",
+        );
         const compiled = await fileExists(genezioAstGeneratorPath);
         if (!compiled) {
             await this.#compileGenezioKotlinAstExtractor();
@@ -174,18 +198,24 @@ export class AstGenerator implements AstGeneratorInterface {
 
         // Run the Kotlin AST generator program
         const classAbsolutePath = path.resolve(input.class.path);
-        const result = await runNewProcessWithResult(`java -jar ${genezioAstGeneratorPath} ${classAbsolutePath}`)
+        const result = await runNewProcessWithResult(
+            `java -jar ${genezioAstGeneratorPath} ${classAbsolutePath}`,
+        );
         // Map serialization workaround because JavaScript...
         const ast: KotlinAstGeneratorOutput = {
-            projectClasses: {} as Map<string, KotlinAstClassDescription>
+            projectClasses: {} as Map<string, KotlinAstClassDescription>,
         };
-        ast.projectClasses = new Map(Object.entries(JSON.parse(result).projectClasses))
+        ast.projectClasses = new Map(Object.entries(JSON.parse(result).projectClasses));
 
         // Convert the Kotlin AST to Genezio AST
-        const mainClass = ast.projectClasses.get(input.class.name || "") as KotlinAstClassDescription;
+        const mainClass = ast.projectClasses.get(
+            input.class.name || "",
+        ) as KotlinAstClassDescription;
 
         if (!mainClass) {
-            throw new Error(`No class named ${input.class.name} found. Check in the 'genezio.yaml' file and make sure the path is correct.`);
+            throw new Error(
+                `No class named ${input.class.name} found. Check in the 'genezio.yaml' file and make sure the path is correct.`,
+            );
         }
 
         const genezioClass: ClassDefinition = {
@@ -200,15 +230,15 @@ export class AstGenerator implements AstGeneratorInterface {
                             type: AstNodeType.ParameterDefinition,
                             name: p.paramName,
                             paramType: this.#mapTypesToParamType(p.paramType),
-                            rawType: p.paramType
+                            rawType: p.paramType,
                         };
                     }),
                     returnType: this.#mapTypesToParamType(m.funcRetType),
                     static: false,
-                    kind: MethodKindEnum.method
-                } as MethodDefinition
-            })
-        }
+                    kind: MethodKindEnum.method,
+                } as MethodDefinition;
+            }),
+        };
 
         const body: [Node] = [genezioClass];
 
@@ -230,11 +260,11 @@ export class AstGenerator implements AstGeneratorInterface {
                             name: p.paramName,
                             type: this.#mapTypesToParamType(p.paramType),
                             rawType: p.paramType,
-                            optional: false
+                            optional: false,
                         } as PropertyDefinition;
                     }),
-                }
-            }
+                },
+            };
             body.push(genezioClass);
         });
 
@@ -242,12 +272,12 @@ export class AstGenerator implements AstGeneratorInterface {
             program: {
                 body,
                 originalLanguage: "kotlin",
-                sourceType: SourceType.module
-            }
+                sourceType: SourceType.module,
+            },
         };
     }
 }
 
-const supportedExtensions = ["kt"]
+const supportedExtensions = ["kt"];
 
-export default { supportedExtensions, AstGenerator }
+export default { supportedExtensions, AstGenerator };

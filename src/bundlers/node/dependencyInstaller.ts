@@ -1,8 +1,6 @@
-import { Mutex } from 'async-mutex'
-import { debugLogger } from '../../utils/logging.js';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import exec from 'await-exec';
+import { Mutex } from "async-mutex";
+import { debugLogger } from "../../utils/logging.js";
+import packageManager from "../../packageManagers/packageManager.js";
 
 /**
  * The `DependencyInstaller` class provides a thread-safe way to install dependencies for a Node.js project.
@@ -25,6 +23,7 @@ class DependencyInstaller {
      * @param {boolean} [noSave] - If true, the installed dependencies will not be saved to the package.json file.
      * @returns {Promise<void>} A promise that resolves when all specified dependencies have been installed.
      */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async install(dependencyList: string[], cwd: string, noSave?: boolean): Promise<void> {
         const toBeInstalled: string[] = [];
 
@@ -34,18 +33,16 @@ class DependencyInstaller {
                     this.alreadyInstalled.add(dependency);
                     toBeInstalled.push(dependency);
                 }
-            })
+            });
 
             if (toBeInstalled.length === 0) {
                 return;
             }
 
-            const baseCommand = this.getInstallPackageCommand(noSave);
-            const command = baseCommand + " " + toBeInstalled.join(" ");
-            debugLogger.debug("Running command: " + command);
-
-            await exec(command);
-        })
+            debugLogger.debug(`Installing dependencies: ${toBeInstalled.join(", ")}`);
+            // TODO: Add support for no-save for all package managers
+            await packageManager.install(toBeInstalled, cwd);
+        });
     }
 
     /**
@@ -55,41 +52,9 @@ class DependencyInstaller {
      */
     async installAll(cwd: string): Promise<void> {
         await this.mutex.runExclusive(async () => {
-            const command = this.getInstallCommand();
-            debugLogger.debug("Running command: " + command);
-
-            await exec(command, { cwd });
-        })
-    }
-
-    getInstallPackageCommand(noSave?: boolean): string {
-        const dependencyManager = process.env.GENEZIO_DEPENDENCY_MANAGER || "npm";
-
-        switch (dependencyManager) {
-            case "npm":
-                return "npm install " + (noSave ? "--no-save " : "");
-            case "yarn":
-                return "yarn add";
-            case "pnpm":
-                return "pnpm add";
-            default:
-                return "npm install";
-        }
-    }
-
-    getInstallCommand(): string {
-        const dependencyManager = process.env.GENEZIO_DEPENDENCY_MANAGER || "npm";
-
-        switch (dependencyManager) {
-            case "npm":
-                return "npm install";
-            case "yarn":
-                return "yarn install";
-            case "pnpm":
-                return "pnpm install";
-            default:
-                return "npm install";
-        }
+            debugLogger.debug(`Installing all dependencies`);
+            await packageManager.install([], cwd);
+        });
     }
 }
 

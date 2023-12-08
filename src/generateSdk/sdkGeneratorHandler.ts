@@ -4,13 +4,10 @@ import SwiftSdkGenerator from "./sdkGenerator/SwiftSdkGenerator.js";
 import PythonSdkGenerator from "./sdkGenerator/PythonSdkGenerator.js";
 import DartSdkGenerator from "./sdkGenerator/DartSdkGenerator.js";
 import KotlinSdkGenerator from "./sdkGenerator/KotlinSdkGenerator.js";
-import {
-  SdkGeneratorInput,
-  SdkGeneratorOutput,
-  SdkVersion,
-} from "../models/genezioModels.js";
+import { SdkGeneratorInput, SdkGeneratorOutput, SdkVersion } from "../models/genezioModels.js";
 import log from "loglevel";
 import { exit } from "process";
+import { debugLogger } from "../utils/logging.js";
 
 /**
  * Asynchronously generates an SDK from a given AST array using specified plugins.
@@ -21,41 +18,38 @@ import { exit } from "process";
  * @throws {Error} If there was an error generating the SDK.
  */
 export async function generateSdk(
-  sdkGeneratorInput: SdkGeneratorInput,
-  plugins: string[] | undefined,
-  sdkVersion: SdkVersion,
+    sdkGeneratorInput: SdkGeneratorInput,
+    plugins: string[] | undefined,
+    sdkVersion: SdkVersion,
 ): Promise<SdkGeneratorOutput> {
-  let pluginsImported: any = [];
+    let pluginsImported: any = [];
 
-  if (plugins) {
-    pluginsImported = plugins?.map(async (plugin) => {
-      return await import(plugin).catch((err: any) => {
-        log.error(
-          `Plugin(${plugin}) not found. Install it with npm install ${plugin}`,
-        );
-        exit(1);
-      });
+    if (plugins) {
+        pluginsImported = plugins?.map(async (plugin) => {
+            return await import(plugin).catch((err) => {
+                log.error(`Plugin(${plugin}) not found. Install it with npm install ${plugin}`);
+                debugLogger.debug(err);
+                exit(1);
+            });
+        });
+    }
+
+    pluginsImported.push(JsSdkGenerator);
+    pluginsImported.push(TsSdkGenerator);
+    pluginsImported.push(SwiftSdkGenerator);
+    pluginsImported.push(PythonSdkGenerator);
+    pluginsImported.push(DartSdkGenerator);
+    pluginsImported.push(KotlinSdkGenerator);
+
+    const sdkGeneratorElem = pluginsImported.find((plugin: any) => {
+        return plugin.supportedLanguages.includes(sdkGeneratorInput.sdk?.language);
     });
-  }
 
-  pluginsImported.push(JsSdkGenerator);
-  pluginsImported.push(TsSdkGenerator);
-  pluginsImported.push(SwiftSdkGenerator);
-  pluginsImported.push(PythonSdkGenerator);
-  pluginsImported.push(DartSdkGenerator);
-  pluginsImported.push(KotlinSdkGenerator);
+    if (!sdkGeneratorElem && sdkGeneratorInput.sdk) {
+        throw new Error(`SDK language(${sdkGeneratorInput.sdk.language}) not supported`);
+    }
 
-  const sdkGeneratorElem = pluginsImported.find((plugin: any) => {
-    return plugin.supportedLanguages.includes(sdkGeneratorInput.sdk?.language);
-  });
+    const sdkGeneratorClass = new sdkGeneratorElem.SdkGenerator();
 
-  if (!sdkGeneratorElem && sdkGeneratorInput.sdk) {
-    throw new Error(
-      `SDK language(${sdkGeneratorInput.sdk.language}) not supported`,
-    );
-  }
-
-  const sdkGeneratorClass = new sdkGeneratorElem.SdkGenerator();
-
-  return await sdkGeneratorClass.generateSdk(sdkGeneratorInput, sdkVersion);
+    return await sdkGeneratorClass.generateSdk(sdkGeneratorInput, sdkVersion);
 }

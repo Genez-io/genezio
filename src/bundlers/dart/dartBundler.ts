@@ -1,15 +1,24 @@
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import fs from "fs";
 import path from "path";
 import Mustache from "mustache";
 import { getCompileDartPresignedURL } from "../../requests/getCompileDartPresignedURL.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import decompress from "decompress";
-import { createTemporaryFolder, deleteFolder, writeToFile, zipDirectory } from "../../utils/file.js";
+import {
+    createTemporaryFolder,
+    deleteFolder,
+    writeToFile,
+    zipDirectory,
+} from "../../utils/file.js";
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface.js";
 import { checkIfDartIsInstalled } from "../../utils/dart.js";
 import { debugLogger } from "../../utils/logging.js";
-import { ClassConfiguration, MethodConfiguration, ParameterType } from "../../models/projectConfiguration.js";
+import {
+    ClassConfiguration,
+    MethodConfiguration,
+    ParameterType,
+} from "../../models/projectConfiguration.js";
 import { template } from "./dartMain.js";
 import { default as fsExtra } from "fs-extra";
 import { DART_COMPILATION_ENDPOINT } from "../../constants.js";
@@ -19,17 +28,32 @@ import log from "loglevel";
 import { runNewProcess } from "../../utils/process.js";
 import { getAllFilesFromCurrentPath } from "../../utils/file.js";
 import FileDetails from "../../models/fileDetails.js";
-import { ArrayType, AstNodeType, ClassDefinition, CustomAstNodeType, MapType, Node, Program, PromiseType } from "../../models/genezioModels.js";
-import { castArrayRecursivelyInitial, castMapRecursivelyInitial } from "../../utils/dartAstCasting.js";
+import {
+    ArrayType,
+    AstNodeType,
+    ClassDefinition,
+    CustomAstNodeType,
+    MapType,
+    Node,
+    Program,
+    PromiseType,
+} from "../../models/genezioModels.js";
+import {
+    castArrayRecursivelyInitial,
+    castMapRecursivelyInitial,
+} from "../../utils/dartAstCasting.js";
 import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE } from "../../errors.js";
+import { Status } from "../../requests/models.js";
 
 export class DartBundler implements BundlerInterface {
     async #getDartCompilePresignedUrl(archiveName: string): Promise<string> {
-        return await getCompileDartPresignedURL(archiveName)
+        return (await getCompileDartPresignedURL(archiveName)).presignedURL;
     }
 
     async #analyze(path: string) {
-        const result = spawnSync("dart", ["analyze", "--no-fatal-warnings"], { cwd: path });
+        const result = spawnSync("dart", ["analyze", "--no-fatal-warnings"], {
+            cwd: path,
+        });
 
         if (result.status != 0) {
             log.info(result.stdout.toString().split("\n").slice(1).join("\n"));
@@ -37,42 +61,43 @@ export class DartBundler implements BundlerInterface {
         }
     }
 
-    async #compile(archiveName: string): Promise<string> {
+    async #compile(archiveName: string): Promise<{ success: boolean; downloadUrl: string }> {
         const url = DART_COMPILATION_ENDPOINT;
 
-        const response: any = await axios({
-            method: "PUT",
-            url: url,
-            data: { archiveName },
-            maxContentLength: Infinity,
-            maxBodyLength: Infinity
-        }).catch((error: Error) => {
-            throw error
-        });
+        const response: AxiosResponse<Status<{ success: boolean; downloadUrl: string }>> =
+            await axios({
+                method: "PUT",
+                url: url,
+                data: { archiveName },
+                maxContentLength: Infinity,
+                maxBodyLength: Infinity,
+            });
 
         if (response.data.status === "error") {
-            throw new Error(response.data.message);
-        }
-
-        if (response.data?.error?.message) {
             throw new Error(response.data.error.message);
         }
 
-        return response.data
+        return response.data;
     }
 
-    async #downloadAndUnzipFromS3ToFolder(s3ZipUrl: string, temporaryFolder: string): Promise<void> {
-        const compiledZip = path.join(temporaryFolder, "compiled.zip")
+    async #downloadAndUnzipFromS3ToFolder(
+        s3ZipUrl: string,
+        temporaryFolder: string,
+    ): Promise<void> {
+        const compiledZip = path.join(temporaryFolder, "compiled.zip");
 
         return await axios({
             url: s3ZipUrl,
-            responseType: 'arraybuffer'
-        }).then(response => {
-            fs.writeFileSync(compiledZip, response.data)
-        }).then((async () => {
-            await decompress(compiledZip, temporaryFolder)
-            fs.unlinkSync(compiledZip)
-        })).catch(err => console.error(err));
+            responseType: "arraybuffer",
+        })
+            .then((response) => {
+                fs.writeFileSync(compiledZip, response.data);
+            })
+            .then(async () => {
+                await decompress(compiledZip, temporaryFolder);
+                fs.unlinkSync(compiledZip);
+            })
+            .catch((err) => console.error(err));
     }
 
     #castParameterToPropertyType(node: Node, variableName: string): string {
@@ -92,10 +117,15 @@ export class DartBundler implements BundlerInterface {
                 implementation += `${variableName} as int`;
                 break;
             case AstNodeType.PromiseType:
-                implementation += this.#castParameterToPropertyType((node as PromiseType).generic, variableName);
+                implementation += this.#castParameterToPropertyType(
+                    (node as PromiseType).generic,
+                    variableName,
+                );
                 break;
             case AstNodeType.CustomNodeLiteral:
-                implementation += `${(node as CustomAstNodeType).rawValue}.fromJson(${variableName} as Map<String, dynamic>)`;
+                implementation += `${
+                    (node as CustomAstNodeType).rawValue
+                }.fromJson(${variableName} as Map<String, dynamic>)`;
                 break;
             case AstNodeType.ArrayType:
                 implementation += castArrayRecursivelyInitial(node as ArrayType, variableName);
@@ -107,18 +137,35 @@ export class DartBundler implements BundlerInterface {
         return implementation;
     }
 
-    #getProperCast(mainClass: ClassDefinition, method: MethodConfiguration, parameterType: ParameterType, index: number): string {
-        const type = mainClass.methods.find((m) => m.name == method.name)!.params.find((p) => p.name == parameterType.name)
-        return `${this.#castParameterToPropertyType(type!.paramType, `params[${index}]`)}`
+    #getProperCast(
+        mainClass: ClassDefinition,
+        method: MethodConfiguration,
+        parameterType: ParameterType,
+        index: number,
+    ): string {
+        const type = mainClass.methods
+            .find((m) => m.name == method.name)
+            ?.params.find((p) => p.name == parameterType.name);
+
+        if (!type) throw new Error("Type not found");
+
+        return `${this.#castParameterToPropertyType(type.paramType, `params[${index}]`)}`;
     }
 
-    async #createRouterFileForClass(classConfiguration: ClassConfiguration, ast: Program, folderPath: string): Promise<void> {
+    async #createRouterFileForClass(
+        classConfiguration: ClassConfiguration,
+        ast: Program,
+        folderPath: string,
+    ): Promise<void> {
         const mainClass = ast.body?.find((element) => {
-            return element.type === AstNodeType.ClassDefinition
+            return element.type === AstNodeType.ClassDefinition;
         }) as ClassDefinition;
 
         const moustacheViewForMain = {
-            classFileName: path.basename(classConfiguration.path, path.extname(classConfiguration.path)),
+            classFileName: path.basename(
+                classConfiguration.path,
+                path.extname(classConfiguration.path),
+            ),
             className: classConfiguration.name,
             jsonRpcMethods: classConfiguration.methods
                 .filter((m) => m.type === TriggerType.jsonrpc)
@@ -139,24 +186,28 @@ export class DartBundler implements BundlerInterface {
                 .map((m) => ({
                     name: m.name,
                 })),
-            imports: ast.body?.map((element) => ({ name: element.path }))
-        }
+            imports: ast.body?.map((element) => ({ name: element.path })),
+        };
 
         const routerFileContent = Mustache.render(template, moustacheViewForMain);
         await writeToFile(folderPath, "main.dart", routerFileContent);
     }
 
-    async #uploadUserCodeToS3(projectName: string, className: string, userCodeFolderPath: string): Promise<string> {
+    async #uploadUserCodeToS3(
+        projectName: string,
+        className: string,
+        userCodeFolderPath: string,
+    ): Promise<string> {
         const random = Math.random().toString(36).substring(2);
         const archiveName = `${projectName}${className}${random}.zip`;
-        const presignedUrlResult: any = await this.#getDartCompilePresignedUrl(archiveName)
+        const presignedUrl = await this.#getDartCompilePresignedUrl(archiveName);
 
         const archiveDirectoryOutput = await createTemporaryFolder();
         const archivePath = path.join(archiveDirectoryOutput, archiveName);
 
         try {
             await zipDirectory(userCodeFolderPath, archivePath);
-            await uploadContentToS3(presignedUrlResult.presignedURL, archivePath)
+            await uploadContentToS3(presignedUrl, archivePath);
         } finally {
             // remove temporary folder
             await deleteFolder(archiveDirectoryOutput);
@@ -166,7 +217,12 @@ export class DartBundler implements BundlerInterface {
     }
 
     async #addLambdaRuntimeDependency(path: string) {
-        const success = await runNewProcess("dart pub add aws_lambda_dart_runtime:'^1.1.0'", path, false, false);
+        const success = await runNewProcess(
+            "dart pub add aws_lambda_dart_runtime:'^1.1.0'",
+            path,
+            false,
+            false,
+        );
 
         if (!success) {
             throw new Error("Error while adding aws_lambda_dart_runtime dependency");
@@ -182,7 +238,7 @@ export class DartBundler implements BundlerInterface {
                     !file.path.includes(".git") &&
                     !fs.lstatSync(file.path).isDirectory()
                 );
-            }
+            },
         );
 
         // iterate over all non dart files and copy them to tmp folder
@@ -197,12 +253,12 @@ export class DartBundler implements BundlerInterface {
                 const fileDestinationPath = path.join(tempFolderPath, filePath.path);
                 return fs.promises.copyFile(filePath.path, fileDestinationPath).catch((error) => {
                     if (error.code === "EACCES") {
-                        throw new Error(GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE(filePath.path))
+                        throw new Error(GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE(filePath.path));
                     }
 
                     throw error;
                 });
-            })
+            }),
         );
     }
 
@@ -217,7 +273,12 @@ export class DartBundler implements BundlerInterface {
             debugLogger.debug(`Copy files in temp folder ${inputTemporaryFolder}`);
 
             // Create the router class
-            const userClass = input.projectConfiguration.classes.find((c: ClassConfiguration) => c.path == input.path)!;
+            const userClass = input.projectConfiguration.classes.find(
+                (c: ClassConfiguration) => c.path == input.path,
+            );
+
+            if (!userClass) throw new Error("Class not found while bundling");
+
             this.#createRouterFileForClass(userClass, input.ast, inputTemporaryFolder);
 
             // Check if dart is installed
@@ -227,28 +288,31 @@ export class DartBundler implements BundlerInterface {
 
             await this.#analyze(inputTemporaryFolder);
 
-            const archiveName = await this.#uploadUserCodeToS3(input.projectConfiguration.name, userClass.name, inputTemporaryFolder);
+            const archiveName = await this.#uploadUserCodeToS3(
+                input.projectConfiguration.name,
+                userClass.name,
+                inputTemporaryFolder,
+            );
 
             // Compile the Dart code on the server
-            debugLogger.debug("Compiling Dart...")
-            const s3Zip: any = await this.#compile(archiveName)
-            debugLogger.debug("Compiling Dart finished.")
+            debugLogger.debug("Compiling Dart...");
+            const s3Zip = await this.#compile(archiveName);
+            debugLogger.debug("Compiling Dart finished.");
 
             if (s3Zip.success === false) {
                 throw new Error("Failed to upload code for compiling.");
             }
 
-            temporaryFolder = await createTemporaryFolder()
+            temporaryFolder = await createTemporaryFolder();
 
             try {
                 debugLogger.debug(`Copy all non dart files to folder ${temporaryFolder}...`);
                 await this.#copyNonDartFiles(temporaryFolder);
                 debugLogger.debug("Copy all non dart files to folder done.");
 
-
-                debugLogger.debug("Downloading compiled code...")
-                await this.#downloadAndUnzipFromS3ToFolder(s3Zip.downloadUrl, temporaryFolder)
-                debugLogger.debug("Finished downloading compiled code...")
+                debugLogger.debug("Downloading compiled code...");
+                await this.#downloadAndUnzipFromS3ToFolder(s3Zip.downloadUrl, temporaryFolder);
+                debugLogger.debug("Finished downloading compiled code...");
             } catch (error) {
                 await deleteFolder(temporaryFolder);
                 throw error;
@@ -257,7 +321,6 @@ export class DartBundler implements BundlerInterface {
             // remove temporary folder
             await deleteFolder(inputTemporaryFolder);
         }
-
 
         return {
             ...input,

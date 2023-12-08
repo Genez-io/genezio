@@ -3,26 +3,26 @@ description: Submit a feature request
 title: "[Feature Request]: "
 labels: ["feature-wanted"]
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thanks for taking the time to fill out this report!
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for taking the time to fill out this report!
 
-        For questions, concerns or help with running genezio, please check out our additional resources:
+              For questions, concerns or help with running genezio, please check out our additional resources:
 
-        * [genezio documentation](https://genez.io/docs)
-        * [genezio official examples](https://github.com/Genez-io/genezio-examples)
-        * [genezio Troubleshooting section](https://docs.genez.io/genezio-documentation/troubleshooting)
+              * [genezio documentation](https://genez.io/docs)
+              * [genezio official examples](https://github.com/Genez-io/genezio-examples)
+              * [genezio Troubleshooting section](https://docs.genez.io/genezio-documentation/troubleshooting)
 
-  - type: textarea
-    id: feature-description
-    attributes:
-      label: Describe your feature
-      description: A clear description of what the feature is.
-    validations:
-      required: true
-  - type: textarea
-    id: motivation-description
-    attributes:
-      label: Motivation
-      description: Tell us your motivation in a few words.
+    - type: textarea
+      id: feature-description
+      attributes:
+          label: Describe your feature
+          description: A clear description of what the feature is.
+      validations:
+          required: true
+    - type: textarea
+      id: motivation-description
+      attributes:
+          label: Motivation
+          description: Tell us your motivation in a few words.

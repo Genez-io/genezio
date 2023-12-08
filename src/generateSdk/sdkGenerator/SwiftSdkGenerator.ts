@@ -1,46 +1,46 @@
 import Mustache from "mustache";
 import {
-  ClassDefinition,
-  AstNodeType,
-  SdkGeneratorInterface,
-  SdkGeneratorInput,
-  SdkGeneratorOutput,
-  Node,
-  ArrayType,
-  PromiseType,
-  SdkVersion,
+    ClassDefinition,
+    AstNodeType,
+    SdkGeneratorInterface,
+    SdkGeneratorInput,
+    SdkGeneratorOutput,
+    Node,
+    ArrayType,
+    PromiseType,
+    SdkVersion,
 } from "../../models/genezioModels.js";
 import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 import { swiftSdk } from "../templates/swiftSdk.js";
 
 const SWIFT_RESERVED_WORDS = [
-  "associativity",
-  "convenience",
-  "didSet",
-  "dynamic",
-  "final",
-  "get",
-  "indirect",
-  "infix",
-  "lazy",
-  "left",
-  "mutating",
-  "none",
-  "nonmutating",
-  "optional",
-  "override",
-  "postfix",
-  "precedence",
-  "prefix",
-  "Protocol",
-  "required",
-  "right",
-  "set",
-  "some",
-  "Type",
-  "unowned",
-  "weak",
-  "willSet",
+    "associativity",
+    "convenience",
+    "didSet",
+    "dynamic",
+    "final",
+    "get",
+    "indirect",
+    "infix",
+    "lazy",
+    "left",
+    "mutating",
+    "none",
+    "nonmutating",
+    "optional",
+    "override",
+    "postfix",
+    "precedence",
+    "prefix",
+    "Protocol",
+    "required",
+    "right",
+    "set",
+    "some",
+    "Type",
+    "unowned",
+    "weak",
+    "willSet",
 ];
 
 const template = `/**
@@ -63,139 +63,134 @@ class {{{className}}} {
 `;
 
 class SdkGenerator implements SdkGeneratorInterface {
-  async generateSdk(
-    sdkGeneratorInput: SdkGeneratorInput,
-    sdkVersion: SdkVersion,
-  ): Promise<SdkGeneratorOutput> {
-    const generateSdkOutput: SdkGeneratorOutput = {
-      files: [],
-    };
-
-    for (const classInfo of sdkGeneratorInput.classesInfo) {
-      const _url = "%%%link_to_be_replace%%%";
-      const classConfiguration = classInfo.classConfiguration;
-
-      let classDefinition: ClassDefinition | undefined = undefined;
-
-      if (classInfo.program.body === undefined) {
-        continue;
-      }
-      for (const elem of classInfo.program.body) {
-        if (elem.type === AstNodeType.ClassDefinition) {
-          classDefinition = elem as ClassDefinition;
-        }
-      }
-
-      if (classDefinition === undefined) {
-        continue;
-      }
-
-      const view: any = {
-        className: classDefinition.name,
-        _url: _url,
-        methods: [],
-        externalTypes: [],
-      };
-
-      let exportClassChecker = false;
-
-      for (const methodDefinition of classDefinition.methods) {
-        const methodConfigurationType = classConfiguration.getMethodType(
-          methodDefinition.name,
-        );
-
-        if (
-          methodConfigurationType !== TriggerType.jsonrpc ||
-          classConfiguration.type !== TriggerType.jsonrpc
-        ) {
-          continue;
-        }
-
-        exportClassChecker = true;
-
-        const methodView: any = {
-          name: methodDefinition.name,
-          parameters: [],
-          returnType: this.getParamType(methodDefinition.returnType),
-          methodCaller:
-            methodDefinition.params.length === 0
-              ? `"${classDefinition.name}.${methodDefinition.name}"`
-              : `"${classDefinition.name}.${methodDefinition.name}", args:`,
+    async generateSdk(sdkGeneratorInput: SdkGeneratorInput): Promise<SdkGeneratorOutput> {
+        const generateSdkOutput: SdkGeneratorOutput = {
+            files: [],
         };
 
-        methodView.parameters = methodDefinition.params.map((e) => {
-          return {
-            name:
-              (SWIFT_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name) +
-              ": " +
-              this.getParamType(e.paramType),
-            last: false,
-          };
-        });
+        for (const classInfo of sdkGeneratorInput.classesInfo) {
+            const _url = "%%%link_to_be_replace%%%";
+            const classConfiguration = classInfo.classConfiguration;
 
-        methodView.sendParameters = methodDefinition.params.map((e) => {
-          return {
-            name: SWIFT_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name,
-            last: false,
-          };
-        });
+            let classDefinition: ClassDefinition | undefined = undefined;
 
-        if (methodView.parameters.length > 0) {
-          methodView.parameters[methodView.parameters.length - 1].last = true;
-          methodView.sendParameters[methodView.sendParameters.length - 1].last =
-            true;
+            if (classInfo.program.body === undefined) {
+                continue;
+            }
+            for (const elem of classInfo.program.body) {
+                if (elem.type === AstNodeType.ClassDefinition) {
+                    classDefinition = elem as ClassDefinition;
+                }
+            }
+
+            if (classDefinition === undefined) {
+                continue;
+            }
+
+            const view: any = {
+                className: classDefinition.name,
+                _url: _url,
+                methods: [],
+                externalTypes: [],
+            };
+
+            let exportClassChecker = false;
+
+            for (const methodDefinition of classDefinition.methods) {
+                const methodConfigurationType = classConfiguration.getMethodType(
+                    methodDefinition.name,
+                );
+
+                if (
+                    methodConfigurationType !== TriggerType.jsonrpc ||
+                    classConfiguration.type !== TriggerType.jsonrpc
+                ) {
+                    continue;
+                }
+
+                exportClassChecker = true;
+
+                const methodView: any = {
+                    name: methodDefinition.name,
+                    parameters: [],
+                    returnType: this.getParamType(methodDefinition.returnType),
+                    methodCaller:
+                        methodDefinition.params.length === 0
+                            ? `"${classDefinition.name}.${methodDefinition.name}"`
+                            : `"${classDefinition.name}.${methodDefinition.name}", args:`,
+                };
+
+                methodView.parameters = methodDefinition.params.map((e) => {
+                    return {
+                        name:
+                            (SWIFT_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name) +
+                            ": " +
+                            this.getParamType(e.paramType),
+                        last: false,
+                    };
+                });
+
+                methodView.sendParameters = methodDefinition.params.map((e) => {
+                    return {
+                        name: SWIFT_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name,
+                        last: false,
+                    };
+                });
+
+                if (methodView.parameters.length > 0) {
+                    methodView.parameters[methodView.parameters.length - 1].last = true;
+                    methodView.sendParameters[methodView.sendParameters.length - 1].last = true;
+                }
+
+                view.methods.push(methodView);
+            }
+
+            if (!exportClassChecker) {
+                continue;
+            }
+
+            const rawSdkClassName = `${classDefinition.name}.sdk.swift`;
+            const sdkClassName = rawSdkClassName.charAt(0).toLowerCase() + rawSdkClassName.slice(1);
+
+            generateSdkOutput.files.push({
+                path: sdkClassName,
+                data: Mustache.render(template, view),
+                className: classDefinition.name,
+            });
         }
 
-        view.methods.push(methodView);
-      }
+        // generate remote.js
+        generateSdkOutput.files.push({
+            className: "Remote",
+            path: "remote.swift",
+            data: swiftSdk,
+        });
 
-      if (!exportClassChecker) {
-        continue;
-      }
-
-      const rawSdkClassName = `${classDefinition.name}.sdk.swift`;
-      const sdkClassName =
-        rawSdkClassName.charAt(0).toLowerCase() + rawSdkClassName.slice(1);
-
-      generateSdkOutput.files.push({
-        path: sdkClassName,
-        data: Mustache.render(template, view),
-        className: classDefinition.name,
-      });
+        return generateSdkOutput;
     }
 
-    // generate remote.js
-    generateSdkOutput.files.push({
-      className: "Remote",
-      path: "remote.swift",
-      data: swiftSdk,
-    });
-
-    return generateSdkOutput;
-  }
-
-  getParamType(elem: Node): string {
-    if (elem.type === AstNodeType.CustomNodeLiteral) {
-      return "Any";
-    } else if (elem.type === AstNodeType.StringLiteral) {
-      return "String";
-    } else if (elem.type === AstNodeType.IntegerLiteral) {
-      return "Int";
-    } else if (elem.type === AstNodeType.DoubleLiteral) {
-      return "Double";
-    } else if (elem.type === AstNodeType.FloatLiteral) {
-      return "Float";
-    } else if (elem.type === AstNodeType.BooleanLiteral) {
-      return "Bool";
-    } else if (elem.type === AstNodeType.AnyLiteral) {
-      return "Any";
-    } else if (elem.type === AstNodeType.ArrayType) {
-      return `[${this.getParamType((elem as ArrayType).generic)}]`;
-    } else if (elem.type === AstNodeType.PromiseType) {
-      return `${this.getParamType((elem as PromiseType).generic)}`;
+    getParamType(elem: Node): string {
+        if (elem.type === AstNodeType.CustomNodeLiteral) {
+            return "Any";
+        } else if (elem.type === AstNodeType.StringLiteral) {
+            return "String";
+        } else if (elem.type === AstNodeType.IntegerLiteral) {
+            return "Int";
+        } else if (elem.type === AstNodeType.DoubleLiteral) {
+            return "Double";
+        } else if (elem.type === AstNodeType.FloatLiteral) {
+            return "Float";
+        } else if (elem.type === AstNodeType.BooleanLiteral) {
+            return "Bool";
+        } else if (elem.type === AstNodeType.AnyLiteral) {
+            return "Any";
+        } else if (elem.type === AstNodeType.ArrayType) {
+            return `[${this.getParamType((elem as ArrayType).generic)}]`;
+        } else if (elem.type === AstNodeType.PromiseType) {
+            return `${this.getParamType((elem as PromiseType).generic)}`;
+        }
+        return "Any";
     }
-    return "Any";
-  }
 }
 
 const supportedLanguages = ["swift"];

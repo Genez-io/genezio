@@ -6,6 +6,6 @@ export type AstSummaryParam = {
 };
 
 export type SdkGeneratorResponse = {
-    files: SdkFileClass[],
-    sdkGeneratorInput: SdkGeneratorInput,
+    files: SdkFileClass[];
+    sdkGeneratorInput: SdkGeneratorInput;
 };

@@ -1,19 +1,20 @@
-import log, { LogLevelDesc } from 'loglevel';
+import log, { LogLevelDesc } from "loglevel";
 import { Spinner } from "cli-spinner";
 import { AbortController } from "node-abort-controller";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import terminalOverwrite from 'terminal-overwrite';
+import terminalOverwrite from "terminal-overwrite";
+import colors from "colors";
 
 export const spinner = new Spinner("%s  ");
 spinner.setSpinnerString("|/-\\");
 
-export const debugLogger = log.getLogger("debuggingLogger")
+export const debugLogger = log.getLogger("debuggingLogger");
 
 export function setDebuggingLoggerLogLevel(logLevel?: string) {
     if (!logLevel) return;
 
-    debugLogger.setLevel(logLevel as LogLevelDesc)
+    debugLogger.setLevel(logLevel as LogLevelDesc);
 }
 
 export function printAdaptiveLog(message: string, state: string) {
@@ -31,6 +32,10 @@ export function printAdaptiveLog(message: string, state: string) {
     }
 }
 
+export function code(code: string): string {
+    return colors.cyan(code);
+}
+
 const uninformativeMessages = [
     "Calling the API for witty loading messages",
     "Asking on StackOverflow how to deploy your project",
@@ -42,10 +47,10 @@ const uninformativeMessages = [
     "*playing elevator music*",
     "Spraying your code with bug repellents",
     "Baking a cake",
-    "Changing spaces to tabs"
-]
+    "Changing spaces to tabs",
+];
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function printUninformativeLog(controller: AbortController): Promise<string> {
     const finalMessage = "Doing the final touch-ups";
@@ -55,7 +60,7 @@ export async function printUninformativeLog(controller: AbortController): Promis
     let spinning = true;
     let firstMessage = false;
 
-    controller.signal.addEventListener('abort', () => {
+    controller.signal.addEventListener("abort", () => {
         exitLoop = true;
     });
 

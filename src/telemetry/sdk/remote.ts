@@ -1,17 +1,21 @@
 /**
-* This is an auto generated code. This code should not be modified since the file can be overwritten
-* if new genezio commands are executed.
-*/
+ * This is an auto generated code. This code should not be modified since the file can be overwritten
+ * if new genezio commands are executed.
+ */
 
 let http: any = null;
 let https: any = null;
 let importDone = false;
 
 async function importModules() {
-    if (typeof process !== "undefined" && process.versions != null && process.versions.node != null) {
-        const httpModule = 'http';
+    if (
+        typeof process !== "undefined" &&
+        process.versions != null &&
+        process.versions.node != null
+    ) {
+        const httpModule = "http";
         http = await import(httpModule);
-        const httpsModule = 'https';
+        const httpsModule = "https";
         https = await import(httpsModule);
     }
     importDone = true;
@@ -21,9 +25,9 @@ async function makeRequestBrowser(request: any, url: any) {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const response = await fetch(`${url}`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json",
         },
         body: JSON.stringify(request),
     });
@@ -31,7 +35,6 @@ async function makeRequestBrowser(request: any, url: any) {
 }
 
 async function makeRequestNode(request: any, url: any, agent: any) {
-
     const data = JSON.stringify(request);
     const hostUrl = new URL(url);
 
@@ -39,30 +42,29 @@ async function makeRequestNode(request: any, url: any, agent: any) {
         hostname: hostUrl.hostname,
         path: hostUrl.search ? hostUrl.pathname + hostUrl.search : hostUrl.pathname,
         port: hostUrl.port,
-        method: 'POST',
+        method: "POST",
         headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': data.length,
+            "Content-Type": "application/json",
+            "Content-Length": data.length,
         },
         agent: agent,
     };
-    const client = url.includes('https') ? https : http;
+    const client = url.includes("https") ? https : http;
 
     return new Promise((resolve, reject) => {
-        const req = client.request(options, (res: any)=> {
-            let body = '';
+        const req = client.request(options, (res: any) => {
+            let body = "";
 
-            res.on('data', (d: any) => {
-                body += d
+            res.on("data", (d: any) => {
+                body += d;
             });
-            res.on('end', async function() {
+            res.on("end", async function () {
                 const response = JSON.parse(body);
                 resolve(response);
             });
-
         });
 
-        req.on('error', (error: any) => {
+        req.on("error", (error: any) => {
             reject(error);
         });
 
@@ -75,7 +77,7 @@ async function makeRequestNode(request: any, url: any, agent: any) {
  * The class through which all request to the Genezio backend will be passed.
  *
  */
- export class Remote {
+export class Remote {
     url: any = undefined;
     agent: any = undefined;
 
@@ -88,7 +90,12 @@ async function makeRequestNode(request: any, url: any, agent: any) {
     }
 
     async call(method: any, ...args: any[]) {
-        const requestContent = {"jsonrpc": "2.0", "method": method, "params": args, "id": 3};
+        const requestContent = {
+            jsonrpc: "2.0",
+            method: method,
+            params: args,
+            id: 3,
+        };
         let response: any = undefined;
         if (!importDone) {
             await importModules();
