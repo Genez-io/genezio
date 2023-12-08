@@ -9,7 +9,7 @@ import { fileExists, writeToFile } from "../utils/file.js";
 import { supportedExtensions } from "../utils/languages.js";
 
 export async function addClassCommand(classPath: string, classType: string) {
-    GenezioTelemetry.sendEvent({
+    await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_ADD_CLASS,
     });
 
@@ -74,9 +74,9 @@ export async function addClassCommand(classPath: string, classType: string) {
 
     // create the file if it does not exist
     if (!(await fileExists(classPath))) {
-        await writeToFile(".", classPath, classContent, true).catch((error) => {
+        await writeToFile(".", classPath, classContent, true).catch(async (error) => {
             log.error(error.toString());
-            GenezioTelemetry.sendEvent({
+            await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_ADD_CLASS_ERROR,
                 errorTrace: error.toString(),
             });

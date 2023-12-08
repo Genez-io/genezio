@@ -17,10 +17,9 @@ export async function replaceUrlsInSdk(
     classUrlMap: ClassUrlMap[],
 ) {
     sdkResponse.files.forEach((c: SdkFileClass) => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const classContent = classUrlMap.find((classFile) => {
             return classFile.name === c.className;
-        })!;
+        });
 
         if (classContent) {
             c.data = c.data.replace("%%%link_to_be_replace%%%", classContent.cloudUrl);

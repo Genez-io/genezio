@@ -59,7 +59,7 @@ import { startDockerDatabase, stopDockerDatabase } from "../utils/localDockerDat
 
 import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 import log from "loglevel";
-import { getInterruptLastModifiedTime, interruptLocalPath } from "../utils/localInterrupt.js";
+import { interruptLocalPath } from "../utils/localInterrupt.js";
 
 const POLLING_INTERVAL = 2000;
 
@@ -113,7 +113,6 @@ export async function prepareLocalEnvironment(
                     log.error(
                         `The file ${error.path} does not exist. Please check your genezio.yaml configuration and make sure that all the file paths are correct.`,
                     );
-                    throw error;
                 }
 
                 // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
@@ -121,8 +120,6 @@ export async function prepareLocalEnvironment(
                     log.error("Syntax error:");
                     log.error(`Reason Code: ${error.reasonCode}`);
                     log.error(`File: ${error.path}:${error.loc.line}:${error.loc.column}`);
-
-                    throw error;
                 }
 
                 throw error;
@@ -140,8 +137,10 @@ export async function prepareLocalEnvironment(
                     sdk,
                 },
             });
-        } catch (error: any) {
-            log.error(error.message);
+        } catch (error) {
+            if (error instanceof Error) {
+                log.error(error.message);
+            }
             log.error(
                 `Fix the errors and genezio local will restart automatically. Waiting for changes...`,
             );
@@ -160,7 +159,7 @@ export async function prepareLocalEnvironment(
 // Function that starts the local environment.
 // It also monitors for changes in the user's code and restarts the environment when changes are detected.
 export async function startLocalEnvironment(options: GenezioLocalOptions) {
-    GenezioTelemetry.sendEvent({
+    await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_LOCAL,
         commandOptions: JSON.stringify(options),
     });
@@ -171,7 +170,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         log.info(yamlProjectConfiguration.scripts.preStartLocal);
         const success = await runNewProcess(yamlProjectConfiguration.scripts.preStartLocal);
         if (!success) {
-            GenezioTelemetry.sendEvent({
+            await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_PRE_START_LOCAL_SCRIPT_ERROR,
                 commandOptions: JSON.stringify(options),
             });
@@ -196,8 +195,10 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         let yamlProjectConfiguration;
         try {
             yamlProjectConfiguration = await getProjectConfiguration();
-        } catch (error: any) {
-            log.error(error.message);
+        } catch (error) {
+            if (error instanceof Error) {
+                log.error(error.message);
+            }
             log.error(
                 `Fix the errors and genezio local will restart automatically. Waiting for changes...`,
             );
@@ -220,7 +221,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             log.info(yamlProjectConfiguration.scripts.preReloadLocal);
             const success = await runNewProcess(yamlProjectConfiguration.scripts.preReloadLocal);
             if (!success) {
-                GenezioTelemetry.sendEvent({
+                await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_PRE_RELOAD_LOCAL_SCRIPT_ERROR,
                     commandOptions: JSON.stringify(options),
                 });
@@ -240,7 +241,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     choices: Object.keys(PackageManagerType).filter((key) => isNaN(Number(key))),
                 },
             ]);
-            yamlProjectConfiguration.packageManager = optionalPackageManager.packageManager;
+            yamlProjectConfiguration.packageManager = optionalPackageManager["packageManager"];
             await yamlProjectConfiguration.writeToFile();
         }
 
@@ -356,7 +357,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             log.info(yamlProjectConfiguration.scripts.postStartLocal);
             const success = await runNewProcess(yamlProjectConfiguration.scripts.postStartLocal);
             if (!success) {
-                GenezioTelemetry.sendEvent({
+                await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_POST_START_LOCAL_SCRIPT_ERROR,
                     commandOptions: JSON.stringify(options),
                 });
@@ -376,7 +377,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 
         // When new changes are detected, close everything and restart the process
         clearAllResources(server, processForClasses, crons);
-        GenezioTelemetry.sendEvent({
+        await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_LOCAL_RELOAD,
             commandOptions: JSON.stringify(options),
         });

@@ -5,11 +5,12 @@ import { debugLogger, printAdaptiveLog, printUninformativeLog } from "../utils/l
 import { AbortController } from "node-abort-controller";
 import version from "../utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
-import log from "loglevel";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
+import { AxiosResponse } from "axios";
+import { Status } from "./models.js";
 
 export default async function deleteProject(projectId: string): Promise<boolean> {
-    GenezioTelemetry.sendEvent({
+    await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_DELETE_PROJECT,
     });
 
@@ -23,7 +24,7 @@ export default async function deleteProject(projectId: string): Promise<boolean>
 
     const controller = new AbortController();
     const messagePromise = printUninformativeLog(controller);
-    const response: any = await axios({
+    const response: AxiosResponse<Status> = await axios({
         method: "DELETE",
         url: `${BACKEND_ENDPOINT}/projects/${projectId}`,
         headers: {
@@ -42,13 +43,8 @@ export default async function deleteProject(projectId: string): Promise<boolean>
 
     debugLogger.debug("Response received", response.data);
 
-    if (response.data?.error?.message) {
+    if (response.data.status === "error") {
         throw new Error(response.data.error.message);
-    }
-
-    if (response.data.status !== "ok") {
-        log.error("Unknown error in `delete project` response from server.");
-        return false;
     }
 
     return true;
