@@ -57,7 +57,7 @@ test("should throw error if server returns data.error object", async () => {
         };
         mockedGetAuthToken.mockResolvedValue("token");
         mockedAxios.mockResolvedValue({
-            data: { error: { message: "error text" } },
+            data: { status: "error", error: { message: "error text" } },
             status: 200,
             statusText: "Ok",
             headers: {},
