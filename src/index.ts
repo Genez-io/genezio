@@ -31,7 +31,7 @@ process.on("SIGINT", async () => {
         errorTrace: "",
         commandOptions: "",
     });
-    if (process.env.CURRENT_COMMAND == "local") {
+    if (process.env["CURRENT_COMMAND"] == "local") {
         await stopDockerDatabase();
     }
 
@@ -39,7 +39,7 @@ process.on("SIGINT", async () => {
     process.exit();
 });
 process.on("exit", async () => {
-    if (process.env.CURRENT_COMMAND == "local") {
+    if (process.env["CURRENT_COMMAND"] == "local") {
         await stopDockerDatabase();
     }
     await cleanupTemporaryFolders();

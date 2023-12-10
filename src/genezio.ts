@@ -80,7 +80,7 @@ if (process.argv.length === 2) {
     await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_COMMAND,
     });
-    process.env.CURRENT_COMMAND = "genezio";
+    process.env["CURRENT_COMMAND"] = "genezio";
 
     await genezioCommand().catch(async (error: Error) => {
         log.error(error.message);
@@ -119,7 +119,7 @@ program
             exit(0);
         } else {
             log.info("");
-            process.env.CURRENT_COMMAND = "help";
+            process.env["CURRENT_COMMAND"] = "help";
             program.outputHelp();
         }
     })
@@ -152,7 +152,7 @@ Use --backend to deploy only the backend application.`,
     .action(async (options: GenezioDeployOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        process.env.CURRENT_COMMAND = "deploy";
+        process.env["CURRENT_COMMAND"] = "deploy";
         await deployCommand(options).catch(async (error) => {
             log.error(error.message);
             await GenezioTelemetry.sendEvent({
@@ -185,7 +185,7 @@ program
     .action(async (options: GenezioLocalOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        process.env.CURRENT_COMMAND = "local";
+        process.env["CURRENT_COMMAND"] = "local";
         await startLocalEnvironment(options).catch((error) => {
             if (error.message) {
                 log.error(error.message);
@@ -212,7 +212,7 @@ program
     .summary("Add a new class to the configuration file.")
     .action(async (classPath: string, classType: string, options: BaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
-        process.env.CURRENT_COMMAND = "addClass";
+        process.env["CURRENT_COMMAND"] = "addClass";
         await addClassCommand(classPath, classType).catch(async (error: Error) => {
             log.error(error.message);
             await GenezioTelemetry.sendEvent({
@@ -247,7 +247,7 @@ program
     )
     .action(async (projectName = "", options: GenezioSdkOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
-        process.env.CURRENT_COMMAND = "sdk";
+        process.env["CURRENT_COMMAND"] = "sdk";
         await generateSdkCommand(projectName, options).catch(async (error) => {
             log.error(error.message);
             await GenezioTelemetry.sendEvent({
@@ -279,7 +279,7 @@ This command is useful when the project has dedicated repositories for the backe
     )
     .action(async (options: GenezioLinkOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
-        process.env.CURRENT_COMMAND = "link";
+        process.env["CURRENT_COMMAND"] = "link";
         await linkCommand(options.projectName, options.region).catch((error) => {
             log.error(error.message);
             log.error(
@@ -314,7 +314,7 @@ This reset allows 'genezio local' to stop automatically generating the SDK in th
     )
     .action(async (options: GenezioUnlinkOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
-        process.env.CURRENT_COMMAND = "unlink";
+        process.env["CURRENT_COMMAND"] = "unlink";
         await unlinkCommand(options.all, options.projectName, options.region).catch((error) => {
             log.error(error.message);
             log.error(
@@ -344,7 +344,7 @@ program
     )
     .action(async (identifier = "", options: GenezioListOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
-        process.env.CURRENT_COMMAND = "list";
+        process.env["CURRENT_COMMAND"] = "list";
         await lsCommand(identifier, options).catch(async (error) => {
             log.error(error.message);
             await GenezioTelemetry.sendEvent({
@@ -373,7 +373,7 @@ program
     .action(async (projectId = "", options: GenezioDeleteOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        process.env.CURRENT_COMMAND = "delete";
+        process.env["CURRENT_COMMAND"] = "delete";
         await deleteCommand(projectId, options).catch(async (error) => {
             log.error(error.message);
             await GenezioTelemetry.sendEvent({
@@ -396,7 +396,7 @@ program
     .summary("Login to the genezio platform.")
     .action(async (accessToken = "", options: BaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
-        process.env.CURRENT_COMMAND = "login";
+        process.env["CURRENT_COMMAND"] = "login";
         await loginCommand(accessToken).catch(async (error) => {
             log.error(error.message);
             await GenezioTelemetry.sendEvent({
@@ -419,7 +419,7 @@ program
     .summary("Logout from the genezio platform.")
     .action(async (options: BaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
-        process.env.CURRENT_COMMAND = "logout";
+        process.env["CURRENT_COMMAND"] = "logout";
         await logoutCommand().catch((error) => {
             log.error(error.message);
             exit(1);
@@ -437,7 +437,7 @@ program
     .summary("Display information about the current account.")
     .action(async (options: BaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
-        process.env.CURRENT_COMMAND = "account";
+        process.env["CURRENT_COMMAND"] = "account";
 
         await accountCommand().catch((error) => {
             log.error(error.message);

@@ -61,7 +61,7 @@ export async function runDockerDatabaseContainer(
                     }
                     const newContainer = await dockerHandler.createContainer({
                         Image: "postgres",
-                        Env: [`POSTGRES_PASSWORD=postgres`],
+                        Env: [`POSTGRES_PASSWORD=mysecretpassword`],
                         HostConfig: {
                             PortBindings: {
                                 "5432/tcp": [{ HostPort: "5432" }],
@@ -74,6 +74,14 @@ export async function runDockerDatabaseContainer(
                         name: containerName,
                     });
                     await newContainer.start();
+                    printAdaptiveLog(
+                        `Completed starting local docker ${databaseType} database`,
+                        "end",
+                    );
+                    log.info(
+                        `Your local postgres database is up and running.\nYou can connect to your postgres instance using the following URL: at postgres://postgres:mysecretpassword@localhost:5432`,
+                    );
+
                     break;
                 }
                 case "redis": {
@@ -104,6 +112,13 @@ export async function runDockerDatabaseContainer(
                         name: containerName,
                     });
                     await newContainer.start();
+                    printAdaptiveLog(
+                        `Completed starting local docker ${databaseType} database`,
+                        "end",
+                    );
+                    log.info(
+                        `Your local redis database is up and running.\nYou can connect to the your redis instance using the following URL: redis://localhost:6379`,
+                    );
                     break;
                 }
                 default: {
@@ -123,15 +138,13 @@ export async function runDockerDatabaseContainer(
             return undefined;
         }
     }
-
-    printAdaptiveLog(`Completed starting local docker ${databaseType} database`, "end");
 }
 
 export async function startDockerDatabase(
     database: YamlDatabaseConfiguration,
     projectName: string,
 ) {
-    let docker;
+    let docker: Docker;
     try {
         docker = new Docker();
     } catch (error) {
