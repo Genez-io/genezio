@@ -82,7 +82,7 @@ if (process.argv.length === 2) {
     });
     process.env["CURRENT_COMMAND"] = "genezio";
 
-    await genezioCommand().catch(async (error: Error) => {
+    await genezioCommand().catch(async (error) => {
         log.error(error.message);
         await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_COMMAND_ERROR,
@@ -213,7 +213,7 @@ program
     .action(async (classPath: string, classType: string, options: BaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
         process.env["CURRENT_COMMAND"] = "addClass";
-        await addClassCommand(classPath, classType).catch(async (error: Error) => {
+        await addClassCommand(classPath, classType).catch(async (error) => {
             log.error(error.message);
             await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_ADD_CLASS_ERROR,
