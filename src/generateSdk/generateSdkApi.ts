@@ -29,7 +29,7 @@ export async function sdkGeneratorApiHandler(
 
     if (sdkLanguage) {
         sdkGeneratorInput.sdk = {
-            language: sdkLanguage as string,
+            language: sdkLanguage,
         };
     } else {
         sdkGeneratorInput.sdk = {
