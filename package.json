@@ -97,7 +97,7 @@
     },
     "devDependencies": {
         "@types/archiver": "^5.3.2",
-        "@types/cli-progress": "^3.11.3",
+        "@types/cli-progress": "^3.11.5",
         "@types/cli-spinner": "^0.2.3",
         "@types/cors": "^2.8.16",
         "@types/decompress": "^4.2.7",
