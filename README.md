@@ -30,7 +30,7 @@
 [![npm-downloads](https://img.shields.io/npm/dm/genezio.svg?style=flat&label=npm-downloads&color=62C353)](https://www.npmjs.com/package/genezio)
 
 [![npm-version](https://img.shields.io/npm/v/genezio.svg?style=flat&label=npm-package-version&color=62C353)](https://www.npmjs.com/package/genezio)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat&color=62C353)](https://github.com/Genez-io/genezio/blob/master/CONTRIBUTING.md)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat&color=62C353)](https://github.com/Genez-io/genezio/blob/main/CONTRIBUTING.md)
 
 </div>
 
@@ -175,28 +175,28 @@ A detailed list of all the examples is below:
 
 -   Javascript
 
-    -   [Getting Starting](https://github.com/Genez-io/genezio-examples/tree/master/javascript/getting-started) - an example for brand new users of `genezio`.
-    -   [Chat-GPT Reprashing App](https://github.com/Genez-io/genezio-examples/tree/master/javascript/chatgpt-project) - an example on how to integrate with ChatGPT API.
-    -   [Smart Contract Indexer with Blast API](https://github.com/Genez-io/genezio-examples/tree/master/javascript/blockchain) - a Web3 example that queries smart contracts events periodically and saves them in a MongoDB using Blast API.
-    -   [Integrate with Stripe](https://github.com/Genez-io/genezio-examples/tree/master/javascript/stripe-js) - an example on how to integrate with Stripe for managing payments.
-    -   [Todo List with React and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/javascript/todo-list) - an example of a todo application with users, auth and tasks.
-    -   [Todo List with React and SQL](https://github.com/Genez-io/genezio-examples/tree/master/javascript/todo-list-sql) - an example of a todo application with users, auth and tasks.
-    -   [Todo List with Vue and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/javascript/todo-list-vue) - an example of a todo application with users, auth and tasks.
-    -   [Webhooks](https://github.com/Genez-io/genezio-examples/tree/master/javascript/webhook) - an example on how to use webhooks with `genezio`.
-    -   [Crons](https://github.com/Genez-io/genezio-examples/tree/master/javascript/cron) - a simple class that has a method that will be called every minute.
+    -   [Getting Starting](https://github.com/Genez-io/genezio-examples/tree/main/javascript/getting-started) - an example for brand new users of `genezio`.
+    -   [Chat-GPT Reprashing App](https://github.com/Genez-io/genezio-examples/tree/main/javascript/chatgpt-project) - an example on how to integrate with ChatGPT API.
+    -   [Smart Contract Indexer with Blast API](https://github.com/Genez-io/genezio-examples/tree/main/javascript/blockchain) - a Web3 example that queries smart contracts events periodically and saves them in a MongoDB using Blast API.
+    -   [Integrate with Stripe](https://github.com/Genez-io/genezio-examples/tree/main/javascript/stripe-js) - an example on how to integrate with Stripe for managing payments.
+    -   [Todo List with React and MongoDB](https://github.com/Genez-io/genezio-examples/tree/main/javascript/todo-list) - an example of a todo application with users, auth and tasks.
+    -   [Todo List with React and SQL](https://github.com/Genez-io/genezio-examples/tree/main/javascript/todo-list-sql) - an example of a todo application with users, auth and tasks.
+    -   [Todo List with Vue and MongoDB](https://github.com/Genez-io/genezio-examples/tree/main/javascript/todo-list-vue) - an example of a todo application with users, auth and tasks.
+    -   [Webhooks](https://github.com/Genez-io/genezio-examples/tree/main/javascript/webhook) - an example on how to use webhooks with `genezio`.
+    -   [Crons](https://github.com/Genez-io/genezio-examples/tree/main/javascript/cron) - a simple class that has a method that will be called every minute.
 
 -   Typescript
 
-    -   [Getting Started](https://github.com/Genez-io/genezio-examples/tree/master/typescript/getting-started) - an example for brand new users of `genezio`.
-    -   [Todo List with React and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/typescript/todo-list) - an example of a todo application with users, auth and tasks.
-    -   [Todo List with Angular and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/typescript/todo-list-angular) - an example of a todo application with users.
-    -   [Todo List with Flutter and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/typescript/todo-list-angular) - an example of a todo application with users.
-    -   [MultiversX](https://github.com/Genez-io/genezio-examples/tree/master/typescript/multiversx) - an example on an integration with the MultiversX blockchain. The application queries the balance of an existing account.
+    -   [Getting Started](https://github.com/Genez-io/genezio-examples/tree/main/typescript/getting-started) - an example for brand new users of `genezio`.
+    -   [Todo List with React and MongoDB](https://github.com/Genez-io/genezio-examples/tree/main/typescript/todo-list) - an example of a todo application with users, auth and tasks.
+    -   [Todo List with Angular and MongoDB](https://github.com/Genez-io/genezio-examples/tree/main/typescript/todo-list-angular) - an example of a todo application with users.
+    -   [Todo List with Flutter and MongoDB](https://github.com/Genez-io/genezio-examples/tree/main/typescript/todo-list-angular) - an example of a todo application with users.
+    -   [MultiversX](https://github.com/Genez-io/genezio-examples/tree/main/typescript/multiversx) - an example on an integration with the MultiversX blockchain. The application queries the balance of an existing account.
 
 -   Dart
-    -   [Getting Started](https://github.com/Genez-io/genezio-examples/tree/master/dart/getting-started) - an example for brand new users of `genezio`.
-    -   [Todo List with React and MongoDB](https://github.com/Genez-io/genezio-examples/tree/master/dart/todo-list-react-typescript) - an example of a todo application.
-    -   [Chat with Yoda with ChatGPT API](https://github.com/Genez-io/genezio-examples/tree/master/dart/chat-with-yoda-chatgpt) - an example on how to integrate with ChatGPT API.
+    -   [Getting Started](https://github.com/Genez-io/genezio-examples/tree/main/dart/getting-started) - an example for brand new users of `genezio`.
+    -   [Todo List with React and MongoDB](https://github.com/Genez-io/genezio-examples/tree/main/dart/todo-list-react-typescript) - an example of a todo application.
+    -   [Chat with Yoda with ChatGPT API](https://github.com/Genez-io/genezio-examples/tree/main/dart/chat-with-yoda-chatgpt) - an example on how to integrate with ChatGPT API.
 
 # Official documentation
 

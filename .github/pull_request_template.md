@@ -2,8 +2,8 @@
 
 <!--
   Before submitting a Pull Request, please ensure you've done the following:
-  - Read the Genezio Contributing Guide: https://github.com/Genez-io/genezio/blob/master/CONTRIBUTING.md
-  - Read the Genezio Code of Conduct: https://github.com/Genez-io/genezio/blob/master/CODE_OF_CONDUCT.md
+  - Read the Genezio Contributing Guide: https://github.com/Genez-io/genezio/blob/main/CONTRIBUTING.md
+  - Read the Genezio Code of Conduct: https://github.com/Genez-io/genezio/blob/main/CODE_OF_CONDUCT.md
   - Provide tests for your changes.
   - Add comments on your code.
   - Use descriptive commit messages.
