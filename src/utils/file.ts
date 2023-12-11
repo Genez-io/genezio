@@ -115,7 +115,6 @@ export async function getAllFilesFromPathLayerOne(inputPath: string): Promise<Fi
                 }
 
                 const fileDetails: FileDetails[] = files.map((file: string) => {
-                    console.log(path.parse(file).name);
                     return {
                         name: path.parse(file).name,
                         extension: path.parse(file).ext,
