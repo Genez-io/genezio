@@ -4,7 +4,6 @@ import {
     deleteFolder,
     fileExists,
     getAllFilesFromCurrentPath,
-    getAllFilesFromCurrentPathLayerOne,
     readUTF8File,
     writeToFile,
 } from "../utils/file.js";
@@ -57,7 +56,7 @@ export async function genezioCommand() {
     let emptyDirectory = false;
 
     // check if the folder is empty
-    if ((await getAllFilesFromCurrentPathLayerOne()).length === 0) {
+    if ((await getAllFilesFromCurrentPath()).length === 0) {
         debugLogger.debug("Current directory is empty");
         emptyDirectory = true;
     }
