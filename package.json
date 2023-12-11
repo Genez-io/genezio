@@ -43,7 +43,7 @@
         "@types/body": "^5.1.4",
         "@types/cli-table": "^0.3.4",
         "@types/inquirer": "^9.0.7",
-        "archiver": "^6.0.0",
+        "archiver": "^6.0.1",
         "async-mutex": "^0.4.0",
         "await-exec": "^0.1.2",
         "aws-cron-parser": "^1.1.12",
@@ -96,7 +96,7 @@
         "genezio": "./build/src/index.js"
     },
     "devDependencies": {
-        "@types/archiver": "^5.3.2",
+        "@types/archiver": "^6.0.2",
         "@types/cli-progress": "^3.11.5",
         "@types/cli-spinner": "^0.2.3",
         "@types/cors": "^2.8.17",
