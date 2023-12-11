@@ -86,8 +86,54 @@ export async function getAllFilesFromPath(inputPath: string): Promise<FileDetail
         );
     });
 }
+
+export async function getAllFilesFromPathLayerOne(inputPath: string): Promise<FileDetails[]> {
+    // get genezioIgnore file
+    let genezioIgnore: string[] = [];
+    const genezioIgnorePath = path.join(inputPath, ".genezioignore");
+    if (fs.existsSync(genezioIgnorePath)) {
+        const genezioIgnoreContent = await readUTF8File(genezioIgnorePath);
+        genezioIgnore = genezioIgnoreContent
+            .split(os.EOL)
+            .filter((line) => line !== "" && !line.startsWith("#"));
+    }
+
+    genezioIgnore = genezioIgnore.map((p) => ensureRelativePaths(p));
+
+    return new Promise((resolve, reject) => {
+        const pattern = `*`;
+        glob(
+            pattern,
+            {
+                dot: true,
+                ignore: genezioIgnore,
+                cwd: inputPath,
+            },
+            (err, files) => {
+                if (err) {
+                    reject(err);
+                }
+
+                const fileDetails: FileDetails[] = files.map((file: string) => {
+                    console.log(path.parse(file).name);
+                    return {
+                        name: path.parse(file).name,
+                        extension: path.parse(file).ext,
+                        path: file,
+                        filename: file,
+                    };
+                });
+                resolve(fileDetails);
+            },
+        );
+    });
+}
 export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
     return getAllFilesFromPath(process.cwd());
+}
+
+export async function getAllFilesFromCurrentPathLayerOne(): Promise<FileDetails[]> {
+    return getAllFilesFromPathLayerOne(process.cwd());
 }
 
 export async function zipDirectory(sourceDir: string, outPath: string): Promise<void> {
