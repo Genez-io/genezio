@@ -30,10 +30,20 @@ export async function getAllFilesRecursively(folderPath: string): Promise<string
     return files;
 }
 
-export function ensureRelativePaths(file: string) {
+export function ensureRelativePaths(file: string): string {
+    if (file.startsWith("!")) {
+        // negated patterns are passed through
+        return "!" + ensureRelativePaths(file.substring(1));
+    }
+
+    if (file.endsWith(path.sep)) {
+        // user probably wants to include all files in the directory
+        return ensureRelativePaths(path.join(file, "./**"));
+    }
+
     const absolutePath = path.resolve(file);
     const relativePath = path.relative(".", absolutePath);
-    return "./" + relativePath;
+    return relativePath;
 }
 
 export async function getAllFilesFromPath(inputPath: string): Promise<FileDetails[]> {
