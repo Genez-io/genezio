@@ -396,7 +396,6 @@ async function watchNodeModules(
     // is running, because we are modifying node_modules folder manual (reference: https://github.com/npm/cli/blob/653769de359b8d24f0d17b8e7e426708f49cadb8/docs/content/configuring-npm/package-lock-json.md#hidden-lockfiles)
     const watchPaths: string[] = [interruptLocalPath];
     const sdkName = `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`;
-    const nodeModulesPath = path.join("node_modules", "@genezio-sdk", sdkName, "package.json");
     const nodeModulesSdkDirectoryPath = path.join("node_modules", "@genezio-sdk", sdkName);
     if (yamlProjectConfiguration.workspace) {
         watchPaths.push(
@@ -415,7 +414,7 @@ async function watchNodeModules(
             yamlProjectConfiguration.region,
         );
         for (const linkPath of linkPaths) {
-            watchPaths.push(path.join(linkPath, nodeModulesPath));
+            watchPaths.push(path.join(linkPath, nodeModulesSdkDirectoryPath));
             watchPaths.push(path.join(linkPath, "node_modules", ".package-lock.json"));
         }
     }
