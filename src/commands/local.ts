@@ -60,6 +60,7 @@ import { startDockerDatabase, stopDockerDatabase } from "../utils/localDockerDat
 import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 import log from "loglevel";
 import { interruptLocalPath } from "../utils/localInterrupt.js";
+import { compareSync, Options, Result } from "dir-compare";
 
 const POLLING_INTERVAL = 2000;
 
@@ -396,8 +397,11 @@ async function watchNodeModules(
     const watchPaths: string[] = [interruptLocalPath];
     const sdkName = `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`;
     const nodeModulesPath = path.join("node_modules", "@genezio-sdk", sdkName, "package.json");
+    const nodeModulesSdkDirectoryPath = path.join("node_modules", "@genezio-sdk", sdkName);
     if (yamlProjectConfiguration.workspace) {
-        watchPaths.push(path.join(yamlProjectConfiguration.workspace.frontend, nodeModulesPath));
+        watchPaths.push(
+            path.join(yamlProjectConfiguration.workspace.frontend, nodeModulesSdkDirectoryPath),
+        );
         watchPaths.push(
             path.join(
                 yamlProjectConfiguration.workspace?.frontend,
@@ -419,6 +423,7 @@ async function watchNodeModules(
     return setInterval(async () => {
         for (const watchPath of watchPaths) {
             const components = watchPath.split(path.sep);
+
             // if the file is .package-lock.json, remove it
             if (
                 components[components.length - 1] === ".package-lock.json" &&
@@ -430,16 +435,11 @@ async function watchNodeModules(
                 return;
             }
 
-            if (components[components.length - 1] === "package.json") {
-                let json;
-                try {
-                    const content = fs.readFileSync(watchPath);
-                    json = JSON.parse(content.toString());
-                } catch (error) {
-                    // ignore error
-                }
-
-                if (!json || !json.version || !json.version.includes("local")) {
+            if (components[components.length - 1] === sdkName) {
+                const genezioSdkPath = path.resolve(sdkPath, "..", "genezio-sdk");
+                const options: Options = { compareContent: true };
+                const res: Result = compareSync(genezioSdkPath, watchPath, options);
+                if (!res.same) {
                     debugLogger.debug(`[WATCH_NODE_MODULES] Rewriting the SDK to node_modules...`);
                     await writeSdkToNodeModules(yamlProjectConfiguration, sdkPath);
                 }
@@ -452,33 +452,17 @@ async function writeSdkToNodeModules(
     yamlProjectConfiguration: YamlProjectConfiguration,
     originSdkPath: string,
 ) {
-    const writeSdk = async (from: string, toTemp: string, toFinal: string) => {
-        // Firstly, we copy the SDK to a temporary folder
-        // we remove any existing SDK from node_modules and then we rename the temporary folder to the final name
-        //
-        // This is done to avoid any race condition issues with npm install or npm update
-        await fsExtra.copy(from, toTemp, { overwrite: true });
-
+    const writeSdk = async (from: string, toFinal: string) => {
         if (fs.existsSync(toFinal)) {
             if (fs.lstatSync(toFinal).isSymbolicLink()) {
-                // Remove the symbolic link
                 fs.unlinkSync(toFinal);
-            } else {
-                await fsExtra.remove(toFinal);
             }
         }
-        await fsExtra.rename(toTemp, toFinal);
-        await fsExtra.remove(toTemp);
+        await fsExtra.copy(from, toFinal, { overwrite: true });
     };
 
     if (yamlProjectConfiguration.workspace) {
         const from = path.resolve(originSdkPath, "..", "genezio-sdk");
-        const toTemp = path.join(
-            yamlProjectConfiguration.workspace.frontend,
-            "node_modules",
-            "@genezio-sdk",
-            `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}-temp`,
-        );
         const toFinal = path.join(
             yamlProjectConfiguration.workspace.frontend,
             "node_modules",
@@ -486,7 +470,7 @@ async function writeSdkToNodeModules(
             `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
         );
 
-        await writeSdk(from, toTemp, toFinal).catch(() => {
+        await writeSdk(from, toFinal).catch(() => {
             debugLogger.debug(`[WRITE_SDK_TO_NODE_MODULES] Error writing SDK to node_modules`);
         });
     } else {
@@ -509,7 +493,7 @@ async function writeSdkToNodeModules(
                 `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
             );
 
-            await writeSdk(from, toTemp, toFinal).catch(() => {
+            await writeSdk(from, toFinal).catch(() => {
                 debugLogger.debug(`[WRITE_SDK_TO_NODE_MODULES] Error writing SDK to node_modules`);
             });
         }
