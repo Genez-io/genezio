@@ -19,7 +19,7 @@ updates:
           - dependency-name: "esbuild"
             versions: [">= 0.18.0"]
     - package-ecosystem: "gitsubmodule"
-      target-branch: "master"
+      target-branch: "main"
       directory: "/"
       schedule:
           interval: "daily"
