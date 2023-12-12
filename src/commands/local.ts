@@ -437,6 +437,10 @@ async function watchNodeModules(
             if (components[components.length - 1] === sdkName) {
                 const genezioSdkPath = path.resolve(sdkPath, "..", "genezio-sdk");
                 const options: Options = { compareContent: true };
+                if (!fs.existsSync(genezioSdkPath)) {
+                    fs.mkdirSync(genezioSdkPath, { recursive: true });
+                }
+
                 const res: Result = compareSync(genezioSdkPath, watchPath, options);
                 if (!res.same) {
                     debugLogger.debug(`[WATCH_NODE_MODULES] Rewriting the SDK to node_modules...`);
