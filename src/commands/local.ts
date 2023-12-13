@@ -440,6 +440,9 @@ async function watchNodeModules(
                 if (!fs.existsSync(genezioSdkPath)) {
                     fs.mkdirSync(genezioSdkPath, { recursive: true });
                 }
+                if (!fs.existsSync(watchPath)) {
+                    fs.mkdirSync(watchPath, { recursive: true });
+                }
 
                 const res: Result = compareSync(genezioSdkPath, watchPath, options);
                 if (!res.same) {
@@ -460,6 +463,8 @@ async function writeSdkToNodeModules(
             if (fs.lstatSync(toFinal).isSymbolicLink()) {
                 fs.unlinkSync(toFinal);
             }
+        } else {
+            fs.mkdirSync(toFinal, { recursive: true });
         }
         await fsExtra.copy(from, toFinal, { overwrite: true });
     };
