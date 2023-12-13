@@ -5,6 +5,7 @@ import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js"
 import { cleanupTemporaryFolders } from "./utils/file.js";
 import { SENTRY_DSN } from "./constants.js";
 import { debugLogger } from "./utils/logging.js";
+import { stopDockerDatabase } from "./utils/localDockerDatabase.js";
 
 try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -19,21 +20,30 @@ try {
         // Set sampling rate for profiling - this is relative to tracesSampleRate
         profilesSampleRate: 0.3,
     });
-} catch (error: any) {
-    debugLogger.debug("Sentry not initialized", error.message);
+} catch (error) {
+    if (error instanceof Error) {
+        debugLogger.debug("Sentry not initialized", error.message);
+    }
 }
 
 // Set-up SIGINT and exit handlers that clean up the temporary folder structure
 process.on("SIGINT", async () => {
-    GenezioTelemetry.sendEvent({
+    await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_CANCEL,
         errorTrace: "",
         commandOptions: "",
     });
+    if (process.env["CURRENT_COMMAND"] == "local") {
+        await stopDockerDatabase();
+    }
+
     await cleanupTemporaryFolders();
     process.exit();
 });
 process.on("exit", async () => {
+    if (process.env["CURRENT_COMMAND"] == "local") {
+        await stopDockerDatabase();
+    }
     await cleanupTemporaryFolders();
 });
 

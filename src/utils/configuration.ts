@@ -13,6 +13,18 @@ import babel from "@babel/core";
 import fs from "fs";
 import FileDetails from "../models/fileDetails.js";
 import { debugLogger } from "./logging.js";
+import { NodePath } from "@babel/traverse";
+import {
+    ClassDeclaration,
+    ClassMethod,
+    isCallExpression,
+    isIdentifier,
+    isClassDeclaration,
+    CallExpression,
+    isObjectExpression,
+    isObjectProperty,
+    isStringLiteral,
+} from "@babel/types";
 
 type MethodDecoratorInfo = {
     name: string;
@@ -36,24 +48,32 @@ type ClassInfo = {
     methods: MethodInfo[];
 };
 
-function parseArguments(args: any): { [key: string]: string } {
+function parseArguments(args: CallExpression["arguments"]): { [key: string]: string } {
     if (!args) {
         return {};
     }
 
     return args
-        .map((a: any) => {
-            if (a.type === "ObjectExpression") {
-                return a.properties.reduce((acc: any, curr: any) => {
-                    return [...acc, { key: curr.key.name, value: curr.value.value }];
+        .map((arg) => {
+            if (isObjectExpression(arg)) {
+                return arg.properties.reduce((acc: Array<{ key: string; value: string }>, curr) => {
+                    if (
+                        isObjectProperty(curr) &&
+                        isIdentifier(curr.key) &&
+                        isStringLiteral(curr.value)
+                    ) {
+                        return [...acc, { key: curr.key.name, value: curr.value.value }];
+                    }
+
+                    return [...acc];
                 }, []);
             } else {
                 throw new Error("Unsupported argument for decorator");
             }
         })
         .flat()
-        .reduce((acc: any, curr: any) => {
-            acc[curr["key"]] = curr["value"];
+        .reduce((acc: { [key: string]: string }, curr) => {
+            acc[curr.key] = curr.value;
             return acc;
         }, {});
 }
@@ -65,21 +85,24 @@ async function getDecoratorsFromFile(file: string): Promise<ClassInfo[]> {
         return {
             name: "extract-decorators",
             visitor: {
-                ClassDeclaration(path: any) {
+                ClassDeclaration(path: NodePath<ClassDeclaration>) {
                     if (path.node.decorators) {
                         const info: ClassInfo = {
                             path: file,
-                            name: path.node.id.name,
+                            name: path.node.id?.name ?? "default",
                             decorators: [],
                             methods: [],
                         };
                         for (const decorator of path.node.decorators) {
-                            if (decorator.expression.type === "Identifier") {
+                            if (isIdentifier(decorator.expression)) {
                                 info.decorators = [
                                     ...(info.decorators ?? []),
                                     { name: decorator.expression.name },
                                 ];
-                            } else if (decorator.expression.type === "CallExpression") {
+                            } else if (
+                                isCallExpression(decorator.expression) &&
+                                isIdentifier(decorator.expression.callee)
+                            ) {
                                 info.decorators = [
                                     ...(info.decorators ?? []),
                                     {
@@ -92,10 +115,18 @@ async function getDecoratorsFromFile(file: string): Promise<ClassInfo[]> {
                         classes.push(info);
                     }
                 },
-                ClassMethod(path: any) {
+                ClassMethod(path: NodePath<ClassMethod>) {
                     if (path.node.decorators) {
-                        const className = path.context.parentPath.container.id.name;
-                        const methodName = path.node.key.name;
+                        const classDeclarationNode = path.context.parentPath.parentPath?.node;
+                        const className = isClassDeclaration(classDeclarationNode)
+                            ? classDeclarationNode.id?.name ?? "defaultClass"
+                            : "defaultClass";
+
+                        const methodIdentifierNode = path.node.key;
+                        const methodName = isIdentifier(methodIdentifierNode)
+                            ? methodIdentifierNode.name
+                            : "defaultMethod";
+
                         for (const decorator of path.node.decorators) {
                             const info: MethodInfo = {
                                 name: methodName,
@@ -105,19 +136,22 @@ async function getDecoratorsFromFile(file: string): Promise<ClassInfo[]> {
                             if (!existingClass) {
                                 existingClass = {
                                     path: file,
-                                    name: path.node.id.name,
-                                    decorators: [] as any,
+                                    name: className,
+                                    decorators: [],
                                     methods: [],
                                 };
                                 classes.push(existingClass);
                             }
 
-                            if (decorator.expression.type === "Identifier") {
+                            if (isIdentifier(decorator.expression)) {
                                 info.decorators = [
                                     ...(info.decorators ?? []),
                                     { name: decorator.expression.name },
                                 ];
-                            } else if (decorator.expression.type === "CallExpression") {
+                            } else if (
+                                isCallExpression(decorator.expression) &&
+                                isIdentifier(decorator.expression.callee)
+                            ) {
                                 info.decorators = [
                                     ...(info.decorators ?? []),
                                     {
@@ -219,7 +253,7 @@ export async function scanClassesForDecorators(projectConfiguration: YamlProject
                 (c) => path.resolve(c.path) === path.resolve(classInfo[0].path),
             );
             const deployDecoratorFound = classInfo[0].decorators.find(
-                (d: any) => d.name === "GenezioDeploy",
+                (d) => d.name === "GenezioDeploy",
             );
 
             if (!r && deployDecoratorFound) {

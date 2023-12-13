@@ -3,6 +3,8 @@ import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
 import { EnvironmentVariable } from "../models/environmentVariables.js";
+import { AxiosResponse } from "axios";
+import { Status } from "./models.js";
 
 export async function setEnvironmentVariables(
     projectId: string,
@@ -26,7 +28,7 @@ export async function setEnvironmentVariables(
         environmentVariables: environmentVariablesData,
     });
 
-    const response: any = await axios({
+    const response: AxiosResponse<Status> = await axios({
         method: "POST",
         url: `${BACKEND_ENDPOINT}/projects/${projectId}/${projectEnvId}/environment-variables`,
         data: data,
@@ -34,15 +36,9 @@ export async function setEnvironmentVariables(
             Authorization: `Bearer ${authToken}`,
             "Accept-Version": `genezio-cli/${version}`,
         },
-    }).catch((error: Error) => {
-        throw error;
     });
 
     if (response.data.status === "error") {
-        throw new Error(response.data.message);
-    }
-
-    if (response.data?.error?.message) {
         throw new Error(response.data.error.message);
     }
 }

@@ -189,7 +189,7 @@ export interface PromiseType extends Node {
 
 export interface EnumCase {
     name: string;
-    value: string;
+    value: string | number;
     type: AstNodeType;
 }
 

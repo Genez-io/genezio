@@ -60,7 +60,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
     } catch (error) {
         if (error instanceof Error) {
             log.error(error.message);
-            GenezioTelemetry.sendEvent({
+            await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
                 errorTrace: error.toString(),
                 commandOptions: JSON.stringify(options),
@@ -99,7 +99,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
                     backendCwd,
                 );
                 if (!success) {
-                    GenezioTelemetry.sendEvent({
+                    await GenezioTelemetry.sendEvent({
                         eventType: TelemetryEventTypes.GENEZIO_PRE_BACKEND_DEPLOY_SCRIPT_ERROR,
                         commandOptions: JSON.stringify(options),
                     });
@@ -108,14 +108,14 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 }
             }
 
-            GenezioTelemetry.sendEvent({
+            await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_START,
                 cloudProvider: configuration.cloudProvider,
                 commandOptions: JSON.stringify(options),
             });
             await deployClasses(configuration, cloudAdapter, options).catch(
                 async (error: AxiosError) => {
-                    GenezioTelemetry.sendEvent({
+                    await GenezioTelemetry.sendEvent({
                         eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_ERROR,
                         errorTrace: error.toString(),
                         commandOptions: JSON.stringify(options),
@@ -148,7 +148,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
                     exit(1);
                 },
             );
-            GenezioTelemetry.sendEvent({
+            await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_END,
                 cloudProvider: configuration.cloudProvider,
                 commandOptions: JSON.stringify(options),
@@ -162,7 +162,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
                     backendCwd,
                 );
                 if (!success) {
-                    GenezioTelemetry.sendEvent({
+                    await GenezioTelemetry.sendEvent({
                         eventType: TelemetryEventTypes.GENEZIO_POST_BACKEND_DEPLOY_SCRIPT_ERROR,
                         commandOptions: JSON.stringify(options),
                     });
@@ -182,7 +182,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 frontendCwd,
             );
             if (!success) {
-                GenezioTelemetry.sendEvent({
+                await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_PRE_FRONTEND_DEPLOY_SCRIPT_ERROR,
                     commandOptions: JSON.stringify(options),
                 });
@@ -191,7 +191,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
             }
         }
 
-        GenezioTelemetry.sendEvent({
+        await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_START,
             commandOptions: JSON.stringify(options),
         });
@@ -206,7 +206,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 if (error.message == "No frontend entry in genezio configuration file.") {
                     exit(0);
                 }
-                GenezioTelemetry.sendEvent({
+                await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_ERROR,
                     errorTrace: error.toString(),
                     commandOptions: JSON.stringify(options),
@@ -216,7 +216,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
         }
         log.info("\x1b[36m%s\x1b[0m", `Frontend successfully deployed at ${url}.`);
 
-        GenezioTelemetry.sendEvent({
+        await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_END,
             commandOptions: JSON.stringify(options),
         });
@@ -229,7 +229,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 frontendCwd,
             );
             if (!success) {
-                GenezioTelemetry.sendEvent({
+                await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_POST_FRONTEND_DEPLOY_SCRIPT_ERROR,
                     commandOptions: JSON.stringify(options),
                 });
@@ -260,8 +260,6 @@ export async function deployClasses(
                 log.error("Syntax error:");
                 log.error(`Reason Code: ${error.reasonCode}`);
                 log.error(`File: ${error.path}:${error.loc.line}:${error.loc.column}`);
-
-                throw error;
             }
 
             throw error;
@@ -456,7 +454,7 @@ export async function deployClasses(
             if (!(await fileExists(envFile))) {
                 // There is no need to exit the process here, as the project has been deployed
                 log.error(`File ${envFile} does not exists. Please provide the correct path.`);
-                GenezioTelemetry.sendEvent({
+                await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
                     errorTrace: `File ${envFile} does not exists`,
                 });
@@ -465,27 +463,31 @@ export async function deployClasses(
                 const envVars = await readEnvironmentVariablesFile(envFile);
                 const projectEnv = await getProjectEnvFromProject(projectId, stage);
 
+                if (!projectEnv) {
+                    throw new Error("Project environment not found.");
+                }
+
                 // Upload environment variables to the project
                 await setEnvironmentVariables(projectId, projectEnv.id, envVars)
-                    .then(() => {
+                    .then(async () => {
                         debugLogger.debug(
                             `Environment variables from ${envFile} uploaded to project ${projectId}`,
                         );
                         log.info(
                             `The environment variables were uploaded to the project successfully.`,
                         );
-                        GenezioTelemetry.sendEvent({
+                        await GenezioTelemetry.sendEvent({
                             eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS,
                         });
                     })
-                    .catch((error: AxiosError) => {
+                    .catch(async (error: AxiosError) => {
                         log.error(`Loading environment variables failed with: ${error.message}`);
                         log.error(
                             `Try to set the environment variables using the dashboard ${colors.cyan(
                                 REACT_APP_BASE_URL,
                             )}`,
                         );
-                        GenezioTelemetry.sendEvent({
+                        await GenezioTelemetry.sendEvent({
                             eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
                             errorTrace: error.toString(),
                         });
@@ -500,6 +502,10 @@ export async function deployClasses(
                 // read envVars from file
                 const envVars = await readEnvironmentVariablesFile(envFile);
                 const projectEnv = await getProjectEnvFromProject(projectId, stage);
+
+                if (!projectEnv) {
+                    throw new Error("Project environment not found.");
+                }
 
                 // get remoteEnvVars from project
                 const remoteEnvVars = await getEnvironmentVariables(projectId, projectEnv.id);

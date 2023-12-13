@@ -9,7 +9,8 @@
         "noImplicitAny": true,
         "esModuleInterop": true,
         "resolveJsonModule": true,
-        "skipLibCheck": true
+        "skipLibCheck": true,
+        "noPropertyAccessFromIndexSignature": true
     },
     "include": ["src/**/*", "package.json"],
     "exclude": ["test.js"]

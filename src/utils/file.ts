@@ -30,10 +30,20 @@ export async function getAllFilesRecursively(folderPath: string): Promise<string
     return files;
 }
 
-export function ensureRelativePaths(file: string) {
+export function ensureRelativePaths(file: string): string {
+    if (file.startsWith("!")) {
+        // negated patterns are passed through
+        return "!" + ensureRelativePaths(file.substring(1));
+    }
+
+    if (file.endsWith(path.sep)) {
+        // user probably wants to include all files in the directory
+        return ensureRelativePaths(path.join(file, "./**"));
+    }
+
     const absolutePath = path.resolve(file);
     const relativePath = path.relative(".", absolutePath);
-    return "./" + relativePath;
+    return relativePath;
 }
 
 export async function getAllFilesFromPath(inputPath: string): Promise<FileDetails[]> {
@@ -87,7 +97,7 @@ export async function zipDirectory(sourceDir: string, outPath: string): Promise<
     return new Promise((resolve, reject) => {
         archive
             .directory(sourceDir, false)
-            .on("error", (err: any) => reject(err))
+            .on("error", (err) => reject(err))
             .pipe(stream);
 
         stream.on("close", () => resolve());
@@ -106,7 +116,7 @@ export async function zipDirectoryToDestinationPath(
     return new Promise((resolve, reject) => {
         archive
             .directory(sourceDir, destinationPath)
-            .on("error", (err: any) => reject(err))
+            .on("error", (err) => reject(err))
             .pipe(stream);
 
         stream.on("close", () => resolve());
@@ -230,7 +240,7 @@ export async function createTemporaryFolder(
             }
         }
 
-        fs.mkdir(tempFolder, (error: any) => {
+        fs.mkdir(tempFolder, (error) => {
             if (error) {
                 reject(error);
             }
@@ -271,7 +281,7 @@ export async function createLocalTempFolder(
                 return;
             }
         } else {
-            fs.mkdir(tempFolder, (error: any) => {
+            fs.mkdir(tempFolder, (error) => {
                 if (error) {
                     reject(error);
                 }
@@ -313,7 +323,7 @@ export function readUTF8File(filePath: string): Promise<string> {
 export function writeToFile(
     folderPath: string,
     filename: string,
-    content: any,
+    content: string | NodeJS.ArrayBufferView,
     createPathIfNeeded = false,
 ): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -374,12 +384,14 @@ export async function validateYamlFile() {
                 } else {
                     try {
                         awsCronParser.parse(method.cronString);
-                    } catch (error: any) {
+                    } catch (error) {
                         log.error(
                             `The cronString ${method.cronString} for the method ${elem.path}.${method.name} is not valid.`,
                         );
                         log.error("You must use a 6-part cron expression.");
-                        log.error(error.toString());
+                        if (error instanceof Error) {
+                            log.error(error.toString());
+                        }
                         exit(1);
                     }
                 }
