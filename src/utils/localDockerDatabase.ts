@@ -79,7 +79,7 @@ export async function runDockerDatabaseContainer(
                         "end",
                     );
                     log.info(
-                        `Your local postgres database is up and running.\nYou can connect to your postgres instance using the following URL: at postgres://postgres:mysecretpassword@localhost:5432`,
+                        `Your local postgres database is up and running.\nYou can connect to your postgres instance using the following URL: postgres://postgres:mysecretpassword@localhost:5432`,
                     );
 
                     break;
