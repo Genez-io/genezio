@@ -34,7 +34,6 @@ export async function runDockerDatabaseContainer(
         if (!isContainerRunning) {
             try {
                 await currentContainer.start();
-                printAdaptiveLog(`Completed starting local docker ${databaseType} database`, "end");
             } catch (error) {
                 printAdaptiveLog(`Failed starting local docker ${databaseType} database`, "");
                 if (error instanceof Error) {
