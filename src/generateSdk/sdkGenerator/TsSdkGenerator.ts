@@ -341,7 +341,7 @@ class SdkGenerator implements SdkGeneratorInterface {
 
             for (const modelView of modelViews) {
                 generateSdkOutput.files.push({
-                    path: modelView.path + ".ts",
+                    path: modelView.path,
                     data: Mustache.render(modelTemplate, modelView),
                     className: "",
                 });

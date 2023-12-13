@@ -1,14 +1,11 @@
 import { createRequire } from "module";
-import { Language, PackageManagerType } from "../../models/yamlProjectConfiguration.js";
+import { Language } from "../../models/yamlProjectConfiguration.js";
 import path from "path";
 import ts from "typescript";
 import { Worker } from "worker_threads";
 import { writeToFile } from "../../utils/file.js";
-import { exec } from "child_process";
-import { promisify } from "util";
 import { GenezioCommand } from "../../utils/reporter.js";
 import packageManager from "../../packageManagers/packageManager.js";
-const asyncExec = promisify(exec);
 
 const compilerWorkerScript = `const { parentPort, workerData } = require("worker_threads");
 
@@ -21,12 +18,12 @@ program.emit();
 
 parentPort.postMessage("done");`;
 
-function createWorker(workerScript: string, workerData: any) {
+function createWorker(workerScript: string, workerData: object) {
     return new Promise((resolve, reject) => {
         const worker = new Worker(workerScript, { workerData, eval: true });
         worker.on("message", resolve);
         worker.on("error", reject);
-        worker.on("exit", (code: any) => {
+        worker.on("exit", (code) => {
             if (code !== 0) {
                 reject(new Error(`Worker stopped with exit code ${code}`));
             }
