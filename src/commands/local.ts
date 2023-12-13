@@ -152,7 +152,12 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     if (yamlProjectConfiguration.scripts?.preStartLocal) {
         log.info("Running preStartLocal script...");
         log.info(yamlProjectConfiguration.scripts.preStartLocal);
-        const success = await runNewProcess(yamlProjectConfiguration.scripts.preStartLocal);
+
+        let cwd = process.cwd();
+        if (yamlProjectConfiguration.workspace?.backend) {
+            cwd = yamlProjectConfiguration.workspace.backend;
+        }
+        const success = await runNewProcess(yamlProjectConfiguration.scripts.preStartLocal, cwd);
         if (!success) {
             await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_PRE_START_LOCAL_SCRIPT_ERROR,

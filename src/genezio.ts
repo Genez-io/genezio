@@ -25,7 +25,7 @@ import {
 } from "./models/commandOptions.js";
 import currentGenezioVersion, { logOutdatedVersion } from "./utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js";
-import { genezioCommand } from "./commands/superGenezio.js";
+import { genezioCommand } from "./commands/superGenezio/superGenezio.js";
 import { linkCommand, unlinkCommand } from "./commands/link.js";
 import { getProjectConfiguration } from "./utils/configuration.js";
 import { setPackageManager } from "./packageManagers/packageManager.js";
@@ -181,10 +181,10 @@ program
     .action(async (options: GenezioLocalOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await startLocalEnvironment(options).catch((error) => {
+        await startLocalEnvironment(options).catch(async (error) => {
             if (error.message) {
                 log.error(error.message);
-                GenezioTelemetry.sendEvent({
+                await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_LOCAL_ERROR,
                     errorTrace: error.message,
                     commandOptions: JSON.stringify(options),

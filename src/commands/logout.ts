@@ -3,7 +3,7 @@ import { removeAuthToken } from "../utils/accounts.js";
 import { debugLogger } from "../utils/logging.js";
 
 export async function logoutCommand() {
-    GenezioTelemetry.sendEvent({
+    await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_LOGOUT,
     });
 
