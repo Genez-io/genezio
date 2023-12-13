@@ -22,7 +22,7 @@ import { BundlerInterface } from "../bundlers/bundler.interface.js";
 import { NodeJsLocalBundler } from "../bundlers/node/nodeJsLocalBundler.js";
 import { BundlerComposer } from "../bundlers/bundlerComposer.js";
 import { genezioRequestParser } from "../utils/genezioRequestParser.js";
-import { debugLogger, printAdaptiveLog } from "../utils/logging.js";
+import { debugLogger } from "../utils/logging.js";
 import { rectifyCronString } from "../utils/rectifyCronString.js";
 import cron from "node-cron";
 import {
@@ -55,8 +55,6 @@ import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJ
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { runNewProcess } from "../utils/process.js";
 import { exit } from "process";
-import { startDockerDatabase, stopDockerDatabase } from "../utils/localDockerDatabase.js";
-
 import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 import log from "loglevel";
 import { interruptLocalPath } from "../utils/localInterrupt.js";
@@ -94,18 +92,6 @@ export async function prepareLocalEnvironment(
         try {
             if (yamlProjectConfiguration.classes!.length === 0) {
                 throw new Error(GENEZIO_NO_CLASSES_FOUND);
-            }
-
-            // Start docker container
-            if (yamlProjectConfiguration.database) {
-                printAdaptiveLog(
-                    `Starting local docker ${yamlProjectConfiguration.database?.type} database`,
-                    "start",
-                );
-                await startDockerDatabase(
-                    yamlProjectConfiguration.database,
-                    yamlProjectConfiguration.name,
-                );
             }
 
             const sdk = await sdkGeneratorApiHandler(yamlProjectConfiguration).catch((error) => {
@@ -176,7 +162,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                 commandOptions: JSON.stringify(options),
             });
             log.error("preStartLocal script failed.");
-            await stopDockerDatabase();
             exit(1);
         }
     }
@@ -186,7 +171,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     // Check if a deployment is in progress and if it is, stop the local environment
     chokidar.watch(interruptLocalPath, { ignoreInitial: true }).on("all", async () => {
         log.info("A deployment is in progress. Stopping local environment...");
-        await stopDockerDatabase();
         exit(0);
     });
 
@@ -227,7 +211,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     commandOptions: JSON.stringify(options),
                 });
                 log.error("preReloadLocal script failed.");
-                await stopDockerDatabase();
                 exit(1);
             }
         }
@@ -980,6 +963,7 @@ async function clearAllResources(
 ) {
     server.close();
     await stopCronJobs(crons);
+
     processForClasses.forEach((classProcess) => {
         classProcess.process.kill();
     });

@@ -192,16 +192,6 @@ export type YamlFrontend = {
     subdomain: string | undefined;
 };
 
-export class YamlDatabaseConfiguration {
-    type: string;
-    port?: string;
-
-    constructor(type: string, port?: string) {
-        this.type = type;
-        this.port = port;
-    }
-}
-
 export class YamlScriptsConfiguration {
     preBackendDeploy?: string;
     postBackendDeploy?: string;
@@ -278,7 +268,6 @@ export class YamlProjectConfiguration {
     scripts?: YamlScriptsConfiguration;
     plugins?: YamlPluginsConfiguration;
     packageManager?: PackageManagerType | undefined;
-    database?: YamlDatabaseConfiguration;
 
     constructor(
         name: string,
@@ -293,7 +282,6 @@ export class YamlProjectConfiguration {
         options: NodeOptions | undefined = undefined,
         workspace: YamlWorkspace | undefined = undefined,
         packageManager: PackageManagerType | undefined = undefined,
-        database: YamlDatabaseConfiguration | undefined = undefined,
     ) {
         this.name = name;
         this.region = region;
@@ -307,7 +295,6 @@ export class YamlProjectConfiguration {
         this.options = options;
         this.workspace = workspace;
         this.packageManager = packageManager;
-        this.database = database;
     }
 
     getClassConfiguration(path: string): YamlClassConfiguration {
@@ -532,7 +519,6 @@ export class YamlProjectConfiguration {
             configurationFileContent.options,
             workspace,
             configurationFileContent.packageManager,
-            configurationFileContent.database,
         );
     }
 
@@ -601,7 +587,6 @@ export class YamlProjectConfiguration {
                       frontend: this.workspace.rawPathFrontend,
                   }
                 : undefined,
-            database: this.database ? this.database : undefined,
         };
 
         const fileDetails = getFileDetails(path);
