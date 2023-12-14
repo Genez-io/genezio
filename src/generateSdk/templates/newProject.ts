@@ -7,7 +7,7 @@ export const newClassTemplateNode = (
 ) => `import { GenezioDeploy } from "@genezio/types";
 
 /**
- * This class can be deployed on genezio infrastructure
+ * This class can be deployed on the genezio infrastructure
  * using "genezio deploy" command or tested locally using "genezio local".
  */
 @GenezioDeploy()

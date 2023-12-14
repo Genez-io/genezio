@@ -43,7 +43,7 @@ async function deleteProjectHandler(projectId: string, forced: boolean): Promise
         // hack to add a newline  after the spinner
         log.info("");
 
-        const projects = projectsJson.map(function (project: any, index: number) {
+        const projects = projectsJson.map(function (project, index: number) {
             return `[${1 + index}]: Project name: ${project.name}, Region: ${project.region}, ID: ${
                 project.id
             }`;

@@ -56,7 +56,7 @@ export async function genezioCommand() {
     let emptyDirectory = false;
 
     // check if the folder is empty
-    if ((await getAllFilesFromCurrentPath()).length === 0) {
+    if ((await getAllFilesFromCurrentPath(false)).length === 0) {
         debugLogger.debug("Current directory is empty");
         emptyDirectory = true;
     }
@@ -79,7 +79,9 @@ export async function genezioCommand() {
 
     log.info(
         colors.cyan(
-            `Your project will start from the ${colors.green(templateAnswer["template"])} template.\n`,
+            `Your project will start from the ${colors.green(
+                templateAnswer["template"],
+            )} template.\n`,
         ),
     );
 
@@ -102,7 +104,9 @@ export async function genezioCommand() {
     ]);
 
     log.info(
-        colors.cyan(`Your project will be named ${colors.green(projectNameAnswer["projectName"])}.\n`),
+        colors.cyan(
+            `Your project will be named ${colors.green(projectNameAnswer["projectName"])}.\n`,
+        ),
     );
 
     const regionAnswer: Answers = await inquirer.prompt([
