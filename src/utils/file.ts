@@ -82,7 +82,6 @@ export async function getAllFilesFromPath(
                 }
 
                 const fileDetails: FileDetails[] = files.map((file: string) => {
-                    console.log(file);
                     return {
                         name: path.parse(file).name,
                         extension: path.parse(file).ext,
