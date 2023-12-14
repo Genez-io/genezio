@@ -82,6 +82,7 @@ export async function getAllFilesFromPath(
                 }
 
                 const fileDetails: FileDetails[] = files.map((file: string) => {
+                    console.log(file);
                     return {
                         name: path.parse(file).name,
                         extension: path.parse(file).ext,
@@ -95,8 +96,10 @@ export async function getAllFilesFromPath(
     });
 }
 
-export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
-    return getAllFilesFromPath(process.cwd(), false);
+export async function getAllFilesFromCurrentPath(
+    recursive: boolean = true,
+): Promise<FileDetails[]> {
+    return getAllFilesFromPath(process.cwd(), recursive);
 }
 
 export async function zipDirectory(sourceDir: string, outPath: string): Promise<void> {
