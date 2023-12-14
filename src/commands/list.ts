@@ -49,7 +49,7 @@ async function lsHandler(identifier: string, l: boolean) {
             return;
         }
     }
-    projectsJson.forEach(function (project: any, index: number) {
+    projectsJson.forEach(function (project, index: number) {
         if (l) {
             log.info(
                 `[${1 + index}]: Project name: ${project.name},\n\tRegion: ${

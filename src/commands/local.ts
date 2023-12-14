@@ -1,6 +1,6 @@
 import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
 import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
-import express from "express";
+import express, { Request, Response } from "express";
 import chokidar from "chokidar";
 import fs from "fs";
 import fsPromises from "fs/promises";
@@ -36,11 +36,12 @@ import { GenezioCommand, reportSuccess as _reportSuccess } from "../utils/report
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import { GenezioLocalOptions } from "../models/commandOptions.js";
 import { DartBundler } from "../bundlers/dart/localDartBundler.js";
-import axios, { AxiosResponse } from "axios";
+import axios, { AxiosError, AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
 import {
     Language,
     PackageManagerType,
+    TriggerType,
     YamlProjectConfiguration,
     YamlSdkConfiguration,
 } from "../models/yamlProjectConfiguration.js";
@@ -58,6 +59,8 @@ import { exit } from "process";
 import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 import log from "loglevel";
 import { interruptLocalPath } from "../utils/localInterrupt.js";
+import { compareSync, Options, Result } from "dir-compare";
+import { AwsApiGatewayRequest, LambdaResponse } from "../models/cloudProviderIdentifier.js";
 
 const POLLING_INTERVAL = 2000;
 
@@ -87,33 +90,26 @@ export async function prepareLocalEnvironment(
     options: GenezioLocalOptions,
 ): Promise<BundlerRestartResponse> {
     // eslint-disable-next-line no-async-promise-executor
-    return new Promise<BundlerRestartResponse>(async (resolve) => {
-        try {
-            if (yamlProjectConfiguration.classes!.length === 0) {
-                throw new Error(GENEZIO_NO_CLASSES_FOUND);
+    try {
+        if (yamlProjectConfiguration.classes.length === 0) {
+            throw new Error(GENEZIO_NO_CLASSES_FOUND);
+        }
+
+        const sdk = await sdkGeneratorApiHandler(yamlProjectConfiguration).catch((error) => {
+            debugLogger.log("An error occurred", error);
+            if (error.code === "ENOENT") {
+                log.error(
+                    `The file ${error.path} does not exist. Please check your genezio.yaml configuration and make sure that all the file paths are correct.`,
+                );
             }
 
-            const sdk = await sdkGeneratorApiHandler(yamlProjectConfiguration).catch((error) => {
-                debugLogger.log("An error occurred", error);
-                if (error.code === "ENOENT") {
-                    log.error(
-                        `The file ${error.path} does not exist. Please check your genezio.yaml configuration and make sure that all the file paths are correct.`,
-                    );
-                }
+            throw error;
+        });
 
-                // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
-                if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
-                    log.error("Syntax error:");
-                    log.error(`Reason Code: ${error.reasonCode}`);
-                    log.error(`File: ${error.path}:${error.loc.line}:${error.loc.column}`);
-                }
+        const projectConfiguration = new ProjectConfiguration(yamlProjectConfiguration, sdk);
 
-                throw error;
-            });
-
-            const projectConfiguration = new ProjectConfiguration(yamlProjectConfiguration, sdk);
-
-            const processForClasses = await startProcesses(projectConfiguration, sdk, options);
+        const processForClasses = await startProcesses(projectConfiguration, sdk, options);
+        return new Promise<BundlerRestartResponse>((resolve) => {
             resolve({
                 shouldRestartBundling: false,
                 bundlerOutput: {
@@ -123,23 +119,25 @@ export async function prepareLocalEnvironment(
                     sdk,
                 },
             });
-        } catch (error) {
-            if (error instanceof Error) {
-                log.error(error.message);
-            }
-            log.error(
-                `Fix the errors and genezio local will restart automatically. Waiting for changes...`,
-            );
-            // If there was an error generating the SDK, wait for changes and try again.
-            const { watcher } = await listenForChanges(undefined);
-            logChangeDetection();
+        });
+    } catch (error) {
+        if (error instanceof Error) {
+            log.error(error.message);
+        }
+        log.error(
+            `Fix the errors and genezio local will restart automatically. Waiting for changes...`,
+        );
+        // If there was an error generating the SDK, wait for changes and try again.
+        const { watcher } = await listenForChanges(undefined);
+        logChangeDetection();
+        return new Promise<BundlerRestartResponse>((resolve) => {
             resolve({
                 shouldRestartBundling: true,
                 bundlerOutput: undefined,
                 watcher,
             });
-        }
-    });
+        });
+    }
 }
 
 // Function that starts the local environment.
@@ -299,7 +297,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         );
 
         // Start cron jobs
-        const crons = await startCronJobs(projectConfiguration, processForClasses);
+        const crons = startCronJobs(projectConfiguration, processForClasses);
 
         if (sdkConfiguration) {
             await replaceUrlsInSdk(
@@ -378,9 +376,11 @@ async function watchNodeModules(
     // is running, because we are modifying node_modules folder manual (reference: https://github.com/npm/cli/blob/653769de359b8d24f0d17b8e7e426708f49cadb8/docs/content/configuring-npm/package-lock-json.md#hidden-lockfiles)
     const watchPaths: string[] = [interruptLocalPath];
     const sdkName = `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`;
-    const nodeModulesPath = path.join("node_modules", "@genezio-sdk", sdkName, "package.json");
+    const nodeModulesSdkDirectoryPath = path.join("node_modules", "@genezio-sdk", sdkName);
     if (yamlProjectConfiguration.workspace) {
-        watchPaths.push(path.join(yamlProjectConfiguration.workspace.frontend, nodeModulesPath));
+        watchPaths.push(
+            path.join(yamlProjectConfiguration.workspace.frontend, nodeModulesSdkDirectoryPath),
+        );
         watchPaths.push(
             path.join(
                 yamlProjectConfiguration.workspace?.frontend,
@@ -394,7 +394,7 @@ async function watchNodeModules(
             yamlProjectConfiguration.region,
         );
         for (const linkPath of linkPaths) {
-            watchPaths.push(path.join(linkPath, nodeModulesPath));
+            watchPaths.push(path.join(linkPath, nodeModulesSdkDirectoryPath));
             watchPaths.push(path.join(linkPath, "node_modules", ".package-lock.json"));
         }
     }
@@ -402,6 +402,7 @@ async function watchNodeModules(
     return setInterval(async () => {
         for (const watchPath of watchPaths) {
             const components = watchPath.split(path.sep);
+
             // if the file is .package-lock.json, remove it
             if (
                 components[components.length - 1] === ".package-lock.json" &&
@@ -413,16 +414,15 @@ async function watchNodeModules(
                 return;
             }
 
-            if (components[components.length - 1] === "package.json") {
-                let json;
-                try {
-                    const content = fs.readFileSync(watchPath);
-                    json = JSON.parse(content.toString());
-                } catch (error) {
-                    // ignore error
+            if (components[components.length - 1] === sdkName) {
+                const genezioSdkPath = path.resolve(sdkPath, "..", "genezio-sdk");
+                const options: Options = { compareContent: true };
+                if (!fs.existsSync(watchPath)) {
+                    fs.mkdirSync(watchPath, { recursive: true });
                 }
 
-                if (!json || !json.version || !json.version.includes("local")) {
+                const res: Result = compareSync(genezioSdkPath, watchPath, options);
+                if (!res.same) {
                     debugLogger.debug(`[WATCH_NODE_MODULES] Rewriting the SDK to node_modules...`);
                     await writeSdkToNodeModules(yamlProjectConfiguration, sdkPath);
                 }
@@ -435,33 +435,19 @@ async function writeSdkToNodeModules(
     yamlProjectConfiguration: YamlProjectConfiguration,
     originSdkPath: string,
 ) {
-    const writeSdk = async (from: string, toTemp: string, toFinal: string) => {
-        // Firstly, we copy the SDK to a temporary folder
-        // we remove any existing SDK from node_modules and then we rename the temporary folder to the final name
-        //
-        // This is done to avoid any race condition issues with npm install or npm update
-        await fsExtra.copy(from, toTemp, { overwrite: true });
-
+    const writeSdk = async (from: string, toFinal: string) => {
         if (fs.existsSync(toFinal)) {
             if (fs.lstatSync(toFinal).isSymbolicLink()) {
-                // Remove the symbolic link
                 fs.unlinkSync(toFinal);
-            } else {
-                await fsExtra.remove(toFinal);
             }
+        } else {
+            fs.mkdirSync(toFinal, { recursive: true });
         }
-        await fsExtra.rename(toTemp, toFinal);
-        await fsExtra.remove(toTemp);
+        await fsExtra.copy(from, toFinal, { overwrite: true });
     };
 
     if (yamlProjectConfiguration.workspace) {
         const from = path.resolve(originSdkPath, "..", "genezio-sdk");
-        const toTemp = path.join(
-            yamlProjectConfiguration.workspace.frontend,
-            "node_modules",
-            "@genezio-sdk",
-            `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}-temp`,
-        );
         const toFinal = path.join(
             yamlProjectConfiguration.workspace.frontend,
             "node_modules",
@@ -469,7 +455,7 @@ async function writeSdkToNodeModules(
             `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
         );
 
-        await writeSdk(from, toTemp, toFinal).catch(() => {
+        await writeSdk(from, toFinal).catch(() => {
             debugLogger.debug(`[WRITE_SDK_TO_NODE_MODULES] Error writing SDK to node_modules`);
         });
     } else {
@@ -492,7 +478,7 @@ async function writeSdkToNodeModules(
                 `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
             );
 
-            await writeSdk(from, toTemp, toFinal).catch(() => {
+            await writeSdk(from, toFinal).catch(() => {
                 debugLogger.debug(`[WRITE_SDK_TO_NODE_MODULES] Error writing SDK to node_modules`);
             });
         }
@@ -622,12 +608,12 @@ async function startServerHttp(
     app.use(bodyParser.raw({ type: () => true, limit: "6mb" }));
     app.use(genezioRequestParser);
 
-    app.get("/get-ast-summary", (req: any, res: any) => {
+    app.get("/get-ast-summary", (req, res) => {
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify({ ...astSummary, name: projectName }));
     });
 
-    app.all(`/:className`, async (req: any, res: any) => {
+    app.all(`/:className`, async (req, res) => {
         const reqToFunction = getEventObjectFromRequest(req);
 
         const localProcess = processForClasses.get(req.params.className);
@@ -639,6 +625,12 @@ async function startServerHttp(
                     id: 0,
                     error: { code: -32000, message: "Class not found!" },
                 }),
+                isBase64Encoded: false,
+                statusCode: "200",
+                statusDescription: "200 OK",
+                headers: {
+                    "content-type": "application/json",
+                },
             });
             return;
         }
@@ -651,19 +643,28 @@ async function startServerHttp(
                 processForClasses,
             );
             sendResponse(res, response.data);
-        } catch (error: any) {
+        } catch (error) {
             sendResponse(res, {
                 body: JSON.stringify({
                     jsonrpc: "2.0",
                     id: 0,
                     error: { code: -32000, message: "Internal error" },
                 }),
+                isBase64Encoded: false,
+                statusCode: "200",
+                statusDescription: "200 OK",
+                headers: {
+                    "content-type": "application/json",
+                },
             });
             return;
         }
     });
 
-    async function handlerHttpMethod(req: any, res: any) {
+    async function handlerHttpMethod(
+        req: Request<{ className: string; methodName: string }>,
+        res: Response,
+    ) {
         const reqToFunction = getEventObjectFromRequest(req);
 
         const localProcess = processForClasses.get(req.params.className);
@@ -673,7 +674,6 @@ async function startServerHttp(
             return;
         }
 
-        // const response = await axios.post(`http://127.0.0.1:${localProcess?.listeningPort}`, reqToFunction);
         const response = await communicateWithProcess(
             localProcess,
             req.params.className,
@@ -683,11 +683,11 @@ async function startServerHttp(
         sendResponse(res, response.data);
     }
 
-    app.all(`/:className/:methodName`, async (req: any, res: any) => {
+    app.all(`/:className/:methodName`, async (req, res) => {
         await handlerHttpMethod(req, res);
     });
 
-    app.all(`/:className/:methodName/*`, async (req: any, res: any) => {
+    app.all(`/:className/:methodName/*`, async (req, res) => {
         await handlerHttpMethod(req, res);
     });
 
@@ -697,8 +697,9 @@ async function startServerHttp(
             resolve(server);
         });
 
-        server.on("error", (error: any) => {
-            if (error.code === "EADDRINUSE") {
+        server.on("error", (error) => {
+            const err = error as NodeJS.ErrnoException;
+            if (err.code === "EADDRINUSE") {
                 reject(new Error(PORT_ALREADY_USED(port)));
             }
 
@@ -711,19 +712,19 @@ export type LocalEnvCronHandler = {
     className: string;
     methodName: string;
     cronString: string;
-    cronObject: any;
+    cronObject: cron.ScheduledTask | null;
     process: ClassProcess;
 };
 
-async function startCronJobs(
+function startCronJobs(
     projectConfiguration: ProjectConfiguration,
     processForClasses: Map<string, ClassProcess>,
-): Promise<LocalEnvCronHandler[]> {
+): LocalEnvCronHandler[] {
     const cronHandlers: LocalEnvCronHandler[] = [];
     for (const classElement of projectConfiguration.classes) {
         const methods = classElement.methods;
         for (const method of methods) {
-            if (method.type === "cron" && method.cronString) {
+            if (method.type === TriggerType.cron && method.cronString) {
                 const cronHandler: LocalEnvCronHandler = {
                     className: classElement.name,
                     methodName: method.name,
@@ -732,14 +733,14 @@ async function startCronJobs(
                     process: processForClasses.get(classElement.name)!,
                 };
 
-                cronHandler.cronObject = cron.schedule(cronHandler.cronString, async () => {
+                cronHandler.cronObject = cron.schedule(cronHandler.cronString, () => {
                     const reqToFunction = {
                         genezioEventType: "cron",
                         methodName: cronHandler.methodName,
                         cronString: cronHandler.cronString,
                     };
 
-                    communicateWithProcess(
+                    void communicateWithProcess(
                         cronHandler.process,
                         cronHandler.className,
                         reqToFunction,
@@ -764,7 +765,7 @@ async function stopCronJobs(cronHandlers: LocalEnvCronHandler[]) {
     }
 }
 
-function getEventObjectFromRequest(request: any) {
+function getEventObjectFromRequest(request: AwsApiGatewayRequest) {
     const urlDetails = url.parse(request.url, true);
 
     return {
@@ -786,7 +787,7 @@ function getEventObjectFromRequest(request: any) {
     };
 }
 
-function sendResponse(res: any, httpResponse: any) {
+function sendResponse(res: Response, httpResponse: LambdaResponse) {
     if (httpResponse.statusDescription) {
         res.statusMessage = httpResponse.statusDescription;
     }
@@ -794,10 +795,13 @@ function sendResponse(res: any, httpResponse: any) {
 
     if (httpResponse.headers) {
         for (const header of Object.keys(httpResponse.headers)) {
-            res.setHeader(header.toLowerCase(), httpResponse.headers[header]);
+            const headerContent = httpResponse.headers[header];
+            if (headerContent !== undefined) {
+                res.setHeader(header.toLowerCase(), headerContent);
+            }
 
             if (header.toLowerCase() === "content-type") {
-                contentTypeHeader = httpResponse.headers[header];
+                contentTypeHeader = true;
             }
         }
     }
@@ -821,10 +825,10 @@ function sendResponse(res: any, httpResponse: any) {
     }
 }
 
-async function listenForChanges(sdkPathRelative: any | undefined) {
+async function listenForChanges(sdkPathRelative: string | undefined) {
     const cwd = process.cwd();
 
-    let sdkPath: any = null;
+    let sdkPath: string | null = null;
 
     if (sdkPathRelative) {
         sdkPath = path.join(cwd, sdkPathRelative);
@@ -879,7 +883,7 @@ async function listenForChanges(sdkPathRelative: any | undefined) {
                     ignored: ignoredPaths,
                     ignoreInitial: true,
                 })
-                .on("all", async (event: any, path: any) => {
+                .on("all", async (_event, path) => {
                     if (sdkPath) {
                         if (path.includes(sdkPath)) {
                             return;
@@ -1015,13 +1019,16 @@ async function startClassProcess(
 async function communicateWithProcess(
     localProcess: ClassProcess,
     className: string,
-    data: any,
+    data: Record<string, unknown>,
     processForClasses: Map<string, ClassProcess>,
 ): Promise<AxiosResponse> {
     try {
         return await axios.post(`http://127.0.0.1:${localProcess?.listeningPort}`, data);
-    } catch (error: any) {
-        if (error.code === "ECONNRESET" || error.code === "ECONNREFUSED") {
+    } catch (error) {
+        if (
+            error instanceof AxiosError &&
+            (error.code === "ECONNRESET" || error.code === "ECONNREFUSED")
+        ) {
             await startClassProcess(
                 localProcess.startingCommand,
                 localProcess.parameters,

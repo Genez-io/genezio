@@ -1,7 +1,6 @@
 import jsonBody from "body/json.js";
 import log from "loglevel";
 import { AddressInfo } from "net";
-import { exit } from "process";
 import { REACT_APP_BASE_URL } from "../constants.js";
 import { saveAuthToken } from "../utils/accounts.js";
 import http from "http";
@@ -17,8 +16,7 @@ export async function loginCommand(accessToken: string, logSuccesMessage = true)
         eventType: TelemetryEventTypes.GENEZIO_LOGIN,
     });
 
-    // eslint-disable-next-line no-async-promise-executor
-    const promiseHttpServer = new Promise(async (resolve, reject) => {
+    const promiseHttpServer = new Promise((resolve) => {
         if (accessToken !== "") {
             saveAuthToken(accessToken);
         } else {
@@ -31,7 +29,7 @@ export async function loginCommand(accessToken: string, logSuccesMessage = true)
                     res.end();
                     return;
                 }
-                jsonBody(req, res, (err, body: any) => {
+                jsonBody(req, res, () => {
                     const params = new URLSearchParams(req.url);
 
                     const token = params.get("/?token")!;
@@ -54,16 +52,12 @@ export async function loginCommand(accessToken: string, logSuccesMessage = true)
                 });
             });
 
-            const promise = new Promise((resolve) => {
-                server.listen(0, "localhost", () => {
-                    log.info("Redirecting to browser to complete authentication...");
-                    const address = server.address() as AddressInfo;
-                    resolve(address.port);
-                });
+            server.listen(0, "localhost", () => {
+                log.info("Redirecting to browser to complete authentication...");
+                const address = server.address() as AddressInfo;
+                const browserUrl = `${REACT_APP_BASE_URL}/cli/login?redirect_url=http://localhost:${address.port}/`;
+                open(browserUrl);
             });
-            const port = await promise;
-            const browserUrl = `${REACT_APP_BASE_URL}/cli/login?redirect_url=http://localhost:${port}/`;
-            open(browserUrl);
         }
     });
     await promiseHttpServer;

@@ -4,10 +4,20 @@ import SwiftSdkGenerator from "./sdkGenerator/SwiftSdkGenerator.js";
 import PythonSdkGenerator from "./sdkGenerator/PythonSdkGenerator.js";
 import DartSdkGenerator from "./sdkGenerator/DartSdkGenerator.js";
 import KotlinSdkGenerator from "./sdkGenerator/KotlinSdkGenerator.js";
-import { SdkGeneratorInput, SdkGeneratorOutput, SdkVersion } from "../models/genezioModels.js";
+import {
+    SdkGeneratorInput,
+    SdkGeneratorInterface,
+    SdkGeneratorOutput,
+    SdkVersion,
+} from "../models/genezioModels.js";
 import log from "loglevel";
 import { exit } from "process";
 import { debugLogger } from "../utils/logging.js";
+
+interface SdkGeneratorPlugin {
+    SdkGenerator: new () => SdkGeneratorInterface;
+    supportedLanguages: string[];
+}
 
 /**
  * Asynchronously generates an SDK from a given AST array using specified plugins.
@@ -22,16 +32,40 @@ export async function generateSdk(
     plugins: string[] | undefined,
     sdkVersion: SdkVersion,
 ): Promise<SdkGeneratorOutput> {
-    let pluginsImported: any = [];
+    let pluginsImported: SdkGeneratorPlugin[] = [];
 
     if (plugins) {
-        pluginsImported = plugins?.map(async (plugin) => {
-            return await import(plugin).catch((err) => {
-                log.error(`Plugin(${plugin}) not found. Install it with npm install ${plugin}`);
-                debugLogger.debug(err);
-                exit(1);
-            });
-        });
+        pluginsImported = await Promise.all(
+            plugins?.map(async (plugin) => {
+                const dynamicPlugin = await import(plugin).catch((err) => {
+                    log.error(`Plugin(${plugin}) not found. Install it with npm install ${plugin}`);
+                    debugLogger.debug(err);
+                    exit(1);
+                });
+
+                if (!dynamicPlugin) {
+                    log.error(`Plugin(${plugin}) could not be imported.`);
+                    exit(1);
+                }
+
+                // Check type of plugin at runtime
+                // TODO: We could use zod (https://zod.dev/)
+                if (
+                    typeof dynamicPlugin.SdkGenerator !== "function" ||
+                    !Array.isArray(dynamicPlugin.supportedLanguages) ||
+                    dynamicPlugin.supportedLanguages
+                        .map((lang: string) => typeof lang !== "string")
+                        .includes(true)
+                ) {
+                    log.error(
+                        `Plugin(${plugin}) is not a valid SDK generator plugin. It must export a SdkGenerator class and supportedLanguages array.`,
+                    );
+                    exit(1);
+                }
+
+                return dynamicPlugin as SdkGeneratorPlugin;
+            }),
+        );
     }
 
     pluginsImported.push(JsSdkGenerator);
@@ -41,12 +75,17 @@ export async function generateSdk(
     pluginsImported.push(DartSdkGenerator);
     pluginsImported.push(KotlinSdkGenerator);
 
-    const sdkGeneratorElem = pluginsImported.find((plugin: any) => {
-        return plugin.supportedLanguages.includes(sdkGeneratorInput.sdk?.language);
+    const sdk = sdkGeneratorInput.sdk;
+    if (!sdk) {
+        throw new Error(`SDK language not specified`);
+    }
+
+    const sdkGeneratorElem = pluginsImported.find((plugin) => {
+        return plugin.supportedLanguages.includes(sdk.language ?? "");
     });
 
-    if (!sdkGeneratorElem && sdkGeneratorInput.sdk) {
-        throw new Error(`SDK language(${sdkGeneratorInput.sdk.language}) not supported`);
+    if (!sdkGeneratorElem) {
+        throw new Error(`SDK language(${sdk.language}) not supported`);
     }
 
     const sdkGeneratorClass = new sdkGeneratorElem.SdkGenerator();
