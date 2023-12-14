@@ -197,7 +197,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
             commandOptions: JSON.stringify(options),
         });
 
-        log.info("Deploying your frontend to genezio infrastructure...");
+        log.info("Deploying your frontend to the genezio infrastructure...");
         let url;
         try {
             url = await deployFrontend(configuration, cloudAdapter, options);
