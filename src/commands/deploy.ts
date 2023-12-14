@@ -50,6 +50,7 @@ import { getNodeModulePackageJson } from "../generateSdk/templates/packageJson.j
 import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { interruptLocalProcesses } from "../utils/localInterrupt.js";
+import { Status } from "../requests/models.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -114,12 +115,14 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 commandOptions: JSON.stringify(options),
             });
             await deployClasses(configuration, cloudAdapter, options).catch(
-                async (error: AxiosError) => {
+                async (error: AxiosError<Status>) => {
                     await GenezioTelemetry.sendEvent({
                         eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_ERROR,
                         errorTrace: error.toString(),
                         commandOptions: JSON.stringify(options),
                     });
+
+                    const data = error.response?.data;
 
                     switch (error.response?.status) {
                         case 401:
@@ -127,16 +130,14 @@ export async function deployCommand(options: GenezioDeployOptions) {
                             break;
                         case 500:
                             log.error(error.message);
-                            if (error.response?.data) {
-                                const data: any = error.response?.data;
-                                log.error(data.error?.message);
+                            if (data && data.status === "error") {
+                                log.error(data.error.message);
                             }
                             break;
                         case 400:
                             log.error(error.message);
-                            if (error.response?.data) {
-                                const data: any = error.response?.data;
-                                log.error(data.error?.message);
+                            if (data && data.status === "error") {
+                                log.error(data.error.message);
                             }
                             break;
                         default:

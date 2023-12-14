@@ -1,6 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 import MIMETypeParser from "whatwg-mimetype";
-import type { Request, RequestHandler } from "express";
+import type { RequestHandler } from "express";
+import { AwsApiGatewayRequest } from "../models/cloudProviderIdentifier.js";
 
 /**
  * Check if the body is of type binary.
@@ -21,10 +22,6 @@ function bodyIsBinary(rawContentType: string) {
         return !["json", "ld+json", "x-httpd-php", "x-sh", "x-csh", "xhtml+xml", "xml"].includes(
             contentType.subtype,
         );
-}
-
-interface AwsApiGatewayRequest extends Request {
-    isBase64Encoded?: boolean;
 }
 
 /**
