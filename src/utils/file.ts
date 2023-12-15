@@ -46,7 +46,10 @@ export function ensureRelativePaths(file: string): string {
     return relativePath;
 }
 
-export async function getAllFilesFromPath(inputPath: string): Promise<FileDetails[]> {
+export async function getAllFilesFromPath(
+    inputPath: string,
+    recursive: boolean = true,
+): Promise<FileDetails[]> {
     // get genezioIgnore file
     let genezioIgnore: string[] = [];
     const genezioIgnorePath = path.join(inputPath, ".genezioignore");
@@ -60,7 +63,12 @@ export async function getAllFilesFromPath(inputPath: string): Promise<FileDetail
     genezioIgnore = genezioIgnore.map((p) => ensureRelativePaths(p));
 
     return new Promise((resolve, reject) => {
-        const pattern = `**`;
+        let pattern;
+        if (recursive) {
+            pattern = `**`;
+        } else {
+            pattern = `*`;
+        }
         glob(
             pattern,
             {
@@ -86,8 +94,11 @@ export async function getAllFilesFromPath(inputPath: string): Promise<FileDetail
         );
     });
 }
-export async function getAllFilesFromCurrentPath(): Promise<FileDetails[]> {
-    return getAllFilesFromPath(process.cwd());
+
+export async function getAllFilesFromCurrentPath(
+    recursive: boolean = true,
+): Promise<FileDetails[]> {
+    return getAllFilesFromPath(process.cwd(), recursive);
 }
 
 export async function zipDirectory(sourceDir: string, outPath: string): Promise<void> {

@@ -36,7 +36,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
     ): Promise<GenezioCloudOutput> {
         const stage: string = cloudAdapterOptions.stage || "";
 
-        log.info("Deploying your backend project to genezio infrastructure...");
+        log.info("Deploying your backend project to the genezio infrastructure...");
         const multibar = new cliProgress.MultiBar(
             {
                 clearOnComplete: false,

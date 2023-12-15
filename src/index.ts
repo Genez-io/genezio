@@ -5,7 +5,6 @@ import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js"
 import { cleanupTemporaryFolders } from "./utils/file.js";
 import { SENTRY_DSN } from "./constants.js";
 import { debugLogger } from "./utils/logging.js";
-import { stopDockerDatabase } from "./utils/localDockerDatabase.js";
 
 try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -33,17 +32,10 @@ process.on("SIGINT", async () => {
         errorTrace: "",
         commandOptions: "",
     });
-    if (process.env["CURRENT_COMMAND"] == "local") {
-        await stopDockerDatabase();
-    }
-
     await cleanupTemporaryFolders();
     process.exit();
 });
 process.on("exit", async () => {
-    if (process.env["CURRENT_COMMAND"] == "local") {
-        await stopDockerDatabase();
-    }
     await cleanupTemporaryFolders();
 });
 
