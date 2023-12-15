@@ -61,6 +61,14 @@ export class AstGenerator implements AstGeneratorInterface {
         | EnumType
         | MapType {
         switch (type.kind) {
+            case typescript.SyntaxKind.LiteralType: {
+                const literalType = type as typescript.LiteralTypeNode;
+
+                return {
+                    type: AstNodeType.CustomNodeLiteral,
+                    rawValue: literalType.literal.getText(),
+                };
+            }
             case typescript.SyntaxKind.StringKeyword:
                 return { type: AstNodeType.StringLiteral };
             case typescript.SyntaxKind.NumberKeyword:
@@ -119,8 +127,11 @@ export class AstGenerator implements AstGeneratorInterface {
                 const typeAtLocation = typeChecker.getTypeAtLocation(
                     (type as typescript.TypeReferenceNode).typeName,
                 );
-                const typeAtLocationPath =
+                let typeAtLocationPath =
                     typeAtLocation.aliasSymbol?.declarations?.[0].getSourceFile().fileName;
+                if (typeAtLocationPath?.endsWith(".ts")) {
+                    typeAtLocationPath = typeAtLocationPath.slice(0, -3);
+                }
                 if (!typeAtLocationPath) {
                     throw new Error(
                         `Type ${escapedText} is not supported by genezio. Take a look at the documentation to see the supported types. https://docs.genez.io/`,
@@ -260,8 +271,11 @@ export class AstGenerator implements AstGeneratorInterface {
                         throw new Error("Class name is undefined");
                     }
                     const typeAtLocation = typeChecker.getTypeAtLocation(classDeclaration.name);
-                    const typeAtLocationPath =
+                    let typeAtLocationPath =
                         typeAtLocation.symbol.declarations?.[0].getSourceFile().fileName;
+                    if (typeAtLocationPath?.endsWith(".ts")) {
+                        typeAtLocationPath = typeAtLocationPath.slice(0, -3);
+                    }
                     if (!typeAtLocationPath) {
                         throw new Error("Could not find class declaration file path");
                     }
@@ -295,6 +309,7 @@ export class AstGenerator implements AstGeneratorInterface {
                     properties: [],
                 },
             };
+
             for (const member of typeAliasDeclarationCopy.type.members) {
                 if (
                     (typescript.isPropertySignature(member) ||
