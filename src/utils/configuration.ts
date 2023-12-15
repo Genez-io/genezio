@@ -179,6 +179,7 @@ async function getDecoratorsFromFile(file: string): Promise<ClassInfo[]> {
             extractorFunction,
         ],
         filename: file,
+        configFile: false,
     });
 
     return classes;

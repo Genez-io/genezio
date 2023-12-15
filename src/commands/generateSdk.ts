@@ -42,6 +42,7 @@ export async function generateSdkCommand(projectName: string, options: GenezioSd
 
 export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
     let configuration: YamlProjectConfiguration = await YamlProjectConfiguration.create({
+        name: "test",
         language: options.language,
         sdk: {
             language: options.language,

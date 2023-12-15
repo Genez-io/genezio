@@ -244,6 +244,7 @@ program
     )
     .option("-p, --path <path>", "Path to the directory where the SDK will be generated.", "./sdk")
     .option("--stage <stage>", "Stage of the project.", "prod")
+    .option("--url <url>", "The url of the server.")
     .option("--region <region>", "Region where your project is deployed.", "us-east-1")
     .summary("Generate an SDK for a deployed or local project.")
     .description(
