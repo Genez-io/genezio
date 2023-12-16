@@ -1,4 +1,4 @@
-import { describe, expect, test } from "@jest/globals";
+import { describe, test, expect } from "vitest";
 import { YamlProjectConfiguration, TriggerType } from "../src/models/yamlProjectConfiguration";
 import { rectifyCronString } from "../src/utils/rectifyCronString";
 

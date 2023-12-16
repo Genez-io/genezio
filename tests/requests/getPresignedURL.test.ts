@@ -1,12 +1,13 @@
+import { beforeEach, test, expect, vi } from "vitest";
 import axios from "axios";
 import { getAuthToken } from "../../src/utils/accounts";
 import { getPresignedURL } from "../../src/requests/getPresignedURL";
 
-jest.mock("axios");
-jest.mock("../../src/utils/accounts");
+vi.mock("axios");
+vi.mock("../../src/utils/accounts");
 
-const mockedAxios = jest.mocked(axios, { shallow: true });
-const mockedGetAuthToken = jest.mocked(getAuthToken, { shallow: true });
+const mockedAxios = vi.mocked(axios);
+const mockedGetAuthToken = vi.mocked(getAuthToken);
 
 beforeEach(() => {
     mockedGetAuthToken.mockClear();
