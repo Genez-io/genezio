@@ -115,7 +115,7 @@
         "@types/whatwg-mimetype": "~3.0.0",
         "@types/which": "^3.0.3",
         "@typescript-eslint/eslint-plugin": "^6.13.2",
-        "@typescript-eslint/parser": "^6.13.2",
+        "@typescript-eslint/parser": "^6.14.0",
         "copyfiles": "^2.4.1",
         "envify": "^4.1.0",
         "eslint": "^8.55.0",
