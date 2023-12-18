@@ -51,6 +51,8 @@ import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { interruptLocalProcesses } from "../utils/localInterrupt.js";
 import { Status } from "../requests/models.js";
+import packageManager from "../packageManagers/packageManager.js";
+import { error } from "console";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -423,12 +425,14 @@ export async function deployClasses(
             configuration.name,
             configuration.region,
             stage,
+            configuration.publicSdk,
         );
         await compileSdk(
             path.join(localPath, "sdk"),
             packageJson,
             configuration.language,
             GenezioCommand.deploy,
+            configuration.publicSdk,
         );
     }
 
@@ -442,6 +446,7 @@ export async function deployClasses(
             stage: stage,
         },
         !configuration.sdk,
+        configuration.publicSdk,
     );
 
     const projectId = result.classes[0].projectId;

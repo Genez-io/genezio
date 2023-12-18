@@ -1,6 +1,6 @@
 import log from "loglevel";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
-import { TriggerType } from "../models/yamlProjectConfiguration.js";
+import { TriggerType, YamlPublicSdkConfiguration } from "../models/yamlProjectConfiguration.js";
 import { GenezioCloudResultClass } from "../cloudAdapter/cloudAdapter.js";
 import colors from "colors";
 import boxen from "boxen";
@@ -23,6 +23,7 @@ export function reportSuccess(
     command: GenezioCommand,
     projectConfiguration: ProjectPrimaryKeys,
     newVersion: boolean,
+    publicSdk?: YamlPublicSdkConfiguration,
 ) {
     if (command === GenezioCommand.deploy) {
         if (sdkResponse.files.length > 0) {
@@ -37,11 +38,19 @@ export function reportSuccess(
                         `${colors.green(
                             "To install the SDK in your client, run this command in your client's root:",
                         )}\n${colors.magenta(
-                            `${packageManager.command} add @genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}@1.0.0-${projectConfiguration.stage}`,
+                            `${packageManager.command} add ${
+                                publicSdk
+                                    ? `${publicSdk.name}@${publicSdk.version}`
+                                    : `@genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}@1.0.0-${projectConfiguration.stage}`
+                            }`,
                         )}\n\n${colors.green(
                             "Then import your classes like this:",
                         )}\n${colors.magenta(
-                            `import { ${classesInfo[0].className} } from "@genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}"`,
+                            `import { ${classesInfo[0].className} } from ${
+                                publicSdk
+                                    ? `"${publicSdk.name}"`
+                                    : `"@genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}"`
+                            }`,
                         )}`,
                         {
                             padding: 1,
