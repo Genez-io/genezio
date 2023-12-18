@@ -1,5 +1,5 @@
 import { createRequire } from "module";
-import { Language } from "../../models/yamlProjectConfiguration.js";
+import { Language, YamlPublicSdkConfiguration } from "../../models/yamlProjectConfiguration.js";
 import path from "path";
 import ts from "typescript";
 import { Worker } from "worker_threads";
@@ -36,6 +36,7 @@ export async function compileSdk(
     packageJson: string,
     language: Language,
     environment: GenezioCommand,
+    publicSdk?: YamlPublicSdkConfiguration,
 ) {
     // compile the sdk to cjs and esm using worker threads
     const workers = [];
@@ -74,6 +75,6 @@ export async function compileSdk(
     workers.push(writePackagePromise);
     await Promise.all(workers);
     if (environment === GenezioCommand.deploy) {
-        await packageManager.publish(modulePath);
+        await packageManager.publish(modulePath, publicSdk?.public ?? false);
     }
 }

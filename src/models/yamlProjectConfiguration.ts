@@ -252,6 +252,12 @@ export enum YamlProjectConfigurationType {
     ROOT,
 }
 
+export type YamlPublicSdkConfiguration = {
+    name: string;
+    version: string;
+    public: boolean;
+};
+
 /**
  * This class represents the model for the YAML configuration file.
  */
@@ -268,6 +274,7 @@ export class YamlProjectConfiguration {
     scripts?: YamlScriptsConfiguration;
     plugins?: YamlPluginsConfiguration;
     packageManager?: PackageManagerType | undefined;
+    publicSdk?: YamlPublicSdkConfiguration;
 
     constructor(
         name: string,
@@ -282,6 +289,7 @@ export class YamlProjectConfiguration {
         options: NodeOptions | undefined = undefined,
         workspace: YamlWorkspace | undefined = undefined,
         packageManager: PackageManagerType | undefined = undefined,
+        publicSdk: YamlPublicSdkConfiguration | undefined = undefined,
     ) {
         this.name = name;
         this.region = region;
@@ -295,6 +303,7 @@ export class YamlProjectConfiguration {
         this.options = options;
         this.workspace = workspace;
         this.packageManager = packageManager;
+        this.publicSdk = publicSdk;
     }
 
     getClassConfiguration(path: string): YamlClassConfiguration {
@@ -307,86 +316,6 @@ export class YamlProjectConfiguration {
         }
 
         return classConfiguration;
-    }
-
-    static async parseBackendYaml(workspace: any) {
-        if (!fileExists(workspace.backend)) {
-            throw new Error(
-                `The folder ${workspace.backend} specified in genezio.yaml in workspace.backend does not exist.`,
-            );
-        }
-        let backendFileContent;
-        try {
-            const backendFileContentUTF8 = await readUTF8File(
-                path.join(workspace.backend, "genezio.yaml"),
-            );
-            backendFileContent = parse(backendFileContentUTF8);
-        } catch {
-            return {
-                classes: [],
-            };
-        }
-        let classes: YamlClassConfiguration[] = [];
-        const unparsedClasses: any[] = backendFileContent.classes;
-
-        // check if unparsedClasses is an array
-        if (unparsedClasses && !Array.isArray(unparsedClasses)) {
-            throw new Error("The classes property must be an array.");
-        }
-
-        if (unparsedClasses && Array.isArray(unparsedClasses)) {
-            classes = await Promise.all(
-                unparsedClasses.map((c) => YamlClassConfiguration.create(c)),
-            );
-        }
-        const backendScripts: YamlScriptsConfiguration | undefined = {
-            preBackendDeploy: backendFileContent.scripts.preBackendDeploy,
-            postBackendDeploy: backendFileContent.scripts.postBackendDeploy,
-        };
-        if (
-            backendFileContent.options &&
-            backendFileContent.options.nodeRuntime &&
-            !supportedNodeRuntimes.includes(backendFileContent.options.nodeRuntime)
-        ) {
-            throw new Error(
-                "The node version in the genezio.yaml configuration file is not valid. The value must be one of the following: " +
-                    supportedNodeRuntimes.join(", "),
-            );
-        }
-
-        return {
-            options: backendFileContent.options,
-            classes,
-            backendScripts,
-        };
-    }
-
-    static async parseFrontendYaml(workspace: any) {
-        if (!fileExists(workspace.frontend)) {
-            throw new Error(
-                `The folder ${workspace.frontend} specified in genezio.yaml in workspace.backend does not exist.`,
-            );
-        }
-
-        const frontendFileContentUTF8 = await readUTF8File(
-            path.join(workspace.frontend, "genezio.yaml"),
-        );
-        const frontendFileContent = parse(frontendFileContentUTF8);
-        const frontendScripts: YamlScriptsConfiguration = {
-            preFrontendDeploy: frontendFileContent.scripts?.preFrontendDeploy,
-            postFrontendDeploy: frontendFileContent.scripts?.postFrontendDeploy,
-        };
-
-        if (frontendFileContent.frontend) {
-            if (!frontendFileContent.frontend.path) {
-                throw new Error("The frontend.path value is not set.");
-            }
-        }
-
-        return {
-            frontendScripts,
-            frontend: frontendFileContent.frontend,
-        };
     }
 
     static async create(configurationFileContent: any): Promise<YamlProjectConfiguration> {
@@ -506,6 +435,15 @@ export class YamlProjectConfiguration {
             );
         }
 
+        if (configurationFileContent.publicSdk) {
+            if (!configurationFileContent.publicSdk.name) {
+                throw new Error("The publicSdk.name value is not set.");
+            }
+            if (!configurationFileContent.publicSdk.version) {
+                throw new Error("The publicSdk.version value is not set.");
+            }
+        }
+
         return new YamlProjectConfiguration(
             configurationFileContent.name,
             configurationFileContent.region || "us-east-1",
@@ -519,6 +457,7 @@ export class YamlProjectConfiguration {
             configurationFileContent.options,
             workspace,
             configurationFileContent.packageManager,
+            configurationFileContent.publicSdk,
         );
     }
 
@@ -581,6 +520,7 @@ export class YamlProjectConfiguration {
                   }))
                 : undefined,
             packageManager: this.packageManager ? this.packageManager : undefined,
+            publicSdk: this.publicSdk ? this.publicSdk : undefined,
             workspace: this.workspace
                 ? {
                       backend: this.workspace.rawPathBackend,
