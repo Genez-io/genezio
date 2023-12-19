@@ -32,7 +32,8 @@ export default class NpmPackageManager implements PackageManager {
                     ...(publicPackage ? ["--access", "public"] : ["--access", "restricted"]),
                 ],
                 {
-                    stdio: "inherit",
+                    stdio: publicPackage ? "inherit" : "ignore",
+                    shell: process.platform == "win32",
                 },
             );
 
