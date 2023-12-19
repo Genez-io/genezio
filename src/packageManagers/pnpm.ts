@@ -48,7 +48,7 @@ export default class PnpmPackageManager implements PackageManager {
                     ...(publicPackage ? ["--access", "public"] : ["--access", "restricted"]),
                 ],
                 {
-                    stdio: publicPackage || customPackage ? "inherit" : "ignore",
+                    stdio: customPackage ? "inherit" : "ignore",
                     shell: process.platform == "win32",
                 },
             );

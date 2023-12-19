@@ -11,7 +11,7 @@ export interface PackageManager {
     install(packages: string[], cwd?: string): Promise<void>;
     installSync(packages: string[], cwd?: string): void;
     link(packages: string[], cwd?: string): Promise<void>;
-    publish(cwd: string, publicPackage?: boolean): Promise<void>;
+    publish(cwd: string, publicPackage?: boolean, customPackage?: boolean): Promise<void>;
     addScopedRegistry(scope: string, url: string, authToken?: string): Promise<void>;
     removeScopedRegistry(scope: string): Promise<void>;
     getVersion(): Promise<string>;

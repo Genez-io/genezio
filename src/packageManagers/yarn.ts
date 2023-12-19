@@ -49,7 +49,7 @@ export default class YarnPackageManager implements PackageManager {
                     ...(publicPackage ? ["--access", "public"] : ["--access", "restricted"]),
                 ],
                 {
-                    stdio: publicPackage || customPackage ? "inherit" : "ignore",
+                    stdio: customPackage ? "inherit" : "ignore",
                     shell: process.platform == "win32",
                 },
             );
