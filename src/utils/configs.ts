@@ -34,7 +34,7 @@ export const regions = [
     "eu-west-3",
     "eu-north-1",
     "sa-east-1",
-];
+] as const;
 
 export const regionNames = [
     "US East (N. Virginia)",

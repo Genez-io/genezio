@@ -1,16 +1,58 @@
 import path from "path";
-import yaml, { parse } from "yaml";
-import { fileExists, getFileDetails, readUTF8File, writeToFile } from "../utils/file.js";
+import yaml from "yaml";
+import { getFileDetails, writeToFile } from "../utils/file.js";
 import { regions } from "../utils/configs.js";
 import { isValidCron } from "cron-validator";
-import log from "loglevel";
-import { CloudProviderIdentifier, cloudProviders } from "./cloudProviderIdentifier.js";
-import { NodeOptions } from "./nodeRuntime.js";
+import { CloudProviderIdentifier } from "./cloudProviderIdentifier.js";
+import { DEFAULT_NODE_RUNTIME, NodeOptions } from "./nodeRuntime.js";
+import zod from "zod";
 
 export enum TriggerType {
     jsonrpc = "jsonrpc",
     cron = "cron",
     http = "http",
+}
+
+interface RawYamlConfiguration {
+    [key: string]:
+        | string
+        | number
+        | boolean
+        | null
+        | undefined
+        | RawYamlConfiguration
+        | Array<RawYamlConfiguration>;
+}
+
+function zodFormatError(e: zod.ZodError) {
+    let errorString = "";
+    const issueMap = new Map<string, string[]>();
+
+    for (const issue of e.issues) {
+        if (issueMap.has(issue.path.join("."))) {
+            issueMap.get(issue.path.join("."))?.push(issue.message);
+        } else {
+            issueMap.set(issue.path.join("."), [issue.message]);
+        }
+    }
+
+    const formErrors = issueMap.get("");
+    if (formErrors && formErrors.length > 0) {
+        errorString += "Form errors:\n";
+        for (const error of formErrors) {
+            errorString += `\t- ${error}\n`;
+        }
+    }
+
+    const fieldErrors = Array.from(issueMap.entries()).filter((entry) => entry[0] !== "");
+    for (const [field, errors] of fieldErrors) {
+        if (errors === undefined) continue;
+
+        errorString += `Field \`${field}\`:\n`;
+        errorString += `\t- ${errors.join("\n\t- ")}\n`;
+    }
+
+    return errorString;
 }
 
 export function getTriggerTypeFromString(string: string): TriggerType {
@@ -71,53 +113,6 @@ export class YamlMethodConfiguration {
         this.type = type ?? TriggerType.jsonrpc;
         this.cronString = cronString;
     }
-
-    static async create(
-        methodConfigurationYaml: any,
-        classType: TriggerType,
-    ): Promise<YamlMethodConfiguration> {
-        if (!methodConfigurationYaml.name) {
-            throw new Error("Missing method name in configuration file.");
-        }
-
-        if (
-            methodConfigurationYaml.type &&
-            !TriggerType[methodConfigurationYaml.type as keyof typeof TriggerType]
-        ) {
-            throw new Error("The method's type is incorrect.");
-        }
-
-        let type = classType;
-        if (methodConfigurationYaml.type) {
-            type = TriggerType[methodConfigurationYaml.type as keyof typeof TriggerType];
-        }
-
-        if (type == TriggerType.cron && !methodConfigurationYaml.cronString) {
-            throw new Error("The cron method is missing a cron string property.");
-        }
-
-        // Check cron string format
-        if (type == TriggerType.cron) {
-            if (!isValidCron(methodConfigurationYaml.cronString)) {
-                throw new Error(
-                    "The cron string is not valid. Check https://crontab.guru/ for more information.",
-                );
-            }
-
-            const cronParts = methodConfigurationYaml.cronString.split(" ");
-            if (cronParts[2] != "*" && cronParts[4] != "*") {
-                throw new Error(
-                    "The cron string is not valid. The day of the month and day of the week cannot be specified at the same time.",
-                );
-            }
-        }
-
-        return new YamlMethodConfiguration(
-            methodConfigurationYaml.name,
-            type,
-            methodConfigurationYaml.cronString,
-        );
-    }
 }
 
 export class YamlClassConfiguration {
@@ -157,39 +152,11 @@ export class YamlClassConfiguration {
 
         return TriggerType.jsonrpc;
     }
-
-    static async create(classConfigurationYaml: any): Promise<YamlClassConfiguration> {
-        if (!classConfigurationYaml.path) {
-            throw new Error("Path is missing from class.");
-        }
-
-        let triggerType = TriggerType.jsonrpc;
-
-        if (classConfigurationYaml.type) {
-            triggerType = getTriggerTypeFromString(classConfigurationYaml.type);
-        }
-
-        const unparsedMethods: any[] = classConfigurationYaml.methods || [];
-        const methods = await Promise.all(
-            unparsedMethods.map((method: any) =>
-                YamlMethodConfiguration.create(method, triggerType),
-            ),
-        );
-        const language = path.parse(classConfigurationYaml.path).ext;
-
-        return new YamlClassConfiguration(
-            classConfigurationYaml.path,
-            triggerType,
-            language,
-            methods,
-            classConfigurationYaml.name,
-        );
-    }
 }
 
 export type YamlFrontend = {
     path: string;
-    subdomain: string | undefined;
+    subdomain?: string;
 };
 
 export class YamlScriptsConfiguration {
@@ -244,7 +211,7 @@ export class YamlWorkspace {
     }
 }
 
-const supportedNodeRuntimes: string[] = ["nodejs16.x", "nodejs18.x"];
+const supportedNodeRuntimes = ["nodejs16.x", "nodejs18.x"] as const;
 
 export enum YamlProjectConfigurationType {
     FRONTEND,
@@ -309,136 +276,180 @@ export class YamlProjectConfiguration {
         return classConfiguration;
     }
 
-    static async create(configurationFileContent: any): Promise<YamlProjectConfiguration> {
-        if (!configurationFileContent.name) {
-            throw new Error("The name property is missing from the configuration file.");
-        }
+    static async create(
+        configurationFileContent: RawYamlConfiguration,
+    ): Promise<YamlProjectConfiguration> {
+        const methodConfigurationSchema = zod
+            .object({
+                name: zod.string(),
+                type: zod.nativeEnum(TriggerType).optional(),
+                cronString: zod.string().optional(),
+            })
+            .refine(({ type, cronString }) => {
+                if (type === TriggerType.cron && cronString === undefined) return false;
 
-        const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
-        if (!nameRegex.test(configurationFileContent.name)) {
-            throw new Error("The project name is not valid. It must be [a-zA-Z][-a-zA-Z0-9]*");
-        }
+                return true;
+            }, "Cron methods must have a cronString property.")
+            .refine(({ type, cronString }) => {
+                if (type === TriggerType.cron && cronString && !isValidCron(cronString)) {
+                    return false;
+                }
 
-        let sdk: YamlSdkConfiguration | undefined;
-        let classes: YamlClassConfiguration[] = [];
-        if (
-            configurationFileContent.options &&
-            configurationFileContent.options.nodeRuntime &&
-            !supportedNodeRuntimes.includes(configurationFileContent.options.nodeRuntime)
-        ) {
-            throw new Error(
-                "The node version in the genezio.yaml configuration file is not valid. The value must be one of the following: " +
-                    supportedNodeRuntimes.join(", "),
-            );
-        }
+                return true;
+            }, "The cronString is not valid. Check https://crontab.guru/ for more information.")
+            .refine(({ type, cronString }) => {
+                const cronParts = cronString?.split(" ");
+                if (
+                    type === TriggerType.cron &&
+                    cronParts &&
+                    cronParts[2] != "*" &&
+                    cronParts[4] != "*"
+                ) {
+                    return false;
+                }
 
-        const projectLanguage = configurationFileContent.language
-            ? Language[configurationFileContent.language as keyof typeof Language]
-            : Language.ts;
+                return true;
+            }, "The day of the month and day of the week cannot be specified at the same time.");
 
-        if (
-            configurationFileContent.sdk &&
-            configurationFileContent.sdk.path &&
-            configurationFileContent.sdk.language
-        ) {
-            const language: string = configurationFileContent.sdk.language;
+        const configurationFileSchema = zod.object({
+            name: zod.string().refine((value) => {
+                const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
+                return nameRegex.test(value);
+            }, "Must start with a letter and contain only letters, numbers and dashes."),
+            region: zod.enum(regions).default("us-east-1"),
+            language: zod.nativeEnum(Language).default(Language.ts),
+            cloudProvider: zod
+                .nativeEnum(CloudProviderIdentifier, {
+                    errorMap: (issue, ctx) => {
+                        if (issue.code === zod.ZodIssueCode.invalid_enum_value) {
+                            return {
+                                message:
+                                    "Invalid enum value. The supported values are `genezio` or `selfHostedAws`.",
+                            };
+                        }
 
-            if (!Language[language as keyof typeof Language]) {
-                log.info(
-                    "This sdk.language is not supported by default. It will be treated as a custom language.",
-                );
-            }
+                        return { message: ctx.defaultError };
+                    },
+                })
+                .default(CloudProviderIdentifier.GENEZIO),
+            classes: zod
+                .array(
+                    zod
+                        .object({
+                            path: zod.string(),
+                            type: zod.nativeEnum(TriggerType).default(TriggerType.jsonrpc),
+                            name: zod.string().optional(),
+                            methods: zod.array(methodConfigurationSchema).optional(),
+                        })
+                        // Hack to make sure that the method type is set to the class type
+                        .transform((value) => {
+                            for (const method of value.methods || []) {
+                                method.type = method.type || value.type;
+                            }
 
-            sdk = new YamlSdkConfiguration(
-                Language[configurationFileContent.sdk.language as keyof typeof Language],
-                configurationFileContent.sdk.path,
-            );
-        }
+                            return value;
+                        }),
+                )
+                .optional(),
+            options: zod
+                .object({
+                    nodeRuntime: zod.enum(supportedNodeRuntimes).default(DEFAULT_NODE_RUNTIME),
+                })
+                .optional(),
+            sdk: zod
+                .object({
+                    language: zod.nativeEnum(Language),
+                    path: zod.string(),
+                })
+                .optional(),
+            frontend: zod
+                .object({
+                    path: zod.string(),
+                    subdomain: zod
+                        .string()
+                        .optional()
+                        .refine((value) => {
+                            if (!value) return true;
 
-        const unparsedClasses: any[] = configurationFileContent.classes;
+                            const subdomainRegex = new RegExp("^[a-zA-Z0-9-]+$");
+                            return subdomainRegex.test(value);
+                        }, "A valid subdomain only contains letters, numbers and dashes."),
+                })
+                .optional(),
+            workspace: zod
+                .object({
+                    backend: zod.string(),
+                    frontend: zod.string(),
+                })
+                .optional(),
+            packageManager: zod.nativeEnum(PackageManagerType).default(PackageManagerType.npm),
+            scripts: zod
+                .object({
+                    preBackendDeploy: zod.string().optional(),
+                    postBackendDeploy: zod.string().optional(),
+                    postFrontendDeploy: zod.string().optional(),
+                    preFrontendDeploy: zod.string().optional(),
+                    preStartLocal: zod.string().optional(),
+                    postStartLocal: zod.string().optional(),
+                    preReloadLocal: zod.string().optional(),
+                })
+                .optional(),
+            plugins: zod
+                .object({
+                    astGenerator: zod.array(zod.string()),
+                    sdkGenerator: zod.array(zod.string()),
+                })
+                .optional(),
+        });
 
-        // check if unparsedClasses is an array
-        if (unparsedClasses && !Array.isArray(unparsedClasses)) {
-            throw new Error("The classes property must be an array.");
-        }
-
-        if (unparsedClasses && Array.isArray(unparsedClasses)) {
-            classes = await Promise.all(
-                unparsedClasses.map((c) => YamlClassConfiguration.create(c)),
-            );
-        }
-
-        if (
-            configurationFileContent.plugins?.astGenerator &&
-            !Array.isArray(configurationFileContent.plugins?.astGenerator)
-        ) {
-            throw new Error("astGenerator must be an array");
-        }
-        if (
-            configurationFileContent.plugins?.sdkGenerator &&
-            !Array.isArray(configurationFileContent.plugins?.sdkGenerator)
-        ) {
-            throw new Error("sdkGenerator must be an array");
-        }
-
-        const plugins: YamlPluginsConfiguration | undefined = configurationFileContent.plugins;
-
-        if (configurationFileContent.cloudProvider) {
-            if (!cloudProviders.includes(configurationFileContent.cloudProvider)) {
+        let configurationFile;
+        try {
+            configurationFile = configurationFileSchema.parse(configurationFileContent);
+        } catch (e) {
+            if (e instanceof zod.ZodError) {
                 throw new Error(
-                    `The cloud provider ${configurationFileContent.cloudProvider} is invalid. Please use ${CloudProviderIdentifier.GENEZIO} or ${CloudProviderIdentifier.SELF_HOSTED_AWS}.`,
+                    `There was a problem parsing your YAML configuration!\n${zodFormatError(e)}`,
                 );
             }
+            throw new Error(`There was a problem parsing your YAML configuration!\n${e}`);
         }
 
-        const scripts: YamlScriptsConfiguration | undefined = configurationFileContent.scripts;
+        const unparsedClasses = configurationFile.classes || [];
+        const classes = unparsedClasses.map((classConfiguration) => {
+            const methods = classConfiguration.methods || [];
 
-        if (configurationFileContent.region) {
-            if (!regions.includes(configurationFileContent.region)) {
-                throw new Error(
-                    `The region is invalid. Please use a valid region.\n Region list: ${regions}`,
-                );
-            }
-        }
-
-        if (configurationFileContent.frontend) {
-            if (!configurationFileContent.frontend.path) {
-                throw new Error("The frontend.path value is not set.");
-            }
-        }
-
-        let workspace;
-        if (configurationFileContent.workspace) {
-            if (!configurationFileContent.language) {
-                throw new Error('"language" property is missing from genezio.yaml.');
-            }
-
-            if (!configurationFileContent.workspace.frontend) {
-                throw new Error('"frontend" property is missing from workspace in genezio.yaml.');
-            }
-
-            if (!configurationFileContent.workspace.backend) {
-                throw new Error('"backend" property is missing from workspace in genezio.yaml.');
-            }
-            workspace = new YamlWorkspace(
-                configurationFileContent.workspace.backend,
-                configurationFileContent.workspace.frontend,
+            return new YamlClassConfiguration(
+                classConfiguration.path,
+                classConfiguration.type,
+                path.parse(classConfiguration.path).ext,
+                methods.map(
+                    (method) =>
+                        new YamlMethodConfiguration(method.name, method.type, method.cronString),
+                ),
+                classConfiguration.name,
             );
-        }
+        });
+
+        const workspace = configurationFile.workspace
+            ? new YamlWorkspace(
+                  configurationFile.workspace.backend,
+                  configurationFile.workspace.frontend,
+              )
+            : undefined;
 
         return new YamlProjectConfiguration(
-            configurationFileContent.name,
-            configurationFileContent.region || "us-east-1",
-            projectLanguage,
-            sdk,
-            configurationFileContent.cloudProvider || CloudProviderIdentifier.GENEZIO,
+            configurationFile.name,
+            configurationFile.region,
+            configurationFile.language,
+            configurationFile.sdk,
+            configurationFile.cloudProvider,
             classes,
-            configurationFileContent.frontend,
-            scripts,
-            plugins,
-            configurationFileContent.options,
+            configurationFile.frontend,
+            configurationFile.scripts,
+            configurationFile.plugins,
+            configurationFile.options,
             workspace,
-            configurationFileContent.packageManager,
+            configurationFile.packageManager,
         );
     }
 

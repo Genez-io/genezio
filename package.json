@@ -86,7 +86,8 @@
         "uuid": "^9.0.1",
         "whatwg-mimetype": "~3.0.0",
         "which": "^4.0.0",
-        "yaml": "^2.3.4"
+        "yaml": "^2.3.4",
+        "zod": "^3.22.4"
     },
     "repository": {
         "type": "git",
