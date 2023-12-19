@@ -75,10 +75,8 @@ export async function compileSdk(
     workers.push(writePackagePromise);
     await Promise.all(workers);
     if (environment === GenezioCommand.deploy) {
-        if (publicSdk?.public) {
-            await packageManager.publish(modulePath, publicSdk?.public, true);
-        } else {
-            await packageManager.publish(modulePath, false);
-        }
+        publicSdk?.public
+            ? await packageManager.publish(modulePath, publicSdk?.public, true)
+            : await packageManager.publish(modulePath, false);
     }
 }
