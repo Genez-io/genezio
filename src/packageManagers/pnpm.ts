@@ -37,7 +37,7 @@ export default class PnpmPackageManager implements PackageManager {
         await asyncExec(`pnpm link ${cwd ? `--dir ${cwd}` : ""} ${packages.join(" ")}`);
     }
 
-    async publish(cwd: string, publicPackage: boolean = true) {
+    async publish(cwd: string, publicPackage: boolean = true, customPackage: boolean = false) {
         return new Promise<void>((resolve, reject) => {
             const processElem = spawn(
                 "pnpm",
@@ -48,7 +48,7 @@ export default class PnpmPackageManager implements PackageManager {
                     ...(publicPackage ? ["--access", "public"] : ["--access", "restricted"]),
                 ],
                 {
-                    stdio: publicPackage ? "inherit" : "ignore",
+                    stdio: publicPackage || customPackage ? "inherit" : "ignore",
                     shell: process.platform == "win32",
                 },
             );

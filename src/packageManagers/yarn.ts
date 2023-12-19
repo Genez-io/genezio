@@ -38,7 +38,7 @@ export default class YarnPackageManager implements PackageManager {
         await asyncExec(`yarn link ${cwd ? `--cwd ${cwd}` : ""} ${packages.join(" ")}`);
     }
 
-    async publish(cwd: string, publicPackage: boolean = true) {
+    async publish(cwd: string, publicPackage: boolean = true, customPackage: boolean = false) {
         return new Promise<void>((resolve, reject) => {
             const processElem = spawn(
                 "yarn",
@@ -49,7 +49,7 @@ export default class YarnPackageManager implements PackageManager {
                     ...(publicPackage ? ["--access", "public"] : ["--access", "restricted"]),
                 ],
                 {
-                    stdio: publicPackage ? "inherit" : "ignore",
+                    stdio: publicPackage || customPackage ? "inherit" : "ignore",
                     shell: process.platform == "win32",
                 },
             );

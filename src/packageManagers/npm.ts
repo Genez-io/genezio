@@ -22,7 +22,7 @@ export default class NpmPackageManager implements PackageManager {
         await asyncExec(`npm link ${cwd ? `--prefix ${cwd}` : ""} ${packages.join(" ")}`);
     }
 
-    async publish(cwd: string, publicPackage: boolean = true) {
+    async publish(cwd: string, publicPackage: boolean = true, customPackage: boolean = false) {
         return new Promise<void>((resolve, reject) => {
             const processElem = spawn(
                 "npm",
@@ -32,7 +32,7 @@ export default class NpmPackageManager implements PackageManager {
                     ...(publicPackage ? ["--access", "public"] : ["--access", "restricted"]),
                 ],
                 {
-                    stdio: publicPackage ? "inherit" : "ignore",
+                    stdio: publicPackage || customPackage ? "inherit" : "ignore",
                     shell: process.platform == "win32",
                 },
             );
