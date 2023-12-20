@@ -22,34 +22,8 @@ export default class NpmPackageManager implements PackageManager {
         await asyncExec(`npm link ${cwd ? `--prefix ${cwd}` : ""} ${packages.join(" ")}`);
     }
 
-    async publish(cwd: string, publicPackage: boolean = true) {
-        return new Promise<void>((resolve, reject) => {
-            const processElem = spawn(
-                "npm",
-                [
-                    "publish",
-                    cwd,
-                    ...(publicPackage ? ["--access", "public"] : ["--access", "restricted"]),
-                ],
-                {
-                    stdio: "inherit",
-                },
-            );
-
-            processElem.on("close", () => {
-                resolve();
-            });
-
-            processElem.on("error", (error) => {
-                reject(error);
-            });
-
-            processElem.on("exit", (code) => {
-                if (code !== 0) {
-                    reject(new Error(`Worker stopped with exit code ${code}`));
-                }
-            });
-        });
+    async publish(cwd: string) {
+        await asyncExec(`npm publish ${cwd ?? ""}`);
     }
 
     async addScopedRegistry(scope: string, url: string, authToken?: string) {

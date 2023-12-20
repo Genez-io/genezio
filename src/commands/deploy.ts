@@ -425,14 +425,12 @@ export async function deployClasses(
             configuration.name,
             configuration.region,
             stage,
-            configuration.publicSdk,
         );
         await compileSdk(
             path.join(localPath, "sdk"),
             packageJson,
             configuration.language,
             GenezioCommand.deploy,
-            configuration.publicSdk,
         );
     }
 
@@ -446,7 +444,6 @@ export async function deployClasses(
             stage: stage,
         },
         !configuration.sdk,
-        configuration.publicSdk,
     );
 
     const projectId = result.classes[0].projectId;

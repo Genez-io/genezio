@@ -37,35 +37,8 @@ export default class PnpmPackageManager implements PackageManager {
         await asyncExec(`pnpm link ${cwd ? `--dir ${cwd}` : ""} ${packages.join(" ")}`);
     }
 
-    async publish(cwd: string, publicPackage: boolean = true) {
-        return new Promise<void>((resolve, reject) => {
-            const processElem = spawn(
-                "pnpm",
-                [
-                    "publish",
-                    cwd,
-                    "--no-git-checks",
-                    ...(publicPackage ? ["--access", "public"] : ["--access", "restricted"]),
-                ],
-                {
-                    stdio: "inherit",
-                },
-            );
-
-            processElem.on("close", () => {
-                resolve();
-            });
-
-            processElem.on("error", (error) => {
-                reject(error);
-            });
-
-            processElem.on("exit", (code) => {
-                if (code !== 0) {
-                    reject(new Error(`Worker stopped with exit code ${code}`));
-                }
-            });
-        });
+    async publish(cwd: string) {
+        await asyncExec(`pnpm publish ${cwd ?? ""} --no-git-checks`);
     }
 
     async addScopedRegistry(scope: string, url: string, authToken?: string) {

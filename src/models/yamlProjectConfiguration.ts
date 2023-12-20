@@ -252,12 +252,6 @@ export enum YamlProjectConfigurationType {
     ROOT,
 }
 
-export type YamlPublicSdkConfiguration = {
-    name: string;
-    version: string;
-    public: boolean;
-};
-
 /**
  * This class represents the model for the YAML configuration file.
  */
@@ -274,7 +268,6 @@ export class YamlProjectConfiguration {
     scripts?: YamlScriptsConfiguration;
     plugins?: YamlPluginsConfiguration;
     packageManager?: PackageManagerType | undefined;
-    publicSdk?: YamlPublicSdkConfiguration;
 
     constructor(
         name: string,
@@ -289,7 +282,6 @@ export class YamlProjectConfiguration {
         options: NodeOptions | undefined = undefined,
         workspace: YamlWorkspace | undefined = undefined,
         packageManager: PackageManagerType | undefined = undefined,
-        publicSdk: YamlPublicSdkConfiguration | undefined = undefined,
     ) {
         this.name = name;
         this.region = region;
@@ -303,7 +295,6 @@ export class YamlProjectConfiguration {
         this.options = options;
         this.workspace = workspace;
         this.packageManager = packageManager;
-        this.publicSdk = publicSdk;
     }
 
     getClassConfiguration(path: string): YamlClassConfiguration {
@@ -435,15 +426,6 @@ export class YamlProjectConfiguration {
             );
         }
 
-        if (configurationFileContent.publicSdk) {
-            if (!configurationFileContent.publicSdk.name) {
-                throw new Error("The publicSdk.name value is not set.");
-            }
-            if (!configurationFileContent.publicSdk.version) {
-                throw new Error("The publicSdk.version value is not set.");
-            }
-        }
-
         return new YamlProjectConfiguration(
             configurationFileContent.name,
             configurationFileContent.region || "us-east-1",
@@ -457,7 +439,6 @@ export class YamlProjectConfiguration {
             configurationFileContent.options,
             workspace,
             configurationFileContent.packageManager,
-            configurationFileContent.publicSdk,
         );
     }
 
@@ -520,7 +501,6 @@ export class YamlProjectConfiguration {
                   }))
                 : undefined,
             packageManager: this.packageManager ? this.packageManager : undefined,
-            publicSdk: this.publicSdk ? this.publicSdk : undefined,
             workspace: this.workspace
                 ? {
                       backend: this.workspace.rawPathBackend,
