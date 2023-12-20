@@ -38,7 +38,7 @@ export default class PnpmPackageManager implements PackageManager {
     }
 
     async publish(cwd: string) {
-        await asyncExec(`pnpm publish ${cwd ?? ""} --no-git-checks`);
+    async publish(cwd?: string) {
     }
 
     async addScopedRegistry(scope: string, url: string, authToken?: string) {
