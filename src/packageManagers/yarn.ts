@@ -1,6 +1,6 @@
 import { compare } from "compare-versions";
 import { PackageManager } from "./packageManager.js";
-import { ExecOptions, exec, execSync, spawn } from "child_process";
+import { ExecOptions, exec, execSync } from "child_process";
 import { promisify } from "util";
 import { homedir } from "os";
 const asyncExec = (cmd: string, options?: ExecOptions) =>

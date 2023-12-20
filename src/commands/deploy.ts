@@ -51,8 +51,6 @@ import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { interruptLocalProcesses } from "../utils/localInterrupt.js";
 import { Status } from "../requests/models.js";
-import packageManager from "../packageManagers/packageManager.js";
-import { error } from "console";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();

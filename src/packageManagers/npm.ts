@@ -1,6 +1,5 @@
-import { rejects } from "assert";
 import { PackageManager } from "./packageManager.js";
-import { ExecOptions, exec, execSync, spawn } from "child_process";
+import { ExecOptions, exec, execSync } from "child_process";
 import { homedir } from "os";
 import { promisify } from "util";
 const asyncExec = (cmd: string, options?: ExecOptions) =>

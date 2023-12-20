@@ -1,5 +1,5 @@
 import { PackageManager } from "./packageManager.js";
-import { ExecOptions, exec, execSync, spawn } from "child_process";
+import { ExecOptions, exec, execSync } from "child_process";
 import { homedir } from "os";
 import { promisify } from "util";
 const asyncExec = (cmd: string, options?: ExecOptions) =>
@@ -37,8 +37,8 @@ export default class PnpmPackageManager implements PackageManager {
         await asyncExec(`pnpm link ${cwd ? `--dir ${cwd}` : ""} ${packages.join(" ")}`);
     }
 
-    async publish(cwd: string) {
     async publish(cwd?: string) {
+        await asyncExec(`pnpm publish ${cwd ?? ""} --no-git-checks`);
     }
 
     async addScopedRegistry(scope: string, url: string, authToken?: string) {
