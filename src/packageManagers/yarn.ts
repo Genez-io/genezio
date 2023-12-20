@@ -1,6 +1,6 @@
 import { compare } from "compare-versions";
 import { PackageManager } from "./packageManager.js";
-import { ExecOptions, exec, execSync, spawn } from "child_process";
+import { ExecOptions, exec, execSync } from "child_process";
 import { promisify } from "util";
 import { homedir } from "os";
 const asyncExec = (cmd: string, options?: ExecOptions) =>
@@ -38,35 +38,8 @@ export default class YarnPackageManager implements PackageManager {
         await asyncExec(`yarn link ${cwd ? `--cwd ${cwd}` : ""} ${packages.join(" ")}`);
     }
 
-    async publish(cwd: string, publicPackage: boolean = true) {
-        return new Promise<void>((resolve, reject) => {
-            const processElem = spawn(
-                "yarn",
-                [
-                    "publish",
-                    "--cwd",
-                    cwd,
-                    ...(publicPackage ? ["--access", "public"] : ["--access", "restricted"]),
-                ],
-                {
-                    stdio: "inherit",
-                },
-            );
-
-            processElem.on("close", () => {
-                resolve();
-            });
-
-            processElem.on("error", (error) => {
-                reject(error);
-            });
-
-            processElem.on("exit", (code) => {
-                if (code !== 0) {
-                    reject(new Error(`Worker stopped with exit code ${code}`));
-                }
-            });
-        });
+    async publish(cwd?: string) {
+        await asyncExec(`yarn publish ${cwd ? `--cwd ${cwd}` : ""}`);
     }
 
     async addScopedRegistry(scope: string, url: string, authToken?: string) {
