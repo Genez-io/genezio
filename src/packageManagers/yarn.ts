@@ -38,7 +38,7 @@ export default class YarnPackageManager implements PackageManager {
         await asyncExec(`yarn link ${cwd ? `--cwd ${cwd}` : ""} ${packages.join(" ")}`);
     }
 
-    async publish(cwd: string) {
+    async publish(cwd?: string) {
         await asyncExec(`yarn publish ${cwd ? `--cwd ${cwd}` : ""}`);
     }
 
