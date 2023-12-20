@@ -4,6 +4,7 @@ import SwiftSdkGenerator from "./sdkGenerator/SwiftSdkGenerator.js";
 import PythonSdkGenerator from "./sdkGenerator/PythonSdkGenerator.js";
 import DartSdkGenerator from "./sdkGenerator/DartSdkGenerator.js";
 import KotlinSdkGenerator from "./sdkGenerator/KotlinSdkGenerator.js";
+import GoSdkGenerator from "./sdkGenerator/GoSdkGenerator.js";
 import {
     SdkGeneratorInput,
     SdkGeneratorInterface,
@@ -74,6 +75,7 @@ export async function generateSdk(
     pluginsImported.push(PythonSdkGenerator);
     pluginsImported.push(DartSdkGenerator);
     pluginsImported.push(KotlinSdkGenerator);
+    pluginsImported.push(GoSdkGenerator);
 
     const sdk = sdkGeneratorInput.sdk;
     if (!sdk) {

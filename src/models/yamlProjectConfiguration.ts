@@ -35,6 +35,7 @@ export enum Language {
     python = "python",
     dart = "dart",
     kt = "kotlin",
+    go = "go",
 }
 
 export enum PackageManagerType {
