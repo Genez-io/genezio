@@ -22,7 +22,7 @@ export default class NpmPackageManager implements PackageManager {
         await asyncExec(`npm link ${cwd ? `--prefix ${cwd}` : ""} ${packages.join(" ")}`);
     }
 
-    async publish(cwd: string) {
+    async publish(cwd?: string) {
         await asyncExec(`npm publish ${cwd ?? ""}`);
     }
 
