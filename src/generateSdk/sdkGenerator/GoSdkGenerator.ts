@@ -23,7 +23,7 @@ import {
     SdkVersion,
 } from "../../models/genezioModels.js";
 import { TriggerType } from "../../models/yamlProjectConfiguration.js";
-import { nodeSdkTs } from "../templates/nodeSdkTs.js";
+import { goSdk } from "../templates/goSdk.js";
 import path from "path";
 const GO_FORBIDDEN_WORDS_REGEX = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 const GO_RESERVED_WORDS = [
@@ -114,26 +114,21 @@ const template = `/**
 * if new genezio commands are executed.
 */
 
-import { Remote } from "./remote";
-{{#imports}}
-import { {{#models}}{{{name}}}{{^last}}, {{/last}}{{/models}} } from "./{{{path}}}";
-{{/imports}}
+package genezioSdk
 
-{{#externalTypes}}
-export {{{type}}}
-{{/externalTypes}}
-
-export class {{{className}}} {
-  static remote = new Remote("{{{_url}}}");
-
-  {{#methods}}
-  static async {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}){{{returnType}}} {
-    return await {{{className}}}.remote.call({{{methodCaller}}}{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}});
-  }
-  {{/methods}}
+type {{{className}}} struct {
+	remote *Remote
 }
 
-export { Remote };
+func New{{{className}}}() *{{{className}}} {
+	return &{{{className}}}{remote: &Remote{URL: "{{{_url}}}" }}
+}
+{{#methods}}
+func (f *{{{className}}}) {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) (interface{}, interface{}) {
+	return f.remote.Call({{{methodCaller}}}{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}});
+}
+{{/methods}}
+
 `;
 
 class SdkGenerator implements SdkGeneratorInterface {
@@ -198,7 +193,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                 exportClassChecker = true;
 
                 const methodView: any = {
-                    name: methodDefinition.name,
+                    name: methodDefinition.name[0].toUpperCase() + methodDefinition.name.slice(1),
                     parameters: [],
                     returnType: this.getReturnType(methodDefinition.returnType),
                     methodCaller:
@@ -225,7 +220,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                                 ? "_" + e.name
                                 : sanitizeGoIdentifier(e.name)) +
                             (e.optional ? "?" : "") +
-                            ": " +
+                            " " +
                             this.getParamType(e.paramType) +
                             (e.defaultValue
                                 ? " = " +
@@ -324,7 +319,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                 classDefinition.name,
             );
 
-            const rawSdkClassName = `${classDefinition.name}.sdk.go`;
+            const rawSdkClassName = `${classDefinition.name}.sdk3.go`;
             const sdkClassName = rawSdkClassName.charAt(0).toLowerCase() + rawSdkClassName.slice(1);
 
             generateSdkOutput.files.push({
@@ -346,7 +341,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         generateSdkOutput.files.push({
             className: "Remote",
             path: "remote3.go",
-            data: nodeSdkTs.replace("%%%url%%%", "undefined"),
+            data: goSdk,
         });
 
         // generate index.ts
