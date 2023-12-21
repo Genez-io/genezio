@@ -48,7 +48,7 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
         language: options.language,
         sdk: {
             language: options.language,
-            path: options.path,
+            path: options.output,
         },
     });
     configuration = await scanClassesForDecorators(configuration);
@@ -86,7 +86,7 @@ export async function generateRemoteSdkCommand(projectName: string, options: Gen
     });
 
     const language = options.language;
-    const sdkPath = options.path;
+    const sdkPath = options.output;
     const stage = options.stage;
     const region = options.region;
 

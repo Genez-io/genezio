@@ -38,7 +38,7 @@ export interface GenezioSdkOptions extends BaseOptions {
     source: SourceType;
     config: string;
     language: Language;
-    path: string;
+    output: string;
     stage: string;
     region: string;
     url?: string;

@@ -1,4 +1,4 @@
-import { Command, CommanderError } from "commander";
+import { Command, CommanderError, Option } from "commander";
 import { code, setDebuggingLoggerLogLevel } from "./utils/logging.js";
 import { exit } from "process";
 import { PORT_LOCAL_ENVIRONMENT, ENABLE_DEBUG_LOGS_BY_DEFAULT } from "./constants.js";
@@ -227,17 +227,21 @@ program
         "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
     )
     .option("--language <language>", "Language of the SDK.", "ts")
-    .option(
-        "--source <source>",
-        "Where the SDK should be generated from. Possible values: local, remote.",
-        "./",
+    .addOption(
+        new Option("--source <source>", "Where the SDK should be generated from.")
+            .choices(["local", "remote"])
+            .default("remote"),
     )
     .option(
         "-c, --config <config>",
-        "Path to the genezio.yaml file on your disk. Used for loading project details from a genezio.yaml file, instead of command argumments like --name",
+        "Path to the genezio.yaml file on your disk. Used for loading project details from a genezio.yaml file, instead of command arguments like --name",
         "./",
     )
-    .option("-p, --path <path>", "Path to the directory where the SDK will be generated.", "./sdk")
+    .option(
+        "-o, --output <output>",
+        "Path to the directory where the SDK will be generated.",
+        "./sdk",
+    )
     .option("--stage <stage>", "Stage of the project.", "prod")
     .option("--url <url>", "The url of the server.")
     .option("--region <region>", "Region where your project is deployed.", "us-east-1")
