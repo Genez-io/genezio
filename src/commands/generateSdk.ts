@@ -28,19 +28,21 @@ import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
 
 export async function generateSdkCommand(projectName: string, options: GenezioSdkOptions) {
     switch (options.source) {
-        case SourceType.local:
+        case SourceType.LOCAL:
             await generateLocalSdkCommand(options);
             break;
-        case SourceType.remote:
+        case SourceType.REMOTE:
             await generateRemoteSdkCommand(projectName, options);
             break;
-        default:
-            log.error("Invalid source type.");
-            exit(1);
     }
 }
 
 export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
+    const url = options.url;
+    if (!url) {
+        throw new Error("You must provide a url when generating a local SDK.");
+    }
+
     let configuration: YamlProjectConfiguration = await YamlProjectConfiguration.create({
         name: "test",
         language: options.language,
@@ -70,7 +72,7 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
         sdkResponse,
         sdkResponse.files.map((c) => ({
             name: c.className,
-            cloudUrl: options.url,
+            cloudUrl: url,
         })),
     );
 

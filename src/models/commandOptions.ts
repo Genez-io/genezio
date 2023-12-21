@@ -30,8 +30,8 @@ export interface GenezioDeleteOptions extends BaseOptions {
 }
 
 export enum SourceType {
-    local = "local",
-    remote = "remote",
+    LOCAL = "local",
+    REMOTE = "remote",
 }
 
 export interface GenezioSdkOptions extends BaseOptions {
@@ -41,7 +41,7 @@ export interface GenezioSdkOptions extends BaseOptions {
     path: string;
     stage: string;
     region: string;
-    url: string;
+    url?: string;
 }
 
 export interface GenezioLinkOptions extends BaseOptions {
