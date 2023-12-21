@@ -9,10 +9,8 @@ let importDone: boolean = false;
 
 async function importModules() {
     if (typeof process !== "undefined" && process.versions != null && process.versions.node != null) {
-        const httpModule: string = 'http';
-        http = await import(httpModule);
-        const httpsModule: string = 'https';
-        https = await import(httpsModule);
+        http = await import("http");
+        https = await import("https");
     }
     importDone = true;
 }

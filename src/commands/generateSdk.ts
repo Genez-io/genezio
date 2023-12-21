@@ -10,7 +10,7 @@ import {
 } from "../models/yamlProjectConfiguration.js";
 import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import listProjects from "../requests/listProjects.js";
-import { getProjectConfiguration } from "../utils/configuration.js";
+import { getProjectConfiguration, scanClassesForDecorators } from "../utils/configuration.js";
 import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import path from "path";
@@ -23,16 +23,70 @@ import { mapDbAstToSdkGeneratorAst } from "../generateSdk/utils/mapDbAstToFullAs
 import { generateSdk } from "../generateSdk/sdkGeneratorHandler.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import inquirer, { Answers } from "inquirer";
-import { GenezioSdkOptions } from "../models/commandOptions.js";
+import { GenezioSdkOptions, SourceType } from "../models/commandOptions.js";
+import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
 
 export async function generateSdkCommand(projectName: string, options: GenezioSdkOptions) {
+    switch (options.source) {
+        case SourceType.LOCAL:
+            await generateLocalSdkCommand(options);
+            break;
+        case SourceType.REMOTE:
+            await generateRemoteSdkCommand(projectName, options);
+            break;
+    }
+}
+
+export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
+    const url = options.url;
+    if (!url) {
+        throw new Error("You must provide a url when generating a local SDK.");
+    }
+
+    let configuration: YamlProjectConfiguration = await YamlProjectConfiguration.create({
+        name: "test",
+        language: options.language,
+        sdk: {
+            language: options.language,
+            path: options.output,
+        },
+    });
+    configuration = await scanClassesForDecorators(configuration);
+
+    const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(configuration).catch(
+        (error) => {
+            // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
+            if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
+                log.error("Syntax error:");
+                log.error(`Reason Code: ${error.reasonCode}`);
+                log.error(`File: ${error.path}:${error.loc.line}:${error.loc.column}`);
+
+                throw error;
+            }
+
+            throw error;
+        },
+    );
+
+    await replaceUrlsInSdk(
+        sdkResponse,
+        sdkResponse.files.map((c) => ({
+            name: c.className,
+            cloudUrl: url,
+        })),
+    );
+
+    await writeSdkToDisk(sdkResponse, configuration.sdk!.language, configuration.sdk!.path);
+}
+
+export async function generateRemoteSdkCommand(projectName: string, options: GenezioSdkOptions) {
     await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK,
         commandOptions: JSON.stringify(options),
     });
 
     const language = options.language;
-    const sdkPath = options.path;
+    const sdkPath = options.output;
     const stage = options.stage;
     const region = options.region;
 
@@ -53,14 +107,14 @@ export async function generateSdkCommand(projectName: string, options: GenezioSd
             },
         );
     } else {
-        let source = options.source;
+        let config = options.config;
         // check if path ends in .genezio.yaml or else append it
-        if (!source.endsWith("genezio.yaml")) {
-            source = path.join(source, "genezio.yaml");
+        if (!config.endsWith("genezio.yaml")) {
+            config = path.join(config, "genezio.yaml");
         }
         let configuration: YamlProjectConfiguration | undefined;
         try {
-            configuration = await getProjectConfiguration(source);
+            configuration = await getProjectConfiguration(config);
         } catch (error) {
             if (
                 error instanceof Error &&
@@ -99,7 +153,7 @@ export async function generateSdkCommand(projectName: string, options: GenezioSd
                         name: answers["project"].name,
                         region: answers["project"].region,
                     });
-                    await configuration.writeToFile(source);
+                    await configuration.writeToFile(config);
                 } else {
                     exit(1);
                 }
