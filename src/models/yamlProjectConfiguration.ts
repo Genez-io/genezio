@@ -200,8 +200,8 @@ export class YamlPluginsConfiguration {
 export class YamlWorkspace {
     backend: string;
     frontend: string;
-    rawPathBackend: string;
-    rawPathFrontend: string;
+    rawPathBackend?: string;
+    rawPathFrontend?: string;
 
     constructor(backend: string, frontend: string) {
         this.backend = path.resolve(backend);
@@ -316,7 +316,9 @@ export class YamlProjectConfiguration {
                 const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
                 return nameRegex.test(value);
             }, "Must start with a letter and contain only letters, numbers and dashes."),
-            region: zod.enum(regions).default("us-east-1"),
+            region: zod
+                .enum(regions.map((r) => r.value) as [string, ...string[]])
+                .default("us-east-1"),
             language: zod.nativeEnum(Language).default(Language.ts),
             cloudProvider: zod
                 .nativeEnum(CloudProviderIdentifier, {

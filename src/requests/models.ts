@@ -58,3 +58,15 @@ export interface ObfuscatedEnvironmentVariable {
     lastAccessedAt: string;
     type: string;
 }
+
+export type TemplateCategory = "Backend" | "Frontend";
+
+export interface Template {
+    id: string;
+    name: string;
+    description: string;
+    category: TemplateCategory;
+    language: string;
+    repository: string;
+    compatibilityMapping: string | null;
+}
