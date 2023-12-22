@@ -3,7 +3,7 @@ import { AstSummary } from "./astSummary.js";
 import { CloudProviderIdentifier } from "./cloudProviderIdentifier.js";
 import { NodeOptions } from "./nodeRuntime.js";
 import { SdkGeneratorResponse } from "./sdkGeneratorResponse.js";
-import { Language, TriggerType, YamlProjectConfiguration } from "./yamlProjectConfiguration.js";
+import { TriggerType, YamlProjectConfiguration } from "./yamlProjectConfiguration.js";
 
 export class ParameterType {
     name: string;
@@ -68,10 +68,10 @@ export class ClassConfiguration {
 }
 
 export class SdkConfiguration {
-    language: Language;
+    language: string;
     path: string;
 
-    constructor(language: Language, path: string) {
+    constructor(language: string, path: string) {
         this.language = language;
         this.path = path;
     }

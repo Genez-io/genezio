@@ -76,7 +76,7 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
         })),
     );
 
-    await writeSdkToDisk(sdkResponse, configuration.sdk!.language, configuration.sdk!.path);
+    await writeSdkToDisk(sdkResponse, configuration.sdk!.path);
 }
 
 export async function generateRemoteSdkCommand(projectName: string, options: GenezioSdkOptions) {
@@ -242,5 +242,5 @@ async function generateRemoteSdkHandler(
     await replaceUrlsInSdk(sdkGeneratorResponse, classUrlMap);
 
     // write the sdk to disk in the specified path
-    await writeSdkToDisk(sdkGeneratorResponse, language as Language, sdkPath);
+    await writeSdkToDisk(sdkGeneratorResponse, sdkPath);
 }
