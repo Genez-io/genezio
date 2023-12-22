@@ -152,6 +152,7 @@
         "node": ">= 16"
     },
     "lint-staged": {
+        "*.{js,jsx,ts,tsx}": "eslint --cache --fix",
         "*.{js,jsx,ts,tsx,css,md,json,yaml,yml}": "prettier --write"
     }
 }
