@@ -470,12 +470,6 @@ async function writeSdkToNodeModules(
         );
         const from = path.resolve(originSdkPath, "..", "genezio-sdk");
         for (const linkPath of linkPaths) {
-            const toTemp = path.join(
-                linkPath,
-                "node_modules",
-                "@genezio-sdk",
-                `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}-temp`,
-            );
             const toFinal = path.join(
                 linkPath,
                 "node_modules",

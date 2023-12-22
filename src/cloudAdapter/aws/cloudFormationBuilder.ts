@@ -1,5 +1,11 @@
+import { PublicAccessBlockConfiguration } from "@aws-sdk/client-s3";
+
 export class GenezioCloudFormationBuilder {
-    template: { [index: string]: any } = {};
+    template: {
+        AWSTemplateFormatVersion: string;
+        Outputs: Record<string, unknown>;
+        Resources: Record<string, unknown>;
+    };
     resourceIds: string[] = [];
 
     constructor() {
@@ -10,13 +16,13 @@ export class GenezioCloudFormationBuilder {
         };
     }
 
-    addOutput(name: string, value: any) {
+    addOutput(name: string, value: object) {
         this.template["Outputs"][name] = {
             Value: value,
         };
     }
 
-    addResource(name: string, content: any) {
+    addResource(name: string, content: object) {
         this.template["Resources"][name] = content;
         this.resourceIds.push(name);
     }
@@ -295,11 +301,11 @@ export function getLambdaPermissionForEventsResource(
 }
 
 export function getS3BucketResource(
-    websiteConfiguration: any | undefined = undefined,
+    websiteConfiguration: { IndexDocument: string; ErrorDocument: string } | undefined = undefined,
     accessControl: string | undefined = undefined,
-    publicAccessBlockConfig: any | undefined = undefined,
+    publicAccessBlockConfig: PublicAccessBlockConfiguration | undefined = undefined,
 ) {
-    const bucket: { [index: string]: any } = {
+    const bucket: { Type: string; Properties: Record<string, unknown> } = {
         Type: "AWS::S3::Bucket",
         Properties: {
             VersioningConfiguration: {

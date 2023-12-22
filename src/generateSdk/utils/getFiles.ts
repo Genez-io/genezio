@@ -12,16 +12,12 @@ export function getGenerateAstInputs(
         const data = fs.readFileSync(classFile.path, "utf-8");
 
         getGenerateAstInputs.push({
-            file: {
-                path: classFile.path,
-                data,
-            },
             class: {
                 path: classFile.path,
                 data,
                 name: classFile.name,
             },
-        } as any);
+        });
     }
 
     return getGenerateAstInputs;
