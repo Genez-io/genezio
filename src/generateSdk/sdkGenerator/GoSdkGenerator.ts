@@ -319,7 +319,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                 classDefinition.name,
             );
 
-            const rawSdkClassName = `${classDefinition.name}.sdk3.go`;
+            const rawSdkClassName = `${classDefinition.name}.sdk.go`;
             const sdkClassName = rawSdkClassName.charAt(0).toLowerCase() + rawSdkClassName.slice(1);
 
             generateSdkOutput.files.push({
@@ -340,7 +340,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         // generate remote.js
         generateSdkOutput.files.push({
             className: "Remote",
-            path: "remote3.go",
+            path: "remote.go",
             data: goSdk,
         });
 
