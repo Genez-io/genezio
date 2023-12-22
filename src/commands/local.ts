@@ -312,7 +312,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`,
                 })),
             );
-            await writeSdkToDisk(sdk, sdkConfiguration.language, sdkConfiguration.path);
+            await writeSdkToDisk(sdk, sdkConfiguration.path);
             if (
                 !yamlProjectConfiguration.sdk &&
                 (sdkConfiguration.language === Language.ts ||

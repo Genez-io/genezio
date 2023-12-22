@@ -413,12 +413,12 @@ export async function deployClasses(
     );
 
     if (configuration.sdk) {
-        await writeSdkToDisk(sdkResponse, configuration.sdk.language, configuration.sdk.path);
+        await writeSdkToDisk(sdkResponse, configuration.sdk.path);
     } else if (configuration.language === Language.ts || configuration.language === Language.js) {
         const localPath = await createLocalTempFolder(
             `${projectConfiguration.name}-${projectConfiguration.region}`,
         );
-        await writeSdkToDisk(sdkResponse, configuration.language, path.join(localPath, "sdk"));
+        await writeSdkToDisk(sdkResponse, path.join(localPath, "sdk"));
         const packageJson: string = getNodeModulePackageJson(
             configuration.name,
             configuration.region,

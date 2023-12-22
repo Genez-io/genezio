@@ -6,6 +6,7 @@ import { isValidCron } from "cron-validator";
 import { CloudProviderIdentifier } from "./cloudProviderIdentifier.js";
 import { DEFAULT_NODE_RUNTIME, NodeOptions } from "./nodeRuntime.js";
 import zod from "zod";
+import log from "loglevel";
 
 export enum TriggerType {
     jsonrpc = "jsonrpc",
@@ -86,10 +87,10 @@ export enum PackageManagerType {
 }
 
 export class YamlSdkConfiguration {
-    language: Language;
+    language: string;
     path: string;
 
-    constructor(language: Language, path: string) {
+    constructor(language: string, path: string) {
         this.language = language;
         this.path = path;
     }
@@ -360,7 +361,15 @@ export class YamlProjectConfiguration {
                 .optional(),
             sdk: zod
                 .object({
-                    language: zod.nativeEnum(Language),
+                    language: zod.string().refine((value) => {
+                        if (!Language[value as keyof typeof Language]) {
+                            log.warn(
+                                `The \`sdk.language\` ${value} value, specified in your configuration, is not supported by default. It will be treated as a custom language plugin.`,
+                            );
+                        }
+
+                        return true;
+                    }),
                     path: zod.string(),
                 })
                 .optional(),
