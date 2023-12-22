@@ -12,8 +12,12 @@ import { startLocalEnvironment } from "../local.js";
 import { PORT_LOCAL_ENVIRONMENT } from "../../constants.js";
 import { GenezioDeployOptions, GenezioLocalOptions } from "../../models/commandOptions.js";
 import { createNewProject } from "./createNewProject.js";
+import log from "loglevel";
+import currentGenezioVersion from "../../utils/version.js";
 
 export async function genezioCommand() {
+    log.info(`genezio v${currentGenezioVersion}. Run with \`--help\` to display CLI options.`);
+
     if (await fileExists(path.join(process.cwd(), "genezio.yaml"))) {
         const answer: { command: "deploy" | "local" | "cancel" } = await inquirer.prompt([
             {
