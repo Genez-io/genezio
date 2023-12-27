@@ -46,7 +46,6 @@ async function makeRequestNode(request: any, url: any, agent: any) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Content-Length': data.length,
         },
         agent: agent,
     };
