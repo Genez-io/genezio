@@ -319,13 +319,13 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     sdkConfiguration.language === Language.js)
             ) {
                 // compile the sdk
-                const packajeJson: string = getNodeModulePackageJsonLocal(
+                const packageJson: string = getNodeModulePackageJsonLocal(
                     projectConfiguration.name,
                     projectConfiguration.region,
                 );
                 await compileSdk(
                     sdkConfiguration.path,
-                    packajeJson,
+                    packageJson,
                     sdkConfiguration.language,
                     GenezioCommand.local,
                 );

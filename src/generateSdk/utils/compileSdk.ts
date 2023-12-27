@@ -37,6 +37,16 @@ export async function compileSdk(
     language: Language,
     environment: GenezioCommand,
 ) {
+    console.log(
+        `sdkPath: string,
+    packageJson: string,
+    language: Language,
+    environment: GenezioCommand`,
+        sdkPath,
+        packageJson,
+        language,
+        environment,
+    );
     // compile the sdk to cjs and esm using worker threads
     const workers = [];
     const require = createRequire(import.meta.url);
