@@ -1,5 +1,5 @@
 import { NodePath } from "@babel/traverse";
-import { Decorator } from "typescript";
+import { Decorator } from "@babel/types";
 
 export default function () {
     return {
