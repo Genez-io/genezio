@@ -215,7 +215,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
             }
             exit(1);
         }
-        log.info("\x1b[36m%s\x1b[0m", `Frontend successfully deployed at ${url}.`);
+        log.info("\x1b[36m%s\x1b[0m", `Frontend successfully deployed at ${url}`);
 
         await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_END,
