@@ -30,6 +30,7 @@ import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { GenezioCommand } from "../utils/reporter.js";
 import colors from "colors";
 import { debugLogger } from "../utils/logging.js";
+import { deleteFile } from "../utils/file.js";
 
 export async function generateSdkCommand(projectName: string, options: GenezioSdkOptions) {
     switch (options.source) {
@@ -93,12 +94,13 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
             GenezioCommand.local,
         );
         debugLogger.debug("Package json is: " + packageJson);
-        debugLogger.debug("Start Compiling sdk");
+        debugLogger.debug("Start Compiling sdk local");
         await compileSdk(
             configuration.sdk!.path,
             packageJson,
             configuration.sdk!.language! as Language,
-            GenezioCommand.local,
+            false,
+            "",
         );
         debugLogger.debug("Sdk compiled successfully");
 
@@ -266,7 +268,11 @@ async function generateRemoteSdkHandler(
         },
     };
 
-    const sdkGeneratorOutput = await generateSdk(sdkGeneratorInput, undefined, SdkVersion.OLD_SDK);
+    const sdkGeneratorOutput = await generateSdk(
+        sdkGeneratorInput,
+        undefined,
+        sdkType === SdkType.PACKAGE ? SdkVersion.NEW_SDK : SdkVersion.OLD_SDK,
+    );
 
     const sdkGeneratorResponse: SdkGeneratorResponse = {
         files: sdkGeneratorOutput.files,
@@ -300,8 +306,14 @@ async function generateRemoteSdkHandler(
         );
         debugLogger.debug("Package json is: " + packageJson);
         debugLogger.debug("Start Compiling sdk");
-        await compileSdk(sdkPath, packageJson, language as Language, GenezioCommand.deploy);
+        await compileSdk(sdkPath, packageJson, language as Language, false, "");
         debugLogger.debug("Sdk compiled successfully");
+
+        debugLogger.debug("Start sdk cleanup");
+
+        await Promise.all(
+            sdkGeneratorResponse.files.map((file) => deleteFile(path.join(sdkPath, file.path))),
+        );
     }
 
     log.info("Your SDK has been generated successfully in " + sdkPath + "");

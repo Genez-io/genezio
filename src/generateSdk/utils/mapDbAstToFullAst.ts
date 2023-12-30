@@ -25,6 +25,7 @@ export function mapDbAstToSdkGeneratorAst(ast: AstSummaryClassResponse): Program
     const classDefinition: ClassDefinition = {
         type: AstNodeType.ClassDefinition,
         name: ast.name,
+        path: ast.path,
         methods: ast.methods.map(
             (method): MethodDefinition => ({
                 type: AstNodeType.MethodDefinition,

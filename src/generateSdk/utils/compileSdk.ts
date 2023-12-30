@@ -4,7 +4,6 @@ import path from "path";
 import ts from "typescript";
 import { Worker } from "worker_threads";
 import { writeToFile } from "../../utils/file.js";
-import { GenezioCommand } from "../../utils/reporter.js";
 import packageManager from "../../packageManagers/packageManager.js";
 
 const compilerWorkerScript = `const { parentPort, workerData } = require("worker_threads");
@@ -35,24 +34,15 @@ export async function compileSdk(
     sdkPath: string,
     packageJson: string,
     language: Language,
-    environment: GenezioCommand,
+    publish: boolean,
+    outDir = "../genezio-sdk",
 ) {
-    console.log(
-        `sdkPath: string,
-    packageJson: string,
-    language: Language,
-    environment: GenezioCommand`,
-        sdkPath,
-        packageJson,
-        language,
-        environment,
-    );
     // compile the sdk to cjs and esm using worker threads
     const workers = [];
     const require = createRequire(import.meta.url);
     const typescriptPath = path.resolve(require.resolve("typescript"));
     const cjsOptions = {
-        outDir: path.resolve(sdkPath, "..", "genezio-sdk", "cjs"),
+        outDir: path.resolve(sdkPath, outDir, "cjs"),
         module: ts.ModuleKind.CommonJS,
         rootDir: sdkPath,
         allowJs: true,
@@ -66,7 +56,7 @@ export async function compileSdk(
         }),
     );
     const esmOptions = {
-        outDir: path.resolve(sdkPath, "..", "genezio-sdk", "esm"),
+        outDir: path.resolve(sdkPath, outDir, "esm"),
         module: ts.ModuleKind.ESNext,
         rootDir: sdkPath,
         allowJs: true,
@@ -79,11 +69,11 @@ export async function compileSdk(
             typescriptPath,
         }),
     );
-    const modulePath = path.resolve(sdkPath, "..", "genezio-sdk");
+    const modulePath = path.resolve(sdkPath, outDir);
     const writePackagePromise = writeToFile(modulePath, "package.json", packageJson, true);
     workers.push(writePackagePromise);
     await Promise.all(workers);
-    if (environment === GenezioCommand.deploy) {
+    if (publish === true) {
         await packageManager.publish(modulePath);
     }
 }

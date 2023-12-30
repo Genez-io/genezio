@@ -314,6 +314,18 @@ export async function deleteFolder(folderPath: string): Promise<void> {
     });
 }
 
+export async function deleteFile(filePath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+        try {
+            fs.rmSync(filePath);
+        } catch (error) {
+            reject(error);
+        }
+
+        resolve();
+    });
+}
+
 export function getFileDetails(filePath: string): FileDetails {
     const { ext, name, dir, base } = path.parse(filePath);
 

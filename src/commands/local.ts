@@ -327,7 +327,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     sdkConfiguration.path,
                     packageJson,
                     sdkConfiguration.language,
-                    GenezioCommand.local,
+                    false,
                 );
 
                 await writeSdkToNodeModules(yamlProjectConfiguration, sdkConfiguration.path);
