@@ -30,7 +30,7 @@ import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { GenezioCommand } from "../utils/reporter.js";
 import colors from "colors";
 import { debugLogger } from "../utils/logging.js";
-import { deleteFile } from "../utils/file.js";
+import { deleteFile, deleteFolder } from "../utils/file.js";
 
 export async function generateSdkCommand(projectName: string, options: GenezioSdkOptions) {
     switch (options.source) {
@@ -312,7 +312,15 @@ async function generateRemoteSdkHandler(
         debugLogger.debug("Start sdk cleanup");
 
         await Promise.all(
-            sdkGeneratorResponse.files.map((file) => deleteFile(path.join(sdkPath, file.path))),
+            sdkGeneratorResponse.files.map((file) => {
+                // console.log("Deleting file: " + file.path);
+                // delete the files and its parent directories
+                deleteFile(path.join(sdkPath, file.path));
+                const firstParentDir = path.dirname(file.path).split(path.sep)[0];
+                if (firstParentDir && firstParentDir !== ".") {
+                    deleteFolder(path.join(sdkPath, firstParentDir));
+                }
+            }),
         );
     }
 

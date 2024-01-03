@@ -400,6 +400,11 @@ export async function deployClasses(
 
     printAdaptiveLog("Bundling your code", "end");
 
+    console.log({
+        "projectConfiguration.astSummary.classes": projectConfiguration.astSummary.classes,
+    });
+    console.log({ "projectConfiguration.classe": projectConfiguration.classes });
+
     projectConfiguration.astSummary.classes = projectConfiguration.astSummary.classes.map((c) => {
         // remove cwd from path and the extension
         return {
