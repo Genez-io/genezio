@@ -13,6 +13,7 @@ import {
 import log from "loglevel";
 import { exit } from "process";
 import { debugLogger } from "../utils/logging.js";
+import zod from "zod";
 
 interface SdkGeneratorPlugin {
     SdkGenerator: new () => SdkGeneratorInterface;
@@ -49,14 +50,11 @@ export async function generateSdk(
                 }
 
                 // Check type of plugin at runtime
-                // TODO: We could use zod (https://zod.dev/)
-                if (
-                    typeof dynamicPlugin.SdkGenerator !== "function" ||
-                    !Array.isArray(dynamicPlugin.supportedLanguages) ||
-                    dynamicPlugin.supportedLanguages
-                        .map((lang: string) => typeof lang !== "string")
-                        .includes(true)
-                ) {
+                const pluginSchema = zod.object({
+                    SdkGenerator: zod.function(),
+                    supportedExtensions: zod.array(zod.string()),
+                });
+                if (pluginSchema.safeParse(dynamicPlugin).success === false) {
                     log.error(
                         `Plugin(${plugin}) is not a valid SDK generator plugin. It must export a SdkGenerator class and supportedLanguages array.`,
                     );
