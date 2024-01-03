@@ -22,10 +22,6 @@
         "/build",
         ".npmrc"
     ],
-    "pre-commit": [
-        "checkChangesInVariables",
-        "checkUnwantedLogs"
-    ],
     "author": "Genezio",
     "license": "GPL-3",
     "dependencies": {
@@ -149,6 +145,10 @@
     },
     "lint-staged": {
         "*.{js,jsx,ts,tsx}": "eslint --cache --fix",
-        "*.{js,jsx,ts,tsx,css,md,json,yaml,yml}": "prettier --write"
+        "*.{js,jsx,ts,tsx,css,md,json,yaml,yml}": "prettier --write",
+        "*": [
+            "npm run checkUnwantedLogs",
+            "npm run checkChangesInVariables"
+        ]
     }
 }
