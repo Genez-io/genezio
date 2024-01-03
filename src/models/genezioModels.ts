@@ -347,11 +347,6 @@ export type SdkGeneratorOutput = {
     files: SdkFileClass[];
 };
 
-export enum SdkVersion {
-    OLD_SDK,
-    NEW_SDK,
-}
-
 /**
  * A class implementing this interface will create the sdk for a given language.
  */
