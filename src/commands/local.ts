@@ -153,11 +153,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         log.info("Running preStartLocal script...");
         log.info(yamlProjectConfiguration.scripts.preStartLocal);
 
-        let cwd = process.cwd();
-        if (yamlProjectConfiguration.workspace?.backend) {
-            cwd = yamlProjectConfiguration.workspace.backend;
-        }
-        const success = await runNewProcess(yamlProjectConfiguration.scripts.preStartLocal, cwd);
+        const success = await runNewProcess(yamlProjectConfiguration.scripts.preStartLocal);
         if (!success) {
             await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_PRE_START_LOCAL_SCRIPT_ERROR,
@@ -319,15 +315,15 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     sdkConfiguration.language === Language.js)
             ) {
                 // compile the sdk
-                const packajeJson: string = getNodeModulePackageJsonLocal(
+                const packageJson: string = getNodeModulePackageJsonLocal(
                     projectConfiguration.name,
                     projectConfiguration.region,
                 );
                 await compileSdk(
                     sdkConfiguration.path,
-                    packajeJson,
+                    packageJson,
                     sdkConfiguration.language,
-                    GenezioCommand.local,
+                    false,
                 );
 
                 await writeSdkToNodeModules(yamlProjectConfiguration, sdkConfiguration.path);

@@ -34,8 +34,14 @@ export enum SourceType {
     REMOTE = "remote",
 }
 
+export enum SdkType {
+    PACKAGE = "package",
+    CLASSIC = "classic",
+}
+
 export interface GenezioSdkOptions extends BaseOptions {
     source: SourceType;
+    type: SdkType;
     config: string;
     language: Language;
     output: string;

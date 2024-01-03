@@ -215,7 +215,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
             }
             exit(1);
         }
-        log.info("\x1b[36m%s\x1b[0m", `Frontend successfully deployed at ${url}.`);
+        log.info("\x1b[36m%s\x1b[0m", `Frontend successfully deployed at ${url}`);
 
         await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_END,
@@ -400,6 +400,22 @@ export async function deployClasses(
 
     printAdaptiveLog("Bundling your code", "end");
 
+    projectConfiguration.astSummary.classes = projectConfiguration.astSummary.classes.map((c) => {
+        // remove cwd from path and the extension
+        return {
+            ...c,
+            path: path.relative(process.cwd(), c.path).replace(/\.[^/.]+$/, ""),
+        };
+    });
+
+    projectConfiguration.classes = projectConfiguration.classes.map((c) => {
+        // remove cwd from path and the extension
+        return {
+            ...c,
+            path: path.relative(process.cwd(), c.path).replace(/\.[^/.]+$/, ""),
+        };
+    });
+
     const result = await cloudAdapter.deploy(bundlerResultArray, projectConfiguration, {
         stage: stage,
     });
@@ -424,12 +440,7 @@ export async function deployClasses(
             configuration.region,
             stage,
         );
-        await compileSdk(
-            path.join(localPath, "sdk"),
-            packageJson,
-            configuration.language,
-            GenezioCommand.deploy,
-        );
+        await compileSdk(path.join(localPath, "sdk"), packageJson, configuration.language, true);
     }
 
     reportSuccess(

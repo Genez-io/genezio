@@ -205,8 +205,8 @@ export class YamlWorkspace {
     rawPathFrontend?: string;
 
     constructor(backend: string, frontend: string) {
-        this.backend = path.resolve(backend);
-        this.frontend = path.resolve(frontend);
+        this.backend = backend;
+        this.frontend = frontend;
         this.rawPathBackend = backend;
         this.rawPathFrontend = frontend;
     }
