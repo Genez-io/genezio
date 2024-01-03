@@ -17,7 +17,6 @@ import path from "path";
 import {
     SdkGeneratorClassesInfoInput,
     SdkGeneratorInput,
-    SdkVersion,
 } from "../models/genezioModels.js";
 import { mapDbAstToSdkGeneratorAst } from "../generateSdk/utils/mapDbAstToFullAst.js";
 import { generateSdk } from "../generateSdk/sdkGeneratorHandler.js";
@@ -268,11 +267,7 @@ async function generateRemoteSdkHandler(
         },
     };
 
-    const sdkGeneratorOutput = await generateSdk(
-        sdkGeneratorInput,
-        undefined,
-        sdkType === SdkType.PACKAGE ? SdkVersion.NEW_SDK : SdkVersion.OLD_SDK,
-    );
+    const sdkGeneratorOutput = await generateSdk(sdkGeneratorInput, undefined);
 
     const sdkGeneratorResponse: SdkGeneratorResponse = {
         files: sdkGeneratorOutput.files,
