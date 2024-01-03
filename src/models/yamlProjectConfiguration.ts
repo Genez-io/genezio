@@ -428,7 +428,6 @@ export class YamlProjectConfiguration {
         const unparsedClasses = configurationFile.classes || [];
         const classes = unparsedClasses.map((classConfiguration) => {
             const methods = classConfiguration.methods || [];
-            console.log({ path: classConfiguration.path });
             console.log(path.parse(classConfiguration.path).ext);
 
             return new YamlClassConfiguration(
