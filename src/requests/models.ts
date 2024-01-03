@@ -70,3 +70,31 @@ export interface Template {
     repository: string;
     compatibilityMapping: string | null;
 }
+
+export interface SubscriptionLimits {
+    maxProjects: number;
+    maxInvocations: number;
+    executionTime: number;
+    maxConcurrency: number;
+    maxCollaborators: number;
+}
+
+export interface OnboardingInfo {
+    onboardingComplete: boolean;
+    role: string;
+    programmingLanguages: string[];
+    experienceLevel: string;
+}
+
+export interface UserPayload {
+    id: string;
+    email: string;
+    name: string;
+    profileUrl: string;
+    subscriptionPlan: string;
+    subscriptionPrice: string;
+    memberSince: string;
+    subscriptionLimits: SubscriptionLimits;
+    customSubscription: boolean;
+    onboardingInfo: OnboardingInfo;
+}

@@ -192,6 +192,7 @@ program
             }
             exit(1);
         });
+
         await logOutdatedVersion();
     });
 
@@ -300,7 +301,6 @@ This command is useful when the project has dedicated repositories for the backe
             exit(1);
         });
 
-        log.info("Successfully linked the path to your genezio project.");
         await logOutdatedVersion();
     });
 
@@ -334,11 +334,6 @@ This reset allows 'genezio local' to stop automatically generating the SDK in th
             );
             exit(1);
         });
-        if (options.all) {
-            log.info("Successfully unlinked all paths to your genezio projects.");
-            return;
-        }
-        log.info("Successfully unlinked the path to your genezio project.");
 
         await logOutdatedVersion();
     });
@@ -419,7 +414,6 @@ program
         });
 
         await logOutdatedVersion();
-        exit(0);
     });
 
 program
@@ -436,7 +430,7 @@ program
             log.error(error.message);
             exit(1);
         });
-        log.info("You are now logged out.");
+
         await logOutdatedVersion();
     });
 
@@ -455,7 +449,6 @@ program
             exit(1);
         });
 
-        log.info("You are logged in.");
         await logOutdatedVersion();
     });
 

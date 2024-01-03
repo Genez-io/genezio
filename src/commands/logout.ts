@@ -1,6 +1,7 @@
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import { removeAuthToken } from "../utils/accounts.js";
 import { debugLogger } from "../utils/logging.js";
+import log from "loglevel";
 
 export async function logoutCommand() {
     await GenezioTelemetry.sendEvent({
@@ -18,4 +19,6 @@ export async function logoutCommand() {
             }
         });
     });
+
+    log.info("You are now logged out.");
 }

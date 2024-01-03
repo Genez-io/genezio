@@ -47,6 +47,10 @@ export async function loginCommand(accessToken: string, logSuccesMessage = true)
                         });
                         res.end();
 
+                        // We close the server and all connections after sending the update to the browser
+                        server.closeAllConnections();
+                        server.close();
+
                         resolve(true);
                     });
                 });
