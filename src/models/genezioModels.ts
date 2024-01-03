@@ -356,8 +356,5 @@ export enum SdkVersion {
  * A class implementing this interface will create the sdk for a given language.
  */
 export interface SdkGeneratorInterface {
-    generateSdk: (
-        sdkGeneratorInput: SdkGeneratorInput,
-        sdkVersion: SdkVersion,
-    ) => Promise<SdkGeneratorOutput>;
+    generateSdk: (sdkGeneratorInput: SdkGeneratorInput) => Promise<SdkGeneratorOutput>;
 }

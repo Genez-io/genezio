@@ -8,7 +8,6 @@ import {
     SdkGeneratorInput,
     SdkGeneratorInterface,
     SdkGeneratorOutput,
-    SdkVersion,
 } from "../models/genezioModels.js";
 import log from "loglevel";
 import { exit } from "process";
@@ -30,7 +29,6 @@ interface SdkGeneratorPlugin {
 export async function generateSdk(
     sdkGeneratorInput: SdkGeneratorInput,
     plugins: string[] | undefined,
-    sdkVersion: SdkVersion,
 ): Promise<SdkGeneratorOutput> {
     let pluginsImported: SdkGeneratorPlugin[] = [];
 
@@ -90,5 +88,5 @@ export async function generateSdk(
 
     const sdkGeneratorClass = new sdkGeneratorElem.SdkGenerator();
 
-    return await sdkGeneratorClass.generateSdk(sdkGeneratorInput, sdkVersion);
+    return await sdkGeneratorClass.generateSdk(sdkGeneratorInput);
 }

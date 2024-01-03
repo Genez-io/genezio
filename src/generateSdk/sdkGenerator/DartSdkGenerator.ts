@@ -11,7 +11,6 @@ import {
     Node,
     MapType,
     SdkFileClass,
-    SdkVersion,
 } from "../../models/genezioModels.js";
 import { TriggerType, YamlClassConfiguration } from "../../models/yamlProjectConfiguration.js";
 import { dartSdk } from "../templates/dartSdk.js";
