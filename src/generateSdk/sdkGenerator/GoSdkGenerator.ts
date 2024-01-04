@@ -83,38 +83,20 @@ const GO_RESERVED_WORDS = [
     "recover",
 ];
 
-const indexTemplate = `/**
-* This is an auto generated code. This code should not be modified since the file can be overwritten
-* if new genezio commands are executed.
-*/
-
-{{#imports}}
-import { {{#models}}{{{name}}}{{^last}}, {{/last}}{{/models}} } from "./{{{path}}}";
-{{/imports}}
-
-export { {{#exports}}{{{name}}}{{^last}}, {{/last}}{{/exports}} };
-`;
-
-const modelTemplate = `/**
-* This is an auto generated code. This code should not be modified since the file can be overwritten
-* if new genezio commands are executed.
-*/
-
-{{#imports}}
-import { {{#models}}{{{name}}}{{^last}}, {{/last}}{{/models}} } from "./{{{path}}}";
-{{/imports}}
-
-{{#externalTypes}}
-export {{{type}}}
-{{/externalTypes}}
-`;
-
 const template = `/**
 * This is an auto generated code. This code should not be modified since the file can be overwritten
 * if new genezio commands are executed.
 */
 
 package genezioSdk
+
+{{#externalTypes}}
+type {{name}} struct {
+    {{#fields}}
+    {{fieldName}} {{{type}}}
+    {{/fields}}
+}
+{{/externalTypes}}
 
 type {{{className}}} struct {
 	remote *Remote
@@ -132,25 +114,24 @@ func (f *{{{className}}}) {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last
 `;
 
 class SdkGenerator implements SdkGeneratorInterface {
-    async generateSdk(
-        sdkGeneratorInput: SdkGeneratorInput,
-        sdkVersion: SdkVersion,
-    ): Promise<SdkGeneratorOutput> {
+    async generateSdk(sdkGeneratorInput: SdkGeneratorInput): Promise<SdkGeneratorOutput> {
         const generateSdkOutput: SdkGeneratorOutput = {
             files: [],
         };
 
-        const modelViews: ModelView[] = [];
-        const indexModel: IndexModel = {
+        const _url = "%%%link_to_be_replace%%%";
+
+        const view: any = {
+            className: undefined,
+            _url: _url,
+            methods: [],
+            externalTypes: [],
             imports: [],
-            exports: [],
         };
 
         for (const classInfo of sdkGeneratorInput.classesInfo) {
             const externalTypes: Node[] = [];
-            const _url = "%%%link_to_be_replace%%%";
             const classConfiguration = classInfo.classConfiguration;
-
             let classDefinition: ClassDefinition | undefined = undefined;
 
             if (classInfo.program.body === undefined) {
@@ -161,6 +142,14 @@ class SdkGenerator implements SdkGeneratorInterface {
                     classDefinition = elem as ClassDefinition;
                 } else {
                     externalTypes.push(elem);
+                    const structLiteral = elem as StructLiteral;
+                    view.externalTypes.push({
+                        name: structLiteral.name,
+                        fields: structLiteral.typeLiteral.properties.map((e) => ({
+                            type: this.getParamType(e.type),
+                            fieldName: e.name,
+                        })),
+                    });
                 }
             }
 
@@ -168,13 +157,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                 continue;
             }
 
-            const view: any = {
-                className: classDefinition.name,
-                _url: _url,
-                methods: [],
-                externalTypes: [],
-                imports: [],
-            };
+            view.className = classDefinition.name;
 
             let exportClassChecker = false;
 
@@ -249,75 +232,9 @@ class SdkGenerator implements SdkGeneratorInterface {
                 view.methods.push(methodView);
             }
 
-            for (const externalType of externalTypes) {
-                if (externalType.path) {
-                    let currentView: ModelView | undefined = undefined;
-                    for (const parentType of externalTypes) {
-                        const isUsed = this.isExternalTypeUsedByOtherType(externalType, parentType);
-                        if (isUsed && parentType.path && parentType.path !== externalType.path) {
-                            currentView = this.addViewIfNotExists(
-                                modelViews,
-                                parentType,
-                                view,
-                                classInfo,
-                            );
-                        }
-                        const classPath = classInfo.classConfiguration.path.replace(/\\/g, "/");
-                        if (currentView && !classPath.includes(externalType.path)) {
-                            this.addImportToCurrentView(currentView, externalType);
-                        }
-                    }
-                    if (this.isExternalTypeUsedInMethod(externalType, classDefinition.methods)) {
-                        currentView = view;
-                        const classPath = classInfo.classConfiguration.path.replace(/\\/g, "/");
-                        if (currentView && !classPath.includes(externalType.path)) {
-                            this.addImportToCurrentView(currentView, externalType);
-                        }
-                    }
-
-                    currentView = this.addViewIfNotExists(
-                        modelViews,
-                        externalType,
-                        view,
-                        classInfo,
-                    );
-                    if (
-                        !currentView?.externalTypes.find(
-                            (e) => e.name === (externalType as any).name,
-                        )
-                    ) {
-                        currentView?.externalTypes.push({
-                            type: this.generateExternalType(externalType),
-                            name: (externalType as any).name,
-                        });
-                    }
-                }
-            }
-
-            for (const modelView of modelViews) {
-                for (const importType of modelView.imports) {
-                    if (importType.models.length > 0) {
-                        importType.models[importType.models.length - 1].last = true;
-                    }
-                }
-            }
-
-            for (const importType of view.imports) {
-                if (importType.models.length > 0) {
-                    importType.models[importType.models.length - 1].last = true;
-                }
-            }
-
             if (!exportClassChecker) {
                 continue;
             }
-
-            this.addClassItemsToIndex(
-                indexModel,
-                classInfo.program.body,
-                classDefinition.path ?? "",
-                classDefinition.name,
-            );
 
             const rawSdkClassName = `${classDefinition.name}.sdk.go`;
             const sdkClassName = rawSdkClassName.charAt(0).toLowerCase() + rawSdkClassName.slice(1);
@@ -327,14 +244,6 @@ class SdkGenerator implements SdkGeneratorInterface {
                 data: Mustache.render(template, view),
                 className: classDefinition.name,
             });
-
-            for (const modelView of modelViews) {
-                generateSdkOutput.files.push({
-                    path: modelView.path + ".ts",
-                    data: Mustache.render(modelTemplate, modelView),
-                    className: "",
-                });
-            }
         }
 
         // generate remote.js
@@ -343,23 +252,6 @@ class SdkGenerator implements SdkGeneratorInterface {
             path: "remote.go",
             data: goSdk,
         });
-
-        // generate index.ts
-        if (sdkVersion === SdkVersion.NEW_SDK) {
-            if (indexModel.exports.length > 0) {
-                indexModel.exports[indexModel.exports.length - 1].last = true;
-            }
-            for (const importStatement of indexModel.imports) {
-                if (importStatement.models.length > 0) {
-                    importStatement.models[importStatement.models.length - 1].last = true;
-                }
-            }
-            generateSdkOutput.files.push({
-                className: "index.ts",
-                path: "index.ts",
-                data: Mustache.render(indexTemplate, indexModel),
-            });
-        }
 
         return generateSdkOutput;
     }
@@ -370,11 +262,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         }
 
         let value = this.getParamType(returnType);
-        if (returnType.type !== AstNodeType.PromiseType) {
-            value = `Promise<${value}>`;
-        }
-
-        return `: ${value}`;
+        return ` ${value}`;
     }
 
     getParamType(elem: Node): string {
@@ -382,20 +270,21 @@ class SdkGenerator implements SdkGeneratorInterface {
             return (elem as CustomAstNodeType).rawValue;
         } else if (elem.type === AstNodeType.StringLiteral) {
             return "string";
+        } else if (elem.type === AstNodeType.IntegerLiteral) {
+            return "int";
         } else if (
-            elem.type === AstNodeType.IntegerLiteral ||
             elem.type === AstNodeType.FloatLiteral ||
             elem.type === AstNodeType.DoubleLiteral
         ) {
-            return "number";
+            return "float64";
         } else if (elem.type === AstNodeType.BooleanLiteral) {
-            return "boolean";
+            return "bool";
         } else if (elem.type === AstNodeType.AnyLiteral) {
-            return "any";
+            return "interface{}";
         } else if (elem.type === AstNodeType.ArrayType) {
-            return `Array<${this.getParamType((elem as ArrayType).generic)}>`;
+            return `${this.getParamType((elem as ArrayType).generic)}[]`;
         } else if (elem.type === AstNodeType.PromiseType) {
-            return `Promise<${this.getParamType((elem as PromiseType).generic)}>`;
+            return `${this.getParamType((elem as PromiseType).generic)}`;
         } else if (elem.type === AstNodeType.Enum) {
             return (elem as Enum).name;
         } else if (elem.type === AstNodeType.TypeAlias) {
@@ -415,9 +304,9 @@ class SdkGenerator implements SdkGeneratorInterface {
                 })
                 .join(", ")}}`;
         } else if (elem.type === AstNodeType.DateType) {
-            return "Date";
+            return "string";
         }
-        return "any";
+        return "interface{}";
     }
 
     generateExternalType(type: Node): string {
@@ -488,104 +377,6 @@ class SdkGenerator implements SdkGeneratorInterface {
             return false;
         }
         return false;
-    }
-
-    isExternalTypeUsedInMethod(externalType: Node, methods: MethodDefinition[]): boolean {
-        return methods.some(
-            (m) =>
-                this.isExternalTypeUsedByOtherType(externalType, m.returnType) ||
-                m.params.some((p: ParameterDefinition) =>
-                    this.isExternalTypeUsedByOtherType(externalType, p.paramType),
-                ),
-        );
-    }
-
-    addImportToCurrentView(currentView: ModelView, externalType: Node) {
-        let found = false;
-        for (const importType of currentView.imports) {
-            if (
-                importType.path === externalType.path &&
-                !importType.models.find((e: any) => e.name === (externalType as any).name)
-            ) {
-                importType.models.push({ name: (externalType as any).name });
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            let relativePath = path.relative(currentView.path || ".", externalType.path || ".");
-            while (relativePath.substring(0, 3) == "../") {
-                relativePath = relativePath.substring(3);
-            }
-            if (!currentView.imports.find((e: any) => e.path === relativePath)) {
-                currentView.imports.push({
-                    path: relativePath.replace(/\\/g, "/"),
-                    models: [{ name: (externalType as any).name }],
-                });
-            }
-        }
-    }
-
-    addClassItemsToIndex(
-        indexModel: IndexModel,
-        classItems: Node[],
-        classPath: string,
-        className: string,
-    ) {
-        for (const originalClassItem of classItems) {
-            const classItem = { ...originalClassItem };
-            if (classItem.path === classPath) {
-                const rawSdkClassPath = `${className}.sdk`;
-                const sdkClassPath =
-                    rawSdkClassPath.charAt(0).toLowerCase() + rawSdkClassPath.slice(1);
-                classItem.path = sdkClassPath;
-            }
-            const index = indexModel.imports.findIndex((i) => i.path === classItem.path);
-            if (index !== -1) {
-                if (
-                    indexModel.imports[index].models.find((i) => i.name === (classItem as any).name)
-                ) {
-                    continue;
-                } else {
-                    indexModel.imports[index].models.push({
-                        name: (classItem as any).name,
-                    });
-                    indexModel.exports.push({ name: (classItem as any).name });
-                }
-            } else {
-                indexModel.imports.push({
-                    path: classItem.path || "",
-                    models: [{ name: (classItem as any).name }],
-                });
-                indexModel.exports.push({ name: (classItem as any).name });
-            }
-        }
-    }
-
-    addViewIfNotExists(modelViews: ModelView[], type: Node, classView: any, classInfo: any) {
-        let found = false;
-        let currentView: ModelView | undefined = undefined;
-        for (const modelView of modelViews) {
-            if (modelView.path === type.path) {
-                currentView = modelView;
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            const classPath = classInfo.classConfiguration.path.replace(/\\/g, "/");
-            if (!classPath.includes(type.path)) {
-                currentView = {
-                    path: type.path || "",
-                    externalTypes: [],
-                    imports: [],
-                };
-                modelViews.push(currentView);
-            } else {
-                currentView = classView;
-            }
-        }
-        return currentView;
     }
 }
 
