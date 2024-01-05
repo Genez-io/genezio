@@ -386,6 +386,8 @@ async function createWorkspaceYaml(
         ? frontendPath.slice(path.parse(frontendPath).root.length)
         : frontendPath;
 
+    const backendScripts = backendConfiguration.scripts;
+
     const workspaceConfiguration = new YamlProjectConfiguration(
         /* name: */ projectInfo.projectName,
         /* region: */ projectInfo.projectRegion,
@@ -399,11 +401,17 @@ async function createWorkspaceYaml(
         /* scripts: */ {
             preFrontendDeploy: frontendConfiguration.scripts?.preFrontendDeploy,
             postFrontendDeploy: frontendConfiguration.scripts?.postFrontendDeploy,
-            preBackendDeploy: backendConfiguration.scripts?.preBackendDeploy,
-            postBackendDeploy: backendConfiguration.scripts?.postBackendDeploy,
-            preStartLocal: backendConfiguration.scripts?.preStartLocal,
-            postStartLocal: backendConfiguration.scripts?.postStartLocal,
-            preReloadLocal: backendConfiguration.scripts?.preReloadLocal,
+            preBackendDeploy: backendScripts?.preBackendDeploy,
+            postBackendDeploy: backendScripts?.postBackendDeploy,
+            preStartLocal: backendScripts?.preStartLocal
+                ? `cd ${workspaceBackendPath} && ${backendScripts?.preStartLocal}`
+                : undefined,
+            postStartLocal: backendScripts?.postStartLocal
+                ? `cd ${workspaceBackendPath} && ${backendScripts?.postStartLocal}`
+                : undefined,
+            preReloadLocal: backendScripts?.preReloadLocal
+                ? `cd ${workspaceBackendPath} && ${backendScripts?.preReloadLocal}`
+                : undefined,
         },
         /* plugins: */ undefined,
         /* options: */ undefined,
