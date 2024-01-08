@@ -60,7 +60,11 @@ import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 import log from "loglevel";
 import { interruptLocalPath } from "../utils/localInterrupt.js";
 import { compareSync, Options, Result } from "dir-compare";
-import { AwsApiGatewayRequest, LambdaResponse } from "../models/cloudProviderIdentifier.js";
+import {
+    AwsApiGatewayRequest,
+    CloudProviderIdentifier,
+    LambdaResponse,
+} from "../models/cloudProviderIdentifier.js";
 
 const POLLING_INTERVAL = 2000;
 
@@ -107,6 +111,9 @@ export async function prepareLocalEnvironment(
         });
 
         const projectConfiguration = new ProjectConfiguration(yamlProjectConfiguration, sdk);
+
+        // Local deployments always use the genezio cloud provider
+        projectConfiguration.cloudProvider = CloudProviderIdentifier.GENEZIO;
 
         const processForClasses = await startProcesses(projectConfiguration, sdk, options);
         return new Promise<BundlerRestartResponse>((resolve) => {
