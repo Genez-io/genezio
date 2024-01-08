@@ -122,7 +122,7 @@
         "vitest": "^1.1.1"
     },
     "optionalDependencies": {
-        "@rollup/rollup-android-arm-eabi": "4.9.0",
+        "@rollup/rollup-android-arm-eabi": "4.9.4",
         "@rollup/rollup-android-arm64": "4.9.2",
         "@rollup/rollup-darwin-arm64": "4.9.4",
         "@rollup/rollup-darwin-x64": "4.9.2",
