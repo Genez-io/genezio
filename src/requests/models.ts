@@ -1,16 +1,15 @@
 import { AstSummaryClassResponse } from "../models/astSummary.js";
 
-export type Status<T = object> =
-    | {
-          status: "error";
-          error: {
-              code: number;
-              message: string;
-          };
-      }
-    | ({
-          status: "ok";
-      } & T);
+export type Status<T = object> = StatusError | StatusOk<T>;
+
+export type StatusOk<T = object> = { status: "ok" } & T;
+export type StatusError = {
+    status: "error";
+    error: {
+        code: number;
+        message: string;
+    };
+};
 
 export interface ProjectListElement {
     id: string;
