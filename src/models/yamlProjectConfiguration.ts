@@ -7,6 +7,7 @@ import { CloudProviderIdentifier } from "./cloudProviderIdentifier.js";
 import { DEFAULT_NODE_RUNTIME, NodeOptions } from "./nodeRuntime.js";
 import zod from "zod";
 import log from "loglevel";
+import { ENVIRONMENT } from "../constants.js";
 
 export enum TriggerType {
     jsonrpc = "jsonrpc",
@@ -312,6 +313,15 @@ export class YamlProjectConfiguration {
                 return true;
             }, "The day of the month and day of the week cannot be specified at the same time.");
 
+        // Used for a/b testing of genezio runtime.
+        // TODO: Remove after a/b testing is complete, and use a determined cloud provider.
+        const cloudProviderDefault =
+            ENVIRONMENT === "dev"
+                ? Math.random() < 0.5
+                    ? CloudProviderIdentifier.GENEZIO
+                    : CloudProviderIdentifier.CAPYBARA_LINUX
+                : CloudProviderIdentifier.GENEZIO;
+
         const configurationFileSchema = zod.object({
             name: zod.string().refine((value) => {
                 const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
@@ -334,7 +344,7 @@ export class YamlProjectConfiguration {
                         return { message: ctx.defaultError };
                     },
                 })
-                .default(CloudProviderIdentifier.GENEZIO),
+                .default(cloudProviderDefault),
             classes: zod
                 .array(
                     zod
@@ -448,7 +458,7 @@ export class YamlProjectConfiguration {
               )
             : undefined;
 
-        return new YamlProjectConfiguration(
+        const yamlProjectConfiguration = new YamlProjectConfiguration(
             configurationFile.name,
             configurationFile.region,
             configurationFile.language,
@@ -462,6 +472,12 @@ export class YamlProjectConfiguration {
             workspace,
             configurationFile.packageManager,
         );
+        if (ENVIRONMENT === "dev") {
+            // Used for a/b testing of genezio runtime.
+            // TODO: remove after a/b testing is complete.
+            yamlProjectConfiguration.writeToFile();
+        }
+        return yamlProjectConfiguration;
     }
 
     getMethodType(path: string, methodName: string): TriggerType | undefined {
@@ -478,8 +494,6 @@ export class YamlProjectConfiguration {
     }
 
     // The type parameter is used only if the yaml is a root type of genezio.yaml.
-    // It is used to decide if the genezio.yaml file that will be written is a frontend or
-    // a root type of genezio.yaml.
     //
     // TODO: this yaml mutation is becoming a mess and we should reconsider how
     // we implement it.
