@@ -202,15 +202,9 @@ class SdkGenerator implements SdkGeneratorInterface {
                             (GO_RESERVED_WORDS.includes(e.name)
                                 ? "_" + e.name
                                 : sanitizeGoIdentifier(e.name)) +
-                            (e.optional ? "?" : "") +
                             " " +
-                            this.getParamType(e.paramType) +
-                            (e.defaultValue
-                                ? " = " +
-                                  (e.defaultValue.type === AstNodeType.StringLiteral
-                                      ? "'" + e.defaultValue.value + "'"
-                                      : e.defaultValue.value)
-                                : ""),
+                            (e.optional ? "*" : "") +
+                            this.getParamType(e.paramType),
                         last: false,
                     };
                 });
@@ -282,7 +276,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         } else if (elem.type === AstNodeType.AnyLiteral) {
             return "interface{}";
         } else if (elem.type === AstNodeType.ArrayType) {
-            return `${this.getParamType((elem as ArrayType).generic)}[]`;
+            return `[]${this.getParamType((elem as ArrayType).generic)}`;
         } else if (elem.type === AstNodeType.PromiseType) {
             return `${this.getParamType((elem as PromiseType).generic)}`;
         } else if (elem.type === AstNodeType.Enum) {
