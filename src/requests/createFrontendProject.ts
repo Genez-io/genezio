@@ -3,8 +3,6 @@ import { getAuthToken } from "../utils/accounts.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
-import { AxiosResponse } from "axios";
-import { Status } from "./models.js";
 
 export async function createFrontendProject(
     genezioDomain: string,
@@ -25,7 +23,7 @@ export async function createFrontendProject(
         stage,
     });
 
-    const response: AxiosResponse<Status> = await axios({
+    await axios({
         method: "PUT",
         url: `${BACKEND_ENDPOINT}/frontend`,
         data: json,
@@ -36,8 +34,4 @@ export async function createFrontendProject(
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
     });
-
-    if (response.data.status === "error") {
-        throw new Error(response.data.error.message);
-    }
 }

@@ -3,7 +3,7 @@ import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
 import { AxiosResponse } from "axios";
-import { Status } from "./models.js";
+import { StatusOk } from "./models.js";
 
 export async function getCompileDartPresignedURL(archiveName: string) {
     if (!archiveName) {
@@ -22,7 +22,7 @@ export async function getCompileDartPresignedURL(archiveName: string) {
         zipName: archiveName,
     });
 
-    const response: AxiosResponse<Status<{ userId: string; presignedURL: string | undefined }>> =
+    const response: AxiosResponse<StatusOk<{ userId: string; presignedURL: string | undefined }>> =
         await axios({
             method: "GET",
             url: `${BACKEND_ENDPOINT}/core/compile-dart-url`,
@@ -34,10 +34,6 @@ export async function getCompileDartPresignedURL(archiveName: string) {
             maxContentLength: Infinity,
             maxBodyLength: Infinity,
         });
-
-    if (response.data.status === "error") {
-        throw new Error(response.data.error.message);
-    }
 
     if (response.data.presignedURL === undefined) {
         throw new Error("The endpoint did not return a presigned url.");
