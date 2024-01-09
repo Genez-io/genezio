@@ -204,7 +204,7 @@ program
     )
     .argument("<classPath>", "Path of the class you want to add.")
     .argument("[<classType>]", "The type of the class you want to add. [http, jsonrpc, cron]")
-    .summary("Add a new class to the configuration file.")
+    .summary("Add a new genezio class to your project”")
     .action(async (classPath: string, classType: string, options: BaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
