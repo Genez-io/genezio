@@ -1,6 +1,7 @@
 import axios, { AxiosError } from "axios";
 import { debugLogger } from "../utils/logging.js";
 import { StatusError } from "./models.js";
+import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 
 enum GenezioErrorCode {
     UnknownError = 0,
@@ -32,6 +33,9 @@ axios.interceptors.response.use(
         }
         if (response.data.error.code === GenezioErrorCode.UpdateRequired) {
             throw new Error("Please update your genezio CLI. Run 'npm update -g genezio'.");
+        }
+        if (response.data.error.code === GenezioErrorCode.Unauthorized) {
+            throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
         }
 
         debugLogger.debug("Axios error received:", JSON.stringify(response.data.error));

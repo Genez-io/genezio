@@ -3,7 +3,7 @@ import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
 import { AxiosResponse } from "axios";
-import { ObfuscatedEnvironmentVariable, Status } from "./models.js";
+import { ObfuscatedEnvironmentVariable, StatusOk } from "./models.js";
 
 export async function getEnvironmentVariables(
     projectId: string,
@@ -23,7 +23,7 @@ export async function getEnvironmentVariables(
     }
 
     const response: AxiosResponse<
-        Status<{ environmentVariables: ObfuscatedEnvironmentVariable[] }>
+        StatusOk<{ environmentVariables: ObfuscatedEnvironmentVariable[] }>
     > = await axios({
         method: "GET",
         url: `${BACKEND_ENDPOINT}/projects/${projectId}/${projectEnvId}/environment-variables`,
@@ -32,10 +32,6 @@ export async function getEnvironmentVariables(
             "Accept-Version": `genezio-cli/${version}`,
         },
     });
-
-    if (response.data.status === "error") {
-        throw new Error(response.data.error.message);
-    }
 
     return response.data.environmentVariables;
 }

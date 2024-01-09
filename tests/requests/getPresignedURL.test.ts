@@ -16,13 +16,7 @@ beforeEach(() => {
 test("should throw error if server returns error", async () => {
     await expect(async () => {
         mockedGetAuthToken.mockResolvedValue("token");
-        mockedAxios.mockResolvedValue({
-            data: { status: "error" },
-            status: 200,
-            statusText: "Ok",
-            headers: {},
-            config: {},
-        });
+        mockedAxios.mockResolvedValue(Promise.reject("Something went wrong"));
 
         await getPresignedURL("us-east-1", "genezioDeploy.zip", "test", "test");
     }).rejects.toThrowError();
@@ -31,13 +25,7 @@ test("should throw error if server returns error", async () => {
 test("should throw error if server returns data.error object", async () => {
     await expect(async () => {
         mockedGetAuthToken.mockResolvedValue("token");
-        mockedAxios.mockResolvedValue({
-            data: { status: "error", error: { message: "error text" } },
-            status: 200,
-            statusText: "Ok",
-            headers: {},
-            config: {},
-        });
+        mockedAxios.mockResolvedValue(Promise.reject("Something went wrong"));
 
         await getPresignedURL("us-east-1", "genezioDeploy.zip", "test", "test");
     }).rejects.toThrowError();

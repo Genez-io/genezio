@@ -2,7 +2,7 @@ import axios from "./axios.js";
 import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
-import { ProjectDetails, Status } from "./models.js";
+import { ProjectDetails, StatusOk } from "./models.js";
 import { AxiosResponse } from "axios";
 
 export default async function getProjectInfo(projectId: string): Promise<ProjectDetails> {
@@ -14,7 +14,7 @@ export default async function getProjectInfo(projectId: string): Promise<Project
         );
     }
 
-    const response: AxiosResponse<Status<{ project: ProjectDetails }>> = await axios({
+    const response: AxiosResponse<StatusOk<{ project: ProjectDetails }>> = await axios({
         method: "GET",
         url: `${BACKEND_ENDPOINT}/projects/${projectId}`,
         headers: {
@@ -22,10 +22,6 @@ export default async function getProjectInfo(projectId: string): Promise<Project
             "Accept-Version": `genezio-cli/${version}`,
         },
     });
-
-    if (response.data.status === "error") {
-        throw new Error(response.data.error.message);
-    }
 
     return response.data.project;
 }

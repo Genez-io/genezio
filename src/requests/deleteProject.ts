@@ -7,7 +7,7 @@ import version from "../utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import { AxiosResponse } from "axios";
-import { Status } from "./models.js";
+import { StatusOk } from "./models.js";
 
 export default async function deleteProject(projectId: string): Promise<boolean> {
     await GenezioTelemetry.sendEvent({
@@ -24,7 +24,7 @@ export default async function deleteProject(projectId: string): Promise<boolean>
 
     const controller = new AbortController();
     const messagePromise = printUninformativeLog(controller);
-    const response: AxiosResponse<Status> = await axios({
+    const response: AxiosResponse<StatusOk> = await axios({
         method: "DELETE",
         url: `${BACKEND_ENDPOINT}/projects/${projectId}`,
         headers: {
@@ -42,10 +42,6 @@ export default async function deleteProject(projectId: string): Promise<boolean>
     printAdaptiveLog(await messagePromise, "end");
 
     debugLogger.debug("Response received", response.data);
-
-    if (response.data.status === "error") {
-        throw new Error(response.data.error.message);
-    }
 
     return true;
 }
