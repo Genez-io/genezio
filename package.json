@@ -22,6 +22,23 @@
         "/build",
         ".npmrc"
     ],
+    "keywords": [
+        "genezio",
+        "cli",
+        "aws",
+        "cloudformation",
+        "s3",
+        "lambda",
+        "serverless",
+        "typescript",
+        "javascript",
+        "nodejs",
+        "node",
+        "npm",
+        "typesafe",
+        "genezio-rpc"
+    ],
+    "homepage": "https://genez.io",
     "author": "Genezio",
     "license": "GPL-3",
     "dependencies": {
