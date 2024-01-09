@@ -98,6 +98,14 @@ type {{name}} struct {
 }
 {{/externalTypes}}
 
+{{#enumTypes}}
+const (
+    {{#fields}}
+    {{fieldName}} {{{type}}}
+    {{/fields}}
+)
+{{/enumTypes}}
+
 type {{{className}}} struct {
 	remote *Remote
 }
@@ -126,6 +134,7 @@ class SdkGenerator implements SdkGeneratorInterface {
             _url: _url,
             methods: [],
             externalTypes: [],
+            enumTypes: [],
             imports: [],
         };
 
@@ -140,13 +149,29 @@ class SdkGenerator implements SdkGeneratorInterface {
             for (const elem of classInfo.program.body) {
                 if (elem.type === AstNodeType.ClassDefinition) {
                     classDefinition = elem as ClassDefinition;
-                } else {
+                } else if (elem.type == AstNodeType.StructLiteral) {
                     externalTypes.push(elem);
                     const structLiteral = elem as StructLiteral;
+                    for (let i = 0; i < structLiteral.typeLiteral.properties.length; i++) {
+                        let property = structLiteral.typeLiteral.properties[i];
+                        if (property.name == "undefined") {
+                            property.name = structLiteral.name + i;
+                        }
+                        console.log(property.type);
+                    }
                     view.externalTypes.push({
                         name: structLiteral.name,
                         fields: structLiteral.typeLiteral.properties.map((e) => ({
                             type: this.getParamType(e.type),
+                            fieldName: e.name,
+                        })),
+                    });
+                } else if (elem.type == AstNodeType.Enum) {
+                    const enumType = elem as Enum;
+                    view.enumTypes.push({
+                        name: enumType.name,
+                        fields: enumType.cases.map((e) => ({
+                            type: typeof e.value == "number" ? ` = ${e.value}` : ` = "${e.value}"`,
                             fieldName: e.name,
                         })),
                     });
@@ -297,6 +322,10 @@ class SdkGenerator implements SdkGeneratorInterface {
                     }
                 })
                 .join(", ")}}`;
+        } else if (elem.type === AstNodeType.MapType) {
+            return `map[${this.getParamType((elem as MapType).genericKey)}]${this.getParamType(
+                (elem as MapType).genericValue,
+            )}`;
         } else if (elem.type === AstNodeType.DateType) {
             return "string";
         }

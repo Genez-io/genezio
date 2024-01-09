@@ -30,6 +30,9 @@ type Remote struct {
 }
 
 func (r Remote) Call(method interface{}, args ...interface{}) (interface{}, interface{}) {
+	if len(args) == 0 {
+		args = make([]interface{}, 0)
+	}
 	reqBody := ReqBody{
 		Jsonrpc: "2.0",
 		Method:  method,
