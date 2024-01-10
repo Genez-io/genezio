@@ -10,7 +10,8 @@ import {
 import { BundlerInput, BundlerInterface, BundlerOutput, Dependency } from "../bundler.interface.js";
 import FileDetails from "../../models/fileDetails.js";
 import { default as fsExtra } from "fs-extra";
-import { lambdaHandler } from "./lambdaHandler.js";
+import { lambdaHandlerGenerator } from "./lambdaHandlerGenerator.js";
+import { genezioRuntimeHandlerGenerator } from "./genezioRuntimeHandlerGenerator.js";
 import log from "loglevel";
 import { debugLogger } from "../../utils/logging.js";
 import esbuild, { BuildResult, Plugin, BuildFailure, Message, Loader } from "esbuild";
@@ -19,6 +20,7 @@ import colors from "colors";
 import { DependencyInstaller } from "./dependencyInstaller.js";
 import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE } from "../../errors.js";
 import transformDecorators from "../../utils/transformDecorators.js";
+import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 
 export class NodeJsBundler implements BundlerInterface {
     async #copyDependencies(
@@ -373,13 +375,33 @@ export class NodeJsBundler implements BundlerInterface {
         await deleteFolder(tempFolderPath);
     }
 
+    getHandlerGeneratorForProvider(
+        provider: CloudProviderIdentifier,
+    ): ((className: string) => string) | null {
+        switch (provider) {
+            case CloudProviderIdentifier.GENEZIO:
+                return lambdaHandlerGenerator;
+            case CloudProviderIdentifier.CAPYBARA:
+            case CloudProviderIdentifier.CAPYBARA_LINUX:
+                return genezioRuntimeHandlerGenerator;
+            default:
+                return null;
+        }
+    }
+
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
         const mode = input.extra.mode;
         const tmpFolder = input.extra.tmpFolder;
         const cwd = input.projectConfiguration.workspace?.backend || process.cwd();
+        const cloudProvider = input.projectConfiguration.cloudProvider;
 
         if (mode === "development" && !tmpFolder) {
             throw new Error("tmpFolder is required in development mode.");
+        }
+
+        const handlerGenerator = this.getHandlerGeneratorForProvider(cloudProvider);
+        if (handlerGenerator === null) {
+            throw new Error(`Can't generate handler for cloud provider ${cloudProvider}.`);
         }
 
         const temporaryFolder = mode === "production" ? await createTemporaryFolder() : tmpFolder!;
@@ -415,7 +437,7 @@ export class NodeJsBundler implements BundlerInterface {
             writeToFile(
                 temporaryFolder,
                 "index.mjs",
-                lambdaHandler(`"${input.configuration.name}"`),
+                handlerGenerator(`"${input.configuration.name}"`),
             ),
         ]);
 
