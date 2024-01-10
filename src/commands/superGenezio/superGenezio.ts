@@ -1,8 +1,5 @@
 import path from "path";
-import { getAuthToken } from "../../utils/accounts.js";
 import { fileExists } from "../../utils/file.js";
-import { loginCommand } from "../login.js";
-import { debugLogger } from "../../utils/logging.js";
 import { deployCommand } from "../deploy.js";
 import colors from "colors";
 import inquirer from "inquirer";
@@ -47,11 +44,6 @@ export async function genezioCommand() {
                 const options: GenezioDeployOptions = {
                     installDeps: true,
                 };
-
-                if (!(await getAuthToken())) {
-                    debugLogger.debug("No auth token found. Starting automatic authentication...");
-                    await loginCommand("", false);
-                }
 
                 return await deployCommand(options).catch(async (error) => {
                     await GenezioTelemetry.sendEvent({

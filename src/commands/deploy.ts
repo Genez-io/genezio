@@ -13,7 +13,7 @@ import { GENEZIO_NOT_AUTH_ERROR_MSG, GENEZIO_NO_CLASSES_FOUND } from "../errors.
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
-import { setupScopedRepositoryAuth, getAuthToken } from "../utils/accounts.js";
+import { isLoggedIn } from "../utils/accounts.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
 import { getNoMethodClasses } from "../utils/getNoMethodClasses.js";
 import {
@@ -51,6 +51,7 @@ import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { interruptLocalProcesses } from "../utils/localInterrupt.js";
 import { Status } from "../requests/models.js";
+import { loginCommand } from "./login.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -74,12 +75,10 @@ export async function deployCommand(options: GenezioDeployOptions) {
 
     // check if user is logged in
     if (configuration.cloudProvider !== CloudProviderIdentifier.SELF_HOSTED_AWS) {
-        const authToken = await getAuthToken();
-        if (!authToken) {
-            log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-            exit(1);
+        if (!(await isLoggedIn())) {
+            debugLogger.debug("No auth token found. Starting automatic authentication...");
+            await loginCommand("", false);
         }
-        await setupScopedRepositoryAuth(authToken);
     }
 
     const cloudAdapter = getCloudProvider(
