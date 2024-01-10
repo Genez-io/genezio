@@ -4,8 +4,10 @@ import log from "loglevel";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import listProjects from "../requests/listProjects.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
-import { getAuthToken } from "../utils/accounts.js";
 import { GenezioListOptions } from "../models/commandOptions.js";
+import { debugLogger } from "../utils/logging.js";
+import { isLoggedIn } from "../utils/accounts.js";
+import { loginCommand } from "./login.js";
 
 export async function lsCommand(identifier: string, options: GenezioListOptions) {
     await GenezioTelemetry.sendEvent({
@@ -14,9 +16,9 @@ export async function lsCommand(identifier: string, options: GenezioListOptions)
     });
 
     // check if user is logged in
-    const authToken = await getAuthToken();
-    if (!authToken) {
-        throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
+    if (!(await isLoggedIn())) {
+        debugLogger.debug("No auth token found. Starting automatic authentication...");
+        await loginCommand("", false);
     }
 
     await lsHandler(identifier, options.longListed).catch((error: AxiosError) => {

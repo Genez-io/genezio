@@ -1,15 +1,16 @@
-import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import getUser from "../requests/getUser.js";
-import { getAuthToken } from "../utils/accounts.js";
 import log from "loglevel";
+import { isLoggedIn } from "../utils/accounts.js";
+import { debugLogger } from "../utils/logging.js";
+import { loginCommand } from "./login.js";
 
 export async function accountCommand() {
-    const authToken = await getAuthToken();
-    if (!authToken) {
-        throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
+    if (!(await isLoggedIn())) {
+        debugLogger.debug("No auth token found. Starting automatic authentication...");
+        await loginCommand("", false);
     }
 
-    const user = await getUser(authToken);
+    const user = await getUser();
 
     log.info(`You are logged in as ${user.email}.`);
     log.info(`Your current membership details:`);

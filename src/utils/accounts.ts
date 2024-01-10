@@ -5,6 +5,7 @@ import fs from "fs";
 import { debugLogger } from "./logging.js";
 import { GENEZIO_REGISTRY } from "../constants.js";
 import { packageManagers } from "../packageManagers/packageManager.js";
+import getUser from "../requests/getUser.js";
 
 export async function getAuthToken(): Promise<string | undefined> {
     const homeDirectory = os.homedir();
@@ -15,6 +16,15 @@ export async function getAuthToken(): Promise<string | undefined> {
     } catch (error) {
         debugLogger.debug(`An error occurred during getAuthToken ${error}`);
         return undefined;
+    }
+}
+
+export async function isLoggedIn(): Promise<boolean> {
+    try {
+        await getUser();
+        return true;
+    } catch (error) {
+        return false;
     }
 }
 

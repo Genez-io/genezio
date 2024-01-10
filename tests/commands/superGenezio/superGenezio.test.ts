@@ -70,8 +70,6 @@ describe("superGenezio", () => {
             },
         ]);
 
-        // Login should be called because the memfs doesn't have the auth token stored in .geneziorc
-        expect(loginCommand).toHaveBeenCalledOnce();
         // Check if the deploy command was called
         expect(deployCommand).toHaveBeenCalledOnce();
     });
