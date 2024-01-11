@@ -15,6 +15,8 @@ import { logoutCommand } from "./commands/logout.js";
 import { lsCommand } from "./commands/list.js";
 import {
     BaseOptions,
+    GenezioCreateBaseOptions,
+    GenezioCreateOptions,
     GenezioDeleteOptions,
     GenezioDeployOptions,
     GenezioLinkOptions,
@@ -31,6 +33,8 @@ import { getProjectConfiguration } from "./utils/configuration.js";
 import { setPackageManager } from "./packageManagers/packageManager.js";
 import { PackageManagerType } from "./models/yamlProjectConfiguration.js";
 import colors from "colors";
+import { regions } from "./utils/configs.js";
+import { createCommand } from "./commands/create.js";
 
 const program = new Command();
 
@@ -190,6 +194,122 @@ program
                     commandOptions: JSON.stringify(options),
                 });
             }
+            exit(1);
+        });
+
+        await logOutdatedVersion();
+    });
+
+const create = program.command("create");
+
+create
+    .command("fullstack")
+    .argument("<backendTemplate>", "Id of the backend template you want to use.")
+    .argument("<frontendTemplate>", "Id of the frontend template you want to use.")
+    .option("--name <name>", "Name of the project", "genezio-project")
+    .addOption(
+        new Option("--region <region>", "Region of the project")
+            .choices(regions.map((region) => region.value))
+            .default("us-east-1"),
+    )
+    .addOption(
+        new Option("--structure <structure>", "Structure of the created project")
+            .choices(["monorepo", "multirepo"])
+            .default("monorepo"),
+    )
+    .option(
+        "--logLevel <logLevel>",
+        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
+    )
+    .action(
+        async (
+            backendTemplateId: string,
+            frontendTemplateId: string,
+            options: GenezioCreateBaseOptions & { structure: "monorepo" | "multirepo" },
+        ) => {
+            setDebuggingLoggerLogLevel(options.logLevel);
+
+            const createOptions: GenezioCreateOptions = {
+                ...options,
+                fullstack: [backendTemplateId, frontendTemplateId],
+            };
+
+            await createCommand(createOptions).catch(async (error) => {
+                log.error(error.message);
+                // TODO: Add telemetry event type
+                // await GenezioTelemetry.sendEvent({
+                //     eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
+                //     errorTrace: error.message,
+                // });
+                exit(1);
+            });
+
+            await logOutdatedVersion();
+        },
+    );
+
+create
+    .command("backend")
+    .argument("<template>", "Id of the backend template you want to use.")
+    .option("--name <name>", "Name of the project", "genezio-project")
+    .addOption(
+        new Option("--region <region>", "Region of the project")
+            .choices(regions.map((region) => region.value))
+            .default("us-east-1"),
+    )
+    .option(
+        "--logLevel <logLevel>",
+        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
+    )
+    .action(async (templateId: string, options: GenezioCreateBaseOptions) => {
+        setDebuggingLoggerLogLevel(options.logLevel);
+
+        const createOptions: GenezioCreateOptions = {
+            ...options,
+            backend: templateId,
+        };
+
+        await createCommand(createOptions).catch(async (error) => {
+            log.error(error.message);
+            // TODO: Add telemetry event type
+            // await GenezioTelemetry.sendEvent({
+            //     eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
+            //     errorTrace: error.message,
+            // });
+            exit(1);
+        });
+
+        await logOutdatedVersion();
+    });
+
+create
+    .command("frontend")
+    .argument("<template>", "Id of the frontend template you want to use.")
+    .option("--name <name>", "Name of the project", "genezio-project")
+    .addOption(
+        new Option("--region <region>", "Region of the project")
+            .choices(regions.map((region) => region.value))
+            .default("us-east-1"),
+    )
+    .option(
+        "--logLevel <logLevel>",
+        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
+    )
+    .action(async (templateId: string, options: GenezioCreateBaseOptions) => {
+        setDebuggingLoggerLogLevel(options.logLevel);
+
+        const createOptions: GenezioCreateOptions = {
+            ...options,
+            frontend: templateId,
+        };
+
+        await createCommand(createOptions).catch(async (error) => {
+            log.error(error.message);
+            // TODO: Add telemetry event type
+            // await GenezioTelemetry.sendEvent({
+            //     eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
+            //     errorTrace: error.message,
+            // });
             exit(1);
         });
 
