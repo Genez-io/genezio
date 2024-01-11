@@ -580,7 +580,9 @@ export async function deployFrontend(
         const frontendPath = configuration.frontend?.path;
         if (!(await fileExists(frontendPath))) {
             throw new Error(
-                `The build folder does not exist. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
+                `The build folder ${colors.cyan(
+                    `${frontendPath}`,
+                )} does not exist. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
             );
         }
 
