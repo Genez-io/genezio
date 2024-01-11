@@ -15,17 +15,11 @@ import {
     TypeLiteral,
     StructLiteral,
     PromiseType,
-    MethodDefinition,
-    ParameterDefinition,
-    ModelView,
-    IndexModel,
     MapType,
-    SdkVersion,
 } from "../../models/genezioModels.js";
 import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 import { goSdk } from "../templates/goSdk.js";
-import path from "path";
-const GO_FORBIDDEN_WORDS_REGEX = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+// const GO_FORBIDDEN_WORDS_REGEX = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 const GO_RESERVED_WORDS = [
     "break",
     "default",
@@ -121,6 +115,38 @@ func (f *{{{className}}}) {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last
 
 `;
 
+type ViewModel = {
+    className: string | undefined;
+    _url: string;
+    methods: MethodModel[];
+    externalTypes: ExternalType[];
+    enumTypes: ExternalType[];
+    imports: [];
+};
+
+type MethodModel = {
+    name: string;
+    parameters: Parameter[];
+    returnType: string;
+    methodCaller: string;
+    sendParameters: Parameter[];
+};
+
+type ExternalType = {
+    name: string;
+    fields: Field[];
+};
+
+type Field = {
+    type: string;
+    fieldName: string;
+};
+
+type Parameter = {
+    name: string;
+    last: boolean;
+};
+
 class SdkGenerator implements SdkGeneratorInterface {
     async generateSdk(sdkGeneratorInput: SdkGeneratorInput): Promise<SdkGeneratorOutput> {
         const generateSdkOutput: SdkGeneratorOutput = {
@@ -129,7 +155,7 @@ class SdkGenerator implements SdkGeneratorInterface {
 
         const _url = "%%%link_to_be_replace%%%";
 
-        const view: any = {
+        const view: ViewModel = {
             className: undefined,
             _url: _url,
             methods: [],
@@ -153,7 +179,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                     externalTypes.push(elem);
                     const structLiteral = elem as StructLiteral;
                     for (let i = 0; i < structLiteral.typeLiteral.properties.length; i++) {
-                        let property = structLiteral.typeLiteral.properties[i];
+                        const property = structLiteral.typeLiteral.properties[i];
                         if (property.name == "undefined") {
                             property.name = structLiteral.name + i;
                         }
@@ -200,7 +226,7 @@ class SdkGenerator implements SdkGeneratorInterface {
 
                 exportClassChecker = true;
 
-                const methodView: any = {
+                const methodView: MethodModel = {
                     name: methodDefinition.name[0].toUpperCase() + methodDefinition.name.slice(1),
                     parameters: [],
                     returnType: this.getReturnType(methodDefinition.returnType),
@@ -208,6 +234,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                         methodDefinition.params.length === 0
                             ? `"${classDefinition.name}.${methodDefinition.name}"`
                             : `"${classDefinition.name}.${methodDefinition.name}", `,
+                    sendParameters: [],
                 };
 
                 const sanitizeGoIdentifier = (input: string): string => {
@@ -280,7 +307,7 @@ class SdkGenerator implements SdkGeneratorInterface {
             return "";
         }
 
-        let value = this.getParamType(returnType);
+        const value = this.getParamType(returnType);
         return ` ${value}`;
     }
 
@@ -382,7 +409,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         } else if (type.type === AstNodeType.DateType) {
             return false;
         } else if (type.type === AstNodeType.CustomNodeLiteral) {
-            if ((type as CustomAstNodeType).rawValue === (externalType as any).name) {
+            if ((type as CustomAstNodeType).rawValue === (externalType as StructLiteral).name) {
                 return true;
             }
             return false;
