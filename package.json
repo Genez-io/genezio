@@ -12,8 +12,8 @@
         "build": "npx tsc && node solveEnvVariables.js build/src/constants.js",
         "install-locally-dev": "npm run install-locally -- dev",
         "build-dev": "npx tsc && node solveEnvVariables.js build/src/constants.js -- dev",
-        "checkChangesInVariables": "./scripts/checkConstants",
-        "checkUnwantedLogs": "./scripts/checkUnwantedLogs",
+        "checkChangesInVariables": "node scripts/checkConstants.js",
+        "checkUnwantedLogs": "node scripts/checkUnwantedLogs.js",
         "release": "npm run build && npm publish",
         "test": "vitest run",
         "prepare": "husky install"
