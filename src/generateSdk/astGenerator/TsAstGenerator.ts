@@ -140,6 +140,7 @@ export class AstGenerator implements AstGeneratorInterface {
                 const pathFile = path
                     .relative(process.cwd(), typeAtLocationPath)
                     .replace(/\\/g, "/");
+
                 if (!this.isDeclarationInList(escapedText, pathFile, declarations)) {
                     let declaredNode: StructLiteral | TypeAlias | Enum;
                     if (
@@ -282,6 +283,7 @@ export class AstGenerator implements AstGeneratorInterface {
                     const pathFile = path
                         .relative(process.cwd(), typeAtLocationPath)
                         .replace(/\\/g, "/");
+
                     return {
                         type: AstNodeType.ClassDefinition,
                         name: copy.name?.text ?? "undefined",

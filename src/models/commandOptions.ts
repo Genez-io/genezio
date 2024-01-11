@@ -1,3 +1,5 @@
+import { Language } from "./yamlProjectConfiguration.js";
+
 export interface BaseOptions {
     logLevel?: string;
 }
@@ -27,12 +29,25 @@ export interface GenezioDeleteOptions extends BaseOptions {
     force: boolean;
 }
 
+export enum SourceType {
+    LOCAL = "local",
+    REMOTE = "remote",
+}
+
+export enum SdkType {
+    PACKAGE = "package",
+    CLASSIC = "classic",
+}
+
 export interface GenezioSdkOptions extends BaseOptions {
-    source: string;
-    language: string;
-    path: string;
+    source: SourceType;
+    type: SdkType;
+    config: string;
+    language: Language;
+    output: string;
     stage: string;
     region: string;
+    url?: string;
 }
 
 export interface GenezioLinkOptions extends BaseOptions {

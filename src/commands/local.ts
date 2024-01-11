@@ -60,7 +60,11 @@ import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 import log from "loglevel";
 import { interruptLocalPath } from "../utils/localInterrupt.js";
 import { compareSync, Options, Result } from "dir-compare";
-import { AwsApiGatewayRequest, LambdaResponse } from "../models/cloudProviderIdentifier.js";
+import {
+    AwsApiGatewayRequest,
+    CloudProviderIdentifier,
+    LambdaResponse,
+} from "../models/cloudProviderIdentifier.js";
 
 const POLLING_INTERVAL = 2000;
 
@@ -108,6 +112,9 @@ export async function prepareLocalEnvironment(
 
         const projectConfiguration = new ProjectConfiguration(yamlProjectConfiguration, sdk);
 
+        // Local deployments always use the genezio cloud provider
+        projectConfiguration.cloudProvider = CloudProviderIdentifier.GENEZIO;
+
         const processForClasses = await startProcesses(projectConfiguration, sdk, options);
         return new Promise<BundlerRestartResponse>((resolve) => {
             resolve({
@@ -152,6 +159,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     if (yamlProjectConfiguration.scripts?.preStartLocal) {
         log.info("Running preStartLocal script...");
         log.info(yamlProjectConfiguration.scripts.preStartLocal);
+
         const success = await runNewProcess(yamlProjectConfiguration.scripts.preStartLocal);
         if (!success) {
             await GenezioTelemetry.sendEvent({
@@ -307,22 +315,22 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`,
                 })),
             );
-            await writeSdkToDisk(sdk, sdkConfiguration.language, sdkConfiguration.path);
+            await writeSdkToDisk(sdk, sdkConfiguration.path);
             if (
                 !yamlProjectConfiguration.sdk &&
                 (sdkConfiguration.language === Language.ts ||
                     sdkConfiguration.language === Language.js)
             ) {
                 // compile the sdk
-                const packajeJson: string = getNodeModulePackageJsonLocal(
+                const packageJson: string = getNodeModulePackageJsonLocal(
                     projectConfiguration.name,
                     projectConfiguration.region,
                 );
                 await compileSdk(
                     sdkConfiguration.path,
-                    packajeJson,
+                    packageJson,
                     sdkConfiguration.language,
-                    GenezioCommand.local,
+                    false,
                 );
 
                 await writeSdkToNodeModules(yamlProjectConfiguration, sdkConfiguration.path);
@@ -465,12 +473,6 @@ async function writeSdkToNodeModules(
         );
         const from = path.resolve(originSdkPath, "..", "genezio-sdk");
         for (const linkPath of linkPaths) {
-            const toTemp = path.join(
-                linkPath,
-                "node_modules",
-                "@genezio-sdk",
-                `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}-temp`,
-            );
             const toFinal = path.join(
                 linkPath,
                 "node_modules",

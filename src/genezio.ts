@@ -1,10 +1,9 @@
-import { Command, CommanderError } from "commander";
+import { Command, CommanderError, Option } from "commander";
 import { code, setDebuggingLoggerLogLevel } from "./utils/logging.js";
 import { exit } from "process";
 import { PORT_LOCAL_ENVIRONMENT, ENABLE_DEBUG_LOGS_BY_DEFAULT } from "./constants.js";
 import log from "loglevel";
 import prefix from "loglevel-plugin-prefix";
-// commands imports
 import { accountCommand } from "./commands/account.js";
 import { addClassCommand } from "./commands/addClass.js";
 import { deleteCommand } from "./commands/delete.js";
@@ -26,7 +25,7 @@ import {
 } from "./models/commandOptions.js";
 import currentGenezioVersion, { logOutdatedVersion } from "./utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js";
-import { genezioCommand } from "./commands/superGenezio.js";
+import { genezioCommand } from "./commands/superGenezio/superGenezio.js";
 import { linkCommand, unlinkCommand } from "./commands/link.js";
 import { getProjectConfiguration } from "./utils/configuration.js";
 import { setPackageManager } from "./packageManagers/packageManager.js";
@@ -182,10 +181,10 @@ program
     .action(async (options: GenezioLocalOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await startLocalEnvironment(options).catch((error) => {
+        await startLocalEnvironment(options).catch(async (error) => {
             if (error.message) {
                 log.error(error.message);
-                GenezioTelemetry.sendEvent({
+                await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_LOCAL_ERROR,
                     errorTrace: error.message,
                     commandOptions: JSON.stringify(options),
@@ -193,6 +192,7 @@ program
             }
             exit(1);
         });
+
         await logOutdatedVersion();
     });
 
@@ -204,7 +204,7 @@ program
     )
     .argument("<classPath>", "Path of the class you want to add.")
     .argument("[<classType>]", "The type of the class you want to add. [http, jsonrpc, cron]")
-    .summary("Add a new class to the configuration file.")
+    .summary("Add a new genezio class to your project”")
     .action(async (classPath: string, classType: string, options: BaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
@@ -228,14 +228,32 @@ program
         "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
     )
     .option("--language <language>", "Language of the SDK.", "ts")
+    .addOption(
+        new Option("--source <source>", "Where the SDK should be generated from.")
+            .choices(["local", "remote"])
+            .default("remote"),
+    )
     .option(
-        "-s, --source <source>",
-        "Path to the genezio.yaml file on your disk. Used for loading project details from a genezio.yaml file, instead of command argumments like --name",
+        "-c, --config <config>",
+        "Path to the genezio.yaml file on your disk. Used for loading project details from a genezio.yaml file, instead of command arguments like --name",
         "./",
     )
-    .option("-p, --path <path>", "Path to the directory where the SDK will be generated.", "./sdk")
+    .option(
+        "-o, --output <output>",
+        "Path to the directory where the SDK will be generated.",
+        "./sdk",
+    )
     .option("--stage <stage>", "Stage of the project.", "prod")
+    .option("--url <url>", "The url of the server.")
     .option("--region <region>", "Region where your project is deployed.", "us-east-1")
+    .addOption(
+        new Option(
+            "--type <type>",
+            "Type of the SDK. Package will generate a npm package and classic will generate a classic SDK with typescript files.",
+        )
+            .choices(["package", "classic"])
+            .default("classic"),
+    )
     .summary("Generate an SDK for a deployed or local project.")
     .description(
         "Generate an SDK corresponding to a deployed or local project.\n\nProvide the project name to generate an SDK for a deployed project.\nEx: genezio sdk my-project --stage prod --region us-east-1\n\nProvide the path to the genezio.yaml on your disk to load project details (name and region) from that file instead of command arguments.\nEx: genezio sdk --source ../my-project",
@@ -283,7 +301,6 @@ This command is useful when the project has dedicated repositories for the backe
             exit(1);
         });
 
-        log.info("Successfully linked the path to your genezio project.");
         await logOutdatedVersion();
     });
 
@@ -317,11 +334,6 @@ This reset allows 'genezio local' to stop automatically generating the SDK in th
             );
             exit(1);
         });
-        if (options.all) {
-            log.info("Successfully unlinked all paths to your genezio projects.");
-            return;
-        }
-        log.info("Successfully unlinked the path to your genezio project.");
 
         await logOutdatedVersion();
     });
@@ -402,7 +414,6 @@ program
         });
 
         await logOutdatedVersion();
-        exit(0);
     });
 
 program
@@ -419,7 +430,7 @@ program
             log.error(error.message);
             exit(1);
         });
-        log.info("You are now logged out.");
+
         await logOutdatedVersion();
     });
 
@@ -438,7 +449,6 @@ program
             exit(1);
         });
 
-        log.info("You are logged in.");
         await logOutdatedVersion();
     });
 

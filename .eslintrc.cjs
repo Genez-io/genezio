@@ -14,4 +14,8 @@ module.exports = {
         "solveEnvVariables.js",
         ".eslintrc.cjs",
     ],
+    env: {
+        node: true,
+        es6: true,
+    },
 };

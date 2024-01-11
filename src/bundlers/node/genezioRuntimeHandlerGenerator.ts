@@ -1,7 +1,6 @@
-//const object = new handler.genezio[Object.keys(handler.genezio)[0]]();
 /* eslint-disable no-useless-escape */
 
-export const lambdaHandler = (className: string): string => `
+export const genezioRuntimeHandlerGenerator = (className: string): string => `
 /** This is an auto generated code. This code should not be modified since the file can be overwritten
  *  if new genezio commands are executed.
  */
@@ -14,7 +13,7 @@ if (!genezioClass) {
     console.error(
         'Error! No class found with name ${className}. Make sure you exported it from your file.'
     );
-    handler = async function (event, context) {
+    handler = async function (event) {
         return {
             statusCode: 500,
             body: JSON.stringify({
@@ -30,26 +29,16 @@ if (!genezioClass) {
         };
     };
 } else {
-    const sendSentryError = async function (err) {
-        try {
-            const { createRequire } = await import("module");
-            const require = createRequire(import.meta.url);
-            const Sentry = require("@sentry/node");
-            Sentry.init({
-                dsn: process.env.SENTRY_DSN,
-                tracesSampleRate: process.env.SENTRY_TRACES_SAMPLE_RATE
-            });
-            Sentry.captureException(err);
-            await Sentry.flush();
-        } catch (e) {}
+    const sendError = async function (err) {
+        // Not implemented
     };
 
     let object;
     try {
         object = new genezioClass();
     } catch (error) {
-        handler = async function (event, context) {
-            await sendSentryError(error);
+        handler = async function (event) {
+            await sendError(error);
             return {
                 statusCode: 500,
                 body: JSON.stringify({
@@ -65,28 +54,8 @@ if (!genezioClass) {
         };
     }
 
-    handler = handler ?? async function (event, context) {
-        if (event.genezioEventType === "cron") {
-            const method = event.methodName;
-
-            if (!object[method]) {
-              console.error(\`ERROR: Cron method named \$\{method\} does not exist.\`);
-              return;
-            }
-
-            console.log(
-                "DEBUG: trigger cron: " + event.cronString + " on method: " + method
-            );
-
-            try {
-                await object[method]();
-            } catch (error) {
-                console.log("ERROR: cron trigger with error: " + error);
-            }
-            return;
-        }
-
-        if (event.requestContext.http.method === "OPTIONS") {
+    handler = handler ?? async function (event) {
+        if (event.http && event.http.method === "OPTIONS") {
             const response = {
                 statusCode: 200,
                 headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
@@ -95,29 +64,32 @@ if (!genezioClass) {
         }
 
         let body = event.body;
-
+        let invalidBody = false;
         try {
             body = JSON.parse(event.body);
-        } catch (error) { }
+        } catch (error) {
+            invalidBody = true;
+        }
 
-        const components = event.requestContext.http.path.substring(1).split("/");
         if (!body || (body && body["jsonrpc"] !== "2.0")) {
-            if (!components[1]) {
+            if (!event.url.searchParams.has('method')) {
                 return {
                     statusCode: 404,
                     headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' },
                     body: JSON.stringify({ error: "Method not found" }),
                 };
             }
-            const method = components[1];
+
+            let method = event.url.searchParams.get('method')
             const req = {
                 headers: event.headers,
-                http: event.requestContext.http,
-                queryStringParameters: event.queryStringParameters,
-                timeEpoch: event.requestContext.timeEpoch,
+                http: event.http,
+                queryStringParameters: Object.fromEntries([...event.url.searchParams]),
+                timeEpoch: event.requestTimestampMs,
                 body: event.isBase64Encoded ? Buffer.from(body, "base64") : body,
                 rawBody: event.body,
             };
+
             if (!object[method]) {
                 return {
                     statusCode: 404,
@@ -156,10 +128,7 @@ if (!genezioClass) {
                 };
             }
         } else {
-            let body = null;
-            try {
-                body = JSON.parse(event.body);
-            } catch (error) {
+            if (invalidBody || !body || !body.method || !body.params || !Number.isInteger(body.id)) {
                 return {
                     statusCode: 500,
                     body: JSON.stringify({
@@ -170,16 +139,11 @@ if (!genezioClass) {
                     headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
                 };
             }
-            if (!body || !body.method || !body.params || !Number.isInteger(body.id)) {
-                return {
-                    statusCode: 500,
-                    body: JSON.stringify({
-                        jsonrpc: "2.0",
-                        error: { code: -1, message: "Invalid JSON-RPC request" },
-                        id: 0,
-                    }),
-                    headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
-                };
+
+            if (('Genezio-Event' in event.headers) && event.headers['Genezio-Event'] === 'cron') {
+                console.log(
+                    "DEBUG: trigger cron: " + event.headers['Genezio-CronString'] + " on method: " + body.method
+                );
             }
 
             let method = null;
@@ -215,7 +179,7 @@ if (!genezioClass) {
                 process.removeAllListeners("uncaughtException");
                 process.on("uncaughtException", async function (err) {
                     console.error(err);
-                    await sendSentryError(err);
+                    await sendError(err);
                     resolve({
                         statusCode: 500,
                         body: JSON.stringify({
@@ -244,7 +208,7 @@ if (!genezioClass) {
                     })
                     .catch(async (err) => {
                         console.error(err);
-                        await sendSentryError(err);
+                        await sendError(err);
                         return {
                             statusCode: 500,
                             body: JSON.stringify({
@@ -260,7 +224,7 @@ if (!genezioClass) {
                 return result;
             } catch (err) {
                 console.error(err);
-                await sendSentryError(err);
+                await sendError(err);
                 return {
                     statusCode: 500,
                     body: JSON.stringify({
@@ -272,7 +236,7 @@ if (!genezioClass) {
                 };
             }
         }
-    };
+    }
 }
 
 export { handler };
