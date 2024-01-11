@@ -589,7 +589,9 @@ export async function deployFrontend(
         // check if the build folder is empty
         if (await isDirectoryEmpty(frontendPath)) {
             throw new Error(
-                `The build folder is empty. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
+                `The build folder ${colors.cyan(
+                    `${frontendPath}`,
+                )} is empty. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
             );
         }
 
