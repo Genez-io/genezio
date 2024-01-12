@@ -184,7 +184,7 @@ async function chooseTemplate(
     return selectedTemplate;
 }
 
-function colorLanguage(languageName: string): string {
+export function colorLanguage(languageName: string): string {
     switch (languageName) {
         case "TypeScript":
             return colors.blue(languageName);
