@@ -2,10 +2,9 @@ import inquirer from "inquirer";
 import { vol, fs as memfsFs, IFs } from "memfs";
 import path from "path";
 import { describe, test, expect, vi, beforeEach } from "vitest";
-import { createNewProject } from "../../../src/commands/superGenezio/createNewProject";
+import { askCreateOptions } from "../../../src/commands/create/interactive";
 import colors from "colors";
 import { regions } from "../../../src/utils/configs";
-import { setLinkPathForProject } from "../../../src/utils/linkDatabase";
 
 vi.mock("fs", () => {
     return { default: memfsFs };
@@ -71,59 +70,21 @@ vi.mock("../../../src/requests/getTemplateList", () => {
 });
 vi.mock("../../../src/utils/linkDatabase");
 
-describe("createNewProject", () => {
+describe("askCreateOptions", () => {
     beforeEach(() => {
         // Clean up the mocked file system before each test
         vol.reset();
     });
 
-    test("shows overwrite warning propmt", async () => {
-        // Create environment
-        vol.mkdirSync(path.join(process.cwd(), "genezio-project"), { recursive: true });
-
-        const promptSpy = vi.spyOn(inquirer, "prompt");
-        // Mock imputing the project name
-        promptSpy.mockResolvedValueOnce({ projectName: "genezio-project" });
-        // Mock selecting cancel operation
-        promptSpy.mockResolvedValueOnce({ overwriteDecision: "cancel" });
-
-        // Run the super command
-        await createNewProject();
-
-        // Check if inquirer.prompt was called with the correct arguments
-        expect(promptSpy).toHaveBeenNthCalledWith(2, [
-            {
-                type: "list",
-                name: "overwriteDecision",
-                message: colors.red("The project folder already exists. What do you want to do?"),
-                choices: [
-                    {
-                        name: "Remove existing files and create a new project",
-                        value: "deleteThenWrite",
-                    },
-                    {
-                        name: "Cancel operation",
-                        value: "cancel",
-                    },
-                    {
-                        name: "Overwrite the existing files (.git and README.md will be kept)",
-                        value: "overwrite",
-                    },
-                ],
-            },
-        ]);
-    });
-
-    test("creates a new fullstack monorepo project", async () => {
+    test("reads options for a fullstack monorepo project", async () => {
         // Create environment
         vol.mkdirSync(path.join(process.cwd()), { recursive: true });
 
         const promptSpy = vi.spyOn(inquirer, "prompt");
 
-        // Mock imputing the project name
-        promptSpy.mockResolvedValueOnce({ projectName: "genezio-project" });
-        // Mock selecting region and project type
+        // Mock imputing the project name, region and project type
         promptSpy.mockResolvedValueOnce({
+            projectName: "genezio-project",
             projectRegion: regions[0].value,
             projectType: "fullstack",
         });
@@ -131,14 +92,22 @@ describe("createNewProject", () => {
         promptSpy.mockResolvedValueOnce({ projectStructure: "monorepo" });
         promptSpy.mockResolvedValueOnce({ selectedLanguage: "TypeScript" });
         promptSpy.mockResolvedValueOnce({
-            selectedTemplate: { repository: "backendURL", compatibilityMapping: "test" },
+            selectedTemplate: {
+                id: "backendId",
+                repository: "backendURL",
+                compatibilityMapping: "test",
+            },
         });
         promptSpy.mockResolvedValueOnce({ selectedLanguage: "TypeScript" });
         promptSpy.mockResolvedValueOnce({
-            selectedTemplate: { repository: "frontendURL", compatibilityMapping: "test" },
+            selectedTemplate: {
+                id: "frontendId",
+                repository: "frontendURL",
+                compatibilityMapping: "test",
+            },
         });
 
-        await createNewProject();
+        const options = await askCreateOptions();
 
         // Check if inquirer.prompt was called with the correct arguments
         expect(promptSpy).toHaveBeenCalledWith([
@@ -148,8 +117,6 @@ describe("createNewProject", () => {
                 message: colors.magenta("Please enter a project name:"),
                 default: "genezio-project",
             }),
-        ]);
-        expect(promptSpy).toHaveBeenCalledWith([
             expect.objectContaining({
                 type: "list",
                 name: "projectRegion",
@@ -203,40 +170,23 @@ describe("createNewProject", () => {
             }),
         ]);
 
-        // Project folder should be created
-        expect(vol.existsSync(path.join(process.cwd(), "genezio-project"))).toBe(true);
-        // The project folder should have a .git folder
-        expect(vol.existsSync(path.join(process.cwd(), "genezio-project", ".git"))).toBe(true);
-        // The project folder should have a genezio.yaml file
-        expect(vol.existsSync(path.join(process.cwd(), "genezio-project", "genezio.yaml"))).toBe(
-            true,
-        );
-
-        // Client has been cloned
-        expect(vol.existsSync(path.join(process.cwd(), "genezio-project", "client"))).toBe(true);
-        // Client should not have a genezio.yaml file
-        expect(
-            vol.existsSync(path.join(process.cwd(), "genezio-project", "client", "genezio.yaml")),
-        ).toBe(false);
-
-        // Server has been cloned
-        expect(vol.existsSync(path.join(process.cwd(), "genezio-project", "server"))).toBe(true);
-        // Server should not have a genezio.yaml file
-        expect(
-            vol.existsSync(path.join(process.cwd(), "genezio-project", "server", "genezio.yaml")),
-        ).toBe(false);
+        expect(options).toEqual({
+            name: "genezio-project",
+            region: regions[0].value,
+            fullstack: ["backendId", "frontendId"],
+            structure: "monorepo",
+        });
     });
 
-    test("creates a new fullstack multirepo project", async () => {
+    test("reads options for a fullstack multirepo project", async () => {
         // Create environment
         vol.mkdirSync(path.join(process.cwd()), { recursive: true });
 
         const promptSpy = vi.spyOn(inquirer, "prompt");
 
-        // Mock imputing the project name
-        promptSpy.mockResolvedValueOnce({ projectName: "genezio-project" });
-        // Mock selecting region and project type
+        // Mock imputing the project name, region and project type
         promptSpy.mockResolvedValueOnce({
+            projectName: "genezio-project",
             projectRegion: regions[0].value,
             projectType: "fullstack",
         });
@@ -244,14 +194,22 @@ describe("createNewProject", () => {
         promptSpy.mockResolvedValueOnce({ projectStructure: "multirepo" });
         promptSpy.mockResolvedValueOnce({ selectedLanguage: "TypeScript" });
         promptSpy.mockResolvedValueOnce({
-            selectedTemplate: { repository: "backendURL", compatibilityMapping: "test" },
+            selectedTemplate: {
+                id: "backendId",
+                repository: "backendURL",
+                compatibilityMapping: "test",
+            },
         });
         promptSpy.mockResolvedValueOnce({ selectedLanguage: "TypeScript" });
         promptSpy.mockResolvedValueOnce({
-            selectedTemplate: { repository: "frontendURL", compatibilityMapping: "test" },
+            selectedTemplate: {
+                id: "frontendId",
+                repository: "frontendURL",
+                compatibilityMapping: "test",
+            },
         });
 
-        await createNewProject();
+        const options = await askCreateOptions();
 
         // Check if inquirer.prompt was called with the correct arguments
         expect(promptSpy).toHaveBeenCalledWith([
@@ -261,8 +219,6 @@ describe("createNewProject", () => {
                 message: colors.magenta("Please enter a project name:"),
                 default: "genezio-project",
             }),
-        ]);
-        expect(promptSpy).toHaveBeenCalledWith([
             expect.objectContaining({
                 type: "list",
                 name: "projectRegion",
@@ -316,54 +272,37 @@ describe("createNewProject", () => {
             }),
         ]);
 
-        expect(setLinkPathForProject).toHaveBeenCalled();
-
-        // Project folder should be created
-        expect(vol.existsSync(path.join(process.cwd(), "genezio-project"))).toBe(true);
-
-        // Client has been cloned
-        expect(vol.existsSync(path.join(process.cwd(), "genezio-project", "client"))).toBe(true);
-        // Client should have a .git folder
-        expect(vol.existsSync(path.join(process.cwd(), "genezio-project", "client", ".git"))).toBe(
-            true,
-        );
-        // Client should have a genezio.yaml file
-        expect(
-            vol.existsSync(path.join(process.cwd(), "genezio-project", "client", "genezio.yaml")),
-        ).toBe(true);
-
-        // Server has been cloned
-        expect(vol.existsSync(path.join(process.cwd(), "genezio-project", "server"))).toBe(true);
-        // Server should have a .git folder
-        expect(vol.existsSync(path.join(process.cwd(), "genezio-project", "server", ".git"))).toBe(
-            true,
-        );
-        // Server should have a genezio.yaml file
-        expect(
-            vol.existsSync(path.join(process.cwd(), "genezio-project", "server", "genezio.yaml")),
-        ).toBe(true);
+        expect(options).toEqual({
+            name: "genezio-project",
+            region: regions[0].value,
+            fullstack: ["backendId", "frontendId"],
+            structure: "multirepo",
+        });
     });
 
-    test("creates a new backend project", async () => {
+    test("reads options for a backend project", async () => {
         // Create environment
         vol.mkdirSync(path.join(process.cwd()), { recursive: true });
 
         const promptSpy = vi.spyOn(inquirer, "prompt");
 
         // Mock imputing the project name
-        promptSpy.mockResolvedValueOnce({ projectName: "genezio-project" });
-        // Mock selecting region and project type
         promptSpy.mockResolvedValueOnce({
+            projectName: "genezio-project",
             projectRegion: regions[0].value,
             projectType: "backend",
         });
 
         promptSpy.mockResolvedValueOnce({ selectedLanguage: "TypeScript" });
         promptSpy.mockResolvedValueOnce({
-            selectedTemplate: { repository: "backendURL", compatibilityMapping: "test" },
+            selectedTemplate: {
+                id: "backendId",
+                repository: "backendURL",
+                compatibilityMapping: "test",
+            },
         });
 
-        await createNewProject();
+        const options = await askCreateOptions();
 
         // Check if inquirer.prompt was called with the correct arguments
         expect(promptSpy).toHaveBeenCalledWith([
@@ -373,8 +312,6 @@ describe("createNewProject", () => {
                 message: colors.magenta("Please enter a project name:"),
                 default: "genezio-project",
             }),
-        ]);
-        expect(promptSpy).toHaveBeenCalledWith([
             expect.objectContaining({
                 type: "list",
                 name: "projectRegion",
@@ -408,14 +345,10 @@ describe("createNewProject", () => {
             }),
         ]);
 
-        // Project folder should be created
-        expect(vol.existsSync(path.join(process.cwd(), "genezio-project"))).toBe(true);
-
-        // Project folder should have a .git folder
-        expect(vol.existsSync(path.join(process.cwd(), "genezio-project", ".git"))).toBe(true);
-        // Project folder should have a genezio.yaml file
-        expect(vol.existsSync(path.join(process.cwd(), "genezio-project", "genezio.yaml"))).toBe(
-            true,
-        );
+        expect(options).toEqual({
+            name: "genezio-project",
+            region: regions[0].value,
+            backend: "backendId",
+        });
     });
 });

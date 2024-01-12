@@ -1,16 +1,20 @@
 import path from "path";
-import { fileExists } from "../../utils/file.js";
-import { deployCommand } from "../deploy.js";
+import { fileExists } from "../utils/file.js";
+import { deployCommand } from "./deploy.js";
 import colors from "colors";
 import inquirer from "inquirer";
-import { exit } from "process";
-import { GenezioTelemetry, TelemetryEventTypes } from "../../telemetry/telemetry.js";
-import { startLocalEnvironment } from "../local.js";
-import { PORT_LOCAL_ENVIRONMENT } from "../../constants.js";
-import { GenezioDeployOptions, GenezioLocalOptions } from "../../models/commandOptions.js";
-import { createNewProject } from "./createNewProject.js";
+import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
+import { startLocalEnvironment } from "./local.js";
+import { PORT_LOCAL_ENVIRONMENT } from "../constants.js";
+import {
+    GenezioCreateOptions,
+    GenezioDeployOptions,
+    GenezioLocalOptions,
+} from "../models/commandOptions.js";
+import { askCreateOptions } from "./create/interactive.js";
 import log from "loglevel";
-import currentGenezioVersion from "../../utils/version.js";
+import currentGenezioVersion from "../utils/version.js";
+import { createCommand } from "./create/create.js";
 
 export async function genezioCommand() {
     log.info(`genezio v${currentGenezioVersion}. Run with \`--help\` to display CLI options.`);
@@ -23,11 +27,11 @@ export async function genezioCommand() {
                 message: colors.magenta("Genezio project detected. What would you like to do?"),
                 choices: [
                     {
-                        name: "Deploy your project (genezio deploy)",
+                        name: "Deploy your project frontend and backend (genezio deploy)",
                         value: "deploy",
                     },
                     {
-                        name: "Start a Local server (genezio local)",
+                        name: "Start the genezio backend locally (genezio local)",
                         value: "local",
                     },
                     {
@@ -67,7 +71,7 @@ export async function genezioCommand() {
                         errorTrace: error.message,
                         commandOptions: JSON.stringify(options),
                     });
-                    exit(1);
+                    throw error;
                 });
             }
             case "cancel":
@@ -80,7 +84,7 @@ export async function genezioCommand() {
                 type: "list",
                 name: "command",
                 message: colors.magenta(
-                    "Genezio project could not be detected. What would you like to do?",
+                    "No genezio project in the current folder. What would you like to do?",
                 ),
                 choices: [
                     {
@@ -97,7 +101,16 @@ export async function genezioCommand() {
 
         switch (answer.command) {
             case "createTemplate": {
-                return await createNewProject();
+                const options: GenezioCreateOptions = await askCreateOptions();
+                return await createCommand(options).catch(async (error) => {
+                    // TODO: Add telemetry event type
+                    // await GenezioTelemetry.sendEvent({
+                    //     eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
+                    //     errorTrace: error.message,
+                    //     commandOptions: JSON.stringify(options),
+                    // });
+                    throw error;
+                });
             }
             case "cancel":
             default:
