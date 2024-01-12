@@ -27,14 +27,14 @@ import {
 } from "./models/commandOptions.js";
 import currentGenezioVersion, { logOutdatedVersion } from "./utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js";
-import { genezioCommand } from "./commands/superGenezio/superGenezio.js";
+import { genezioCommand } from "./commands/superGenezio.js";
 import { linkCommand, unlinkCommand } from "./commands/link.js";
 import { getProjectConfiguration } from "./utils/configuration.js";
 import { setPackageManager } from "./packageManagers/packageManager.js";
 import { PackageManagerType } from "./models/yamlProjectConfiguration.js";
 import colors from "colors";
 import { regions } from "./utils/configs.js";
-import { createCommand } from "./commands/create.js";
+import { createCommand } from "./commands/create/create.js";
 
 const program = new Command();
 

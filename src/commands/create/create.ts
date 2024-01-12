@@ -1,19 +1,19 @@
 import colors from "colors";
 import { IFs, memfs } from "memfs";
-import { getNewProjectTemplateList } from "../requests/getTemplateList.js";
-import { Template } from "../requests/models.js";
+import { getNewProjectTemplateList } from "../../requests/getTemplateList.js";
+import { Template } from "../../requests/models.js";
 import git from "isomorphic-git";
 import http from "isomorphic-git/http/node/index.js";
 import { parse, stringify } from "yaml";
 import path from "path";
-import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js";
-import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
+import { YamlProjectConfiguration } from "../../models/yamlProjectConfiguration.js";
+import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import nativeFs from "fs";
-import { setLinkPathForProject } from "../utils/linkDatabase.js";
+import { setLinkPathForProject } from "../../utils/linkDatabase.js";
 import log from "loglevel";
 import { platform } from "os";
-import { GenezioCreateOptions } from "../models/commandOptions.js";
-import { debugLogger } from "../utils/logging.js";
+import { GenezioCreateOptions } from "../../models/commandOptions.js";
+import { debugLogger } from "../../utils/logging.js";
 
 type ProjectInfo = {
     name: string;
@@ -34,26 +34,8 @@ export async function createCommand(options: GenezioCreateOptions) {
     const { fs } = memfs();
     const templateList = await getNewProjectTemplateList();
 
-    const projectNameRegex = /^[a-zA-z][a-zA-Z0-9-]+$/;
-    if (!projectNameRegex.test(options.name)) {
-        throw new Error(
-            "Project name must start with a letter and contain only letters, numbers and dashes",
-        );
-    }
-
+    checkProjectName(options.name);
     const projectPath = path.join(process.cwd(), options.name);
-    if (nativeFs.existsSync(projectPath)) {
-        // If the project contains only a README.md/README or a .git folder, it's safe to continue
-        const files = nativeFs.readdirSync(projectPath);
-        for (const file of files) {
-            const allowedFiles = ["README.md", "README", ".git", ".gitignore", "LICENSE"];
-            if (!allowedFiles.includes(file)) {
-                throw new Error(
-                    `A folder named '${options.name}' already exists. Please choose another project name`,
-                );
-            }
-        }
-    }
 
     // Create the new project in a virtual filesystem (memfs)
     switch (true) {
@@ -155,6 +137,29 @@ export async function createCommand(options: GenezioCreateOptions) {
             break;
         case "backend" in options:
             log.info(SUCCESSFULL_CREATE_BACKEND(projectPath, options.name));
+    }
+}
+
+export function checkProjectName(projectName: string) {
+    const projectNameRegex = /^[a-zA-Z][a-zA-Z0-9-]+$/;
+    if (!projectNameRegex.test(projectName)) {
+        throw new Error(
+            "Project name must start with a letter and contain only letters, numbers and dashes",
+        );
+    }
+
+    const projectPath = path.join(process.cwd(), projectName);
+    if (nativeFs.existsSync(projectPath)) {
+        // If the project contains only a README.md/README or a .git folder, it's safe to continue
+        const files = nativeFs.readdirSync(projectPath);
+        for (const file of files) {
+            const allowedFiles = ["README.md", "README", ".git", ".gitignore", "LICENSE"];
+            if (!allowedFiles.includes(file)) {
+                throw new Error(
+                    `A folder named '${projectName}' already exists. Please choose another project name`,
+                );
+            }
+        }
     }
 }
 

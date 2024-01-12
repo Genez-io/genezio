@@ -2,12 +2,12 @@ import { vi, describe, beforeEach, test, expect } from "vitest";
 import { vol, fs as memfsFs } from "memfs";
 import fs from "fs/promises";
 import inquirer from "inquirer";
-import { genezioCommand } from "../../../src/commands/superGenezio/superGenezio";
-import { deployCommand } from "../../../src/commands/deploy";
-import { startLocalEnvironment } from "../../../src/commands/local";
+import { genezioCommand } from "../../src/commands/superGenezio";
+import { deployCommand } from "../../src/commands/deploy";
+import { startLocalEnvironment } from "../../src/commands/local";
 import colors from "colors";
-import { loginCommand } from "../../../src/commands/login";
-import { createNewProject } from "../../../src/commands/superGenezio/createNewProject";
+import { askCreateOptions } from "../../src/commands/create/interactive";
+import { createCommand } from "../../src/commands/create/create";
 
 vi.mock("fs", () => {
     return { default: memfsFs };
@@ -15,17 +15,20 @@ vi.mock("fs", () => {
 vi.mock("fs/promises", () => {
     return { default: memfsFs.promises };
 });
-vi.mock("../../../src/commands/deploy", () => {
+vi.mock("../../src/commands/deploy", () => {
     return { deployCommand: vi.fn(() => Promise.resolve()) };
 });
-vi.mock("../../../src/commands/local", () => {
+vi.mock("../../src/commands/local", () => {
     return { startLocalEnvironment: vi.fn(() => Promise.resolve()) };
 });
-vi.mock("../../../src/commands/login", () => {
+vi.mock("../../src/commands/login", () => {
     return { loginCommand: vi.fn(() => Promise.resolve()) };
 });
-vi.mock("../../../src/commands/superGenezio/createNewProject", () => {
-    return { createNewProject: vi.fn(() => Promise.resolve()) };
+vi.mock("../../src/commands/create/interactive", () => {
+    return { askCreateOptions: vi.fn(() => Promise.resolve()) };
+});
+vi.mock("../../src/commands/create/create", () => {
+    return { createCommand: vi.fn(() => Promise.resolve()) };
 });
 
 describe("superGenezio", () => {
@@ -55,11 +58,11 @@ describe("superGenezio", () => {
                 message: colors.magenta("Genezio project detected. What would you like to do?"),
                 choices: [
                     {
-                        name: "Deploy your project (genezio deploy)",
+                        name: "Deploy your project frontend and backend (genezio deploy)",
                         value: "deploy",
                     },
                     {
-                        name: "Start a Local server (genezio local)",
+                        name: "Start the genezio backend locally (genezio local)",
                         value: "local",
                     },
                     {
@@ -95,11 +98,11 @@ describe("superGenezio", () => {
                 message: colors.magenta("Genezio project detected. What would you like to do?"),
                 choices: [
                     {
-                        name: "Deploy your project (genezio deploy)",
+                        name: "Deploy your project frontend and backend (genezio deploy)",
                         value: "deploy",
                     },
                     {
-                        name: "Start a Local server (genezio local)",
+                        name: "Start the genezio backend locally (genezio local)",
                         value: "local",
                     },
                     {
@@ -129,7 +132,7 @@ describe("superGenezio", () => {
                 type: "list",
                 name: "command",
                 message: colors.magenta(
-                    "Genezio project could not be detected. What would you like to do?",
+                    "No genezio project in the current folder. What would you like to do?",
                 ),
                 choices: [
                     {
@@ -144,6 +147,7 @@ describe("superGenezio", () => {
             },
         ]);
 
-        expect(createNewProject).toHaveBeenCalledOnce();
+        expect(askCreateOptions).toHaveBeenCalledOnce();
+        expect(createCommand).toHaveBeenCalledOnce();
     });
 });
