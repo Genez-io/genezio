@@ -79,6 +79,12 @@ export function reportSuccess(
         } else {
             log.info("\x1b[36m%s\x1b[0m", "Your local server is running!");
         }
+        log.info(colors.red("When working with a frontend, make sure to launch it locally!"));
+        log.info(
+            `If you are using one of our frontend templates, run ${colors.green(
+                "npm install",
+            )} followed by ${colors.green("npm run dev")} in your frontend's root folder.\n`,
+        );
     }
 
     // print function urls
