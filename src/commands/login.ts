@@ -7,7 +7,6 @@ import http from "http";
 import open from "open";
 import { asciiCapybara } from "../utils/strings.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
-import colors from "colors";
 
 export async function loginCommand(accessToken: string, logSuccesMessage = true) {
     log.info(asciiCapybara);
@@ -71,30 +70,30 @@ function loginSuccessMsg() {
     log.info(`Welcome! You can now start using genezio.`);
 
     // next steps message
-    log.info(`\n${colors.bold(`${colors.green("Next steps to get started: ")}`)}`);
-    log.info(
-        `\n${colors.green(
-            "1. Create a new project:",
-        )} You can create a new project by running the command ${colors.cyan("genezio")}`,
-    );
-    log.info(
-        `\n${colors.green(
-            "2. Add a new class:",
-        )} Once your project is created, you can add a new class by running the command ${colors.cyan(
-            "genezio addClass [filename]",
-        )}`,
-    );
-    log.info(
-        `\n${colors.green(
-            "3. Test your project locally:",
-        )} Test your project locally by running the command ${colors.cyan("genezio local")}`,
-    );
-    log.info(
-        `\n${colors.green(
-            "4. Deploy your project:",
-        )} When your project is ready, you can deploy it to the genezio infrastructure by running the command ${colors.cyan(
-            "genezio deploy",
-        )}`,
-    );
-    log.info(`\n${colors.green("5. Documentation:")} ${colors.magenta("https://docs.genez.io")}`);
+    // log.info(`\n${colors.bold(`${colors.green("Next steps to get started: ")}`)}`);
+    // log.info(
+    //     `\n${colors.green(
+    //         "1. Create a new project:",
+    //     )} You can create a new project by running the command ${colors.cyan("genezio")}`,
+    // );
+    // log.info(
+    //     `\n${colors.green(
+    //         "2. Add a new class:",
+    //     )} Once your project is created, you can add a new class by running the command ${colors.cyan(
+    //         "genezio addClass [filename]",
+    //     )}`,
+    // );
+    // log.info(
+    //     `\n${colors.green(
+    //         "3. Test your project locally:",
+    //     )} Test your project locally by running the command ${colors.cyan("genezio local")}`,
+    // );
+    // log.info(
+    //     `\n${colors.green(
+    //         "4. Deploy your project:",
+    //     )} When your project is ready, you can deploy it to the genezio infrastructure by running the command ${colors.cyan(
+    //         "genezio deploy",
+    //     )}`,
+    // );
+    // log.info(`\n${colors.green("5. Documentation:")} ${colors.magenta("https://docs.genez.io")}`);
 }
