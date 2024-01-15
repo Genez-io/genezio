@@ -237,15 +237,21 @@ create
                 fullstack: [backendTemplateId, frontendTemplateId],
             };
 
+            const telemetryEvent = GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_CREATE,
+                commandOptions: JSON.stringify(createOptions),
+            });
+
             await createCommand(createOptions).catch(async (error) => {
                 log.error(error.message);
-                // TODO: Add telemetry event type
-                // await GenezioTelemetry.sendEvent({
-                //     eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
-                //     errorTrace: error.message,
-                // });
+                await telemetryEvent;
+                await GenezioTelemetry.sendEvent({
+                    eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
+                    errorTrace: error.message,
+                });
                 exit(1);
             });
+            await telemetryEvent;
 
             await logOutdatedVersion();
         },
@@ -274,15 +280,21 @@ create
             backend: templateId,
         };
 
+        const telemetryEvent = GenezioTelemetry.sendEvent({
+            eventType: TelemetryEventTypes.GENEZIO_CREATE,
+            commandOptions: JSON.stringify(createOptions),
+        });
+
         await createCommand(createOptions).catch(async (error) => {
             log.error(error.message);
-            // TODO: Add telemetry event type
-            // await GenezioTelemetry.sendEvent({
-            //     eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
-            //     errorTrace: error.message,
-            // });
+            await telemetryEvent;
+            await GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
+                errorTrace: error.message,
+            });
             exit(1);
         });
+        await telemetryEvent;
 
         await logOutdatedVersion();
     });
@@ -310,15 +322,21 @@ create
             frontend: templateId,
         };
 
+        const telemetryEvent = GenezioTelemetry.sendEvent({
+            eventType: TelemetryEventTypes.GENEZIO_CREATE,
+            commandOptions: JSON.stringify(createOptions),
+        });
+
         await createCommand(createOptions).catch(async (error) => {
             log.error(error.message);
-            // TODO: Add telemetry event type
-            // await GenezioTelemetry.sendEvent({
-            //     eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
-            //     errorTrace: error.message,
-            // });
+            await telemetryEvent;
+            await GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
+                errorTrace: error.message,
+            });
             exit(1);
         });
+        await telemetryEvent;
 
         await logOutdatedVersion();
     });
@@ -335,11 +353,23 @@ create
     .action(async (filter, options: BaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
+        const telemetryEvent = GenezioTelemetry.sendEvent({
+            eventType: TelemetryEventTypes.GENEZIO_CREATE_TEMPLATE_LIST,
+            commandOptions: JSON.stringify(options),
+        });
+
         await listCreateTemplates(filter).catch(async (error) => {
             log.error(error.message);
-
+            await telemetryEvent;
+            await GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_CREATE_TEMPLATE_LIST_ERROR,
+                errorTrace: error.message,
+            });
             exit(1);
         });
+        await telemetryEvent;
+
+        await logOutdatedVersion();
     });
 
 program

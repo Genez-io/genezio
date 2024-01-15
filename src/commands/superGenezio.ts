@@ -102,15 +102,24 @@ export async function genezioCommand() {
         switch (answer.command) {
             case "createTemplate": {
                 const options: GenezioCreateOptions = await askCreateOptions();
-                return await createCommand(options).catch(async (error) => {
-                    // TODO: Add telemetry event type
-                    // await GenezioTelemetry.sendEvent({
-                    //     eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
-                    //     errorTrace: error.message,
-                    //     commandOptions: JSON.stringify(options),
-                    // });
+
+                const telemetryEvent = GenezioTelemetry.sendEvent({
+                    eventType: TelemetryEventTypes.GENEZIO_CREATE_INTERACTIVE,
+                    commandOptions: JSON.stringify(options),
+                });
+
+                await createCommand(options).catch(async (error) => {
+                    await telemetryEvent;
+                    await GenezioTelemetry.sendEvent({
+                        eventType: TelemetryEventTypes.GENEZIO_CREATE_INTERACTIVE_ERROR,
+                        errorTrace: error.message,
+                        commandOptions: JSON.stringify(options),
+                    });
                     throw error;
                 });
+                await telemetryEvent;
+
+                break;
             }
             case "cancel":
             default:
