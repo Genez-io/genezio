@@ -77,7 +77,7 @@ For more details on how to use `genezio`, you can check out the official [docume
 -   🚀 Tested and production ready for Typescript.
     -   Beta support for: Kotlin and DART.
     -   Under development: GoLang and Swift.
--   📦 Export the resulting SDK using dependency managers such as NPM Registry - private to your team or public for anybody to use.
+-   📦 Export the resulting SDK using dependency managers such as **NPM Registry** - private to your team or public for anybody to use.
 -   🌐 **Framework agnostic**: works with React, Vue, Angular, Svelte, ExpressJS, Fastify, etc.
 -   🎯 **Seamless Bundling and Compiling**
 -   ⚡ **Deploy with one command** the backend and the frontend.
