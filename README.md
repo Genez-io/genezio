@@ -74,7 +74,7 @@ For more details on how to use `genezio`, you can check out the official [docume
 
 -   💡 Full static type-safety with **auto-completion** in your favorite editor.
 -   🧩 **Typesafe RPC** implemented by parsing the backend code, storing the AST - to be able to **generate the SDK in any frontend language with zero dependencies**.
--   📦 Export the resulting SDK using dependency managers such as NPM Registry - private to your team or public for anybody to use.
+-   📦 Export the resulting SDK using dependency managers such as **NPM Registry** - private to your team or public for anybody to use.
 -   🌐 **Framework agnostic**: works with React, Vue, Angular, Svelte, ExpressJS, Fastify, etc.
 -   🎯 **DX enhanced bundling and compiling**: no more .
 -   ⚡ **Deploy with one command** the backend and the frontend.
