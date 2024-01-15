@@ -64,7 +64,7 @@ For more details on how to use `genezio`, you can check out the official [docume
 -   [Getting support](#getting-support)
 -   [System requirements](#system-requirements)
 -   [Troubleshooting](#troubleshooting)
--   [Contributing](#contributingt)
+-   [Contributing](#contributing)
 -   [Ecosystem](#ecosystem)
 -   [Hall Of Fame](#hall-of-fame)
 -   [Badge](#badge)
