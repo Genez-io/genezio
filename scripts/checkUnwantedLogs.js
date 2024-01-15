@@ -4,7 +4,7 @@ import { execSync } from "child_process";
 import { log } from "console";
 
 function checkForStatements(regex, message, exitCode) {
-    const diff = execSync("git diff --cached").toString();
+    const diff = execSync("git diff --cached -U0").toString();
     if (new RegExp(regex).test(diff)) {
         log(message);
         process.exit(exitCode);
