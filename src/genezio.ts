@@ -35,6 +35,7 @@ import { PackageManagerType } from "./models/yamlProjectConfiguration.js";
 import colors from "colors";
 import { regions } from "./utils/configs.js";
 import { createCommand } from "./commands/create/create.js";
+import { listCreateTemplates } from "./commands/create/list.js";
 
 const program = new Command();
 
@@ -200,27 +201,29 @@ program
         await logOutdatedVersion();
     });
 
-const create = program.command("create");
+const create = program.command("create").summary("Create a new project from a template.");
 
 create
     .command("fullstack")
-    .argument("<backendTemplate>", "Id of the backend template you want to use.")
-    .argument("<frontendTemplate>", "Id of the frontend template you want to use.")
-    .option("--name <name>", "Name of the project", "genezio-project")
+    .argument("<backend-template>", "Used backend template ID.")
+    .argument("<frontend-template>", "Used frontend template ID.")
+    .option("--name <name>", "Name of the project.", "genezio-project")
     .addOption(
-        new Option("--region <region>", "Region of the project")
+        new Option("--region <region>", "Region of the project.")
             .choices(regions.map((region) => region.value))
             .default("us-east-1"),
     )
     .addOption(
-        new Option("--structure <structure>", "Structure of the created project")
+        new Option("--structure <structure>", "Structure of the created project.")
             .choices(["monorepo", "multirepo"])
             .default("monorepo"),
     )
-    .option(
-        "--logLevel <logLevel>",
-        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
+    .addOption(
+        new Option("--logLevel <logLevel>", "Show debug logs to console.")
+            .choices(["trace", "debug", "info", "warn", "error"])
+            .default("info"),
     )
+    .summary("Create a new project from a backend and a frontend template.")
     .action(
         async (
             backendTemplateId: string,
@@ -250,17 +253,19 @@ create
 
 create
     .command("backend")
-    .argument("<template>", "Id of the backend template you want to use.")
-    .option("--name <name>", "Name of the project", "genezio-project")
+    .argument("<template>", "Used backend template ID.")
+    .option("--name <name>", "Name of the project.", "genezio-project")
     .addOption(
-        new Option("--region <region>", "Region of the project")
+        new Option("--region <region>", "Region of the project.")
             .choices(regions.map((region) => region.value))
             .default("us-east-1"),
     )
-    .option(
-        "--logLevel <logLevel>",
-        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
+    .addOption(
+        new Option("--logLevel <logLevel>", "Show debug logs to console.")
+            .choices(["trace", "debug", "info", "warn", "error"])
+            .default("info"),
     )
+    .summary("Create a new project from a backend template.")
     .action(async (templateId: string, options: GenezioCreateBaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
@@ -284,17 +289,19 @@ create
 
 create
     .command("frontend")
-    .argument("<template>", "Id of the frontend template you want to use.")
-    .option("--name <name>", "Name of the project", "genezio-project")
+    .argument("<template>", "Used frontend template ID.")
+    .option("--name <name>", "Name of the project.", "genezio-project")
     .addOption(
-        new Option("--region <region>", "Region of the project")
+        new Option("--region <region>", "Region of the project.")
             .choices(regions.map((region) => region.value))
             .default("us-east-1"),
     )
-    .option(
-        "--logLevel <logLevel>",
-        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
+    .addOption(
+        new Option("--logLevel <logLevel>", "Show debug logs to console.")
+            .choices(["trace", "debug", "info", "warn", "error"])
+            .default("info"),
     )
+    .summary("Create a new project from a frontend template.")
     .action(async (templateId: string, options: GenezioCreateBaseOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
@@ -314,6 +321,25 @@ create
         });
 
         await logOutdatedVersion();
+    });
+
+create
+    .command("templates")
+    .argument("[filter]", "Filter the templates by name, description, category, language or type.")
+    .addOption(
+        new Option("--logLevel <logLevel>", "Show debug logs to console.")
+            .choices(["trace", "debug", "info", "warn", "error"])
+            .default("info"),
+    )
+    .summary("List all available templates.")
+    .action(async (filter, options: BaseOptions) => {
+        setDebuggingLoggerLogLevel(options.logLevel);
+
+        await listCreateTemplates(filter).catch(async (error) => {
+            log.error(error.message);
+
+            exit(1);
+        });
     });
 
 program
