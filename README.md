@@ -73,7 +73,7 @@ For more details on how to use `genezio`, you can check out the official [docume
 # Features
 
 -   💡 Full static type-safety with **auto-completion** in your favorite editor.
--   🧩 **Typesafe RPC**: Implemented through parsing the backend code and storing the AST, this allows for generating the SDK in any frontend language
+-   🧩 **Typesafe RPC**: Ensuring type safety and IDE auto-completion across diverse languages like TypeScript, Dart, Kotlin and Go, by leveraging advanced code analysis.
 -   🚀 Tested and production ready for Typescript.
     -   Beta support for: Kotlin and DART.
     -   Under development: GoLang and Swift.
