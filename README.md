@@ -64,7 +64,7 @@ For more details on how to use `genezio`, you can check out the official [docume
 -   [Getting support](#getting-support)
 -   [System requirements](#system-requirements)
 -   [Troubleshooting](#troubleshooting)
--   [Contributing](#contributingt)
+-   [Contributing](#contributing)
 -   [Ecosystem](#ecosystem)
 -   [Hall Of Fame](#hall-of-fame)
 -   [Badge](#badge)
@@ -73,10 +73,13 @@ For more details on how to use `genezio`, you can check out the official [docume
 # Features
 
 -   💡 Full static type-safety with **auto-completion** in your favorite editor.
--   🧩 **Typesafe RPC** implemented by parsing the backend code, storing the AST - to be able to **generate the SDK in any frontend language with zero dependencies**.
+-   🧩 **Typesafe RPC**: Implemented through parsing the backend code and storing the AST, this allows for generating the SDK in any frontend language
+-   🚀 Tested and production ready for Typescript.
+    -   Beta support for: Kotlin and DART.
+    -   Under development: GoLang and Swift.
 -   📦 Export the resulting SDK using dependency managers such as NPM Registry - private to your team or public for anybody to use.
 -   🌐 **Framework agnostic**: works with React, Vue, Angular, Svelte, ExpressJS, Fastify, etc.
--   🎯 **DX enhanced bundling and compiling**: no more .
+-   🎯 **Seamless Bundling and Compiling**
 -   ⚡ **Deploy with one command** the backend and the frontend.
 -   🔄 **Multiple staging environments** supported as well as local development environment.
 -   🖥️ **Dashboard**: explore logs, env variables for different environments, [Test interface](https://github.com/Genez-io/genezio?tab=readme-ov-file#test-your-project-using-the-test-interface) and easy to access third party integration.
@@ -152,18 +155,23 @@ Once you are happy with your project, you can deploy it in a production environm
 
 The genezio CLI tool supports the commands shown in the following table:
 
-| Command                                        | Description                                                                                                                                                                                                  |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| genezio addClass `<class-path> [<class-type>]` | Adds a new class to the 'genezio.yaml' file. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/addclass)                                                                        |
-| genezio generateSdk                            | Generates an SDK corresponding to a deployed project. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/generatesdk)                                                            |
-| genezio local --port `<port>`                  | Runs a local environment with your project for testing purposes. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/local)                                                       |
-| genezio deploy                                 | Deploys your project to the genezio infrastructure. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/deploy)                                                                   |
-| genezio ls `[<identifier>]`                    | Displays details of your projects. You can view them all at once or display a particular one by providing its name or ID. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/ls) |
-| genezio delete `[<project-id>]`                | Deletes the project described by the provided ID. If no ID is provided, lists all the projects and IDs. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/delete)               |
-| genezio account                                | Display information about the current account logged in. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/account)                                                             |
-| genezio login `<access-token>`                 | Authenticates with genezio platform to deploy your code. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/login)                                                               |
-| genezio logout                                 | Logout from genezio platform. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/logout)                                                                                         |
-| genezio help / genezio `<command>` --help      | Displays help for the CLI tool.                                                                                                                                                                              |
+| Command                                                         | Description                                                                                                                                                                                                  |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| genezio                                                         | Context aware, interactive command that simplifies project management. [Learn more]()                                                                                                                        |
+| genezio create fullstack <backend-template> <frontend-template> | Create a new fullstack project based on two templates: one backend and one frontend. [Learn more]()                                                                                                          |
+| genezio create backend <template>                               | Create a new backend project based on a template. [Learn more]()                                                                                                                                             |
+| genezio create frontend <template>                              | Create a new frontend project based on a template. [Learn more]()                                                                                                                                            |
+| genezio create templates [filter]                               | Lists all the available starting templates. Learn more                                                                                                                                                       |
+| genezio addClass `<class-path> [<class-type>]`                  | Adds a new class to the 'genezio.yaml' file. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/addclass)                                                                        |
+| genezio generateSdk                                             | Generates an SDK corresponding to a deployed project. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/generatesdk)                                                            |
+| genezio local --port `<port>`                                   | Runs a local environment with your project for testing purposes. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/local)                                                       |
+| genezio deploy                                                  | Deploys your project to the genezio infrastructure. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/deploy)                                                                   |
+| genezio ls `[<identifier>]`                                     | Displays details of your projects. You can view them all at once or display a particular one by providing its name or ID. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/ls) |
+| genezio delete `[<project-id>]`                                 | Deletes the project described by the provided ID. If no ID is provided, lists all the projects and IDs. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/delete)               |
+| genezio account                                                 | Display information about the current account logged in. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/account)                                                             |
+| genezio login `<access-token>`                                  | Authenticates with genezio platform to deploy your code. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/login)                                                               |
+| genezio logout                                                  | Logout from genezio platform. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/logout)                                                                                         |
+| genezio help / genezio `<command>` --help                       | Displays help for the CLI tool.                                                                                                                                                                              |
 
 # Examples deployed with genezio
 
