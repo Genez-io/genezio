@@ -51,8 +51,8 @@ function filterTemplate(template: Template, filter: string | undefined): boolean
         template.description.toLowerCase().includes(filterLower) ||
         template.category.toLowerCase().includes(filterLower) ||
         template.language.toLowerCase().includes(filterLower) ||
-        (filterLower === "fullstack" && template.compatibilityMapping !== undefined) ||
-        (filterLower === "standalone" && template.compatibilityMapping === undefined)
+        (filterLower === "fullstack" && template.compatibilityMapping !== null) ||
+        (filterLower === "standalone" && template.compatibilityMapping === null)
     );
 }
 
