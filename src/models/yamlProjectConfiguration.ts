@@ -490,20 +490,8 @@ export class YamlProjectConfiguration {
             language: this.language,
             cloudProvider: this.cloudProvider ? this.cloudProvider : undefined,
             options: this.options ? this.options : undefined,
-            sdk: this.sdk
-                ? {
-                      language: this.sdk?.language,
-                      path: this.sdk?.path,
-                  }
-                : undefined,
-            scripts: this.scripts
-                ? {
-                      preBackendDeploy: this.scripts?.preBackendDeploy,
-                      preFrontendDeploy: this.scripts?.preFrontendDeploy,
-                      postBackendDeploy: this.scripts?.postBackendDeploy,
-                      postFrontendDeploy: this.scripts?.postFrontendDeploy,
-                  }
-                : undefined,
+            sdk: this.sdk,
+            scripts: this.scripts,
             frontend: this.frontend
                 ? {
                       path: this.frontend?.path,
