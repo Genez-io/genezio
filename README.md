@@ -43,14 +43,7 @@
 
 # What is [genezio](https://genez.io)?
 
-[genezio](https://genez.io/) is a platform for developers to write and host a serverless application.
-
-You are writing your backend logic in classes and design your frontend using your preferred programming language. More languages coming soon! Better yet, join our open source community and help us build it!
-
-By calling `genezio deploy`, we are deploying your backend classes in a serverless infrastructure.
-
-To make it easy to call your backend logic from the client, an SDK is generated.
-You can use it to remotely call the methods of your class in a very natural way.
+[genezio](https://genez.io/) is a developer platform for full-stack developers or teams who need to build, run and maintain web, mobile or enterprise apps with a typesafe backend that scales automatically.
 
 For more details on how to use `genezio`, you can check out the official [documentation](https://genez.io/docs).
 
@@ -79,12 +72,18 @@ For more details on how to use `genezio`, you can check out the official [docume
 
 # Features
 
--   👩‍💻&nbsp; Write your backend code in Javascript, Typescript or Dart.
--   🪛&nbsp; Deploy your backend in no-time on a serverless infrastructure.
--   🖼️&nbsp; Host your frontend on the genezio infrastructure.
--   🪄&nbsp; A magically-generated SDK to call your server functions from the client (supported languages: JS, TS, Swift, Python, Dart).
--   👀&nbsp; A handful of examples to start from at [genezio-examples](https://github.com/Genez-io/genezio-examples/).
--   🔨&nbsp; A dedicated GitHub Action to integrate in your CI/CD at [genezio-github-action](https://github.com/Genez-io/genezio-github-action).
+-   💡 Full static type-safety with **auto-completion** in your favorite editor.
+-   🧩 **Typesafe RPC** implemented by parsing the backend code, storing the AST - to be able to **generate the SDK in any frontend language with zero dependencies**.
+-   📦 Export the resulting SDK using dependency managers such as NPM Registry - private to your team or public for anybody to use.
+-   🌐 **Framework agnostic**: works with React, Vue, Angular, Svelte, ExpressJS, Fastify, etc.
+-   🎯 **DX enhanced bundling and compiling**: no more .
+-   ⚡ **Deploy with one command** the backend and the frontend.
+-   🔄 **Multiple staging environments** supported as well as local development environment.
+-   🖥️ **Dashboard**: explore logs, env variables for different environments, test interface and easy to access third party integration.
+-   👥 **Collaboration**: work alone or as a team - share the projects and dashboard features between team members with different access rights.
+-   ➰ **Queues**: use them for your automation apps.
+-   🗄 **Databases**: provisioned by us or you can bring your own. The database is not exposed to the frontend directly. Table creation and CRUD boilerplate functions generated through LLM.
+-   🕒 **Cron jobs**: scheduled to be executed up to a minute granularity.
 
 # Getting Started
 
