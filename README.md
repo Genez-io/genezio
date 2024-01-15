@@ -64,7 +64,7 @@ For more details on how to use `genezio`, you can check out the official [docume
 -   [Getting support](#getting-support)
 -   [System requirements](#system-requirements)
 -   [Troubleshooting](#troubleshooting)
--   [Contributing](#contributing)
+-   [Contributing](#contributingt)
 -   [Ecosystem](#ecosystem)
 -   [Hall Of Fame](#hall-of-fame)
 -   [Badge](#badge)
@@ -79,7 +79,7 @@ For more details on how to use `genezio`, you can check out the official [docume
 -   🎯 **DX enhanced bundling and compiling**: no more .
 -   ⚡ **Deploy with one command** the backend and the frontend.
 -   🔄 **Multiple staging environments** supported as well as local development environment.
--   🖥️ **Dashboard**: explore logs, env variables for different environments, test interface and easy to access third party integration.
+-   🖥️ **Dashboard**: explore logs, env variables for different environments, [Test interface](https://github.com/Genez-io/genezio?tab=readme-ov-file#test-your-project-using-the-test-interface) and easy to access third party integration.
 -   👥 **Collaboration**: work alone or as a team - share the projects and dashboard features between team members with different access rights.
 -   ➰ **Queues**: use them for your automation apps.
 -   🗄 **Databases**: provisioned by us or you can bring your own. The database is not exposed to the frontend directly. Table creation and CRUD boilerplate functions generated through LLM.
@@ -154,7 +154,6 @@ The genezio CLI tool supports the commands shown in the following table:
 
 | Command                                        | Description                                                                                                                                                                                                  |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| genezio init                                   | Initializes a new project and prepares your project for deploying with genezio. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/init)                                         |
 | genezio addClass `<class-path> [<class-type>]` | Adds a new class to the 'genezio.yaml' file. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/addclass)                                                                        |
 | genezio generateSdk                            | Generates an SDK corresponding to a deployed project. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/generatesdk)                                                            |
 | genezio local --port `<port>`                  | Runs a local environment with your project for testing purposes. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/local)                                                       |
