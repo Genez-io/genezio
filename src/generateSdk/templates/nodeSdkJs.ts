@@ -43,7 +43,6 @@ async function makeRequestNode(request, url, agent) {
        method: 'POST',
        headers: {
            'Content-Type': 'application/json',
-           
        },
        agent: agent,
    };
