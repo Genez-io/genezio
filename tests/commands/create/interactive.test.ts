@@ -29,36 +29,42 @@ vi.mock("../../../src/requests/getTemplateList", () => {
         getNewProjectTemplateList: vi.fn(() =>
             Promise.resolve([
                 {
+                    id: "backendId1",
                     compatibilityMapping: "test",
                     repository: "backendURL",
                     category: "Backend",
                     language: "TypeScript",
                 },
                 {
+                    id: "backendId2",
                     compatibilityMapping: "test",
                     repository: "backendURL",
                     category: "Backend",
                     language: "TypeScript",
                 },
                 {
+                    id: "backendId3",
                     compatibilityMapping: "test",
                     repository: "backendURL",
                     category: "Backend",
                     language: "JavaScript",
                 },
                 {
+                    id: "frontendId1",
                     compatibilityMapping: "test",
                     repository: "frontendURL",
                     category: "Frontend",
                     language: "TypeScript",
                 },
                 {
+                    id: "frontendId2",
                     compatibilityMapping: "test",
                     repository: "frontendURL",
                     category: "Frontend",
                     language: "TypeScript",
                 },
                 {
+                    id: "frontendId3",
                     compatibilityMapping: "test",
                     repository: "frontendURL",
                     category: "Frontend",
