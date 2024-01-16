@@ -90,47 +90,7 @@ For more details on how to use `genezio`, you can check out the official [docume
 
 # Getting Started
 
-0. **Create an account**. Head over to https://app.genez.io and create an account using your favourite social login.
-
-1. **Install `genezio`.** Use the command below to install genezio:
-
-```bash
-npm install genezio -g
-```
-
-2. **Login to `genezio`.** Run the following command to login into your account:
-
-```bash
-genezio login
-```
-
-3. **Clone our `Getting Started` example.** Copy one of the following command based on your preferred language in your terminal:
-
-```bash
-git clone https://github.com/Genez-io/genezio-getting-started-typescript
-git clone https://github.com/Genez-io/genezio-getting-started-javascript
-git clone https://github.com/Genez-io/genezio-getting-started-dart
-```
-
-4. **Navigate to the project folder.** Copy one of the following command based on your preferred language in your terminal to go to the "getting-started" project folder:
-
-```bash
-cd ./genezio-getting-started-typescript/server/
-cd ./genezio-getting-started-javascript/server/
-cd ./genezio-getting-started-dart/server/
-```
-
-5. **Deploy your code.** Use the command below to deploy the code using `genezio`:
-
-```bash
-genezio deploy
-```
-
-6. **Test the code.** Run this command to test the code:
-
-```bash
-cd ../client && npm i && npm start
-```
+Check out our [Getting started](https://docs.genez.io/genezio-documentation/getting-started) documentation page to find out how to start using Genezio.
 
 For more details about the `genezio` CLI commands, run `genezio help` or `genezio [command] help`.
 
@@ -157,12 +117,12 @@ The genezio CLI tool supports the commands shown in the following table:
 
 | Command                                                           | Description                                                                                                                                                                                                  |
 | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| genezio                                                           | Context aware, interactive command that simplifies project management. [Learn more]()                                                                                                                        |
-| genezio create fullstack `<backend-template> <frontend-template>` | Create a new fullstack project based on two templates: one backend and one frontend. [Learn more]()                                                                                                          |
-| genezio create backend `<template>`                               | Create a new backend project based on a template. [Learn more]()                                                                                                                                             |
-| genezio create frontend `<template>`                              | Create a new frontend project based on a template. [Learn more]()                                                                                                                                            |
-| genezio create templates [filter]                                 | Lists all the available starting templates. [Learn more]()                                                                                                                                                   |
-| genezio addClass `<class-path> [<class-type>]`                    | Adds a new class to the 'genezio.yaml' file. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/addclass)                                                                        |
+| genezio                                                           | Context aware, interactive command that simplifies project management. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/genezio)                                               |
+| genezio create fullstack `<backend-template> <frontend-template>` | Create a new fullstack project based on two templates: one backend and one frontend. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/genezio-create)                          |
+| genezio create backend `<template>`                               | Create a new backend project based on a template. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/genezio-create)                                                             |
+| genezio create frontend `<template>`                              | Create a new frontend project based on a template. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/genezio-create)                                                            |
+| genezio create templates [filter]                                 | Lists all the available starting templates. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/genezio-create)                                                                   |
+| genezio addClass `<class-path> [<class-type>]`                    | Adds a new class to the 'genezio.yaml' file. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/genezio-addclass)                                                                |
 | genezio generateSdk                                               | Generates an SDK corresponding to a deployed project. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/generatesdk)                                                            |
 | genezio local --port `<port>`                                     | Runs a local environment with your project for testing purposes. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/local)                                                       |
 | genezio deploy                                                    | Deploys your project to the genezio infrastructure. [Learn more](https://docs.genez.io/genezio-documentation/cli-tool/cli-commands/deploy)                                                                   |
