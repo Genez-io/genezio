@@ -52,11 +52,10 @@ export async function askCreateOptions(): Promise<GenezioCreateOptions> {
                     name: "Backend",
                     value: "backend",
                 },
-                // TODO: Enable after adding a static frontend template
-                // {
-                //     name: "Frontend",
-                //     value: "frontend",
-                // },
+                {
+                    name: "Frontend",
+                    value: "frontend",
+                },
             ],
         },
     ]);
@@ -104,7 +103,10 @@ export async function askCreateOptions(): Promise<GenezioCreateOptions> {
             };
         }
         case "frontend": {
-            const { id: templateId } = await chooseTemplate(templateList, "Frontend");
+            const { id: templateId } = await chooseTemplate(
+                templateList.filter((template) => template.compatibilityMapping === null),
+                "Frontend",
+            );
 
             return {
                 name: projectName,
