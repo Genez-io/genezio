@@ -1,30 +1,22 @@
-import { fileExists, writeToFile } from "../src/utils/file";
-import { getProjectConfiguration } from "../src/utils/configuration";
+import { vi, describe, beforeEach, test, expect } from "vitest";
+import { fileExists, writeToFile } from "../../src/utils/file";
+import { getProjectConfiguration } from "../../src/utils/configuration";
 import {
     Language,
     TriggerType,
     YamlClassConfiguration,
     YamlProjectConfiguration,
     YamlSdkConfiguration,
-} from "../src/models/yamlProjectConfiguration";
-import { addClassCommand } from "../src/commands/addClass";
-import { CloudProviderIdentifier } from "../src/models/cloudProviderIdentifier";
+} from "../../src/models/yamlProjectConfiguration";
+import { addClassCommand } from "../../src/commands/addClass";
+import { CloudProviderIdentifier } from "../../src/models/cloudProviderIdentifier";
 
-jest.mock("../src/utils/file");
-jest.mock("../src/utils/configuration");
-jest.mock("../src/utils/prompt");
-jest.mock("loglevel", () => {
-    return {
-        ...jest.requireActual("loglevel"),
-        debug: jest.fn(),
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-    };
-});
+vi.mock("../../src/utils/file");
+vi.mock("../../src/utils/configuration");
+vi.mock("../../src/utils/prompt");
 
 beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 });
 
 describe("addClassCommand", () => {
@@ -56,15 +48,13 @@ describe("addClassCommand", () => {
     });
 
     test("throws if class already exists", async () => {
-        const mockedFileExists = jest.mocked(fileExists, { shallow: true });
+        const mockedFileExists = vi.mocked(fileExists);
         mockedFileExists.mockResolvedValue(true);
 
-        const mockedWriteToFile = jest.mocked(writeToFile, { shallow: true });
+        const mockedWriteToFile = vi.mocked(writeToFile);
         mockedWriteToFile.mockResolvedValue();
 
-        const mockedGetProjectConfiguration = jest.mocked(getProjectConfiguration, {
-            shallow: true,
-        });
+        const mockedGetProjectConfiguration = vi.mocked(getProjectConfiguration);
         const projectConfiguration = new YamlProjectConfiguration(
             "test",
             "us-east-1",
@@ -75,8 +65,8 @@ describe("addClassCommand", () => {
                 new YamlClassConfiguration("./test.js", TriggerType.jsonrpc, Language.js, []),
             ] as YamlClassConfiguration[],
         );
-        projectConfiguration.addClass = jest.fn();
-        projectConfiguration.writeToFile = jest.fn();
+        projectConfiguration.addClass = vi.fn();
+        projectConfiguration.writeToFile = vi.fn();
         mockedGetProjectConfiguration.mockResolvedValue(projectConfiguration);
 
         await expect(addClassCommand("./test.js", "jsonrpc")).rejects.toThrowError(
@@ -90,15 +80,13 @@ describe("addClassCommand", () => {
     });
 
     test("create class with non existing file", async () => {
-        const mockedFileExists = jest.mocked(fileExists, { shallow: true });
+        const mockedFileExists = vi.mocked(fileExists);
         mockedFileExists.mockResolvedValue(false);
 
-        const mockedWriteToFile = jest.mocked(writeToFile, { shallow: true });
+        const mockedWriteToFile = vi.mocked(writeToFile);
         mockedWriteToFile.mockResolvedValue();
 
-        const mockedGetProjectConfiguration = jest.mocked(getProjectConfiguration, {
-            shallow: true,
-        });
+        const mockedGetProjectConfiguration = vi.mocked(getProjectConfiguration);
         const projectConfiguration = new YamlProjectConfiguration(
             "test",
             "us-east-1",
@@ -107,8 +95,8 @@ describe("addClassCommand", () => {
             CloudProviderIdentifier.GENEZIO,
             [],
         );
-        projectConfiguration.addClass = jest.fn();
-        projectConfiguration.writeToFile = jest.fn();
+        projectConfiguration.addClass = vi.fn();
+        projectConfiguration.writeToFile = vi.fn();
         mockedGetProjectConfiguration.mockResolvedValue(projectConfiguration);
 
         await expect(addClassCommand("./test.js", "jsonrpc")).resolves.toBeUndefined();
@@ -118,15 +106,13 @@ describe("addClassCommand", () => {
     });
 
     test("create class with existing file", async () => {
-        const mockedFileExists = jest.mocked(fileExists, { shallow: true });
+        const mockedFileExists = vi.mocked(fileExists);
         mockedFileExists.mockResolvedValue(true);
 
-        const mockedWriteToFile = jest.mocked(writeToFile, { shallow: true });
+        const mockedWriteToFile = vi.mocked(writeToFile);
         mockedWriteToFile.mockResolvedValue();
 
-        const mockedGetProjectConfiguration = jest.mocked(getProjectConfiguration, {
-            shallow: true,
-        });
+        const mockedGetProjectConfiguration = vi.mocked(getProjectConfiguration);
         const projectConfiguration = new YamlProjectConfiguration(
             "test",
             "us-east-1",
@@ -135,8 +121,8 @@ describe("addClassCommand", () => {
             CloudProviderIdentifier.GENEZIO,
             [],
         );
-        projectConfiguration.addClass = jest.fn();
-        projectConfiguration.writeToFile = jest.fn();
+        projectConfiguration.addClass = vi.fn();
+        projectConfiguration.writeToFile = vi.fn();
         mockedGetProjectConfiguration.mockResolvedValue(projectConfiguration);
 
         await expect(addClassCommand("./test.js", "jsonrpc")).resolves.toBeUndefined();

@@ -13,7 +13,7 @@ import { GENEZIO_NOT_AUTH_ERROR_MSG, GENEZIO_NO_CLASSES_FOUND } from "../errors.
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
-import { setupScopedRepositoryAuth, getAuthToken } from "../utils/accounts.js";
+import { isLoggedIn } from "../utils/accounts.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
 import { getNoMethodClasses } from "../utils/getNoMethodClasses.js";
 import {
@@ -51,6 +51,7 @@ import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { interruptLocalProcesses } from "../utils/localInterrupt.js";
 import { Status } from "../requests/models.js";
+import { loginCommand } from "./login.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -74,12 +75,10 @@ export async function deployCommand(options: GenezioDeployOptions) {
 
     // check if user is logged in
     if (configuration.cloudProvider !== CloudProviderIdentifier.SELF_HOSTED_AWS) {
-        const authToken = await getAuthToken();
-        if (!authToken) {
-            log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-            exit(1);
+        if (!(await isLoggedIn())) {
+            debugLogger.debug("No auth token found. Starting automatic authentication...");
+            await loginCommand("", false);
         }
-        await setupScopedRepositoryAuth(authToken);
     }
 
     const cloudAdapter = getCloudProvider(
@@ -215,7 +214,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
             }
             exit(1);
         }
-        log.info("\x1b[36m%s\x1b[0m", `Frontend successfully deployed at ${url}.`);
+        log.info("\x1b[36m%s\x1b[0m", `Frontend successfully deployed at ${url}`);
 
         await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_END,
@@ -400,6 +399,22 @@ export async function deployClasses(
 
     printAdaptiveLog("Bundling your code", "end");
 
+    projectConfiguration.astSummary.classes = projectConfiguration.astSummary.classes.map((c) => {
+        // remove cwd from path and the extension
+        return {
+            ...c,
+            path: path.relative(process.cwd(), c.path).replace(/\.[^/.]+$/, ""),
+        };
+    });
+
+    projectConfiguration.classes = projectConfiguration.classes.map((c) => {
+        // remove cwd from path and the extension
+        return {
+            ...c,
+            path: path.relative(process.cwd(), c.path).replace(/\.[^/.]+$/, ""),
+        };
+    });
+
     const result = await cloudAdapter.deploy(bundlerResultArray, projectConfiguration, {
         stage: stage,
     });
@@ -413,23 +428,18 @@ export async function deployClasses(
     );
 
     if (configuration.sdk) {
-        await writeSdkToDisk(sdkResponse, configuration.sdk.language, configuration.sdk.path);
+        await writeSdkToDisk(sdkResponse, configuration.sdk.path);
     } else if (configuration.language === Language.ts || configuration.language === Language.js) {
         const localPath = await createLocalTempFolder(
             `${projectConfiguration.name}-${projectConfiguration.region}`,
         );
-        await writeSdkToDisk(sdkResponse, configuration.language, path.join(localPath, "sdk"));
+        await writeSdkToDisk(sdkResponse, path.join(localPath, "sdk"));
         const packageJson: string = getNodeModulePackageJson(
             configuration.name,
             configuration.region,
             stage,
         );
-        await compileSdk(
-            path.join(localPath, "sdk"),
-            packageJson,
-            configuration.language,
-            GenezioCommand.deploy,
-        );
+        await compileSdk(path.join(localPath, "sdk"), packageJson, configuration.language, true);
     }
 
     reportSuccess(
@@ -570,14 +580,18 @@ export async function deployFrontend(
         const frontendPath = configuration.frontend?.path;
         if (!(await fileExists(frontendPath))) {
             throw new Error(
-                `The build folder does not exist. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
+                `The build folder ${colors.cyan(
+                    `${frontendPath}`,
+                )} does not exist. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
             );
         }
 
         // check if the build folder is empty
         if (await isDirectoryEmpty(frontendPath)) {
             throw new Error(
-                `The build folder is empty. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
+                `The build folder ${colors.cyan(
+                    `${frontendPath}`,
+                )} is empty. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
             );
         }
 

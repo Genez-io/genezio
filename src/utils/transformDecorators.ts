@@ -17,6 +17,7 @@ export default async function (filePath: string): Promise<string> {
             stripDecorator,
         ],
         filename: filePath,
+        sourceMaps: "inline",
     });
 
     if (!babelOutput?.code) {

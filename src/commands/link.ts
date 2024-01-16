@@ -4,6 +4,7 @@ import {
     deleteAllLinkPaths,
     setLinkPathForProject,
 } from "../utils/linkDatabase.js";
+import log from "loglevel";
 
 export async function linkCommand(
     projectName: string | undefined,
@@ -19,6 +20,8 @@ export async function linkCommand(
     }
 
     await setLinkPathForProject(name, region, cwd);
+
+    log.info("Successfully linked the path to your genezio project.");
 }
 
 export async function unlinkCommand(
@@ -39,4 +42,10 @@ export async function unlinkCommand(
     }
 
     await deleteLinkPathForProject(name, region);
+
+    if (unlinkAll) {
+        log.info("Successfully unlinked all paths to your genezio projects.");
+        return;
+    }
+    log.info("Successfully unlinked the path to your genezio project.");
 }

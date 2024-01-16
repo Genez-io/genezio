@@ -3,7 +3,7 @@ import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
 import { AxiosResponse } from "axios";
-import { Status } from "./models.js";
+import { StatusOk } from "./models.js";
 
 export async function getPresignedURL(
     region = "us-east-1",
@@ -30,7 +30,7 @@ export async function getPresignedURL(
         region: region,
     });
 
-    const response: AxiosResponse<Status<{ presignedURL: string | undefined }>> = await axios({
+    const response: AxiosResponse<StatusOk<{ presignedURL: string | undefined }>> = await axios({
         method: "GET",
         url: `${BACKEND_ENDPOINT}/core/deployment-url`,
         data: json,
@@ -41,10 +41,6 @@ export async function getPresignedURL(
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
     });
-
-    if (response.data.status === "error") {
-        throw new Error(response.data.error.message);
-    }
 
     return response.data.presignedURL;
 }

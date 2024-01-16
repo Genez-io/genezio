@@ -1,16 +1,15 @@
 import { AstSummaryClassResponse } from "../models/astSummary.js";
 
-export type Status<T = object> =
-    | {
-          status: "error";
-          error: {
-              code: number;
-              message: string;
-          };
-      }
-    | ({
-          status: "ok";
-      } & T);
+export type Status<T = object> = StatusError | StatusOk<T>;
+
+export type StatusOk<T = object> = { status: "ok" } & T;
+export type StatusError = {
+    status: "error";
+    error: {
+        code: number;
+        message: string;
+    };
+};
 
 export interface ProjectListElement {
     id: string;
@@ -57,4 +56,44 @@ export interface ObfuscatedEnvironmentVariable {
     name: string;
     lastAccessedAt: string;
     type: string;
+}
+
+export type TemplateCategory = "Backend" | "Frontend";
+
+export interface Template {
+    id: string;
+    name: string;
+    description: string;
+    category: TemplateCategory;
+    language: string;
+    repository: string;
+    compatibilityMapping: string | null;
+}
+
+export interface SubscriptionLimits {
+    maxProjects: number;
+    maxInvocations: number;
+    executionTime: number;
+    maxConcurrency: number;
+    maxCollaborators: number;
+}
+
+export interface OnboardingInfo {
+    onboardingComplete: boolean;
+    role: string;
+    programmingLanguages: string[];
+    experienceLevel: string;
+}
+
+export interface UserPayload {
+    id: string;
+    email: string;
+    name: string;
+    profileUrl: string;
+    subscriptionPlan: string;
+    subscriptionPrice: string;
+    memberSince: string;
+    subscriptionLimits: SubscriptionLimits;
+    customSubscription: boolean;
+    onboardingInfo: OnboardingInfo;
 }

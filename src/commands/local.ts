@@ -159,6 +159,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     if (yamlProjectConfiguration.scripts?.preStartLocal) {
         log.info("Running preStartLocal script...");
         log.info(yamlProjectConfiguration.scripts.preStartLocal);
+
         const success = await runNewProcess(yamlProjectConfiguration.scripts.preStartLocal);
         if (!success) {
             await GenezioTelemetry.sendEvent({
@@ -314,22 +315,22 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`,
                 })),
             );
-            await writeSdkToDisk(sdk, sdkConfiguration.language, sdkConfiguration.path);
+            await writeSdkToDisk(sdk, sdkConfiguration.path);
             if (
                 !yamlProjectConfiguration.sdk &&
                 (sdkConfiguration.language === Language.ts ||
                     sdkConfiguration.language === Language.js)
             ) {
                 // compile the sdk
-                const packajeJson: string = getNodeModulePackageJsonLocal(
+                const packageJson: string = getNodeModulePackageJsonLocal(
                     projectConfiguration.name,
                     projectConfiguration.region,
                 );
                 await compileSdk(
                     sdkConfiguration.path,
-                    packajeJson,
+                    packageJson,
                     sdkConfiguration.language,
-                    GenezioCommand.local,
+                    false,
                 );
 
                 await writeSdkToNodeModules(yamlProjectConfiguration, sdkConfiguration.path);
@@ -472,12 +473,6 @@ async function writeSdkToNodeModules(
         );
         const from = path.resolve(originSdkPath, "..", "genezio-sdk");
         for (const linkPath of linkPaths) {
-            const toTemp = path.join(
-                linkPath,
-                "node_modules",
-                "@genezio-sdk",
-                `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}-temp`,
-            );
             const toFinal = path.join(
                 linkPath,
                 "node_modules",

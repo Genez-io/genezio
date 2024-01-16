@@ -9,6 +9,7 @@ import { exit } from "process";
 import DartAstGenerator from "./astGenerator/DartAstGenerator.js";
 import { debugLogger } from "../utils/logging.js";
 import { supportedExtensions } from "../utils/languages.js";
+import zod from "zod";
 
 interface AstGeneratorPlugin {
     AstGenerator: new () => AstGeneratorInterface;
@@ -45,14 +46,11 @@ export async function generateAst(
                 }
 
                 // Check type of plugin at runtime
-                // TODO: We could use zod (https://zod.dev/)
-                if (
-                    typeof dynamicPlugin.AstGenerator !== "function" ||
-                    !Array.isArray(dynamicPlugin.supportedExtensions) ||
-                    dynamicPlugin.supportedExtensions
-                        .map((lang: string) => typeof lang !== "string")
-                        .includes(true)
-                ) {
+                const pluginSchema = zod.object({
+                    AstGenerator: zod.function(),
+                    supportedExtensions: zod.array(zod.string()),
+                });
+                if (pluginSchema.safeParse(dynamicPlugin).success === false) {
                     log.error(
                         `Plugin(${plugin}) is not a valid AST generator plugin. It must export a AstGenerator class and supportedExtensions array.`,
                     );

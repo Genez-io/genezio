@@ -4,7 +4,7 @@ import { BACKEND_ENDPOINT } from "../constants.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import { AxiosResponse } from "axios";
 import version from "../utils/version.js";
-import { Status } from "./models.js";
+import { StatusOk } from "./models.js";
 
 export async function getFrontendPresignedURL(
     subdomain: string,
@@ -29,21 +29,19 @@ export async function getFrontendPresignedURL(
         stage: stage,
     });
 
-    const response: AxiosResponse<Status<{ userId: string; presignedURL: string }>> = await axios({
-        method: "GET",
-        url: `${BACKEND_ENDPOINT}/core/frontend-deployment-url`,
-        data: json,
-        headers: {
-            Authorization: `Bearer ${authToken}`,
-            "Accept-Version": `genezio-cli/${version}`,
+    const response: AxiosResponse<StatusOk<{ userId: string; presignedURL: string }>> = await axios(
+        {
+            method: "GET",
+            url: `${BACKEND_ENDPOINT}/core/frontend-deployment-url`,
+            data: json,
+            headers: {
+                Authorization: `Bearer ${authToken}`,
+                "Accept-Version": `genezio-cli/${version}`,
+            },
+            maxContentLength: Infinity,
+            maxBodyLength: Infinity,
         },
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity,
-    });
-
-    if (response.data.status === "error") {
-        throw new Error(response.data.error.message);
-    }
+    );
 
     return response.data;
 }

@@ -20,7 +20,6 @@ import {
     ModelView,
     IndexModel,
     MapType,
-    SdkVersion,
 } from "../../models/genezioModels.js";
 import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 import { nodeSdkTs } from "../templates/nodeSdkTs.js";
@@ -158,10 +157,7 @@ export { Remote };
 `;
 
 class SdkGenerator implements SdkGeneratorInterface {
-    async generateSdk(
-        sdkGeneratorInput: SdkGeneratorInput,
-        sdkVersion: SdkVersion,
-    ): Promise<SdkGeneratorOutput> {
+    async generateSdk(sdkGeneratorInput: SdkGeneratorInput): Promise<SdkGeneratorOutput> {
         const generateSdkOutput: SdkGeneratorOutput = {
             files: [],
         };
@@ -355,22 +351,19 @@ class SdkGenerator implements SdkGeneratorInterface {
             data: nodeSdkTs.replace("%%%url%%%", "undefined"),
         });
 
-        // generate index.ts
-        if (sdkVersion === SdkVersion.NEW_SDK) {
-            if (indexModel.exports.length > 0) {
-                indexModel.exports[indexModel.exports.length - 1].last = true;
-            }
-            for (const importStatement of indexModel.imports) {
-                if (importStatement.models.length > 0) {
-                    importStatement.models[importStatement.models.length - 1].last = true;
-                }
-            }
-            generateSdkOutput.files.push({
-                className: "index.ts",
-                path: "index.ts",
-                data: Mustache.render(indexTemplate, indexModel),
-            });
+        if (indexModel.exports.length > 0) {
+            indexModel.exports[indexModel.exports.length - 1].last = true;
         }
+        for (const importStatement of indexModel.imports) {
+            if (importStatement.models.length > 0) {
+                importStatement.models[importStatement.models.length - 1].last = true;
+            }
+        }
+        generateSdkOutput.files.push({
+            className: "index.ts",
+            path: "index.ts",
+            data: Mustache.render(indexTemplate, indexModel),
+        });
 
         return generateSdkOutput;
     }

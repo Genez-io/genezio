@@ -8,11 +8,11 @@ import {
     SdkGeneratorInput,
     SdkGeneratorInterface,
     SdkGeneratorOutput,
-    SdkVersion,
 } from "../models/genezioModels.js";
 import log from "loglevel";
 import { exit } from "process";
 import { debugLogger } from "../utils/logging.js";
+import zod from "zod";
 
 interface SdkGeneratorPlugin {
     SdkGenerator: new () => SdkGeneratorInterface;
@@ -30,7 +30,6 @@ interface SdkGeneratorPlugin {
 export async function generateSdk(
     sdkGeneratorInput: SdkGeneratorInput,
     plugins: string[] | undefined,
-    sdkVersion: SdkVersion,
 ): Promise<SdkGeneratorOutput> {
     let pluginsImported: SdkGeneratorPlugin[] = [];
 
@@ -49,14 +48,11 @@ export async function generateSdk(
                 }
 
                 // Check type of plugin at runtime
-                // TODO: We could use zod (https://zod.dev/)
-                if (
-                    typeof dynamicPlugin.SdkGenerator !== "function" ||
-                    !Array.isArray(dynamicPlugin.supportedLanguages) ||
-                    dynamicPlugin.supportedLanguages
-                        .map((lang: string) => typeof lang !== "string")
-                        .includes(true)
-                ) {
+                const pluginSchema = zod.object({
+                    SdkGenerator: zod.function(),
+                    supportedExtensions: zod.array(zod.string()),
+                });
+                if (pluginSchema.safeParse(dynamicPlugin).success === false) {
                     log.error(
                         `Plugin(${plugin}) is not a valid SDK generator plugin. It must export a SdkGenerator class and supportedLanguages array.`,
                     );
@@ -90,5 +86,5 @@ export async function generateSdk(
 
     const sdkGeneratorClass = new sdkGeneratorElem.SdkGenerator();
 
-    return await sdkGeneratorClass.generateSdk(sdkGeneratorInput, sdkVersion);
+    return await sdkGeneratorClass.generateSdk(sdkGeneratorInput);
 }

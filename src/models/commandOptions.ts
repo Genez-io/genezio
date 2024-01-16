@@ -1,3 +1,6 @@
+import { regions } from "../utils/configs.js";
+import { Language } from "./yamlProjectConfiguration.js";
+
 export interface BaseOptions {
     logLevel?: string;
 }
@@ -27,12 +30,25 @@ export interface GenezioDeleteOptions extends BaseOptions {
     force: boolean;
 }
 
+export enum SourceType {
+    LOCAL = "local",
+    REMOTE = "remote",
+}
+
+export enum SdkType {
+    PACKAGE = "package",
+    CLASSIC = "classic",
+}
+
 export interface GenezioSdkOptions extends BaseOptions {
-    source: string;
-    language: string;
-    path: string;
+    source: SourceType;
+    type: SdkType;
+    config: string;
+    language: Language;
+    output: string;
     stage: string;
     region: string;
+    url?: string;
 }
 
 export interface GenezioLinkOptions extends BaseOptions {
@@ -45,3 +61,15 @@ export interface GenezioUnlinkOptions extends BaseOptions {
     projectName?: string;
     region?: string;
 }
+
+export interface GenezioCreateBaseOptions extends BaseOptions {
+    name: string;
+    region: (typeof regions)[number]["value"];
+}
+
+export type GenezioCreateOptions = GenezioCreateBaseOptions &
+    (
+        | { backend: string }
+        | { frontend: string }
+        | { fullstack: [string, string]; structure: "monorepo" | "multirepo" }
+    );

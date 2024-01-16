@@ -1,4 +1,4 @@
-import { describe, expect, test } from "@jest/globals";
+import { describe, test, expect } from "vitest";
 import { YamlProjectConfiguration, TriggerType } from "../src/models/yamlProjectConfiguration";
 import { rectifyCronString } from "../src/utils/rectifyCronString";
 
@@ -7,7 +7,7 @@ describe("project configuration", () => {
         await expect(async () => {
             const yaml = {};
             await YamlProjectConfiguration.create(yaml);
-        }).rejects.toThrowError("The name property is missing from the configuration file.");
+        }).rejects.toThrowError("Field `name`:\n\t- Required");
     });
 
     test("invalid region should throw error", async () => {
@@ -29,13 +29,12 @@ describe("project configuration", () => {
                 ],
             };
             await YamlProjectConfiguration.create(yaml);
-        }).rejects.toThrowError("The region is invalid. Please use a valid region.");
+        }).rejects.toThrowError("Field `region`:\n\t- Invalid enum value.");
     });
 
     test("missing region should assign default to us-east-1", async () => {
         const yaml = {
             name: "test",
-            region: "",
             sdk: {
                 path: "/",
                 language: "js",
