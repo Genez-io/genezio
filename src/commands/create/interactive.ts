@@ -139,7 +139,7 @@ async function chooseTemplate(
                 .filter((template) => template.category === category)
                 .map((template) => template.language),
         ),
-    ];
+    ].sort(languageRanking);
 
     if (supportedLanguages.length === 0) {
         throw new Error(
@@ -162,9 +162,11 @@ async function chooseTemplate(
         },
     ]);
 
-    const templatesForLanguage = templateList.filter(
-        (template) => template.category === category && template.language === selectedLanguage,
-    );
+    const templatesForLanguage = templateList
+        .filter(
+            (template) => template.category === category && template.language === selectedLanguage,
+        )
+        .sort(projectRanking);
 
     const { selectedTemplate }: { selectedTemplate: Template } = await inquirer.prompt([
         {
@@ -198,7 +200,28 @@ export function colorLanguage(languageName: string): string {
             return colors.cyan(languageName);
         case "Kotlin":
             return colors.magenta(languageName);
+        case "HTML":
+            return colors.red(languageName);
         default:
             return languageName;
     }
+}
+
+function languageRanking(t1: string, t2: string) {
+    const ranking = ["TypeScript", "JavaScript", "HTML", "Go", "Dart", "Kotlin", "Python"];
+
+    return ranking.indexOf(t1) - ranking.indexOf(t2);
+}
+
+function projectRanking(t1: Template, t2: Template) {
+    const ranking = ["weather", "blank"];
+
+    const rank = (template: Template) => {
+        for (const [index, projectType] of ranking.entries()) {
+            if (template.id.includes(projectType)) return index;
+        }
+        return Infinity;
+    };
+
+    return rank(t1) - rank(t2);
 }
