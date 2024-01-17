@@ -15,6 +15,7 @@ import { logoutCommand } from "./commands/logout.js";
 import { lsCommand } from "./commands/list.js";
 import {
     BaseOptions,
+    GenezioBundleOptions,
     GenezioCreateBaseOptions,
     GenezioCreateOptions,
     GenezioDeleteOptions,
@@ -36,6 +37,15 @@ import colors from "colors";
 import { regions } from "./utils/configs.js";
 import { createCommand } from "./commands/create/create.js";
 import { listCreateTemplates } from "./commands/create/list.js";
+import { sdkGeneratorApiHandler } from "./generateSdk/generateSdkApi.js";
+import { SdkGeneratorResponse } from "./models/sdkGeneratorResponse.js";
+import { bundle } from "./bundlers/utils.js";
+import { ProjectConfiguration } from "./models/projectConfiguration.js";
+import fsExtra from "fs-extra";
+import { mkdir, mkdirSync } from "fs";
+import path from "path";
+import { writeToFile, zipDirectory } from "./utils/file.js";
+import { bundleCommand } from "./commands/bundle.js";
 
 const program = new Command();
 
@@ -590,6 +600,36 @@ program
         });
 
         await logOutdatedVersion();
+    });
+
+program
+    .command("bundleClass", { hidden: true })
+    .option(
+        "--logLevel <logLevel>",
+        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
+    )
+    .option(
+        "--className <className>",
+        "The name of the class that needs to be bundled.",
+    )
+    .option(
+        "--cloudAdapter <cloudAdapter>",
+        "The cloud adapter that will be used.",
+    )
+    .option(
+        "--version <version>",
+        "The version of the class.",
+    )
+    .option(
+        "--output <output>",
+        "The output path of the bundled class.",
+    )
+    .action(async (options: GenezioBundleOptions) => {
+        setDebuggingLoggerLogLevel(options.logLevel);
+        await bundleCommand(options).catch(async (error) => {
+            log.error(error.message);
+            exit(1);
+        });
     });
 
 program

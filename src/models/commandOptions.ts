@@ -5,6 +5,11 @@ export interface BaseOptions {
     logLevel?: string;
 }
 
+export interface GenezioBundleOptions extends BaseOptions {
+    className: string;
+    output: string;
+}
+
 export interface GenezioLocalOptions extends BaseOptions {
     port: number;
     installDeps: boolean;
