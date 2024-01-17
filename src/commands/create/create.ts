@@ -66,8 +66,9 @@ export async function createCommand(options: GenezioCreateOptions) {
             );
 
             if (!template) {
-                // TOOD: Add a way to list available templates and tell the user about this command
-                throw new Error("Could not find backend template");
+                throw new Error(
+                    `Could not find '${options.backend}' backend template. Use \`genezio create templates\` to list available templates.`,
+                );
             }
 
             const projectInfo: ProjectInfo = {
@@ -87,8 +88,9 @@ export async function createCommand(options: GenezioCreateOptions) {
             );
 
             if (!template) {
-                // TOOD: Add a way to list available templates and tell the user about this command
-                throw new Error("Could not find frontend template");
+                throw new Error(
+                    `Could not find '${options.frontend}' frontend template. Use \`genezio create templates\` to list available templates.`,
+                );
             }
 
             if (template.compatibilityMapping) {
@@ -387,8 +389,9 @@ async function findFullstackTemplates(templates: [string, string]): Promise<[Tem
         throw new Error("Fullstack project requires two templates");
     }
 
-    let [backendTemplateId, frontendTemplateId] = templates;
     const templateList = await getNewProjectTemplateList();
+
+    let [frontendTemplateId, backendTemplateId] = templates;
 
     let backendTemplate = templateList.find(
         (template) => template.id === backendTemplateId && template.category === "Backend",
@@ -397,34 +400,31 @@ async function findFullstackTemplates(templates: [string, string]): Promise<[Tem
         (template) => template.id === frontendTemplateId && template.category === "Frontend",
     );
 
-    if (backendTemplate && frontendTemplate) {
-        if (backendTemplate.compatibilityMapping !== frontendTemplate.compatibilityMapping) {
-            // TOOD: Add a way to list available templates and tell the user about this command
-            throw new Error(
-                "The provided templates are not compatible. Please provide two compatible templates",
-            );
-        }
+    // If the user inverted the order of the templates, try again
+    if (!backendTemplate && !frontendTemplate) {
+        [backendTemplateId, frontendTemplateId] = templates;
 
-        return [backendTemplate, frontendTemplate];
+        backendTemplate = templateList.find(
+            (template) => template.id === backendTemplateId && template.category === "Backend",
+        );
+        frontendTemplate = templateList.find(
+            (template) => template.id === frontendTemplateId && template.category === "Frontend",
+        );
     }
 
-    [frontendTemplateId, backendTemplateId] = templates;
-    backendTemplate = templateList.find(
-        (template) => template.id === backendTemplateId && template.category === "Backend",
-    );
-    frontendTemplate = templateList.find(
-        (template) => template.id === frontendTemplateId && template.category === "Frontend",
-    );
-
-    if (!backendTemplate || !frontendTemplate) {
-        // TOOD: Add a way to list available templates and tell the user about this command
+    if (!backendTemplate) {
         throw new Error(
-            "Could not find templates. Provide two templates, one for the frontend and one for the backend",
+            `Could not find '${backendTemplateId}' template. Use \`genezio create templates\` to list available templates.`,
+        );
+    }
+    if (!frontendTemplate) {
+        throw new Error(
+            `Could not find '${frontendTemplate}' template. Use \`genezio create templates\` to list available templates.`,
         );
     }
     if (backendTemplate.compatibilityMapping !== frontendTemplate.compatibilityMapping) {
         throw new Error(
-            "The provided templates are not compatible. Please provide two compatible templates",
+            `The provided templates are not compatible. Use \`genezio create templates ${backendTemplateId}\` to check template compatibility.`,
         );
     }
 
