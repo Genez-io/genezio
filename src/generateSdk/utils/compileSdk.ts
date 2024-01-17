@@ -3,7 +3,8 @@ import { Language } from "../../models/yamlProjectConfiguration.js";
 import path from "path";
 import ts from "typescript";
 import { Worker } from "worker_threads";
-import { writeToFile } from "../../utils/file.js";
+import { deleteFolder, writeToFile } from "../../utils/file.js";
+import fs from "fs";
 import packageManager from "../../packageManagers/packageManager.js";
 
 const compilerWorkerScript = `const { parentPort, workerData } = require("worker_threads");
@@ -37,6 +38,12 @@ export async function compileSdk(
     publish: boolean,
     outDir = "../genezio-sdk",
 ) {
+    const genezioSdkPath = path.resolve(sdkPath, outDir);
+    // delete the old sdk
+    if (fs.existsSync(genezioSdkPath)) {
+        await deleteFolder(genezioSdkPath);
+    }
+    fs.mkdirSync(genezioSdkPath, { recursive: true });
     // compile the sdk to cjs and esm using worker threads
     const workers = [];
     const require = createRequire(import.meta.url);
