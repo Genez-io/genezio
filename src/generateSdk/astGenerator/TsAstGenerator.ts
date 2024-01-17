@@ -134,7 +134,7 @@ export class AstGenerator implements AstGeneratorInterface {
                 }
                 if (!typeAtLocationPath) {
                     throw new Error(
-                        `Type ${escapedText} is not supported by genezio. Take a look at the documentation to see the supported types. https://docs.genez.io/`,
+                        `Type ${escapedText} is not supported by genezio. Take a look at the documentation to see the supported types. https://docs.genezio.com/`,
                     );
                 }
                 const pathFile = path

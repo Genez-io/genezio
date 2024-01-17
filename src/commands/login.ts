@@ -95,5 +95,5 @@ function loginSuccessMsg() {
     //         "genezio deploy",
     //     )}`,
     // );
-    // log.info(`\n${colors.green("5. Documentation:")} ${colors.magenta("https://docs.genez.io")}`);
+    // log.info(`\n${colors.green("5. Documentation:")} ${colors.magenta("https://docs.genezio.com")}`);
 }
