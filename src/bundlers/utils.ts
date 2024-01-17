@@ -1,7 +1,6 @@
 import log from "loglevel";
 import { ClassConfiguration } from "../models/projectConfiguration.js";
 import { fileExists } from "../utils/file.js";
-import { printAdaptiveLog } from "../utils/logging.js";
 import { BundlerInterface, BundlerOutput } from "./bundler.interface.js";
 import { TsRequiredDepsBundler } from "./node/typescriptRequiredDepsBundler.js";
 import { TypeCheckerBundler } from "./node/typeCheckerBundler.js";
@@ -15,10 +14,13 @@ import { createTemporaryFolder } from "../utils/file.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
 import { Program } from "../models/genezioModels.js";
 
-
-export async function bundle(projectConfiguration: ProjectConfiguration, ast: Program, element: ClassConfiguration, installDeps: boolean = true): Promise<BundlerOutput> {
+export async function bundle(
+    projectConfiguration: ProjectConfiguration,
+    ast: Program,
+    element: ClassConfiguration,
+    installDeps: boolean = true,
+): Promise<BundlerOutput> {
     if (!(await fileExists(element.path))) {
-        printAdaptiveLog("Bundling your code and uploading it", "error");
         log.error(`\`${element.path}\` file does not exist at the indicated path.`);
 
         throw new Error(`\`${element.path}\` file does not exist at the indicated path.`);
@@ -56,7 +58,7 @@ export async function bundle(projectConfiguration: ProjectConfiguration, ast: Pr
         }
         default:
             log.error(`Unsupported ${element.language}`);
-        throw new Error(`Unsupported ${element.language}`);
+            throw new Error(`Unsupported ${element.language}`);
     }
 
     debugLogger.debug(`The bundling process has started for file ${element.path}...`);
@@ -75,5 +77,5 @@ export async function bundle(projectConfiguration: ProjectConfiguration, ast: Pr
         },
     });
 
-    return output
+    return output;
 }
