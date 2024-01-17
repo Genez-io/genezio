@@ -14,6 +14,7 @@ import log from "loglevel";
 import { platform } from "os";
 import { GenezioCreateOptions } from "../../models/commandOptions.js";
 import { debugLogger } from "../../utils/logging.js";
+import packageManager from "../../packageManagers/packageManager.js";
 
 type ProjectInfo = {
     name: string;
@@ -37,7 +38,6 @@ export async function createCommand(options: GenezioCreateOptions) {
     checkProjectName(options.name);
     const projectPath = path.join(process.cwd(), options.name);
 
-    // Create the new project in a virtual filesystem (memfs)
     switch (true) {
         case "fullstack" in options: {
             const [backendTemplate, frontendTemplate] = await findFullstackTemplates(
@@ -57,7 +57,38 @@ export async function createCommand(options: GenezioCreateOptions) {
                 projectInfo.backendTemplate.repository + "\n",
                 projectInfo.frontendTemplate.repository,
             );
+            // Create the new project in a virtual filesystem (memfs)
             await createFullstackProject(fs, projectInfo);
+
+            // Copy from memfs to local filesystem
+            copyRecursiveToNativeFs(fs, "/", projectPath, { keepDotGit: true, renameReadme: true });
+
+            // Install template packages
+            await installTemplatePackages(
+                projectInfo.backendTemplate.language,
+                path.join(projectPath, "server"),
+            );
+            await installTemplatePackages(
+                projectInfo.frontendTemplate.language,
+                path.join(projectPath, "client"),
+            );
+
+            // Print success message
+            switch (options.structure) {
+                case "monorepo":
+                    log.info(SUCCESSFULL_CREATE_MONOREPO(projectPath, options.name));
+                    break;
+                case "multirepo":
+                    // Genezio link inside the client project
+                    await setLinkPathForProject(
+                        options.name,
+                        options.region,
+                        path.join(projectPath, "client"),
+                    );
+                    log.info(SUCCESSFULL_CREATE_MULTIREPO(projectPath, options.name));
+                    break;
+            }
+
             break;
         }
         case "backend" in options: {
@@ -66,8 +97,9 @@ export async function createCommand(options: GenezioCreateOptions) {
             );
 
             if (!template) {
-                // TOOD: Add a way to list available templates and tell the user about this command
-                throw new Error("Could not find backend template");
+                throw new Error(
+                    `Could not find '${options.backend}' backend template. Use \`genezio create templates\` to list available templates.`,
+                );
             }
 
             const projectInfo: ProjectInfo = {
@@ -78,7 +110,17 @@ export async function createCommand(options: GenezioCreateOptions) {
             };
 
             debugLogger.debug("Creating backend project", projectInfo.template.repository);
+            // Create the new project in a virtual filesystem (memfs)
             await createProject(fs, projectInfo);
+
+            // Copy from memfs to local filesystem
+            copyRecursiveToNativeFs(fs, "/", projectPath, { keepDotGit: true, renameReadme: true });
+
+            // Install template packages
+            await installTemplatePackages(projectInfo.template.language, projectPath);
+
+            // Print success message
+            log.info(SUCCESSFULL_CREATE_BACKEND(projectPath, options.name));
             break;
         }
         case "frontend" in options: {
@@ -87,8 +129,9 @@ export async function createCommand(options: GenezioCreateOptions) {
             );
 
             if (!template) {
-                // TOOD: Add a way to list available templates and tell the user about this command
-                throw new Error("Could not find frontend template");
+                throw new Error(
+                    `Could not find '${options.frontend}' frontend template. Use \`genezio create templates\` to list available templates.`,
+                );
             }
 
             if (template.compatibilityMapping) {
@@ -105,38 +148,22 @@ export async function createCommand(options: GenezioCreateOptions) {
             };
 
             debugLogger.debug("Creating frontend project", projectInfo.template.repository);
+            // Create the new project in a virtual filesystem (memfs)
             await createProject(fs, projectInfo);
-            break;
-        }
-    }
 
-    // Copy from memfs to local filesystem
-    copyRecursiveToNativeFs(fs, "/", projectPath, { keepDotGit: true, renameReadme: true });
+            // Copy from memfs to local filesystem
+            copyRecursiveToNativeFs(fs, "/", projectPath, { keepDotGit: true, renameReadme: true });
 
-    // Genezio link inside the client project
-    switch (true) {
-        case "frontend" in options:
+            // Install template packages
+            await installTemplatePackages(projectInfo.template.language, projectPath);
+
+            // Genezio link inside the client project
             await setLinkPathForProject(options.name, options.region, projectPath);
 
+            // Print success message
             log.info(SUCCESSFULL_CREATE_FRONTEND(projectPath, options.name));
             break;
-        case "fullstack" in options:
-            switch (options.structure) {
-                case "monorepo":
-                    log.info(SUCCESSFULL_CREATE_MONOREPO(projectPath, options.name));
-                    break;
-                case "multirepo":
-                    await setLinkPathForProject(
-                        options.name,
-                        options.region,
-                        path.join(projectPath, "client"),
-                    );
-                    log.info(SUCCESSFULL_CREATE_MULTIREPO(projectPath, options.name));
-                    break;
-            }
-            break;
-        case "backend" in options:
-            log.info(SUCCESSFULL_CREATE_BACKEND(projectPath, options.name));
+        }
     }
 }
 
@@ -387,8 +414,9 @@ async function findFullstackTemplates(templates: [string, string]): Promise<[Tem
         throw new Error("Fullstack project requires two templates");
     }
 
-    let [backendTemplateId, frontendTemplateId] = templates;
     const templateList = await getNewProjectTemplateList();
+
+    let [frontendTemplateId, backendTemplateId] = templates;
 
     let backendTemplate = templateList.find(
         (template) => template.id === backendTemplateId && template.category === "Backend",
@@ -397,38 +425,60 @@ async function findFullstackTemplates(templates: [string, string]): Promise<[Tem
         (template) => template.id === frontendTemplateId && template.category === "Frontend",
     );
 
-    if (backendTemplate && frontendTemplate) {
-        if (backendTemplate.compatibilityMapping !== frontendTemplate.compatibilityMapping) {
-            // TOOD: Add a way to list available templates and tell the user about this command
-            throw new Error(
-                "The provided templates are not compatible. Please provide two compatible templates",
-            );
-        }
+    // If the user inverted the order of the templates, try again
+    if (!backendTemplate && !frontendTemplate) {
+        [backendTemplateId, frontendTemplateId] = templates;
 
-        return [backendTemplate, frontendTemplate];
+        backendTemplate = templateList.find(
+            (template) => template.id === backendTemplateId && template.category === "Backend",
+        );
+        frontendTemplate = templateList.find(
+            (template) => template.id === frontendTemplateId && template.category === "Frontend",
+        );
     }
 
-    [frontendTemplateId, backendTemplateId] = templates;
-    backendTemplate = templateList.find(
-        (template) => template.id === backendTemplateId && template.category === "Backend",
-    );
-    frontendTemplate = templateList.find(
-        (template) => template.id === frontendTemplateId && template.category === "Frontend",
-    );
-
-    if (!backendTemplate || !frontendTemplate) {
-        // TOOD: Add a way to list available templates and tell the user about this command
+    if (!backendTemplate) {
         throw new Error(
-            "Could not find templates. Provide two templates, one for the frontend and one for the backend",
+            `Could not find '${backendTemplateId}' template. Use \`genezio create templates\` to list available templates.`,
+        );
+    }
+    if (!frontendTemplate) {
+        throw new Error(
+            `Could not find '${frontendTemplate}' template. Use \`genezio create templates\` to list available templates.`,
         );
     }
     if (backendTemplate.compatibilityMapping !== frontendTemplate.compatibilityMapping) {
         throw new Error(
-            "The provided templates are not compatible. Please provide two compatible templates",
+            `The provided templates are not compatible. Use \`genezio create templates ${backendTemplateId}\` to check template compatibility.`,
         );
     }
 
     return [backendTemplate, frontendTemplate];
+}
+
+/**
+ * Installs template packages based on the specified language.
+ *
+ * If the package manager fails to install the packages, the error is ignored
+ * because it's not considered critical.
+ *
+ * Note: It currently only supports JavaScript and TypeScript.
+ *
+ * @param language The programming language for which to install the packages.
+ * @param path The path where the packages should be installed.
+ */
+async function installTemplatePackages(language: string, path: string) {
+    try {
+        switch (language.toLowerCase()) {
+            case "typescript":
+            case "javascript":
+                await packageManager.install([], path);
+                break;
+        }
+    } catch {
+        // Fail silently
+        debugLogger.debug(`Failed to install ${language} template packages for ${path}`);
+    }
 }
 
 const SUCCESSFULL_CREATE_MONOREPO = (
