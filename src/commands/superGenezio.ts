@@ -27,7 +27,7 @@ export async function genezioCommand() {
                 message: colors.magenta("Genezio project detected. What would you like to do?"),
                 choices: [
                     {
-                        name: "Deploy your project frontend and backend (genezio deploy)",
+                        name: "Deploy your genezio project (genezio deploy)",
                         value: "deploy",
                     },
                     {
