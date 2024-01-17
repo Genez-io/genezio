@@ -28,6 +28,7 @@ import cron from "node-cron";
 import {
     createLocalTempFolder,
     createTemporaryFolder,
+    deleteFolder,
     fileExists,
     readUTF8File,
 } from "../utils/file.js";
@@ -448,9 +449,10 @@ async function writeSdkToNodeModules(
             if (fs.lstatSync(toFinal).isSymbolicLink()) {
                 fs.unlinkSync(toFinal);
             }
-        } else {
-            fs.mkdirSync(toFinal, { recursive: true });
+            await deleteFolder(toFinal);
         }
+        fs.mkdirSync(toFinal, { recursive: true });
+
         await fsExtra.copy(from, toFinal, { overwrite: true });
     };
 
