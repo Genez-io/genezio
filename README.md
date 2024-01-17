@@ -1,4 +1,4 @@
-<div align="center"> <a href="https://genez.io/">
+<div align="center"> <a href="https://genezio.com/">
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://github.com/genez-io/graphics/raw/HEAD/svg/Logo_Genezio_White.svg">
@@ -41,11 +41,11 @@
 
 </div>
 
-# What is [genezio](https://genez.io)?
+# What is [genezio](https://genezio.com)?
 
-[genezio](https://genez.io/) is a developer platform for full-stack developers or teams who need to build, run and maintain web, mobile or enterprise apps with a typesafe backend that scales automatically.
+[genezio](https://genezio.com/) is a developer platform for full-stack developers or teams who need to build, run and maintain web, mobile or enterprise apps with a typesafe backend that scales automatically.
 
-For more details on how to use `genezio`, you can check out the official [documentation](https://genez.io/docs).
+For more details on how to use `genezio`, you can check out the official [documentation](https://genezio.com/docs).
 
 <div align="center">
 <h3> :star: If you want to support the genezio community, give us a star on this repo :star: </h3>
@@ -115,8 +115,8 @@ Once you are happy with your project, you can deploy it in a production environm
 
 The genezio CLI tool supports the commands shown in the following table:
 
-| Command                                                           | Description                                                                                                                                                                                                  |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Command                                                           | Description                                                                                                                                                                                                     |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | genezio                                                           | Context aware, interactive command that simplifies project management. [Learn more](https://docs.genezio.com/genezio-documentation/cli-tool/cli-commands/genezio)                                               |
 | genezio create fullstack `<backend-template> <frontend-template>` | Create a new fullstack project based on two templates: one backend and one frontend. [Learn more](https://docs.genezio.com/genezio-documentation/cli-tool/cli-commands/genezio-create)                          |
 | genezio create backend `<template>`                               | Create a new backend project based on a template. [Learn more](https://docs.genezio.com/genezio-documentation/cli-tool/cli-commands/genezio-create)                                                             |
@@ -131,7 +131,7 @@ The genezio CLI tool supports the commands shown in the following table:
 | genezio account                                                   | Display information about the current account logged in. [Learn more](https://docs.genezio.com/genezio-documentation/cli-tool/cli-commands/account)                                                             |
 | genezio login `<access-token>`                                    | Authenticates with genezio platform to deploy your code. [Learn more](https://docs.genezio.com/genezio-documentation/cli-tool/cli-commands/login)                                                               |
 | genezio logout                                                    | Logout from genezio platform. [Learn more](https://docs.genezio.com/genezio-documentation/cli-tool/cli-commands/logout)                                                                                         |
-| genezio help / genezio `<command>` --help                         | Displays help for the CLI tool.                                                                                                                                                                              |
+| genezio help / genezio `<command>` --help                         | Displays help for the CLI tool.                                                                                                                                                                                 |
 
 # Examples deployed with genezio
 
@@ -172,7 +172,7 @@ A detailed list of all the examples is below:
 
 ## Detailed documentation
 
-To find more details on how to use `genezio`, check out the official [documentation](https://genez.io/docs):
+To find more details on how to use `genezio`, check out the official [documentation](https://genezio.com/docs):
 
 -   [Getting started](https://docs.genezio.com/genezio-documentation/getting-started)
 -   [Project Structure](https://docs.genezio.com/genezio-documentation/project-structure)

@@ -38,7 +38,7 @@
         "typesafe",
         "genezio-rpc"
     ],
-    "homepage": "https://genez.io",
+    "homepage": "https://genezio.com",
     "author": "Genezio",
     "license": "GPL-3",
     "dependencies": {
