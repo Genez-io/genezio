@@ -88,7 +88,7 @@
         "mustache": "^4.2.0",
         "node-abort-controller": "^3.1.1",
         "node-cron": "^3.0.3",
-        "open": "^10.0.3",
+        "open": "^9.1.0",
         "terminal-overwrite": "^2.0.1",
         "typescript": "^5.3.3",
         "unique-names-generator": "^4.7.1",
