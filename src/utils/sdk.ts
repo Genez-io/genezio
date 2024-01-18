@@ -2,6 +2,7 @@ import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import { deleteFolder, writeToFile } from "./file.js";
 import { debugLogger } from "./logging.js";
 import { File, SdkFileClass } from "../models/genezioModels.js";
+import { Language } from "../models/yamlProjectConfiguration.js";
 
 export type ClassUrlMap = {
     name: string;
@@ -35,7 +36,13 @@ export async function writeSdkToDisk(sdk: SdkGeneratorResponse, outputPath: stri
         return;
     }
 
-    await deleteFolder(outputPath);
+    if (
+        sdk.sdkGeneratorInput.sdk?.language &&
+        (sdk.sdkGeneratorInput.sdk?.language === Language.js ||
+            sdk.sdkGeneratorInput.sdk?.language === Language.ts)
+    ) {
+        await deleteFolder(outputPath);
+    }
 
     debugLogger.debug("Writing the SDK to files...");
     await Promise.all(
