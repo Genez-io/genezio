@@ -1,7 +1,5 @@
 import colors from "colors";
 import { IFs, memfs } from "memfs";
-import { getNewProjectTemplateList } from "../../requests/getTemplateList.js";
-import { Template } from "../../requests/models.js";
 import git from "isomorphic-git";
 import http from "isomorphic-git/http/node/index.js";
 import { parse, stringify } from "yaml";
@@ -12,73 +10,56 @@ import nativeFs from "fs";
 import { setLinkPathForProject } from "../../utils/linkDatabase.js";
 import log from "loglevel";
 import { platform } from "os";
-import { GenezioCreateOptions } from "../../models/commandOptions.js";
+import {
+    GenezioCreateFullstackOptions,
+    GenezioCreateOptions,
+} from "../../models/commandOptions.js";
 import { debugLogger } from "../../utils/logging.js";
-import packageManager from "../../packageManagers/packageManager.js";
+import { packageManagers } from "../../packageManagers/packageManager.js";
+import { backendTemplates, frontendTemplates } from "./templates.js";
 
 type ProjectInfo = {
     name: string;
     region: string;
     type: "backend" | "frontend";
-    template: Template;
-};
-
-type FullstackProjectInfo = {
-    name: string;
-    region: string;
-    structure: "monorepo" | "multirepo";
-    backendTemplate: Template;
-    frontendTemplate: Template;
+    templateId: string;
 };
 
 export async function createCommand(options: GenezioCreateOptions) {
     const { fs } = memfs();
-    const templateList = await getNewProjectTemplateList();
 
     checkProjectName(options.name);
     const projectPath = path.join(process.cwd(), options.name);
 
-    switch (true) {
-        case "fullstack" in options: {
-            const [backendTemplate, frontendTemplate] = await findFullstackTemplates(
-                options.fullstack,
-            );
-
-            const projectInfo: FullstackProjectInfo = {
-                name: options.name,
-                region: options.region,
-                structure: options.structure,
-                backendTemplate,
-                frontendTemplate,
-            };
-
-            debugLogger.debug(
-                "Creating fullstack project\n",
-                projectInfo.backendTemplate.repository + "\n",
-                projectInfo.frontendTemplate.repository,
-            );
+    switch (options.type) {
+        case "fullstack": {
             // Create the new project in a virtual filesystem (memfs)
-            await createFullstackProject(fs, projectInfo);
+            await createFullstackProject(fs, options);
 
             // Copy from memfs to local filesystem
             copyRecursiveToNativeFs(fs, "/", projectPath, { keepDotGit: true, renameReadme: true });
 
             // Install template packages
             await installTemplatePackages(
-                projectInfo.backendTemplate.language,
+                backendTemplates[options.backend]?.pkgManager,
                 path.join(projectPath, "server"),
             );
             await installTemplatePackages(
-                projectInfo.frontendTemplate.language,
+                frontendTemplates[options.frontend]?.pkgManager,
                 path.join(projectPath, "client"),
             );
 
+            if (frontendTemplates[options.frontend] === undefined) {
+                log.info(SUCCESSFULL_CREATE_NO_FRONTEND(projectPath));
+                break;
+            }
+
             // Print success message
-            switch (options.structure) {
-                case "monorepo":
+            switch (options.multirepo) {
+                case false:
                     log.info(SUCCESSFULL_CREATE_MONOREPO(projectPath, options.name));
                     break;
-                case "multirepo":
+                case true:
                     // Genezio link inside the client project
                     await setLinkPathForProject(
                         options.name,
@@ -91,25 +72,14 @@ export async function createCommand(options: GenezioCreateOptions) {
 
             break;
         }
-        case "backend" in options: {
-            const template = templateList.find(
-                (template) => template.id === options.backend && template.category === "Backend",
-            );
-
-            if (!template) {
-                throw new Error(
-                    `Could not find '${options.backend}' backend template. Use \`genezio create templates\` to list available templates.`,
-                );
-            }
-
+        case "backend": {
             const projectInfo: ProjectInfo = {
                 name: options.name,
                 region: options.region,
                 type: "backend",
-                template,
+                templateId: options.backend,
             };
 
-            debugLogger.debug("Creating backend project", projectInfo.template.repository);
             // Create the new project in a virtual filesystem (memfs)
             await createProject(fs, projectInfo);
 
@@ -117,56 +87,24 @@ export async function createCommand(options: GenezioCreateOptions) {
             copyRecursiveToNativeFs(fs, "/", projectPath, { keepDotGit: true, renameReadme: true });
 
             // Install template packages
-            await installTemplatePackages(projectInfo.template.language, projectPath);
+            await installTemplatePackages(
+                backendTemplates[options.backend].pkgManager,
+                projectPath,
+            );
 
             // Print success message
             log.info(SUCCESSFULL_CREATE_BACKEND(projectPath, options.name));
             break;
         }
-        case "frontend" in options: {
-            const template = templateList.find(
-                (template) => template.id === options.frontend && template.category === "Frontend",
-            );
-
-            if (!template) {
-                throw new Error(
-                    `Could not find '${options.frontend}' frontend template. Use \`genezio create templates\` to list available templates.`,
-                );
-            }
-
-            if (template.compatibilityMapping) {
-                throw new Error(
-                    "The selected frontend template requires a compatible backend. Try creating a fullstack project instead",
-                );
-            }
-
-            const projectInfo: ProjectInfo = {
-                name: options.name,
-                region: options.region,
-                type: "frontend",
-                template,
-            };
-
-            debugLogger.debug("Creating frontend project", projectInfo.template.repository);
-            // Create the new project in a virtual filesystem (memfs)
-            await createProject(fs, projectInfo);
-
-            // Copy from memfs to local filesystem
-            copyRecursiveToNativeFs(fs, "/", projectPath, { keepDotGit: true, renameReadme: true });
-
-            // Install template packages
-            await installTemplatePackages(projectInfo.template.language, projectPath);
-
-            // Genezio link inside the client project
-            await setLinkPathForProject(options.name, options.region, projectPath);
-
-            // Print success message
-            log.info(SUCCESSFULL_CREATE_FRONTEND(projectPath, options.name));
-            break;
-        }
     }
 }
 
+/**
+ * Checks if the provided project name is valid and if a folder with the same name already exists.
+ *
+ * @param projectName - The name of the project to be checked.
+ * @throws Error if the project name is invalid or if a folder with the same name already exists.
+ */
 export function checkProjectName(projectName: string) {
     const projectNameRegex = /^[a-zA-Z][a-zA-Z0-9-]+$/;
     if (!projectNameRegex.test(projectName)) {
@@ -190,68 +128,89 @@ export function checkProjectName(projectName: string) {
     }
 }
 
-async function createFullstackProject(fs: IFs, projectInfo: FullstackProjectInfo) {
+/**
+ * Creates a fullstack project by cloning template repositories, replacing placeholders, and initializing a git repository.
+ * Clones the backend in /server and the frontend in /client.
+ *
+ * If multirepo is true, it creates two separate repositories for the backend and frontend.
+ *
+ * @param fs - The file system module.
+ * @param fullstackProjectOpts - The project information.
+ * @returns A promise that resolves when the project creation is complete.
+ */
+async function createFullstackProject(
+    fs: IFs,
+    fullstackProjectOpts: Required<GenezioCreateFullstackOptions>,
+) {
     const backendProjectInfo: ProjectInfo = {
-        name: projectInfo.name,
-        region: projectInfo.region,
+        name: fullstackProjectOpts.name,
+        region: fullstackProjectOpts.region,
         type: "backend",
-        template: projectInfo.backendTemplate,
+        templateId: fullstackProjectOpts.backend,
     };
     const frontendProjectInfo: ProjectInfo = {
-        name: projectInfo.name,
-        region: projectInfo.region,
+        name: fullstackProjectOpts.name,
+        region: fullstackProjectOpts.region,
         type: "frontend",
-        template: projectInfo.frontendTemplate,
+        templateId: fullstackProjectOpts.frontend,
     };
 
-    switch (projectInfo.structure) {
-        case "monorepo": {
-            debugLogger.debug("Creating monorepo project");
+    if (!fullstackProjectOpts.multirepo) {
+        debugLogger.debug("Creating fullstack monorepo project");
 
-            await createProject(fs, backendProjectInfo, "/server");
-            fs.rmdirSync("/server/.git", { recursive: true });
+        await createProject(fs, backendProjectInfo, "/server");
+        await fs.promises.rmdir("/server/.git", { recursive: true });
 
-            // Create frontend, but provide only backend-compatible templates
+        // Create frontend, but provide only backend-compatible templates
+        if (frontendTemplates[fullstackProjectOpts.frontend] !== undefined) {
             await createProject(fs, frontendProjectInfo, "/client");
-            fs.rmdirSync("/client/.git", { recursive: true });
-
-            // Create workspace genezio.yaml
-            await createWorkspaceYaml(fs, projectInfo, "/server", "/client");
-            // Replace placeholders in genezio.yaml
-            await replacePlaceholders(fs, "/genezio.yaml", {
-                "(•◡•)project-name(•◡•)": projectInfo.name,
-                "(•◡•)region(•◡•)": projectInfo.region,
-            });
-
-            // Create .genezioignore file that ignores the client folder
-            fs.writeFileSync("/.genezioignore", "client\n");
-
-            // Create git repository
-            await git.init({ fs, dir: "/", defaultBranch: "main" });
-            // Add all files
-            await git.add({ fs, dir: "/", filepath: "." });
-            // Commit
-            await git.commit({
-                fs,
-                dir: "/",
-                author: { name: "Genezio", email: "contact@genez.io" },
-                message: "Initial commit",
-            });
-            break;
+            await fs.promises.rmdir("/client/.git", { recursive: true });
         }
-        case "multirepo": {
-            debugLogger.debug("Creating multirepo project");
 
-            await createProject(fs, backendProjectInfo, "/server");
+        // Create workspace genezio.yaml
+        await createWorkspaceYaml(fs, fullstackProjectOpts, "/server", "/client");
+        // Replace placeholders in genezio.yaml
+        await replacePlaceholders(fs, "/genezio.yaml", {
+            "(•◡•)project-name(•◡•)": fullstackProjectOpts.name,
+            "(•◡•)region(•◡•)": fullstackProjectOpts.region,
+        });
+
+        // Create .genezioignore file that ignores the client folder
+        fs.writeFileSync("/.genezioignore", "client\n");
+
+        // Create git repository
+        await git.init({ fs, dir: "/", defaultBranch: "main" });
+        // Add all files
+        await git.add({ fs, dir: "/", filepath: "." });
+        // Commit
+        await git.commit({
+            fs,
+            dir: "/",
+            author: { name: "Genezio", email: "contact@genez.io" },
+            message: "Initial commit",
+        });
+    } else {
+        debugLogger.debug("Creating fullstack multirepo project");
+
+        await createProject(fs, backendProjectInfo, "/server");
+        if (frontendTemplates[fullstackProjectOpts.frontend] !== undefined) {
             await createProject(fs, frontendProjectInfo, "/client");
-            break;
         }
     }
 }
 
+/**
+ * Creates a new project by cloning a template repository, replacing placeholders, and initializing a git repository.
+ *
+ * @param fs - The file system module.
+ * @param projectInfo - The information about the project.
+ * @param projectPath - The path where the project will be created. Defaults to the root directory ("/").
+ * @returns A promise that resolves when the project creation is complete.
+ */
 async function createProject(fs: IFs, projectInfo: ProjectInfo, projectPath = "/") {
-    const { repository: templateRepository } = projectInfo.template;
+    const templateRepository = `https://github.com/Genez-io/${projectInfo.templateId}-${projectInfo.type}-starter`;
 
+    debugLogger.debug(`Cloning ${templateRepository}`);
     // Clone template repository
     await git.clone({ fs, http, dir: projectPath, url: templateRepository });
 
@@ -279,7 +238,7 @@ async function createProject(fs: IFs, projectInfo: ProjectInfo, projectPath = "/
 
 async function createWorkspaceYaml(
     fs: IFs,
-    projectInfo: FullstackProjectInfo,
+    fullstackProjectOpts: Required<GenezioCreateFullstackOptions>,
     backendPath: string,
     frontendPath: string,
 ) {
@@ -288,11 +247,16 @@ async function createWorkspaceYaml(
         path.join(backendPath, "genezio.yaml"),
     );
     fs.rmSync(path.join(backendPath, "genezio.yaml"));
-    const frontendConfiguration = await readConfiguration(
-        fs,
-        path.join(frontendPath, "genezio.yaml"),
-    );
-    fs.rmSync(path.join(frontendPath, "genezio.yaml"));
+    let frontendConfiguration: YamlProjectConfiguration | undefined;
+    if (frontendTemplates[fullstackProjectOpts.frontend] === undefined) {
+        frontendConfiguration = undefined;
+    } else {
+        frontendConfiguration = await readConfiguration(
+            fs,
+            path.join(frontendPath, "genezio.yaml"),
+        );
+        fs.rmSync(path.join(frontendPath, "genezio.yaml"));
+    }
 
     const workspaceBackendPath = backendPath.startsWith(path.parse(backendPath).root)
         ? backendPath.slice(path.parse(backendPath).root.length)
@@ -304,18 +268,18 @@ async function createWorkspaceYaml(
     const backendScripts = backendConfiguration.scripts;
 
     const workspaceConfiguration = new YamlProjectConfiguration(
-        /* name: */ projectInfo.name,
-        /* region: */ projectInfo.region,
+        /* name: */ fullstackProjectOpts.name,
+        /* region: */ fullstackProjectOpts.region,
         /* language: */ backendConfiguration.language,
         /* sdk: */ undefined,
         /* cloudProvider: */ CloudProviderIdentifier.GENEZIO,
         /* classes: */ [],
-        /* frontend: */ frontendConfiguration.frontend?.path
+        /* frontend: */ frontendConfiguration?.frontend?.path
             ? { path: path.join(workspaceFrontendPath, frontendConfiguration.frontend?.path) }
             : undefined,
         /* scripts: */ {
-            preFrontendDeploy: frontendConfiguration.scripts?.preFrontendDeploy,
-            postFrontendDeploy: frontendConfiguration.scripts?.postFrontendDeploy,
+            preFrontendDeploy: frontendConfiguration?.scripts?.preFrontendDeploy,
+            postFrontendDeploy: frontendConfiguration?.scripts?.postFrontendDeploy,
             preBackendDeploy: backendScripts?.preBackendDeploy,
             postBackendDeploy: backendScripts?.postBackendDeploy,
             preStartLocal: backendScripts?.preStartLocal
@@ -350,6 +314,15 @@ async function readConfiguration(fs: IFs, path: string) {
     return await YamlProjectConfiguration.create(configurationFileContent);
 }
 
+/**
+ * Replaces placeholders in files with corresponding values.
+ * If the given path is a directory, it recursively replaces placeholders in all files within the directory.
+ * If the given path is a file, it replaces placeholders in the file content.
+ *
+ * @param fs - The file system module.
+ * @param replacePath - The path to the file or directory where placeholders should be replaced.
+ * @param placeholders - An object containing placeholder-value pairs.
+ */
 async function replacePlaceholders(
     fs: IFs,
     replacePath: string,
@@ -409,53 +382,6 @@ function copyRecursiveToNativeFs(fromFs: IFs, from: string, to: string, options?
     }
 }
 
-async function findFullstackTemplates(templates: [string, string]): Promise<[Template, Template]> {
-    if (templates.length !== 2) {
-        throw new Error("Fullstack project requires two templates");
-    }
-
-    const templateList = await getNewProjectTemplateList();
-
-    let [frontendTemplateId, backendTemplateId] = templates;
-
-    let backendTemplate = templateList.find(
-        (template) => template.id === backendTemplateId && template.category === "Backend",
-    );
-    let frontendTemplate = templateList.find(
-        (template) => template.id === frontendTemplateId && template.category === "Frontend",
-    );
-
-    // If the user inverted the order of the templates, try again
-    if (!backendTemplate && !frontendTemplate) {
-        [backendTemplateId, frontendTemplateId] = templates;
-
-        backendTemplate = templateList.find(
-            (template) => template.id === backendTemplateId && template.category === "Backend",
-        );
-        frontendTemplate = templateList.find(
-            (template) => template.id === frontendTemplateId && template.category === "Frontend",
-        );
-    }
-
-    if (!backendTemplate) {
-        throw new Error(
-            `Could not find '${backendTemplateId}' template. Use \`genezio create templates\` to list available templates.`,
-        );
-    }
-    if (!frontendTemplate) {
-        throw new Error(
-            `Could not find '${frontendTemplate}' template. Use \`genezio create templates\` to list available templates.`,
-        );
-    }
-    if (backendTemplate.compatibilityMapping !== frontendTemplate.compatibilityMapping) {
-        throw new Error(
-            `The provided templates are not compatible. Use \`genezio create templates ${backendTemplateId}\` to check template compatibility.`,
-        );
-    }
-
-    return [backendTemplate, frontendTemplate];
-}
-
 /**
  * Installs template packages based on the specified language.
  *
@@ -467,17 +393,22 @@ async function findFullstackTemplates(templates: [string, string]): Promise<[Tem
  * @param language The programming language for which to install the packages.
  * @param path The path where the packages should be installed.
  */
-async function installTemplatePackages(language: string, path: string) {
+async function installTemplatePackages(packageManager: string | undefined, path: string) {
     try {
-        switch (language.toLowerCase()) {
-            case "typescript":
-            case "javascript":
-                await packageManager.install([], path);
+        switch ((packageManager ?? "").toLowerCase()) {
+            case "npm":
+                await packageManagers.npm.install([], path);
+                break;
+            case "yarn":
+                await packageManagers.yarn.install([], path);
+                break;
+            case "pnpm":
+                await packageManagers.pnpm.install([], path);
                 break;
         }
     } catch {
         // Fail silently
-        debugLogger.debug(`Failed to install ${language} template packages for ${path}`);
+        debugLogger.debug(`Failed to install packages using ${packageManager} for ${path}`);
     }
 }
 
@@ -547,18 +478,10 @@ const SUCCESSFULL_CREATE_BACKEND = (
         genezio local
 `;
 
-const SUCCESSFULL_CREATE_FRONTEND = (
+const SUCCESSFULL_CREATE_NO_FRONTEND = (
     projectPath: string,
-    projectName: string,
-) => `Project initialized in ${projectPath}. Now run:
+) => `Project initialized in ${projectPath}.
 
-    For ${colors.yellow("deployment")} of the frontend, run:
-        cd ${projectName}
-        genezio deploy
-
-
-    For ${colors.green("testing")} locally, run:
-        cd ${projectName}
-        npm install
-        npm run dev
+    You chose not to create a frontend from one of our templates.
+    If you want to add a frontend later, place the code in the 'client' folder.
 `;
