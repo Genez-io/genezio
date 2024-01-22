@@ -18,6 +18,7 @@ import {
     GenezioBundleOptions,
     GenezioCreateBackendOptions,
     GenezioCreateFullstackOptions,
+    GenezioCreateInteractiveOptions,
     GenezioDeleteOptions,
     GenezioDeployOptions,
     GenezioLinkOptions,
@@ -206,6 +207,7 @@ program
 
 const create = program
     .command("create")
+    .option("--path <path>", "Path where to create the project.", undefined)
     .addOption(
         new Option("--logLevel <log-level>", "Show debug logs to console.").choices([
             "trace",
@@ -216,10 +218,10 @@ const create = program
         ]),
     )
     .summary("Create a new project from a template.")
-    .action(async (options: BaseOptions) => {
+    .action(async (options: GenezioCreateInteractiveOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        const createOptions = await askCreateOptions();
+        const createOptions = await askCreateOptions(options);
 
         const telemetryEvent = GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_CREATE,
@@ -263,6 +265,7 @@ create
         "Create a project with a backend and a frontend in separate repositories.",
         false,
     )
+    .option("--path <path>", "Path where to create the project.", undefined)
     .addOption(
         new Option("--logLevel <log-level>", "Show debug logs to console.").choices([
             "trace",
@@ -310,6 +313,7 @@ create
             Object.keys(backendTemplates),
         ),
     )
+    .option("--path <path>", "Path where to create the project.", undefined)
     .addOption(
         new Option("--logLevel <log-level>", "Show debug logs to console.").choices([
             "trace",

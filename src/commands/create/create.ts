@@ -10,10 +10,7 @@ import nativeFs from "fs";
 import { setLinkPathForProject } from "../../utils/linkDatabase.js";
 import log from "loglevel";
 import { platform } from "os";
-import {
-    GenezioCreateFullstackOptions,
-    GenezioCreateOptions,
-} from "../../models/commandOptions.js";
+import { GenezioCreateOptions } from "../../models/commandOptions.js";
 import { debugLogger } from "../../utils/logging.js";
 import { packageManagers } from "../../packageManagers/packageManager.js";
 import { backendTemplates, frontendTemplates } from "./templates.js";
@@ -25,11 +22,20 @@ type ProjectInfo = {
     templateId: string;
 };
 
+type FullstackProjectInfo = {
+    name: string;
+    region: string;
+    backend: string;
+    frontend: string;
+    multirepo: boolean;
+};
+
 export async function createCommand(options: GenezioCreateOptions) {
     const { fs } = memfs();
 
     checkProjectName(options.name);
-    const projectPath = path.join(process.cwd(), options.name);
+    const projectPath = options.path ?? path.join(process.cwd(), options.name);
+    checkPathIsEmpty(projectPath);
 
     switch (options.type) {
         case "fullstack": {
@@ -112,8 +118,9 @@ export function checkProjectName(projectName: string) {
             "Project name must start with a letter and contain only letters, numbers and dashes",
         );
     }
+}
 
-    const projectPath = path.join(process.cwd(), projectName);
+export function checkPathIsEmpty(projectPath: string) {
     if (nativeFs.existsSync(projectPath)) {
         // If the project contains only a README.md/README or a .git folder, it's safe to continue
         const files = nativeFs.readdirSync(projectPath);
@@ -121,7 +128,7 @@ export function checkProjectName(projectName: string) {
             const allowedFiles = ["README.md", "README", ".git", ".gitignore", "LICENSE"];
             if (!allowedFiles.includes(file)) {
                 throw new Error(
-                    `A folder named '${projectName}' already exists. Please choose another project name`,
+                    `A folder named '${projectPath}' already exists. You can't create a project in a non-empty folder.`,
                 );
             }
         }
@@ -140,7 +147,7 @@ export function checkProjectName(projectName: string) {
  */
 async function createFullstackProject(
     fs: IFs,
-    fullstackProjectOpts: Required<GenezioCreateFullstackOptions>,
+    fullstackProjectOpts: Required<FullstackProjectInfo>,
 ) {
     const backendProjectInfo: ProjectInfo = {
         name: fullstackProjectOpts.name,
@@ -238,7 +245,7 @@ async function createProject(fs: IFs, projectInfo: ProjectInfo, projectPath = "/
 
 async function createWorkspaceYaml(
     fs: IFs,
-    fullstackProjectOpts: Required<GenezioCreateFullstackOptions>,
+    fullstackProjectOpts: FullstackProjectInfo,
     backendPath: string,
     frontendPath: string,
 ) {

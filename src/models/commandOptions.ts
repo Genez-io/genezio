@@ -66,20 +66,30 @@ export interface GenezioUnlinkOptions extends BaseOptions {
     region?: string;
 }
 
+export interface GenezioCreateInteractiveOptions extends BaseOptions {
+    path?: string;
+}
+
 export interface GenezioCreateFullstackOptions extends BaseOptions {
     name?: string;
     region?: string;
     multirepo: boolean;
     backend?: string;
     frontend?: string;
+    path?: string;
 }
 
 export interface GenezioCreateBackendOptions extends BaseOptions {
     name?: string;
     region?: string;
     backend?: string;
+    path?: string;
 }
 
 export type GenezioCreateOptions =
-    | ({ type: "fullstack" } & Required<GenezioCreateFullstackOptions>)
-    | ({ type: "backend" } & Required<GenezioCreateBackendOptions>);
+    | ({ type: "fullstack"; path?: string } & Required<
+          Omit<GenezioCreateFullstackOptions, "path" | "logLevel">
+      >)
+    | ({ type: "backend"; path?: string } & Required<
+          Omit<GenezioCreateBackendOptions, "path" | "logLevel">
+      >);

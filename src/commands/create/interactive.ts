@@ -1,7 +1,7 @@
 import colors from "colors";
 import inquirer from "inquirer";
 import { GenezioCreateOptions } from "../../models/commandOptions.js";
-import { checkProjectName } from "../create/create.js";
+import { checkPathIsEmpty, checkProjectName } from "../create/create.js";
 import { Template, backendTemplates, frontendTemplates } from "./templates.js";
 import { regions } from "../../utils/configs.js";
 import axios from "axios";
@@ -27,6 +27,9 @@ export async function askCreateOptions(
                 validate: (input: string) => {
                     try {
                         checkProjectName(input);
+                        if (options?.path === undefined) {
+                            checkPathIsEmpty(input);
+                        }
                         return true;
                     } catch (error) {
                         if (error instanceof Error) return colors.red(error.message);
@@ -111,7 +114,7 @@ async function chooseTemplate(category: "Backend" | "Frontend"): Promise<string>
     }
 
     const availableTemplates = Object.entries(templates)
-        .filter(([, template]) => template !== undefined)
+        .filter(([, template]) => template !== undefined && template.hidden !== true)
         .map(([id, template]) => ({
             name: template!.coloring(template!.name),
             value: id,

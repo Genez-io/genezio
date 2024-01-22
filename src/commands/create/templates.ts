@@ -4,6 +4,7 @@ export type Template = {
     name: string;
     pkgManager?: "npm" | "yarn" | "pnpm";
     coloring: (str: string) => string;
+    hidden?: boolean;
 };
 
 /*
@@ -19,6 +20,11 @@ export const backendTemplates: Record<string, Template> = {
         pkgManager: "npm",
         coloring: colors.blue,
     },
+    js: {
+        name: "JavaScript",
+        pkgManager: "npm",
+        coloring: colors.yellow,
+    },
 };
 
 /*
@@ -32,10 +38,31 @@ export const frontendTemplates: Record<string, Template | undefined> = {
         pkgManager: "npm",
         coloring: colors.blue,
     },
+    "react-js": {
+        name: "React (JavaScript)",
+        pkgManager: "npm",
+        coloring: colors.blue,
+    },
+    "vue-ts": {
+        name: "Vue (TypeScript)",
+        pkgManager: "npm",
+        coloring: colors.green,
+    },
+    "vue-js": {
+        name: "Vue (JavaScript)",
+        pkgManager: "npm",
+        coloring: colors.green,
+    },
     "vanilla-js": {
         name: "HTML (Vanilla JS)",
         pkgManager: undefined,
         coloring: colors.red,
+    },
+    "onboarding-react": {
+        name: "React (TypeScript) for Onboarding",
+        pkgManager: "npm",
+        coloring: (s) => s,
+        hidden: true,
     },
     none: undefined,
 };
