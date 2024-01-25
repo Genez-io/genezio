@@ -47,6 +47,7 @@ export class ClassConfiguration {
     methods: MethodConfiguration[];
     types: any[];
     version: string;
+    options?: { [key: string]: string };
 
     constructor(
         name: string,

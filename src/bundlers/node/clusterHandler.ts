@@ -27,7 +27,6 @@ const server = http.createServer((req, res) => {
           return;
         }
 
-        // leftover from aws lambda ?
         const requestContext = {
           http : {
             method: "POST",
@@ -47,7 +46,6 @@ const server = http.createServer((req, res) => {
           res.end(response.body);
       })
       } catch (error) {
-        console.log(error)
       }
     });
 

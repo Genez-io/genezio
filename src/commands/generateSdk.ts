@@ -14,10 +14,7 @@ import { getProjectConfiguration, scanClassesForDecorators } from "../utils/conf
 import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import path from "path";
-import {
-    SdkGeneratorClassesInfoInput,
-    SdkGeneratorInput,
-} from "../models/genezioModels.js";
+import { SdkGeneratorClassesInfoInput, SdkGeneratorInput } from "../models/genezioModels.js";
 import { mapDbAstToSdkGeneratorAst } from "../generateSdk/utils/mapDbAstToFullAst.js";
 import { generateSdk } from "../generateSdk/sdkGeneratorHandler.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
@@ -308,7 +305,6 @@ async function generateRemoteSdkHandler(
 
         await Promise.all(
             sdkGeneratorResponse.files.map((file) => {
-                // console.log("Deleting file: " + file.path);
                 // delete the files and its parent directories
                 deleteFile(path.join(sdkPath, file.path));
                 const firstParentDir = path.dirname(file.path).split(path.sep)[0];
