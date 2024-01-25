@@ -21,7 +21,7 @@ import { DependencyInstaller } from "./dependencyInstaller.js";
 import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE, UserError } from "../../errors.js";
 import transformDecorators from "../../utils/transformDecorators.js";
 import { spawnSync } from "child_process";
-import { nodeContainerManifest } from "./containerManifest.js";
+import { generateNodeContainerManifest } from "./containerManifest.js";
 import { clusterWrapperCode } from "./clusterHandler.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 
@@ -436,6 +436,8 @@ export class NodeJsBundler implements BundlerInterface {
         );
 
         const isDeployedToCluster = input.projectConfiguration.cloudProvider === "cluster";
+        const nodeVersion =
+            input.projectConfiguration.options?.nodeRuntime === "nodejs18.x" ? "18" : "16";
         // 2. Copy non js files and node_modules and write index.mjs file
         await Promise.all([
             this.#copyNonJsFiles(temporaryFolder, input, cwd),
@@ -450,7 +452,12 @@ export class NodeJsBundler implements BundlerInterface {
             ...(isDeployedToCluster
                 ? [
                       writeToFile(temporaryFolder, "local.mjs", clusterWrapperCode, true),
-                      writeToFile(temporaryFolder, "Dockerfile", nodeContainerManifest, true),
+                      writeToFile(
+                          temporaryFolder,
+                          "Dockerfile",
+                          generateNodeContainerManifest(nodeVersion),
+                          true,
+                      ),
                   ]
                 : []),
         ]);

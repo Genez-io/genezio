@@ -10,10 +10,8 @@ import {
 import { debugLogger } from "../../utils/logging.js";
 import { getContainerRegistryCreds } from "../../requests/getContainerRegistryCreds.js";
 import { SpawnSyncReturns, spawnSync } from "child_process";
-import path from "path";
-import os from "os";
-import fs from "fs";
 import { deployRequest } from "../../requests/deployCode.js";
+import { getAuthToken } from "../../utils/accounts.js";
 
 export class ClusterCloudAdapter implements CloudAdapter {
     async deploy(
@@ -27,7 +25,8 @@ export class ClusterCloudAdapter implements CloudAdapter {
 
         // Login to container repository
         let dockerlogin: SpawnSyncReturns<Buffer> | null = null;
-        const dockerPasswd = getDockerPasswordFromGenezioRc();
+
+        const dockerPasswd = `HRBR${((await getAuthToken()) || "").substring(0, 64)}`;
         const promisesDeploy = input.map(async (element) => {
             debugLogger.debug(`Get the registry push data for class name ${element.name}.`);
             const registryCreds = await getContainerRegistryCreds(
@@ -36,7 +35,7 @@ export class ClusterCloudAdapter implements CloudAdapter {
             );
 
             if (dockerlogin === null) {
-                const dockerlogout = spawnSync("docker", ["logout", registryCreds.repository], {
+                spawnSync("docker", ["logout", registryCreds.repository], {
                     stdio: "inherit",
                 });
 
@@ -61,29 +60,28 @@ export class ClusterCloudAdapter implements CloudAdapter {
             debugLogger.debug(`Upload the content to Harbor registry for class ${element.name}.`);
 
             // tag image
-            // docker tag SOURCE_IMAGE[:TAG] harbor.dev.cluster.genez.io/9b59dd97-6c04-40f4-bdb2-1bba31da4e31/REPOSITORY[:TAG]
+            // TODO: discuss with team about timestamp based tagging/versioning of images
+            const timestamp = Date.now().toString();
+            const tag =
+                `${registryCreds.repository}/${registryCreds.username}/${element.name}:${timestamp}`.toLowerCase();
+
+            projectConfiguration.classes.find((c) => c.name === element.name)!.options = {
+                ...projectConfiguration.classes.find((c) => c.name === element.name)!.options,
+                timestamp,
+            };
+
             const dockerTag = spawnSync(
                 "docker",
-                [
-                    "tag",
-                    `${projectConfiguration.name}-${element.name}:latest`.toLowerCase(),
-                    `${registryCreds.repository}/${registryCreds.username}/${element.name}`.toLowerCase(),
-                ],
+                ["tag", `${projectConfiguration.name}-${element.name}`.toLowerCase(), tag],
+
                 { stdio: "inherit" },
             );
             if (dockerTag.status !== 0) {
                 throw new Error(`Error during docker tag. Exit code: ${dockerTag.status}`);
             }
+
             // push image
-            // docker push harbor.dev.cluster.genez.io/9b59dd97-6c04-40f4-bdb2-1bba31da4e31/REPOSITORY[:TAG]
-            const dockerPush = spawnSync(
-                "docker",
-                [
-                    "push",
-                    `${registryCreds.repository}/${registryCreds.username}/${element.name}`.toLowerCase(),
-                ],
-                { stdio: "inherit" },
-            );
+            const dockerPush = spawnSync("docker", ["push", tag], { stdio: "inherit" });
             if (dockerPush.status !== 0) {
                 throw new Error(`Error during docker push. Exit code: ${dockerPush.status}`);
             }
@@ -105,7 +103,6 @@ export class ClusterCloudAdapter implements CloudAdapter {
             projectId: response.projectId,
         }));
 
-        console.log(classesInfo);
         return {
             projectEnvId: "",
             classes: classesInfo,
@@ -118,7 +115,7 @@ export class ClusterCloudAdapter implements CloudAdapter {
         frontend: YamlFrontend,
         stage: string,
     ): Promise<string> {
-        throw new Error("Method not implemented.");
+        throw new Error("Method not implemented." + projectName + projectRegion + frontend + stage);
     }
 }
 
@@ -137,11 +134,4 @@ function getFunctionUrl(
     } else {
         return `${baseUrl}/${className}`;
     }
-}
-
-function getDockerPasswordFromGenezioRc() {
-    const homeDir = os.homedir();
-    const genezioRcPath = path.join(homeDir, ".geneziorc");
-    const genezioRc = fs.readFileSync(genezioRcPath, "utf8");
-    return `HRBR${genezioRc.substring(0, 64)}`;
 }

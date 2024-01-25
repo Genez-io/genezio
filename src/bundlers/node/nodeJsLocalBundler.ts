@@ -1,7 +1,7 @@
 import { writeToFile } from "../../utils/file.js";
 import path from "path";
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface.js";
-import { nodeContainerManifest } from "./containerManifest.js";
+import { generateNodeContainerManifest } from "./containerManifest.js";
 import { spawnSync } from "child_process";
 import log from "loglevel";
 import { debugLogger } from "../../utils/logging.js";
@@ -33,7 +33,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(port, () => {
-  console.log('Server running on port ' + port);
 });
 `;
 
@@ -42,13 +41,15 @@ export class NodeJsLocalBundler implements BundlerInterface {
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
         await writeToFile(input.path, "local.mjs", localWrapperCode, true);
 
+        const nodeVersion =
+            input.projectConfiguration.options?.nodeRuntime === "nodejs18.x" ? "18" : "16";
         // Default command and args
         let startingCommand = "node";
         let commandParameters = [path.resolve(input.path, "local.mjs")];
         // Write docker file for container packaging
         if (input.projectConfiguration.cloudProvider === "cluster") {
             debugLogger.log("Writing docker file for container packaging");
-            await writeToFile(input.path, "Dockerfile", nodeContainerManifest);
+            await writeToFile(input.path, "Dockerfile", generateNodeContainerManifest(nodeVersion));
             startingCommand = "docker";
 
             const dockerBuildProcess = spawnSync(

@@ -53,6 +53,7 @@ export class ClassConfiguration {
     types: any[];
     version: string;
     docString?: string;
+    options?: { [key: string]: string };
 
     constructor(
         name: string,
