@@ -206,10 +206,16 @@ export async function directoryContainsIndexHtmlFiles(directoryPath: string): Pr
 
 /**
  * Deletes a folder and its contents.
+ * If the DEBUG environment variable is set to true, the folder will not be removed.
  * @param folderPath - The path of the folder to delete.
  * @returns A promise that resolves when the folder is deleted.
  */
 export async function deleteFolder(folderPath: string): Promise<void> {
+    if (process.env["DEBUG"] === "true") {
+        debugLogger.debug(`DEBUG is set to true. Skipping deletion of ${folderPath}.`);
+        return;
+    }
+
     return fs.rmSync(folderPath, { recursive: true, force: true });
 }
 
