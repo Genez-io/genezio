@@ -65,6 +65,7 @@ import {
     CloudProviderIdentifier,
     LambdaResponse,
 } from "../models/cloudProviderIdentifier.js";
+import { GoBundler } from "../bundlers/go/localGoBundler.js";
 
 const POLLING_INTERVAL = 2000;
 
@@ -589,6 +590,10 @@ function getBundler(classConfiguration: ClassConfiguration): BundlerInterface | 
         }
         case ".kt": {
             bundler = new KotlinBundler();
+            break;
+        }
+        case ".go": {
+            bundler = new GoBundler();
             break;
         }
         default: {
