@@ -38,8 +38,8 @@ export async function writeSdkToDisk(sdk: SdkGeneratorResponse, outputPath: stri
 
     if (
         sdk.sdkGeneratorInput.sdk?.language &&
-        (sdk.sdkGeneratorInput.sdk?.language === Language.js ||
-            sdk.sdkGeneratorInput.sdk?.language === Language.ts)
+        (sdk.sdkGeneratorInput.sdk.language === Language.js ||
+            sdk.sdkGeneratorInput.sdk.language === Language.ts)
     ) {
         await deleteFolder(outputPath);
     }
