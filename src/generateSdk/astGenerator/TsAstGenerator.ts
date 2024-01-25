@@ -131,6 +131,12 @@ export class AstGenerator implements AstGeneratorInterface {
                     typeAtLocation.aliasSymbol?.declarations?.[0].getSourceFile().fileName;
                 if (typeAtLocationPath?.endsWith(".ts")) {
                     typeAtLocationPath = typeAtLocationPath.slice(0, -3);
+                    if (typeAtLocationPath.endsWith(".d")) {
+                        typeAtLocationPath = typeAtLocationPath.slice(0, -2);
+                    }
+                    if (typeAtLocationPath.includes("node_modules")) {
+                        typeAtLocationPath = typeAtLocationPath.replace("node_modules", "src");
+                    }
                 }
                 if (!typeAtLocationPath) {
                     throw new Error(
