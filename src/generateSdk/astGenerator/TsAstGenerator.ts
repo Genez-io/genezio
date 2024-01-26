@@ -35,13 +35,15 @@ import { readdirSync } from "fs";
 import path from "path";
 import { statSync } from "fs";
 
+type Declaration = StructLiteral | TypeAlias | Enum;
+
 export class AstGenerator implements AstGeneratorInterface {
     rootNode?: typescript.SourceFile;
 
     mapTypesToParamType(
         type: typescript.Node,
         typeChecker: typescript.TypeChecker,
-        declarations: Node[],
+        declarations: Declaration[],
     ):
         | DoubleType
         | IntegerType
@@ -58,7 +60,15 @@ export class AstGenerator implements AstGeneratorInterface {
         | VoidType
         | EnumType
         | MapType {
-        switch ((type as any).kind) {
+        switch (type.kind) {
+            case typescript.SyntaxKind.LiteralType: {
+                const literalType = type as typescript.LiteralTypeNode;
+
+                return {
+                    type: AstNodeType.CustomNodeLiteral,
+                    rawValue: literalType.literal.getText(),
+                };
+            }
             case typescript.SyntaxKind.StringKeyword:
                 return { type: AstNodeType.StringLiteral };
             case typescript.SyntaxKind.NumberKeyword:
@@ -70,7 +80,7 @@ export class AstGenerator implements AstGeneratorInterface {
                 return {
                     type: AstNodeType.ArrayType,
                     generic: this.mapTypesToParamType(
-                        (type as any).elementType,
+                        (type as typescript.ArrayTypeNode).elementType,
                         typeChecker,
                         declarations,
                     ),
@@ -80,22 +90,33 @@ export class AstGenerator implements AstGeneratorInterface {
             case typescript.SyntaxKind.VoidKeyword:
                 return { type: AstNodeType.VoidLiteral };
             case typescript.SyntaxKind.TypeReference: {
-                const escapedText: string = (type as any).typeName.escapedText;
+                const escapedText: string = (
+                    type as typescript.TypeReferenceNode
+                ).typeName.getText();
+                const typeArguments = (type as typescript.TypeReferenceNode).typeArguments;
 
                 if (escapedText === "Promise") {
+                    if (!typeArguments || typeArguments.length === 0) {
+                        return { type: AstNodeType.AnyLiteral };
+                    }
+
                     return {
                         type: AstNodeType.PromiseType,
                         generic: this.mapTypesToParamType(
-                            (type as any).typeArguments[0],
+                            typeArguments[0],
                             typeChecker,
                             declarations,
                         ),
                     };
                 } else if (escapedText === "Array") {
+                    if (!typeArguments || typeArguments.length === 0) {
+                        return { type: AstNodeType.AnyLiteral };
+                    }
+
                     return {
                         type: AstNodeType.ArrayType,
                         generic: this.mapTypesToParamType(
-                            (type as any).typeArguments[0],
+                            typeArguments[0],
                             typeChecker,
                             declarations,
                         ),
@@ -103,39 +124,55 @@ export class AstGenerator implements AstGeneratorInterface {
                 } else if (escapedText === "Date") {
                     return { type: AstNodeType.DateType };
                 }
-                const typeAtLocation = typeChecker.getTypeAtLocation((type as any).typeName);
-                const typeAtLocationPath = (
-                    typeAtLocation.aliasSymbol as any
-                )?.declarations?.[0].getSourceFile().symbol.escapedName;
+                const typeAtLocation = typeChecker.getTypeAtLocation(
+                    (type as typescript.TypeReferenceNode).typeName,
+                );
+                let typeAtLocationPath =
+                    typeAtLocation.aliasSymbol?.declarations?.[0].getSourceFile().fileName;
+                if (typeAtLocationPath?.endsWith(".ts")) {
+                    typeAtLocationPath = typeAtLocationPath.slice(0, -3);
+                    if (typeAtLocationPath.endsWith(".d")) {
+                        typeAtLocationPath = typeAtLocationPath.slice(0, -2);
+                    }
+                    // We do this because typescript ignores the node_modules folder
+                    // And the types that are present in the node_modules will dissapear
+                    if (typeAtLocationPath.includes("node_modules")) {
+                        typeAtLocationPath = typeAtLocationPath.replace("node_modules", "src");
+                    }
+                }
                 if (!typeAtLocationPath) {
                     throw new Error(
-                        `Type ${escapedText} is not supported by genezio. Take a look at the documentation to see the supported types. https://docs.genez.io/`,
+                        `Type ${escapedText} is not supported by genezio. Take a look at the documentation to see the supported types. https://docs.genezio.com/`,
                     );
                 }
-                const trimmedPath = typeAtLocationPath.substring(1, typeAtLocationPath.length - 1);
-                const pathFile = path.relative(process.cwd(), trimmedPath).replace(/\\/g, "/");
+                const pathFile = path
+                    .relative(process.cwd(), typeAtLocationPath)
+                    .replace(/\\/g, "/");
+
                 if (!this.isDeclarationInList(escapedText, pathFile, declarations)) {
                     let declaredNode: StructLiteral | TypeAlias | Enum;
                     if (
-                        typeAtLocation.aliasSymbol?.declarations?.[0].kind ===
-                        typescript.SyntaxKind.TypeAliasDeclaration
+                        typeAtLocation.aliasSymbol?.declarations?.[0] &&
+                        typescript.isTypeAliasDeclaration(
+                            typeAtLocation.aliasSymbol?.declarations?.[0],
+                        )
                     ) {
                         declaredNode = this.parseTypeAliasDeclaration(
-                            typeAtLocation.aliasSymbol?.declarations?.[0] as any,
+                            typeAtLocation.aliasSymbol?.declarations?.[0],
                             typeChecker,
                             declarations,
                         );
                     } else if (
-                        typeAtLocation.aliasSymbol?.declarations?.[0].kind ===
-                        typescript.SyntaxKind.EnumDeclaration
+                        typeAtLocation.aliasSymbol?.declarations?.[0] &&
+                        typescript.isEnumDeclaration(typeAtLocation.aliasSymbol?.declarations?.[0])
                     ) {
                         declaredNode = this.parseEnumDeclaration(
-                            typeAtLocation.aliasSymbol?.declarations?.[0] as any,
+                            typeAtLocation.aliasSymbol?.declarations?.[0],
                         );
                     } else {
                         return {
                             type: AstNodeType.CustomNodeLiteral,
-                            rawValue: (type as any).typeName.escapedText,
+                            rawValue: (type as typescript.TypeReferenceNode).typeName.getText(),
                         };
                     }
                     declaredNode.name = escapedText;
@@ -144,26 +181,32 @@ export class AstGenerator implements AstGeneratorInterface {
                 }
                 return {
                     type: AstNodeType.CustomNodeLiteral,
-                    rawValue: (type as any).typeName.escapedText,
+                    rawValue: (type as typescript.TypeReferenceNode).typeName.getText(),
                 };
             }
             case typescript.SyntaxKind.TypeLiteral: {
                 const properties: PropertyDefinition[] = [];
-                for (const member of (type as any).members) {
-                    if (member.type) {
-                        const property: PropertyDefinition = {
-                            name: member.name?.escapedText,
+
+                for (const member of (type as typescript.TypeLiteralNode).members) {
+                    if (typescript.isPropertyDeclaration(member) && member.type) {
+                        properties.push({
+                            name: typescript.isIdentifier(member.name)
+                                ? member.name.text
+                                : "undefined",
                             optional: member.questionToken ? true : false,
-                            type:
-                                member.kind === typescript.SyntaxKind.IndexSignature
-                                    ? this.mapTypesToParamType(member, typeChecker, declarations)
-                                    : this.mapTypesToParamType(
-                                          member.type,
-                                          typeChecker,
-                                          declarations,
-                                      ),
-                        };
-                        properties.push(property);
+                            type: this.mapTypesToParamType(member.type, typeChecker, declarations),
+                        });
+                    }
+
+                    if (typescript.isIndexSignatureDeclaration(member)) {
+                        properties.push({
+                            name:
+                                member.name && typescript.isIdentifier(member.name)
+                                    ? member.name.text
+                                    : "undefined",
+                            optional: member.questionToken ? true : false,
+                            type: this.mapTypesToParamType(member, typeChecker, declarations),
+                        });
                     }
                 }
                 return {
@@ -173,7 +216,7 @@ export class AstGenerator implements AstGeneratorInterface {
             }
             case typescript.SyntaxKind.UnionType: {
                 const params: Node[] = [];
-                for (const typeNode of (type as any).types) {
+                for (const typeNode of (type as typescript.UnionTypeNode).types) {
                     params.push(this.mapTypesToParamType(typeNode, typeChecker, declarations));
                 }
                 return { type: AstNodeType.UnionType, params: params };
@@ -182,12 +225,16 @@ export class AstGenerator implements AstGeneratorInterface {
                 return {
                     type: AstNodeType.MapType,
                     genericKey: this.mapTypesToParamType(
-                        (type as any).locals.get("key").valueDeclaration.type,
+                        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                        // In this case the type is always defined, because an IndexSignature is
+                        // guaranteed to have only one parameter with a type of either string,
+                        // number or symbol.
+                        (type as typescript.IndexSignatureDeclaration).parameters[0].type!,
                         typeChecker,
                         declarations,
                     ),
                     genericValue: this.mapTypesToParamType(
-                        (type as any).type,
+                        (type as typescript.IndexSignatureDeclaration).type,
                         typeChecker,
                         declarations,
                     ),
@@ -198,9 +245,9 @@ export class AstGenerator implements AstGeneratorInterface {
         }
     }
 
-    isDeclarationInList(name: string, path: string, declarations: Node[]): boolean {
+    isDeclarationInList(name: string, path: string, declarations: Declaration[]): boolean {
         for (const declarationInList of declarations) {
-            if ((declarationInList as any).name === name && declarationInList.path === path) {
+            if (declarationInList.name === name && declarationInList.path === path) {
                 return true;
             }
         }
@@ -208,20 +255,19 @@ export class AstGenerator implements AstGeneratorInterface {
     }
 
     parseClassDeclaration(
-        classDeclaration: typescript.Node,
+        classDeclaration: typescript.ClassDeclaration,
         typeChecker: typescript.TypeChecker,
-        declarations: Node[],
+        declarations: Declaration[],
     ): ClassDefinition | undefined {
-        const copy: any = { ...classDeclaration };
+        const copy = { ...classDeclaration };
         if (copy.modifiers) {
             for (const modifier of copy.modifiers) {
                 if (modifier.kind === typescript.SyntaxKind.ExportKeyword) {
                     const methods: MethodDefinition[] = [];
                     for (const member of copy.members) {
                         if (typescript.isMethodDeclaration(member)) {
-                            const memberCopy: any = { ...member };
-                            const method = this.parseMethodSignature(
-                                memberCopy,
+                            const method = this.parseMethodDeclaration(
+                                member,
                                 typeChecker,
                                 declarations,
                             );
@@ -230,20 +276,25 @@ export class AstGenerator implements AstGeneratorInterface {
                             }
                         }
                     }
-                    const typeAtLocation = typeChecker.getTypeAtLocation(
-                        (classDeclaration as any).name,
-                    );
-                    const typeAtLocationPath = (
-                        typeAtLocation.symbol as any
-                    ).declarations?.[0].getSourceFile().symbol.escapedName;
-                    const trimmedPath = typeAtLocationPath.substring(
-                        1,
-                        typeAtLocationPath.length - 1,
-                    );
-                    const pathFile = path.relative(process.cwd(), trimmedPath).replace(/\\/g, "/");
+                    if (classDeclaration.name === undefined) {
+                        throw new Error("Class name is undefined");
+                    }
+                    const typeAtLocation = typeChecker.getTypeAtLocation(classDeclaration.name);
+                    let typeAtLocationPath =
+                        typeAtLocation.symbol.declarations?.[0].getSourceFile().fileName;
+                    if (typeAtLocationPath?.endsWith(".ts")) {
+                        typeAtLocationPath = typeAtLocationPath.slice(0, -3);
+                    }
+                    if (!typeAtLocationPath) {
+                        throw new Error("Could not find class declaration file path");
+                    }
+                    const pathFile = path
+                        .relative(process.cwd(), typeAtLocationPath)
+                        .replace(/\\/g, "/");
+
                     return {
                         type: AstNodeType.ClassDefinition,
-                        name: copy.name.escapedText,
+                        name: copy.name?.text ?? "undefined",
                         methods: methods,
                         path: pathFile,
                     };
@@ -254,12 +305,12 @@ export class AstGenerator implements AstGeneratorInterface {
     }
 
     parseTypeAliasDeclaration(
-        typeAliasDeclaration: typescript.Node,
+        typeAliasDeclaration: typescript.TypeAliasDeclaration,
         typeChecker: typescript.TypeChecker,
-        declarations: Node[],
+        declarations: Declaration[],
     ): StructLiteral | TypeAlias {
-        const typeAliasDeclarationCopy: any = { ...typeAliasDeclaration };
-        if (typeAliasDeclarationCopy.type.kind === typescript.SyntaxKind.TypeLiteral) {
+        const typeAliasDeclarationCopy = { ...typeAliasDeclaration };
+        if (typescript.isTypeLiteralNode(typeAliasDeclarationCopy.type)) {
             const structLiteral: StructLiteral = {
                 type: AstNodeType.StructLiteral,
                 name: "",
@@ -268,10 +319,19 @@ export class AstGenerator implements AstGeneratorInterface {
                     properties: [],
                 },
             };
+
             for (const member of typeAliasDeclarationCopy.type.members) {
-                if (member.type) {
+                if (
+                    (typescript.isPropertySignature(member) ||
+                        typescript.isIndexSignatureDeclaration(member)) &&
+                    member.type
+                ) {
+                    if (member.name && typescript.isComputedPropertyName(member.name)) {
+                        throw new Error("Computed property names are not supported");
+                    }
+
                     const field: PropertyDefinition = {
-                        name: member.name?.escapedText,
+                        name: member.name?.text ?? "undefined",
                         optional: member.questionToken ? true : false,
                         type:
                             member.kind === typescript.SyntaxKind.IndexSignature
@@ -295,67 +355,80 @@ export class AstGenerator implements AstGeneratorInterface {
         }
     }
 
-    parseMethodSignature(
-        methodSignature: typescript.Node,
+    parseMethodDeclaration(
+        methodDeclaration: typescript.MethodDeclaration,
         typeChecker: typescript.TypeChecker,
-        declarations: Node[],
+        declarations: Declaration[],
     ): MethodDefinition | undefined {
         const parameters: ParameterDefinition[] = [];
-        const methodSignatureCopy: any = { ...methodSignature };
+        const methodDeclarationCopy = { ...methodDeclaration };
         if (
-            methodSignatureCopy.name.kind === typescript.SyntaxKind.PrivateIdentifier ||
-            methodSignatureCopy.modifiers?.[0].kind === typescript.SyntaxKind.PrivateKeyword
+            methodDeclarationCopy.name.kind === typescript.SyntaxKind.PrivateIdentifier ||
+            methodDeclarationCopy.modifiers?.[0].kind === typescript.SyntaxKind.PrivateKeyword
         ) {
             return undefined;
         }
-        if (methodSignatureCopy.parameters) {
-            for (const parameter of methodSignatureCopy.parameters) {
-                if (parameter.type) {
-                    const param: ParameterDefinition = {
-                        type: AstNodeType.ParameterDefinition,
-                        name: parameter.name.escapedText,
-                        rawType: "",
-                        paramType: this.mapTypesToParamType(
-                            parameter.type,
-                            typeChecker,
-                            declarations,
-                        ),
-                        optional: parameter.questionToken ? true : false,
-                        defaultValue: parameter.initializer
-                            ? {
-                                  value: parameter.initializer.text,
-                                  type:
-                                      parameter.initializer.kind === 10
-                                          ? AstNodeType.StringLiteral
-                                          : AstNodeType.DoubleLiteral,
-                              }
-                            : undefined,
-                    };
-                    parameters.push(param);
-                }
+
+        for (const parameter of methodDeclarationCopy.parameters) {
+            if (parameter.type) {
+                const param: ParameterDefinition = {
+                    type: AstNodeType.ParameterDefinition,
+                    name: typescript.isIdentifier(parameter.name)
+                        ? parameter.name.text
+                        : "undefined",
+                    rawType: "",
+                    paramType: this.mapTypesToParamType(parameter.type, typeChecker, declarations),
+                    optional: parameter.questionToken ? true : false,
+                    defaultValue: parameter.initializer
+                        ? {
+                              value: parameter.initializer.getText(),
+                              type:
+                                  parameter.initializer.kind === typescript.SyntaxKind.StringLiteral
+                                      ? AstNodeType.StringLiteral
+                                      : AstNodeType.AnyLiteral,
+                          }
+                        : undefined,
+                };
+                parameters.push(param);
             }
         }
+
+        let methodName: string = "";
+        switch (methodDeclarationCopy.name.kind) {
+            case typescript.SyntaxKind.Identifier:
+            case typescript.SyntaxKind.StringLiteral:
+            case typescript.SyntaxKind.NumericLiteral:
+                methodName = methodDeclarationCopy.name.text;
+                break;
+            case typescript.SyntaxKind.ComputedPropertyName:
+                throw new Error("Computed property names as method names are not supported");
+        }
+
         return {
             type: AstNodeType.MethodDefinition,
-            name: methodSignatureCopy.name.escapedText,
+            name: methodName,
             params: parameters,
-            returnType: methodSignatureCopy.type
-                ? this.mapTypesToParamType(methodSignatureCopy.type, typeChecker, declarations)
+            returnType: methodDeclarationCopy.type
+                ? this.mapTypesToParamType(methodDeclarationCopy.type, typeChecker, declarations)
                 : { type: AstNodeType.VoidLiteral },
             static: false,
             kind: MethodKindEnum.method,
         };
     }
 
-    parseEnumDeclaration(enumDeclaration: typescript.Node): Enum {
-        const enumDeclarationCopy: any = { ...enumDeclaration };
+    parseEnumDeclaration(enumDeclaration: typescript.EnumDeclaration): Enum {
+        const enumDeclarationCopy = { ...enumDeclaration };
         return {
             type: AstNodeType.Enum,
-            name: enumDeclarationCopy.name.escapedText,
-            cases: enumDeclarationCopy.members.map((member: any, index: number) => {
+            name: enumDeclarationCopy.name.text,
+            cases: enumDeclarationCopy.members.map((member, index: number) => {
+                if (typescript.isComputedPropertyName(member.name)) {
+                    throw new Error("Computed property names as enum cases are not supported");
+                }
+
                 if (!member.initializer) {
                     return {
-                        name: member.name.escapedText,
+                        name: member.name.text,
                         value: index,
                         type: AstNodeType.DoubleLiteral,
                     };
@@ -364,14 +437,14 @@ export class AstGenerator implements AstGeneratorInterface {
                 switch (member.initializer.kind) {
                     case typescript.SyntaxKind.NumericLiteral:
                         return {
-                            name: member.name.escapedText,
-                            value: member.initializer.text,
+                            name: member.name.text,
+                            value: (member.initializer as typescript.NumericLiteral).text,
                             type: AstNodeType.DoubleLiteral,
                         };
                     case typescript.SyntaxKind.StringLiteral:
                         return {
-                            name: member.name.escapedText,
-                            value: member.initializer.text,
+                            name: member.name.text,
+                            value: (member.initializer as typescript.StringLiteral).text,
                             type: AstNodeType.StringLiteral,
                         };
                     default:
@@ -413,7 +486,7 @@ export class AstGenerator implements AstGeneratorInterface {
             throw new Error("No root node found");
         }
         let classDefinition: ClassDefinition | undefined = undefined;
-        const declarations: Node[] = [];
+        const declarations: Declaration[] = [];
         this.rootNode.forEachChild((child) => {
             if (typescript.isClassDeclaration(child)) {
                 const classDeclaration = this.parseClassDeclaration(

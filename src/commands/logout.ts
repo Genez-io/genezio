@@ -1,17 +1,16 @@
-import log from "loglevel";
-import { exit } from "process";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import { removeAuthToken } from "../utils/accounts.js";
 import { debugLogger } from "../utils/logging.js";
+import log from "loglevel";
 
 export async function logoutCommand() {
-    GenezioTelemetry.sendEvent({
+    await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_LOGOUT,
     });
+
     await removeAuthToken().then(([login, ...scopedRegistries]) => {
         if (login.status === "rejected") {
-            log.error("Logout failed!");
-            exit(1);
+            throw new Error("Logout failed!");
         }
 
         scopedRegistries.forEach((scopedRegistry) => {
@@ -19,7 +18,7 @@ export async function logoutCommand() {
                 debugLogger.debug(`Scoped registry removal failed: ${scopedRegistry.reason}`);
             }
         });
-
-        log.info("You are now logged out!");
     });
+
+    log.info("You are now logged out.");
 }

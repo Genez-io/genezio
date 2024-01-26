@@ -13,7 +13,7 @@ import { GENEZIO_NOT_AUTH_ERROR_MSG, GENEZIO_NO_CLASSES_FOUND } from "../errors.
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
-import { setupScopedRepositoryAuth, getAuthToken } from "../utils/accounts.js";
+import { isLoggedIn } from "../utils/accounts.js";
 import { getProjectConfiguration } from "../utils/configuration.js";
 import { getNoMethodClasses } from "../utils/getNoMethodClasses.js";
 import {
@@ -50,6 +50,8 @@ import { getNodeModulePackageJson } from "../generateSdk/templates/packageJson.j
 import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { interruptLocalProcesses } from "../utils/localInterrupt.js";
+import { Status } from "../requests/models.js";
+import { loginCommand } from "./login.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -60,7 +62,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
     } catch (error) {
         if (error instanceof Error) {
             log.error(error.message);
-            GenezioTelemetry.sendEvent({
+            await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
                 errorTrace: error.toString(),
                 commandOptions: JSON.stringify(options),
@@ -73,12 +75,10 @@ export async function deployCommand(options: GenezioDeployOptions) {
 
     // check if user is logged in
     if (configuration.cloudProvider !== CloudProviderIdentifier.SELF_HOSTED_AWS) {
-        const authToken = await getAuthToken();
-        if (!authToken) {
-            log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-            exit(1);
+        if (!(await isLoggedIn())) {
+            debugLogger.debug("No auth token found. Starting automatic authentication...");
+            await loginCommand("", false);
         }
-        await setupScopedRepositoryAuth(authToken);
     }
 
     const cloudAdapter = getCloudProvider(
@@ -99,7 +99,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
                     backendCwd,
                 );
                 if (!success) {
-                    GenezioTelemetry.sendEvent({
+                    await GenezioTelemetry.sendEvent({
                         eventType: TelemetryEventTypes.GENEZIO_PRE_BACKEND_DEPLOY_SCRIPT_ERROR,
                         commandOptions: JSON.stringify(options),
                     });
@@ -108,18 +108,20 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 }
             }
 
-            GenezioTelemetry.sendEvent({
+            await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_START,
                 cloudProvider: configuration.cloudProvider,
                 commandOptions: JSON.stringify(options),
             });
             await deployClasses(configuration, cloudAdapter, options).catch(
-                async (error: AxiosError) => {
-                    GenezioTelemetry.sendEvent({
+                async (error: AxiosError<Status>) => {
+                    await GenezioTelemetry.sendEvent({
                         eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_ERROR,
                         errorTrace: error.toString(),
                         commandOptions: JSON.stringify(options),
                     });
+
+                    const data = error.response?.data;
 
                     switch (error.response?.status) {
                         case 401:
@@ -127,16 +129,14 @@ export async function deployCommand(options: GenezioDeployOptions) {
                             break;
                         case 500:
                             log.error(error.message);
-                            if (error.response?.data) {
-                                const data: any = error.response?.data;
-                                log.error(data.error?.message);
+                            if (data && data.status === "error") {
+                                log.error(data.error.message);
                             }
                             break;
                         case 400:
                             log.error(error.message);
-                            if (error.response?.data) {
-                                const data: any = error.response?.data;
-                                log.error(data.error?.message);
+                            if (data && data.status === "error") {
+                                log.error(data.error.message);
                             }
                             break;
                         default:
@@ -148,7 +148,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
                     exit(1);
                 },
             );
-            GenezioTelemetry.sendEvent({
+            await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_END,
                 cloudProvider: configuration.cloudProvider,
                 commandOptions: JSON.stringify(options),
@@ -162,7 +162,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
                     backendCwd,
                 );
                 if (!success) {
-                    GenezioTelemetry.sendEvent({
+                    await GenezioTelemetry.sendEvent({
                         eventType: TelemetryEventTypes.GENEZIO_POST_BACKEND_DEPLOY_SCRIPT_ERROR,
                         commandOptions: JSON.stringify(options),
                     });
@@ -182,7 +182,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 frontendCwd,
             );
             if (!success) {
-                GenezioTelemetry.sendEvent({
+                await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_PRE_FRONTEND_DEPLOY_SCRIPT_ERROR,
                     commandOptions: JSON.stringify(options),
                 });
@@ -191,12 +191,12 @@ export async function deployCommand(options: GenezioDeployOptions) {
             }
         }
 
-        GenezioTelemetry.sendEvent({
+        await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_START,
             commandOptions: JSON.stringify(options),
         });
 
-        log.info("Deploying your frontend to genezio infrastructure...");
+        log.info("Deploying your frontend to the genezio infrastructure...");
         let url;
         try {
             url = await deployFrontend(configuration, cloudAdapter, options);
@@ -206,7 +206,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 if (error.message == "No frontend entry in genezio configuration file.") {
                     exit(0);
                 }
-                GenezioTelemetry.sendEvent({
+                await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_ERROR,
                     errorTrace: error.toString(),
                     commandOptions: JSON.stringify(options),
@@ -214,9 +214,9 @@ export async function deployCommand(options: GenezioDeployOptions) {
             }
             exit(1);
         }
-        log.info("\x1b[36m%s\x1b[0m", `Frontend successfully deployed at ${url}.`);
+        log.info("\x1b[36m%s\x1b[0m", `Frontend successfully deployed at ${url}`);
 
-        GenezioTelemetry.sendEvent({
+        await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_END,
             commandOptions: JSON.stringify(options),
         });
@@ -229,7 +229,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 frontendCwd,
             );
             if (!success) {
-                GenezioTelemetry.sendEvent({
+                await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_POST_FRONTEND_DEPLOY_SCRIPT_ERROR,
                     commandOptions: JSON.stringify(options),
                 });
@@ -260,8 +260,6 @@ export async function deployClasses(
                 log.error("Syntax error:");
                 log.error(`Reason Code: ${error.reasonCode}`);
                 log.error(`File: ${error.path}:${error.loc.line}:${error.loc.column}`);
-
-                throw error;
             }
 
             throw error;
@@ -401,6 +399,22 @@ export async function deployClasses(
 
     printAdaptiveLog("Bundling your code", "end");
 
+    projectConfiguration.astSummary.classes = projectConfiguration.astSummary.classes.map((c) => {
+        // remove cwd from path and the extension
+        return {
+            ...c,
+            path: path.relative(process.cwd(), c.path).replace(/\.[^/.]+$/, ""),
+        };
+    });
+
+    projectConfiguration.classes = projectConfiguration.classes.map((c) => {
+        // remove cwd from path and the extension
+        return {
+            ...c,
+            path: path.relative(process.cwd(), c.path).replace(/\.[^/.]+$/, ""),
+        };
+    });
+
     const result = await cloudAdapter.deploy(bundlerResultArray, projectConfiguration, {
         stage: stage,
     });
@@ -414,23 +428,18 @@ export async function deployClasses(
     );
 
     if (configuration.sdk) {
-        await writeSdkToDisk(sdkResponse, configuration.sdk.language, configuration.sdk.path);
+        await writeSdkToDisk(sdkResponse, configuration.sdk.path);
     } else if (configuration.language === Language.ts || configuration.language === Language.js) {
         const localPath = await createLocalTempFolder(
             `${projectConfiguration.name}-${projectConfiguration.region}`,
         );
-        await writeSdkToDisk(sdkResponse, configuration.language, path.join(localPath, "sdk"));
+        await writeSdkToDisk(sdkResponse, path.join(localPath, "sdk"));
         const packageJson: string = getNodeModulePackageJson(
             configuration.name,
             configuration.region,
             stage,
         );
-        await compileSdk(
-            path.join(localPath, "sdk"),
-            packageJson,
-            configuration.language,
-            GenezioCommand.deploy,
-        );
+        await compileSdk(path.join(localPath, "sdk"), packageJson, configuration.language, true);
     }
 
     reportSuccess(
@@ -456,7 +465,7 @@ export async function deployClasses(
             if (!(await fileExists(envFile))) {
                 // There is no need to exit the process here, as the project has been deployed
                 log.error(`File ${envFile} does not exists. Please provide the correct path.`);
-                GenezioTelemetry.sendEvent({
+                await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
                     errorTrace: `File ${envFile} does not exists`,
                 });
@@ -465,27 +474,31 @@ export async function deployClasses(
                 const envVars = await readEnvironmentVariablesFile(envFile);
                 const projectEnv = await getProjectEnvFromProject(projectId, stage);
 
+                if (!projectEnv) {
+                    throw new Error("Project environment not found.");
+                }
+
                 // Upload environment variables to the project
                 await setEnvironmentVariables(projectId, projectEnv.id, envVars)
-                    .then(() => {
+                    .then(async () => {
                         debugLogger.debug(
                             `Environment variables from ${envFile} uploaded to project ${projectId}`,
                         );
                         log.info(
                             `The environment variables were uploaded to the project successfully.`,
                         );
-                        GenezioTelemetry.sendEvent({
+                        await GenezioTelemetry.sendEvent({
                             eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS,
                         });
                     })
-                    .catch((error: AxiosError) => {
+                    .catch(async (error: AxiosError) => {
                         log.error(`Loading environment variables failed with: ${error.message}`);
                         log.error(
                             `Try to set the environment variables using the dashboard ${colors.cyan(
                                 REACT_APP_BASE_URL,
                             )}`,
                         );
-                        GenezioTelemetry.sendEvent({
+                        await GenezioTelemetry.sendEvent({
                             eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
                             errorTrace: error.toString(),
                         });
@@ -500,6 +513,10 @@ export async function deployClasses(
                 // read envVars from file
                 const envVars = await readEnvironmentVariablesFile(envFile);
                 const projectEnv = await getProjectEnvFromProject(projectId, stage);
+
+                if (!projectEnv) {
+                    throw new Error("Project environment not found.");
+                }
 
                 // get remoteEnvVars from project
                 const remoteEnvVars = await getEnvironmentVariables(projectId, projectEnv.id);
@@ -563,14 +580,18 @@ export async function deployFrontend(
         const frontendPath = configuration.frontend?.path;
         if (!(await fileExists(frontendPath))) {
             throw new Error(
-                `The build folder does not exist. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
+                `The build folder ${colors.cyan(
+                    `${frontendPath}`,
+                )} does not exist. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
             );
         }
 
         // check if the build folder is empty
         if (await isDirectoryEmpty(frontendPath)) {
             throw new Error(
-                `The build folder is empty. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
+                `The build folder ${colors.cyan(
+                    `${frontendPath}`,
+                )} is empty. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
             );
         }
 

@@ -2,7 +2,7 @@ import { generateAst } from "./astGeneratorHandler.js";
 import { generateSdk } from "./sdkGeneratorHandler.js";
 import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js";
 import { getGenerateAstInputs } from "./utils/getFiles.js";
-import { SdkGeneratorInput, SdkGeneratorOutput, SdkVersion } from "../models/genezioModels.js";
+import { SdkGeneratorInput, SdkGeneratorOutput } from "../models/genezioModels.js";
 import path from "path";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import { AstGeneratorInput } from "../models/genezioModels.js";
@@ -29,7 +29,7 @@ export async function sdkGeneratorApiHandler(
 
     if (sdkLanguage) {
         sdkGeneratorInput.sdk = {
-            language: sdkLanguage as string,
+            language: sdkLanguage,
         };
     } else {
         sdkGeneratorInput.sdk = {
@@ -56,7 +56,6 @@ export async function sdkGeneratorApiHandler(
     const sdkOutput: SdkGeneratorOutput = await generateSdk(
         sdkGeneratorInput,
         projectConfiguration.plugins?.sdkGenerator,
-        projectConfiguration.sdk ? SdkVersion.OLD_SDK : SdkVersion.NEW_SDK,
     );
 
     return {

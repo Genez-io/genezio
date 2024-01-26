@@ -20,7 +20,6 @@ import {
     ParameterDefinition,
     MethodDefinition,
     ModelView,
-    SdkVersion,
 } from "../../models/genezioModels.js";
 import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 import { pythonSdk } from "../templates/pythonSdk.js";
@@ -180,11 +179,11 @@ class SdkGenerator implements SdkGeneratorInterface {
                             (e.optional
                                 ? " = None"
                                 : e.defaultValue
-                                ? " = " +
-                                  (e.defaultValue.type === AstNodeType.StringLiteral
-                                      ? "'" + e.defaultValue.value + "'"
-                                      : e.defaultValue.value)
-                                : ""),
+                                  ? " = " +
+                                    (e.defaultValue.type === AstNodeType.StringLiteral
+                                        ? "'" + e.defaultValue.value + "'"
+                                        : e.defaultValue.value)
+                                  : ""),
                         last: false,
                     };
                 });

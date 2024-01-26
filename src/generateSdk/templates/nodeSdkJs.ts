@@ -9,10 +9,8 @@ let importDone = false;
 
 async function importModules() {
     if (typeof process !== "undefined" && process.versions != null && process.versions.node != null) {
-        const httpModule = 'http';
-        http = await import(httpModule);
-        const httpsModule = 'https';
-        https = await import(httpsModule);
+        http = await import("http");
+        https = await import("https");
     }
     importDone = true;
 }
@@ -25,6 +23,11 @@ async function makeRequestBrowser(request, url) {
        },
        body: JSON.stringify(request),
    });
+
+   if (!response.ok) {
+       return response.json().then((error) => Promise.reject(error));
+   }
+
    return response.json();
 }
 
@@ -40,7 +43,6 @@ async function makeRequestNode(request, url, agent) {
        method: 'POST',
        headers: {
            'Content-Type': 'application/json',
-           'Content-Length': data.length,
        },
        agent: agent,
    };

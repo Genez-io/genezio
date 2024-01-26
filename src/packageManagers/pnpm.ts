@@ -51,19 +51,23 @@ export default class PnpmPackageManager implements PackageManager {
 
         // Add the authentication token for the registry hostname
         const registryUrl = new URL(url);
-        await asyncExec(`pnpm config set //${registryUrl.hostname}/:_authToken=${authToken}`);
+        const path = registryUrl.pathname.split("/").slice(0, -1).join("/");
+        await asyncExec(
+            `pnpm config set //${registryUrl.hostname}${path}/:_authToken=${authToken}`,
+        );
     }
 
     async removeScopedRegistry(scope: string): Promise<void> {
         // Get the registry url for the specified scope
         const { stdout } = await asyncExec(`pnpm config get @${scope}:registry`);
         const registryUrl = new URL(stdout.trim());
+        const path = registryUrl.pathname.split("/").slice(0, -1).join("/");
 
         // Remove the package scoped registry
         await asyncExec(`pnpm config delete @${scope}:registry`);
 
         // Remove the authentication token for the registry hostname
-        await asyncExec(`pnpm config delete //${registryUrl.hostname}/:_authToken`);
+        await asyncExec(`pnpm config delete //${registryUrl.hostname}${path}/:_authToken`);
     }
 
     async getVersion(): Promise<string> {

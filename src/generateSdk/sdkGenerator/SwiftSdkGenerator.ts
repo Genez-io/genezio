@@ -8,7 +8,6 @@ import {
     Node,
     ArrayType,
     PromiseType,
-    SdkVersion,
 } from "../../models/genezioModels.js";
 import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 import { swiftSdk } from "../templates/swiftSdk.js";

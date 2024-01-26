@@ -19,13 +19,15 @@ try {
         // Set sampling rate for profiling - this is relative to tracesSampleRate
         profilesSampleRate: 0.3,
     });
-} catch (error: any) {
-    debugLogger.debug("Sentry not initialized", error.message);
+} catch (error) {
+    if (error instanceof Error) {
+        debugLogger.debug("Sentry not initialized", error.message);
+    }
 }
 
 // Set-up SIGINT and exit handlers that clean up the temporary folder structure
 process.on("SIGINT", async () => {
-    GenezioTelemetry.sendEvent({
+    await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_CANCEL,
         errorTrace: "",
         commandOptions: "",

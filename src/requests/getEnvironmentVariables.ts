@@ -2,12 +2,13 @@ import axios from "./axios.js";
 import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
-import { EnvironmentVariable } from "../models/environmentVariables.js";
+import { AxiosResponse } from "axios";
+import { ObfuscatedEnvironmentVariable, StatusOk } from "./models.js";
 
 export async function getEnvironmentVariables(
     projectId: string,
     projectEnvId: string,
-): Promise<EnvironmentVariable[]> {
+): Promise<ObfuscatedEnvironmentVariable[]> {
     // validate parameters
     if (!projectId) {
         throw new Error("Missing required parameters");
@@ -21,24 +22,16 @@ export async function getEnvironmentVariables(
         );
     }
 
-    const response: any = await axios({
+    const response: AxiosResponse<
+        StatusOk<{ environmentVariables: ObfuscatedEnvironmentVariable[] }>
+    > = await axios({
         method: "GET",
         url: `${BACKEND_ENDPOINT}/projects/${projectId}/${projectEnvId}/environment-variables`,
         headers: {
             Authorization: `Bearer ${authToken}`,
             "Accept-Version": `genezio-cli/${version}`,
         },
-    }).catch((error: Error) => {
-        throw error;
     });
-
-    if (response.data.status === "error") {
-        throw new Error(response.data.message);
-    }
-
-    if (response.data?.error?.message) {
-        throw new Error(response.data.error.message);
-    }
 
     return response.data.environmentVariables;
 }

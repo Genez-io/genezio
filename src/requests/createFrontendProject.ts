@@ -23,7 +23,7 @@ export async function createFrontendProject(
         stage,
     });
 
-    const response: any = await axios({
+    await axios({
         method: "PUT",
         url: `${BACKEND_ENDPOINT}/frontend`,
         data: json,
@@ -34,14 +34,4 @@ export async function createFrontendProject(
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
     });
-
-    if (response.data.status === "error") {
-        throw new Error(response.data.message);
-    }
-
-    if (response.data?.error?.message) {
-        throw new Error(response.data.error.message);
-    }
-
-    return response.data;
 }

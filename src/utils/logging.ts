@@ -4,6 +4,7 @@ import { AbortController } from "node-abort-controller";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import terminalOverwrite from "terminal-overwrite";
+import colors from "colors";
 
 export const spinner = new Spinner("%s  ");
 spinner.setSpinnerString("|/-\\");
@@ -29,6 +30,10 @@ export function printAdaptiveLog(message: string, state: string) {
         terminalOverwrite(message + "...❌");
         log.info("");
     }
+}
+
+export function code(code: string): string {
+    return colors.cyan(code);
 }
 
 const uninformativeMessages = [

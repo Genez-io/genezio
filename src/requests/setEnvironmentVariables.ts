@@ -26,7 +26,7 @@ export async function setEnvironmentVariables(
         environmentVariables: environmentVariablesData,
     });
 
-    const response: any = await axios({
+    await axios({
         method: "POST",
         url: `${BACKEND_ENDPOINT}/projects/${projectId}/${projectEnvId}/environment-variables`,
         data: data,
@@ -34,15 +34,5 @@ export async function setEnvironmentVariables(
             Authorization: `Bearer ${authToken}`,
             "Accept-Version": `genezio-cli/${version}`,
         },
-    }).catch((error: Error) => {
-        throw error;
     });
-
-    if (response.data.status === "error") {
-        throw new Error(response.data.message);
-    }
-
-    if (response.data?.error?.message) {
-        throw new Error(response.data.error.message);
-    }
 }

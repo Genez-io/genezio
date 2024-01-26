@@ -47,6 +47,12 @@ export enum TelemetryEventTypes {
     GENEZIO_DEPLOY_LOAD_ENV_VARS = "GENEZIO_DEPLOY_LOAD_ENV_VARS",
     GENEZIO_COMMAND_ERROR = "GENEZIO_COMMAND_ERROR",
     GENEZIO_COMMAND = "GENEZIO_COMMAND",
+    GENEZIO_CREATE = "GENEZIO_CREATE",
+    GENEZIO_CREATE_ERROR = "GENEZIO_CREATE_ERROR",
+    GENEZIO_CREATE_INTERACTIVE = "GENEZIO_CREATE_INTERACTIVE",
+    GENEZIO_CREATE_INTERACTIVE_ERROR = "GENEZIO_CREATE_INTERACTIVE_ERROR",
+    GENEZIO_CREATE_TEMPLATE_LIST = "GENEZIO_CREATE_TEMPLATE_LIST",
+    GENEZIO_CREATE_TEMPLATE_LIST_ERROR = "GENEZIO_CREATE_TEMPLATE_LIST_ERROR",
 }
 
 export class GenezioTelemetry {
@@ -63,7 +69,7 @@ export class GenezioTelemetry {
     }
 
     public static async sendEvent(eventRequest: EventRequest): Promise<void> {
-        if (process.env.GENEZIO_NO_TELEMETRY == "1") {
+        if (process.env["GENEZIO_NO_TELEMETRY"] == "1") {
             debugLogger.debug(`[GenezioTelemetry]`, `Telemetry disabled by user`);
             return;
         }
@@ -102,7 +108,7 @@ export class GenezioTelemetry {
             timeZone: timeZone,
             genezioVersion: version,
             commandOptions: eventRequest.commandOptions || "",
-            isCI: process.env.CI ? true : false,
+            isCI: process.env["CI"] ? true : false,
             nodeVersion: process.version,
         };
 

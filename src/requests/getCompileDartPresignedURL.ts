@@ -2,6 +2,8 @@ import axios from "./axios.js";
 import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
+import { AxiosResponse } from "axios";
+import { StatusOk } from "./models.js";
 
 export async function getCompileDartPresignedURL(archiveName: string) {
     if (!archiveName) {
@@ -20,31 +22,22 @@ export async function getCompileDartPresignedURL(archiveName: string) {
         zipName: archiveName,
     });
 
-    const response = await axios({
-        method: "GET",
-        url: `${BACKEND_ENDPOINT}/core/compile-dart-url`,
-        data: json,
-        headers: {
-            Authorization: `Bearer ${authToken}`,
-            "Accept-Version": `genezio-cli/${version}`,
-        },
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity,
-    }).catch((error: Error) => {
-        throw error;
-    });
-
-    if (response.data.status === "error") {
-        throw new Error(response.data.message);
-    }
-
-    if (response.data?.error?.message) {
-        throw new Error(response.data.error.message);
-    }
+    const response: AxiosResponse<StatusOk<{ userId: string; presignedURL: string | undefined }>> =
+        await axios({
+            method: "GET",
+            url: `${BACKEND_ENDPOINT}/core/compile-dart-url`,
+            data: json,
+            headers: {
+                Authorization: `Bearer ${authToken}`,
+                "Accept-Version": `genezio-cli/${version}`,
+            },
+            maxContentLength: Infinity,
+            maxBodyLength: Infinity,
+        });
 
     if (response.data.presignedURL === undefined) {
         throw new Error("The endpoint did not return a presigned url.");
     }
 
-    return { presignedURL: response.data.presignedURL as string };
+    return { ...response.data, presignedURL: response.data.presignedURL };
 }

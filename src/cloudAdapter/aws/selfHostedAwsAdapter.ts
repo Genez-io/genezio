@@ -588,8 +588,8 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
                     StackName: stackName,
                 },
             );
-        } catch (e: any) {
-            if (e.message === "No updates are to be performed.") {
+        } catch (e) {
+            if (e instanceof Error && e.message === "No updates are to be performed.") {
                 return await this.#getValueForKeyFromOutput(
                     cloudFormationClient,
                     stackName,

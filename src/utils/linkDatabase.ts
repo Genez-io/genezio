@@ -10,8 +10,9 @@ async function getLinkContent(): Promise<Map<string, string[]>> {
         const data = await fs.readFile(filePath, "utf8");
         // Parse the content as JSON and return as a Map
         return new Map(Object.entries(JSON.parse(data)));
-    } catch (error: any) {
-        if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+    } catch (error) {
+        const err = error as NodeJS.ErrnoException;
+        if (err.code === "ENOENT" || err.code === "ENOTDIR") {
             await fs.mkdir(directoryPath, { recursive: true });
             // If the file doesn't exist, create it with an empty object
             await fs.writeFile(filePath, JSON.stringify({}), "utf8");

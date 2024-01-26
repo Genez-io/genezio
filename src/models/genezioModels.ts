@@ -189,7 +189,7 @@ export interface PromiseType extends Node {
 
 export interface EnumCase {
     name: string;
-    value: string;
+    value: string | number;
     type: AstNodeType;
 }
 
@@ -347,17 +347,9 @@ export type SdkGeneratorOutput = {
     files: SdkFileClass[];
 };
 
-export enum SdkVersion {
-    OLD_SDK,
-    NEW_SDK,
-}
-
 /**
  * A class implementing this interface will create the sdk for a given language.
  */
 export interface SdkGeneratorInterface {
-    generateSdk: (
-        sdkGeneratorInput: SdkGeneratorInput,
-        sdkVersion: SdkVersion,
-    ) => Promise<SdkGeneratorOutput>;
+    generateSdk: (sdkGeneratorInput: SdkGeneratorInput) => Promise<SdkGeneratorOutput>;
 }

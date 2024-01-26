@@ -1,9 +1,10 @@
+import { beforeEach, test, expect, vi } from "vitest";
 import { getAuthToken } from "../../src/utils/accounts";
 import { uploadContentToS3 } from "../../src/requests/uploadContentToS3";
 
-jest.mock("../../src/utils/accounts");
+vi.mock("../../src/utils/accounts");
 
-const mockedGetAuthToken = jest.mocked(getAuthToken, { shallow: true });
+const mockedGetAuthToken = vi.mocked(getAuthToken);
 
 beforeEach(() => {
     mockedGetAuthToken.mockClear();

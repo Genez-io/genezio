@@ -13,6 +13,7 @@ export default async function (filePath: string): Promise<string> {
         presets: [presetTypescript],
         plugins: [[packagePath, { version: "2023-05", decoratorsBeforeExport: false }]],
         filename: filePath,
+        sourceMaps: "inline",
     });
 
     if (!babelOutput?.code) {

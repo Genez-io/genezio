@@ -13,6 +13,14 @@ import {
 import parser from "@babel/parser";
 import traverse from "@babel/traverse";
 import fs from "fs";
+import {
+    isClassDeclaration,
+    isClassMethod,
+    isIdentifier,
+    isAssignmentPattern,
+    isClassProperty,
+    isArrowFunctionExpression,
+} from "@babel/types";
 
 class AstGenerator implements AstGeneratorInterface {
     async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
@@ -33,39 +41,76 @@ class AstGenerator implements AstGeneratorInterface {
         let classDefinition: ClassDefinition | undefined = undefined;
 
         traverse.default(result, {
-            enter(path: any) {
-                if (path.type === "ClassDeclaration") {
+            enter(path) {
+                if (isClassDeclaration(path.node)) {
                     classDefinition = {
                         type: AstNodeType.ClassDefinition,
-                        name: path.node.id.name,
+                        name: path.node.id?.name ?? "undefined",
                         methods: [],
                         path: input.class.path,
                     };
                 } else if (
                     // old school function declaration syntax
-                    path.type === "ClassMethod" &&
+                    isClassMethod(path.node) &&
                     path.node.kind !== "constructor"
                 ) {
                     const returnType: AnyType = {
                         type: AstNodeType.AnyLiteral,
                     };
+
                     classDefinition?.methods.push({
                         type: AstNodeType.MethodDefinition,
-                        name: path.node.key.name,
+                        name: isIdentifier(path.node.key) ? path.node.key.name : "undefined",
                         static: false,
                         kind: MethodKindEnum.method,
                         returnType: returnType,
-                        params: path.node.params.map(function (param: any) {
+                        params: path.node.params.map(function (param) {
                             const astType: AnyType = {
                                 type: AstNodeType.AnyLiteral,
                             };
+                            let optional = false;
+                            let defaultValue: { value: string; type: AstNodeType } | undefined;
+                            switch (param.type) {
+                                case "AssignmentPattern":
+                                    optional = true;
+                                    switch (param.right.type) {
+                                        case "StringLiteral":
+                                            defaultValue = {
+                                                value: param.right.value,
+                                                type: AstNodeType.StringLiteral,
+                                            };
+                                            break;
+                                        case "NumericLiteral":
+                                            defaultValue = {
+                                                value: param.right.value.toString(),
+                                                type: AstNodeType.DoubleLiteral,
+                                            };
+                                            break;
+                                        case "BooleanLiteral":
+                                            defaultValue = {
+                                                value: param.right.value.toString(),
+                                                type: AstNodeType.BooleanLiteral,
+                                            };
+                                            break;
+                                        default:
+                                            defaultValue = undefined;
+                                    }
+                                    break;
+                                default:
+                                    defaultValue = undefined;
+                            }
+
                             const astParam: ParameterDefinition = {
                                 type: AstNodeType.ParameterDefinition,
-                                name: param.name ? param.name : param.left.name,
+                                name: isIdentifier(param)
+                                    ? param.name
+                                    : isAssignmentPattern(param) && isIdentifier(param.left)
+                                      ? param.left.name
+                                      : "undefined",
                                 rawType: "any",
                                 paramType: astType,
-                                optional: false,
-                                defaultValue: param.right ? param.right.value : undefined,
+                                optional,
+                                defaultValue,
                             };
 
                             return astParam;
@@ -73,29 +118,65 @@ class AstGenerator implements AstGeneratorInterface {
                     });
                 } else if (
                     // arrow function declaration syntax
-                    path.type === "ClassProperty" &&
-                    path.node?.value?.type === "ArrowFunctionExpression"
+                    isClassProperty(path.node) &&
+                    isArrowFunctionExpression(path.node.value)
                 ) {
                     const returnType: AnyType = {
                         type: AstNodeType.AnyLiteral,
                     };
                     classDefinition?.methods.push({
                         type: AstNodeType.MethodDefinition,
-                        name: path.node.key.name,
+                        name: isIdentifier(path.node.key) ? path.node.key.name : "undefined",
                         static: false,
                         kind: MethodKindEnum.method,
                         returnType: returnType,
-                        params: path.node.value.params.map(function (param: any) {
+                        params: path.node.value.params.map(function (param) {
                             const astType: AnyType = {
                                 type: AstNodeType.AnyLiteral,
                             };
+                            let optional = false;
+                            let defaultValue: { value: string; type: AstNodeType } | undefined;
+                            switch (param.type) {
+                                case "AssignmentPattern":
+                                    optional = true;
+                                    switch (param.right.type) {
+                                        case "StringLiteral":
+                                            defaultValue = {
+                                                value: param.right.value,
+                                                type: AstNodeType.StringLiteral,
+                                            };
+                                            break;
+                                        case "NumericLiteral":
+                                            defaultValue = {
+                                                value: param.right.value.toString(),
+                                                type: AstNodeType.DoubleLiteral,
+                                            };
+                                            break;
+                                        case "BooleanLiteral":
+                                            defaultValue = {
+                                                value: param.right.value.toString(),
+                                                type: AstNodeType.BooleanLiteral,
+                                            };
+                                            break;
+                                        default:
+                                            defaultValue = undefined;
+                                    }
+                                    break;
+                                default:
+                                    defaultValue = undefined;
+                            }
+
                             const astParam: ParameterDefinition = {
                                 type: AstNodeType.ParameterDefinition,
-                                name: param.name ? param.name : param.left.name,
+                                name: isIdentifier(param)
+                                    ? param.name
+                                    : isAssignmentPattern(param) && isIdentifier(param.left)
+                                      ? param.left.name
+                                      : "undefined",
                                 rawType: "any",
                                 paramType: astType,
-                                optional: false,
-                                defaultValue: param.right ? param.right.value : undefined,
+                                optional,
+                                defaultValue,
                             };
 
                             return astParam;

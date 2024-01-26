@@ -1,6 +1,5 @@
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
-import { Language } from "../models/yamlProjectConfiguration.js";
-import { writeToFile } from "./file.js";
+import { deleteFolder, writeToFile } from "./file.js";
 import { debugLogger } from "./logging.js";
 import { File, SdkFileClass } from "../models/genezioModels.js";
 
@@ -17,10 +16,9 @@ export async function replaceUrlsInSdk(
     classUrlMap: ClassUrlMap[],
 ) {
     sdkResponse.files.forEach((c: SdkFileClass) => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const classContent = classUrlMap.find((classFile) => {
             return classFile.name === c.className;
-        })!;
+        });
 
         if (classContent) {
             c.data = c.data.replace("%%%link_to_be_replace%%%", classContent.cloudUrl);
@@ -31,15 +29,13 @@ export async function replaceUrlsInSdk(
 /**
  * Write the SDK files to disk.
  */
-export async function writeSdkToDisk(
-    sdk: SdkGeneratorResponse,
-    language: Language,
-    outputPath: string,
-) {
+export async function writeSdkToDisk(sdk: SdkGeneratorResponse, outputPath: string) {
     if (sdk.files.length == 0) {
         debugLogger.debug("No SDK classes found...");
         return;
     }
+
+    await deleteFolder(outputPath);
 
     debugLogger.debug("Writing the SDK to files...");
     await Promise.all(
