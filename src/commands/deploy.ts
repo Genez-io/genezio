@@ -52,6 +52,7 @@ import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { interruptLocalProcesses } from "../utils/localInterrupt.js";
 import { Status } from "../requests/models.js";
 import { loginCommand } from "./login.js";
+import { bundle } from "../bundlers/utils.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -287,72 +288,12 @@ export async function deployClasses(
     printAdaptiveLog("Bundling your code", "start");
     const bundlerResult: Promise<GenezioCloudInput>[] = projectConfiguration.classes.map(
         async (element) => {
-            if (!(await fileExists(element.path))) {
-                printAdaptiveLog("Bundling your code and uploading it", "error");
-                log.error(`\`${element.path}\` file does not exist at the indicated path.`);
-
-                throw new Error(`\`${element.path}\` file does not exist at the indicated path.`);
-            }
-
-            let bundler: BundlerInterface;
-
-            switch (element.language) {
-                case ".ts": {
-                    const requiredDepsBundler = new TsRequiredDepsBundler();
-                    const typeCheckerBundler = new TypeCheckerBundler();
-                    const standardBundler = new NodeJsBundler();
-                    const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
-                    bundler = new BundlerComposer([
-                        requiredDepsBundler,
-                        typeCheckerBundler,
-                        standardBundler,
-                        binaryDepBundler,
-                    ]);
-                    break;
-                }
-                case ".js": {
-                    const standardBundler = new NodeJsBundler();
-                    const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
-                    bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
-                    break;
-                }
-                case ".dart": {
-                    bundler = new DartBundler();
-                    break;
-                }
-                case ".kt": {
-                    bundler = new KotlinBundler();
-                    break;
-                }
-                default:
-                    log.error(`Unsupported ${element.language}`);
-                    throw new Error(`Unsupported ${element.language}`);
-            }
-
-            debugLogger.debug(`The bundling process has started for file ${element.path}...`);
-
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const ast = sdkResponse.sdkGeneratorInput.classesInfo.find(
                 (classInfo) => classInfo.classConfiguration.path === element.path,
             )!.program;
+            const output = await bundle(projectConfiguration, ast, element, installDeps);
 
-            const tmpFolder = await createTemporaryFolder();
-            const output = await bundler.bundle({
-                projectConfiguration: projectConfiguration,
-                genezioConfigurationFilePath: process.cwd(),
-                ast: ast,
-                configuration: element,
-                path: element.path,
-                extra: {
-                    mode: "production",
-                    tmpFolder: tmpFolder,
-                    installDeps,
-                },
-            });
-            debugLogger.debug(
-                `The bundling process finished successfully for file ${element.path}.`,
-            );
-
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             // check if the unzipped folder is smaller than 250MB
             const unzippedBundleSize: number = await getBundleFolderSizeLimit(output.path);
             debugLogger.debug(
