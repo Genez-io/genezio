@@ -31,6 +31,7 @@ export interface AuthStatus {
     databaseType: string;
     token: string;
     region: string;
+    cloudProvider?: string;
 }
 
 export interface ProjectDetails {

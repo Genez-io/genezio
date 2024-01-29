@@ -66,8 +66,7 @@ import {
     CloudProviderIdentifier,
     LambdaResponse,
 } from "../models/cloudProviderIdentifier.js";
-import { getProjectEnvFromProjectByName } from "../requests/getProjectInfoByName.js";
-import getAuthStatus from "../requests/getAuthStatus.js";
+import { importServiceEnvVariables } from "../utils/servicesEnvVariables.js";
 
 const POLLING_INTERVAL = 2000;
 
@@ -541,10 +540,7 @@ async function startProcesses(
     });
 
     const bundlersOutput = await Promise.all(bundlersOutputPromise);
-    const authUrl = await getAuthFunctionUrl(projectConfiguration.name, projectConfiguration.region);
-    if (authUrl) {
-        process.env["GNZ_AUTH_FUNCTION_URL"] = authUrl;
-    }
+    await importServiceEnvVariables(projectConfiguration.name, projectConfiguration.region);
 
     const envVars: dotenv.DotenvPopulateInput = {};
     const envFile = projectConfiguration.workspace?.backend
@@ -572,32 +568,6 @@ async function startProcesses(
     }
 
     return processForClasses;
-}
-
-async function getAuthFunctionUrl(projectName: string, region: string): Promise<string|undefined> {
-    const projectEnv = await getProjectEnvFromProjectByName(projectName, region, "prod").catch(() => {
-        return undefined; 
-    });
-    if (!projectEnv) {
-        return undefined;
-    }
-
-    const authStatus = await getAuthStatus(projectEnv.id).catch(() => {
-        return undefined;
-    });
-
-    if (!authStatus) {
-        return undefined;
-    }
-
-    const [cloud, id] = authStatus.token.split("-");
-    if (cloud === "0") {
-        return `https://${id}.lambda-url.${region}.on.aws/AuthService`;
-    } else {
-         debugLogger.error("Wrong token format. Check your token and try again");
-    }
-
-    return undefined
 }
 
 // Function that returns the correct bundler for the local environment based on language.
