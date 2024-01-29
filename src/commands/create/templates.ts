@@ -25,6 +25,12 @@ export const backendTemplates: Record<string, Template> = {
         pkgManager: "npm",
         coloring: colors.yellow,
     },
+    "onboarding-ts": {
+        name: "TypeScript for Onboarding",
+        pkgManager: "npm",
+        coloring: (s) => s,
+        hidden: true,
+    },
 };
 
 /*
