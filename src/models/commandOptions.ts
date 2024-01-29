@@ -1,4 +1,3 @@
-import { regions } from "../utils/configs.js";
 import { Language } from "./yamlProjectConfiguration.js";
 
 export interface BaseOptions {
@@ -67,14 +66,30 @@ export interface GenezioUnlinkOptions extends BaseOptions {
     region?: string;
 }
 
-export interface GenezioCreateBaseOptions extends BaseOptions {
-    name: string;
-    region: (typeof regions)[number]["value"];
+export interface GenezioCreateInteractiveOptions extends BaseOptions {
+    path?: string;
 }
 
-export type GenezioCreateOptions = GenezioCreateBaseOptions &
-    (
-        | { backend: string }
-        | { frontend: string }
-        | { fullstack: [string, string]; structure: "monorepo" | "multirepo" }
-    );
+export interface GenezioCreateFullstackOptions extends BaseOptions {
+    name?: string;
+    region?: string;
+    multirepo: boolean;
+    backend?: string;
+    frontend?: string;
+    path?: string;
+}
+
+export interface GenezioCreateBackendOptions extends BaseOptions {
+    name?: string;
+    region?: string;
+    backend?: string;
+    path?: string;
+}
+
+export type GenezioCreateOptions =
+    | ({ type: "fullstack"; path?: string } & Required<
+          Omit<GenezioCreateFullstackOptions, "path" | "logLevel">
+      >)
+    | ({ type: "backend"; path?: string } & Required<
+          Omit<GenezioCreateBackendOptions, "path" | "logLevel">
+      >);
