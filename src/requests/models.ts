@@ -25,6 +25,14 @@ export interface ProjectListEnvElement {
     name: string;
 }
 
+export interface AuthStatus {
+    enabled: boolean;
+    databaseUrl: string;
+    databaseType: string;
+    token: string;
+    region: string;
+}
+
 export interface ProjectDetails {
     id: string;
     name: string;
