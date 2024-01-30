@@ -1,45 +1,37 @@
-// Libs
 import path from "path";
 import Mustache from "mustache";
 import { default as fsExtra } from "fs-extra";
 import log from "loglevel";
 import { spawnSync } from "child_process";
 import { template } from "./localGoMain.js";
-import {
-    castArrayRecursivelyInitial,
-    castMapRecursivelyInitial,
-} from "../../utils/kotlinAstCasting.js";
-
 // Utils
 import { createTemporaryFolder, writeToFile } from "../../utils/file.js";
 import { debugLogger } from "../../utils/logging.js";
 
 // Models
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface.js";
-import {
-    ClassConfiguration,
-    MethodConfiguration,
-    ParameterType,
-} from "../../models/projectConfiguration.js";
-import { TriggerType } from "../../models/yamlProjectConfiguration.js";
+import { ClassConfiguration } from "../../models/projectConfiguration.js";
 import {
     ArrayType,
     AstNodeType,
     ClassDefinition,
     CustomAstNodeType,
-    MapType,
     MethodDefinition,
     Node,
+    ParameterDefinition,
     Program,
+    StructLiteral,
 } from "../../models/genezioModels.js";
 import { checkIfGoIsInstalled } from "../../utils/go.js";
 
+type ImportView = {
+    name: string;
+    path: string;
+    named: boolean;
+};
+
 type MoustanceViewForMain = {
-    imports: {
-        name: string;
-        path: string;
-        named: boolean;
-    }[];
+    imports: ImportView[];
     class: {
         name: string;
         packageName: string | undefined;
@@ -48,65 +40,23 @@ type MoustanceViewForMain = {
         name: string;
         parameters: {
             index: number;
-            type: string;
+            cast: string;
         }[];
     }[];
 };
 
 export class GoBundler implements BundlerInterface {
-    #castParameterToPropertyType(node: Node, variableName: string): string {
-        let implementation = "";
-
-        switch (node.type) {
-            case AstNodeType.StringLiteral:
-                implementation += `${variableName}.jsonPrimitive.content`;
-                break;
-            case AstNodeType.DoubleLiteral:
-                implementation += `${variableName}.toDouble()`;
-                break;
-            case AstNodeType.BooleanLiteral:
-                implementation += `${variableName}.jsonPrimitive.content.toBoolean()`;
-                break;
-            case AstNodeType.IntegerLiteral:
-                implementation += `Integer.parseInt(${variableName}.jsonPrimitive.content)`;
-                break;
-            case AstNodeType.CustomNodeLiteral:
-                implementation += `Json.decodeFromJsonElement<${
-                    (node as CustomAstNodeType).rawValue
-                }>(${variableName})`;
-                break;
-            case AstNodeType.ArrayType:
-                implementation += castArrayRecursivelyInitial(node as ArrayType, variableName);
-                break;
-            case AstNodeType.MapType:
-                implementation += castMapRecursivelyInitial(node as MapType, variableName);
-        }
-
-        return implementation;
-    }
-
-    #getProperCast(
-        mainClass: ClassDefinition,
-        method: MethodConfiguration,
-        parameterType: ParameterType,
-        index: number,
-    ): string {
-        const type = mainClass.methods
-            .find((m) => m.name == method.name)!
-            .params.find((p) => p.name == parameterType.name);
-        return `${this.#castParameterToPropertyType(type!.paramType, `params!![${index}]`)}`;
-    }
-
-    #getImportViewFromPath(path: string): { name: string; path: string; named: boolean } {
+    #getImportViewFromPath(path: string): ImportView {
         if (!path) return { name: "", path: "", named: false };
         const packageName = path.substring(path.lastIndexOf("/") + 1);
         const pathWithoutName = path.substring(0, path.lastIndexOf("/"));
         const packagePath = pathWithoutName.substring(pathWithoutName.lastIndexOf("/") + 1);
-        if (packageName === packagePath) return { name: "", path: pathWithoutName, named: false };
+        if (packageName === packagePath)
+            return { name: packageName, path: pathWithoutName, named: false };
         return { name: packageName, path: pathWithoutName, named: true };
     }
 
-    #mapTypeToGoType(type: Node): string {
+    #mapTypeToGoType(type: Node, ast: Program, imports: ImportView[]): string {
         switch (type.type) {
             case AstNodeType.StringLiteral:
                 return "string";
@@ -116,8 +66,95 @@ export class GoBundler implements BundlerInterface {
                 return "bool";
             case AstNodeType.IntegerLiteral:
                 return "int";
+            case AstNodeType.CustomNodeLiteral:
+                for (const node of ast.body ?? []) {
+                    if (node.type === AstNodeType.StructLiteral) {
+                        const struct = node as StructLiteral;
+                        if (struct.name === (type as CustomAstNodeType).rawValue) {
+                            const importView = this.#getImportViewFromPath(struct.path ?? "");
+                            // check if import is already present
+                            if (!imports.find((i) => i.path === importView.path)) {
+                                imports.push(importView);
+                            }
+                            return importView.name + "." + struct.name;
+                        }
+                    }
+                }
+                return (type as CustomAstNodeType).rawValue;
+            case AstNodeType.ArrayType:
+                return "[]" + this.#mapTypeToGoType((type as ArrayType).generic, ast, imports);
         }
         return "interface{}";
+    }
+
+    #getCastExpression(
+        index: number,
+        parameter: ParameterDefinition,
+        ast: Program,
+        imports: ImportView[],
+    ): string {
+        switch (parameter.paramType.type) {
+            case AstNodeType.StringLiteral:
+            case AstNodeType.DoubleLiteral:
+            case AstNodeType.BooleanLiteral:
+                if (parameter.optional) {
+                    return `var param${index} *${this.#mapTypeToGoType(
+                        parameter.paramType,
+                        ast,
+                        imports,
+                    )}
+        if body.Params[${index}] == nil {
+            param${index} = nil
+        } else {
+            paramValue${index} := body.Params[${index}].(${this.#mapTypeToGoType(
+                parameter.paramType,
+                ast,
+                imports,
+            )})
+            param${index} = &paramValue${index}
+        }`;
+                }
+                return `param${index} := body.Params[${index}].(${this.#mapTypeToGoType(
+                    parameter.paramType,
+                    ast,
+                    imports,
+                )})`;
+            case AstNodeType.IntegerLiteral:
+                if (parameter.optional) {
+                    return `var param${index} *${this.#mapTypeToGoType(
+                        parameter.paramType,
+                        ast,
+                        imports,
+                    )}
+        if body.Params[${index}] == nil {
+            param${index} = nil
+        } else {
+            paramValue${index} := body.Params[${index}].(float64)
+            paramValueInt${index} := int(paramValue${index})
+            param${index} = &paramValueInt${index}
+        }`;
+                }
+                return `paramFloat${index} := body.Params[${index}].(float64)
+        param${index} := int(paramFloat${index})`;
+            case AstNodeType.CustomNodeLiteral:
+            case AstNodeType.ArrayType:
+                return `var param${index} ${parameter.optional ? "*" : ""}${this.#mapTypeToGoType(
+                    parameter.paramType,
+                    ast,
+                    imports,
+                )}
+        jsonMap, err := json.Marshal(body.Params[${index}])
+        if err != nil {
+            sendError(w, err)
+            return
+        }
+        err = json.Unmarshal(jsonMap, &param${index})
+        if err != nil {
+            sendError(w, err)
+            return
+        }`;
+        }
+        return "";
     }
 
     async #createRouterFileForClass(
@@ -140,6 +177,8 @@ export class GoBundler implements BundlerInterface {
             );
         }
 
+        const imports: ImportView[] = [];
+
         const moustacheViewForMain: MoustanceViewForMain = {
             imports: [],
             class: {
@@ -151,41 +190,14 @@ export class GoBundler implements BundlerInterface {
                 isVoid: m.returnType.type === AstNodeType.VoidLiteral,
                 parameters: m.params.map((p, index) => ({
                     index,
-                    type: this.#mapTypeToGoType(p.paramType),
                     last: index === m.params.length - 1,
+                    cast: this.#getCastExpression(index, p, ast, imports),
                 })),
             })),
         };
 
         moustacheViewForMain.imports.push(this.#getImportViewFromPath(mainClass.path ?? ""));
-
-        /* const moustacheViewForMain = {
-            packageName: classConfigPath.substring(classConfigPath.lastIndexOf(path.sep) + 1),
-            classFileName: path.basename(
-                classConfiguration.path,
-                path.extname(classConfiguration.path),
-            ),
-            className: classConfiguration.name,
-            jsonRpcMethods: classConfiguration.methods
-                .filter((m) => m.type === TriggerType.jsonrpc)
-                .map((m) => ({
-                    name: m.name,
-                    parameters: m.parameters.map((p, index) => ({
-                        index,
-                        cast: this.#getProperCast(mainClass, m, p, index),
-                    })),
-                })),
-            cronMethods: classConfiguration.methods
-                .filter((m) => m.type === TriggerType.cron)
-                .map((m) => ({
-                    name: m.name,
-                })),
-            httpMethods: classConfiguration.methods
-                .filter((m) => m.type === TriggerType.http)
-                .map((m) => ({
-                    name: m.name,
-                })),
-        }; */
+        moustacheViewForMain.imports.push(...imports);
 
         const routerFileContent = Mustache.render(template, moustacheViewForMain);
         await writeToFile(folderPath, "main.go", routerFileContent);

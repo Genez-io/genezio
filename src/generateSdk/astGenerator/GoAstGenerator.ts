@@ -1,6 +1,7 @@
 import path from "path";
 import os from "os";
 import fs from "fs";
+import log from "loglevel";
 import {
     AstGeneratorInput,
     AstGeneratorInterface,
@@ -15,13 +16,13 @@ import {
 } from "../../models/genezioModels.js";
 import { runNewProcess, runNewProcessWithResultAndReturnCode } from "../../utils/process.js";
 import { checkIfGoIsInstalled } from "../../utils/go.js";
+import { createTemporaryFolder } from "../../utils/file.js";
 
 const binaryName = "gnzparser";
 
 export class AstGenerator implements AstGeneratorInterface {
     async #compileGenezioGoAstExtractor() {
-        // --PRODUCTION--
-        /* const folder = await createTemporaryFolder();
+        const folder = await createTemporaryFolder();
         const astClone = await runNewProcess(
             "git clone --quiet https://github.com/Genez-io/go-ast.git .",
             folder,
@@ -32,9 +33,7 @@ export class AstGenerator implements AstGeneratorInterface {
                     folder +
                     " temporary folder!",
             );
-        } */
-        // --DEWELLOPMENT--
-        const folder = path.join(os.homedir(), "simple-cap", "genezio-go-ast");
+        }
         const goBuildSuccess = await runNewProcess(`go build -o ${binaryName} cmd/main.go`, folder);
         if (!goBuildSuccess) {
             throw new Error(
@@ -74,6 +73,11 @@ export class AstGenerator implements AstGeneratorInterface {
         }
 
         const ast = JSON.parse(result.stdout);
+        const error = ast.error;
+        if (error) {
+            log.error(error);
+            throw new Error("Error: Failed to generate AST for class " + input.class.path);
+        }
         const goAstBody = ast.body;
         if (!goAstBody) {
             throw new Error("Error: Failed to generate AST for class " + input.class.path);

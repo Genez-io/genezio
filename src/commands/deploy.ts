@@ -27,6 +27,7 @@ import {
     getBundleFolderSizeLimit,
     readEnvironmentVariablesFile,
     createLocalTempFolder,
+    zipFile,
 } from "../utils/file.js";
 import { printAdaptiveLog, debugLogger } from "../utils/logging.js";
 import { runNewProcess } from "../utils/process.js";
@@ -52,6 +53,7 @@ import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { interruptLocalProcesses } from "../utils/localInterrupt.js";
 import { Status } from "../requests/models.js";
 import { loginCommand } from "./login.js";
+import { GoBundler } from "../bundlers/go/goBundler.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -324,6 +326,10 @@ export async function deployClasses(
                     bundler = new KotlinBundler();
                     break;
                 }
+                case ".go": {
+                    bundler = new GoBundler();
+                    break;
+                }
                 default:
                     log.error(`Unsupported ${element.language}`);
                     throw new Error(`Unsupported ${element.language}`);
@@ -379,7 +385,11 @@ export async function deployClasses(
             const archivePath = path.join(archivePathTempFolder, `genezioDeploy.zip`);
 
             debugLogger.debug(`Zip the directory ${output.path}.`);
-            await zipDirectory(output.path, archivePath);
+            if (element.language === ".go") {
+                await zipFile(path.join(output.path, "bootstrap"), archivePath);
+            } else {
+                await zipDirectory(output.path, archivePath);
+            }
 
             await deleteFolder(output.path);
 

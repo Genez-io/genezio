@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
     "io"
+    "errors"
 
     {{#imports}}
     {{#named}}{{name}} {{/named}}"{{{path}}}"
@@ -40,21 +41,60 @@ type Response struct {
 	Headers    map[string]string \`json:"headers"\`
 }
 
-func handleReuqest(w http.ResponseWriter, r *http.Request) {
+type ErrorStruct struct {
+	Code    int    \`json:"code"\`
+	Message string \`json:"message"\`
+}
+
+type ResponseBodyError struct {
+	Id      int         \`json:"id"\`
+	Error   ErrorStruct \`json:"error"\`
+	Jsonrpc string      \`json:"jsonrpc"\`
+}
+
+func sendError(w http.ResponseWriter, err error) {
+	var responseError ResponseBodyError
+	responseError.Id = 0
+	responseError.Error.Code = 500
+	responseError.Error.Message = err.Error()
+	responseError.Jsonrpc = "2.0"
+    responseErrorByte, err := json.Marshal(responseError)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+	response := Response{
+		StatusCode: "500",
+		Body:       string(responseErrorByte),
+		Headers: map[string]string{
+			"Content-Type": "application/json",
+			"X-Powered-By": "genezio",
+		},
+	}
+	responseByte, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	io.WriteString(w, string(responseByte))
+}
+
+func handleRequest(w http.ResponseWriter, r *http.Request) {
 	var event Event
 	var body EventBody
 	var responseBody ResponseBody
 
 	err := json.NewDecoder(r.Body).Decode(&event)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+        sendError(w, err)
 		return
 	}
 	eventBody := []byte(event.Body)
 	// Decode the request body into struct and check for errors
 	err = json.Unmarshal(eventBody, &body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+        sendError(w, err)
 		return
 	}
 
@@ -67,39 +107,27 @@ func handleReuqest(w http.ResponseWriter, r *http.Request) {
     {{#jsonRpcMethods}}
     case "{{class.name}}.{{name}}":
         {{#parameters}}
-        param{{index}} := body.Params[{{index}}].({{type}})
+        {{{cast}}}
         {{/parameters}}
-        {{^isVoid}}result, {{/isVoid}}err := class.{{name}}({{#parameters}}param{{index}}{{^last}}, {{/last}}{{/parameters}})
+        {{^isVoid}}result, {{/isVoid}}err {{^isVoid}}:{{/isVoid}}= class.{{name}}({{#parameters}}param{{index}}{{^last}}, {{/last}}{{/parameters}})
         if err != nil {
-            http.Error(w, err.Error(), http.StatusInternalServerError)
+            sendError(w, err)
             return
         }
         {{^isVoid}}
         responseBody.Result = result
         {{/isVoid}}
     {{/jsonRpcMethods}}
-	// case "{{class.name}}.Post":
-	// 	var user *models.User
-	// 	jsonMap, err := json.Marshal(body.Params[0])
-	// 	if err != nil {
-	// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 		return
-	// 	}
-	// 	err = json.Unmarshal(jsonMap, &user)
-	// 	if err != nil {
-	// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 		return
-	// 	}
-	// 	class.Post(user)
 	default:
-		http.Error(w, "Method not found", http.StatusInternalServerError)
+        sendError(w, errors.New("method not found"))
+        return
 	}
 	responseBody.Id = body.Id
 	responseBody.Jsonrpc = body.Jsonrpc
 
     bodyString, err := json.Marshal(responseBody)
     if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
+        sendError(w, err)
         return
     }
 
@@ -114,7 +142,7 @@ func handleReuqest(w http.ResponseWriter, r *http.Request) {
     // Encode the struct into JSON and check for errors
 	responseByte, err := json.Marshal(response)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+        sendError(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -124,7 +152,7 @@ func handleReuqest(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	port := os.Args[1]
-	http.HandleFunc("/", handleReuqest)
+	http.HandleFunc("/", handleRequest)
 	http.ListenAndServe(":"+port, nil)
 }
 `;
