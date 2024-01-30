@@ -53,6 +53,7 @@ import { interruptLocalProcesses } from "../utils/localInterrupt.js";
 import { Status } from "../requests/models.js";
 import { loginCommand } from "./login.js";
 import { bundle } from "../bundlers/utils.js";
+import { isDependencyVersionCompatible } from "../utils/dependencyChecker.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -73,6 +74,18 @@ export async function deployCommand(options: GenezioDeployOptions) {
     }
     const backendCwd = configuration.workspace?.backend || process.cwd();
     const frontendCwd = configuration.workspace?.frontend || process.cwd();
+
+    // We need to check if the user is using an older version of @genezio/types
+    // because we migrated the decorators implemented in the @genezio/types package to the stage 3 implementation.
+    // Otherwise, the user will get an error at runtime. This check can be removed in the future once no one is using version
+    // 0.1.* of @genezio/types.
+    const packageJsonPath = path.join(backendCwd, "package.json");
+    if (isDependencyVersionCompatible(packageJsonPath, "@genezio/types", "1.0.0") == false) {
+        log.error(
+            `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To resolve this, please update the @genezio/types package on your server using the following command: npm install @genezio/types@^1.0.0`
+        );
+        exit(1);
+    }
 
     // check if user is logged in
     if (configuration.cloudProvider !== CloudProviderIdentifier.SELF_HOSTED_AWS) {
