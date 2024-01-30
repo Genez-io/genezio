@@ -66,6 +66,7 @@ import {
     CloudProviderIdentifier,
     LambdaResponse,
 } from "../models/cloudProviderIdentifier.js";
+import { importServiceEnvVariables } from "../utils/servicesEnvVariables.js";
 
 const POLLING_INTERVAL = 2000;
 
@@ -539,6 +540,7 @@ async function startProcesses(
     });
 
     const bundlersOutput = await Promise.all(bundlersOutputPromise);
+    await importServiceEnvVariables(projectConfiguration.name, projectConfiguration.region);
 
     const envVars: dotenv.DotenvPopulateInput = {};
     const envFile = projectConfiguration.workspace?.backend
