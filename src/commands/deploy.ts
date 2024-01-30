@@ -82,7 +82,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
     const packageJsonPath = path.join(backendCwd, "package.json");
     if (isDependencyVersionCompatible(packageJsonPath, "@genezio/types", "1.0.0") === false) {
         log.error(
-            `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To resolve this, please update the @genezio/types package on your server using the following command: npm install @genezio/types@^1.0.0`
+            `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To solve this, please update the @genezio/types package on your backend component using the following command: npm install @genezio/types@^1.0.0`
         );
         exit(1);
     }
