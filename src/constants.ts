@@ -10,6 +10,8 @@ let ENABLE_DEBUG_LOGS_BY_DEFAULT: boolean;
 let ENVIRONMENT: string;
 let SENTRY_DSN: string;
 let GENEZIO_REGISTRY: string;
+let REQUIRED_GENEZIO_TYPES_VERSION_RANGE: string;
+let RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE: string;
 
 const GENEZIO_TELEMETRY_ENDPOINT =
     "https://c4h2bia7gbokqdxxc6fe5sgj5e0imchy.lambda-url.us-east-1.on.aws/";
@@ -28,6 +30,8 @@ if (environment === "dev") {
     ENVIRONMENT = "dev";
     GENEZIO_REGISTRY =
         "yptt62gzkhog5xuxtuwxvb6ohi0dtfhg.lambda-url.us-east-1.on.aws/RegistryHTTPHandler";
+    REQUIRED_GENEZIO_TYPES_VERSION_RANGE = ">=1.0.0";
+    RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE = "^1.0.0";
 } else {
     REACT_APP_BASE_URL = "https://app.genez.io";
     FRONTEND_DOMAIN = "app.genez.io";
@@ -42,6 +46,8 @@ if (environment === "dev") {
     ENVIRONMENT = "prod";
     GENEZIO_REGISTRY =
         "rt3ersglfpyjlkzcjgql3s7xju0nuzym.lambda-url.us-east-1.on.aws/RegistryHTTPHandler";
+    REQUIRED_GENEZIO_TYPES_VERSION_RANGE = ">=1.0.0";
+    RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE = "^1.0.0";
 }
 
 export {
@@ -56,4 +62,6 @@ export {
     ENVIRONMENT,
     SENTRY_DSN,
     GENEZIO_REGISTRY,
+    REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
+    RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE
 };

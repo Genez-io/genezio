@@ -2,13 +2,7 @@ import { AxiosError } from "axios";
 import log from "loglevel";
 import path from "path";
 import { exit } from "process";
-import { BundlerInterface } from "../bundlers/bundler.interface.js";
-import { BundlerComposer } from "../bundlers/bundlerComposer.js";
-import { DartBundler } from "../bundlers/dart/dartBundler.js";
-import { NodeJsBinaryDependenciesBundler } from "../bundlers/node/nodeJsBinaryDependenciesBundler.js";
-import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
-import { REACT_APP_BASE_URL } from "../constants.js";
-import { KotlinBundler } from "../bundlers/kotlin/kotlinBundler.js";
+import { REACT_APP_BASE_URL, RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE, REQUIRED_GENEZIO_TYPES_VERSION_RANGE } from "../constants.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG, GENEZIO_NO_CLASSES_FOUND } from "../errors.js";
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
@@ -39,10 +33,8 @@ import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter.js";
 import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter.js";
 import { CloudAdapter, GenezioCloudInput } from "../cloudAdapter/cloudAdapter.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
-import { TypeCheckerBundler } from "../bundlers/node/typeCheckerBundler.js";
 import { GenezioDeployOptions } from "../models/commandOptions.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
-import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
 import { setEnvironmentVariables } from "../requests/setEnvironmentVariables.js";
 import colors from "colors";
 import { getEnvironmentVariables } from "../requests/getEnvironmentVariables.js";
@@ -80,9 +72,9 @@ export async function deployCommand(options: GenezioDeployOptions) {
     // Otherwise, the user will get an error at runtime. This check can be removed in the future once no one is using version
     // 0.1.* of @genezio/types.
     const packageJsonPath = path.join(backendCwd, "package.json");
-    if (isDependencyVersionCompatible(packageJsonPath, "@genezio/types", "1.0.0") === false) {
+    if (isDependencyVersionCompatible(packageJsonPath, "@genezio/types", REQUIRED_GENEZIO_TYPES_VERSION_RANGE) === false) {
         log.error(
-            `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To solve this, please update the @genezio/types package on your backend component using the following command: npm install @genezio/types@^1.0.0`
+            `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To solve this, please update the @genezio/types package on your backend component using the following command: npm install @genezio/types@${RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE}`
         );
         exit(1);
     }
