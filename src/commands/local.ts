@@ -13,7 +13,7 @@ import url from "url";
 import * as http from "http";
 import colors from "colors";
 import { ProjectConfiguration, ClassConfiguration } from "../models/projectConfiguration.js";
-import { LOCAL_TEST_INTERFACE_URL } from "../constants.js";
+import { LOCAL_TEST_INTERFACE_URL, RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE, REQUIRED_GENEZIO_TYPES_VERSION_RANGE } from "../constants.js";
 import { GENEZIO_NO_CLASSES_FOUND, PORT_ALREADY_USED } from "../errors.js";
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
 import { AstSummary } from "../models/astSummary.js";
@@ -166,9 +166,9 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     const packageJsonPath = yamlProjectConfiguration.workspace ? 
         path.join(yamlProjectConfiguration.workspace.backend, "package.json") :
         path.join(process.cwd(), "package.json");
-    if (isDependencyVersionCompatible(packageJsonPath, "@genezio/types", "1.0.0") === false) {
+    if (isDependencyVersionCompatible(packageJsonPath, "@genezio/types", REQUIRED_GENEZIO_TYPES_VERSION_RANGE) === false) {
         log.error(
-            `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To resolve this, please update the @genezio/types package on your server using the following command: npm install @genezio/types@^1.0.0`
+            `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To resolve this, please update the @genezio/types package on your server using the following command: npm install @genezio/types@${RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE}`,
         );
         exit(1);
     }
