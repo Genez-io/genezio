@@ -74,6 +74,7 @@
         "dotenv": "^16.4.1",
         "esbuild": "^0.18.20",
         "esbuild-node-externals": "^1.11.0",
+        "execa": "^8.0.1",
         "express": "^4.18.2",
         "fs-extra": "^11.2.0",
         "glob": "^8.0.3",
