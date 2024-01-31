@@ -31,7 +31,7 @@ if (environment === "dev") {
     GENEZIO_REGISTRY =
         "yptt62gzkhog5xuxtuwxvb6ohi0dtfhg.lambda-url.us-east-1.on.aws/RegistryHTTPHandler";
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE = ">=1.0.0";
-    RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE = "^1.0.0";
+    RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE = "^1.x";
 } else {
     REACT_APP_BASE_URL = "https://app.genez.io";
     FRONTEND_DOMAIN = "app.genez.io";
@@ -47,7 +47,7 @@ if (environment === "dev") {
     GENEZIO_REGISTRY =
         "rt3ersglfpyjlkzcjgql3s7xju0nuzym.lambda-url.us-east-1.on.aws/RegistryHTTPHandler";
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE = ">=1.0.0";
-    RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE = "^1.0.0";
+    RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE = "^1.x";
 }
 
 export {
@@ -63,5 +63,5 @@ export {
     SENTRY_DSN,
     GENEZIO_REGISTRY,
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
-    RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE
+    RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
 };
