@@ -2,13 +2,7 @@ import { AxiosError } from "axios";
 import log from "loglevel";
 import path from "path";
 import { exit } from "process";
-import { BundlerInterface } from "../bundlers/bundler.interface.js";
-import { BundlerComposer } from "../bundlers/bundlerComposer.js";
-import { DartBundler } from "../bundlers/dart/dartBundler.js";
-import { NodeJsBinaryDependenciesBundler } from "../bundlers/node/nodeJsBinaryDependenciesBundler.js";
-import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
 import { REACT_APP_BASE_URL } from "../constants.js";
-import { KotlinBundler } from "../bundlers/kotlin/kotlinBundler.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG, GENEZIO_NO_CLASSES_FOUND } from "../errors.js";
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
@@ -40,10 +34,8 @@ import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter.js";
 import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter.js";
 import { CloudAdapter, GenezioCloudInput } from "../cloudAdapter/cloudAdapter.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
-import { TypeCheckerBundler } from "../bundlers/node/typeCheckerBundler.js";
 import { GenezioDeployOptions } from "../models/commandOptions.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
-import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
 import { setEnvironmentVariables } from "../requests/setEnvironmentVariables.js";
 import colors from "colors";
 import { getEnvironmentVariables } from "../requests/getEnvironmentVariables.js";
@@ -53,7 +45,8 @@ import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { interruptLocalProcesses } from "../utils/localInterrupt.js";
 import { Status } from "../requests/models.js";
 import { loginCommand } from "./login.js";
-import { GoBundler } from "../bundlers/go/goBundler.js";
+import { bundle } from "../bundlers/utils.js";
+import { isDependencyVersionCompatible } from "../utils/dependencyChecker.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -74,6 +67,18 @@ export async function deployCommand(options: GenezioDeployOptions) {
     }
     const backendCwd = configuration.workspace?.backend || process.cwd();
     const frontendCwd = configuration.workspace?.frontend || process.cwd();
+
+    // We need to check if the user is using an older version of @genezio/types
+    // because we migrated the decorators implemented in the @genezio/types package to the stage 3 implementation.
+    // Otherwise, the user will get an error at runtime. This check can be removed in the future once no one is using version
+    // 0.1.* of @genezio/types.
+    const packageJsonPath = path.join(backendCwd, "package.json");
+    if (isDependencyVersionCompatible(packageJsonPath, "@genezio/types", "1.0.0") === false) {
+        log.error(
+            `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To solve this, please update the @genezio/types package on your backend component using the following command: npm install @genezio/types@^1.0.0`,
+        );
+        exit(1);
+    }
 
     // check if user is logged in
     if (configuration.cloudProvider !== CloudProviderIdentifier.SELF_HOSTED_AWS) {
@@ -289,76 +294,12 @@ export async function deployClasses(
     printAdaptiveLog("Bundling your code", "start");
     const bundlerResult: Promise<GenezioCloudInput>[] = projectConfiguration.classes.map(
         async (element) => {
-            if (!(await fileExists(element.path))) {
-                printAdaptiveLog("Bundling your code and uploading it", "error");
-                log.error(`\`${element.path}\` file does not exist at the indicated path.`);
-
-                throw new Error(`\`${element.path}\` file does not exist at the indicated path.`);
-            }
-
-            let bundler: BundlerInterface;
-
-            switch (element.language) {
-                case ".ts": {
-                    const requiredDepsBundler = new TsRequiredDepsBundler();
-                    const typeCheckerBundler = new TypeCheckerBundler();
-                    const standardBundler = new NodeJsBundler();
-                    const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
-                    bundler = new BundlerComposer([
-                        requiredDepsBundler,
-                        typeCheckerBundler,
-                        standardBundler,
-                        binaryDepBundler,
-                    ]);
-                    break;
-                }
-                case ".js": {
-                    const standardBundler = new NodeJsBundler();
-                    const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
-                    bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
-                    break;
-                }
-                case ".dart": {
-                    bundler = new DartBundler();
-                    break;
-                }
-                case ".kt": {
-                    bundler = new KotlinBundler();
-                    break;
-                }
-                case ".go": {
-                    bundler = new GoBundler();
-                    break;
-                }
-                default:
-                    log.error(`Unsupported ${element.language}`);
-                    throw new Error(`Unsupported ${element.language}`);
-            }
-
-            debugLogger.debug(`The bundling process has started for file ${element.path}...`);
-
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const ast = sdkResponse.sdkGeneratorInput.classesInfo.find(
                 (classInfo) => classInfo.classConfiguration.path === element.path,
             )!.program;
+            const output = await bundle(projectConfiguration, ast, element, installDeps);
 
-            const tmpFolder = await createTemporaryFolder();
-            const output = await bundler.bundle({
-                projectConfiguration: projectConfiguration,
-                genezioConfigurationFilePath: process.cwd(),
-                ast: ast,
-                configuration: element,
-                path: element.path,
-                extra: {
-                    mode: "production",
-                    tmpFolder: tmpFolder,
-                    installDeps,
-                },
-            });
-            debugLogger.debug(
-                `The bundling process finished successfully for file ${element.path}.`,
-            );
-
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             // check if the unzipped folder is smaller than 250MB
             const unzippedBundleSize: number = await getBundleFolderSizeLimit(output.path);
             debugLogger.debug(

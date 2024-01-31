@@ -28,6 +28,7 @@ import cron from "node-cron";
 import {
     createLocalTempFolder,
     createTemporaryFolder,
+    deleteFolder,
     fileExists,
     readUTF8File,
 } from "../utils/file.js";
@@ -66,6 +67,8 @@ import {
     LambdaResponse,
 } from "../models/cloudProviderIdentifier.js";
 import { GoBundler } from "../bundlers/go/localGoBundler.js";
+import { importServiceEnvVariables } from "../utils/servicesEnvVariables.js";
+import { isDependencyVersionCompatible } from "../utils/dependencyChecker.js";
 
 const POLLING_INTERVAL = 2000;
 
@@ -156,6 +159,20 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         commandOptions: JSON.stringify(options),
     });
     const yamlProjectConfiguration = await getProjectConfiguration();
+
+    // We need to check if the user is using an older version of @genezio/types
+    // because we migrated the decorators implemented in the @genezio/types package to the stage 3 implementation.
+    // Otherwise, the user will get an error at runtime. This check can be removed in the future once no one is using version
+    // 0.1.* of @genezio/types.
+    const packageJsonPath = yamlProjectConfiguration.workspace
+        ? path.join(yamlProjectConfiguration.workspace.backend, "package.json")
+        : path.join(process.cwd(), "package.json");
+    if (isDependencyVersionCompatible(packageJsonPath, "@genezio/types", "1.0.0") === false) {
+        log.error(
+            `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To resolve this, please update the @genezio/types package on your server using the following command: npm install @genezio/types@^1.0.0`,
+        );
+        exit(1);
+    }
 
     if (yamlProjectConfiguration.scripts?.preStartLocal) {
         log.info("Running preStartLocal script...");
@@ -449,9 +466,10 @@ async function writeSdkToNodeModules(
             if (fs.lstatSync(toFinal).isSymbolicLink()) {
                 fs.unlinkSync(toFinal);
             }
-        } else {
-            fs.mkdirSync(toFinal, { recursive: true });
+            await deleteFolder(toFinal);
         }
+        fs.mkdirSync(toFinal, { recursive: true });
+
         await fsExtra.copy(from, toFinal, { overwrite: true });
     };
 
@@ -538,6 +556,7 @@ async function startProcesses(
     });
 
     const bundlersOutput = await Promise.all(bundlersOutputPromise);
+    await importServiceEnvVariables(projectConfiguration.name, projectConfiguration.region);
 
     const envVars: dotenv.DotenvPopulateInput = {};
     const envFile = projectConfiguration.workspace?.backend

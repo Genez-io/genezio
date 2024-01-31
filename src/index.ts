@@ -2,9 +2,11 @@
 
 import program from "./genezio.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js";
-import { cleanupTemporaryFolders } from "./utils/file.js";
+import { deleteFolder } from "./utils/file.js";
 import { SENTRY_DSN } from "./constants.js";
 import { debugLogger } from "./utils/logging.js";
+import path from "path";
+import os from "os";
 
 try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -25,6 +27,8 @@ try {
     }
 }
 
+const temporaryFolder = path.join(os.tmpdir(), `genezio-${process.pid}`);
+
 // Set-up SIGINT and exit handlers that clean up the temporary folder structure
 process.on("SIGINT", async () => {
     await GenezioTelemetry.sendEvent({
@@ -32,11 +36,12 @@ process.on("SIGINT", async () => {
         errorTrace: "",
         commandOptions: "",
     });
-    await cleanupTemporaryFolders();
+
+    await deleteFolder(temporaryFolder);
     process.exit();
 });
 process.on("exit", async () => {
-    await cleanupTemporaryFolders();
+    await deleteFolder(temporaryFolder);
 });
 
 program.parse();

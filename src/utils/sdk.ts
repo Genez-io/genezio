@@ -1,5 +1,5 @@
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
-import { writeToFile } from "./file.js";
+import { deleteFolder, writeToFile } from "./file.js";
 import { debugLogger } from "./logging.js";
 import { File, SdkFileClass } from "../models/genezioModels.js";
 
@@ -34,6 +34,8 @@ export async function writeSdkToDisk(sdk: SdkGeneratorResponse, outputPath: stri
         debugLogger.debug("No SDK classes found...");
         return;
     }
+
+    await deleteFolder(outputPath);
 
     debugLogger.debug("Writing the SDK to files...");
     await Promise.all(

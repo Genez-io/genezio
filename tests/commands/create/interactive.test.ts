@@ -24,51 +24,13 @@ vi.mock("isomorphic-git", async (original) => {
         },
     };
 });
-vi.mock("../../../src/requests/getTemplateList", () => {
-    return {
-        getNewProjectTemplateList: vi.fn(() =>
-            Promise.resolve([
-                {
-                    compatibilityMapping: "test",
-                    repository: "backendURL",
-                    category: "Backend",
-                    language: "TypeScript",
-                },
-                {
-                    compatibilityMapping: "test",
-                    repository: "backendURL",
-                    category: "Backend",
-                    language: "TypeScript",
-                },
-                {
-                    compatibilityMapping: "test",
-                    repository: "backendURL",
-                    category: "Backend",
-                    language: "JavaScript",
-                },
-                {
-                    compatibilityMapping: "test",
-                    repository: "frontendURL",
-                    category: "Frontend",
-                    language: "TypeScript",
-                },
-                {
-                    compatibilityMapping: "test",
-                    repository: "frontendURL",
-                    category: "Frontend",
-                    language: "TypeScript",
-                },
-                {
-                    compatibilityMapping: "test",
-                    repository: "frontendURL",
-                    category: "Frontend",
-                    language: "JavaScript",
-                },
-            ]),
-        ),
-    };
-});
 vi.mock("../../../src/utils/linkDatabase");
+vi.mock("axios", () => ({
+    default: ({ url }: { url: string }) =>
+        url.includes(regions[0].value)
+            ? Promise.resolve({ status: 200 })
+            : Promise.resolve({ status: 400 }),
+}));
 
 describe("askCreateOptions", () => {
     beforeEach(() => {
@@ -76,7 +38,7 @@ describe("askCreateOptions", () => {
         vol.reset();
     });
 
-    test("reads options for a fullstack monorepo project", async () => {
+    test("reads options for a fullstack project", async () => {
         // Create environment
         vol.mkdirSync(path.join(process.cwd()), { recursive: true });
 
@@ -85,27 +47,11 @@ describe("askCreateOptions", () => {
         // Mock imputing the project name, region and project type
         promptSpy.mockResolvedValueOnce({
             projectName: "genezio-project",
-            projectRegion: regions[0].value,
-            projectType: "fullstack",
         });
-
-        promptSpy.mockResolvedValueOnce({ projectStructure: "monorepo" });
-        promptSpy.mockResolvedValueOnce({ selectedLanguage: "TypeScript" });
-        promptSpy.mockResolvedValueOnce({
-            selectedTemplate: {
-                id: "backendId",
-                repository: "backendURL",
-                compatibilityMapping: "test",
-            },
-        });
-        promptSpy.mockResolvedValueOnce({ selectedLanguage: "TypeScript" });
-        promptSpy.mockResolvedValueOnce({
-            selectedTemplate: {
-                id: "frontendId",
-                repository: "frontendURL",
-                compatibilityMapping: "test",
-            },
-        });
+        promptSpy.mockResolvedValueOnce({ projectRegion: regions[0].value });
+        promptSpy.mockResolvedValueOnce({ projectType: "fullstack" });
+        promptSpy.mockResolvedValueOnce({ template: "ts" });
+        promptSpy.mockResolvedValueOnce({ template: "react-ts" });
 
         const options = await askCreateOptions();
 
@@ -117,12 +63,16 @@ describe("askCreateOptions", () => {
                 message: colors.magenta("Please enter a project name:"),
                 default: "genezio-project",
             }),
+        ]);
+        expect(promptSpy).toHaveBeenCalledWith([
             expect.objectContaining({
                 type: "list",
                 name: "projectRegion",
-                message: colors.magenta("Choose a region for your project"),
+                message: colors.magenta("Choose a region for your project:"),
                 choices: regions,
             }),
+        ]);
+        expect(promptSpy).toHaveBeenCalledWith([
             expect.objectContaining({
                 type: "list",
                 name: "projectType",
@@ -132,151 +82,25 @@ describe("askCreateOptions", () => {
         expect(promptSpy).toHaveBeenCalledWith([
             expect.objectContaining({
                 type: "list",
-                name: "selectedLanguage",
-                message:
-                    colors.magenta("Select your desired ") +
-                    colors.green("Backend") +
-                    colors.magenta(" language:"),
+                name: "template",
+                message: colors.magenta("Choose a") + " Backend " + colors.magenta("template:"),
             }),
         ]);
         expect(promptSpy).toHaveBeenCalledWith([
             expect.objectContaining({
                 type: "list",
-                name: "selectedTemplate",
-                message:
-                    colors.magenta("Select your desired ") +
-                    colors.blue("TypeScript") +
-                    colors.magenta(" template:"),
-            }),
-        ]);
-        expect(promptSpy).toHaveBeenCalledWith([
-            expect.objectContaining({
-                type: "list",
-                name: "selectedLanguage",
-                message:
-                    colors.magenta("Select your desired ") +
-                    colors.green("Frontend") +
-                    colors.magenta(" language:"),
-            }),
-        ]);
-        expect(promptSpy).toHaveBeenCalledWith([
-            expect.objectContaining({
-                type: "list",
-                name: "selectedTemplate",
-                message:
-                    colors.magenta("Select your desired ") +
-                    colors.blue("TypeScript") +
-                    colors.magenta(" template:"),
+                name: "template",
+                message: colors.magenta("Choose a") + " Frontend " + colors.magenta("template:"),
             }),
         ]);
 
         expect(options).toEqual({
             name: "genezio-project",
             region: regions[0].value,
-            fullstack: ["backendId", "frontendId"],
-            structure: "monorepo",
-        });
-    });
-
-    test("reads options for a fullstack multirepo project", async () => {
-        // Create environment
-        vol.mkdirSync(path.join(process.cwd()), { recursive: true });
-
-        const promptSpy = vi.spyOn(inquirer, "prompt");
-
-        // Mock imputing the project name, region and project type
-        promptSpy.mockResolvedValueOnce({
-            projectName: "genezio-project",
-            projectRegion: regions[0].value,
-            projectType: "fullstack",
-        });
-
-        promptSpy.mockResolvedValueOnce({ projectStructure: "multirepo" });
-        promptSpy.mockResolvedValueOnce({ selectedLanguage: "TypeScript" });
-        promptSpy.mockResolvedValueOnce({
-            selectedTemplate: {
-                id: "backendId",
-                repository: "backendURL",
-                compatibilityMapping: "test",
-            },
-        });
-        promptSpy.mockResolvedValueOnce({ selectedLanguage: "TypeScript" });
-        promptSpy.mockResolvedValueOnce({
-            selectedTemplate: {
-                id: "frontendId",
-                repository: "frontendURL",
-                compatibilityMapping: "test",
-            },
-        });
-
-        const options = await askCreateOptions();
-
-        // Check if inquirer.prompt was called with the correct arguments
-        expect(promptSpy).toHaveBeenCalledWith([
-            expect.objectContaining({
-                type: "input",
-                name: "projectName",
-                message: colors.magenta("Please enter a project name:"),
-                default: "genezio-project",
-            }),
-            expect.objectContaining({
-                type: "list",
-                name: "projectRegion",
-                message: colors.magenta("Choose a region for your project"),
-                choices: regions,
-            }),
-            expect.objectContaining({
-                type: "list",
-                name: "projectType",
-                message: colors.magenta("What type of project would you like to create?"),
-            }),
-        ]);
-        expect(promptSpy).toHaveBeenCalledWith([
-            expect.objectContaining({
-                type: "list",
-                name: "selectedLanguage",
-                message:
-                    colors.magenta("Select your desired ") +
-                    colors.green("Backend") +
-                    colors.magenta(" language:"),
-            }),
-        ]);
-        expect(promptSpy).toHaveBeenCalledWith([
-            expect.objectContaining({
-                type: "list",
-                name: "selectedTemplate",
-                message:
-                    colors.magenta("Select your desired ") +
-                    colors.blue("TypeScript") +
-                    colors.magenta(" template:"),
-            }),
-        ]);
-        expect(promptSpy).toHaveBeenCalledWith([
-            expect.objectContaining({
-                type: "list",
-                name: "selectedLanguage",
-                message:
-                    colors.magenta("Select your desired ") +
-                    colors.green("Frontend") +
-                    colors.magenta(" language:"),
-            }),
-        ]);
-        expect(promptSpy).toHaveBeenCalledWith([
-            expect.objectContaining({
-                type: "list",
-                name: "selectedTemplate",
-                message:
-                    colors.magenta("Select your desired ") +
-                    colors.blue("TypeScript") +
-                    colors.magenta(" template:"),
-            }),
-        ]);
-
-        expect(options).toEqual({
-            name: "genezio-project",
-            region: regions[0].value,
-            fullstack: ["backendId", "frontendId"],
-            structure: "multirepo",
+            type: "fullstack",
+            backend: "ts",
+            frontend: "react-ts",
+            multirepo: false,
         });
     });
 
@@ -289,18 +113,10 @@ describe("askCreateOptions", () => {
         // Mock imputing the project name
         promptSpy.mockResolvedValueOnce({
             projectName: "genezio-project",
-            projectRegion: regions[0].value,
-            projectType: "backend",
         });
-
-        promptSpy.mockResolvedValueOnce({ selectedLanguage: "TypeScript" });
-        promptSpy.mockResolvedValueOnce({
-            selectedTemplate: {
-                id: "backendId",
-                repository: "backendURL",
-                compatibilityMapping: "test",
-            },
-        });
+        promptSpy.mockResolvedValueOnce({ projectRegion: regions[0].value });
+        promptSpy.mockResolvedValueOnce({ projectType: "backend" });
+        promptSpy.mockResolvedValueOnce({ template: "ts" });
 
         const options = await askCreateOptions();
 
@@ -312,12 +128,16 @@ describe("askCreateOptions", () => {
                 message: colors.magenta("Please enter a project name:"),
                 default: "genezio-project",
             }),
+        ]);
+        expect(promptSpy).toHaveBeenCalledWith([
             expect.objectContaining({
                 type: "list",
                 name: "projectRegion",
-                message: colors.magenta("Choose a region for your project"),
+                message: colors.magenta("Choose a region for your project:"),
                 choices: regions,
             }),
+        ]);
+        expect(promptSpy).toHaveBeenCalledWith([
             expect.objectContaining({
                 type: "list",
                 name: "projectType",
@@ -327,28 +147,58 @@ describe("askCreateOptions", () => {
         expect(promptSpy).toHaveBeenCalledWith([
             expect.objectContaining({
                 type: "list",
-                name: "selectedLanguage",
-                message:
-                    colors.magenta("Select your desired ") +
-                    colors.green("Backend") +
-                    colors.magenta(" language:"),
-            }),
-        ]);
-        expect(promptSpy).toHaveBeenCalledWith([
-            expect.objectContaining({
-                type: "list",
-                name: "selectedTemplate",
-                message:
-                    colors.magenta("Select your desired ") +
-                    colors.blue("TypeScript") +
-                    colors.magenta(" template:"),
+                name: "template",
+                message: colors.magenta("Choose a") + " Backend " + colors.magenta("template:"),
             }),
         ]);
 
         expect(options).toEqual({
             name: "genezio-project",
             region: regions[0].value,
-            backend: "backendId",
+            type: "backend",
+            backend: "ts",
+        });
+    });
+
+    test("reads partial options", async () => {
+        // Create environment
+        vol.mkdirSync(path.join(process.cwd()), { recursive: true });
+
+        const promptSpy = vi.spyOn(inquirer, "prompt");
+
+        // Mock imputing the project name, region and project type
+        promptSpy.mockResolvedValueOnce({ projectRegion: regions[0].value });
+        promptSpy.mockResolvedValueOnce({ template: "ts" });
+
+        const options = await askCreateOptions({
+            name: "genezio-project",
+            type: "fullstack",
+            frontend: "react-ts",
+        });
+
+        expect(promptSpy).toHaveBeenCalledWith([
+            expect.objectContaining({
+                type: "list",
+                name: "projectRegion",
+                message: colors.magenta("Choose a region for your project:"),
+                choices: regions,
+            }),
+        ]);
+        expect(promptSpy).toHaveBeenCalledWith([
+            expect.objectContaining({
+                type: "list",
+                name: "template",
+                message: colors.magenta("Choose a") + " Backend " + colors.magenta("template:"),
+            }),
+        ]);
+
+        expect(options).toEqual({
+            name: "genezio-project",
+            region: regions[0].value,
+            type: "fullstack",
+            backend: "ts",
+            frontend: "react-ts",
+            multirepo: false,
         });
     });
 });
