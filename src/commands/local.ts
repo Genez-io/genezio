@@ -168,7 +168,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         path.join(process.cwd(), "package.json");
     if (isDependencyVersionCompatible(packageJsonPath, "@genezio/types", REQUIRED_GENEZIO_TYPES_VERSION_RANGE) === false) {
         log.error(
-            `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To resolve this, please update the @genezio/types package on your server using the following command: npm install @genezio/types@${RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE}`,
+            `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To solve this, please update the @genezio/types package on your backend component using the following command: npm install @genezio/types@${RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE}`,
         );
         exit(1);
     }
