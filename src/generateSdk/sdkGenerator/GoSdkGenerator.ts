@@ -212,6 +212,7 @@ class SdkGenerator implements SdkGeneratorInterface {
             if (classInfo.program.body === undefined) {
                 continue;
             }
+
             for (const elem of classInfo.program.body) {
                 if (elem.type === AstNodeType.ClassDefinition) {
                     classDefinition = elem as ClassDefinition;
@@ -227,17 +228,17 @@ class SdkGenerator implements SdkGeneratorInterface {
                     view.externalTypes.push({
                         name: structLiteral.name,
                         fields: structLiteral.typeLiteral.properties.map((e) => ({
-                            type: this.getParamType(e.type),
-                            fieldName: e.name,
+                            type: this.getParamType(e),
+                            fieldName: e.name[0].toUpperCase() + e.name.slice(1),
                         })),
                     });
                 } else if (elem.type == AstNodeType.Enum) {
                     const enumType = elem as Enum;
                     view.enumTypes.push({
-                        name: enumType.name,
+                        name: enumType.name[0].toUpperCase() + enumType.name.slice(1),
                         fields: enumType.cases.map((e) => ({
                             type: typeof e.value == "number" ? ` = ${e.value}` : ` = "${e.value}"`,
-                            fieldName: e.name,
+                            fieldName: e.name[0].toUpperCase() + e.name.slice(1),
                         })),
                     });
                 }
@@ -372,7 +373,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         return `${value}`;
     }
 
-    getParamType(elem: Node): string {
+    getParamType(elem: Node | PropertyDefinition): string {
         if (elem.type === AstNodeType.CustomNodeLiteral) {
             return (elem as CustomAstNodeType).rawValue;
         } else if (elem.type === AstNodeType.StringLiteral) {
@@ -416,7 +417,11 @@ class SdkGenerator implements SdkGeneratorInterface {
             )}`;
         } else if (elem.type === AstNodeType.DateType) {
             return "string";
+        } else if ((elem as PropertyDefinition) !== undefined) {
+            const prop = elem as PropertyDefinition;
+            return `${prop.optional ? "*" : ""}${this.getParamType(prop.type)}`;
         }
+
         return "interface{}";
     }
 
