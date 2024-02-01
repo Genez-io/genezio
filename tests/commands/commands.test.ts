@@ -37,7 +37,7 @@ describe("addClassCommand", () => {
 
     test("throws if extension is not supported", async () => {
         await expect(addClassCommand("test.py", "jsonrpc")).rejects.toThrowError(
-            "Class language(py) not supported. Currently supporting: ts, js, dart and kt",
+            "Class language(py) not supported. Currently supporting: ts, js, dart, kt and .go",
         );
     });
 
