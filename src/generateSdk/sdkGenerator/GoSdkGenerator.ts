@@ -272,7 +272,12 @@ class SdkGenerator implements SdkGeneratorInterface {
                     isVoid: methodDefinition.returnType?.type === AstNodeType.VoidLiteral,
                     isPrimitiveReturnType: !(
                         methodDefinition.returnType?.type === AstNodeType.CustomNodeLiteral ||
-                        methodDefinition.returnType?.type === AstNodeType.ArrayType
+                        methodDefinition.returnType?.type === AstNodeType.ArrayType ||
+                        (methodDefinition.returnType?.type === AstNodeType.PromiseType &&
+                            (methodDefinition.returnType?.generic.type ===
+                                AstNodeType.CustomNodeLiteral ||
+                                methodDefinition.returnType?.generic.type ===
+                                    AstNodeType.ArrayType))
                     ),
                     isInt: methodDefinition.returnType?.type === AstNodeType.IntegerLiteral,
                     methodCaller:
