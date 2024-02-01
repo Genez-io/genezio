@@ -84,6 +84,10 @@ const template = `/**
 
 package genezioSdk
 
+{{#imports}}
+import {{#named}}{{{name}}} {{/named}}"{{{path}}}"
+{{/imports}}
+
 {{#externalTypes}}
 type {{name}} struct {
     {{#fields}}
@@ -108,8 +112,35 @@ func New{{{className}}}() *{{{className}}} {
 	return &{{{className}}}{remote: &Remote{URL: "{{{_url}}}" }}
 }
 {{#methods}}
-func (f *{{{className}}}) {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) (interface{}, interface{}) {
-	return f.remote.Call({{{methodCaller}}}{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}});
+func (f *{{{className}}}) {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) {{#isVoid}}error{{/isVoid}}{{^isVoid}}({{{returnType}}}, error){{/isVoid}} {
+    {{#isVoid}}_{{/isVoid}}{{^isVoid}}result{{/isVoid}}, err := f.remote.Call({{{methodCaller}}}{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}})
+    {{^isVoid}}
+    var castResult {{{returnType}}}
+    {{/isVoid}}
+    if err != nil {
+        return {{^isVoid}}castResult, {{/isVoid}}err
+    }
+    {{^isVoid}}
+    {{#isPrimitiveReturnType}}
+    {{#isInt}}
+    castResult = int(result.(float64))
+    {{/isInt}}
+    {{^isInt}}
+    castResult = result.({{{returnType}}})
+    {{/isInt}}
+    {{/isPrimitiveReturnType}}
+    {{^isPrimitiveReturnType}}
+    jsonMap, err := json.Marshal(result)
+    if err != nil {
+        return {{^isVoid}}castResult, {{/isVoid}}err
+    }
+    err = json.Unmarshal(jsonMap, &castResult)
+    if err != nil {
+        return {{^isVoid}}castResult, {{/isVoid}}err
+    }
+    {{/isPrimitiveReturnType}}
+    {{/isVoid}}
+	return {{^isVoid}}castResult, {{/isVoid}}err
 }
 {{/methods}}
 
@@ -121,7 +152,13 @@ type ViewModel = {
     methods: MethodModel[];
     externalTypes: ExternalType[];
     enumTypes: ExternalType[];
-    imports: [];
+    imports: Import[];
+};
+
+type Import = {
+    name: string;
+    path: string;
+    named: boolean;
 };
 
 type MethodModel = {
@@ -130,6 +167,9 @@ type MethodModel = {
     returnType: string;
     methodCaller: string;
     sendParameters: Parameter[];
+    isVoid: boolean;
+    isPrimitiveReturnType: boolean;
+    isInt: boolean;
 };
 
 type ExternalType = {
@@ -155,16 +195,16 @@ class SdkGenerator implements SdkGeneratorInterface {
 
         const _url = "%%%link_to_be_replace%%%";
 
-        const view: ViewModel = {
-            className: undefined,
-            _url: _url,
-            methods: [],
-            externalTypes: [],
-            enumTypes: [],
-            imports: [],
-        };
-
         for (const classInfo of sdkGeneratorInput.classesInfo) {
+            const view: ViewModel = {
+                className: undefined,
+                _url: _url,
+                methods: [],
+                externalTypes: [],
+                enumTypes: [],
+                imports: [],
+            };
+
             const externalTypes: Node[] = [];
             const classConfiguration = classInfo.classConfiguration;
             let classDefinition: ClassDefinition | undefined = undefined;
@@ -183,7 +223,6 @@ class SdkGenerator implements SdkGeneratorInterface {
                         if (property.name == "undefined") {
                             property.name = structLiteral.name + i;
                         }
-                        console.log(property.type);
                     }
                     view.externalTypes.push({
                         name: structLiteral.name,
@@ -247,6 +286,17 @@ class SdkGenerator implements SdkGeneratorInterface {
                             : `"${classDefinition.name}.${methodDefinition.name}", `,
                     sendParameters: [],
                 };
+
+                if (
+                    !methodView.isPrimitiveReturnType &&
+                    view.imports.find((e) => e.path === "encoding/json") === undefined
+                ) {
+                    view.imports.push({
+                        name: "encoding/json",
+                        path: "encoding/json",
+                        named: false,
+                    });
+                }
 
                 const sanitizeGoIdentifier = (input: string): string => {
                     // Replace characters that are not allowed with underscores
@@ -319,7 +369,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         }
 
         const value = this.getParamType(returnType);
-        return ` ${value}`;
+        return `${value}`;
     }
 
     getParamType(elem: Node): string {
