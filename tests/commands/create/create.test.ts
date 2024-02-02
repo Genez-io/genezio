@@ -90,12 +90,16 @@ describe("create", () => {
         const options: GenezioCreateOptions = {
             name: "genezio-project",
             region: regions[0].value,
-            fullstack: ["backendId", "frontendId"],
-            structure: "monorepo",
+            type: "fullstack",
+            backend: "ts",
+            frontend: "react-ts",
+            multirepo: false,
         };
 
         // Run the super command
-        expect(createCommand(options)).rejects.toThrowError("Please choose another project name");
+        expect(createCommand(options)).rejects.toThrowError(
+            "You can't create a project in a non-empty folder",
+        );
     });
 
     test("does not throw error if project folder exists, but contains only README/.git", async () => {
@@ -109,8 +113,10 @@ describe("create", () => {
         const options: GenezioCreateOptions = {
             name: "genezio-project",
             region: regions[0].value,
-            fullstack: ["backendId", "frontendId"],
-            structure: "monorepo",
+            type: "fullstack",
+            backend: "ts",
+            frontend: "react-ts",
+            multirepo: false,
         };
 
         // Run the super command
@@ -124,30 +130,15 @@ describe("create", () => {
         const options: GenezioCreateOptions = {
             name: "@gnz",
             region: regions[0].value,
-            fullstack: ["backendId", "frontendId"],
-            structure: "monorepo",
+            type: "fullstack",
+            backend: "ts",
+            frontend: "react-ts",
+            multirepo: false,
         };
 
         // Run the super command
         expect(createCommand(options)).rejects.toThrowError(
             "Project name must start with a letter and contain only letters, numbers and dashes",
-        );
-    });
-
-    test("throws on incompatible fullstack templates", async () => {
-        // Create environment
-        vol.mkdirSync(path.join(process.cwd(), "genezio-project"), { recursive: true });
-
-        const options: GenezioCreateOptions = {
-            name: "genezio-project",
-            region: regions[0].value,
-            fullstack: ["backendId3", "frontendId"],
-            structure: "monorepo",
-        };
-
-        // Run the super command
-        expect(createCommand(options)).rejects.toThrowError(
-            "The provided templates are not compatible.",
         );
     });
 
@@ -158,8 +149,10 @@ describe("create", () => {
         const options: GenezioCreateOptions = {
             name: "genezio-project",
             region: regions[0].value,
-            fullstack: ["backendId", "frontendId"],
-            structure: "monorepo",
+            type: "fullstack",
+            backend: "ts",
+            frontend: "react-ts",
+            multirepo: false,
         };
 
         await createCommand(options);
@@ -195,8 +188,10 @@ describe("create", () => {
         const options: GenezioCreateOptions = {
             name: "genezio-project",
             region: regions[0].value,
-            fullstack: ["backendId", "frontendId"],
-            structure: "multirepo",
+            type: "fullstack",
+            backend: "ts",
+            frontend: "react-ts",
+            multirepo: true,
         };
 
         await createCommand(options);
@@ -236,7 +231,8 @@ describe("create", () => {
         const options: GenezioCreateOptions = {
             name: "genezio-project",
             region: regions[0].value,
-            backend: "backendId",
+            type: "backend",
+            backend: "ts",
         };
 
         await createCommand(options);

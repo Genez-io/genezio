@@ -1,229 +1,156 @@
 import colors from "colors";
 import inquirer from "inquirer";
-import { getNewProjectTemplateList } from "../../requests/getTemplateList.js";
-import { regions } from "../../utils/configs.js";
-import { Template } from "../../requests/models.js";
 import { GenezioCreateOptions } from "../../models/commandOptions.js";
-import { checkProjectName } from "../create/create.js";
+import { checkPathIsEmpty, checkProjectName } from "../create/create.js";
+import { Template, backendTemplates, frontendTemplates } from "./templates.js";
+import { regions } from "../../utils/configs.js";
+import axios from "axios";
 
-export async function askCreateOptions(): Promise<GenezioCreateOptions> {
-    const {
-        projectName,
-        projectRegion,
-        projectType,
-    }: {
-        projectName: string;
-        projectRegion: string;
-        projectType: "backend" | "fullstack" | "frontend";
-    } = await inquirer.prompt([
-        {
-            type: "input",
-            name: "projectName",
-            message: colors.magenta("Please enter a project name:"),
-            default: "genezio-project",
-            validate: (input: string) => {
-                try {
-                    checkProjectName(input);
-                    return true;
-                } catch (error) {
-                    if (error instanceof Error) return colors.red(error.message);
+export async function askCreateOptions(
+    options?: Partial<GenezioCreateOptions>,
+): Promise<GenezioCreateOptions> {
+    const createOptions = options ?? {};
+    const closestRegionPromise =
+        createOptions.region === undefined ? getClosestRegion() : Promise.resolve(undefined);
 
-                    return colors.red("Unavailable project name");
-                }
+    if (createOptions.name === undefined) {
+        const {
+            projectName,
+        }: {
+            projectName: string;
+        } = await inquirer.prompt([
+            {
+                type: "input",
+                name: "projectName",
+                message: colors.magenta("Please enter a project name:"),
+                default: "genezio-project",
+                validate: (input: string) => {
+                    try {
+                        checkProjectName(input);
+                        if (options?.path === undefined) {
+                            checkPathIsEmpty(input);
+                        }
+                        return true;
+                    } catch (error) {
+                        if (error instanceof Error) return colors.red(error.message);
+
+                        return colors.red("Unavailable project name");
+                    }
+                },
             },
-        },
-        {
-            type: "list",
-            name: "projectRegion",
-            message: colors.magenta("Choose a region for your project"),
-            choices: regions,
-            pageSize: regions.length,
-        },
-        {
-            type: "list",
-            name: "projectType",
-            message: colors.magenta("What type of project would you like to create?"),
-            choices: [
-                {
-                    name: "Backend + Frontend (Fullstack)",
-                    value: "fullstack",
-                },
-                {
-                    name: "Backend",
-                    value: "backend",
-                },
-                {
-                    name: "Frontend",
-                    value: "frontend",
-                },
-            ],
-        },
-    ]);
+        ]);
 
-    const templateList = await getNewProjectTemplateList();
+        createOptions.name = projectName;
+    }
 
-    switch (projectType) {
-        case "fullstack": {
-            const { projectStructure }: { projectStructure: "monorepo" | "multirepo" } =
-                await inquirer.prompt([
+    if (createOptions.region === undefined) {
+        const closestRegion = await closestRegionPromise;
+        const personalizedRegions = regions
+            .filter((region) => region.value === closestRegion)
+            .concat(regions.filter((region) => region.value !== closestRegion));
+
+        const { projectRegion }: { projectRegion: string } = await inquirer.prompt([
+            {
+                type: "list",
+                name: "projectRegion",
+                message: colors.magenta("Choose a region for your project:"),
+                choices: personalizedRegions,
+                pageSize: personalizedRegions.length,
+            },
+        ]);
+
+        createOptions.region = projectRegion;
+    }
+
+    if (createOptions.type === undefined) {
+        const { projectType }: { projectType: "backend" | "fullstack" } = await inquirer.prompt([
+            {
+                type: "list",
+                name: "projectType",
+                message: colors.magenta("What type of project would you like to create?"),
+                choices: [
                     {
-                        type: "list",
-                        name: "projectStructure",
-                        message: colors.magenta("What project structure would you like to use?"),
-                        choices: [
-                            {
-                                name: "Monorepo (Frontend and backend in the same git repository - choose this if unsure)",
-                                value: "monorepo",
-                            },
-                            {
-                                name: "Multirepo (Frontend and backend in separate git repositories)",
-                                value: "multirepo",
-                            },
-                        ],
+                        name: "Backend + Frontend (Fullstack)",
+                        value: "fullstack",
                     },
-                ]);
+                    {
+                        name: "Backend",
+                        value: "backend",
+                    },
+                ],
+            },
+        ]);
 
-            const [{ id: backendTemplateId }, { id: frontendTemplateId }] =
-                await chooseFullstackTemplates(templateList);
+        createOptions.type = projectType;
+    }
 
-            return {
-                name: projectName,
-                region: projectRegion as (typeof regions)[number]["value"],
-                fullstack: [backendTemplateId, frontendTemplateId],
-                structure: projectStructure,
-            };
+    switch (createOptions.type) {
+        case "fullstack": {
+            createOptions.multirepo ??= false;
+            createOptions.backend ??= await chooseTemplate("Backend");
+            createOptions.frontend ??= await chooseTemplate("Frontend");
+            break;
         }
         case "backend": {
-            const { id: templateId } = await chooseTemplate(templateList, "Backend");
-
-            return {
-                name: projectName,
-                region: projectRegion as (typeof regions)[number]["value"],
-                backend: templateId,
-            };
-        }
-        case "frontend": {
-            const { id: templateId } = await chooseTemplate(
-                templateList.filter((template) => template.compatibilityMapping === null),
-                "Frontend",
-            );
-
-            return {
-                name: projectName,
-                region: projectRegion as (typeof regions)[number]["value"],
-                frontend: templateId,
-            };
+            createOptions.backend ??= await chooseTemplate("Backend");
+            break;
         }
     }
+
+    return createOptions as Required<GenezioCreateOptions>;
 }
 
-async function chooseFullstackTemplates(templateList: Template[]): Promise<[Template, Template]> {
-    const backendTemplate = await chooseTemplate(templateList, "Backend");
-
-    // Create frontend, but provide only backend-compatible templates
-    const frontendTemplate = await chooseTemplate(
-        templateList.filter(
-            (template) => template.compatibilityMapping === backendTemplate.compatibilityMapping,
-        ),
-        "Frontend",
-    );
-    return [backendTemplate, frontendTemplate];
-}
-
-async function chooseTemplate(
-    templateList: Template[],
-    category: "Backend" | "Frontend",
-): Promise<Template> {
-    const supportedLanguages = [
-        // Keep only distinct languages
-        ...new Set(
-            templateList
-                .filter((template) => template.category === category)
-                .map((template) => template.language),
-        ),
-    ].sort(languageRanking);
-
-    if (supportedLanguages.length === 0) {
-        throw new Error(
-            `Unfortunately, no ${category} templates could be found for this project type :(. We are working on adding more templates!`,
-        );
+async function chooseTemplate(category: "Backend" | "Frontend"): Promise<string> {
+    let templates: Record<string, Template | undefined> = {};
+    switch (category) {
+        case "Backend": {
+            templates = backendTemplates;
+            break;
+        }
+        case "Frontend": {
+            templates = frontendTemplates;
+            break;
+        }
     }
 
-    const { selectedLanguage }: { selectedLanguage: string } = await inquirer.prompt([
+    const availableTemplates = Object.entries(templates)
+        .filter(([, template]) => template !== undefined && template.hidden !== true)
+        .map(([id, template]) => ({
+            name: template!.coloring(template!.name),
+            value: id,
+        }));
+
+    const { template }: { template: string } = await inquirer.prompt([
         {
             type: "list",
-            name: "selectedLanguage",
-            message:
-                colors.magenta("Select your desired ") +
-                colors.green(category) +
-                colors.magenta(" language:"),
-            choices: supportedLanguages.map((language) => ({
-                name: colorLanguage(language),
-                value: language,
-            })),
+            name: "template",
+            message: colors.magenta("Choose a") + ` ${category} ` + colors.magenta("template:"),
+            choices: availableTemplates,
         },
     ]);
 
-    const templatesForLanguage = templateList
-        .filter(
-            (template) => template.category === category && template.language === selectedLanguage,
-        )
-        .sort(projectRanking);
-
-    const { selectedTemplate }: { selectedTemplate: Template } = await inquirer.prompt([
-        {
-            type: "list",
-            name: "selectedTemplate",
-            message:
-                colors.magenta("Select your desired ") +
-                colorLanguage(selectedLanguage) +
-                colors.magenta(" template:"),
-            choices: templatesForLanguage.map((template) => ({
-                name: template.name,
-                value: template,
-            })),
-        },
-    ]);
-
-    return selectedTemplate;
+    return template;
 }
 
-export function colorLanguage(languageName: string): string {
-    switch (languageName) {
-        case "TypeScript":
-            return colors.blue(languageName);
-        case "JavaScript":
-            return colors.yellow(languageName);
-        case "Python":
-            return colors.green(languageName);
-        case "Go":
-            return colors.cyan(languageName);
-        case "Dart":
-            return colors.cyan(languageName);
-        case "Kotlin":
-            return colors.magenta(languageName);
-        case "HTML":
-            return colors.red(languageName);
-        default:
-            return languageName;
-    }
-}
+/**
+ * Retrieves the closest region by pinging each region's endpoint.
+ *
+ * @returns A Promise that resolves to the closest region value or undefined if no region is available.
+ */
+async function getClosestRegion(): Promise<string | undefined> {
+    const pings = regions.map(async (region) => {
+        const url = `https://lambda.${region.value}.amazonaws.com/ping`;
 
-function languageRanking(t1: string, t2: string) {
-    const ranking = ["TypeScript", "JavaScript", "HTML", "Go", "Dart", "Kotlin", "Python"];
+        const request = await axios({ method: "get", url }).catch(() => ({ status: 400 }));
 
-    return ranking.indexOf(t1) - ranking.indexOf(t2);
-}
-
-function projectRanking(t1: Template, t2: Template) {
-    const ranking = ["weather", "blank"];
-
-    const rank = (template: Template) => {
-        for (const [index, projectType] of ranking.entries()) {
-            if (template.id.includes(projectType)) return index;
+        if (request.status !== 200) {
+            return Promise.reject();
         }
-        return Infinity;
-    };
 
-    return rank(t1) - rank(t2);
+        return region.value;
+    });
+
+    const closest = await Promise.any(pings).catch(() => undefined);
+
+    return closest;
 }

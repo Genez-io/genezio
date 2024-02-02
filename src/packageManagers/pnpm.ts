@@ -1,9 +1,5 @@
 import { PackageManager } from "./packageManager.js";
-import { ExecOptions, exec, execSync } from "child_process";
-import { homedir } from "os";
-import { promisify } from "util";
-const asyncExec = (cmd: string, options?: ExecOptions) =>
-    promisify(exec)(cmd, options ?? { cwd: homedir() });
+import { $ } from "execa";
 
 export default class PnpmPackageManager implements PackageManager {
     readonly command = "pnpm";
@@ -14,11 +10,11 @@ export default class PnpmPackageManager implements PackageManager {
         // - `pnpm install` will install all packages from the lockfile
         // - `pnpm add` will install the specified packages and update the lockfile
         if (packages.length === 0) {
-            await asyncExec(`pnpm install`);
+            await $({ cwd })`pnpm install`;
             return;
         }
 
-        await asyncExec(`pnpm add ${cwd ? `--dir ${cwd}` : ""} ${packages.join(" ")}`);
+        await $({ cwd })`pnpm add ${packages}`;
     }
 
     installSync(packages: string[] = [], cwd?: string) {
@@ -26,24 +22,24 @@ export default class PnpmPackageManager implements PackageManager {
         // - `pnpm install` will install all packages from the lockfile
         // - `pnpm add` will install the specified packages and update the lockfile
         if (packages.length === 0) {
-            execSync(`pnpm install`);
+            $({ cwd }).sync`pnpm install`;
             return;
         }
 
-        execSync(`pnpm add ${cwd ? `--dir ${cwd}` : ""} ${packages.join(" ")}`);
+        $({ cwd }).sync`pnpm add ${packages}`;
     }
 
     async link(packages: string[] = [], cwd?: string) {
-        await asyncExec(`pnpm link ${cwd ? `--dir ${cwd}` : ""} ${packages.join(" ")}`);
+        await $({ cwd })`pnpm link ${packages}`;
     }
 
     async publish(cwd?: string) {
-        await asyncExec(`pnpm publish ${cwd ?? ""} --no-git-checks`);
+        await $({ cwd })`pnpm publish --no-git-checks`;
     }
 
     async addScopedRegistry(scope: string, url: string, authToken?: string) {
         // Set the registry url for the specified scope
-        await asyncExec(`pnpm config set @${scope}:registry=${url}`);
+        await $`pnpm config set @${scope}:registry=${url}`;
 
         if (authToken === undefined) {
             return;
@@ -52,22 +48,20 @@ export default class PnpmPackageManager implements PackageManager {
         // Add the authentication token for the registry hostname
         const registryUrl = new URL(url);
         const path = registryUrl.pathname.split("/").slice(0, -1).join("/");
-        await asyncExec(
-            `pnpm config set //${registryUrl.hostname}${path}/:_authToken=${authToken}`,
-        );
+        await $`pnpm config set //${registryUrl.hostname}${path}/:_authToken=${authToken}`;
     }
 
     async removeScopedRegistry(scope: string): Promise<void> {
         // Get the registry url for the specified scope
-        const { stdout } = await asyncExec(`pnpm config get @${scope}:registry`);
+        const { stdout } = await $`pnpm config get @${scope}:registry`;
         const registryUrl = new URL(stdout.trim());
         const path = registryUrl.pathname.split("/").slice(0, -1).join("/");
 
         // Remove the package scoped registry
-        await asyncExec(`pnpm config delete @${scope}:registry`);
+        await $`pnpm config delete @${scope}:registry`;
 
         // Remove the authentication token for the registry hostname
-        await asyncExec(`pnpm config delete //${registryUrl.hostname}${path}/:_authToken`);
+        await $`pnpm config delete //${registryUrl.hostname}${path}/:_authToken`;
     }
 
     async getVersion(): Promise<string> {
@@ -76,7 +70,7 @@ export default class PnpmPackageManager implements PackageManager {
             return this.version;
         }
 
-        const { stdout } = await asyncExec("pnpm --version");
+        const { stdout } = await $`pnpm --version`;
         this.version = stdout.trim();
         return this.version;
     }

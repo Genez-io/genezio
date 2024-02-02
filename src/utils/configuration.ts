@@ -68,12 +68,13 @@ function parseArguments(args: CallExpression["arguments"]): { [key: string]: str
                     return [...acc];
                 }, []);
             } else {
-                throw new Error("Unsupported argument for decorator");
+                return undefined;
             }
         })
+        .filter((a) => a !== undefined)
         .flat()
         .reduce((acc: { [key: string]: string }, curr) => {
-            acc[curr.key] = curr.value;
+            acc[curr!.key] = curr!.value;
             return acc;
         }, {});
 }

@@ -1,10 +1,6 @@
 import { compare } from "compare-versions";
 import { PackageManager } from "./packageManager.js";
-import { ExecOptions, exec, execSync } from "child_process";
-import { promisify } from "util";
-import { homedir } from "os";
-const asyncExec = (cmd: string, options?: ExecOptions) =>
-    promisify(exec)(cmd, options ?? { cwd: homedir() });
+import { $ } from "execa";
 
 export default class YarnPackageManager implements PackageManager {
     readonly command = "yarn";
@@ -15,11 +11,11 @@ export default class YarnPackageManager implements PackageManager {
         // - `yarn install` will install all packages from the lockfile
         // - `yarn add` will install the specified packages and update the lockfile
         if (packages.length === 0) {
-            await asyncExec(`yarn install`);
+            await $({ cwd })`yarn install`;
             return;
         }
 
-        await asyncExec(`yarn add ${cwd ? `--cwd ${cwd}` : ""} ${packages.join(" ")}`);
+        await $({ cwd })`yarn add ${packages}`;
     }
 
     installSync(packages: string[] = [], cwd?: string) {
@@ -27,19 +23,19 @@ export default class YarnPackageManager implements PackageManager {
         // - `yarn install` will install all packages from the lockfile
         // - `yarn add` will install the specified packages and update the lockfile
         if (packages.length === 0) {
-            execSync(`yarn install`);
+            $({ cwd })`yarn install`;
             return;
         }
 
-        execSync(`yarn add ${cwd ? `--cwd ${cwd}` : ""} ${packages.join(" ")}`);
+        $({ cwd })`yarn add ${packages}`;
     }
 
     async link(packages: string[] = [], cwd?: string) {
-        await asyncExec(`yarn link ${cwd ? `--cwd ${cwd}` : ""} ${packages.join(" ")}`);
+        await $({ cwd })`yarn link ${packages}`;
     }
 
     async publish(cwd?: string) {
-        await asyncExec(`yarn publish ${cwd ? `--cwd ${cwd}` : ""}`);
+        await $({ cwd })`yarn publish`;
     }
 
     async addScopedRegistry(scope: string, url: string, authToken?: string) {
@@ -54,9 +50,7 @@ export default class YarnPackageManager implements PackageManager {
             npmAuthToken: authToken,
             npmAlwaysAuth: true,
         };
-        await asyncExec(
-            `yarn config set --home npmScopes.${scope} --json '${JSON.stringify(scopeConfig)}'`,
-        );
+        await $`yarn config set --home npmScopes.${scope} --json '${JSON.stringify(scopeConfig)}'`;
     }
 
     async removeScopedRegistry(scope: string) {
@@ -66,7 +60,7 @@ export default class YarnPackageManager implements PackageManager {
             );
         }
 
-        await asyncExec(`yarn config unset --home npmScopes.${scope}`);
+        await $`yarn config unset --home npmScopes.${scope}`;
     }
 
     async getVersion(): Promise<string> {
@@ -75,7 +69,7 @@ export default class YarnPackageManager implements PackageManager {
             return this.version;
         }
 
-        const { stdout } = await asyncExec("yarn --version");
+        const { stdout } = await $`yarn --version`;
         this.version = stdout.trim();
         return this.version;
     }

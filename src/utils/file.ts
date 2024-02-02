@@ -205,16 +205,18 @@ export async function directoryContainsIndexHtmlFiles(directoryPath: string): Pr
 }
 
 /**
- * Removes the temporary root folder of the process.
- * This root folder contains all the temporary folders created by `createTemporaryFolder` function.
- * The folder is removed only if it exists. It is meant to be called when the process exits.
+ * Deletes a folder and its contents.
+ * If the DEBUG environment variable is set to true, the folder will not be removed.
+ * @param folderPath - The path of the folder to delete.
+ * @returns A promise that resolves when the folder is deleted.
  */
-export async function cleanupTemporaryFolders() {
-    const folderName = `genezio-${process.pid}`;
-
-    if (fs.existsSync(path.join(os.tmpdir(), folderName))) {
-        fs.rmSync(path.join(os.tmpdir(), folderName), { recursive: true });
+export async function deleteFolder(folderPath: string): Promise<void> {
+    if (process.env["DEBUG"] === "true") {
+        debugLogger.debug(`DEBUG is set to true. Skipping deletion of ${folderPath}.`);
+        return;
     }
+
+    return fs.rmSync(folderPath, { recursive: true, force: true });
 }
 
 /**
@@ -299,18 +301,6 @@ export async function createLocalTempFolder(
                 resolve(tempFolder);
             });
         }
-    });
-}
-
-export async function deleteFolder(folderPath: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-        try {
-            fs.rmSync(folderPath, { recursive: true, force: true });
-        } catch (error) {
-            reject(error);
-        }
-
-        resolve();
     });
 }
 
