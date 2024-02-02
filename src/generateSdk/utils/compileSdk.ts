@@ -37,11 +37,14 @@ export async function compileSdk(
     language: Language,
     publish: boolean,
     outDir = "../genezio-sdk",
+    ShouldDeleteFolder = true,
 ) {
     const genezioSdkPath = path.resolve(sdkPath, outDir);
     // delete the old sdk
-    if (fs.existsSync(genezioSdkPath)) {
-        await deleteFolder(genezioSdkPath);
+    if (ShouldDeleteFolder) {
+        if (fs.existsSync(genezioSdkPath)) {
+            await deleteFolder(genezioSdkPath);
+        }
     }
     fs.mkdirSync(genezioSdkPath, { recursive: true });
     // compile the sdk to cjs and esm using worker threads
