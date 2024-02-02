@@ -1,4 +1,4 @@
-import { YamlClassConfiguration } from "./yamlProjectConfiguration.js";
+import { TriggerType } from "../yamlProjectConfiguration/models.js";
 
 export enum GenezioCommandTemplates {
     FULLSTACK = "Fullstack",
@@ -121,9 +121,6 @@ export interface Node {
     type: AstNodeType;
     path?: string;
 }
-
-// DONE native types, enums, type alias, union type - type | type
-// TODO next steps - array(multi level), map
 
 export interface ConstType extends Node {
     type: AstNodeType.ConstType;
@@ -335,7 +332,7 @@ export interface AstGeneratorInterface {
 // types for SDK Generator
 export type SdkGeneratorClassesInfoInput = {
     program: Program;
-    classConfiguration: YamlClassConfiguration;
+    classConfiguration: SdkClassConfiguration;
     fileName: string;
 };
 
@@ -356,3 +353,16 @@ export type SdkGeneratorOutput = {
 export interface SdkGeneratorInterface {
     generateSdk: (sdkGeneratorInput: SdkGeneratorInput) => Promise<SdkGeneratorOutput>;
 }
+
+export type SdkMethodConfiguration = {
+    name: string;
+    type: TriggerType;
+};
+
+export type SdkClassConfiguration = {
+    name: string;
+    path: string;
+    language: string;
+    type: TriggerType;
+    methods: SdkMethodConfiguration[];
+};

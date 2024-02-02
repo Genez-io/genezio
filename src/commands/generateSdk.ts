@@ -3,14 +3,11 @@ import log from "loglevel";
 import { exit } from "process";
 import { languages } from "../utils/languages.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
-import {
-    Language,
-    TriggerType,
-    YamlProjectConfiguration,
-} from "../models/yamlProjectConfiguration.js";
+import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
+import { YamlProjectConfiguration } from "../yamlProjectConfiguration/v2.js";
 import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import listProjects from "../requests/listProjects.js";
-import { getProjectConfiguration, scanClassesForDecorators } from "../utils/configuration.js";
+import { scanClassesForDecorators } from "../utils/configuration.js";
 import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import path from "path";
@@ -18,15 +15,19 @@ import { SdkGeneratorClassesInfoInput, SdkGeneratorInput } from "../models/genez
 import { mapDbAstToSdkGeneratorAst } from "../generateSdk/utils/mapDbAstToFullAst.js";
 import { generateSdk } from "../generateSdk/sdkGeneratorHandler.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
-import inquirer, { Answers } from "inquirer";
+import inquirer from "inquirer";
 import { GenezioSdkOptions, SdkType, SourceType } from "../models/commandOptions.js";
-import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
+import {
+    mapYamlClassToSdkClassConfiguration,
+    sdkGeneratorApiHandler,
+} from "../generateSdk/generateSdkApi.js";
 import { getPackageJsonSdkGenerator } from "../generateSdk/templates/packageJson.js";
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { GenezioCommand } from "../utils/reporter.js";
 import colors from "colors";
 import { debugLogger } from "../utils/logging.js";
 import { deleteFile, deleteFolder } from "../utils/file.js";
+import { YamlConfigurationIOController } from "../yamlProjectConfiguration/v2.js";
 
 export async function generateSdkCommand(projectName: string, options: GenezioSdkOptions) {
     switch (options.source) {
@@ -45,30 +46,26 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
         throw new Error("You must provide a url when generating a local SDK.");
     }
 
-    let configuration: YamlProjectConfiguration = await YamlProjectConfiguration.create({
-        name: "test",
-        language: options.language,
-        sdk: {
-            language: options.language,
-            path: options.output,
-        },
-    });
-    configuration = await scanClassesForDecorators(configuration);
-
-    const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(configuration).catch(
-        (error) => {
-            // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
-            if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
-                log.error("Syntax error:");
-                log.error(`Reason Code: ${error.reasonCode}`);
-                log.error(`File: ${error.path}:${error.loc.line}:${error.loc.column}`);
-
-                throw error;
-            }
+    const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
+        options.language,
+        mapYamlClassToSdkClassConfiguration(
+            await scanClassesForDecorators({ path: process.cwd(), classes: [] }),
+            options.language,
+            process.cwd(),
+        ),
+        options.output,
+    ).catch((error) => {
+        // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
+        if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
+            log.error("Syntax error:");
+            log.error(`Reason Code: ${error.reasonCode}`);
+            log.error(`File: ${error.path}:${error.loc.line}:${error.loc.column}`);
 
             throw error;
-        },
-    );
+        }
+
+        throw error;
+    });
 
     await replaceUrlsInSdk(
         sdkResponse,
@@ -78,29 +75,23 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
         })),
     );
 
-    await writeSdkToDisk(sdkResponse, configuration.sdk!.path);
+    await writeSdkToDisk(sdkResponse, options.output);
 
     if (options.type === SdkType.PACKAGE) {
         debugLogger.debug("Sdk type is package");
         const packageJson: string = getPackageJsonSdkGenerator(
-            configuration.name,
-            configuration.region,
+            "local-sdk",
+            options.region,
             options.stage,
-            configuration.sdk!.path,
+            options.output,
             GenezioCommand.local,
         );
         debugLogger.debug("Package json is: " + packageJson);
         debugLogger.debug("Start Compiling sdk local");
-        await compileSdk(
-            configuration.sdk!.path,
-            packageJson,
-            configuration.sdk!.language! as Language,
-            false,
-            "",
-        );
+        await compileSdk(options.output, packageJson, options.language, false, "");
         debugLogger.debug("Sdk compiled successfully");
 
-        log.info("Your SDK has been generated successfully in " + configuration.sdk!.path + "");
+        log.info("Your SDK has been generated successfully in " + options.output);
         log.info(
             `You can now publish it to npm using ${colors.cyan(
                 `'npm publish'`,
@@ -150,14 +141,15 @@ export async function generateRemoteSdkCommand(projectName: string, options: Gen
             config = path.join(config, "genezio.yaml");
         }
         let configuration: YamlProjectConfiguration | undefined;
+        const yamlIOController = new YamlConfigurationIOController(config);
         try {
-            configuration = await getProjectConfiguration(config);
+            configuration = await yamlIOController.read();
         } catch (error) {
             if (
                 error instanceof Error &&
                 error.message === "The configuration file does not exist."
             ) {
-                const answers: Answers = await inquirer.prompt([
+                const answers: { createConfig: string } = await inquirer.prompt([
                     {
                         type: "confirm",
                         name: "createConfig",
@@ -178,19 +170,23 @@ export async function generateRemoteSdkCommand(projectName: string, options: Gen
                         name: `${p.name} (${p.region})`,
                         value: p,
                     }));
-                    const answers: Answers = await inquirer.prompt([
-                        {
-                            type: "list",
-                            name: "project",
-                            message: "Select the project you want to generate the SDK for:",
-                            choices: options,
-                        },
-                    ]);
-                    configuration = await YamlProjectConfiguration.create({
-                        name: answers["project"].name,
-                        region: answers["project"].region,
-                    });
-                    await configuration.writeToFile(config);
+                    const answers: { project: { name: string; region: string } } =
+                        await inquirer.prompt([
+                            {
+                                type: "list",
+                                name: "project",
+                                message: "Select the project you want to generate the SDK for:",
+                                choices: options,
+                            },
+                        ]);
+
+                    const project = answers["project"];
+                    configuration = {
+                        name: project.name,
+                        region: project.region,
+                        yamlVersion: 2,
+                    };
+                    yamlIOController.write(configuration);
                 } else {
                     exit(1);
                 }
@@ -253,8 +249,7 @@ async function generateRemoteSdkHandler(
                     type: TriggerType.jsonrpc,
                     methods: [],
                     language: path.extname(c.ast.path),
-                    getMethodType: () => TriggerType.jsonrpc,
-                    fromDecorator: false,
+                    name: c.name,
                 },
                 fileName: path.basename(c.ast.path),
             }),

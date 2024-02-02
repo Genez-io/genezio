@@ -22,7 +22,7 @@ import {
     MapType,
     SdkGeneratorClassesInfoInput,
 } from "../../models/genezioModels.js";
-import { TriggerType } from "../../models/yamlProjectConfiguration.js";
+import { TriggerType } from "../../yamlProjectConfiguration/models.js";
 import { nodeSdkTs, storageTs } from "../templates/nodeSdkTs.js";
 import path from "path";
 
@@ -271,9 +271,11 @@ class SdkGenerator implements SdkGeneratorInterface {
             let exportClassChecker = false;
 
             for (const methodDefinition of classDefinition.methods) {
-                const methodConfigurationType = classConfiguration.getMethodType(
-                    methodDefinition.name,
+                const methodConfiguration = classConfiguration.methods.find(
+                    (m) => m.name === methodDefinition.name,
                 );
+                const methodConfigurationType =
+                    methodConfiguration?.type || classConfiguration.type;
 
                 if (
                     methodConfigurationType !== TriggerType.jsonrpc ||

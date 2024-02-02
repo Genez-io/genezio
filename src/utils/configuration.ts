@@ -1,14 +1,7 @@
 import path from "path";
 import { createRequire } from "module";
-import {
-    TriggerType,
-    YamlClassConfiguration,
-    YamlMethodConfiguration,
-    YamlProjectConfiguration,
-    getTriggerTypeFromString,
-} from "../models/yamlProjectConfiguration.js";
-import { checkYamlFileExists, getAllFilesFromPath, readUTF8File } from "./file.js";
-import { parse } from "yaml";
+import { YAMLBackend, YamlClass, YamlMethod } from "../yamlProjectConfiguration/v2.js";
+import { getAllFilesFromPath } from "./file.js";
 import babel from "@babel/core";
 import fs from "fs";
 import FileDetails from "../models/fileDetails.js";
@@ -25,6 +18,8 @@ import {
     isObjectProperty,
     isStringLiteral,
 } from "@babel/types";
+import { TriggerType } from "../yamlProjectConfiguration/models.js";
+import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 
 type MethodDecoratorInfo = {
     name: string;
@@ -59,10 +54,11 @@ function parseArguments(args: CallExpression["arguments"]): { [key: string]: str
                 return arg.properties.reduce((acc: Array<{ key: string; value: string }>, curr) => {
                     if (
                         isObjectProperty(curr) &&
-                        isIdentifier(curr.key) &&
+                        (isIdentifier(curr.key) || isStringLiteral(curr.key)) &&
                         isStringLiteral(curr.value)
                     ) {
-                        return [...acc, { key: curr.key.name, value: curr.value.value }];
+                        const key = isIdentifier(curr.key) ? curr.key.name : curr.key.value;
+                        return [...acc, { key, value: curr.value.value }];
                     }
 
                     return [...acc];
@@ -187,9 +183,9 @@ async function getDecoratorsFromFile(file: string): Promise<ClassInfo[]> {
 }
 
 async function tryToReadClassInformationFromDecorators(
-    projectConfiguration: YamlProjectConfiguration,
+    yamlBackend: Pick<YAMLBackend, "path" | "classes">,
 ) {
-    const cwd = projectConfiguration.workspace?.backend || process.cwd();
+    const cwd = yamlBackend.path || process.cwd();
 
     const allJsFilesPaths = (await getAllFilesFromPath(cwd)).filter((file: FileDetails) => {
         const folderPath = path.join(cwd, file.path);
@@ -216,43 +212,21 @@ async function tryToReadClassInformationFromDecorators(
     );
 }
 
-export async function getProjectConfiguration(
-    configurationFilePath: string,
-    skipClassScan = false,
-): Promise<YamlProjectConfiguration> {
-    if (!(await checkYamlFileExists(configurationFilePath))) {
-        throw new Error("The configuration file does not exist.");
-    }
-
-    const genezioYamlPath = path.join(configurationFilePath);
-    const configurationFileContentUTF8 = await readUTF8File(genezioYamlPath);
-    let configurationFileContent = null;
-
-    try {
-        configurationFileContent = await parse(configurationFileContentUTF8);
-    } catch (error) {
-        throw new Error(`The configuration yaml file is not valid.\n${error}`);
-    }
-
-    const projectConfiguration = await YamlProjectConfiguration.create(configurationFileContent);
-
-    if (skipClassScan) {
-        return projectConfiguration;
-    }
-
-    return await scanClassesForDecorators(projectConfiguration);
-}
-
-export async function scanClassesForDecorators(projectConfiguration: YamlProjectConfiguration) {
-    const result = await tryToReadClassInformationFromDecorators(projectConfiguration);
+export async function scanClassesForDecorators(
+    yamlBackend: Pick<YAMLBackend, "path" | "classes">,
+): Promise<YamlClass[]> {
+    const result = await tryToReadClassInformationFromDecorators(yamlBackend);
+    const classes: YamlClass[] = yamlBackend.classes || [];
 
     result.forEach((classInfo) => {
         if (classInfo.length < 1) {
             return;
         }
         if (Object.keys(classInfo[0]).length > 0) {
-            const r = projectConfiguration.classes.find(
-                (c) => path.resolve(c.path) === path.resolve(classInfo[0].path),
+            const r = classes.find(
+                (c) =>
+                    path.resolve(path.join(yamlBackend.path, c.path)) ===
+                    path.resolve(classInfo[0].path),
             );
             const deployDecoratorFound = classInfo[0].decorators.find(
                 (d) => d.name === "GenezioDeploy",
@@ -272,11 +246,15 @@ export async function scanClassesForDecorators(projectConfiguration: YamlProject
 
                         const methodType = genezioMethodDecorator.arguments["type"]
                             ? getTriggerTypeFromString(genezioMethodDecorator.arguments["type"])
-                            : TriggerType.jsonrpc;
+                            : undefined;
                         const cronString = genezioMethodDecorator.arguments["cronString"];
-                        return new YamlMethodConfiguration(m.name, methodType, cronString);
+                        return {
+                            name: m.name,
+                            type: methodType,
+                            cronString: cronString,
+                        } as YamlMethod;
                     })
-                    .filter((m) => m !== undefined) as YamlMethodConfiguration[];
+                    .filter((m) => m !== undefined) as YamlMethod[];
 
                 if (deployDecoratorFound.arguments) {
                     const classType = deployDecoratorFound.arguments["type"];
@@ -285,19 +263,31 @@ export async function scanClassesForDecorators(projectConfiguration: YamlProject
                     }
                 }
 
-                projectConfiguration.classes.push(
-                    new YamlClassConfiguration(
-                        classInfo[0].path,
-                        type,
-                        ".js",
-                        methods,
-                        undefined,
-                        true,
-                    ),
-                );
+                classes.push({
+                    name: classInfo[0].name,
+                    path: path.relative(yamlBackend.path, classInfo[0].path),
+                    type: type,
+                    methods: methods,
+                    cloudProvider: CloudProviderIdentifier.GENEZIO,
+                });
             }
         }
     });
 
-    return projectConfiguration;
+    return classes;
+}
+
+export function getTriggerTypeFromString(string: string): TriggerType {
+    if (string && !TriggerType[string as keyof typeof TriggerType]) {
+        const triggerTypes: string = Object.keys(TriggerType).join(", ");
+        throw new Error(
+            "Specified class type for " +
+                string +
+                " is incorrect. Accepted values: " +
+                triggerTypes +
+                ".",
+        );
+    }
+
+    return TriggerType[string as keyof typeof TriggerType];
 }

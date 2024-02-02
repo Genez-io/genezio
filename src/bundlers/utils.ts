@@ -31,7 +31,7 @@ export async function bundle(
     let bundler: BundlerInterface;
 
     switch (element.language) {
-        case ".ts": {
+        case "ts": {
             const requiredDepsBundler = new TsRequiredDepsBundler();
             const typeCheckerBundler = new TypeCheckerBundler();
             const standardBundler = new NodeJsBundler();
@@ -44,26 +44,25 @@ export async function bundle(
             ]);
             break;
         }
-        case ".js": {
+        case "js": {
             const standardBundler = new NodeJsBundler();
             const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
             bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
             break;
         }
-        case ".dart": {
+        case "dart": {
             bundler = new DartBundler();
             break;
         }
-        case ".kt": {
+        case "kt": {
             bundler = new KotlinBundler();
             break;
         }
-        case ".go": {
+        case "go": {
             bundler = new GoBundler();
             break;
         }
         default:
-            log.error(`Unsupported ${element.language}`);
             throw new Error(`Unsupported ${element.language}`);
     }
 

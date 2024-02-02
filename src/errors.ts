@@ -1,3 +1,5 @@
+import zod from "zod";
+
 // Constant strings used for output/error messages
 export const GENEZIO_NOT_AUTH_ERROR_MSG =
     "You are not logged in or your token is invalid. Please run `genezio login` before running this command.";
@@ -25,3 +27,44 @@ export const GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE = function (filePath: string
 
 export const GENEZIO_GIT_NOT_FOUND = `Git is not installed. Please install it and try again.
 https://git-scm.com/book/en/v2/Getting-Started-Installing-Git`;
+
+function collectIssueMap(e: zod.ZodError, issueMap: Map<string, string[]>) {
+    for (const issue of e.issues) {
+        if (issue.code === "invalid_union") {
+            for (const issueError of issue.unionErrors) {
+                collectIssueMap(issueError, issueMap);
+            }
+        }
+
+        if (issueMap.has(issue.path.join("."))) {
+            issueMap.get(issue.path.join("."))?.push(issue.message);
+        } else {
+            issueMap.set(issue.path.join("."), [issue.message]);
+        }
+    }
+}
+
+export function zodFormatError(e: zod.ZodError) {
+    let errorString = "";
+    const issueMap = new Map<string, string[]>();
+
+    collectIssueMap(e, issueMap);
+
+    const formErrors = issueMap.get("");
+    if (formErrors && formErrors.length > 0) {
+        errorString += "Form errors:\n";
+        for (const error of formErrors) {
+            errorString += `\t- ${error}\n`;
+        }
+    }
+
+    const fieldErrors = Array.from(issueMap.entries()).filter((entry) => entry[0] !== "");
+    for (const [field, errors] of fieldErrors) {
+        if (errors === undefined) continue;
+
+        errorString += `Field \`${field}\`:\n`;
+        errorString += `\t- ${errors.join("\n\t- ")}\n`;
+    }
+
+    return errorString;
+}

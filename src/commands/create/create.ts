@@ -7,7 +7,7 @@ import path from "path";
 import {
     YamlClassConfiguration,
     YamlProjectConfiguration,
-} from "../../models/yamlProjectConfiguration.js";
+} from "../../yamlProjectConfiguration/v1.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import nativeFs from "fs";
 import { setLinkPathForProject } from "../../utils/linkDatabase.js";

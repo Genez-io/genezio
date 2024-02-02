@@ -11,7 +11,7 @@ import {
     Node,
     MapType,
 } from "../../models/genezioModels.js";
-import { TriggerType } from "../../models/yamlProjectConfiguration.js";
+import { TriggerType } from "../../yamlProjectConfiguration/models.js";
 import { kotlinSdk } from "../templates/kotlinSdk.js";
 import { ArrayType } from "../../models/genezioModels.js";
 import {
@@ -185,9 +185,11 @@ class SdkGenerator implements SdkGeneratorInterface {
                     classDefinition = elem as ClassDefinition;
                     view.className = classDefinition.name;
                     for (const methodDefinition of classDefinition.methods) {
-                        const methodConfigurationType = classConfiguration.getMethodType(
-                            methodDefinition.name,
+                        const methodConfiguration = classConfiguration.methods.find(
+                            (e) => e.name === methodDefinition.name,
                         );
+                        const methodConfigurationType =
+                            methodConfiguration?.type || classConfiguration.type;
 
                         if (
                             methodConfigurationType !== TriggerType.jsonrpc ||

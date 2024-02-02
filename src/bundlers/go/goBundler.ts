@@ -26,7 +26,7 @@ import {
     StructLiteral,
 } from "../../models/genezioModels.js";
 import { checkIfGoIsInstalled } from "../../utils/go.js";
-import { TriggerType } from "../../models/yamlProjectConfiguration.js";
+import { TriggerType } from "../../yamlProjectConfiguration/models.js";
 
 type ImportView = {
     name: string;

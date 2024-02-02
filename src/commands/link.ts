@@ -1,10 +1,10 @@
-import { getProjectConfiguration } from "../utils/configuration.js";
 import {
     deleteLinkPathForProject,
     deleteAllLinkPaths,
     setLinkPathForProject,
 } from "../utils/linkDatabase.js";
 import log from "loglevel";
+import yamlConfigIOController from "../yamlProjectConfiguration/v2.js";
 
 export async function linkCommand(
     projectName: string | undefined,
@@ -14,7 +14,7 @@ export async function linkCommand(
     let name = projectName;
     let region = projectRegion;
     if (!name || !region) {
-        const projectConfiguration = await getProjectConfiguration("./genezio.yaml", true);
+        const projectConfiguration = await yamlConfigIOController.read();
         name = projectConfiguration.name;
         region = projectConfiguration.region;
     }
@@ -36,7 +36,7 @@ export async function unlinkCommand(
     let name = projectName;
     let region = projectRegion;
     if (!name || !region) {
-        const projectConfiguration = await getProjectConfiguration("./genezio.yaml", true);
+        const projectConfiguration = await yamlConfigIOController.read();
         name = projectConfiguration.name;
         region = projectConfiguration.region;
     }

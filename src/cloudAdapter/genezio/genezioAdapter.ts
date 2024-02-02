@@ -17,7 +17,7 @@ import {
     deleteFolder,
     zipDirectoryToDestinationPath,
 } from "../../utils/file.js";
-import { YamlFrontend } from "../../models/yamlProjectConfiguration.js";
+import { YamlFrontend } from "../../yamlProjectConfiguration/v2.js";
 import { createFrontendProject } from "../../requests/createFrontendProject.js";
 import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL.js";
 import { FRONTEND_DOMAIN } from "../../constants.js";
@@ -185,7 +185,8 @@ Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFix
         const archivePath = path.join(await createTemporaryFolder(), `${finalSubdomain}.zip`);
         debugLogger.debug("Creating temporary folder", archivePath);
 
-        await zipDirectoryToDestinationPath(frontend.path, finalSubdomain, archivePath);
+        const frontendPath = path.join(frontend.path, frontend.publish || ".");
+        await zipDirectoryToDestinationPath(frontendPath, finalSubdomain, archivePath);
 
         debugLogger.debug("Getting presigned URL...");
         const result = await getFrontendPresignedURL(finalSubdomain, projectName, stage);

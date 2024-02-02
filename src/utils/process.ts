@@ -23,7 +23,8 @@ export function runNewProcess(
                 debugLogger.debug(stdout);
             }
 
-            if (showStderrOutput) {
+            if (showStderrOutput && stderr.length > 0) {
+                log.info(command + " ❌");
                 log.info(stderr);
             }
         });

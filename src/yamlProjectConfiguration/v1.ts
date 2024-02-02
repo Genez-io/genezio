@@ -3,58 +3,13 @@ import yaml from "yaml";
 import { getFileDetails, writeToFile } from "../utils/file.js";
 import { regions } from "../utils/configs.js";
 import { isValidCron } from "cron-validator";
-import { CloudProviderIdentifier } from "./cloudProviderIdentifier.js";
-import { DEFAULT_NODE_RUNTIME, NodeOptions } from "./nodeRuntime.js";
+import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
+import { DEFAULT_NODE_RUNTIME, NodeOptions, supportedNodeRuntimes } from "../models/nodeRuntime.js";
 import zod from "zod";
 import log from "loglevel";
-
-export enum TriggerType {
-    jsonrpc = "jsonrpc",
-    cron = "cron",
-    http = "http",
-}
-
-interface RawYamlConfiguration {
-    [key: string]:
-        | string
-        | number
-        | boolean
-        | null
-        | undefined
-        | RawYamlConfiguration
-        | Array<RawYamlConfiguration>;
-}
-
-function zodFormatError(e: zod.ZodError) {
-    let errorString = "";
-    const issueMap = new Map<string, string[]>();
-
-    for (const issue of e.issues) {
-        if (issueMap.has(issue.path.join("."))) {
-            issueMap.get(issue.path.join("."))?.push(issue.message);
-        } else {
-            issueMap.set(issue.path.join("."), [issue.message]);
-        }
-    }
-
-    const formErrors = issueMap.get("");
-    if (formErrors && formErrors.length > 0) {
-        errorString += "Form errors:\n";
-        for (const error of formErrors) {
-            errorString += `\t- ${error}\n`;
-        }
-    }
-
-    const fieldErrors = Array.from(issueMap.entries()).filter((entry) => entry[0] !== "");
-    for (const [field, errors] of fieldErrors) {
-        if (errors === undefined) continue;
-
-        errorString += `Field \`${field}\`:\n`;
-        errorString += `\t- ${errors.join("\n\t- ")}\n`;
-    }
-
-    return errorString;
-}
+import { zodFormatError } from "../errors.js";
+import { Language, TriggerType } from "./models.js";
+import { PackageManagerType } from "../packageManagers/packageManager.js";
 
 export function getTriggerTypeFromString(string: string): TriggerType {
     if (string && !TriggerType[string as keyof typeof TriggerType]) {
@@ -69,22 +24,6 @@ export function getTriggerTypeFromString(string: string): TriggerType {
     }
 
     return TriggerType[string as keyof typeof TriggerType];
-}
-
-export enum Language {
-    js = "js",
-    ts = "ts",
-    swift = "swift",
-    python = "python",
-    dart = "dart",
-    kt = "kotlin",
-    go = "go",
-}
-
-export enum PackageManagerType {
-    npm = "npm",
-    yarn = "yarn",
-    pnpm = "pnpm",
 }
 
 export class YamlSdkConfiguration {
@@ -213,8 +152,6 @@ export class YamlWorkspace {
     }
 }
 
-const supportedNodeRuntimes = ["nodejs16.x", "nodejs18.x"] as const;
-
 export enum YamlProjectConfigurationType {
     FRONTEND,
     BACKEND,
@@ -278,9 +215,7 @@ export class YamlProjectConfiguration {
         return classConfiguration;
     }
 
-    static async create(
-        configurationFileContent: RawYamlConfiguration,
-    ): Promise<YamlProjectConfiguration> {
+    static async create(configurationFileContent: unknown): Promise<YamlProjectConfiguration> {
         const methodConfigurationSchema = zod
             .object({
                 name: zod.string(),
@@ -482,8 +417,10 @@ export class YamlProjectConfiguration {
     // It is used to decide if the genezio.yaml file that will be written is a frontend or
     // a root type of genezio.yaml.
     //
-    // TODO: this yaml mutation is becoming a mess and we should reconsider how
+    // this yaml mutation is becoming a mess and we should reconsider how
     // we implement it.
+    //
+    // Update: Fixed in yaml v2
     async writeToFile(path = "./genezio.yaml") {
         const content = {
             name: this.name,
