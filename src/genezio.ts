@@ -27,7 +27,10 @@ import {
     GenezioSdkOptions,
     GenezioUnlinkOptions,
 } from "./models/commandOptions.js";
-import currentGenezioVersion, { logOutdatedVersion } from "./utils/version.js";
+import currentGenezioVersion, {
+    checkNodeMinimumVersion,
+    logOutdatedVersion,
+} from "./utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js";
 import { genezioCommand } from "./commands/superGenezio.js";
 import { linkCommand, unlinkCommand } from "./commands/link.js";
@@ -42,6 +45,8 @@ import { regions } from "./utils/configs.js";
 import { backendTemplates, frontendTemplates } from "./commands/create/templates.js";
 
 const program = new Command();
+
+checkNodeMinimumVersion();
 
 // logging setup
 log.setDefaultLevel("INFO");

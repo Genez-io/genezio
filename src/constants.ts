@@ -15,6 +15,7 @@ let RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE: string;
 
 const GENEZIO_TELEMETRY_ENDPOINT =
     "https://c4h2bia7gbokqdxxc6fe5sgj5e0imchy.lambda-url.us-east-1.on.aws/";
+const NODE_MINIMUM_VERSION: string = "18.2.0";
 
 if (environment === "dev") {
     REACT_APP_BASE_URL = "https://dev.app.genez.io";
@@ -64,4 +65,5 @@ export {
     GENEZIO_REGISTRY,
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
+    NODE_MINIMUM_VERSION,
 };

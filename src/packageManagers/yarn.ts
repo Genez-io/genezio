@@ -1,4 +1,4 @@
-import { compare } from "compare-versions";
+import { cmp } from "semver";
 import { PackageManager } from "./packageManager.js";
 import { $ } from "execa";
 
@@ -39,7 +39,7 @@ export default class YarnPackageManager implements PackageManager {
     }
 
     async addScopedRegistry(scope: string, url: string, authToken?: string) {
-        if (compare(await this.getVersion(), "2.0.0", "<")) {
+        if (cmp(await this.getVersion(), "<", "2.0.0")) {
             throw new Error(
                 "yarn v1 (classic) is not supported. Please update yarn to v2.0.0 or above.",
             );
@@ -54,7 +54,7 @@ export default class YarnPackageManager implements PackageManager {
     }
 
     async removeScopedRegistry(scope: string) {
-        if (compare(await this.getVersion(), "2.0.0", "<")) {
+        if (cmp(await this.getVersion(), "<", "2.0.0")) {
             throw new Error(
                 "yarn v1 (classic) is not supported. Please update yarn to v2.0.0 or above.",
             );
