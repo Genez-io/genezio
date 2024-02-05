@@ -298,14 +298,20 @@ async function generateRemoteSdkHandler(
         );
         debugLogger.debug("Package json is: " + packageJson);
         debugLogger.debug("Start Compiling sdk");
-        await compileSdk(sdkPath, packageJson, language as Language, false, "", false);
+        await compileSdk(
+            sdkPath,
+            packageJson,
+            language as Language,
+            /* publish= */ false,
+            /* outDir= */ "",
+            /* overwriteIfExists= */ false,
+        );
         debugLogger.debug("Sdk compiled successfully");
 
         debugLogger.debug("Start sdk cleanup");
 
         await Promise.all(
             sdkGeneratorResponse.files.map(async (file) => {
-                // console.log("Deleting file: " + file.path);
                 // delete the files and its parent directories
 
                 await deleteFile(path.join(sdkPath, file.path));

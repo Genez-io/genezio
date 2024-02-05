@@ -37,11 +37,11 @@ export async function compileSdk(
     language: Language,
     publish: boolean,
     outDir = "../genezio-sdk",
-    ShouldDeleteFolder = true,
+    overwriteIfExists = true,
 ) {
     const genezioSdkPath = path.resolve(sdkPath, outDir);
     // delete the old sdk
-    if (ShouldDeleteFolder) {
+    if (overwriteIfExists) {
         if (fs.existsSync(genezioSdkPath)) {
             await deleteFolder(genezioSdkPath);
         }
