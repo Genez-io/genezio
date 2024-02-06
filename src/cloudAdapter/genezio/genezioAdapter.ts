@@ -236,7 +236,10 @@ function getClassFunctionUrl(
     cloudProvider: CloudProviderIdentifier,
     className: string,
 ): string {
-    if (cloudProvider === CloudProviderIdentifier.CAPYBARA) {
+    if (
+        cloudProvider === CloudProviderIdentifier.CAPYBARA ||
+        cloudProvider === CloudProviderIdentifier.CAPYBARA_LINUX
+    ) {
         return baseUrl;
     } else {
         return `${baseUrl}${className}`;
