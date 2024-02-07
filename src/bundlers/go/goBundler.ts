@@ -10,19 +10,22 @@ import { debugLogger } from "../../utils/logging.js";
 
 // Models
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface.js";
-import { ClassConfiguration } from "../../models/projectConfiguration.js";
+import {
+    ClassConfiguration,
+    MethodConfiguration,
+    ParameterType,
+} from "../../models/projectConfiguration.js";
 import {
     ArrayType,
     AstNodeType,
     ClassDefinition,
     CustomAstNodeType,
-    MethodDefinition,
     Node,
-    ParameterDefinition,
     Program,
     StructLiteral,
 } from "../../models/genezioModels.js";
 import { checkIfGoIsInstalled } from "../../utils/go.js";
+import { TriggerType } from "../../models/yamlProjectConfiguration.js";
 
 type ImportView = {
     name: string;
@@ -36,6 +39,9 @@ type MoustanceViewForMain = {
         name: string;
         packageName: string | undefined;
     };
+    cronMethods: {
+        name: string;
+    }[];
     jsonRpcMethods: {
         name: string;
         parameters: {
@@ -89,17 +95,17 @@ export class GoBundler implements BundlerInterface {
 
     #getCastExpression(
         index: number,
-        parameter: ParameterDefinition,
+        parameter: ParameterType,
         ast: Program,
         imports: ImportView[],
     ): string {
-        switch (parameter.paramType.type) {
+        switch (parameter.type.type) {
             case AstNodeType.StringLiteral:
             case AstNodeType.DoubleLiteral:
             case AstNodeType.BooleanLiteral:
                 if (parameter.optional) {
                     return `var param${index} *${this.#mapTypeToGoType(
-                        parameter.paramType,
+                        parameter.type,
                         ast,
                         imports,
                     )}
@@ -107,7 +113,7 @@ export class GoBundler implements BundlerInterface {
             param${index} = nil
         } else {
             paramValue${index} := body.Params[${index}].(${this.#mapTypeToGoType(
-                parameter.paramType,
+                parameter.type,
                 ast,
                 imports,
             )})
@@ -115,14 +121,14 @@ export class GoBundler implements BundlerInterface {
         }`;
                 }
                 return `param${index} := body.Params[${index}].(${this.#mapTypeToGoType(
-                    parameter.paramType,
+                    parameter.type,
                     ast,
                     imports,
                 )})`;
             case AstNodeType.IntegerLiteral:
                 if (parameter.optional) {
                     return `var param${index} *${this.#mapTypeToGoType(
-                        parameter.paramType,
+                        parameter.type,
                         ast,
                         imports,
                     )}
@@ -139,7 +145,7 @@ export class GoBundler implements BundlerInterface {
             case AstNodeType.CustomNodeLiteral:
             case AstNodeType.ArrayType:
                 return `var param${index} ${parameter.optional ? "*" : ""}${this.#mapTypeToGoType(
-                    parameter.paramType,
+                    parameter.type,
                     ast,
                     imports,
                 )}
@@ -185,15 +191,20 @@ export class GoBundler implements BundlerInterface {
                 name: mainClass.name,
                 packageName: mainClass.path?.substring(mainClass.path.lastIndexOf(path.sep) + 1),
             },
-            jsonRpcMethods: mainClass.methods.map((m: MethodDefinition) => ({
-                name: m.name,
-                isVoid: m.returnType.type === AstNodeType.VoidLiteral,
-                parameters: m.params.map((p, index) => ({
-                    index,
-                    last: index === m.params.length - 1,
-                    cast: this.#getCastExpression(index, p, ast, imports),
+            cronMethods: classConfiguration.methods
+                .filter((m) => m.type === TriggerType.cron)
+                .map((m) => ({ name: m.name })),
+            jsonRpcMethods: classConfiguration.methods
+                .filter((m) => m.type === TriggerType.jsonrpc)
+                .map((m: MethodConfiguration) => ({
+                    name: m.name,
+                    isVoid: m.returnType.type === AstNodeType.VoidLiteral,
+                    parameters: m.parameters.map((p, index) => ({
+                        index,
+                        last: index === m.parameters.length - 1,
+                        cast: this.#getCastExpression(index, p, ast, imports),
+                    })),
                 })),
-            })),
         };
 
         moustacheViewForMain.imports.push(this.#getImportViewFromPath(mainClass.path ?? ""));

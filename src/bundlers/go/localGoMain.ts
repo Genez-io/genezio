@@ -20,6 +20,8 @@ import (
 
 type Event struct {
 	Body string \`json:"body"\`
+    GenezioEventType string \`json:"genezioEventType,omitempty"\`
+    MethodName string \`json:"methodName,omitempty"\`
 }
 
 type EventBody struct {
@@ -90,40 +92,58 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
         sendError(w, err)
 		return
 	}
-	eventBody := []byte(event.Body)
-	// Decode the request body into struct and check for errors
-	err = json.Unmarshal(eventBody, &body)
-	if err != nil {
-        sendError(w, err)
-		return
-	}
 
     defer r.Body.Close()
 
-	class := {{class.packageName}}.New()
+    class := {{class.packageName}}.New()
 
-	// Call the appropriate method
-	switch body.Method {
-    {{#jsonRpcMethods}}
-    case "{{class.name}}.{{name}}":
-        {{#parameters}}
-        {{{cast}}}
-        {{/parameters}}
-        {{^isVoid}}result, {{/isVoid}}err {{^isVoid}}:{{/isVoid}}= class.{{name}}({{#parameters}}param{{index}}{{^last}}, {{/last}}{{/parameters}})
+    if event.GenezioEventType == "cron" {
+        methodName := event.MethodName
+        switch methodName {
+        {{#cronMethods}}
+        case "{{name}}":
+            err := class.{{name}}()
+            if err != nil {
+                sendError(w, err)
+                return
+            }
+        {{/cronMethods}}
+        default:
+            sendError(w, errors.New("method not found"))
+            return
+        }
+    } else {
+        eventBody := []byte(event.Body)
+        // Decode the request body into struct and check for errors
+        err = json.Unmarshal(eventBody, &body)
         if err != nil {
             sendError(w, err)
             return
         }
-        {{^isVoid}}
-        responseBody.Result = result
-        {{/isVoid}}
-    {{/jsonRpcMethods}}
-	default:
-        sendError(w, errors.New("method not found"))
-        return
-	}
-	responseBody.Id = body.Id
-	responseBody.Jsonrpc = body.Jsonrpc
+
+        // Call the appropriate method
+        switch body.Method {
+        {{#jsonRpcMethods}}
+        case "{{class.name}}.{{name}}":
+            {{#parameters}}
+            {{{cast}}}
+            {{/parameters}}
+            {{^isVoid}}result, {{/isVoid}}err {{^isVoid}}:{{/isVoid}}= class.{{name}}({{#parameters}}param{{index}}{{^last}}, {{/last}}{{/parameters}})
+            if err != nil {
+                sendError(w, err)
+                return
+            }
+            {{^isVoid}}
+            responseBody.Result = result
+            {{/isVoid}}
+        {{/jsonRpcMethods}}
+        default:
+            sendError(w, errors.New("method not found"))
+            return
+        }
+        responseBody.Id = body.Id
+        responseBody.Jsonrpc = body.Jsonrpc
+    }
 
     bodyString, err := json.Marshal(responseBody)
     if err != nil {
