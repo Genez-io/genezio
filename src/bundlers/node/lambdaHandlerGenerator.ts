@@ -259,7 +259,7 @@ if (!genezioClass) {
                             statusCode: 500,
                             body: JSON.stringify({
                                 jsonrpc: "2.0",
-                                error: prepareForSerialization(error),
+                                error: prepareForSerialization(err),
                                 id: requestId,
                             }),
                             headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
