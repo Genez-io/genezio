@@ -2,7 +2,11 @@ import { AxiosError } from "axios";
 import log from "loglevel";
 import path from "path";
 import { exit } from "process";
-import { REACT_APP_BASE_URL } from "../constants.js";
+import {
+    REACT_APP_BASE_URL,
+    RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
+    REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
+} from "../constants.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG, GENEZIO_NO_CLASSES_FOUND } from "../errors.js";
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
@@ -73,9 +77,15 @@ export async function deployCommand(options: GenezioDeployOptions) {
     // Otherwise, the user will get an error at runtime. This check can be removed in the future once no one is using version
     // 0.1.* of @genezio/types.
     const packageJsonPath = path.join(backendCwd, "package.json");
-    if (isDependencyVersionCompatible(packageJsonPath, "@genezio/types", "1.0.0") === false) {
+    if (
+        isDependencyVersionCompatible(
+            packageJsonPath,
+            "@genezio/types",
+            REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
+        ) === false
+    ) {
         log.error(
-            `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To solve this, please update the @genezio/types package on your backend component using the following command: npm install @genezio/types@^1.0.0`,
+            `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To solve this, please update the @genezio/types package on your backend component using the following command: npm install @genezio/types@${RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE}`,
         );
         exit(1);
     }

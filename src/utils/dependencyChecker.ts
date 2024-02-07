@@ -26,7 +26,8 @@ export function isDependencyVersionCompatible(
             return undefined;
         }
 
-        return semver.satisfies(version, depVersion);
+        const minDependencyVersion = semver.minVersion(depVersion)
+        return semver.satisfies(minDependencyVersion!, version);
     } catch (error) {
         debugLogger.error(`Error while reading package.json file: ${error}`);
         return undefined;

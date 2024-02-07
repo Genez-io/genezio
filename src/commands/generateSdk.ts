@@ -14,10 +14,7 @@ import { getProjectConfiguration, scanClassesForDecorators } from "../utils/conf
 import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import path from "path";
-import {
-    SdkGeneratorClassesInfoInput,
-    SdkGeneratorInput,
-} from "../models/genezioModels.js";
+import { SdkGeneratorClassesInfoInput, SdkGeneratorInput } from "../models/genezioModels.js";
 import { mapDbAstToSdkGeneratorAst } from "../generateSdk/utils/mapDbAstToFullAst.js";
 import { generateSdk } from "../generateSdk/sdkGeneratorHandler.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
@@ -301,19 +298,26 @@ async function generateRemoteSdkHandler(
         );
         debugLogger.debug("Package json is: " + packageJson);
         debugLogger.debug("Start Compiling sdk");
-        await compileSdk(sdkPath, packageJson, language as Language, false, "");
+        await compileSdk(
+            sdkPath,
+            packageJson,
+            language as Language,
+            /* publish= */ false,
+            /* outDir= */ "",
+            /* overwriteIfExists= */ false,
+        );
         debugLogger.debug("Sdk compiled successfully");
 
         debugLogger.debug("Start sdk cleanup");
 
         await Promise.all(
-            sdkGeneratorResponse.files.map((file) => {
-                // console.log("Deleting file: " + file.path);
+            sdkGeneratorResponse.files.map(async (file) => {
                 // delete the files and its parent directories
-                deleteFile(path.join(sdkPath, file.path));
+
+                await deleteFile(path.join(sdkPath, file.path));
                 const firstParentDir = path.dirname(file.path).split(path.sep)[0];
                 if (firstParentDir && firstParentDir !== ".") {
-                    deleteFolder(path.join(sdkPath, firstParentDir));
+                    await deleteFolder(path.join(sdkPath, firstParentDir));
                 }
             }),
         );
