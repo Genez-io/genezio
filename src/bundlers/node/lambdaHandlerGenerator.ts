@@ -256,7 +256,7 @@ if (!genezioClass) {
                         console.error(err);
                         await sendSentryError(err);
                         return {
-                            statusCode: 500,
+                            statusCode: 200,
                             body: JSON.stringify({
                                 jsonrpc: "2.0",
                                 error: prepareForSerialization(err),
@@ -272,7 +272,7 @@ if (!genezioClass) {
                 console.error(err);
                 await sendSentryError(err);
                 return {
-                    statusCode: 500,
+                    statusCode: 200,
                     body: JSON.stringify({
                         jsonrpc: "2.0",
                         error: prepareForSerialization(err),
