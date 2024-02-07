@@ -171,7 +171,7 @@ if (!genezioClass) {
                 body = JSON.parse(event.body);
             } catch (error) {
                 return {
-                    statusCode: 500,
+                    statusCode: 400,
                     body: JSON.stringify({
                         jsonrpc: "2.0",
                         error: { code: -1, message: "Invalid JSON-RPC request" },
@@ -182,7 +182,7 @@ if (!genezioClass) {
             }
             if (!body || !body.method || !body.params || !Number.isInteger(body.id)) {
                 return {
-                    statusCode: 500,
+                    statusCode: 400,
                     body: JSON.stringify({
                         jsonrpc: "2.0",
                         error: { code: -1, message: "Invalid JSON-RPC request" },
@@ -198,7 +198,7 @@ if (!genezioClass) {
                 method = methodElems[1];
             } catch (error) {
                 return {
-                    statusCode: 500,
+                    statusCode: 400,
                     body: JSON.stringify({
                         jsonrpc: "2.0",
                         error: { code: -1, message: "Invalid Genezio JSON-RPC request" },
@@ -210,7 +210,7 @@ if (!genezioClass) {
 
             if (!object[method]) {
                 return {
-                    statusCode: 500,
+                    statusCode: 400,
                     body: JSON.stringify({
                         jsonrpc: "2.0",
                         error: { code: -1, message: "Method not found!" },
@@ -227,7 +227,7 @@ if (!genezioClass) {
                     console.error(err);
                     await sendSentryError(err);
                     resolve({
-                        statusCode: 500,
+                        statusCode: 200,
                         body: JSON.stringify({
                             jsonrpc: "2.0",
                             error: prepareForSerialization(err),
