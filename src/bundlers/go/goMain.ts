@@ -43,8 +43,9 @@ type Response struct {
 }
 
 type ErrorStruct struct {
-	Code    int    \`json:"code"\`
-	Message string \`json:"message"\`
+	Code    int                     \`json:"code"\`
+	Message string                  \`json:"message"\`
+    Info    *map[string]interface{} \`json:"info,omitempty"\`
 }
 
 type ResponseBodyError struct {
@@ -54,9 +55,21 @@ type ResponseBodyError struct {
 }
 
 func sendError(err error) *Response {
+    genezioError := make(map[string]interface{})
+    byteError, error := json.Marshal(err)
+    if error != nil {
+        return nil
+    }
+    json.Unmarshal(byteError, &genezioError)
 	var responseError ResponseBodyError
 	responseError.Id = 0
-	responseError.Error.Code = 500
+    if genezioError["Code"] != nil {
+	    responseError.Error.Code = int(genezioError["Code"].(float64))
+    }
+    if genezioError["Info"] != nil {
+        info := genezioError["Info"].(map[string]interface{})
+        responseError.Error.Info = &info
+    }
 	responseError.Error.Message = err.Error()
 	responseError.Jsonrpc = "2.0"
     responseErrorByte, err := json.Marshal(responseError)
@@ -64,7 +77,7 @@ func sendError(err error) *Response {
         return nil
     }
 	response := &Response{
-		StatusCode: "500",
+		StatusCode: "200",
 		Body:       string(responseErrorByte),
 		Headers: map[string]string{
 			"Content-Type": "application/json",
