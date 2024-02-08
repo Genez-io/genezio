@@ -213,7 +213,7 @@ export async function cleanupTemporaryFolders() {
     const folderName = `genezio-${process.pid}`;
 
     if (fs.existsSync(path.join(os.tmpdir(), folderName))) {
-        fs.rmSync(path.join(os.tmpdir(), folderName), { recursive: true });
+        // fs.rmSync(path.join(os.tmpdir(), folderName), { recursive: true });
     }
 }
 
@@ -244,7 +244,7 @@ export async function createTemporaryFolder(
         const tempFolder = path.join(os.tmpdir(), folderName, name);
         if (fs.existsSync(tempFolder)) {
             if (shouldDeleteContents) {
-                fs.rmSync(tempFolder, { recursive: true });
+                // fs.rmSync(tempFolder, { recursive: true });
             } else {
                 resolve(tempFolder);
                 return;
@@ -305,7 +305,7 @@ export async function createLocalTempFolder(
 export async function deleteFolder(folderPath: string): Promise<void> {
     return new Promise((resolve, reject) => {
         try {
-            fs.rmSync(folderPath, { recursive: true, force: true });
+            // fs.rmSync(folderPath, { recursive: true, force: true });
         } catch (error) {
             reject(error);
         }

@@ -56,6 +56,8 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
             }
         }
 
+        await packageManager.install(["socket.io"], tempFolderPath);
+
         if (binaryDependencies.length > 0) {
             await packageManager.install(
                 ["node-addon-api", "@mapbox/node-pre-gyp"],

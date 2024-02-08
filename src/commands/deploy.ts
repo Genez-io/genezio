@@ -382,7 +382,7 @@ export async function deployClasses(
             debugLogger.debug(`Zip the directory ${output.path}.`);
             await zipDirectory(output.path, archivePath);
 
-            await deleteFolder(output.path);
+            // await deleteFolder(output.path);
 
             return {
                 name: element.name,

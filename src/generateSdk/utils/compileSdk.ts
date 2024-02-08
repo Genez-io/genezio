@@ -81,6 +81,6 @@ export async function compileSdk(
     workers.push(writePackagePromise);
     await Promise.all(workers);
     if (publish === true) {
-        await packageManager.publish(modulePath);
+        // await packageManager.publish(modulePath);
     }
 }

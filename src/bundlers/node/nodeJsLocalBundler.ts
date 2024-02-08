@@ -10,7 +10,7 @@ import { debugLogger } from "../../utils/logging.js";
 export const localWrapperCode = `
 import { handler as userHandler } from "./index.mjs";
 import http from "http";
-
+import { Server } from 'socket.io';
 const port = process.argv[2];
 
 const server = http.createServer((req, res) => {
@@ -32,7 +32,13 @@ const server = http.createServer((req, res) => {
   }
 });
 
+const io = new Server(server); 
+io.on('connection', (socket) => {
+  console.log('a user connected');
+});
+
 server.listen(port, () => {
+  console.log('Server running at http://localhost:' + port + '/');
 });
 `;
 

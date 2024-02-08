@@ -22,7 +22,7 @@ import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE } from "../../errors.js";
 import transformDecorators from "../../utils/transformDecorators.js";
 import { spawnSync } from "child_process";
 import { generateNodeContainerManifest } from "./containerManifest.js";
-import { clusterWrapperCode } from "./clusterHandler.js";
+import { generateNodeClusterHandler } from "./clusterHandler.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 
 export class NodeJsBundler implements BundlerInterface {
@@ -375,7 +375,7 @@ export class NodeJsBundler implements BundlerInterface {
             ([name, path]) => ({ name, path }),
         );
 
-        await deleteFolder(tempFolderPath);
+        // await deleteFolder(tempFolderPath);
     }
 
     getHandlerGeneratorForProvider(
@@ -429,14 +429,13 @@ export class NodeJsBundler implements BundlerInterface {
                 : Promise.resolve(),
         ]);
 
-        debugLogger.debug(
-            `[NodeJSBundler] Copy non js files and node_modules for file ${input.path}.`,
-        );
-
         const isDeployedToCluster = input.projectConfiguration.cloudProvider === "cluster";
         const nodeVersion =
             input.projectConfiguration.options?.nodeRuntime === "nodejs18.x" ? "18" : "16";
         // 2. Copy non js files and node_modules and write index.mjs file
+        debugLogger.debug(
+            `[NodeJSBundler] Copy non js files and node_modules for file ${input.path}.`,
+        );
         await Promise.all([
             this.#copyNonJsFiles(temporaryFolder, input, cwd),
             mode === "production"
@@ -449,7 +448,12 @@ export class NodeJsBundler implements BundlerInterface {
             ),
             ...(isDeployedToCluster
                 ? [
-                      writeToFile(temporaryFolder, "local.mjs", clusterWrapperCode, true),
+                      writeToFile(
+                          temporaryFolder,
+                          "local.mjs",
+                          generateNodeClusterHandler(true),
+                          true,
+                      ),
                       writeToFile(
                           temporaryFolder,
                           "Dockerfile",
