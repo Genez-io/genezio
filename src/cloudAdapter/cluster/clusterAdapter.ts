@@ -12,6 +12,16 @@ import { getContainerRegistryCreds } from "../../requests/getContainerRegistryCr
 import { SpawnSyncReturns, spawnSync } from "child_process";
 import { deployRequest } from "../../requests/deployCode.js";
 import { getAuthToken } from "../../utils/accounts.js";
+import {
+    createTemporaryFolder,
+    deleteFolder,
+    zipDirectoryToDestinationPath,
+} from "../../utils/file.js";
+import path from "path";
+import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL.js";
+import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
+import { createFrontendProject } from "../../requests/createFrontendProject.js";
+import { FRONTEND_DOMAIN } from "../../constants.js";
 
 export class ClusterCloudAdapter implements CloudAdapter {
     async deploy(
@@ -109,13 +119,43 @@ export class ClusterCloudAdapter implements CloudAdapter {
         };
     }
 
-    deployFrontend(
+    async deployFrontend(
         projectName: string,
         projectRegion: string,
         frontend: YamlFrontend,
         stage: string,
     ): Promise<string> {
-        throw new Error("Method not implemented." + projectName + projectRegion + frontend + stage);
+        const finalStageName = stage != "" && stage != "prod" ? `-${stage}` : "";
+        const finalSubdomain = frontend.subdomain + finalStageName;
+        const archivePath = path.join(await createTemporaryFolder(), `${finalSubdomain}.zip`);
+        debugLogger.debug("Creating temporary folder", archivePath);
+
+        await zipDirectoryToDestinationPath(frontend.path, finalSubdomain, archivePath);
+
+        debugLogger.debug("Getting presigned URL...");
+        const result = await getFrontendPresignedURL(finalSubdomain, projectName, stage);
+
+        if (!result.presignedURL) {
+            throw new Error("An error occurred (missing presignedUrl). Please try again!");
+        }
+
+        if (!result.userId) {
+            throw new Error("An error occurred (missing userId). Please try again!");
+        }
+
+        debugLogger.debug("Content of the folder zipped. Uploading to S3.");
+        await uploadContentToS3(result.presignedURL, archivePath, undefined, result.userId);
+        debugLogger.debug("Uploaded to S3.");
+        await createFrontendProject(finalSubdomain, projectName, projectRegion, stage);
+
+        // clean up temporary folder
+        await deleteFolder(path.dirname(archivePath));
+
+        if (stage != "" && stage != "prod") {
+            return `https://${finalSubdomain}.${FRONTEND_DOMAIN}`;
+        }
+
+        return `https://${finalSubdomain}.${FRONTEND_DOMAIN}`;
     }
 }
 
