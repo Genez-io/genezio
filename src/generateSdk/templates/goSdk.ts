@@ -7,7 +7,6 @@ package genezioSdk
 
 import (
 	"bytes"
-    "errors"
 	"encoding/json"
 	"net/http"
 )
@@ -22,6 +21,11 @@ type ReqBody struct {
 type ErrorStruct struct {
     Code    int    \`json:"code"\`
     Message string \`json:"message"\`
+    Info    *map[string]interface{} \`json:"info,omitempty"\`
+}
+
+func (e ErrorStruct) Error() string {
+    return e.Message
 }
 
 type ResBody struct {
@@ -71,7 +75,7 @@ func (r Remote) Call(method interface{}, args ...interface{}) (interface{}, erro
 	}
 
 	if resBody.Error != nil {
-		return nil, errors.New(resBody.Error.Message)
+		return nil, resBody.Error
 	}
 
 	return resBody.Result, nil
