@@ -77,21 +77,20 @@ const GO_RESERVED_WORDS = [
     "recover",
 ];
 
-const template = `/**
+const modelsView =
+    `/**
 * This is an auto generated code. This code should not be modified since the file can be overwritten
 * if new genezio commands are executed.
 */
 
 package genezioSdk
 
-{{#imports}}
-import {{#named}}{{{name}}} {{/named}}"{{{path}}}"
-{{/imports}}
-
 {{#externalTypes}}
 type {{name}} struct {
     {{#fields}}
-    {{fieldName}} {{{type}}}
+    {{goFieldName}} {{{type}}} ` +
+    '`json:"{{fieldName}}"`' +
+    `
     {{/fields}}
 }
 {{/externalTypes}}
@@ -103,6 +102,18 @@ const (
     {{/fields}}
 )
 {{/enumTypes}}
+`;
+
+const template = `/**
+* This is an auto generated code. This code should not be modified since the file can be overwritten
+* if new genezio commands are executed.
+*/
+
+package genezioSdk
+
+{{#imports}}
+import {{#named}}{{{name}}} {{/named}}"{{{path}}}"
+{{/imports}}
 
 type {{{className}}} struct {
 	remote *Remote
@@ -146,12 +157,15 @@ func (f *{{{className}}}) {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last
 
 `;
 
+type TypesView = {
+    externalTypes: ExternalType[];
+    enumTypes: ExternalType[];
+};
+
 type ViewModel = {
     className: string | undefined;
     _url: string;
     methods: MethodModel[];
-    externalTypes: ExternalType[];
-    enumTypes: ExternalType[];
     imports: Import[];
 };
 
@@ -179,6 +193,7 @@ type ExternalType = {
 
 type Field = {
     type: string;
+    goFieldName: string;
     fieldName: string;
 };
 
@@ -195,13 +210,16 @@ class SdkGenerator implements SdkGeneratorInterface {
 
         const _url = "%%%link_to_be_replace%%%";
 
+        const typesView: TypesView = {
+            externalTypes: [],
+            enumTypes: [],
+        };
+
         for (const classInfo of sdkGeneratorInput.classesInfo) {
             const view: ViewModel = {
                 className: undefined,
                 _url: _url,
                 methods: [],
-                externalTypes: [],
-                enumTypes: [],
                 imports: [],
             };
 
@@ -225,22 +243,29 @@ class SdkGenerator implements SdkGeneratorInterface {
                             property.name = structLiteral.name + i;
                         }
                     }
-                    view.externalTypes.push({
-                        name: structLiteral.name,
-                        fields: structLiteral.typeLiteral.properties.map((e) => ({
-                            type: this.getParamType(e),
-                            fieldName: e.name[0].toUpperCase() + e.name.slice(1),
-                        })),
-                    });
+                    !this.checkIfTypeExists(structLiteral.name, typesView) &&
+                        typesView.externalTypes.push({
+                            name: structLiteral.name,
+                            fields: structLiteral.typeLiteral.properties.map((e) => ({
+                                type: this.getParamType(e),
+                                goFieldName: e.name[0].toUpperCase() + e.name.slice(1),
+                                fieldName: e.name,
+                            })),
+                        });
                 } else if (elem.type == AstNodeType.Enum) {
                     const enumType = elem as Enum;
-                    view.enumTypes.push({
-                        name: enumType.name[0].toUpperCase() + enumType.name.slice(1),
-                        fields: enumType.cases.map((e) => ({
-                            type: typeof e.value == "number" ? ` = ${e.value}` : ` = "${e.value}"`,
-                            fieldName: e.name[0].toUpperCase() + e.name.slice(1),
-                        })),
-                    });
+                    !this.checkIfTypeExists(enumType.name, typesView) &&
+                        typesView.enumTypes.push({
+                            name: enumType.name[0].toUpperCase() + enumType.name.slice(1),
+                            fields: enumType.cases.map((e) => ({
+                                type:
+                                    typeof e.value == "number"
+                                        ? ` = ${e.value}`
+                                        : ` = "${e.value}"`,
+                                goFieldName: e.name[0].toUpperCase() + e.name.slice(1),
+                                fieldName: e.name,
+                            })),
+                        });
                 }
             }
 
@@ -354,6 +379,14 @@ class SdkGenerator implements SdkGeneratorInterface {
             });
         }
 
+        // generate models.go
+        (typesView.enumTypes.length > 0 || typesView.externalTypes.length > 0) &&
+            generateSdkOutput.files.push({
+                className: "Models",
+                path: "models.go",
+                data: Mustache.render(modelsView, typesView),
+            });
+
         // generate remote.js
         generateSdkOutput.files.push({
             className: "Remote",
@@ -362,6 +395,13 @@ class SdkGenerator implements SdkGeneratorInterface {
         });
 
         return generateSdkOutput;
+    }
+
+    checkIfTypeExists(name: string, view: TypesView): boolean {
+        return (
+            view.externalTypes.some((e) => e.name === name) ||
+            view.enumTypes.some((e) => e.name === name)
+        );
     }
 
     getReturnType(returnType: Node): string {
