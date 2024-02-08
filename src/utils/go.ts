@@ -7,8 +7,8 @@ export function checkIfGoIsInstalled() {
     try {
         execSync("go version");
     } catch (error) {
-        const go_err = new Error(GoNotFoundError);
-        go_err.stack = "";
-        throw go_err;
+        const goErr = new Error(GoNotFoundError);
+        goErr.stack = "";
+        throw goErr;
     }
 }

@@ -116,7 +116,7 @@ export class AstGenerator implements AstGeneratorInterface {
                 body.push(classDefinition);
             } else {
                 switch (astNode.type) {
-                    case AstNodeType.StructLiteral:
+                    case AstNodeType.StructLiteral: {
                         const structLiteral: StructLiteral = {
                             type: AstNodeType.StructLiteral,
                             name: astNode.name,
@@ -125,6 +125,7 @@ export class AstGenerator implements AstGeneratorInterface {
                         };
                         body.push(structLiteral);
                         break;
+                    }
                 }
             }
         }
