@@ -29,17 +29,74 @@ const template = `/**
 
 import { Remote } from "./remote.js"
 
+{{#hasGnzContext}}
+export class LocalStorageWrapper implements Storage {
+  setItem(key, value) {
+    localStorage.setItem(key, value);
+  }
+
+  getItem(key) {
+    return localStorage.getItem(key);
+  }
+
+  removeItem(key) {
+    localStorage.removeItem(key);
+  }
+
+  clear() {
+    localStorage.clear();
+  }
+}
+
+export class StorageManager {
+  private static storage = null;
+  static getStorage(): Storage {
+    if (!this.storage) {
+      this.storage = new LocalStorageWrapper();
+    }
+    return this.storage;
+  }
+  static setStorage(storage) {
+    this.storage = storage;
+  }
+}
+{{/hasGnzContext}}
+
 export class {{{className}}} {
   static remote = new Remote("{{{_url}}}")
 
   {{#methods}}
+  {{#hasGnzContextAsFirstParameter}}
+  static async {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) {
+    return {{{className}}}.remote.call({{{methodCaller}}} {"token": StorageManager.getStorage().getItem("apiToken")}, {{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}})
+  }
+  {{/hasGnzContextAsFirstParameter}}
+  {{^hasGnzContextAsFirstParameter}}
   static async {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) {
     return {{{className}}}.remote.call({{{methodCaller}}}{{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}})
   }
+  {{/hasGnzContextAsFirstParameter}}
 
   {{/methods}}
 }
 `;
+
+type MethodViewType = {
+    name: string;
+    parameters: {
+        name: string;
+        last: boolean;
+    }[];
+    methodCaller: string;
+    hasGnzContextAsFirstParameter?: boolean;
+};
+
+type ViewType = {
+    className: string;
+    _url: string;
+    methods: MethodViewType[];
+    hasGnzContext?: boolean;
+};
 
 class SdkGenerator implements SdkGeneratorInterface {
     async generateSdk(sdkGeneratorInput: SdkGeneratorInput): Promise<SdkGeneratorOutput> {
@@ -71,7 +128,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                 continue;
             }
 
-            const view: any = {
+            const view: ViewType = {
                 className: classDefinition.name,
                 _url: _url,
                 methods: [],
@@ -93,7 +150,7 @@ class SdkGenerator implements SdkGeneratorInterface {
 
                 exportClassChecker = true;
 
-                const methodView: any = {
+                const methodView: MethodViewType = {
                     name: methodDefinition.name,
                     parameters: [],
                     methodCaller:
@@ -102,12 +159,20 @@ class SdkGenerator implements SdkGeneratorInterface {
                             : `"${classDefinition.name}.${methodDefinition.name}", `,
                 };
 
-                methodView.parameters = methodDefinition.params.map((e) => {
-                    return {
-                        name: e.name,
-                        last: false,
-                    };
-                });
+                methodView.parameters = methodDefinition.params
+                    .map((e) => {
+                        if (e.name === "gnzContext") {
+                            methodView.hasGnzContextAsFirstParameter = true;
+                            view.hasGnzContext = true;
+                            return undefined;
+                        }
+
+                        return {
+                            name: e.name,
+                            last: false,
+                        };
+                    })
+                    .filter((e) => e !== undefined) as { name: string; last: boolean }[];
 
                 if (methodView.parameters.length > 0) {
                     methodView.parameters[methodView.parameters.length - 1].last = true;

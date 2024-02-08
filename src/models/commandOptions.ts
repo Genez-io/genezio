@@ -4,6 +4,11 @@ export interface BaseOptions {
     logLevel?: string;
 }
 
+export interface GenezioBundleOptions extends BaseOptions {
+    className: string;
+    output: string;
+}
+
 export interface GenezioLocalOptions extends BaseOptions {
     port: number;
     installDeps: boolean;
@@ -60,3 +65,31 @@ export interface GenezioUnlinkOptions extends BaseOptions {
     projectName?: string;
     region?: string;
 }
+
+export interface GenezioCreateInteractiveOptions extends BaseOptions {
+    path?: string;
+}
+
+export interface GenezioCreateFullstackOptions extends BaseOptions {
+    name?: string;
+    region?: string;
+    multirepo: boolean;
+    backend?: string;
+    frontend?: string;
+    path?: string;
+}
+
+export interface GenezioCreateBackendOptions extends BaseOptions {
+    name?: string;
+    region?: string;
+    backend?: string;
+    path?: string;
+}
+
+export type GenezioCreateOptions =
+    | ({ type: "fullstack"; path?: string } & Required<
+          Omit<GenezioCreateFullstackOptions, "path" | "logLevel">
+      >)
+    | ({ type: "backend"; path?: string } & Required<
+          Omit<GenezioCreateBackendOptions, "path" | "logLevel">
+      >);

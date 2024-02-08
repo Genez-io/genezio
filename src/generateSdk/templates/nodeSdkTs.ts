@@ -88,6 +88,14 @@ async function makeRequestNode(request: any, url: any, agent: any) {
         }
     }
 
+     deserialize(s: any) {
+        const e: any = new Error(s.message);
+        e.stack = s.stack
+        e.info = s.info
+        e.code = s.code
+        return e
+    }
+
     async call(method: any, ...args: any[]) {
         const requestContent = {"jsonrpc": "2.0", "method": method, "params": args, "id": 3};
         let response: any = undefined;
@@ -102,7 +110,7 @@ async function makeRequestNode(request: any, url: any, agent: any) {
         }
 
         if (response.error) {
-            return response.error.message;
+            throw this.deserialize(response.error);
         }
 
         return response.result;

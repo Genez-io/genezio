@@ -12,7 +12,7 @@ import {
 } from "../../models/genezioModels.js";
 import parser from "@babel/parser";
 import traverse from "@babel/traverse";
-import transformDecorators from "../../utils/transformDecorators.js";
+import fs from "fs";
 import {
     isClassDeclaration,
     isClassMethod,
@@ -24,9 +24,9 @@ import {
 
 class AstGenerator implements AstGeneratorInterface {
     async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
-        const transformedCode = await transformDecorators(input.class.path);
+        const fileData = fs.readFileSync(input.class.path, "utf8");
 
-        const result = parser.parse(transformedCode.toString(), {
+        const result = parser.parse(fileData, {
             // parse in strict mode and allow module declarations
             sourceType: "module",
 
@@ -34,6 +34,7 @@ class AstGenerator implements AstGeneratorInterface {
                 // enable jsx and flow syntax
                 "jsx",
                 "flow",
+                "decorators",
             ],
         });
 
