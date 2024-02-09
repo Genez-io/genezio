@@ -10,6 +10,7 @@ import DartAstGenerator from "./astGenerator/DartAstGenerator.js";
 import { debugLogger } from "../utils/logging.js";
 import { supportedExtensions } from "../utils/languages.js";
 import zod from "zod";
+import GoAstGenerator from "./astGenerator/GoAstGenerator.js";
 
 interface AstGeneratorPlugin {
     AstGenerator: new () => AstGeneratorInterface;
@@ -19,7 +20,6 @@ interface AstGeneratorPlugin {
 /**
  * Asynchronously generates an abstract syntax tree (AST) from a file using specified plugins.
  *
- * @param {File} file - The file to generate an AST from.
  * @param {string[]|undefined} plugins - An optional array of plugins to use for generating the AST.
  * @returns {Promise<AstGeneratorOutput>} A Promise that resolves with the generated AST.
  * @throws {Error} If there was an error generating the AST.
@@ -66,6 +66,7 @@ export async function generateAst(
     pluginsImported.push(TsAstGenerator);
     pluginsImported.push(DartAstGenerator);
     pluginsImported.push(KotlinAstGenerator);
+    pluginsImported.push(GoAstGenerator);
 
     const plugin = pluginsImported.find((plugin) => {
         return plugin.supportedExtensions.includes(extension);
