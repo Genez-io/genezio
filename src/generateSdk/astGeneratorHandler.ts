@@ -27,7 +27,6 @@ interface AstGeneratorPlugin {
 export async function generateAst(
     input: AstGeneratorInput,
     plugins: string[] | undefined,
-    backendPath?: string,
 ): Promise<AstGeneratorOutput> {
     const extension = path.extname(input.class.path).replace(".", "");
     let pluginsImported: AstGeneratorPlugin[] = [];
@@ -86,7 +85,7 @@ export async function generateAst(
 
     const astGeneratorClass = new plugin.AstGenerator();
 
-    return await astGeneratorClass.generateAst(input, backendPath).catch((err) => {
+    return await astGeneratorClass.generateAst(input).catch((err) => {
         debugLogger.log("An error has occurred", err);
         throw Object.assign(err, { path: input.class.path });
     });

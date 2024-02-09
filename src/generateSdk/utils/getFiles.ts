@@ -17,6 +17,7 @@ export function getGenerateAstInputs(
                 data,
                 name: classFile.name,
             },
+            root: projectConfiguration.workspace?.backend,
         });
     }
 

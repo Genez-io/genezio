@@ -43,7 +43,6 @@ export async function sdkGeneratorApiHandler(
         const astGeneratorOutput = await generateAst(
             input,
             projectConfiguration.plugins?.astGenerator,
-            projectConfiguration.workspace?.backend,
         );
 
         // prepare input for sdkGenerator
