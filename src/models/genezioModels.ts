@@ -326,7 +326,7 @@ export type Program = {
  * A class implementing this interface will create the ast for a given language.
  */
 export interface AstGeneratorInterface {
-    generateAst: (input: AstGeneratorInput) => Promise<AstGeneratorOutput>;
+    generateAst: (input: AstGeneratorInput, backendPath?: string) => Promise<AstGeneratorOutput>;
 }
 
 // types for SDK Generator

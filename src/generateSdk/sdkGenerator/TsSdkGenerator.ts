@@ -292,7 +292,10 @@ class SdkGenerator implements SdkGeneratorInterface {
 
                 // @ts-expect-error A refactor need to be performed here to avoid this error
                 const methodView: MethodViewType = {
-                    name: methodDefinition.name,
+                    // methods start with lowercase
+                    name:
+                        methodDefinition.name.charAt(0).toLowerCase() +
+                        methodDefinition.name.slice(1),
                     parameters: [],
                     returnType: this.getReturnType(methodDefinition.returnType),
                     methodCaller:

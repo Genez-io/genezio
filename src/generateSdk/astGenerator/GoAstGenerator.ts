@@ -54,7 +54,7 @@ export class AstGenerator implements AstGeneratorInterface {
         fs.copyFileSync(goAstGeneratorPath, goAstGeneratorPathInHome);
     }
 
-    async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
+    async generateAst(input: AstGeneratorInput, backendPath?: string): Promise<AstGeneratorOutput> {
         // Check if Go is installed
         checkIfGoIsInstalled();
 
@@ -66,6 +66,7 @@ export class AstGenerator implements AstGeneratorInterface {
         const classAbsolutePath = path.resolve(input.class.path);
         const result = await runNewProcessWithResultAndReturnCode(
             `${goAstGeneratorPath} ${classAbsolutePath}`,
+            backendPath,
         );
         if (result.code !== 0) {
             console.error(result.stderr);
