@@ -17,7 +17,7 @@ Error: \`dartaotruntime\` not found
 Please ensure that \`dartaotruntime\` is installed and its binary is added to your system's PATH environment variable. Check the Dart documentation for more information: https://dart.dev/get-dart.`;
 export const GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART = `We don't currently support Optional types. We will soon add support for this feature.`;
 
-export const GENEZIO_NO_SUPPORT_FOR_BUILT_IN_TYPE = `Our AST doesn't currently support this specific Dart built-in type. Check the documentation for more details https://docs.genezio.com/genezio-documentation/programming-languages/dart\n\nPlease add a Github issue to https://github.com/Genez-io/genezio/issues describing your use case for this type or feel free to contribute yourself with an improvement.`;
+export const GENEZIO_NO_SUPPORT_FOR_BUILT_IN_TYPE = `Our AST doesn't currently support this specific Dart built-in type. Check the documentation for more details https://genezio.com/docs/programming-languages/dart\n\nPlease add a Github issue to https://github.com/Genez-io/genezio/issues describing your use case for this type or feel free to contribute yourself with an improvement.`;
 
 export const GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE = function (filePath: string) {
     return `You don't have enough permissions to access the file ${filePath}. There are two possible solutions:\n1. Add the ${filePath} file to .genezioignore file.\n2. Please adjust the permissions of the file located at ${filePath} to ensure the 'genezio' process has the appropriate access rights.\n`;

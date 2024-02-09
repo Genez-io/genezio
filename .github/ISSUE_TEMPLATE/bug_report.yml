@@ -12,7 +12,7 @@ body:
 
               * [genezio documentation](https://genezio.com/docs)
               * [genezio official examples](https://github.com/Genez-io/genezio-examples)
-              * [genezio Troubleshooting section](https://docs.genezio.com/genezio-documentation/troubleshooting)
+              * [genezio Troubleshooting section](https://genezio.com/docs/troubleshooting)
 
     - type: textarea
       id: bug-description
