@@ -4,7 +4,10 @@ import git from "isomorphic-git";
 import http from "isomorphic-git/http/node/index.js";
 import { parse, stringify } from "yaml";
 import path from "path";
-import { YamlProjectConfiguration } from "../../models/yamlProjectConfiguration.js";
+import {
+    YamlClassConfiguration,
+    YamlProjectConfiguration,
+} from "../../models/yamlProjectConfiguration.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import nativeFs from "fs";
 import { setLinkPathForProject } from "../../utils/linkDatabase.js";
@@ -280,7 +283,18 @@ async function createWorkspaceYaml(
         /* language: */ backendConfiguration.language,
         /* sdk: */ undefined,
         /* cloudProvider: */ CloudProviderIdentifier.GENEZIO,
-        /* classes: */ [],
+        /* classes: */ backendConfiguration.classes
+            .filter((e) => !e.fromDecorator)
+            .map(
+                (e) =>
+                    ({
+                        name: e.name,
+                        type: e.type,
+                        path: path.join(workspaceBackendPath, e.path),
+                        language: e.language,
+                        methods: e.methods.length > 0 ? e.methods : undefined,
+                    }) as YamlClassConfiguration,
+            ),
         /* frontend: */ frontendConfiguration?.frontend?.path
             ? { path: path.join(workspaceFrontendPath, frontendConfiguration.frontend?.path) }
             : undefined,
