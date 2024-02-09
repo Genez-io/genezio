@@ -110,6 +110,7 @@ export type AstGeneratorInput = {
         data: string;
         name?: string;
     };
+    root?: string;
 };
 
 export type AstGeneratorOutput = {

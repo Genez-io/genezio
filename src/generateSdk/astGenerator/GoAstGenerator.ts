@@ -66,6 +66,7 @@ export class AstGenerator implements AstGeneratorInterface {
         const classAbsolutePath = path.resolve(input.class.path);
         const result = await runNewProcessWithResultAndReturnCode(
             `${goAstGeneratorPath} ${classAbsolutePath}`,
+            input.root,
         );
         if (result.code !== 0) {
             console.error(result.stderr);
