@@ -81,7 +81,7 @@
         "inquirer": "^9.2.12",
         "isomorphic-git": "^1.25.2",
         "latest-version": "^7.0.0",
-        "loglevel": "^1.8.1",
+        "loglevel": "^1.9.1",
         "loglevel-plugin-prefix": "^0.8.4",
         "memfs": "^4.6.0",
         "mime-types": "^2.1.35",
