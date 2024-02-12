@@ -80,7 +80,7 @@
         "hash-it": "^6.0.0",
         "inquirer": "^9.2.12",
         "isomorphic-git": "^1.25.2",
-        "latest-version": "^7.0.0",
+        "latest-version": "^8.0.0",
         "loglevel": "^1.9.1",
         "loglevel-plugin-prefix": "^0.8.4",
         "memfs": "^4.6.0",
