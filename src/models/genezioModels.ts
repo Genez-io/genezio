@@ -292,6 +292,7 @@ export interface MethodDefinition extends Node {
     params: ParameterDefinition[];
     kind: MethodKindEnum;
     static: boolean;
+    docString?: string;
     returnType:
         | DoubleType
         | IntegerType
@@ -315,6 +316,7 @@ export interface ClassDefinition extends Node {
     type: AstNodeType.ClassDefinition;
     name: string;
     methods: MethodDefinition[];
+    docString?: string;
 }
 
 export type Program = {
