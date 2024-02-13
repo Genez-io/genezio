@@ -20,6 +20,8 @@ import {
     isAssignmentPattern,
     isClassProperty,
     isArrowFunctionExpression,
+    isExportNamedDeclaration,
+    Comment,
 } from "@babel/types";
 
 class AstGenerator implements AstGeneratorInterface {
@@ -42,12 +44,13 @@ class AstGenerator implements AstGeneratorInterface {
 
         traverse.default(result, {
             enter(path) {
-                if (isClassDeclaration(path.node)) {
+                if (isClassDeclaration(path.node) && isExportNamedDeclaration(path.parent)) {
                     classDefinition = {
                         type: AstNodeType.ClassDefinition,
                         name: path.node.id?.name ?? "undefined",
                         methods: [],
                         path: input.class.path,
+                        docString: createDocStringFromBabelComments(path.parent.leadingComments),
                     };
                 } else if (
                     // old school function declaration syntax
@@ -57,9 +60,9 @@ class AstGenerator implements AstGeneratorInterface {
                     const returnType: AnyType = {
                         type: AstNodeType.AnyLiteral,
                     };
-
                     classDefinition?.methods.push({
                         type: AstNodeType.MethodDefinition,
+                        docString: createDocStringFromBabelComments(path.node.leadingComments),
                         name: isIdentifier(path.node.key) ? path.node.key.name : "undefined",
                         static: false,
                         kind: MethodKindEnum.method,
@@ -126,6 +129,7 @@ class AstGenerator implements AstGeneratorInterface {
                     };
                     classDefinition?.methods.push({
                         type: AstNodeType.MethodDefinition,
+                        docString: createDocStringFromBabelComments(path.node.leadingComments),
                         name: isIdentifier(path.node.key) ? path.node.key.name : "undefined",
                         static: false,
                         kind: MethodKindEnum.method,
@@ -198,6 +202,37 @@ class AstGenerator implements AstGeneratorInterface {
             };
         }
     }
+}
+
+function createDocStringFromBabelComments(
+    leadingComments: Comment[] | null | undefined,
+): string | undefined {
+    let docString: string | undefined = undefined;
+    if (leadingComments) {
+        // Iterate over all the comments and retain only the last JSDoc comment
+        for (const comment of leadingComments) {
+            const commentText = extractDocStringFromJsDoc(comment.value);
+
+            docString = commentText || docString;
+        }
+    }
+    return docString;
+}
+
+function extractDocStringFromJsDoc(jsDoc: string): string | undefined {
+    // Only match comments that start with `/**` and end with `*/` (i.e. JSDoc comments)
+    const jsDocRegex = /^\*([\s\S]*)/;
+    const match = jsDoc.match(jsDocRegex);
+    if (match) {
+        // Remove the leading ` * ` from each line
+        return match[1]
+            .replace(/(^|\n)\s*\*\s*/g, "$1")
+            .split("\n")
+            .map((l) => l.trim())
+            .join("\n");
+    }
+
+    return undefined;
 }
 
 const supportedExtensions = ["js"];
