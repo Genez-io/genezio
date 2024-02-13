@@ -25,6 +25,10 @@ export const backendTemplates: Record<string, Template> = {
         pkgManager: "npm",
         coloring: colors.yellow,
     },
+    go: {
+        name: "Golang (Experimental)",
+        coloring: colors.cyan,
+    },
     "onboarding-ts": {
         name: "TypeScript for Onboarding",
         pkgManager: "npm",

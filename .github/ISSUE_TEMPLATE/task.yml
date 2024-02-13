@@ -13,7 +13,7 @@ body:
               * [contributions guide](https://github.com/Genez-io/genezio/blob/main/CONTRIBUTING.md)
               * [genezio documentation](https://genezio.com/docs)
               * [genezio official examples](https://github.com/Genez-io/genezio-examples)
-              * [genezio Troubleshooting section](https://docs.genezio.com/genezio-documentation/troubleshooting)
+              * [genezio Troubleshooting section](https://genezio.com/docs/troubleshooting)
 
     - type: textarea
       id: task-description

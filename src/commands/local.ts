@@ -13,7 +13,11 @@ import url from "url";
 import * as http from "http";
 import colors from "colors";
 import { ProjectConfiguration, ClassConfiguration } from "../models/projectConfiguration.js";
-import { LOCAL_TEST_INTERFACE_URL, RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE, REQUIRED_GENEZIO_TYPES_VERSION_RANGE } from "../constants.js";
+import {
+    LOCAL_TEST_INTERFACE_URL,
+    RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
+    REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
+} from "../constants.js";
 import { GENEZIO_NO_CLASSES_FOUND, PORT_ALREADY_USED } from "../errors.js";
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
 import { AstSummary } from "../models/astSummary.js";
@@ -66,6 +70,7 @@ import {
     CloudProviderIdentifier,
     LambdaResponse,
 } from "../models/cloudProviderIdentifier.js";
+import { GoBundler } from "../bundlers/go/localGoBundler.js";
 import { importServiceEnvVariables } from "../utils/servicesEnvVariables.js";
 import { isDependencyVersionCompatible } from "../utils/dependencyChecker.js";
 
@@ -163,10 +168,16 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     // because we migrated the decorators implemented in the @genezio/types package to the stage 3 implementation.
     // Otherwise, the user will get an error at runtime. This check can be removed in the future once no one is using version
     // 0.1.* of @genezio/types.
-    const packageJsonPath = yamlProjectConfiguration.workspace ? 
-        path.join(yamlProjectConfiguration.workspace.backend, "package.json") :
-        path.join(process.cwd(), "package.json");
-    if (isDependencyVersionCompatible(packageJsonPath, "@genezio/types", REQUIRED_GENEZIO_TYPES_VERSION_RANGE) === false) {
+    const packageJsonPath = yamlProjectConfiguration.workspace
+        ? path.join(yamlProjectConfiguration.workspace.backend, "package.json")
+        : path.join(process.cwd(), "package.json");
+    if (
+        isDependencyVersionCompatible(
+            packageJsonPath,
+            "@genezio/types",
+            REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
+        ) === false
+    ) {
         log.error(
             `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To solve this, please update the @genezio/types package on your backend component using the following command: npm install @genezio/types@${RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE}`,
         );
@@ -608,6 +619,10 @@ function getBundler(classConfiguration: ClassConfiguration): BundlerInterface | 
         }
         case ".kt": {
             bundler = new KotlinBundler();
+            break;
+        }
+        case ".go": {
+            bundler = new GoBundler();
             break;
         }
         default: {

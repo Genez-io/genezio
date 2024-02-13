@@ -17,6 +17,7 @@ export default class NpmPackageManager implements PackageManager {
         await $({ cwd })`npm link ${packages}`;
     }
 
+
     async publish(cwd?: string) {
         await $({ cwd })`npm publish`;
     }
