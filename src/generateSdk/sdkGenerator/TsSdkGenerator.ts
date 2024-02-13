@@ -173,21 +173,41 @@ export class StorageManager {
 }
 {{/hasGnzContext}}
 
-
 {{#externalTypes}}
 export {{{type}}}
 {{/externalTypes}}
 
+{{#classDocLines.length}}
+/**
+{{#classDocLines}}
+ * {{.}}
+{{/classDocLines}}
+ */
+{{/classDocLines.length}}
 export class {{{className}}} {
   static remote = new Remote("{{{_url}}}");
 
   {{#methods}}
   {{#hasGnzContextAsFirstParameter}}
+  {{#methodDocLines.length}}
+  /**
+  {{#methodDocLines}}
+   * {{.}}
+  {{/methodDocLines}}
+   */
+  {{/methodDocLines.length}}
   static async {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}){{{returnType}}} {
     return await {{{className}}}.remote.call({{{methodCaller}}} {"token": StorageManager.getStorage().getItem("token")}, {{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}});
   }
   {{/hasGnzContextAsFirstParameter}}
   {{^hasGnzContextAsFirstParameter}}
+  {{#methodDocLines.length}}
+  /**
+  {{#methodDocLines}}
+   * {{.}}
+  {{/methodDocLines}}
+   */
+  {{/methodDocLines.length}}
   static async {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}){{{returnType}}} {
     return await {{{className}}}.remote.call({{{methodCaller}}}{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}});
   }
@@ -211,6 +231,7 @@ type MethodViewType = {
         last?: boolean;
     }[];
     hasGnzContextAsFirstParameter: boolean;
+    methodDocLines: string[];
 };
 
 type ViewType = {
@@ -229,6 +250,7 @@ type ViewType = {
         }[];
     }[];
     hasGnzContext: boolean;
+    classDocLines: string[];
 };
 
 class SdkGenerator implements SdkGeneratorInterface {
@@ -268,6 +290,7 @@ class SdkGenerator implements SdkGeneratorInterface {
             // @ts-expect-error A refactor need to be performed here to avoid this error
             const view: ViewType = {
                 className: classDefinition.name,
+                classDocLines: classDefinition.docString?.replace(/\n+$/, "").split("\n") || [],
                 _url: _url,
                 methods: [],
                 externalTypes: [],
@@ -302,6 +325,8 @@ class SdkGenerator implements SdkGeneratorInterface {
                         methodDefinition.params.length === 0
                             ? `"${classDefinition.name}.${methodDefinition.name}"`
                             : `"${classDefinition.name}.${methodDefinition.name}", `,
+                    methodDocLines:
+                        methodDefinition.docString?.replace(/\n+$/, "").split("\n") || [],
                 };
 
                 // @ts-expect-error A refactor need to be performed here to avoid this error
