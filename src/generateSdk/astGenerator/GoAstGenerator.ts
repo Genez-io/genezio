@@ -92,6 +92,7 @@ export class AstGenerator implements AstGeneratorInterface {
                     type: AstNodeType.ClassDefinition,
                     name: astNode.name,
                     path: astNode.path,
+                    docString: astNode.docString,
                     methods: [],
                 };
                 for (const method of astNode.methods) {
@@ -101,6 +102,7 @@ export class AstGenerator implements AstGeneratorInterface {
                         params: [],
                         kind: MethodKindEnum.method,
                         static: false,
+                        docString: method.docString,
                         returnType: method.returnType,
                     };
                     for (const param of method.params) {
