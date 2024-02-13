@@ -68,7 +68,7 @@ export class {{{className}}} {
   {{#methods}}
   {{#hasGnzContextAsFirstParameter}}
   static async {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) {
-    return {{{className}}}.remote.call({{{methodCaller}}} {"token": StorageManager.getStorage().getItem("apiToken")}, {{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}})
+    return {{{className}}}.remote.call({{{methodCaller}}} {"token": StorageManager.getStorage().getItem("token")}, {{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}})
   }
   {{/hasGnzContextAsFirstParameter}}
   {{^hasGnzContextAsFirstParameter}}

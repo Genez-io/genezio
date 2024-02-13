@@ -184,7 +184,7 @@ export class {{{className}}} {
   {{#methods}}
   {{#hasGnzContextAsFirstParameter}}
   static async {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}){{{returnType}}} {
-    return await {{{className}}}.remote.call({{{methodCaller}}} {"token": StorageManager.getStorage().getItem("apiToken")}, {{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}});
+    return await {{{className}}}.remote.call({{{methodCaller}}} {"token": StorageManager.getStorage().getItem("token")}, {{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}});
   }
   {{/hasGnzContextAsFirstParameter}}
   {{^hasGnzContextAsFirstParameter}}
