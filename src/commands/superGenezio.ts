@@ -47,6 +47,7 @@ export async function genezioCommand() {
                 process.env["CURRENT_COMMAND"] = "deploy";
                 const options: GenezioDeployOptions = {
                     installDeps: true,
+                    config: "./genezio.yaml",
                 };
 
                 return await deployCommand(options).catch(async (error) => {
@@ -63,6 +64,7 @@ export async function genezioCommand() {
                 const options: GenezioLocalOptions = {
                     port: PORT_LOCAL_ENVIRONMENT,
                     installDeps: true,
+                    config: "./genezio.yaml",
                 };
 
                 return await startLocalEnvironment(options).catch(async (error) => {

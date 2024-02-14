@@ -162,7 +162,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         eventType: TelemetryEventTypes.GENEZIO_LOCAL,
         commandOptions: JSON.stringify(options),
     });
-    const yamlProjectConfiguration = await getProjectConfiguration();
+    const yamlProjectConfiguration = await getProjectConfiguration(options.config);
 
     // We need to check if the user is using an older version of @genezio/types
     // because we migrated the decorators implemented in the @genezio/types package to the stage 3 implementation.
@@ -212,7 +212,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         // Read the project configuration every time because it might change
         let yamlProjectConfiguration;
         try {
-            yamlProjectConfiguration = await getProjectConfiguration();
+            yamlProjectConfiguration = await getProjectConfiguration(options.config);
         } catch (error) {
             if (error instanceof Error) {
                 log.error(error.message);
