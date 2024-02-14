@@ -23,7 +23,7 @@ export async function addClassCommand(classPath: string, classType: string) {
         throw new Error("Please provide a path to the class you want to add.");
     }
 
-    const projectConfiguration = await getProjectConfiguration();
+    const projectConfiguration = await getProjectConfiguration("./genezio.yaml");
 
     const className = classPath.split(path.sep).pop();
 

@@ -57,7 +57,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
     let configuration;
 
     try {
-        configuration = await getProjectConfiguration();
+        configuration = await getProjectConfiguration(options.config);
     } catch (error) {
         if (error instanceof Error) {
             log.error(error.message);
