@@ -18,7 +18,8 @@ import { runNewProcess, runNewProcessWithResultAndReturnCode } from "../../utils
 import { checkIfGoIsInstalled } from "../../utils/go.js";
 import { createTemporaryFolder } from "../../utils/file.js";
 
-const binaryName = "gnzparser";
+const releaseTag = "v0.1";
+const binaryName = `golang_ast_generator_${releaseTag}`;
 
 export class AstGenerator implements AstGeneratorInterface {
     async #compileGenezioGoAstExtractor() {
@@ -34,6 +35,7 @@ export class AstGenerator implements AstGeneratorInterface {
                     " temporary folder!",
             );
         }
+        await runNewProcess(`git checkout --quiet tags/${releaseTag}`, folder);
         const goBuildSuccess = await runNewProcess(`go build -o ${binaryName} cmd/main.go`, folder);
         if (!goBuildSuccess) {
             throw new Error(
