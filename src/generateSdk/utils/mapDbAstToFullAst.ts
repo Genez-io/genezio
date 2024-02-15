@@ -26,10 +26,12 @@ export function mapDbAstToSdkGeneratorAst(ast: AstSummaryClassResponse): Program
         type: AstNodeType.ClassDefinition,
         name: ast.name,
         path: ast.path,
+        docString: ast.docString,
         methods: ast.methods.map(
             (method): MethodDefinition => ({
                 type: AstNodeType.MethodDefinition,
                 name: method.name,
+                docString: method.docString,
                 params: method.params.map(
                     (param): ParameterDefinition => ({
                         type: AstNodeType.ParameterDefinition,
