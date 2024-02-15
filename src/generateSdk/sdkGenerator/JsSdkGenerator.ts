@@ -7,7 +7,7 @@ import {
     SdkGeneratorOutput,
     IndexModel,
 } from "../../models/genezioModels.js";
-import { nodeSdkJs } from "../templates/nodeSdkJs.js";
+import { nodeSdkJs, storageJs } from "../templates/nodeSdkJs.js";
 import Mustache from "mustache";
 
 const indexTemplate = `/**
@@ -30,36 +30,7 @@ const template = `/**
 import { Remote } from "./remote.js"
 
 {{#hasGnzContext}}
-export class LocalStorageWrapper implements Storage {
-  setItem(key, value) {
-    localStorage.setItem(key, value);
-  }
-
-  getItem(key) {
-    return localStorage.getItem(key);
-  }
-
-  removeItem(key) {
-    localStorage.removeItem(key);
-  }
-
-  clear() {
-    localStorage.clear();
-  }
-}
-
-export class StorageManager {
-  private static storage = null;
-  static getStorage(): Storage {
-    if (!this.storage) {
-      this.storage = new LocalStorageWrapper();
-    }
-    return this.storage;
-  }
-  static setStorage(storage) {
-    this.storage = storage;
-  }
-}
+import { StorageManager } from "./storage.js"
 {{/hasGnzContext}}
 
 export class {{{className}}} {
@@ -202,6 +173,26 @@ class SdkGenerator implements SdkGeneratorInterface {
             className: "Remote",
             path: "remote.js",
             data: nodeSdkJs.replace("%%%url%%%", "undefined"),
+        });
+
+        generateSdkOutput.files.push({
+            className: "StorageManager",
+            path: "storage.js",
+            data: storageJs,
+        });
+
+        indexModel.imports.push({
+            path: "storage.js",
+            models: [
+                {
+                    name: "StorageManager",
+                },
+            ],
+        });
+
+        indexModel.exports.push({
+            name: "StorageManager",
+            last: false,
         });
 
         // generate index.js

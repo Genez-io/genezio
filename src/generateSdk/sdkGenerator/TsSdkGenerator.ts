@@ -23,7 +23,7 @@ import {
     SdkGeneratorClassesInfoInput,
 } from "../../models/genezioModels.js";
 import { TriggerType } from "../../models/yamlProjectConfiguration.js";
-import { nodeSdkTs } from "../templates/nodeSdkTs.js";
+import { nodeSdkTs, storageTs } from "../templates/nodeSdkTs.js";
 import path from "path";
 
 const TYPESCRIPT_RESERVED_WORDS = [
@@ -141,36 +141,7 @@ import { {{#models}}{{{name}}}{{^last}}, {{/last}}{{/models}} } from "./{{{path}
 {{/imports}}
 
 {{#hasGnzContext}}
-export class LocalStorageWrapper implements Storage {
-  setItem(key: string, value: string): void {
-    localStorage.setItem(key, value);
-  }
-
-  getItem(key: string): string | null {
-    return localStorage.getItem(key);
-  }
-
-  removeItem(key: string): void {
-    localStorage.removeItem(key);
-  }
-
-  clear(): void {
-    localStorage.clear();
-  }
-}
-
-export class StorageManager {
-  private static storage: Storage|null = null;
-  static getStorage(): Storage {
-    if (!this.storage) {
-      this.storage = new LocalStorageWrapper();
-    }
-    return this.storage;
-  }
-  static setStorage(storage: Storage): void {
-    this.storage = storage;
-  }
-}
+import { StorageManager } from "./storage";
 {{/hasGnzContext}}
 
 
@@ -461,6 +432,18 @@ class SdkGenerator implements SdkGeneratorInterface {
             path: "remote.ts",
             data: nodeSdkTs.replace("%%%url%%%", "undefined"),
         });
+
+        generateSdkOutput.files.push({
+            className: "StorageManager",
+            path: "storage.ts",
+            data: storageTs,
+        });
+
+        indexModel.imports.push({
+            path: "storage",
+            models: [{ name: "Storage" }, { name: "StorageManager" }],
+        });
+        indexModel.exports.push({ name: "Storage" }, { name: "StorageManager" });
 
         if (indexModel.exports.length > 0) {
             indexModel.exports[indexModel.exports.length - 1].last = true;
