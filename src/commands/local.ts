@@ -55,7 +55,6 @@ import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js
 import dotenv from "dotenv";
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
 import inquirer, { Answers } from "inquirer";
-import { EOL } from "os";
 import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
 import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJson.js";
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
@@ -878,7 +877,7 @@ async function listenForChanges(sdkPathRelative: string | undefined) {
         // read the file as a string
         const ignoreFile = await readUTF8File(ignoreFilePath);
         // split the string by newline - CRLF or LF
-        const ignoreFileLines = ignoreFile.split(EOL);
+        const ignoreFileLines = ignoreFile.split(/\r?\n/);
         // remove empty lines
         const ignoreFileLinesWithoutEmptyLines = ignoreFileLines.filter(
             (line) => line !== "" && !line.startsWith("#"),
