@@ -115,6 +115,7 @@ package genezioSdk
 import {{#named}}{{{name}}} {{/named}}"{{{path}}}"
 {{/imports}}
 
+{{#classDocLines}}// {{{.}}}{{/classDocLines}}
 type {{{className}}} struct {
 	remote *Remote
 }
@@ -123,6 +124,10 @@ func New{{{className}}}() *{{{className}}} {
 	return &{{{className}}}{remote: &Remote{URL: "{{{_url}}}" }}
 }
 {{#methods}}
+
+{{#methodDocLines}}
+// {{.}}
+{{/methodDocLines}}
 func (f *{{{className}}}) {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) {{#isVoid}}error{{/isVoid}}{{^isVoid}}({{{returnType}}}, error){{/isVoid}} {
     {{#isVoid}}_{{/isVoid}}{{^isVoid}}result{{/isVoid}}, err := f.remote.Call({{{methodCaller}}}{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}})
     {{^isVoid}}
@@ -164,6 +169,7 @@ type TypesView = {
 
 type ViewModel = {
     className: string | undefined;
+    classDocLines: string[] | undefined;
     _url: string;
     methods: MethodModel[];
     imports: Import[];
@@ -184,6 +190,7 @@ type MethodModel = {
     isVoid: boolean;
     isPrimitiveReturnType: boolean;
     isInt: boolean;
+    methodDocLines: string[] | undefined;
 };
 
 type ExternalType = {
@@ -217,6 +224,7 @@ class SdkGenerator implements SdkGeneratorInterface {
 
         for (const classInfo of sdkGeneratorInput.classesInfo) {
             const view: ViewModel = {
+                classDocLines: undefined,
                 className: undefined,
                 _url: _url,
                 methods: [],
@@ -274,6 +282,7 @@ class SdkGenerator implements SdkGeneratorInterface {
             }
 
             view.className = classDefinition.name;
+            view.classDocLines = classDefinition.docString?.replace(/\n+$/, "").split("\n");
 
             let exportClassChecker = false;
 
@@ -311,6 +320,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                             ? `"${classDefinition.name}.${methodDefinition.name}"`
                             : `"${classDefinition.name}.${methodDefinition.name}", `,
                     sendParameters: [],
+                    methodDocLines: methodDefinition.docString?.replace(/\n+$/, "").split("\n"),
                 };
 
                 if (

@@ -33,16 +33,37 @@ import { Remote } from "./remote.js"
 import { StorageManager } from "./storage.js"
 {{/hasGnzContext}}
 
+{{#classDocLines.length}}
+/**
+{{#classDocLines}}
+ * {{.}}
+{{/classDocLines}}
+ */
+{{/classDocLines.length}}
 export class {{{className}}} {
   static remote = new Remote("{{{_url}}}")
 
   {{#methods}}
   {{#hasGnzContextAsFirstParameter}}
+  {{#methodDocLines.length}}
+  /**
+  {{#methodDocLines}}
+   * {{.}}
+  {{/methodDocLines}}
+   */
+  {{/methodDocLines.length}}
   static async {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) {
     return {{{className}}}.remote.call({{{methodCaller}}} {"token": StorageManager.getStorage().getItem("token")}, {{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}})
   }
   {{/hasGnzContextAsFirstParameter}}
   {{^hasGnzContextAsFirstParameter}}
+  {{#methodDocLines.length}}
+  /**
+  {{#methodDocLines}}
+   * {{.}}
+  {{/methodDocLines}}
+   */
+  {{/methodDocLines.length}}
   static async {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) {
     return {{{className}}}.remote.call({{{methodCaller}}}{{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}})
   }
@@ -60,6 +81,7 @@ type MethodViewType = {
     }[];
     methodCaller: string;
     hasGnzContextAsFirstParameter?: boolean;
+    methodDocLines: string[];
 };
 
 type ViewType = {
@@ -67,6 +89,7 @@ type ViewType = {
     _url: string;
     methods: MethodViewType[];
     hasGnzContext?: boolean;
+    classDocLines: string[];
 };
 
 class SdkGenerator implements SdkGeneratorInterface {
@@ -103,6 +126,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                 className: classDefinition.name,
                 _url: _url,
                 methods: [],
+                classDocLines: classDefinition.docString?.replace(/\n+$/, "").split("\n") || [],
             };
 
             let exportClassChecker = false;
@@ -128,6 +152,8 @@ class SdkGenerator implements SdkGeneratorInterface {
                         methodDefinition.params.length === 0
                             ? `"${classDefinition.name}.${methodDefinition.name}"`
                             : `"${classDefinition.name}.${methodDefinition.name}", `,
+                    methodDocLines:
+                        methodDefinition.docString?.replace(/\n+$/, "").split("\n") || [],
                 };
 
                 methodView.parameters = methodDefinition.params
