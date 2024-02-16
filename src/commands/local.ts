@@ -342,12 +342,14 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`,
                 })),
             );
-            await writeSdkToDisk(sdk, sdkConfiguration.path);
+
             if (
                 !yamlProjectConfiguration.sdk &&
                 (sdkConfiguration.language === Language.ts ||
                     sdkConfiguration.language === Language.js)
             ) {
+                await deleteFolder(sdkConfiguration.path);
+                await writeSdkToDisk(sdk, sdkConfiguration.path);
                 // compile the sdk
                 const packageJson: string = getNodeModulePackageJsonLocal(
                     projectConfiguration.name,
@@ -365,6 +367,8 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     yamlProjectConfiguration,
                     sdkConfiguration.path,
                 );
+            } else {
+                await writeSdkToDisk(sdk, sdkConfiguration.path);
             }
         }
 
