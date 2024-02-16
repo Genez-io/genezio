@@ -14,7 +14,7 @@ import { setLinkPathForProject } from "../../utils/linkDatabase.js";
 import log from "loglevel";
 import { platform } from "os";
 import { GenezioCreateOptions } from "../../models/commandOptions.js";
-import { debugLogger } from "../../utils/logging.js";
+import { debugLogger, doAdaptiveLogAction } from "../../utils/logging.js";
 import { packageManagers } from "../../packageManagers/packageManager.js";
 import { backendTemplates, frontendTemplates } from "./templates.js";
 
@@ -42,20 +42,29 @@ export async function createCommand(options: GenezioCreateOptions) {
 
     switch (options.type) {
         case "fullstack": {
-            // Create the new project in a virtual filesystem (memfs)
-            await createFullstackProject(fs, options);
+            await doAdaptiveLogAction("Cloning fullstack starter template", async () => {
+                // Create the new project in a virtual filesystem (memfs)
+                await createFullstackProject(fs, options);
 
-            // Copy from memfs to local filesystem
-            copyRecursiveToNativeFs(fs, "/", projectPath, { keepDotGit: true, renameReadme: true });
+                // Copy from memfs to local filesystem
+                copyRecursiveToNativeFs(fs, "/", projectPath, {
+                    keepDotGit: true,
+                    renameReadme: true,
+                });
+            });
 
             // Install template packages
-            await installTemplatePackages(
-                backendTemplates[options.backend]?.pkgManager,
-                path.join(projectPath, "server"),
-            );
-            await installTemplatePackages(
-                frontendTemplates[options.frontend]?.pkgManager,
-                path.join(projectPath, "client"),
+            await doAdaptiveLogAction("Installing template dependencies", async () =>
+                Promise.all([
+                    installTemplatePackages(
+                        backendTemplates[options.backend]?.pkgManager,
+                        path.join(projectPath, "server"),
+                    ),
+                    installTemplatePackages(
+                        frontendTemplates[options.frontend]?.pkgManager,
+                        path.join(projectPath, "client"),
+                    ),
+                ]),
             );
 
             if (frontendTemplates[options.frontend] === undefined) {
@@ -89,16 +98,20 @@ export async function createCommand(options: GenezioCreateOptions) {
                 templateId: options.backend,
             };
 
-            // Create the new project in a virtual filesystem (memfs)
-            await createProject(fs, projectInfo);
+            await doAdaptiveLogAction("Cloning backend starter template", async () => {
+                // Create the new project in a virtual filesystem (memfs)
+                await createProject(fs, projectInfo);
 
-            // Copy from memfs to local filesystem
-            copyRecursiveToNativeFs(fs, "/", projectPath, { keepDotGit: true, renameReadme: true });
+                // Copy from memfs to local filesystem
+                copyRecursiveToNativeFs(fs, "/", projectPath, {
+                    keepDotGit: true,
+                    renameReadme: true,
+                });
+            });
 
             // Install template packages
-            await installTemplatePackages(
-                backendTemplates[options.backend].pkgManager,
-                projectPath,
+            await doAdaptiveLogAction("Installing template dependencies", async () =>
+                installTemplatePackages(backendTemplates[options.backend].pkgManager, projectPath),
             );
 
             // Print success message
