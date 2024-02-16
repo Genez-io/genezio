@@ -371,6 +371,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                                 parentType,
                                 view,
                                 classInfo,
+                                classDefinition,
                             );
                         }
                         const classPath = classInfo.classConfiguration.path.replace(/\\/g, "/");
@@ -381,7 +382,9 @@ class SdkGenerator implements SdkGeneratorInterface {
                     if (this.isExternalTypeUsedInMethod(externalType, classDefinition.methods)) {
                         // @ts-expect-error A refactor need to be performed here to avoid this error
                         currentView = view;
-                        const classPath = classInfo.classConfiguration.path.replace(/\\/g, "/");
+                        const classPath =
+                            classDefinition.path?.replace(/\\/g, "/") ??
+                            classInfo.classConfiguration.path.replace(/\\/g, "/");
                         if (currentView && !classPath.includes(externalType.path)) {
                             this.addImportToCurrentView(currentView, externalType);
                         }
@@ -392,6 +395,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                         externalType,
                         view,
                         classInfo,
+                        classDefinition,
                     );
                     if (
                         !currentView?.externalTypes.find(
@@ -528,7 +532,10 @@ class SdkGenerator implements SdkGeneratorInterface {
         } else if (elem.type === AstNodeType.TypeLiteral) {
             return `{${(elem as TypeLiteral).properties
                 .map((e: PropertyDefinition) => {
-                    if (e.type.type === AstNodeType.MapType) {
+                    if (
+                        e.type.type === AstNodeType.MapType &&
+                        (elem as TypeLiteral).properties.length === 1
+                    ) {
                         return `[key: ${this.getParamType(
                             (e.type as MapType).genericKey,
                         )}]: ${this.getParamType((e.type as MapType).genericValue)}`;
@@ -539,6 +546,10 @@ class SdkGenerator implements SdkGeneratorInterface {
                 .join(", ")}}`;
         } else if (elem.type === AstNodeType.DateType) {
             return "Date";
+        } else if (elem.type == AstNodeType.MapType) {
+            return `{[key: ${this.getParamType((elem as MapType).genericKey)}]: ${this.getParamType(
+                (elem as MapType).genericValue,
+            )}}`;
         }
         return "any";
     }
@@ -610,6 +621,11 @@ class SdkGenerator implements SdkGeneratorInterface {
             return false;
         } else if (type.type === AstNodeType.AnyLiteral) {
             return false;
+        } else if (type.type === AstNodeType.MapType) {
+            return (
+                this.isExternalTypeUsedByOtherType(externalType, (type as MapType).genericKey) ||
+                this.isExternalTypeUsedByOtherType(externalType, (type as MapType).genericValue)
+            );
         }
         return false;
     }
@@ -700,6 +716,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         type: Node,
         classView: ViewType,
         classInfo: SdkGeneratorClassesInfoInput,
+        classDefinition?: ClassDefinition,
     ) {
         let found = false;
         let currentView: ModelView | undefined = undefined;
@@ -711,7 +728,9 @@ class SdkGenerator implements SdkGeneratorInterface {
             }
         }
         if (!found) {
-            const classPath = classInfo.classConfiguration.path.replace(/\\/g, "/");
+            const classPath =
+                classDefinition?.path?.replace(/\\/g, "/") ??
+                classInfo.classConfiguration.path.replace(/\\/g, "/");
             // @ts-expect-error A refactor need to be performed here to avoid this cast
             if (!classPath.includes(type.path)) {
                 currentView = {
