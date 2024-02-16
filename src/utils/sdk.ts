@@ -1,8 +1,7 @@
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
-import { deleteFolder, writeToFile } from "./file.js";
+import { writeToFile } from "./file.js";
 import { debugLogger } from "./logging.js";
 import { File, SdkFileClass } from "../models/genezioModels.js";
-import { Language } from "../models/yamlProjectConfiguration.js";
 
 export type ClassUrlMap = {
     name: string;
@@ -34,14 +33,6 @@ export async function writeSdkToDisk(sdk: SdkGeneratorResponse, outputPath: stri
     if (sdk.files.length == 0) {
         debugLogger.debug("No SDK classes found...");
         return;
-    }
-
-    if (
-        sdk.sdkGeneratorInput.sdk?.language &&
-        (sdk.sdkGeneratorInput.sdk.language === Language.js ||
-            sdk.sdkGeneratorInput.sdk.language === Language.ts)
-    ) {
-        await deleteFolder(outputPath);
     }
 
     debugLogger.debug("Writing the SDK to files...");
