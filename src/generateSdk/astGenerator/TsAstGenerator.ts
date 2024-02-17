@@ -448,7 +448,7 @@ export class AstGenerator implements AstGeneratorInterface {
             params: parameters,
             returnType: methodDeclarationCopy.type
                 ? this.mapTypesToParamType(methodDeclarationCopy.type, typeChecker, declarations)
-                : { type: AstNodeType.VoidLiteral },
+                : { type: AstNodeType.AnyLiteral },
             static: false,
             kind: MethodKindEnum.method,
         };
