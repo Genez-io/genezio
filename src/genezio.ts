@@ -243,7 +243,7 @@ const create = program
             commandOptions: JSON.stringify(createOptions),
         });
 
-        createCommand(createOptions).catch(async (error) => {
+        await createCommand(createOptions).catch(async (error) => {
             log.error(error.message);
             await telemetryEvent;
             await GenezioTelemetry.sendEvent({
@@ -301,7 +301,7 @@ create
             commandOptions: JSON.stringify(createOptions),
         });
 
-        createCommand(createOptions).catch(async (error) => {
+        await createCommand(createOptions).catch(async (error) => {
             log.error(error.message);
             await telemetryEvent;
             await GenezioTelemetry.sendEvent({
