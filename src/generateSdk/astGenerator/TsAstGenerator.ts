@@ -188,7 +188,7 @@ export class AstGenerator implements AstGeneratorInterface {
                 const properties: PropertyDefinition[] = [];
 
                 for (const member of (type as typescript.TypeLiteralNode).members) {
-                    if (typescript.isPropertyDeclaration(member) && member.type) {
+                    if (typescript.isPropertySignature(member) && member.type) {
                         properties.push({
                             name: typescript.isIdentifier(member.name)
                                 ? member.name.text
