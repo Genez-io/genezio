@@ -20,6 +20,7 @@ import {
     AstNodeType,
     ClassDefinition,
     CustomAstNodeType,
+    MapType,
     Node,
     Program,
     StructLiteral,
@@ -89,6 +90,10 @@ export class GoBundler implements BundlerInterface {
                 return (type as CustomAstNodeType).rawValue;
             case AstNodeType.ArrayType:
                 return "[]" + this.#mapTypeToGoType((type as ArrayType).generic, ast, imports);
+            case AstNodeType.MapType:
+                return `map[${this.#mapTypeToGoType((type as MapType).genericKey, ast, imports)}]${this.#mapTypeToGoType((type as MapType).genericValue, ast, imports)}`;
+            case AstNodeType.AnyLiteral:
+                return "interface{}";
         }
         return "interface{}";
     }
@@ -142,6 +147,7 @@ export class GoBundler implements BundlerInterface {
                 }
                 return `paramFloat${index} := body.Params[${index}].(float64)
         param${index} := int(paramFloat${index})`;
+            case AstNodeType.MapType:
             case AstNodeType.CustomNodeLiteral:
             case AstNodeType.ArrayType:
                 return `var param${index} ${parameter.optional ? "*" : ""}${this.#mapTypeToGoType(
@@ -159,6 +165,8 @@ export class GoBundler implements BundlerInterface {
             sendError(w, err)
             return
         }`;
+            case AstNodeType.AnyLiteral:
+                return `param${index} := body.Params[${index}]`;
         }
         return "";
     }
@@ -209,8 +217,11 @@ export class GoBundler implements BundlerInterface {
                 })),
         };
 
-        moustacheViewForMain.imports.push(this.#getImportViewFromPath(mainClass.path ?? ""));
         moustacheViewForMain.imports.push(...imports);
+        const classImport = this.#getImportViewFromPath(mainClass.path ?? "");
+        if (!moustacheViewForMain.imports.find((i) => i.path === classImport.path)) {
+            moustacheViewForMain.imports.push(classImport);
+        }
 
         const routerFileContent = Mustache.render(template, moustacheViewForMain);
         await writeToFile(folderPath, "main.go", routerFileContent);

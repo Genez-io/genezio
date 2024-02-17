@@ -450,17 +450,19 @@ class SdkGenerator implements SdkGeneratorInterface {
         } else if (elem.type === AstNodeType.UnionType) {
             return (elem as UnionType).params.map((e: Node) => this.getParamType(e)).join(" | ");
         } else if (elem.type === AstNodeType.TypeLiteral) {
-            return `{${(elem as TypeLiteral).properties
-                .map((e: PropertyDefinition) => {
-                    if (e.type.type === AstNodeType.MapType) {
-                        return `[key: ${this.getParamType(
-                            (e.type as MapType).genericKey,
-                        )}]: ${this.getParamType((e.type as MapType).genericValue)}`;
-                    } else {
-                        return `${e.name}${e.optional ? "?" : ""}: ${this.getParamType(e.type)}`;
-                    }
-                })
-                .join(", ")}}`;
+            const elemTypeLiteral = elem as TypeLiteral;
+            if (
+                elemTypeLiteral.properties.length === 1 &&
+                elemTypeLiteral.properties[0].type.type === AstNodeType.MapType
+            ) {
+                return this.getParamType(elemTypeLiteral.properties[0].type);
+            }
+            return `struct {${elemTypeLiteral.properties
+                .map(
+                    (e: PropertyDefinition) =>
+                        `${e.name} ${e.optional ? "*" : ""}${this.getParamType(e.type)}`,
+                )
+                .join("; ")}}`;
         } else if (elem.type === AstNodeType.MapType) {
             return `map[${this.getParamType((elem as MapType).genericKey)}]${this.getParamType(
                 (elem as MapType).genericValue,

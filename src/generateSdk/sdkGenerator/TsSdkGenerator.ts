@@ -371,6 +371,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                                 parentType,
                                 view,
                                 classInfo,
+                                classDefinition,
                             );
                         }
                         const classPath = classInfo.classConfiguration.path.replace(/\\/g, "/");
@@ -381,7 +382,9 @@ class SdkGenerator implements SdkGeneratorInterface {
                     if (this.isExternalTypeUsedInMethod(externalType, classDefinition.methods)) {
                         // @ts-expect-error A refactor need to be performed here to avoid this error
                         currentView = view;
-                        const classPath = classInfo.classConfiguration.path.replace(/\\/g, "/");
+                        const classPath =
+                            classDefinition.path?.replace(/\\/g, "/") ??
+                            classInfo.classConfiguration.path.replace(/\\/g, "/");
                         if (currentView && !classPath.includes(externalType.path)) {
                             this.addImportToCurrentView(currentView, externalType);
                         }
@@ -392,6 +395,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                         externalType,
                         view,
                         classInfo,
+                        classDefinition,
                     );
                     if (
                         !currentView?.externalTypes.find(
@@ -488,7 +492,7 @@ class SdkGenerator implements SdkGeneratorInterface {
     }
 
     getReturnType(returnType: Node): string {
-        if (!returnType || returnType.type === AstNodeType.VoidLiteral) {
+        if (!returnType) {
             return "";
         }
 
@@ -501,44 +505,54 @@ class SdkGenerator implements SdkGeneratorInterface {
     }
 
     getParamType(elem: Node): string {
-        if (elem.type === AstNodeType.CustomNodeLiteral) {
-            return (elem as CustomAstNodeType).rawValue;
-        } else if (elem.type === AstNodeType.StringLiteral) {
-            return "string";
-        } else if (
-            elem.type === AstNodeType.IntegerLiteral ||
-            elem.type === AstNodeType.FloatLiteral ||
-            elem.type === AstNodeType.DoubleLiteral
-        ) {
-            return "number";
-        } else if (elem.type === AstNodeType.BooleanLiteral) {
-            return "boolean";
-        } else if (elem.type === AstNodeType.AnyLiteral) {
-            return "any";
-        } else if (elem.type === AstNodeType.ArrayType) {
-            return `Array<${this.getParamType((elem as ArrayType).generic)}>`;
-        } else if (elem.type === AstNodeType.PromiseType) {
-            return `Promise<${this.getParamType((elem as PromiseType).generic)}>`;
-        } else if (elem.type === AstNodeType.Enum) {
-            return (elem as Enum).name;
-        } else if (elem.type === AstNodeType.TypeAlias) {
-            return (elem as TypeAlias).name;
-        } else if (elem.type === AstNodeType.UnionType) {
-            return (elem as UnionType).params.map((e: Node) => this.getParamType(e)).join(" | ");
-        } else if (elem.type === AstNodeType.TypeLiteral) {
-            return `{${(elem as TypeLiteral).properties
-                .map((e: PropertyDefinition) => {
-                    if (e.type.type === AstNodeType.MapType) {
-                        return `[key: ${this.getParamType(
-                            (e.type as MapType).genericKey,
-                        )}]: ${this.getParamType((e.type as MapType).genericValue)}`;
-                    } else {
-                        return `${e.name}${e.optional ? "?" : ""}: ${this.getParamType(e.type)}`;
-                    }
-                })
-                .join(", ")}}`;
-        } else if (elem.type === AstNodeType.DateType) {
-            return "Date";
+        switch (elem.type) {
+            case AstNodeType.CustomNodeLiteral:
+                return (elem as CustomAstNodeType).rawValue;
+            case AstNodeType.StringLiteral:
+                return "string";
+            case AstNodeType.IntegerLiteral:
+            case AstNodeType.FloatLiteral:
+            case AstNodeType.DoubleLiteral:
+                return "number";
+            case AstNodeType.BooleanLiteral:
+                return "boolean";
+            case AstNodeType.AnyLiteral:
+                return "any";
+            case AstNodeType.ArrayType:
+                return `Array<${this.getParamType((elem as ArrayType).generic)}>`;
+            case AstNodeType.PromiseType:
+                return `Promise<${this.getParamType((elem as PromiseType).generic)}>`;
+            case AstNodeType.Enum:
+                return (elem as Enum).name;
+            case AstNodeType.TypeAlias:
+                return (elem as TypeAlias).name;
+            case AstNodeType.UnionType:
+                return (elem as UnionType).params
+                    .map((e: Node) => this.getParamType(e))
+                    .join(" | ");
+            case AstNodeType.TypeLiteral:
+                return `{${(elem as TypeLiteral).properties
+                    .map((e: PropertyDefinition) => {
+                        if (
+                            e.type.type === AstNodeType.MapType &&
+                            (elem as TypeLiteral).properties.length === 1
+                        ) {
+                            return `[key: ${this.getParamType(
+                                (e.type as MapType).genericKey,
+                            )}]: ${this.getParamType((e.type as MapType).genericValue)}`;
+                        } else {
+                            return `${e.name}${e.optional ? "?" : ""}: ${this.getParamType(e.type)}`;
+                        }
+                    })
+                    .join(", ")}}`;
+            case AstNodeType.DateType:
+                return "Date";
+            case AstNodeType.MapType:
+                return `{[key: ${this.getParamType((elem as MapType).genericKey)}]: ${this.getParamType(
+                    (elem as MapType).genericValue,
+                )}}`;
+            case AstNodeType.VoidLiteral:
+                return "void";
         }
         return "any";
     }
@@ -610,6 +624,11 @@ class SdkGenerator implements SdkGeneratorInterface {
             return false;
         } else if (type.type === AstNodeType.AnyLiteral) {
             return false;
+        } else if (type.type === AstNodeType.MapType) {
+            return (
+                this.isExternalTypeUsedByOtherType(externalType, (type as MapType).genericKey) ||
+                this.isExternalTypeUsedByOtherType(externalType, (type as MapType).genericValue)
+            );
         }
         return false;
     }
@@ -700,6 +719,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         type: Node,
         classView: ViewType,
         classInfo: SdkGeneratorClassesInfoInput,
+        classDefinition?: ClassDefinition,
     ) {
         let found = false;
         let currentView: ModelView | undefined = undefined;
@@ -711,7 +731,9 @@ class SdkGenerator implements SdkGeneratorInterface {
             }
         }
         if (!found) {
-            const classPath = classInfo.classConfiguration.path.replace(/\\/g, "/");
+            const classPath =
+                classDefinition?.path?.replace(/\\/g, "/") ??
+                classInfo.classConfiguration.path.replace(/\\/g, "/");
             // @ts-expect-error A refactor need to be performed here to avoid this cast
             if (!classPath.includes(type.path)) {
                 currentView = {
