@@ -148,7 +148,7 @@
         "@rollup/rollup-linux-arm64-gnu": "4.9.0",
         "@rollup/rollup-linux-arm64-musl": "4.10.0",
         "@rollup/rollup-linux-riscv64-gnu": "4.9.6",
-        "@rollup/rollup-linux-x64-gnu": "4.9.6",
+        "@rollup/rollup-linux-x64-gnu": "4.12.0",
         "@rollup/rollup-linux-x64-musl": "4.9.1",
         "@rollup/rollup-win32-arm64-msvc": "4.9.0",
         "@rollup/rollup-win32-ia32-msvc": "4.9.6",
