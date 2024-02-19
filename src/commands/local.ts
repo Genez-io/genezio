@@ -919,6 +919,8 @@ async function listenForChanges(sdkPathRelative: string | undefined) {
         const startWatching = () => {
             const watch = chokidar
                 .watch(watchPaths, {
+                    // Disable fsevents for macos
+                    useFsEvents: false,
                     ignored: ignoredPaths,
                     ignoreInitial: true,
                 })
