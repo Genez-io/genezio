@@ -13,6 +13,7 @@ enum GenezioErrorCode {
     BadRequest = 6,
     StatusConflict = 7,
     UpdateRequired = 8,
+    Forbidden = 9,
 }
 
 axios.interceptors.response.use(
@@ -33,6 +34,11 @@ axios.interceptors.response.use(
         }
         if (response.data.error.code === GenezioErrorCode.UpdateRequired) {
             throw new Error("Please update your genezio CLI. Run 'npm update -g genezio'.");
+        }
+        if (response.data.error.code === GenezioErrorCode.Forbidden) {
+            throw new Error(
+                "The frontend subdomain is already in use, please choose a different one.",
+            );
         }
         if (response.data.error.code === GenezioErrorCode.Unauthorized) {
             throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
