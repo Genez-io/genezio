@@ -20,9 +20,10 @@ import {
     ModelView,
     IndexModel,
     MapType,
+    SdkGeneratorClassesInfoInput,
 } from "../../models/genezioModels.js";
 import { TriggerType } from "../../models/yamlProjectConfiguration.js";
-import { nodeSdkTs } from "../templates/nodeSdkTs.js";
+import { nodeSdkTs, storageTs } from "../templates/nodeSdkTs.js";
 import path from "path";
 
 const TYPESCRIPT_RESERVED_WORDS = [
@@ -139,22 +140,89 @@ import { Remote } from "./remote";
 import { {{#models}}{{{name}}}{{^last}}, {{/last}}{{/models}} } from "./{{{path}}}";
 {{/imports}}
 
+{{#hasGnzContext}}
+import { StorageManager } from "./storage";
+{{/hasGnzContext}}
+
 {{#externalTypes}}
 export {{{type}}}
 {{/externalTypes}}
 
+{{#classDocLines.length}}
+/**
+{{#classDocLines}}
+ * {{.}}
+{{/classDocLines}}
+ */
+{{/classDocLines.length}}
 export class {{{className}}} {
   static remote = new Remote("{{{_url}}}");
 
   {{#methods}}
+  {{#hasGnzContextAsFirstParameter}}
+  {{#methodDocLines.length}}
+  /**
+  {{#methodDocLines}}
+   * {{.}}
+  {{/methodDocLines}}
+   */
+  {{/methodDocLines.length}}
+  static async {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}){{{returnType}}} {
+    return await {{{className}}}.remote.call({{{methodCaller}}} {"token": StorageManager.getStorage().getItem("token")}, {{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}});
+  }
+  {{/hasGnzContextAsFirstParameter}}
+  {{^hasGnzContextAsFirstParameter}}
+  {{#methodDocLines.length}}
+  /**
+  {{#methodDocLines}}
+   * {{.}}
+  {{/methodDocLines}}
+   */
+  {{/methodDocLines.length}}
   static async {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}){{{returnType}}} {
     return await {{{className}}}.remote.call({{{methodCaller}}}{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}});
   }
+  {{/hasGnzContextAsFirstParameter}}
   {{/methods}}
 }
 
 export { Remote };
 `;
+
+type MethodViewType = {
+    name: string;
+    parameters: {
+        name: string;
+        last?: boolean;
+    }[];
+    returnType: string;
+    methodCaller: string;
+    sendParameters: {
+        name: string;
+        last?: boolean;
+    }[];
+    hasGnzContextAsFirstParameter: boolean;
+    methodDocLines: string[];
+};
+
+type ViewType = {
+    className: string;
+    _url: string;
+    methods: MethodViewType[];
+    externalTypes: {
+        name: string;
+        type: string;
+    }[];
+    imports: {
+        path: string;
+        models: {
+            name: string;
+            last?: boolean;
+        }[];
+    }[];
+    hasGnzContext: boolean;
+    classDocLines: string[];
+};
 
 class SdkGenerator implements SdkGeneratorInterface {
     async generateSdk(sdkGeneratorInput: SdkGeneratorInput): Promise<SdkGeneratorOutput> {
@@ -190,8 +258,10 @@ class SdkGenerator implements SdkGeneratorInterface {
                 continue;
             }
 
-            const view: any = {
+            // @ts-expect-error A refactor need to be performed here to avoid this error
+            const view: ViewType = {
                 className: classDefinition.name,
+                classDocLines: classDefinition.docString?.replace(/\n+$/, "").split("\n") || [],
                 _url: _url,
                 methods: [],
                 externalTypes: [],
@@ -214,39 +284,73 @@ class SdkGenerator implements SdkGeneratorInterface {
 
                 exportClassChecker = true;
 
-                const methodView: any = {
-                    name: methodDefinition.name,
+                // @ts-expect-error A refactor need to be performed here to avoid this error
+                const methodView: MethodViewType = {
+                    // methods start with lowercase
+                    name:
+                        methodDefinition.name.charAt(0).toLowerCase() +
+                        methodDefinition.name.slice(1),
                     parameters: [],
                     returnType: this.getReturnType(methodDefinition.returnType),
                     methodCaller:
                         methodDefinition.params.length === 0
                             ? `"${classDefinition.name}.${methodDefinition.name}"`
                             : `"${classDefinition.name}.${methodDefinition.name}", `,
+                    methodDocLines:
+                        methodDefinition.docString?.replace(/\n+$/, "").split("\n") || [],
                 };
 
-                methodView.parameters = methodDefinition.params.map((e) => {
-                    return {
-                        name:
-                            (TYPESCRIPT_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name) +
-                            (e.optional ? "?" : "") +
-                            ": " +
-                            this.getParamType(e.paramType) +
-                            (e.defaultValue
-                                ? " = " +
-                                  (e.defaultValue.type === AstNodeType.StringLiteral
-                                      ? "'" + e.defaultValue.value + "'"
-                                      : e.defaultValue.value)
-                                : ""),
-                        last: false,
-                    };
-                });
+                // @ts-expect-error A refactor need to be performed here to avoid this error
+                methodView.parameters = methodDefinition.params
+                    .map((e) => {
+                        // GnzContext is a special type used to pass auth token and other information to the remote call
+                        if (
+                            e.paramType.type === AstNodeType.CustomNodeLiteral &&
+                            e.paramType.rawValue === "GnzContext"
+                        ) {
+                            methodView.hasGnzContextAsFirstParameter = true;
+                            view.hasGnzContext = true;
+                            return undefined;
+                        }
+                        return {
+                            name:
+                                (TYPESCRIPT_RESERVED_WORDS.includes(e.name)
+                                    ? e.name + "_"
+                                    : e.name) +
+                                (e.optional ? "?" : "") +
+                                ": " +
+                                this.getParamType(e.paramType) +
+                                (e.defaultValue
+                                    ? " = " +
+                                      (e.defaultValue.type === AstNodeType.StringLiteral
+                                          ? "'" + e.defaultValue.value + "'"
+                                          : e.defaultValue.value)
+                                    : ""),
+                            last: false,
+                        };
+                    })
+                    .filter((e) => e !== undefined);
 
-                methodView.sendParameters = methodDefinition.params.map((e) => {
-                    return {
-                        name: TYPESCRIPT_RESERVED_WORDS.includes(e.name) ? e.name + "_" : e.name,
-                        last: false,
-                    };
-                });
+                // @ts-expect-error A refactor need to be performed here to avoid this error
+                methodView.sendParameters = methodDefinition.params
+                    .map((e) => {
+                        // GnzContext is a special type used to pass auth token and other information to the remote call
+                        if (
+                            e.paramType.type === AstNodeType.CustomNodeLiteral &&
+                            e.paramType.rawValue === "GnzContext"
+                        ) {
+                            methodView.hasGnzContextAsFirstParameter = true;
+                            view.hasGnzContext = true;
+                            return undefined;
+                        }
+                        return {
+                            name: TYPESCRIPT_RESERVED_WORDS.includes(e.name)
+                                ? e.name + "_"
+                                : e.name,
+                            last: false,
+                        };
+                    })
+                    .filter((e) => e !== undefined);
 
                 if (methodView.parameters.length > 0) {
                     methodView.parameters[methodView.parameters.length - 1].last = true;
@@ -267,6 +371,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                                 parentType,
                                 view,
                                 classInfo,
+                                classDefinition,
                             );
                         }
                         const classPath = classInfo.classConfiguration.path.replace(/\\/g, "/");
@@ -275,8 +380,11 @@ class SdkGenerator implements SdkGeneratorInterface {
                         }
                     }
                     if (this.isExternalTypeUsedInMethod(externalType, classDefinition.methods)) {
+                        // @ts-expect-error A refactor need to be performed here to avoid this error
                         currentView = view;
-                        const classPath = classInfo.classConfiguration.path.replace(/\\/g, "/");
+                        const classPath =
+                            classDefinition.path?.replace(/\\/g, "/") ??
+                            classInfo.classConfiguration.path.replace(/\\/g, "/");
                         if (currentView && !classPath.includes(externalType.path)) {
                             this.addImportToCurrentView(currentView, externalType);
                         }
@@ -287,14 +395,17 @@ class SdkGenerator implements SdkGeneratorInterface {
                         externalType,
                         view,
                         classInfo,
+                        classDefinition,
                     );
                     if (
                         !currentView?.externalTypes.find(
+                            // eslint-disable-next-line  @typescript-eslint/no-explicit-any
                             (e) => e.name === (externalType as any).name,
                         )
                     ) {
                         currentView?.externalTypes.push({
                             type: this.generateExternalType(externalType),
+                            // eslint-disable-next-line  @typescript-eslint/no-explicit-any
                             name: (externalType as any).name,
                         });
                     }
@@ -351,6 +462,18 @@ class SdkGenerator implements SdkGeneratorInterface {
             data: nodeSdkTs.replace("%%%url%%%", "undefined"),
         });
 
+        generateSdkOutput.files.push({
+            className: "StorageManager",
+            path: "storage.ts",
+            data: storageTs,
+        });
+
+        indexModel.imports.push({
+            path: "storage",
+            models: [{ name: "Storage" }, { name: "StorageManager" }],
+        });
+        indexModel.exports.push({ name: "Storage" }, { name: "StorageManager" });
+
         if (indexModel.exports.length > 0) {
             indexModel.exports[indexModel.exports.length - 1].last = true;
         }
@@ -369,7 +492,7 @@ class SdkGenerator implements SdkGeneratorInterface {
     }
 
     getReturnType(returnType: Node): string {
-        if (!returnType || returnType.type === AstNodeType.VoidLiteral) {
+        if (!returnType) {
             return "";
         }
 
@@ -382,44 +505,54 @@ class SdkGenerator implements SdkGeneratorInterface {
     }
 
     getParamType(elem: Node): string {
-        if (elem.type === AstNodeType.CustomNodeLiteral) {
-            return (elem as CustomAstNodeType).rawValue;
-        } else if (elem.type === AstNodeType.StringLiteral) {
-            return "string";
-        } else if (
-            elem.type === AstNodeType.IntegerLiteral ||
-            elem.type === AstNodeType.FloatLiteral ||
-            elem.type === AstNodeType.DoubleLiteral
-        ) {
-            return "number";
-        } else if (elem.type === AstNodeType.BooleanLiteral) {
-            return "boolean";
-        } else if (elem.type === AstNodeType.AnyLiteral) {
-            return "any";
-        } else if (elem.type === AstNodeType.ArrayType) {
-            return `Array<${this.getParamType((elem as ArrayType).generic)}>`;
-        } else if (elem.type === AstNodeType.PromiseType) {
-            return `Promise<${this.getParamType((elem as PromiseType).generic)}>`;
-        } else if (elem.type === AstNodeType.Enum) {
-            return (elem as Enum).name;
-        } else if (elem.type === AstNodeType.TypeAlias) {
-            return (elem as TypeAlias).name;
-        } else if (elem.type === AstNodeType.UnionType) {
-            return (elem as UnionType).params.map((e: Node) => this.getParamType(e)).join(" | ");
-        } else if (elem.type === AstNodeType.TypeLiteral) {
-            return `{${(elem as TypeLiteral).properties
-                .map((e: PropertyDefinition) => {
-                    if (e.type.type === AstNodeType.MapType) {
-                        return `[key: ${this.getParamType(
-                            (e.type as MapType).genericKey,
-                        )}]: ${this.getParamType((e.type as MapType).genericValue)}`;
-                    } else {
-                        return `${e.name}${e.optional ? "?" : ""}: ${this.getParamType(e.type)}`;
-                    }
-                })
-                .join(", ")}}`;
-        } else if (elem.type === AstNodeType.DateType) {
-            return "Date";
+        switch (elem.type) {
+            case AstNodeType.CustomNodeLiteral:
+                return (elem as CustomAstNodeType).rawValue;
+            case AstNodeType.StringLiteral:
+                return "string";
+            case AstNodeType.IntegerLiteral:
+            case AstNodeType.FloatLiteral:
+            case AstNodeType.DoubleLiteral:
+                return "number";
+            case AstNodeType.BooleanLiteral:
+                return "boolean";
+            case AstNodeType.AnyLiteral:
+                return "any";
+            case AstNodeType.ArrayType:
+                return `Array<${this.getParamType((elem as ArrayType).generic)}>`;
+            case AstNodeType.PromiseType:
+                return `Promise<${this.getParamType((elem as PromiseType).generic)}>`;
+            case AstNodeType.Enum:
+                return (elem as Enum).name;
+            case AstNodeType.TypeAlias:
+                return (elem as TypeAlias).name;
+            case AstNodeType.UnionType:
+                return (elem as UnionType).params
+                    .map((e: Node) => this.getParamType(e))
+                    .join(" | ");
+            case AstNodeType.TypeLiteral:
+                return `{${(elem as TypeLiteral).properties
+                    .map((e: PropertyDefinition) => {
+                        if (
+                            e.type.type === AstNodeType.MapType &&
+                            (elem as TypeLiteral).properties.length === 1
+                        ) {
+                            return `[key: ${this.getParamType(
+                                (e.type as MapType).genericKey,
+                            )}]: ${this.getParamType((e.type as MapType).genericValue)}`;
+                        } else {
+                            return `${e.name}${e.optional ? "?" : ""}: ${this.getParamType(e.type)}`;
+                        }
+                    })
+                    .join(", ")}}`;
+            case AstNodeType.DateType:
+                return "Date";
+            case AstNodeType.MapType:
+                return `{[key: ${this.getParamType((elem as MapType).genericKey)}]: ${this.getParamType(
+                    (elem as MapType).genericValue,
+                )}}`;
+            case AstNodeType.VoidLiteral:
+                return "void";
         }
         return "any";
     }
@@ -474,6 +607,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         } else if (type.type === AstNodeType.DateType) {
             return false;
         } else if (type.type === AstNodeType.CustomNodeLiteral) {
+            // eslint-disable-next-line  @typescript-eslint/no-explicit-any
             if ((type as CustomAstNodeType).rawValue === (externalType as any).name) {
                 return true;
             }
@@ -490,6 +624,11 @@ class SdkGenerator implements SdkGeneratorInterface {
             return false;
         } else if (type.type === AstNodeType.AnyLiteral) {
             return false;
+        } else if (type.type === AstNodeType.MapType) {
+            return (
+                this.isExternalTypeUsedByOtherType(externalType, (type as MapType).genericKey) ||
+                this.isExternalTypeUsedByOtherType(externalType, (type as MapType).genericValue)
+            );
         }
         return false;
     }
@@ -509,8 +648,10 @@ class SdkGenerator implements SdkGeneratorInterface {
         for (const importType of currentView.imports) {
             if (
                 importType.path === externalType.path &&
+                // eslint-disable-next-line  @typescript-eslint/no-explicit-any
                 !importType.models.find((e: any) => e.name === (externalType as any).name)
             ) {
+                // eslint-disable-next-line  @typescript-eslint/no-explicit-any
                 importType.models.push({ name: (externalType as any).name });
                 found = true;
                 break;
@@ -521,9 +662,11 @@ class SdkGenerator implements SdkGeneratorInterface {
             while (relativePath.substring(0, 3) == "../") {
                 relativePath = relativePath.substring(3);
             }
+            // eslint-disable-next-line  @typescript-eslint/no-explicit-any
             if (!currentView.imports.find((e: any) => e.path === relativePath)) {
                 currentView.imports.push({
                     path: relativePath.replace(/\\/g, "/"),
+                    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
                     models: [{ name: (externalType as any).name }],
                 });
             }
@@ -547,26 +690,37 @@ class SdkGenerator implements SdkGeneratorInterface {
             const index = indexModel.imports.findIndex((i) => i.path === classItem.path);
             if (index !== -1) {
                 if (
+                    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
                     indexModel.imports[index].models.find((i) => i.name === (classItem as any).name)
                 ) {
                     continue;
                 } else {
                     indexModel.imports[index].models.push({
+                        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
                         name: (classItem as any).name,
                     });
+                    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
                     indexModel.exports.push({ name: (classItem as any).name });
                 }
             } else {
                 indexModel.imports.push({
                     path: classItem.path || "",
+                    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
                     models: [{ name: (classItem as any).name }],
                 });
+                // eslint-disable-next-line  @typescript-eslint/no-explicit-any
                 indexModel.exports.push({ name: (classItem as any).name });
             }
         }
     }
 
-    addViewIfNotExists(modelViews: ModelView[], type: Node, classView: any, classInfo: any) {
+    addViewIfNotExists(
+        modelViews: ModelView[],
+        type: Node,
+        classView: ViewType,
+        classInfo: SdkGeneratorClassesInfoInput,
+        classDefinition?: ClassDefinition,
+    ) {
         let found = false;
         let currentView: ModelView | undefined = undefined;
         for (const modelView of modelViews) {
@@ -577,7 +731,10 @@ class SdkGenerator implements SdkGeneratorInterface {
             }
         }
         if (!found) {
-            const classPath = classInfo.classConfiguration.path.replace(/\\/g, "/");
+            const classPath =
+                classDefinition?.path?.replace(/\\/g, "/") ??
+                classInfo.classConfiguration.path.replace(/\\/g, "/");
+            // @ts-expect-error A refactor need to be performed here to avoid this cast
             if (!classPath.includes(type.path)) {
                 currentView = {
                     path: type.path || "",
@@ -586,7 +743,8 @@ class SdkGenerator implements SdkGeneratorInterface {
                 };
                 modelViews.push(currentView);
             } else {
-                currentView = classView;
+                // @ts-expect-error A refactor need to be performed here to avoid this cast
+                currentView = classView as ModelView;
             }
         }
         return currentView;

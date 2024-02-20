@@ -1,9 +1,7 @@
 import log, { LogLevelDesc } from "loglevel";
 import { Spinner } from "cli-spinner";
 import { AbortController } from "node-abort-controller";
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import terminalOverwrite from "terminal-overwrite";
+import logUpdate from "log-update";
 import colors from "colors";
 
 export const spinner = new Spinner("%s  ");
@@ -20,16 +18,29 @@ export function setDebuggingLoggerLogLevel(logLevel?: string) {
 export function printAdaptiveLog(message: string, state: string) {
     if (state == "end") {
         spinner.stop(true);
-        terminalOverwrite(message + "...✅");
-        log.info("");
+        logUpdate(message + "...✅");
+        logUpdate.done();
     } else if (state == "start") {
-        terminalOverwrite(message + "...");
+        logUpdate(message + "...");
         spinner.start();
     } else {
         spinner.stop(true);
-        terminalOverwrite(message + "...❌");
-        log.info("");
+        logUpdate(message + "...❌");
+        logUpdate.done();
     }
+}
+
+export async function doAdaptiveLogAction<T>(message: string, action: () => Promise<T>) {
+    printAdaptiveLog(message, "start");
+    return action()
+        .then((result) => {
+            printAdaptiveLog(message, "end");
+            return result;
+        })
+        .catch((error) => {
+            printAdaptiveLog(message, "error");
+            throw error;
+        });
 }
 
 export function code(code: string): string {

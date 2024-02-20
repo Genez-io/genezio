@@ -47,6 +47,7 @@ export function getAstSummary(classesInfo: SdkGeneratorClassesInfoInput[]): AstS
                         name: method.name,
                         type: classConfiguration.classConfiguration.getMethodType(method.name),
                         params: params,
+                        docString: method.docString,
                         returnType: method.returnType,
                     };
                     return methodInfo;
@@ -59,6 +60,7 @@ export function getAstSummary(classesInfo: SdkGeneratorClassesInfoInput[]): AstS
                 language: classConfiguration.classConfiguration.language,
                 methods: methods,
                 types: types,
+                docString: classElem.docString,
             };
             return classInfo;
         });

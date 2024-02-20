@@ -11,6 +11,7 @@ export type AstSummaryMethod = {
     type: TriggerType;
     params: AstSummaryParam[];
     returnType: any;
+    docString?: string;
 };
 
 export type AstSummaryClass = {
@@ -19,6 +20,7 @@ export type AstSummaryClass = {
     language: string;
     types: any[];
     methods: AstSummaryMethod[];
+    docString?: string;
 };
 
 export type AstSummary = {
@@ -32,4 +34,5 @@ export type AstSummaryClassResponse = {
     types: any[];
     methods: AstSummaryMethod[];
     version: string;
+    docString?: string;
 };

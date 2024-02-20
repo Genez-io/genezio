@@ -13,7 +13,11 @@ import url from "url";
 import * as http from "http";
 import colors from "colors";
 import { ProjectConfiguration, ClassConfiguration } from "../models/projectConfiguration.js";
-import { LOCAL_TEST_INTERFACE_URL, RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE, REQUIRED_GENEZIO_TYPES_VERSION_RANGE } from "../constants.js";
+import {
+    LOCAL_TEST_INTERFACE_URL,
+    RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
+    REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
+} from "../constants.js";
 import { GENEZIO_NO_CLASSES_FOUND, PORT_ALREADY_USED } from "../errors.js";
 import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
 import { AstSummary } from "../models/astSummary.js";
@@ -51,7 +55,6 @@ import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js
 import dotenv from "dotenv";
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
 import inquirer, { Answers } from "inquirer";
-import { EOL } from "os";
 import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
 import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJson.js";
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
@@ -66,6 +69,7 @@ import {
     CloudProviderIdentifier,
     LambdaResponse,
 } from "../models/cloudProviderIdentifier.js";
+import { GoBundler } from "../bundlers/go/localGoBundler.js";
 import { importServiceEnvVariables } from "../utils/servicesEnvVariables.js";
 import { isDependencyVersionCompatible } from "../utils/dependencyChecker.js";
 
@@ -157,16 +161,22 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         eventType: TelemetryEventTypes.GENEZIO_LOCAL,
         commandOptions: JSON.stringify(options),
     });
-    const yamlProjectConfiguration = await getProjectConfiguration();
+    const yamlProjectConfiguration = await getProjectConfiguration(options.config);
 
     // We need to check if the user is using an older version of @genezio/types
     // because we migrated the decorators implemented in the @genezio/types package to the stage 3 implementation.
     // Otherwise, the user will get an error at runtime. This check can be removed in the future once no one is using version
     // 0.1.* of @genezio/types.
-    const packageJsonPath = yamlProjectConfiguration.workspace ? 
-        path.join(yamlProjectConfiguration.workspace.backend, "package.json") :
-        path.join(process.cwd(), "package.json");
-    if (isDependencyVersionCompatible(packageJsonPath, "@genezio/types", REQUIRED_GENEZIO_TYPES_VERSION_RANGE) === false) {
+    const packageJsonPath = yamlProjectConfiguration.workspace
+        ? path.join(yamlProjectConfiguration.workspace.backend, "package.json")
+        : path.join(process.cwd(), "package.json");
+    if (
+        isDependencyVersionCompatible(
+            packageJsonPath,
+            "@genezio/types",
+            REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
+        ) === false
+    ) {
         log.error(
             `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To solve this, please update the @genezio/types package on your backend component using the following command: npm install @genezio/types@${RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE}`,
         );
@@ -201,7 +211,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         // Read the project configuration every time because it might change
         let yamlProjectConfiguration;
         try {
-            yamlProjectConfiguration = await getProjectConfiguration();
+            yamlProjectConfiguration = await getProjectConfiguration(options.config);
         } catch (error) {
             if (error instanceof Error) {
                 log.error(error.message);
@@ -332,12 +342,14 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`,
                 })),
             );
-            await writeSdkToDisk(sdk, sdkConfiguration.path);
+
             if (
                 !yamlProjectConfiguration.sdk &&
                 (sdkConfiguration.language === Language.ts ||
                     sdkConfiguration.language === Language.js)
             ) {
+                await deleteFolder(sdkConfiguration.path);
+                await writeSdkToDisk(sdk, sdkConfiguration.path);
                 // compile the sdk
                 const packageJson: string = getNodeModulePackageJsonLocal(
                     projectConfiguration.name,
@@ -355,6 +367,8 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     yamlProjectConfiguration,
                     sdkConfiguration.path,
                 );
+            } else {
+                await writeSdkToDisk(sdk, sdkConfiguration.path);
             }
         }
 
@@ -610,6 +624,10 @@ function getBundler(classConfiguration: ClassConfiguration): BundlerInterface | 
             bundler = new KotlinBundler();
             break;
         }
+        case ".go": {
+            bundler = new GoBundler();
+            break;
+        }
         default: {
             log.error(`Unsupported language ${classConfiguration.language}. Skipping class `);
         }
@@ -863,7 +881,7 @@ async function listenForChanges(sdkPathRelative: string | undefined) {
         // read the file as a string
         const ignoreFile = await readUTF8File(ignoreFilePath);
         // split the string by newline - CRLF or LF
-        const ignoreFileLines = ignoreFile.split(EOL);
+        const ignoreFileLines = ignoreFile.split(/\r?\n/);
         // remove empty lines
         const ignoreFileLinesWithoutEmptyLines = ignoreFileLines.filter(
             (line) => line !== "" && !line.startsWith("#"),
@@ -901,6 +919,8 @@ async function listenForChanges(sdkPathRelative: string | undefined) {
         const startWatching = () => {
             const watch = chokidar
                 .watch(watchPaths, {
+                    // Disable fsevents for macos
+                    useFsEvents: false,
                     ignored: ignoredPaths,
                     ignoreInitial: true,
                 })

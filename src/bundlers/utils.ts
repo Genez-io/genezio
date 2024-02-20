@@ -9,6 +9,7 @@ import { NodeJsBinaryDependenciesBundler } from "./node/nodeJsBinaryDependencies
 import { BundlerComposer } from "./bundlerComposer.js";
 import { DartBundler } from "./dart/dartBundler.js";
 import { KotlinBundler } from "./kotlin/kotlinBundler.js";
+import { GoBundler } from "./go/goBundler.js";
 import { debugLogger, printAdaptiveLog } from "../utils/logging.js";
 import { createTemporaryFolder } from "../utils/file.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
@@ -57,6 +58,10 @@ export async function bundle(
             bundler = new KotlinBundler();
             break;
         }
+        case ".go": {
+            bundler = new GoBundler();
+            break;
+        }
         default:
             log.error(`Unsupported ${element.language}`);
             throw new Error(`Unsupported ${element.language}`);
@@ -77,8 +82,6 @@ export async function bundle(
             installDeps,
         },
     });
-    debugLogger.debug(
-        `The bundling process finished successfully for file ${element.path}.`,
-    );
+    debugLogger.debug(`The bundling process finished successfully for file ${element.path}.`);
     return output;
 }

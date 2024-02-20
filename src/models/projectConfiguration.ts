@@ -22,6 +22,7 @@ export class MethodConfiguration {
     parameters: ParameterType[];
     cronString?: string;
     type: TriggerType;
+    docString?: string;
     returnType: any;
 
     constructor(
@@ -29,6 +30,7 @@ export class MethodConfiguration {
         parameters: string[],
         returnType: any,
         type?: TriggerType,
+        docString?: string,
         cronString?: string,
     ) {
         this.name = name;
@@ -36,6 +38,7 @@ export class MethodConfiguration {
         this.type = type ?? TriggerType.jsonrpc;
         this.cronString = cronString;
         this.returnType = returnType;
+        this.docString = docString;
     }
 }
 
@@ -47,6 +50,7 @@ export class ClassConfiguration {
     methods: MethodConfiguration[];
     types: any[];
     version: string;
+    docString?: string;
 
     constructor(
         name: string,
@@ -56,6 +60,7 @@ export class ClassConfiguration {
         methods: MethodConfiguration[],
         types: any[],
         version: string,
+        docString?: string,
     ) {
         this.name = name;
         this.path = path;
@@ -64,6 +69,7 @@ export class ClassConfiguration {
         this.language = language;
         this.types = types;
         this.version = version;
+        this.docString = docString;
     }
 }
 
@@ -132,6 +138,7 @@ export class ProjectConfiguration {
                     language: c.language,
                     type: yamlClass?.getMethodType(m.name),
                     returnType: m.returnType,
+                    docString: m.docString,
                 };
             });
 
@@ -143,6 +150,7 @@ export class ProjectConfiguration {
                 methods: methods,
                 types: c.types,
                 version: this.astSummary.version,
+                docString: c.docString,
             };
         });
     }

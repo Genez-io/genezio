@@ -7,7 +7,7 @@ import {
     SdkGeneratorOutput,
     IndexModel,
 } from "../../models/genezioModels.js";
-import { nodeSdkJs } from "../templates/nodeSdkJs.js";
+import { nodeSdkJs, storageJs } from "../templates/nodeSdkJs.js";
 import Mustache from "mustache";
 
 const indexTemplate = `/**
@@ -29,17 +29,68 @@ const template = `/**
 
 import { Remote } from "./remote.js"
 
+{{#hasGnzContext}}
+import { StorageManager } from "./storage.js"
+{{/hasGnzContext}}
+
+{{#classDocLines.length}}
+/**
+{{#classDocLines}}
+ * {{.}}
+{{/classDocLines}}
+ */
+{{/classDocLines.length}}
 export class {{{className}}} {
   static remote = new Remote("{{{_url}}}")
 
   {{#methods}}
+  {{#hasGnzContextAsFirstParameter}}
+  {{#methodDocLines.length}}
+  /**
+  {{#methodDocLines}}
+   * {{.}}
+  {{/methodDocLines}}
+   */
+  {{/methodDocLines.length}}
+  static async {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) {
+    return {{{className}}}.remote.call({{{methodCaller}}} {"token": StorageManager.getStorage().getItem("token")}, {{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}})
+  }
+  {{/hasGnzContextAsFirstParameter}}
+  {{^hasGnzContextAsFirstParameter}}
+  {{#methodDocLines.length}}
+  /**
+  {{#methodDocLines}}
+   * {{.}}
+  {{/methodDocLines}}
+   */
+  {{/methodDocLines.length}}
   static async {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) {
     return {{{className}}}.remote.call({{{methodCaller}}}{{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}})
   }
+  {{/hasGnzContextAsFirstParameter}}
 
   {{/methods}}
 }
 `;
+
+type MethodViewType = {
+    name: string;
+    parameters: {
+        name: string;
+        last: boolean;
+    }[];
+    methodCaller: string;
+    hasGnzContextAsFirstParameter?: boolean;
+    methodDocLines: string[];
+};
+
+type ViewType = {
+    className: string;
+    _url: string;
+    methods: MethodViewType[];
+    hasGnzContext?: boolean;
+    classDocLines: string[];
+};
 
 class SdkGenerator implements SdkGeneratorInterface {
     async generateSdk(sdkGeneratorInput: SdkGeneratorInput): Promise<SdkGeneratorOutput> {
@@ -71,10 +122,11 @@ class SdkGenerator implements SdkGeneratorInterface {
                 continue;
             }
 
-            const view: any = {
+            const view: ViewType = {
                 className: classDefinition.name,
                 _url: _url,
                 methods: [],
+                classDocLines: classDefinition.docString?.replace(/\n+$/, "").split("\n") || [],
             };
 
             let exportClassChecker = false;
@@ -93,21 +145,31 @@ class SdkGenerator implements SdkGeneratorInterface {
 
                 exportClassChecker = true;
 
-                const methodView: any = {
+                const methodView: MethodViewType = {
                     name: methodDefinition.name,
                     parameters: [],
                     methodCaller:
                         methodDefinition.params.length === 0
                             ? `"${classDefinition.name}.${methodDefinition.name}"`
                             : `"${classDefinition.name}.${methodDefinition.name}", `,
+                    methodDocLines:
+                        methodDefinition.docString?.replace(/\n+$/, "").split("\n") || [],
                 };
 
-                methodView.parameters = methodDefinition.params.map((e) => {
-                    return {
-                        name: e.name,
-                        last: false,
-                    };
-                });
+                methodView.parameters = methodDefinition.params
+                    .map((e) => {
+                        if (e.name === "gnzContext") {
+                            methodView.hasGnzContextAsFirstParameter = true;
+                            view.hasGnzContext = true;
+                            return undefined;
+                        }
+
+                        return {
+                            name: e.name,
+                            last: false,
+                        };
+                    })
+                    .filter((e) => e !== undefined) as { name: string; last: boolean }[];
 
                 if (methodView.parameters.length > 0) {
                     methodView.parameters[methodView.parameters.length - 1].last = true;
@@ -137,6 +199,26 @@ class SdkGenerator implements SdkGeneratorInterface {
             className: "Remote",
             path: "remote.js",
             data: nodeSdkJs.replace("%%%url%%%", "undefined"),
+        });
+
+        generateSdkOutput.files.push({
+            className: "StorageManager",
+            path: "storage.js",
+            data: storageJs,
+        });
+
+        indexModel.imports.push({
+            path: "storage.js",
+            models: [
+                {
+                    name: "StorageManager",
+                },
+            ],
+        });
+
+        indexModel.exports.push({
+            name: "StorageManager",
+            last: false,
         });
 
         // generate index.js

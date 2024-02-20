@@ -86,6 +86,14 @@ export class Remote {
        }
    }
 
+   deserialize(s) {
+       const e = new Error(s.message);
+       e.stack = s.stack
+       e.info = s.info
+       e.code = s.code
+       return e
+   }
+
    async call(method, ...args) {
        const requestContent = {"jsonrpc": "2.0", "method": method, "params": args, "id": 3};
        let response = undefined;
@@ -99,10 +107,48 @@ export class Remote {
        }
 
        if (response.error) {
-           return response.error.message;
+           throw this.deserialize(response.error)
        }
 
        return response.result;
    }
 }
+`;
+
+export const storageJs = `/**
+* This is an auto generated code. This code should not be modified since the file can be overwritten
+* if new genezio commands are executed.
+*/
+
+class LocalStorageWrapper {
+  setItem(key, value) {
+    localStorage.setItem(key, value);
+  }
+
+  getItem(key) {
+    return localStorage.getItem(key);
+  }
+
+  removeItem(key) {
+    localStorage.removeItem(key);
+  }
+
+  clear() {
+    localStorage.clear();
+  }
+}
+
+export class StorageManager {
+  static storage = null;
+  static getStorage() {
+    if (!this.storage) {
+      this.storage = new LocalStorageWrapper();
+    }
+    return this.storage;
+  }
+  static setStorage(storage) {
+    this.storage = storage;
+  }
+}
+
 `;

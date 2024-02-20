@@ -155,6 +155,11 @@ program
         "Set a subdomain for your frontend. If not set, the subdomain will be randomly generated.",
         undefined,
     )
+    .option(
+        "--config <config>",
+        "Use a specific `genezio.yaml` file as deployment configuration",
+        "./genezio.yaml",
+    )
     .summary("Deploy your project to the cloud.")
     .description(
         `Use --frontend to deploy only the frontend application.
@@ -191,6 +196,11 @@ program
     .option("--path <path>", "Set the path where to generate your local sdk.")
     .option("-l | --language <language>", "Language of the generated sdk.")
     .option("--install-deps", "Automatically install missing dependencies.", false)
+    .option(
+        "--config <config>",
+        "Use a specific `genezio.yaml` file as deployment configuration",
+        "./genezio.yaml",
+    )
     .summary("Test a project in a local environment.")
     .action(async (options: GenezioLocalOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
@@ -233,7 +243,7 @@ const create = program
             commandOptions: JSON.stringify(createOptions),
         });
 
-        createCommand(createOptions).catch(async (error) => {
+        await createCommand(createOptions).catch(async (error) => {
             log.error(error.message);
             await telemetryEvent;
             await GenezioTelemetry.sendEvent({
@@ -291,7 +301,7 @@ create
             commandOptions: JSON.stringify(createOptions),
         });
 
-        createCommand(createOptions).catch(async (error) => {
+        await createCommand(createOptions).catch(async (error) => {
             log.error(error.message);
             await telemetryEvent;
             await GenezioTelemetry.sendEvent({

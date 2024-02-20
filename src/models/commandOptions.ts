@@ -15,6 +15,7 @@ export interface GenezioLocalOptions extends BaseOptions {
     env?: string;
     path?: string;
     language?: string;
+    config: string;
 }
 
 export interface GenezioDeployOptions extends BaseOptions {
@@ -24,6 +25,7 @@ export interface GenezioDeployOptions extends BaseOptions {
     env?: string;
     stage?: string;
     subdomain?: string;
+    config: string;
 }
 
 export interface GenezioListOptions extends BaseOptions {

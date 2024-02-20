@@ -188,7 +188,7 @@ export class AstGenerator implements AstGeneratorInterface {
                 const properties: PropertyDefinition[] = [];
 
                 for (const member of (type as typescript.TypeLiteralNode).members) {
-                    if (typescript.isPropertyDeclaration(member) && member.type) {
+                    if (typescript.isPropertySignature(member) && member.type) {
                         properties.push({
                             name: typescript.isIdentifier(member.name)
                                 ? member.name.text
@@ -292,11 +292,30 @@ export class AstGenerator implements AstGeneratorInterface {
                         .relative(process.cwd(), typeAtLocationPath)
                         .replace(/\\/g, "/");
 
+                    let docString: string | undefined = undefined;
+                    const sourceFile = this.rootNode;
+                    if (sourceFile !== undefined) {
+                        const commentRanges = typescript.getLeadingCommentRanges(
+                            sourceFile.getFullText(),
+                            copy.pos,
+                        );
+
+                        // Iterate over all the comments and retain only the last JSDoc comment
+                        for (const comment of commentRanges ?? []) {
+                            const commentText = extractDocStringFromJsDoc(
+                                sourceFile.getFullText().slice(comment.pos, comment.end),
+                            );
+
+                            docString = commentText || docString;
+                        }
+                    }
+
                     return {
                         type: AstNodeType.ClassDefinition,
                         name: copy.name?.text ?? "undefined",
                         methods: methods,
                         path: pathFile,
+                        docString: docString,
                     };
                 }
             }
@@ -404,13 +423,32 @@ export class AstGenerator implements AstGeneratorInterface {
                 throw new Error("Computed property names as method names are not supported");
         }
 
+        let docString: string | undefined = undefined;
+        const sourceFile = this.rootNode;
+        if (sourceFile !== undefined) {
+            const commentRanges = typescript.getLeadingCommentRanges(
+                sourceFile.getFullText(),
+                methodDeclarationCopy.pos,
+            );
+
+            // Iterate over all the comments and retain only the last JSDoc comment
+            for (const comment of commentRanges ?? []) {
+                const commentText = extractDocStringFromJsDoc(
+                    sourceFile.getFullText().slice(comment.pos, comment.end),
+                );
+
+                docString = commentText || docString;
+            }
+        }
+
         return {
             type: AstNodeType.MethodDefinition,
+            docString: docString,
             name: methodName,
             params: parameters,
             returnType: methodDeclarationCopy.type
                 ? this.mapTypesToParamType(methodDeclarationCopy.type, typeChecker, declarations)
-                : { type: AstNodeType.VoidLiteral },
+                : { type: AstNodeType.AnyLiteral },
             static: false,
             kind: MethodKindEnum.method,
         };
@@ -512,6 +550,22 @@ export class AstGenerator implements AstGeneratorInterface {
             },
         };
     }
+}
+
+function extractDocStringFromJsDoc(jsDoc: string): string | undefined {
+    // Only match comments that start with `/**` and end with `*/` (i.e. JSDoc comments)
+    const jsDocRegex = /\/\*\*([\s\S]*?)\*\//;
+    const match = jsDoc.match(jsDocRegex);
+    if (match) {
+        // Remove the leading ` * ` from each line
+        return match[1]
+            .replace(/(^|\n)\s*\*\s*/g, "$1")
+            .split("\n")
+            .map((l) => l.trim())
+            .join("\n");
+    }
+
+    return undefined;
 }
 
 const supportedExtensions = ["ts"];

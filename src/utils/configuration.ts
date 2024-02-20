@@ -217,7 +217,7 @@ async function tryToReadClassInformationFromDecorators(
 }
 
 export async function getProjectConfiguration(
-    configurationFilePath = "./genezio.yaml",
+    configurationFilePath: string,
     skipClassScan = false,
 ): Promise<YamlProjectConfiguration> {
     if (!(await checkYamlFileExists(configurationFilePath))) {

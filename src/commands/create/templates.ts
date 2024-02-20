@@ -25,6 +25,10 @@ export const backendTemplates: Record<string, Template> = {
         pkgManager: "npm",
         coloring: colors.yellow,
     },
+    go: {
+        name: "Golang (Experimental)",
+        coloring: colors.cyan,
+    },
     "onboarding-ts": {
         name: "TypeScript for Onboarding",
         pkgManager: "npm",
@@ -59,10 +63,20 @@ export const frontendTemplates: Record<string, Template | undefined> = {
         pkgManager: "npm",
         coloring: colors.green,
     },
+    "svelte-ts": {
+        name: "Svelte (TypeScript)",
+        pkgManager: "npm",
+        coloring: colors.red,
+    },
+    "svelte-js": {
+        name: "Svelte (JavaScript)",
+        pkgManager: "npm",
+        coloring: colors.red,
+    },
     "vanilla-js": {
         name: "HTML (Vanilla JS)",
         pkgManager: undefined,
-        coloring: colors.red,
+        coloring: colors.yellow,
     },
     "onboarding-react": {
         name: "React (TypeScript) for Onboarding",

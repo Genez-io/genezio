@@ -88,6 +88,14 @@ async function makeRequestNode(request: any, url: any, agent: any) {
         }
     }
 
+     deserialize(s: any) {
+        const e: any = new Error(s.message);
+        e.stack = s.stack
+        e.info = s.info
+        e.code = s.code
+        return e
+    }
+
     async call(method: any, ...args: any[]) {
         const requestContent = {"jsonrpc": "2.0", "method": method, "params": args, "id": 3};
         let response: any = undefined;
@@ -102,10 +110,58 @@ async function makeRequestNode(request: any, url: any, agent: any) {
         }
 
         if (response.error) {
-            return response.error.message;
+            throw this.deserialize(response.error);
         }
 
         return response.result;
     }
 }
+`;
+
+export const storageTs = `/**
+* This is an auto generated code. This code should not be modified since the file can be overwritten
+* if new genezio commands are executed.
+*/
+
+export interface Storage {
+    setItem(key: string, value: string): void;
+    
+    getItem(key: string): string | null;
+    
+    removeItem(key: string): void;
+    
+    clear(): void;
+}
+
+class LocalStorageWrapper implements Storage {
+  setItem(key: string, value: string): void {
+    localStorage.setItem(key, value);
+  }
+
+  getItem(key: string): string | null {
+    return localStorage.getItem(key);
+  }
+
+  removeItem(key: string): void {
+    localStorage.removeItem(key);
+  }
+
+  clear(): void {
+    localStorage.clear();
+  }
+}
+
+export class StorageManager {
+  private static storage: Storage|null = null;
+  static getStorage(): Storage {
+    if (!this.storage) {
+      this.storage = new LocalStorageWrapper();
+    }
+    return this.storage;
+  }
+  static setStorage(storage: Storage): void {
+    this.storage = storage;
+  }
+}
+
 `;
