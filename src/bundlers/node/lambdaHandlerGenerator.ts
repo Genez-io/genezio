@@ -239,35 +239,43 @@ if (!genezioClass) {
             });
 
             try {
-                const response = Promise.resolve(object[method](...(body.params || [])))
-                    .then((result) => {
-                        return {
-                            statusCode: 200,
-                            body: JSON.stringify({
-                                jsonrpc: "2.0",
-                                result: result,
-                                error: null,
-                                id: requestId,
-                            }),
-                            headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
-                        };
-                    })
-                    .catch(async (err) => {
-                        console.error(err);
-                        await sendSentryError(err);
-                        return {
-                            statusCode: 200,
-                            body: JSON.stringify({
-                                jsonrpc: "2.0",
-                                error: prepareForSerialization(err),
-                                id: requestId,
-                            }),
-                            headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
-                        };
-                    });
-
-                const result = await Promise.race([errorPromise, response]);
-                return result;
+                const timeoutDuration = 29000;
+                const timeoutPromise = new Promise((resolve,reject) => {
+                    setTimeout(() => {
+                       reject(new Error("Request timeout"));
+                    }, timeoutDuration);
+                });
+                
+                const response = Promise.race([
+                    Promise.resolve(object[method](...(body.params || []))),
+                    errorPromise,
+                    timeoutPromise,
+                ]).then((result) => {
+                    return {
+                        statusCode: 200,
+                        body: JSON.stringify({
+                            jsonrpc: "2.0",
+                            result: result,
+                            error: null,
+                            id: requestId,
+                        }),
+                        headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
+                    };
+                }).catch(async (err) => {
+                    console.error(err);
+                    await sendSentryError(err);
+                    return {
+                        statusCode: 200,
+                        body: JSON.stringify({
+                            jsonrpc: "2.0",
+                            error: prepareForSerialization(err),
+                            id: requestId,
+                        }),
+                        headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
+                    };
+                });
+                
+                return response;
             } catch (err) {
                 console.error(err);
                 await sendSentryError(err);
