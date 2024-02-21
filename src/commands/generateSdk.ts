@@ -166,7 +166,7 @@ export async function generateRemoteSdkCommand(projectName: string, options: Gen
                     },
                 ]);
                 if (answers["createConfig"]) {
-                    const projects = await listProjects(0);
+                    const projects = await listProjects();
                     const options = [
                         ...new Set(
                             projects.map((p) => ({
@@ -221,7 +221,7 @@ async function generateRemoteSdkHandler(
     sdkType: SdkType,
 ) {
     // get all project classes
-    const projects = await listProjects(0);
+    const projects = await listProjects();
 
     // check if the project exists with the configuration project name, region
     const project = projects.find(

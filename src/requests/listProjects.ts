@@ -6,9 +6,7 @@ import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import { ProjectListElement, StatusOk } from "./models.js";
 import { AxiosResponse } from "axios";
 
-export default async function listProjects(index = 0): Promise<ProjectListElement[]> {
-    const limit = 100;
-
+export default async function listProjects(index = 0, limit = 100): Promise<ProjectListElement[]> {
     const authToken = await getAuthToken();
 
     if (!authToken) {

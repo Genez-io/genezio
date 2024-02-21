@@ -57,7 +57,7 @@ async function lsHandler(identifier: string, l: boolean) {
             log.info(
                 `[${1 + index}]: Project name: ${project.name},\n\tRegion: ${
                     project.region
-                },\n\tID: ${project.id},\n\tCreated: ${createdAt},\n\tUpdated: ${updatedAt}`,
+                },\n\tID: ${project.id},\n\tCloud Provider: ${project.cloudProvider}\n\tCreated: ${createdAt},\n\tUpdated: ${updatedAt}`,
             );
         } else {
             log.info(

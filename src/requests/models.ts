@@ -15,6 +15,7 @@ export interface ProjectListElement {
     id: string;
     name: string;
     region: string;
+    cloudProvider: string;
     createdAt: number;
     updatedAt: number;
     projectEnvs: ProjectListEnvElement[];
