@@ -102,6 +102,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
         configuration.cloudProvider || CloudProviderIdentifier.AWS,
     );
 
+    let deployClassesResult;
     if (!options.frontend || options.backend) {
         if (configuration.classes.length === 0) {
             log.error(
@@ -130,7 +131,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 cloudProvider: configuration.cloudProvider,
                 commandOptions: JSON.stringify(options),
             });
-            await deployClasses(configuration, cloudAdapter, options).catch(
+            deployClassesResult = await deployClasses(configuration, cloudAdapter, options).catch(
                 async (error: AxiosError<Status>) => {
                     await GenezioTelemetry.sendEvent({
                         eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_ERROR,
@@ -190,6 +191,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
         }
     }
 
+    let frontendUrl;
     if (!options.backend || options.frontend) {
         if (configuration.scripts?.preFrontendDeploy) {
             log.info("Running preFrontendDeploy script...");
@@ -214,24 +216,21 @@ export async function deployCommand(options: GenezioDeployOptions) {
         });
 
         log.info("Deploying your frontend to the genezio infrastructure...");
-        let url;
         try {
-            url = await deployFrontend(configuration, cloudAdapter, options);
+            frontendUrl = await deployFrontend(configuration, cloudAdapter, options);
         } catch (error) {
             if (error instanceof Error) {
                 log.error(error.message);
-                if (error.message == "No frontend entry in genezio configuration file.") {
-                    exit(0);
+                if (error.message != "No frontend entry in genezio configuration file.") {
+                    await GenezioTelemetry.sendEvent({
+                        eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_ERROR,
+                        errorTrace: error.toString(),
+                        commandOptions: JSON.stringify(options),
+                    });
+                    exit(1);
                 }
-                await GenezioTelemetry.sendEvent({
-                    eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_ERROR,
-                    errorTrace: error.toString(),
-                    commandOptions: JSON.stringify(options),
-                });
             }
-            exit(1);
         }
-        log.info("\x1b[36m%s\x1b[0m", `Frontend successfully deployed at ${url}`);
 
         await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_END,
@@ -254,6 +253,15 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 exit(1);
             }
         }
+    }
+    if (deployClassesResult) {
+        log.info(
+            "\x1b[36m%s\x1b[0m",
+            `Genezio project URL: ${REACT_APP_BASE_URL}/project/${deployClassesResult.projectId}/${deployClassesResult.projectEnvId}`,
+        );
+    }
+    if (frontendUrl) {
+        log.info("\x1b[36m%s\x1b[0m", `Frontend URL: ${frontendUrl}`);
     }
 }
 
@@ -403,6 +411,7 @@ export async function deployClasses(
         await compileSdk(path.join(localPath, "sdk"), packageJson, configuration.language, true);
     }
 
+    let isMonoRepo = configuration.workspace ? true : false;
     reportSuccess(
         result.classes,
         sdkResponse,
@@ -413,6 +422,7 @@ export async function deployClasses(
             stage: stage,
         },
         !configuration.sdk,
+        isMonoRepo,
     );
 
     const projectId = result.classes[0].projectId;
@@ -517,9 +527,10 @@ export async function deployClasses(
             }
         }
 
-        log.info(
-            `Your backend project has been deployed and is available at ${REACT_APP_BASE_URL}/project/${projectId}/${projectEnvId}`,
-        );
+        return {
+            projectId: projectId,
+            projectEnvId: projectEnvId,
+        };
     }
 }
 

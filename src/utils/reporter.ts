@@ -23,15 +23,15 @@ export function reportSuccess(
     command: GenezioCommand,
     projectConfiguration: ProjectPrimaryKeys,
     newVersion: boolean,
+    isMonoRepo: boolean = true,
 ) {
     if (command === GenezioCommand.deploy) {
         if (sdkResponse.files.length > 0) {
             log.info(
                 "\x1b[36m%s\x1b[0m",
-                "Your code was deployed and the SDK was successfully generated!",
+                "Your backend code was deployed and the SDK was successfully generated",
             );
-
-            if (newVersion) {
+            if (newVersion && isMonoRepo) {
                 log.info(
                     boxen(
                         `${colors.green(
@@ -53,7 +53,7 @@ export function reportSuccess(
                 );
             }
         } else {
-            log.info("\x1b[36m%s\x1b[0m", "Your code was successfully deployed!");
+            log.info("\x1b[36m%s\x1b[0m", "Your backend code was successfully deployed!");
         }
     } else {
         if (sdkResponse.files.length > 0) {
