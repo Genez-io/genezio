@@ -198,8 +198,8 @@ async function createFullstackProject(
             "(•◡•)region(•◡•)": fullstackProjectOpts.region,
         });
 
-        // Create .genezioignore file that ignores the client folder
-        fs.writeFileSync("/.genezioignore", "client\n");
+        // Create .genezioignore file that ignores the client folder and the .git folder
+        fs.writeFileSync("/.genezioignore", "client\n.git\n");
 
         // Create git repository
         await git.init({ fs, dir: "/", defaultBranch: "main" });
