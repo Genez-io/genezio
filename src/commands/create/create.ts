@@ -184,6 +184,11 @@ async function createFullstackProject(
         await createProject(fs, backendProjectInfo, "/server");
         await fs.promises.rmdir("/server/.git", { recursive: true });
 
+        // Delete .genezioignore from server as we will create a new .genezioignore file in root
+        if (fs.existsSync("/server/.genezioignore")) {
+            fs.rmSync("/server/.genezioignore");
+        }
+
         // Create frontend, but provide only backend-compatible templates
         if (frontendTemplates[fullstackProjectOpts.frontend] !== undefined) {
             await createProject(fs, frontendProjectInfo, "/client");
