@@ -43,13 +43,14 @@ export class AstGenerator implements AstGeneratorInterface {
             );
         }
 
-        if (!fs.existsSync(path.join(os.homedir(), ".golang_ast_generator"))) {
-            fs.mkdirSync(path.join(os.homedir(), ".golang_ast_generator"));
+        if (!fs.existsSync(path.join(os.homedir(), ".genezio", ".golang_ast_generator"))) {
+            fs.mkdirSync(path.join(os.homedir(), ".genezio", ".golang_ast_generator"));
         }
 
         const goAstGeneratorPath = path.join(folder, binaryName);
         const goAstGeneratorPathInHome = path.join(
             os.homedir(),
+            ".genezio",
             ".golang_ast_generator",
             binaryName,
         );
@@ -61,7 +62,12 @@ export class AstGenerator implements AstGeneratorInterface {
         checkIfGoIsInstalled();
 
         // Check if the go ast generator is compiled
-        const goAstGeneratorPath = path.join(os.homedir(), ".golang_ast_generator", binaryName);
+        const goAstGeneratorPath = path.join(
+            os.homedir(),
+            ".genezio",
+            ".golang_ast_generator",
+            binaryName,
+        );
         if (!fs.existsSync(goAstGeneratorPath)) {
             await this.#compileGenezioGoAstExtractor();
         }

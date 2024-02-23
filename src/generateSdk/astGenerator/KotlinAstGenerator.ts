@@ -72,12 +72,17 @@ export class AstGenerator implements AstGeneratorInterface {
             );
         }
 
-        if (!fs.existsSync(path.join(os.homedir(), ".kotlin_ast_generator"))) {
-            fs.mkdirSync(path.join(os.homedir(), ".kotlin_ast_generator"));
+        if (!fs.existsSync(path.join(os.homedir(), ".genezio", ".kotlin_ast_generator"))) {
+            fs.mkdirSync(path.join(os.homedir(), ".genezio", ".kotlin_ast_generator"));
         }
 
         const ast_gen_path = path.join(folder, "app", "build", "libs", "app-standalone.jar");
-        const ast_gen_dest = path.join(os.homedir(), ".kotlin_ast_generator", "ast-generator.jar");
+        const ast_gen_dest = path.join(
+            os.homedir(),
+            ".genezio",
+            ".kotlin_ast_generator",
+            "ast-generator.jar",
+        );
         fsExtra.copyFileSync(ast_gen_path, ast_gen_dest);
     }
 
@@ -188,6 +193,7 @@ export class AstGenerator implements AstGeneratorInterface {
         // Check if the kotlin ast extractor is compiled and installed in home.
         const genezioAstGeneratorPath = path.join(
             os.homedir(),
+            ".genezio",
             ".kotlin_ast_generator",
             "ast-generator.jar",
         );
