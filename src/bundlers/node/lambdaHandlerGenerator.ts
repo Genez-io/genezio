@@ -1,6 +1,8 @@
 //const object = new handler.genezio[Object.keys(handler.genezio)[0]]();
 /* eslint-disable no-useless-escape */
+import getUser from "../../requests/getUser.js";
 
+const user = await getUser();
 export const lambdaHandlerGenerator = (className: string): string => `
 /** This is an auto generated code. This code should not be modified since the file can be overwritten
  *  if new genezio commands are executed.
@@ -239,7 +241,7 @@ if (!genezioClass) {
             });
 
             try {
-                const timeoutDuration = 29000;
+                const timeoutDuration = ${user.subscriptionLimits.executionTime} * 1000 - 100;
                 const timeoutPromise = new Promise((resolve,reject) => {
                     setTimeout(() => {
                        reject(new Error("Request timeout"));
