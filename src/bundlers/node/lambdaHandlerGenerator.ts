@@ -1,9 +1,7 @@
 //const object = new handler.genezio[Object.keys(handler.genezio)[0]]();
 /* eslint-disable no-useless-escape */
-import getUser from "../../requests/getUser.js";
 
-const user = await getUser();
-export const lambdaHandlerGenerator = (className: string): string => `
+export const lambdaHandlerGenerator = (className: string, timeoutDurationInSeconds:number ): string => `
 /** This is an auto generated code. This code should not be modified since the file can be overwritten
  *  if new genezio commands are executed.
  */
@@ -241,43 +239,41 @@ if (!genezioClass) {
             });
 
             try {
-                const timeoutDuration = ${user.subscriptionLimits.executionTime} * 1000 - 100;
                 const timeoutPromise = new Promise((resolve,reject) => {
-                    setTimeout(() => {
+                                      setTimeout(() => {
                        reject(new Error("Request timeout"));
-                    }, timeoutDuration);
+                    }, ${timeoutDurationInSeconds}*1000-100);
                 });
                 
-                const response = Promise.race([
-                    Promise.resolve(object[method](...(body.params || []))),
-                    errorPromise,
-                    timeoutPromise,
-                ]).then((result) => {
-                    return {
-                        statusCode: 200,
-                        body: JSON.stringify({
-                            jsonrpc: "2.0",
-                            result: result,
-                            error: null,
-                            id: requestId,
-                        }),
-                        headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
-                    };
-                }).catch(async (err) => {
-                    console.error(err);
-                    await sendSentryError(err);
-                    return {
-                        statusCode: 200,
-                        body: JSON.stringify({
-                            jsonrpc: "2.0",
-                            error: prepareForSerialization(err),
-                            id: requestId,
-                        }),
-                        headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
-                    };
-                });
-                
-                return response;
+                const response = Promise.race([object[method](body.params), timeoutPromise])
+                    .then((result) => {
+                        return {
+                            statusCode: 200,
+                            body: JSON.stringify({
+                                jsonrpc: "2.0",
+                                result: result,
+                                error: null,
+                                id: requestId,
+                            }),
+                            headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
+                        };
+                    })
+                    .catch(async (err) => {
+                        console.error(err);
+                        await sendSentryError(err);
+                        return {
+                            statusCode: 200,
+                            body: JSON.stringify({
+                                jsonrpc: "2.0",
+                                error: prepareForSerialization(err),
+                                id: requestId,
+                            }),
+                            headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
+                        };
+                    });
+
+                const result = await Promise.race([errorPromise, response]);
+                return result;
             } catch (err) {
                 console.error(err);
                 await sendSentryError(err);
