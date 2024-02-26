@@ -39,17 +39,13 @@ export class TypeCheckerBundler implements BundlerInterface {
 
         const configFile = ts.readConfigFile(path.join(cwd, "tsconfig.json"), ts.sys.readFile);
         const config = ts.parseJsonConfigFileContent(configFile.config, ts.sys, cwd);
-        // The compiler host of the typescript program is the component that interacts with the file system
-        // We need to trick the compiler host into thinking that the current directory is the provided `cwd`
-        const compilerHost = {
-            ...ts.createCompilerHost(config.options),
-            getCurrentDirectory: () => cwd,
-        };
-
         const program = ts.createProgram({
             rootNames: config.fileNames,
-            options: config.options,
-            host: compilerHost,
+            options: {
+                ...config.options,
+                rootDir: path.join(cwd, config.options.rootDir ?? "."),
+                outDir: path.join(cwd, config.options.outDir ?? "build"),
+            },
         });
 
         debugLogger.log("Typechecking Typescript files...");
