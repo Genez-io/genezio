@@ -38,14 +38,14 @@ export class TypeCheckerBundler implements BundlerInterface {
         await this.#generateTsconfigJson(cwd);
 
         const configFile = ts.readConfigFile(path.join(cwd, "tsconfig.json"), ts.sys.readFile);
+        if (configFile.config?.compilerOptions !== undefined) {
+            configFile.config.compilerOptions.typeRoots = ["node_modules/@types"];
+        }
+
         const config = ts.parseJsonConfigFileContent(configFile.config, ts.sys, cwd);
         const program = ts.createProgram({
             rootNames: config.fileNames,
-            options: {
-                ...config.options,
-                rootDir: path.join(cwd, config.options.rootDir ?? "."),
-                outDir: path.join(cwd, config.options.outDir ?? "build"),
-            },
+            options: config.options,
         });
 
         debugLogger.log("Typechecking Typescript files...");
