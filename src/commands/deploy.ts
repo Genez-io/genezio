@@ -8,11 +8,12 @@ import {
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
 } from "../constants.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG, GENEZIO_NO_CLASSES_FOUND } from "../errors.js";
-import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
+import {
+    mapYamlClassToSdkClassConfiguration,
+    sdkGeneratorApiHandler,
+} from "../generateSdk/generateSdkApi.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
-import { isLoggedIn } from "../utils/accounts.js";
-import { getProjectConfiguration } from "../utils/configuration.js";
 import { getNoMethodClasses } from "../utils/getNoMethodClasses.js";
 import {
     fileExists,
@@ -27,13 +28,12 @@ import {
     createLocalTempFolder,
     zipFile,
 } from "../utils/file.js";
-import { printAdaptiveLog, debugLogger } from "../utils/logging.js";
-import { runNewProcess } from "../utils/process.js";
+import { printAdaptiveLog, debugLogger, doAdaptiveLogAction } from "../utils/logging.js";
 import { GenezioCommand, reportSuccess } from "../utils/reporter.js";
 import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 import { generateRandomSubdomain } from "../utils/yaml.js";
 import cliProgress from "cli-progress";
-import { Language, YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js";
+import { YAMLBackend, YamlProjectConfiguration } from "../yamlProjectConfiguration/v2.js";
 import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter.js";
 import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter.js";
 import { CloudAdapter, GenezioCloudInput } from "../cloudAdapter/cloudAdapter.js";
@@ -48,29 +48,21 @@ import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { interruptLocalProcesses } from "../utils/localInterrupt.js";
 import { Status } from "../requests/models.js";
-import { loginCommand } from "./login.js";
 import { bundle } from "../bundlers/utils.js";
 import { isDependencyVersionCompatible } from "../utils/dependencyChecker.js";
+import { YamlConfigurationIOController } from "../yamlProjectConfiguration/v2.js";
+import { Language, SdkType } from "../yamlProjectConfiguration/models.js";
+import { runScript } from "../utils/scripts.js";
+import { scanClassesForDecorators } from "../utils/configuration.js";
+import configIOController, { YamlFrontend } from "../yamlProjectConfiguration/v2.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
-    let configuration;
 
-    try {
-        configuration = await getProjectConfiguration(options.config);
-    } catch (error) {
-        if (error instanceof Error) {
-            log.error(error.message);
-            await GenezioTelemetry.sendEvent({
-                eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
-                errorTrace: error.toString(),
-                commandOptions: JSON.stringify(options),
-            });
-        }
-        exit(1);
-    }
-    const backendCwd = configuration.workspace?.backend || process.cwd();
-    const frontendCwd = configuration.workspace?.frontend || process.cwd();
+    const configIOController = new YamlConfigurationIOController(options.config);
+    const configuration = await configIOController.read();
+
+    const backendCwd = configuration.backend?.path || process.cwd();
 
     // We need to check if the user is using an older version of @genezio/types
     // because we migrated the decorators implemented in the @genezio/types package to the stage 3 implementation.
@@ -90,198 +82,168 @@ export async function deployCommand(options: GenezioDeployOptions) {
         exit(1);
     }
 
-    // check if user is logged in
-    if (configuration.cloudProvider !== CloudProviderIdentifier.SELF_HOSTED_AWS) {
-        if (!(await isLoggedIn())) {
-            debugLogger.debug("No auth token found. Starting automatic authentication...");
-            await loginCommand("", false);
-        }
-    }
+    // TODO: check this in deployClasses function
+    //
+    // // check if user is logged in
+    // if (configuration.cloudProvider !== CloudProviderIdentifier.SELF_HOSTED_AWS) {
+    //     if (!(await isLoggedIn())) {
+    //         debugLogger.debug("No auth token found. Starting automatic authentication...");
+    //         await loginCommand("", false);
+    //     }
+    // }
+    //
+    // const cloudAdapter = getCloudAdapter(
+    //     configuration.cloudProvider || CloudProviderIdentifier.AWS,
+    // );
 
-    const cloudAdapter = getCloudProvider(
-        configuration.cloudProvider || CloudProviderIdentifier.AWS,
-    );
-
-    if (!options.frontend || options.backend) {
-        if (configuration.classes.length === 0) {
+    backend: if (configuration.backend && !options.frontend) {
+        if (configuration.backend.classes?.length === 0) {
             log.error(
                 "No classes were found in your genezio.yaml. Add some to be able to deploy your backend.",
             );
-        } else {
-            if (configuration.scripts?.preBackendDeploy) {
-                log.info("Running preBackendDeploy script...");
-                log.info(configuration.scripts.preBackendDeploy);
-                const success = await runNewProcess(
-                    configuration.scripts.preBackendDeploy,
-                    backendCwd,
-                );
-                if (!success) {
-                    await GenezioTelemetry.sendEvent({
-                        eventType: TelemetryEventTypes.GENEZIO_PRE_BACKEND_DEPLOY_SCRIPT_ERROR,
-                        commandOptions: JSON.stringify(options),
-                    });
-                    log.error("preBackendDeploy script failed.");
-                    exit(1);
-                }
-            }
-
-            await GenezioTelemetry.sendEvent({
-                eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_START,
-                cloudProvider: configuration.cloudProvider,
-                commandOptions: JSON.stringify(options),
-            });
-            await deployClasses(configuration, cloudAdapter, options).catch(
-                async (error: AxiosError<Status>) => {
-                    await GenezioTelemetry.sendEvent({
-                        eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_ERROR,
-                        errorTrace: error.toString(),
-                        commandOptions: JSON.stringify(options),
-                    });
-
-                    const data = error.response?.data;
-
-                    switch (error.response?.status) {
-                        case 401:
-                            log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-                            break;
-                        case 500:
-                            log.error(error.message);
-                            if (data && data.status === "error") {
-                                log.error(data.error.message);
-                            }
-                            break;
-                        case 400:
-                            log.error(error.message);
-                            if (data && data.status === "error") {
-                                log.error(data.error.message);
-                            }
-                            break;
-                        default:
-                            if (error.message) {
-                                log.error(error.message);
-                            }
-                            break;
-                    }
-                    exit(1);
-                },
-            );
-            await GenezioTelemetry.sendEvent({
-                eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_END,
-                cloudProvider: configuration.cloudProvider,
-                commandOptions: JSON.stringify(options),
-            });
-
-            if (configuration.scripts?.postBackendDeploy) {
-                log.info("Running postBackendDeploy script...");
-                log.info(configuration.scripts.postBackendDeploy);
-                const success = await runNewProcess(
-                    configuration.scripts.postBackendDeploy,
-                    backendCwd,
-                );
-                if (!success) {
-                    await GenezioTelemetry.sendEvent({
-                        eventType: TelemetryEventTypes.GENEZIO_POST_BACKEND_DEPLOY_SCRIPT_ERROR,
-                        commandOptions: JSON.stringify(options),
-                    });
-                    log.error("postBackendDeploy script failed.");
-                    exit(1);
-                }
-            }
+            break backend;
         }
+
+        const success = await doAdaptiveLogAction("Running backend deploy scripts", async () => {
+            return await runScript(configuration.backend?.scripts?.deploy, backendCwd);
+        });
+        if (!success) {
+            await GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_PRE_BACKEND_DEPLOY_SCRIPT_ERROR,
+                commandOptions: JSON.stringify(options),
+            });
+            log.error("Backend `deploy` script failed.");
+            exit(1);
+        }
+
+        await GenezioTelemetry.sendEvent({
+            eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_START,
+            commandOptions: JSON.stringify(options),
+        });
+        await deployClasses(configuration, options).catch(async (error: AxiosError<Status>) => {
+            await GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_ERROR,
+                errorTrace: error.toString(),
+                commandOptions: JSON.stringify(options),
+            });
+
+            const data = error.response?.data;
+
+            switch (error.response?.status) {
+                case 401:
+                    log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
+                    break;
+                case 500:
+                    log.error(error.message);
+                    if (data && data.status === "error") {
+                        log.error(data.error.message);
+                    }
+                    break;
+                case 400:
+                    log.error(error.message);
+                    if (data && data.status === "error") {
+                        log.error(data.error.message);
+                    }
+                    break;
+                default:
+                    if (error.message) {
+                        log.error(error.message);
+                    }
+                    break;
+            }
+            exit(1);
+        });
+        await GenezioTelemetry.sendEvent({
+            eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_END,
+            commandOptions: JSON.stringify(options),
+        });
     }
 
-    if (!options.backend || options.frontend) {
-        if (configuration.scripts?.preFrontendDeploy) {
-            log.info("Running preFrontendDeploy script...");
-            log.info(configuration.scripts.preFrontendDeploy);
-            const success = await runNewProcess(
-                configuration.scripts.preFrontendDeploy,
-                frontendCwd,
+    if (configuration.frontend && !options.backend) {
+        const frontends = Array.isArray(configuration.frontend)
+            ? configuration.frontend
+            : [configuration.frontend];
+
+        for (const [index, frontend] of frontends.entries()) {
+            const success = await doAdaptiveLogAction(
+                `Running frontend ${index + 1} deploy script`,
+                async () => {
+                    return await runScript(
+                        frontend.scripts?.deploy,
+                        frontend.path || process.cwd(),
+                    );
+                },
             );
             if (!success) {
                 await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_PRE_FRONTEND_DEPLOY_SCRIPT_ERROR,
                     commandOptions: JSON.stringify(options),
                 });
-                log.error("preFrontendDeploy script failed.");
+                log.error("Frontend `deploy` script failed.");
                 exit(1);
             }
-        }
 
-        await GenezioTelemetry.sendEvent({
-            eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_START,
-            commandOptions: JSON.stringify(options),
-        });
+            await GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_START,
+                commandOptions: JSON.stringify(options),
+            });
 
-        log.info("Deploying your frontend to the genezio infrastructure...");
-        let url;
-        try {
-            url = await deployFrontend(configuration, cloudAdapter, options);
-        } catch (error) {
-            if (error instanceof Error) {
-                log.error(error.message);
-                if (error.message == "No frontend entry in genezio configuration file.") {
-                    exit(0);
+            log.info("Deploying your frontend to the genezio infrastructure...");
+            const url = await deployFrontend(
+                configuration.name,
+                configuration.region,
+                frontend,
+                index,
+                options,
+            ).catch(async (error) => {
+                if (error instanceof Error) {
+                    log.error(error.message);
+                    if (error.message == "No frontend entry in genezio configuration file.") {
+                        exit(0);
+                    }
+                    await GenezioTelemetry.sendEvent({
+                        eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_ERROR,
+                        errorTrace: error.toString(),
+                        commandOptions: JSON.stringify(options),
+                    });
                 }
-                await GenezioTelemetry.sendEvent({
-                    eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_ERROR,
-                    errorTrace: error.toString(),
-                    commandOptions: JSON.stringify(options),
-                });
-            }
-            exit(1);
-        }
-        log.info("\x1b[36m%s\x1b[0m", `Frontend successfully deployed at ${url}`);
-
-        await GenezioTelemetry.sendEvent({
-            eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_END,
-            commandOptions: JSON.stringify(options),
-        });
-
-        if (configuration.scripts?.postFrontendDeploy) {
-            log.info("Running postFrontendDeploy script...");
-            log.info(configuration.scripts.postFrontendDeploy);
-            const success = await runNewProcess(
-                configuration.scripts.postFrontendDeploy,
-                frontendCwd,
-            );
-            if (!success) {
-                await GenezioTelemetry.sendEvent({
-                    eventType: TelemetryEventTypes.GENEZIO_POST_FRONTEND_DEPLOY_SCRIPT_ERROR,
-                    commandOptions: JSON.stringify(options),
-                });
-                log.error("postFrontendDeploy script failed.");
                 exit(1);
-            }
+            });
+            log.info("\x1b[36m%s\x1b[0m", `Frontend successfully deployed at ${url}`);
+
+            await GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_END,
+                commandOptions: JSON.stringify(options),
+            });
         }
     }
 }
 
 export async function deployClasses(
     configuration: YamlProjectConfiguration,
-    cloudAdapter: CloudAdapter,
     options: GenezioDeployOptions,
 ) {
-    if (configuration.classes.length === 0) {
+    const backend: YAMLBackend = configuration.backend!;
+    backend.classes = await scanClassesForDecorators(backend);
+
+    if (backend.classes.length === 0) {
         throw new Error(GENEZIO_NO_CLASSES_FOUND);
     }
 
-    // get options
-    const installDeps: boolean = options.installDeps || false;
-    const stage: string = options.stage || "prod";
+    const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
+        backend.language.name,
+        mapYamlClassToSdkClassConfiguration(backend.classes, backend.language.name, backend.path),
+        backend.path,
+    ).catch((error) => {
+        // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
+        if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
+            log.error("Syntax error:");
+            log.error(`Reason Code: ${error.reasonCode}`);
+            log.error(`File: ${error.path}:${error.loc.line}:${error.loc.column}`);
+        }
 
-    const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(configuration).catch(
-        (error) => {
-            // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
-            if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
-                log.error("Syntax error:");
-                log.error(`Reason Code: ${error.reasonCode}`);
-                log.error(`File: ${error.path}:${error.loc.line}:${error.loc.column}`);
-            }
-
-            throw error;
-        },
-    );
+        throw error;
+    });
     const projectConfiguration = new ProjectConfiguration(configuration, sdkResponse);
 
     const classesWithNoMethods = getNoMethodClasses(projectConfiguration.classes);
@@ -307,7 +269,7 @@ export async function deployClasses(
             const ast = sdkResponse.sdkGeneratorInput.classesInfo.find(
                 (classInfo) => classInfo.classConfiguration.path === element.path,
             )!.program;
-            const output = await bundle(projectConfiguration, ast, element, installDeps);
+            const output = await bundle(projectConfiguration, ast, element, options.installDeps);
 
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             // check if the unzipped folder is smaller than 250MB
@@ -317,10 +279,7 @@ export async function deployClasses(
             );
 
             // .jar files cannot be parsed by AWS Lambda, skip this step for AWS Lambda
-            if (
-                element.language === ".kt" &&
-                (configuration.cloudProvider === "aws" || configuration.cloudProvider === undefined)
-            ) {
+            if (element.language === "kt") {
                 console.debug("Skipping ZIP due to .jar file");
                 console.debug(path.join(output.path, "app-standalone.jar"));
                 return {
@@ -336,7 +295,7 @@ export async function deployClasses(
             const archivePath = path.join(archivePathTempFolder, `genezioDeploy.zip`);
 
             debugLogger.debug(`Zip the directory ${output.path}.`);
-            if (element.language === ".go") {
+            if (element.language === "go") {
                 await zipFile(path.join(output.path, "bootstrap"), archivePath);
             } else {
                 await zipDirectory(output.path, archivePath);
@@ -376,8 +335,12 @@ export async function deployClasses(
         };
     });
 
+    // TODO: Enable cloud adapter setting for every class
+    const cloudAdapter = getCloudAdapter(
+        configuration.backend?.cloudProvider || CloudProviderIdentifier.GENEZIO,
+    );
     const result = await cloudAdapter.deploy(bundlerResultArray, projectConfiguration, {
-        stage: stage,
+        stage: options.stage,
     });
 
     await replaceUrlsInSdk(
@@ -388,9 +351,9 @@ export async function deployClasses(
         })),
     );
 
-    if (configuration.sdk) {
-        await writeSdkToDisk(sdkResponse, configuration.sdk.path);
-    } else if (configuration.language === Language.ts || configuration.language === Language.js) {
+    if (backend.sdk && backend.sdk.type === SdkType.folder) {
+        await writeSdkToDisk(sdkResponse, backend.sdk.path);
+    } else if (backend.language.name === Language.ts || backend.language.name === Language.js) {
         const localPath = await createLocalTempFolder(
             `${projectConfiguration.name}-${projectConfiguration.region}`,
         );
@@ -398,9 +361,9 @@ export async function deployClasses(
         const packageJson: string = getNodeModulePackageJson(
             configuration.name,
             configuration.region,
-            stage,
+            options.stage,
         );
-        await compileSdk(path.join(localPath, "sdk"), packageJson, configuration.language, true);
+        await compileSdk(path.join(localPath, "sdk"), packageJson, backend.language.name, true);
     }
 
     reportSuccess(
@@ -410,9 +373,9 @@ export async function deployClasses(
         {
             name: configuration.name,
             region: configuration.region,
-            stage: stage,
+            stage: options.stage,
         },
-        !configuration.sdk,
+        !backend.sdk,
     );
 
     const projectId = result.classes[0].projectId;
@@ -433,7 +396,7 @@ export async function deployClasses(
             } else {
                 // Read environment variables from .env file
                 const envVars = await readEnvironmentVariablesFile(envFile);
-                const projectEnv = await getProjectEnvFromProject(projectId, stage);
+                const projectEnv = await getProjectEnvFromProject(projectId, options.stage);
 
                 if (!projectEnv) {
                     throw new Error("Project environment not found.");
@@ -473,7 +436,7 @@ export async function deployClasses(
             if (await fileExists(envFile)) {
                 // read envVars from file
                 const envVars = await readEnvironmentVariablesFile(envFile);
-                const projectEnv = await getProjectEnvFromProject(projectId, stage);
+                const projectEnv = await getProjectEnvFromProject(projectId, options.stage);
 
                 if (!projectEnv) {
                     throw new Error("Project environment not found.");
@@ -524,69 +487,77 @@ export async function deployClasses(
 }
 
 export async function deployFrontend(
-    configuration: YamlProjectConfiguration,
-    cloudAdapter: CloudAdapter,
+    name: string,
+    region: string,
+    frontend: YamlFrontend,
+    index: number,
     options: GenezioDeployOptions,
 ) {
     const stage: string = options.stage || "";
-    if (configuration.frontend) {
-        // check if subdomain contains only numbers, letters and hyphens
-        if (
-            configuration.frontend.subdomain &&
-            !configuration.frontend.subdomain.match(/^[a-z0-9-]+$/)
-        ) {
-            throw new Error(`The subdomain can only contain letters, numbers and hyphens.`);
-        }
-        // check if the build folder exists
-        const frontendPath = configuration.frontend?.path;
-        if (!(await fileExists(frontendPath))) {
-            throw new Error(
-                `The build folder ${colors.cyan(
-                    `${frontendPath}`,
-                )} does not exist. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
-            );
-        }
 
-        // check if the build folder is empty
-        if (await isDirectoryEmpty(frontendPath)) {
-            throw new Error(
-                `The build folder ${colors.cyan(
-                    `${frontendPath}`,
-                )} is empty. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
-            );
-        }
-
-        // check if there are any .html files in the build folder
-        if (!(await directoryContainsHtmlFiles(frontendPath))) {
-            log.info("WARNING: No .html files found in the build folder");
-        } else if (!(await directoryContainsIndexHtmlFiles(frontendPath))) {
-            // check if there is no index.html file in the build folder
-            log.info("WARNING: No index.html file found in the build folder");
-        }
-
-        configuration.frontend.subdomain = options.subdomain || configuration.frontend.subdomain;
-        if (!configuration.frontend.subdomain) {
-            log.info(
-                "No subdomain specified in the genezio.yaml configuration file or as an option flag. We will provide a random one for you.",
-            );
-
-            // write the configuration in yaml file
-            await configuration.addSubdomain(generateRandomSubdomain());
-        }
-
-        const url = await cloudAdapter.deployFrontend(
-            configuration.name,
-            configuration.region,
-            configuration.frontend,
-            stage,
-        );
-        return url;
-    } else {
-        throw new Error("No frontend entry in genezio configuration file.");
+    // check if subdomain contains only numbers, letters and hyphens
+    if (frontend.subdomain && !frontend.subdomain.match(/^[a-z0-9-]+$/)) {
+        throw new Error(`The subdomain can only contain letters, numbers and hyphens.`);
     }
+    // check if the build folder exists
+    const frontendPath = path.join(frontend.path, frontend.publish || ".");
+    if (!(await fileExists(frontendPath))) {
+        throw new Error(
+            `The build folder ${colors.cyan(
+                `${frontendPath}`,
+            )} does not exist. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
+        );
+    }
+
+    // check if the build folder is empty
+    if (await isDirectoryEmpty(frontendPath)) {
+        throw new Error(
+            `The build folder ${colors.cyan(
+                `${frontendPath}`,
+            )} is empty. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
+        );
+    }
+
+    // check if there are any .html files in the build folder
+    if (!(await directoryContainsHtmlFiles(frontendPath))) {
+        log.info("WARNING: No .html files found in the build folder");
+    } else if (!(await directoryContainsIndexHtmlFiles(frontendPath))) {
+        // check if there is no index.html file in the build folder
+        log.info("WARNING: No index.html file found in the build folder");
+    }
+
+    if (!options.subdomain && !frontend.subdomain) {
+        log.info(
+            "No subdomain specified in the genezio.yaml configuration file or as an option flag. We will provide a random one for you.",
+        );
+
+        // write the configuration in yaml file
+        const yamlConfigIOController = new YamlConfigurationIOController(options.config);
+        const yamlConfig = await yamlConfigIOController.read();
+
+        if (yamlConfig.frontend) {
+            const subdomain = generateRandomSubdomain();
+
+            if (Array.isArray(yamlConfig.frontend)) {
+                yamlConfig.frontend[index].subdomain = subdomain;
+            } else {
+                yamlConfig.frontend.subdomain = subdomain;
+            }
+
+            frontend.subdomain = subdomain;
+        } else {
+            throw new Error("No frontend entry in genezio configuration file.");
+        }
+
+        await configIOController.write(yamlConfig);
+    }
+
+    const cloudAdapter = getCloudAdapter(CloudProviderIdentifier.GENEZIO);
+    const url = await cloudAdapter.deployFrontend(name, region, frontend, stage);
+    return url;
 }
 
-function getCloudProvider(provider: string): CloudAdapter {
+function getCloudAdapter(provider: string): CloudAdapter {
     switch (provider) {
         case CloudProviderIdentifier.AWS:
         case CloudProviderIdentifier.GENEZIO:

@@ -22,7 +22,7 @@ import {
 import { template } from "./dartMain.js";
 import { default as fsExtra } from "fs-extra";
 import { DART_COMPILATION_ENDPOINT } from "../../constants.js";
-import { TriggerType } from "../../models/yamlProjectConfiguration.js";
+import { TriggerType } from "../../yamlProjectConfiguration/models.js";
 import { spawnSync } from "child_process";
 import log from "loglevel";
 import { runNewProcess } from "../../utils/process.js";

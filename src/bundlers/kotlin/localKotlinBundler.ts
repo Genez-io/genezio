@@ -23,7 +23,7 @@ import {
     MethodConfiguration,
     ParameterType,
 } from "../../models/projectConfiguration.js";
-import { TriggerType } from "../../models/yamlProjectConfiguration.js";
+import { TriggerType } from "../../yamlProjectConfiguration/models.js";
 import {
     ArrayType,
     AstNodeType,

@@ -11,8 +11,9 @@ import {
     Node,
     MapType,
     SdkFileClass,
+    SdkClassConfiguration,
 } from "../../models/genezioModels.js";
-import { TriggerType, YamlClassConfiguration } from "../../models/yamlProjectConfiguration.js";
+import { TriggerType } from "../../yamlProjectConfiguration/models.js";
 import { dartSdk } from "../templates/dartSdk.js";
 import { ArrayType } from "../../models/genezioModels.js";
 import {
@@ -255,12 +256,15 @@ class SdkGenerator implements SdkGeneratorInterface {
 
     populateViewForMainClass(
         classDefinition: ClassDefinition,
-        classConfiguration: YamlClassConfiguration,
+        classConfiguration: SdkClassConfiguration,
         view: any,
     ) {
         view.className = classDefinition.name;
         for (const methodDefinition of classDefinition.methods) {
-            const methodConfigurationType = classConfiguration.getMethodType(methodDefinition.name);
+            const methodConfiguration = classConfiguration.methods.find(
+                (e) => e.name === methodDefinition.name,
+            );
+            const methodConfigurationType = methodConfiguration?.type || classConfiguration.type;
 
             if (
                 methodConfigurationType !== TriggerType.jsonrpc ||

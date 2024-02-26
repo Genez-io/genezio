@@ -20,7 +20,7 @@ import {
 import { HeadObjectCommand, PutObjectCommand, S3 } from "@aws-sdk/client-s3";
 import { debugLogger } from "../../utils/logging.js";
 import log from "loglevel";
-import { YamlFrontend } from "../../models/yamlProjectConfiguration.js";
+import { YamlFrontend } from "../../yamlProjectConfiguration/v2.js";
 import { getAllFilesRecursively, getFileSize } from "../../utils/file.js";
 import {
     GenezioCloudFormationBuilder,
@@ -37,6 +37,7 @@ import {
     getS3BucketResource,
 } from "./cloudFormationBuilder.js";
 import mime from "mime-types";
+import path from "path";
 
 const BUNDLE_SIZE_LIMIT = 256901120;
 
@@ -551,8 +552,9 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
             "GenezioDeploymentBucketName",
         );
 
-        const promises = (await getAllFilesRecursively(frontend.path)).map((filePath) => {
-            const path = filePath.replace(frontend.path, "");
+        const frontendPath = path.join(frontend.path, frontend.publish || ".");
+        const promises = (await getAllFilesRecursively(frontendPath)).map((filePath) => {
+            const path = filePath.replace(frontendPath, "");
             const bucketKey = path.startsWith("/") ? path.substring(1) : path;
             debugLogger.debug(`Uploading file ${filePath} to S3 with key ${bucketKey}.`);
             return this.#uploadFileToS3(s3Client, bucketName, bucketKey, filePath);

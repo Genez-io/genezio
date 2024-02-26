@@ -48,6 +48,9 @@ export async function genezioCommand() {
                 const options: GenezioDeployOptions = {
                     installDeps: true,
                     config: "./genezio.yaml",
+                    stage: "prod",
+                    backend: false,
+                    frontend: false,
                 };
 
                 return await deployCommand(options).catch(async (error) => {

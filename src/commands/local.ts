@@ -19,14 +19,16 @@ import {
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
 } from "../constants.js";
 import { GENEZIO_NO_CLASSES_FOUND, PORT_ALREADY_USED } from "../errors.js";
-import { sdkGeneratorApiHandler } from "../generateSdk/generateSdkApi.js";
+import {
+    mapYamlClassToSdkClassConfiguration,
+    sdkGeneratorApiHandler,
+} from "../generateSdk/generateSdkApi.js";
 import { AstSummary } from "../models/astSummary.js";
-import { getProjectConfiguration } from "../utils/configuration.js";
 import { BundlerInterface } from "../bundlers/bundler.interface.js";
 import { NodeJsLocalBundler } from "../bundlers/node/nodeJsLocalBundler.js";
 import { BundlerComposer } from "../bundlers/bundlerComposer.js";
 import { genezioRequestParser } from "../utils/genezioRequestParser.js";
-import { debugLogger } from "../utils/logging.js";
+import { debugLogger, doAdaptiveLogAction } from "../utils/logging.js";
 import { rectifyCronString } from "../utils/rectifyCronString.js";
 import cron from "node-cron";
 import {
@@ -43,13 +45,12 @@ import { GenezioLocalOptions } from "../models/commandOptions.js";
 import { DartBundler } from "../bundlers/dart/localDartBundler.js";
 import axios, { AxiosError, AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
+import { Language, SdkType, TriggerType } from "../yamlProjectConfiguration/models.js";
+import { PackageManagerType } from "../packageManagers/packageManager.js";
 import {
-    Language,
-    PackageManagerType,
-    TriggerType,
+    YamlConfigurationIOController,
     YamlProjectConfiguration,
-    YamlSdkConfiguration,
-} from "../models/yamlProjectConfiguration.js";
+} from "../yamlProjectConfiguration/v2.js";
 import hash from "hash-it";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import dotenv from "dotenv";
@@ -58,7 +59,6 @@ import inquirer, { Answers } from "inquirer";
 import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
 import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJson.js";
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
-import { runNewProcess } from "../utils/process.js";
 import { exit } from "process";
 import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 import log from "loglevel";
@@ -72,6 +72,8 @@ import {
 import { GoBundler } from "../bundlers/go/localGoBundler.js";
 import { importServiceEnvVariables } from "../utils/servicesEnvVariables.js";
 import { isDependencyVersionCompatible } from "../utils/dependencyChecker.js";
+import { scanClassesForDecorators } from "../utils/configuration.js";
+import { runScript } from "../utils/scripts.js";
 
 const POLLING_INTERVAL = 2000;
 
@@ -96,17 +98,30 @@ type LocalBundlerOutput = {
     sdk: SdkGeneratorResponse;
 };
 
-export async function prepareLocalEnvironment(
+export async function prepareLocalBackendEnvironment(
     yamlProjectConfiguration: YamlProjectConfiguration,
     options: GenezioLocalOptions,
 ): Promise<BundlerRestartResponse> {
-    // eslint-disable-next-line no-async-promise-executor
     try {
-        if (yamlProjectConfiguration.classes.length === 0) {
+        const backend = yamlProjectConfiguration.backend;
+        if (!backend) {
+            throw new Error("No backend component found in the genezio.yaml file.");
+        }
+        backend.classes = await scanClassesForDecorators(backend);
+
+        if (backend.classes.length === 0) {
             throw new Error(GENEZIO_NO_CLASSES_FOUND);
         }
 
-        const sdk = await sdkGeneratorApiHandler(yamlProjectConfiguration).catch((error) => {
+        const sdk = await sdkGeneratorApiHandler(
+            backend.sdk?.language || backend.language.name,
+            mapYamlClassToSdkClassConfiguration(
+                backend.classes,
+                backend.language.name,
+                backend.path,
+            ),
+            backend.path,
+        ).catch((error) => {
             debugLogger.log("An error occurred", error);
             if (error.code === "ENOENT") {
                 log.error(
@@ -116,7 +131,6 @@ export async function prepareLocalEnvironment(
 
             throw error;
         });
-
         const projectConfiguration = new ProjectConfiguration(yamlProjectConfiguration, sdk);
 
         // Local deployments always use the genezio cloud provider
@@ -161,15 +175,18 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         eventType: TelemetryEventTypes.GENEZIO_LOCAL,
         commandOptions: JSON.stringify(options),
     });
-    const yamlProjectConfiguration = await getProjectConfiguration(options.config);
+    const yamlConfigIOController = new YamlConfigurationIOController(options.config);
+    const yamlProjectConfiguration = await yamlConfigIOController.read();
+    const backendConfiguration = yamlProjectConfiguration.backend;
+    if (!backendConfiguration) {
+        throw new Error("No backend component found in the genezio.yaml file.");
+    }
 
     // We need to check if the user is using an older version of @genezio/types
     // because we migrated the decorators implemented in the @genezio/types package to the stage 3 implementation.
     // Otherwise, the user will get an error at runtime. This check can be removed in the future once no one is using version
     // 0.1.* of @genezio/types.
-    const packageJsonPath = yamlProjectConfiguration.workspace
-        ? path.join(yamlProjectConfiguration.workspace.backend, "package.json")
-        : path.join(process.cwd(), "package.json");
+    const packageJsonPath = path.join(backendConfiguration.path, "package.json");
     if (
         isDependencyVersionCompatible(
             packageJsonPath,
@@ -183,19 +200,16 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         exit(1);
     }
 
-    if (yamlProjectConfiguration.scripts?.preStartLocal) {
-        log.info("Running preStartLocal script...");
-        log.info(yamlProjectConfiguration.scripts.preStartLocal);
-
-        const success = await runNewProcess(yamlProjectConfiguration.scripts.preStartLocal);
-        if (!success) {
-            await GenezioTelemetry.sendEvent({
-                eventType: TelemetryEventTypes.GENEZIO_PRE_START_LOCAL_SCRIPT_ERROR,
-                commandOptions: JSON.stringify(options),
-            });
-            log.error("preStartLocal script failed.");
-            exit(1);
-        }
+    const success = await doAdaptiveLogAction("Running backend local scripts", async () => {
+        return await runScript(backendConfiguration.scripts?.local, backendConfiguration.path);
+    });
+    if (!success) {
+        await GenezioTelemetry.sendEvent({
+            eventType: TelemetryEventTypes.GENEZIO_PRE_START_LOCAL_SCRIPT_ERROR,
+            commandOptions: JSON.stringify(options),
+        });
+        log.error("Backend `deploy` script failed.");
+        exit(1);
     }
 
     let nodeModulesFolderWatcher: NodeJS.Timeout | undefined;
@@ -211,7 +225,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         // Read the project configuration every time because it might change
         let yamlProjectConfiguration;
         try {
-            yamlProjectConfiguration = await getProjectConfiguration(options.config);
+            yamlProjectConfiguration = await yamlConfigIOController.read();
         } catch (error) {
             if (error instanceof Error) {
                 log.error(error.message);
@@ -227,27 +241,17 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             logChangeDetection();
             continue;
         }
-        if (!Language[yamlProjectConfiguration.language as keyof typeof Language]) {
+
+        if (
+            backendConfiguration.sdk &&
+            !Language[backendConfiguration.sdk?.language as keyof typeof Language]
+        ) {
             log.info(
                 "This sdk.language is not supported by default. It will be treated as a custom language.",
             );
         }
 
-        if (yamlProjectConfiguration.scripts?.preReloadLocal) {
-            log.info("Running preReloadLocal script...");
-            log.info(yamlProjectConfiguration.scripts.preReloadLocal);
-            const success = await runNewProcess(yamlProjectConfiguration.scripts.preReloadLocal);
-            if (!success) {
-                await GenezioTelemetry.sendEvent({
-                    eventType: TelemetryEventTypes.GENEZIO_PRE_RELOAD_LOCAL_SCRIPT_ERROR,
-                    commandOptions: JSON.stringify(options),
-                });
-                log.error("preReloadLocal script failed.");
-                exit(1);
-            }
-        }
-
-        if (!yamlProjectConfiguration.packageManager && !yamlProjectConfiguration.sdk) {
+        if (!backendConfiguration.language.packageManager && !backendConfiguration.sdk) {
             const optionalPackageManager: Answers = await inquirer.prompt([
                 {
                     type: "list",
@@ -257,20 +261,23 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                     choices: Object.keys(PackageManagerType).filter((key) => isNaN(Number(key))),
                 },
             ]);
-            yamlProjectConfiguration.packageManager = optionalPackageManager["packageManager"];
-            await yamlProjectConfiguration.writeToFile();
+
+            const yamlConfig = await yamlConfigIOController.read();
+            yamlConfig.backend!.language.packageManager = optionalPackageManager["packageManager"];
+            await yamlConfigIOController.write(yamlConfig);
         }
 
-        let sdkConfiguration = yamlProjectConfiguration.sdk;
-        if (!yamlProjectConfiguration.sdk) {
+        let sdkConfiguration = backendConfiguration.sdk;
+        if (!sdkConfiguration) {
             const sdkPath = await createLocalTempFolder(
                 `${yamlProjectConfiguration.name}-${yamlProjectConfiguration.region}`,
             );
 
-            sdkConfiguration = new YamlSdkConfiguration(
-                Language[yamlProjectConfiguration.language as keyof typeof Language],
-                path.join(sdkPath, "sdk"),
-            );
+            sdkConfiguration = {
+                language: Language[backendConfiguration.language.name as keyof typeof Language],
+                path: path.join(sdkPath, "sdk"),
+                type: SdkType.folder,
+            };
         }
 
         let sdk: SdkGeneratorResponse;
@@ -279,7 +286,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 
         const promiseListenForChanges: Promise<BundlerRestartResponse> =
             listenForChanges(undefined);
-        const bundlerPromise: Promise<BundlerRestartResponse> = prepareLocalEnvironment(
+        const bundlerPromise: Promise<BundlerRestartResponse> = prepareLocalBackendEnvironment(
             yamlProjectConfiguration,
             options,
         );
@@ -334,59 +341,38 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         // Start cron jobs
         const crons = startCronJobs(projectConfiguration, processForClasses);
 
-        if (sdkConfiguration) {
-            await replaceUrlsInSdk(
-                sdk,
-                sdk.files.map((c) => ({
-                    name: c.className,
-                    cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`,
-                })),
+        await replaceUrlsInSdk(
+            sdk,
+            sdk.files.map((c) => ({
+                name: c.className,
+                cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`,
+            })),
+        );
+
+        if (
+            !backendConfiguration.sdk &&
+            (sdkConfiguration.language === Language.ts || sdkConfiguration.language === Language.js)
+        ) {
+            await deleteFolder(sdkConfiguration.path);
+            await writeSdkToDisk(sdk, sdkConfiguration.path);
+            // compile the sdk
+            const packageJson: string = getNodeModulePackageJsonLocal(
+                projectConfiguration.name,
+                projectConfiguration.region,
             );
+            await compileSdk(sdkConfiguration.path, packageJson, sdkConfiguration.language, false);
 
-            if (
-                !yamlProjectConfiguration.sdk &&
-                (sdkConfiguration.language === Language.ts ||
-                    sdkConfiguration.language === Language.js)
-            ) {
-                await deleteFolder(sdkConfiguration.path);
-                await writeSdkToDisk(sdk, sdkConfiguration.path);
-                // compile the sdk
-                const packageJson: string = getNodeModulePackageJsonLocal(
-                    projectConfiguration.name,
-                    projectConfiguration.region,
-                );
-                await compileSdk(
-                    sdkConfiguration.path,
-                    packageJson,
-                    sdkConfiguration.language,
-                    false,
-                );
-
-                await writeSdkToNodeModules(yamlProjectConfiguration, sdkConfiguration.path);
-                nodeModulesFolderWatcher = await watchNodeModules(
-                    yamlProjectConfiguration,
-                    sdkConfiguration.path,
-                );
-            } else {
-                await writeSdkToDisk(sdk, sdkConfiguration.path);
-            }
+            await writeSdkToNodeModules(yamlProjectConfiguration, sdkConfiguration.path);
+            nodeModulesFolderWatcher = await watchNodeModules(
+                yamlProjectConfiguration,
+                sdkConfiguration.path,
+            );
+        } else {
+            await deleteFolder(sdkConfiguration.path);
+            await writeSdkToDisk(sdk, sdkConfiguration.path);
         }
 
-        if (yamlProjectConfiguration.scripts?.postStartLocal) {
-            log.info("Running postStartLocal script...");
-            log.info(yamlProjectConfiguration.scripts.postStartLocal);
-            const success = await runNewProcess(yamlProjectConfiguration.scripts.postStartLocal);
-            if (!success) {
-                await GenezioTelemetry.sendEvent({
-                    eventType: TelemetryEventTypes.GENEZIO_POST_START_LOCAL_SCRIPT_ERROR,
-                    commandOptions: JSON.stringify(options),
-                });
-                log.error("postStartLocal script failed.");
-                exit(1);
-            }
-        }
-
-        reportSuccess(projectConfiguration, sdk, options.port, !yamlProjectConfiguration.sdk);
+        reportSuccess(projectConfiguration, sdk, options.port, !backendConfiguration.sdk);
 
         // Start listening for changes in user's code
         const { watcher } = await listenForChanges(projectConfiguration.sdk?.path);
@@ -416,26 +402,23 @@ async function watchNodeModules(
     const watchPaths: string[] = [interruptLocalPath];
     const sdkName = `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`;
     const nodeModulesSdkDirectoryPath = path.join("node_modules", "@genezio-sdk", sdkName);
-    if (yamlProjectConfiguration.workspace) {
-        watchPaths.push(
-            path.join(yamlProjectConfiguration.workspace.frontend, nodeModulesSdkDirectoryPath),
-        );
-        watchPaths.push(
-            path.join(
-                yamlProjectConfiguration.workspace?.frontend,
-                "node_modules",
-                ".package-lock.json",
-            ),
-        );
-    } else {
-        const linkPaths = await getLinkPathsForProject(
-            yamlProjectConfiguration.name,
-            yamlProjectConfiguration.region,
-        );
-        for (const linkPath of linkPaths) {
-            watchPaths.push(path.join(linkPath, nodeModulesSdkDirectoryPath));
-            watchPaths.push(path.join(linkPath, "node_modules", ".package-lock.json"));
-        }
+
+    if (yamlProjectConfiguration.frontend && !Array.isArray(yamlProjectConfiguration.frontend)) {
+        yamlProjectConfiguration.frontend = [yamlProjectConfiguration.frontend];
+    }
+    const frontends = yamlProjectConfiguration.frontend || [];
+    for (const f of frontends) {
+        watchPaths.push(path.join(f.path, nodeModulesSdkDirectoryPath));
+        watchPaths.push(path.join(f.path, "node_modules", ".package-lock.json"));
+    }
+
+    const linkPaths = await getLinkPathsForProject(
+        yamlProjectConfiguration.name,
+        yamlProjectConfiguration.region,
+    );
+    for (const linkPath of linkPaths) {
+        watchPaths.push(path.join(linkPath, nodeModulesSdkDirectoryPath));
+        watchPaths.push(path.join(linkPath, "node_modules", ".package-lock.json"));
     }
 
     return setInterval(async () => {
@@ -486,36 +469,32 @@ async function writeSdkToNodeModules(
         await fsExtra.copy(from, toFinal, { overwrite: true });
     };
 
-    if (yamlProjectConfiguration.workspace) {
-        const from = path.resolve(originSdkPath, "..", "genezio-sdk");
-        const toFinal = path.join(
-            yamlProjectConfiguration.workspace.frontend,
+    if (yamlProjectConfiguration.frontend && !Array.isArray(yamlProjectConfiguration.frontend)) {
+        yamlProjectConfiguration.frontend = [yamlProjectConfiguration.frontend];
+    }
+    const from = path.resolve(originSdkPath, "..", "genezio-sdk");
+
+    // Write the SDK to the node_modules folder of each frontend
+    // A frontend can be explicitly declared in the genezio.yaml file or it can be linked to the project
+    const frontendPaths = (yamlProjectConfiguration.frontend || [])
+        .map((f) => f.path)
+        .concat(
+            await getLinkPathsForProject(
+                yamlProjectConfiguration.name,
+                yamlProjectConfiguration.region,
+            ),
+        );
+    for (const frontendPath of frontendPaths) {
+        const to = path.join(
+            frontendPath,
             "node_modules",
             "@genezio-sdk",
             `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
         );
 
-        await writeSdk(from, toFinal).catch(() => {
+        await writeSdk(from, to).catch(() => {
             debugLogger.debug(`[WRITE_SDK_TO_NODE_MODULES] Error writing SDK to node_modules`);
         });
-    } else {
-        const linkPaths = await getLinkPathsForProject(
-            yamlProjectConfiguration.name,
-            yamlProjectConfiguration.region,
-        );
-        const from = path.resolve(originSdkPath, "..", "genezio-sdk");
-        for (const linkPath of linkPaths) {
-            const toFinal = path.join(
-                linkPath,
-                "node_modules",
-                "@genezio-sdk",
-                `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
-            );
-
-            await writeSdk(from, toFinal).catch(() => {
-                debugLogger.debug(`[WRITE_SDK_TO_NODE_MODULES] Error writing SDK to node_modules`);
-            });
-        }
     }
 }
 
@@ -536,36 +515,36 @@ async function startProcesses(
     const processForClasses = new Map<string, ClassProcess>();
 
     // Bundle each class and start a new process for it
-    const bundlersOutputPromise = classes.map((classInfo) => {
+    const bundlersOutputPromise = classes.map(async (classInfo) => {
         const bundler = getBundler(classInfo);
 
         if (!bundler) {
             throw new Error("Unsupported language ${classConfiguration.language}.");
         }
 
-        const ast = sdk.sdkGeneratorInput.classesInfo.find(
+        const astClass = sdk.sdkGeneratorInput.classesInfo.find(
             (c) => c.classConfiguration.path === classInfo.path,
-        )!.program;
+        );
+        if (astClass === undefined) {
+            throw new Error("AST class not found.");
+        }
+        const ast = astClass.program;
 
         debugLogger.log("Start bundling...");
-        return createTemporaryFolder(`${classInfo.name}-${hash(classInfo.path)}`).then(
-            async (tmpFolder) => {
-                const bundlerOutput = await bundler.bundle({
-                    projectConfiguration,
-                    path: classInfo.path,
-                    ast: ast,
-                    genezioConfigurationFilePath: process.cwd(),
-                    configuration: classInfo,
-                    extra: {
-                        mode: "development",
-                        tmpFolder: tmpFolder,
-                        installDeps: options.installDeps,
-                    },
-                });
-
-                return bundlerOutput;
+        const tmpFolder = await createTemporaryFolder(`${classInfo.name}-${hash(classInfo.path)}`);
+        const bundlerOutput = await bundler.bundle({
+            projectConfiguration,
+            path: classInfo.path,
+            ast: ast,
+            genezioConfigurationFilePath: process.cwd(),
+            configuration: classInfo,
+            extra: {
+                mode: "development",
+                tmpFolder: tmpFolder,
+                installDeps: options.installDeps,
             },
-        );
+        });
+        return bundlerOutput;
     });
 
     const bundlersOutput = await Promise.all(bundlersOutputPromise);
@@ -603,28 +582,28 @@ async function startProcesses(
 function getBundler(classConfiguration: ClassConfiguration): BundlerInterface | undefined {
     let bundler: BundlerInterface | undefined;
     switch (classConfiguration.language) {
-        case ".ts": {
+        case "ts": {
             const requiredDepsBundler = new TsRequiredDepsBundler();
             const nodeJsBundler = new NodeJsBundler();
             const localBundler = new NodeJsLocalBundler();
             bundler = new BundlerComposer([requiredDepsBundler, nodeJsBundler, localBundler]);
             break;
         }
-        case ".js": {
+        case "js": {
             const nodeJsBundler = new NodeJsBundler();
             const localBundler = new NodeJsLocalBundler();
             bundler = new BundlerComposer([nodeJsBundler, localBundler]);
             break;
         }
-        case ".dart": {
+        case "dart": {
             bundler = new DartBundler();
             break;
         }
-        case ".kt": {
+        case "kt": {
             bundler = new KotlinBundler();
             break;
         }
-        case ".go": {
+        case "go": {
             bundler = new GoBundler();
             break;
         }
@@ -981,7 +960,7 @@ function reportSuccess(
 To change the server version, go to your ${colors.cyan(
                 "genezio.yaml",
             )} file and change the ${colors.cyan(
-                "options.nodeRuntime",
+                "backend.lanuage.nodeRuntime",
             )} property to the version you want to use.`)}`,
         );
     }

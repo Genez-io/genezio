@@ -1,4 +1,3 @@
-import { PackageManagerType } from "../models/yamlProjectConfiguration.js";
 import NpmPackageManager from "./npm.js";
 import PnpmPackageManager from "./pnpm.js";
 import YarnPackageManager from "./yarn.js";
@@ -15,6 +14,12 @@ export interface PackageManager {
     addScopedRegistry(scope: string, url: string, authToken?: string): Promise<void>;
     removeScopedRegistry(scope: string): Promise<void>;
     getVersion(): Promise<string>;
+}
+
+export enum PackageManagerType {
+    npm = "npm",
+    yarn = "yarn",
+    pnpm = "pnpm",
 }
 
 /*

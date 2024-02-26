@@ -34,15 +34,14 @@ import currentGenezioVersion, {
 import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js";
 import { genezioCommand } from "./commands/superGenezio.js";
 import { linkCommand, unlinkCommand } from "./commands/link.js";
-import { getProjectConfiguration } from "./utils/configuration.js";
-import { setPackageManager } from "./packageManagers/packageManager.js";
-import { PackageManagerType } from "./models/yamlProjectConfiguration.js";
+import { PackageManagerType, setPackageManager } from "./packageManagers/packageManager.js";
 import colors from "colors";
 import { createCommand } from "./commands/create/create.js";
 import { bundleCommand } from "./commands/bundle.js";
 import { askCreateOptions } from "./commands/create/interactive.js";
 import { regions } from "./utils/configs.js";
 import { backendTemplates, frontendTemplates } from "./commands/create/templates.js";
+import configReader from "./yamlProjectConfiguration/v2.js";
 
 const program = new Command();
 
@@ -70,18 +69,20 @@ if (ENABLE_DEBUG_LOGS_BY_DEFAULT) {
 
 // setup package manager
 try {
-    const configuration = await getProjectConfiguration("./genezio.yaml", true);
-    if (configuration.packageManager) {
-        if (!Object.keys(PackageManagerType).includes(configuration.packageManager)) {
-            log.warn(
-                `Unknown package manager '${configuration.packageManager}'. Using 'npm' instead.`,
-            );
+    const configuration = await configReader.read();
+    // const configuration = await getProjectConfiguration("./genezio.yaml", true);
+    const packageManager = configuration.backend?.language.packageManager;
+    if (packageManager) {
+        if (!Object.keys(PackageManagerType).includes(packageManager)) {
+            log.warn(`Unknown package manager '${packageManager}'. Using 'npm' instead.`);
             throw new Error();
         }
 
-        setPackageManager(configuration.packageManager);
+        setPackageManager(packageManager);
     }
-} catch (error) {
+} catch {
+    setPackageManager(PackageManagerType.npm);
+} finally {
     setPackageManager(PackageManagerType.npm);
 }
 
@@ -145,8 +146,8 @@ program
         "--logLevel <logLevel>",
         "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
     )
-    .option("--backend", "Deploy only the backend application.")
-    .option("--frontend", "Deploy only the frontend application.")
+    .option("--backend", "Deploy only the backend application.", false)
+    .option("--frontend", "Deploy only the frontend application.", false)
     .option("--install-deps", "Automatically install missing dependencies", false)
     .option("--env <envFile>", "Load environment variables from a given file", undefined)
     .option("--stage <stage>", "Set the environment name to deploy to", "prod")

@@ -6,6 +6,7 @@ import {
     ParameterDefinition,
     SdkGeneratorClassesInfoInput,
 } from "../../models/genezioModels.js";
+import { TriggerType } from "../../yamlProjectConfiguration/models.js";
 
 export function getAstSummary(classesInfo: SdkGeneratorClassesInfoInput[]): AstSummaryClass[] {
     const classes: AstSummaryClass[] = classesInfo
@@ -43,9 +44,16 @@ export function getAstSummary(classesInfo: SdkGeneratorClassesInfoInput[]): AstS
                         },
                     );
 
+                    const methodConfiguration = classConfiguration.classConfiguration.methods.find(
+                        (m) => m.name === method.name,
+                    );
+
                     const methodInfo: AstSummaryMethod = {
                         name: method.name,
-                        type: classConfiguration.classConfiguration.getMethodType(method.name),
+                        type:
+                            methodConfiguration?.type ||
+                            classConfiguration.classConfiguration.type ||
+                            TriggerType.jsonrpc,
                         params: params,
                         docString: method.docString,
                         returnType: method.returnType,

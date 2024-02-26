@@ -1,4 +1,4 @@
-import { Language } from "./yamlProjectConfiguration.js";
+import { Language } from "../yamlProjectConfiguration/models.js";
 
 export interface BaseOptions {
     logLevel?: string;
@@ -19,11 +19,11 @@ export interface GenezioLocalOptions extends BaseOptions {
 }
 
 export interface GenezioDeployOptions extends BaseOptions {
-    backend?: boolean;
-    frontend?: boolean;
+    backend: boolean;
+    frontend: boolean;
     installDeps: boolean;
     env?: string;
-    stage?: string;
+    stage: string;
     subdomain?: string;
     config: string;
 }

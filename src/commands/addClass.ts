@@ -2,11 +2,11 @@ import log from "loglevel";
 import path from "path";
 import { newClassTemplateNode } from "../generateSdk/templates/newProject.js";
 
-import { YamlClassConfiguration } from "../models/yamlProjectConfiguration.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
-import { getProjectConfiguration } from "../utils/configuration.js";
 import { fileExists, writeToFile } from "../utils/file.js";
 import { supportedExtensions } from "../utils/languages.js";
+import configIOController, { YamlClass } from "../yamlProjectConfiguration/v2.js";
+import { scanClassesForDecorators } from "../utils/configuration.js";
 
 export async function addClassCommand(classPath: string, classType: string) {
     await GenezioTelemetry.sendEvent({
@@ -23,7 +23,12 @@ export async function addClassCommand(classPath: string, classType: string) {
         throw new Error("Please provide a path to the class you want to add.");
     }
 
-    const projectConfiguration = await getProjectConfiguration("./genezio.yaml");
+    const backendConfiguration = (await configIOController.read()).backend;
+
+    if (!backendConfiguration) {
+        throw new Error("Please provide a valid backend configuration.");
+    }
+    backendConfiguration.classes = await scanClassesForDecorators(backendConfiguration);
 
     const className = classPath.split(path.sep).pop();
 
@@ -49,10 +54,10 @@ export async function addClassCommand(classPath: string, classType: string) {
     }
 
     // check if class already exists
-    if (projectConfiguration.classes.length > 0) {
+    if (backendConfiguration.classes.length > 0) {
         if (
-            projectConfiguration.classes
-                .map((c: YamlClassConfiguration) => c.path.split(path.sep).pop())
+            backendConfiguration.classes
+                .map((c: YamlClass) => c.path.split(path.sep).pop())
                 .includes(className)
         ) {
             throw new Error("Class already exists.");
@@ -74,7 +79,12 @@ export async function addClassCommand(classPath: string, classType: string) {
 
     // create the file if it does not exist
     if (!(await fileExists(classPath))) {
-        await writeToFile(".", classPath, classContent, true).catch(async (error) => {
+        await writeToFile(
+            ".",
+            path.join(backendConfiguration.path, classPath),
+            classContent,
+            true,
+        ).catch(async (error) => {
             log.error(error.toString());
             await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_ADD_CLASS_ERROR,
