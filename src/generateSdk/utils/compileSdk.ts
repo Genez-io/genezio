@@ -55,6 +55,7 @@ export async function compileSdk(
         outDir: path.resolve(sdkPath, outDir, "cjs"),
         module: ts.ModuleKind.CommonJS,
         rootDir: sdkPath,
+        include: "*.ts",
         allowJs: true,
         declaration: true,
     };
@@ -69,6 +70,7 @@ export async function compileSdk(
         outDir: path.resolve(sdkPath, outDir, "esm"),
         module: ts.ModuleKind.ESNext,
         rootDir: sdkPath,
+        include: "*.ts",
         allowJs: true,
         declaration: true,
     };

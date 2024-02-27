@@ -1,23 +1,11 @@
-export const nodeSdkTs = `/**
+export const nodeSdkTsRemoteBrowser = `/**
 * This is an auto generated code. This code should not be modified since the file can be overwritten
 * if new genezio commands are executed.
 */
 
-let http: any = null;
-let https: any = null;
-let importDone: boolean = false;
-
-async function importModules() {
-    if (typeof process !== "undefined" && process.versions != null && process.versions.node != null) {
-        http = await import("http");
-        https = await import("https");
-    }
-    importDone = true;
-}
-
 async function makeRequestBrowser(request: any, url: any) {
     // @ts-ignore
-    const response = await fetch(\`\${url}\`, {
+    const response = await fetch(url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -31,6 +19,51 @@ async function makeRequestBrowser(request: any, url: any) {
 
     return response.json();
 }
+
+/**
+ * The class through which all request to the Genezio backend will be passed.
+ *
+ */
+ export class Remote {
+    url: any = undefined;
+    agent: any = undefined;
+
+    constructor(url: any) {
+        this.url = url;
+    }
+
+     deserialize(s: any) {
+        const e: any = new Error(s.message);
+        e.stack = s.stack
+        e.info = s.info
+        e.code = s.code
+        return e
+    }
+
+    async call(method: any, ...args: any[]) {
+        const requestContent = {"jsonrpc": "2.0", "method": method, "params": args, "id": 3};
+
+        const response = await makeRequestBrowser(requestContent, this.url);
+
+        if (response.error) {
+            throw this.deserialize(response.error);
+        }
+
+        return response.result;
+    }
+}
+
+`
+
+export const nodeSdkTsRemoteNode = `
+/**
+* This is an auto generated code. This code should not be modified since the file can be overwritten
+* if new genezio commands are executed.
+*/
+
+import * as http from 'http';
+import * as https from 'https';
+
 
 async function makeRequestNode(request: any, url: any, agent: any) {
 
@@ -56,7 +89,7 @@ async function makeRequestNode(request: any, url: any, agent: any) {
             res.on('data', (d: any) => {
                 body += d
             });
-            res.on('end', async function() {
+            res.on('end', function() {
                 const response = JSON.parse(body);
                 resolve(response);
             });
@@ -98,16 +131,7 @@ async function makeRequestNode(request: any, url: any, agent: any) {
 
     async call(method: any, ...args: any[]) {
         const requestContent = {"jsonrpc": "2.0", "method": method, "params": args, "id": 3};
-        let response: any = undefined;
-        if (!importDone) {
-            await importModules();
-        }
-
-        if (http !== null && https !== null) {
-            response = await makeRequestNode(requestContent, this.url, this.agent);
-        } else {
-            response = await makeRequestBrowser(requestContent, this.url);
-        }
+        const response: any = await makeRequestNode(requestContent, this.url, this.agent);
 
         if (response.error) {
             throw this.deserialize(response.error);

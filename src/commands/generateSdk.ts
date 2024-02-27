@@ -281,6 +281,7 @@ async function generateRemoteSdkHandler(
 
     // write the sdk to disk in the specified path
     await writeSdkToDisk(sdkGeneratorResponse, sdkPath);
+    console.log(sdkPath);
 
     if (sdkType === SdkType.PACKAGE) {
         debugLogger.debug("Sdk type is package for remote sdk");

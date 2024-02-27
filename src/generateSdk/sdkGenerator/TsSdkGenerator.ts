@@ -23,7 +23,7 @@ import {
     SdkGeneratorClassesInfoInput,
 } from "../../models/genezioModels.js";
 import { TriggerType } from "../../yamlProjectConfiguration/models.js";
-import { nodeSdkTs, storageTs } from "../templates/nodeSdkTs.js";
+import { nodeSdkTsRemoteNode, nodeSdkTsRemoteBrowser, storageTs } from "../templates/nodeSdkTs.js";
 import path from "path";
 
 const TYPESCRIPT_RESERVED_WORDS = [
@@ -461,7 +461,12 @@ class SdkGenerator implements SdkGeneratorInterface {
         generateSdkOutput.files.push({
             className: "Remote",
             path: "remote.ts",
-            data: nodeSdkTs.replace("%%%url%%%", "undefined"),
+            data: nodeSdkTsRemoteBrowser.replace("%%%url%%%", "undefined"),
+        });
+        generateSdkOutput.files.push({
+            className: "Remote",
+            path: "remote.node.ts",
+            data: nodeSdkTsRemoteNode.replace("%%%url%%%", "undefined"),
         });
 
         generateSdkOutput.files.push({

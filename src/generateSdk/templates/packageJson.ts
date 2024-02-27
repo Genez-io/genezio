@@ -41,6 +41,19 @@ export const getPackageJsonSdkGenerator = (
 export const getNodeModulePackageJsonLocal = (projectName: string, region: string): string => `{
   "name": "@genezio-sdk/${projectName}_${region}",
   "version": "${getRandomSemVer()}",
+  "exports": {
+    "./remote": {
+      "browser": {
+        "require": "./remote.browser.js",
+        "import": "./remote.browser.js",
+        "default": "./index.js"
+      },
+      "default": {
+        "require": "./remote.node.js",
+        "import": "./remote.node.js",
+        "default": "./index.js"
+      }
+    },
   "description": "",
   "main": "./cjs/index.js",
   "module": "./esm/index.js"
@@ -54,6 +67,20 @@ export const getNodeModulePackageJson = (
 ): string => `{
   "name": "@genezio-sdk/${projectName}_${region}",
   "version": "1.0.0-${stage}",
+  "exports": {
+    "./remote": {
+      "browser": {
+        "require": "./remote.browser.js",
+        "import": "./remote.browser.js",
+        "default": "./index.js"
+      },
+      "default": {
+        "require": "./remote.node.js",
+        "import": "./remote.node.js",
+        "default": "./index.js"
+      }
+    }
+  },
   "description": "",
   "main": "./cjs/index.js",
   "module": "./esm/index.js"
