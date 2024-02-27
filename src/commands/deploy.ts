@@ -3,6 +3,7 @@ import log from "loglevel";
 import path from "path";
 import { exit } from "process";
 import {
+    ENVIRONMENT,
     REACT_APP_BASE_URL,
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
@@ -55,6 +56,7 @@ import { Language, SdkType } from "../yamlProjectConfiguration/models.js";
 import { runScript } from "../utils/scripts.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../yamlProjectConfiguration/v2.js";
+import { getRandomCloudProvider, isProjectDeployed } from "../utils/abTesting.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -93,7 +95,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
     // }
     //
     // const cloudAdapter = getCloudAdapter(
-    //     configuration.cloudProvider || CloudProviderIdentifier.AWS,
+    //     configuration.cloudProvider || CloudProviderIdentifier.GENEZIO,
     // );
 
     backend: if (configuration.backend && !options.frontend) {
@@ -114,6 +116,22 @@ export async function deployCommand(options: GenezioDeployOptions) {
             });
             log.error("Backend `deploy` script failed.");
             exit(1);
+        }
+
+        // Enable cloud provider AB Testing
+        // This is ONLY done in the dev environment and if DISABLE_AB_TESTING is not set.
+        if (
+            ENVIRONMENT === "dev" &&
+            configuration.backend &&
+            process.env["DISABLE_AB_TESTING"] !== "true"
+        ) {
+            configuration.backend.cloudProvider = await performCloudProviderABTesting(
+                configuration.name,
+                configuration.region,
+                configuration.backend.cloudProvider,
+            );
+            // Write the new configuration in the config file
+            await configIOController.write(configuration);
         }
 
         await GenezioTelemetry.sendEvent({
@@ -571,3 +589,30 @@ function getCloudAdapter(provider: string): CloudAdapter {
             throw new Error(`Unsupported cloud provider: ${provider}`);
     }
 }
+
+// If the cloud provider defined in the configuration file is `genezio`,
+// we will randomly change it to in order to test out our experimental runtime.
+export async function performCloudProviderABTesting(projectName: string, projectRegion: string, projectCloudProvider: CloudProviderIdentifier
+): Promise<CloudProviderIdentifier> {
+    // Skip the AB testing if the project is already deployed
+    const isAlreadyDeployed = await isProjectDeployed(projectName, projectRegion);
+
+    // We won't perform AB testing if the cloud provider is set for runtime, self-hosted or cluster.
+    if (!isAlreadyDeployed && projectCloudProvider === CloudProviderIdentifier.GENEZIO) {
+        const randomCloudProvider = getRandomCloudProvider();
+
+        if (randomCloudProvider !== CloudProviderIdentifier.GENEZIO) {
+            debugLogger.debug(
+                "You've been visited by the AB testing fairy! 🧚‍♂️ Your cloud provider is now set to",
+                randomCloudProvider,
+                );
+                debugLogger.debug(
+                    "To disable AB testing, run `DISABLE_AB_TESTING=true genezio deploy`.",
+                );
+                randomCloudProvider;
+            }
+            return randomCloudProvider;
+        }
+
+        return projectCloudProvider;
+    }
