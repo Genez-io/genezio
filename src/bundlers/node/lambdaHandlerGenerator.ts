@@ -245,8 +245,7 @@ if (!genezioClass) {
                 });
             });
 
-            try {
-                
+            try {         
                 const response = Promise.race([object[method](body.params), timeoutPromise])
                     .then((result) => {
                         return {
