@@ -45,7 +45,7 @@ import { GenezioLocalOptions } from "../models/commandOptions.js";
 import { DartBundler } from "../bundlers/dart/localDartBundler.js";
 import axios, { AxiosError, AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
-import { Language, SdkType, TriggerType } from "../yamlProjectConfiguration/models.js";
+import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
 import { PackageManagerType } from "../packageManagers/packageManager.js";
 import {
     YamlConfigurationIOController,
@@ -276,7 +276,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             sdkConfiguration = {
                 language: Language[backendConfiguration.language.name as keyof typeof Language],
                 path: path.join(sdkPath, "sdk"),
-                type: SdkType.folder,
             };
         }
 

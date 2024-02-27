@@ -5,8 +5,9 @@ import { exit } from "process";
 import log from "loglevel";
 import { PackageManagerType } from "../packageManagers/packageManager.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
-import { Language, SdkType } from "./models.js";
+import { Language } from "./models.js";
 import path from "path";
+import { scanClassesForDecorators } from "../utils/configuration.js";
 
 export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
     if (process.env["CI"]) return undefined;
@@ -30,6 +31,19 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
             frontendPath,
             v1Config.frontend?.path || frontendPath,
         );
+        let backendLanguage;
+        if (v1Config.classes && v1Config.classes.length > 0) {
+            backendLanguage = v1Config.classes[0].language;
+        } else {
+            const scannedClasses = await scanClassesForDecorators({
+                path: v1Config.workspace?.backend || ".",
+            });
+            backendLanguage =
+                scannedClasses.length > 0
+                    ? path.parse(scannedClasses[0].path).ext.replace(".", "")
+                    : Language.ts;
+        }
+
         const v2Config: v2 = {
             name: v1Config.name,
             region: v1Config.region,
@@ -37,15 +51,14 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
             backend: {
                 path: v1Config.workspace?.backend ?? ".",
                 language: {
-                    name: v1Config.language,
+                    name: backendLanguage as Language,
                     runtime: v1Config.options?.nodeRuntime ?? "nodejs18.x",
                     packageManager: v1Config.packageManager ?? PackageManagerType.npm,
                 },
                 cloudProvider: v1Config.cloudProvider ?? CloudProviderIdentifier.GENEZIO,
                 classes: v1Config.classes.map((c) => ({
-                    name: c.name ?? "TODO",
+                    name: c.name,
                     path: path.relative(v1Config.workspace?.backend ?? ".", c.path),
-                    cloudProvider: v1Config.cloudProvider as CloudProviderIdentifier,
                     type: c.type,
                     methods: c.methods.map((m) => ({
                         name: m.name,
@@ -59,7 +72,6 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
                 },
                 sdk: v1Config.sdk
                     ? {
-                          type: SdkType.folder,
                           path: v1Config.sdk.path,
                           language: v1Config.sdk.language as Language,
                       }
