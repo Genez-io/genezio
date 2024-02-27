@@ -6,6 +6,7 @@ import { Worker } from "worker_threads";
 import { deleteFolder, writeToFile } from "../../utils/file.js";
 import fs from "fs";
 import packageManager from "../../packageManagers/packageManager.js";
+import { listFilesWithExtension } from "../../utils/listFilesWithExtension.js";
 
 const compilerWorkerScript = `const { parentPort, workerData } = require("worker_threads");
 
@@ -47,6 +48,15 @@ export async function compileSdk(
         }
     }
     fs.mkdirSync(genezioSdkPath, { recursive: true });
+    let extension;
+    if (language === Language.ts) {
+        extension = ".ts";
+    } else if (language === Language.js) {
+        extension = ".js";
+    } else {
+        throw new Error("Language not supported");
+    }
+    const filenames = await listFilesWithExtension(sdkPath, extension);
     // compile the sdk to cjs and esm using worker threads
     const workers = [];
     const require = createRequire(import.meta.url);
@@ -61,7 +71,7 @@ export async function compileSdk(
     };
     workers.push(
         createWorker(compilerWorkerScript, {
-            fileNames: [path.join(sdkPath, `index.${language}`)],
+            fileNames: filenames,
             compilerOptions: cjsOptions,
             typescriptPath,
         }),
@@ -76,7 +86,7 @@ export async function compileSdk(
     };
     workers.push(
         createWorker(compilerWorkerScript, {
-            fileNames: [path.join(sdkPath, `index.${language}`)],
+            fileNames: filenames,
             compilerOptions: esmOptions,
             typescriptPath,
         }),

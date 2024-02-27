@@ -365,7 +365,6 @@ export async function deployClasses(
         );
         await compileSdk(path.join(localPath, "sdk"), packageJson, backend.language.name, true);
         console.log("path", localPath);
-        await new Promise((resolve) => setTimeout(resolve, 1000000));
     }
 
     reportSuccess(

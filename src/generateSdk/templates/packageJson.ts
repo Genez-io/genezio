@@ -44,16 +44,15 @@ export const getNodeModulePackageJsonLocal = (projectName: string, region: strin
   "exports": {
     "./remote": {
       "browser": {
-        "require": "./remote.browser.js",
-        "import": "./remote.browser.js",
-        "default": "./index.js"
+        "require": "./cjs/remote.browser.js",
+        "import": "./esm/remote.browser.js"
       },
       "default": {
-        "require": "./remote.node.js",
-        "import": "./remote.node.js",
-        "default": "./index.js"
+        "require": "./cjs/remote.node.js",
+        "import": "./esm/remote.node.js"
       }
-    },
+    }
+  },
   "description": "",
   "main": "./cjs/index.js",
   "module": "./esm/index.js"
@@ -70,14 +69,12 @@ export const getNodeModulePackageJson = (
   "exports": {
     "./remote": {
       "browser": {
-        "require": "./remote.browser.js",
-        "import": "./remote.browser.js",
-        "default": "./index.js"
+        "require": "./cjs/remote.browser.js",
+        "import": "./esm/remote.browser.js"
       },
       "default": {
-        "require": "./remote.node.js",
-        "import": "./remote.node.js",
-        "default": "./index.js"
+        "require": "./cjs/remote.node.js",
+        "import": "./esm/remote.node.js"
       }
     }
   },
