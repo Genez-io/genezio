@@ -360,7 +360,7 @@ export type SdkMethodConfiguration = {
 };
 
 export type SdkClassConfiguration = {
-    name: string;
+    name?: string;
     path: string;
     language: string;
     type: TriggerType;
