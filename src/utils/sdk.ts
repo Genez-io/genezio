@@ -41,5 +41,5 @@ export async function writeSdkToDisk(sdk: SdkGeneratorResponse, outputPath: stri
             return writeToFile(outputPath, file.path, file.data, true);
         }),
     );
-    debugLogger.debug("The SDK was successfully written to files!!!!");
+    debugLogger.debug("The SDK was successfully written to files.");
 }

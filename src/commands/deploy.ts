@@ -382,7 +382,6 @@ export async function deployClasses(
             options.stage,
         );
         await compileSdk(path.join(localPath, "sdk"), packageJson, backend.language.name, true);
-        console.log("path", localPath);
     }
 
     reportSuccess(
