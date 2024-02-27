@@ -438,7 +438,7 @@ export class NodeJsBundler implements BundlerInterface {
             writeToFile(
                 temporaryFolder,
                 "index.mjs",
-                handlerGenerator(`"${input.configuration.name}"`, await getUser().then(user => user?.subscriptionLimits.executionTime) ?? 30),
+                handlerGenerator(`"${input.configuration.name}"`, await getUser().then(user => user?.subscriptionLimits.executionTime).catch(() => 30)),
             ),
         ]);
 
