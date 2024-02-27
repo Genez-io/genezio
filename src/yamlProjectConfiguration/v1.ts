@@ -414,8 +414,6 @@ export class YamlProjectConfiguration {
     }
 
     // The type parameter is used only if the yaml is a root type of genezio.yaml.
-    // It is used to decide if the genezio.yaml file that will be written is a frontend or
-    // a root type of genezio.yaml.
     //
     // this yaml mutation is becoming a mess and we should reconsider how
     // we implement it.

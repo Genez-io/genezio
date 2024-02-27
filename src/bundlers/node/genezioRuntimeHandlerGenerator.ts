@@ -83,8 +83,14 @@ if (!genezioClass) {
             }
 
             const method = components[2];
+
+            const http2CompliantHeaders = {};
+            for (const header in event.headers) {
+                http2CompliantHeaders[header.toLowerCase()] = event.headers[header];
+            }
+
             const req = {
-                headers: event.headers,
+                headers: http2CompliantHeaders,
                 http: event.http,
                 queryStringParameters: Object.fromEntries([...event.url.searchParams]),
                 timeEpoch: event.requestTimestampMs,
