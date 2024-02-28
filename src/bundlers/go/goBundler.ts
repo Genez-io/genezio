@@ -160,12 +160,12 @@ export class GoBundler implements BundlerInterface {
                 )}
         jsonMap, err := json.Marshal(body.Params[${index}])
         if err != nil {
-            errorResponse := sendError(err)
+            errorResponse := sendError(err, JsonRpcMethod)
             return errorResponse, nil
         }
         err = json.Unmarshal(jsonMap, &param${index})
         if err != nil {
-            errorResponse := sendError(err)
+            errorResponse := sendError(err, JsonRpcMethod)
             return errorResponse, nil
         }`;
             case AstNodeType.AnyLiteral:
