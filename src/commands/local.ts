@@ -70,7 +70,7 @@ import {
     CloudProviderIdentifier,
     LambdaResponse,
 } from "../models/cloudProviderIdentifier.js";
-import { GoBundler } from "../bundlers/go/localGoBundler.js";
+import { LocalGoBundler } from "../bundlers/go/localGoBundler.js";
 import { importServiceEnvVariables } from "../utils/servicesEnvVariables.js";
 import { isDependencyVersionCompatible } from "../utils/dependencyChecker.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
@@ -634,7 +634,7 @@ function getBundler(classConfiguration: ClassConfiguration): BundlerInterface | 
             break;
         }
         case "go": {
-            bundler = new GoBundler();
+            bundler = new LocalGoBundler();
             break;
         }
         default: {
