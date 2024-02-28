@@ -8,8 +8,11 @@ package main
 
 import (
 	"encoding/json"
+    "encoding/base64"
     "errors"
     "context"
+    "path"
+    "github.com/Genez-io/genezio_types"
     "github.com/aws/aws-lambda-go/lambda"
 
     {{#imports}}
@@ -17,10 +20,25 @@ import (
     {{/imports}}
 )
 
+type RequestContext struct {
+    TimeEpoch int64 \`json:"timeEpoch"\`
+    Http struct {
+		Method    string \`json:"method"\`
+		Path      string \`json:"path"\`
+		Protocol  string \`json:"protocol"\`
+		UserAgent string \`json:"userAgent"\`
+		SourceIp  string \`json:"sourceIp"\`
+    } \`json:"http"\`
+}
+
 type Event struct {
 	Body string \`json:"body"\`
+    Headers map[string]string \`json:"headers"\`
     GenezioEventType string \`json:"genezioEventType,omitempty"\`
     MethodName string \`json:"methodName,omitempty"\`
+    RequestContext RequestContext \`json:"requestContext,omitempty"\`
+    QueryStringParameters map[string]string \`json:"queryStringParameters,omitempty"\`
+    IsBase64Encoded bool \`json:"isBase64Encoded,omitempty"\`
 }
 
 type EventBody struct {
@@ -51,10 +69,18 @@ type ErrorStruct struct {
 type ResponseBodyError struct {
 	Id      int         \`json:"id"\`
 	Error   ErrorStruct \`json:"error"\`
-	Jsonrpc string      \`json:"jsonrpc"\`
+	Jsonrpc string      \`json:"jsonrpc,omitempty"\`
 }
 
-func sendError(err error) *Response {
+type MethodType string
+
+const (
+    CronMethod MethodType = "cron"
+    HttpMethod MethodType = "http"
+    JsonRpcMethod MethodType = "jsonrpc"
+)
+
+func sendError(err error, methodType MethodType) *Response {
     genezioError := make(map[string]interface{})
     byteError, error := json.Marshal(err)
     if error != nil {
@@ -71,7 +97,9 @@ func sendError(err error) *Response {
         responseError.Error.Info = &info
     }
 	responseError.Error.Message = err.Error()
-	responseError.Jsonrpc = "2.0"
+    if methodType == JsonRpcMethod {
+	    responseError.Jsonrpc = "2.0"
+    }
     responseErrorByte, err := json.Marshal(responseError)
     if err != nil {
         return nil
@@ -93,6 +121,15 @@ func handleRequest(context context.Context, event *Event) (*Response, error) {
 
 	class := {{class.packageName}}.New()
 
+    var isJsonRpcRequest bool
+
+    eventBody := []byte(event.Body)
+    // Decode the request body into struct and check for errors
+    bodyUnmarshallError := json.Unmarshal(eventBody, &body)
+    if bodyUnmarshallError == nil && body.Jsonrpc == "2.0" {
+        isJsonRpcRequest = true
+    }
+
     if event.GenezioEventType == "cron" {
         methodName := event.MethodName
         switch methodName {
@@ -100,12 +137,62 @@ func handleRequest(context context.Context, event *Event) (*Response, error) {
         case "{{name}}":
             err := class.{{name}}()
             if err != nil {
-                errorResponse := sendError(err)
+                errorResponse := sendError(err, CronMethod)
                 return errorResponse, nil
             }
         {{/cronMethods}}
         default:
-            errorResponse := sendError(errors.New("Method not found"))
+            errorResponse := sendError(errors.New("Cron method not found"), CronMethod)
+            return errorResponse, nil
+        }
+    } else if !isJsonRpcRequest {
+        genezioRequest := genezio_types.GenezioHttpRequest{
+            Headers: event.Headers,
+            QueryStringParameters: &event.QueryStringParameters,
+            TimeEpoch: event.RequestContext.TimeEpoch,
+            Http: event.RequestContext.Http,
+        }
+        if event.IsBase64Encoded {
+            bodyDecoded, err := base64.StdEncoding.DecodeString(event.Body)
+            if err != nil {
+                errorResponse := sendError(err, HttpMethod)
+                return errorResponse, nil
+            }
+            genezioRequest.Body = string(bodyDecoded)
+        } else if bodyUnmarshallError != nil {
+            genezioRequest.Body = event.Body
+        } else {
+            var mapBody map[string]interface{}
+            json.Unmarshal(eventBody, &mapBody)
+            genezioRequest.Body = mapBody
+        }
+        methodName := path.Base(event.RequestContext.Http.Path)
+        switch methodName {
+        {{#httpMethods}}
+        case "{{name}}":
+            result, err := class.{{name}}(genezioRequest)
+            if err != nil {
+                errorResponse := sendError(err, HttpMethod)
+                return errorResponse, nil
+            }
+            responseBody, err := json.Marshal(result.Body)
+            if err != nil {
+                errorResponse := sendError(err, HttpMethod)
+                return errorResponse, nil
+            }
+            var responseHeaders map[string]string
+            if result.Headers != nil {
+                responseHeaders = *result.Headers
+            }
+            response := &Response{
+                StatusCode: result.StatusCode,
+                Body:       string(responseBody),
+                Headers:    responseHeaders,
+            }
+            return response, nil
+        {{/httpMethods}}
+        default:
+            errorResponse := sendError(errors.New("Http method not found"), HttpMethod)
             return errorResponse, nil
         }
     } else {
@@ -113,7 +200,7 @@ func handleRequest(context context.Context, event *Event) (*Response, error) {
         // Decode the request body into struct and check for errors
         err := json.Unmarshal(eventBody, &body)
         if err != nil {
-            errorResponse := sendError(err)
+            errorResponse := sendError(err, JsonRpcMethod)
             return errorResponse, nil
         }
         // Call the appropriate method
@@ -125,15 +212,23 @@ func handleRequest(context context.Context, event *Event) (*Response, error) {
             {{/parameters}}
             {{^isVoid}}result, {{/isVoid}}err {{^isVoid}}:{{/isVoid}}= class.{{name}}({{#parameters}}param{{index}}{{^last}}, {{/last}}{{/parameters}})
             if err != nil {
-                errorResponse := sendError(err)
+                errorResponse := sendError(err, JsonRpcMethod)
                 return errorResponse, nil
             }
             {{^isVoid}}
             responseBody.Result = result
             {{/isVoid}}
         {{/jsonRpcMethods}}
+        {{#cronMethods}}
+        case "{{class.name}}.{{name}}":
+            err := class.{{name}}()
+            if err != nil {
+                errorResponse := sendError(err, JsonRpcMethod)
+                return errorResponse, nil
+            }
+        {{/cronMethods}}
         default:
-            errorResponse := sendError(errors.New("Method not found"))
+            errorResponse := sendError(errors.New("Method not found"), JsonRpcMethod)
             return errorResponse, nil
         }
     }
@@ -143,7 +238,7 @@ func handleRequest(context context.Context, event *Event) (*Response, error) {
 
     bodyString, err := json.Marshal(responseBody)
     if err != nil {
-        errorResponse := sendError(err)
+        errorResponse := sendError(err, JsonRpcMethod)
         return errorResponse, nil
     }
 
