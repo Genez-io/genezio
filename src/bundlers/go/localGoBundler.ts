@@ -2,7 +2,7 @@ import path from "path";
 import Mustache from "mustache";
 import { default as fsExtra } from "fs-extra";
 import log from "loglevel";
-import { spawnSync } from "child_process";
+import { $ } from "execa";
 import { template } from "./localGoMain.js";
 // Utils
 import { createTemporaryFolder, writeToFile } from "../../utils/file.js";
@@ -237,28 +237,25 @@ export class GoBundler implements BundlerInterface {
 
     async #compile(folderPath: string) {
         // Compile the Go code locally
-        const getDependencyResult = spawnSync("go", ["get", "github.com/Genez-io/genezio_types"], {
-            cwd: folderPath,
-        });
-        if (getDependencyResult.status == null) {
+        const getDependencyResult = $({ cwd: folderPath })
+            .sync`go get github.com/Genez-io/genezio_types`;
+        if (getDependencyResult.exitCode == null) {
             log.info(
                 "There was an error while running the go script, make sure you have the correct permissions.",
             );
             throw new Error("Compilation error! Please check your code and try again.");
-        } else if (getDependencyResult.status != 0) {
+        } else if (getDependencyResult.exitCode != 0) {
             log.info(getDependencyResult.stderr.toString());
             log.info(getDependencyResult.stdout.toString());
             throw new Error("Compilation error! Please check your code and try again.");
         }
-        const result = spawnSync("go", ["build", "-o", "main", "main.go"], {
-            cwd: folderPath,
-        });
-        if (result.status == null) {
+        const result = $({ cwd: folderPath }).sync`go build -o main main.go`;
+        if (result.exitCode == null) {
             log.info(
                 "There was an error while running the go script, make sure you have the correct permissions.",
             );
             throw new Error("Compilation error! Please check your code and try again.");
-        } else if (result.status != 0) {
+        } else if (result.exitCode != 0) {
             log.info(result.stderr.toString());
             log.info(result.stdout.toString());
             throw new Error("Compilation error! Please check your code and try again.");

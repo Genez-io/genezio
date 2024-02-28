@@ -2,7 +2,6 @@ import path from "path";
 import Mustache from "mustache";
 import { default as fsExtra } from "fs-extra";
 import log from "loglevel";
-import { spawnSync } from "child_process";
 import { template } from "./goMain.js";
 // Utils
 import { createTemporaryFolder, writeToFile } from "../../utils/file.js";
@@ -27,6 +26,7 @@ import {
 } from "../../models/genezioModels.js";
 import { checkIfGoIsInstalled } from "../../utils/go.js";
 import { TriggerType } from "../../yamlProjectConfiguration/models.js";
+import { $ } from "execa";
 
 type ImportView = {
     name: string;
@@ -238,15 +238,13 @@ export class GoBundler implements BundlerInterface {
             "github.com/Genez-io/genezio_types",
         ];
         for (const dependency of dependencies) {
-            const getDependencyResult = spawnSync("go", ["get", dependency], {
-                cwd: folderPath,
-            });
-            if (getDependencyResult.status == null) {
+            const getDependencyResult = $({ cwd: folderPath }).sync`go get ${dependency}`;
+            if (getDependencyResult.exitCode == null) {
                 log.info(
                     "There was an error while running the go script, make sure you have the correct permissions.",
                 );
                 throw new Error("Compilation error! Please check your code and try again.");
-            } else if (getDependencyResult.status != 0) {
+            } else if (getDependencyResult.exitCode != 0) {
                 log.info(getDependencyResult.stderr.toString());
                 log.info(getDependencyResult.stdout.toString());
                 throw new Error("Compilation error! Please check your code and try again.");
@@ -254,18 +252,18 @@ export class GoBundler implements BundlerInterface {
         }
         process.env["GOOS"] = "linux";
         process.env["GOARCH"] = "arm64";
-        const result = spawnSync("go", ["build", "-o", "bootstrap", "main.go"], {
+        const result = $({
             cwd: folderPath,
             env: {
                 ...process.env,
             },
-        });
-        if (result.status == null) {
+        }).sync`go build -o bootstrap main.go`;
+        if (result.exitCode == null) {
             log.info(
                 "There was an error while running the go script, make sure you have the correct permissions.",
             );
             throw new Error("Compilation error! Please check your code and try again.");
-        } else if (result.status != 0) {
+        } else if (result.exitCode != 0) {
             log.info(result.stderr.toString());
             log.info(result.stdout.toString());
             throw new Error("Compilation error! Please check your code and try again.");
