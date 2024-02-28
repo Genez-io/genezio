@@ -37,24 +37,16 @@ export class TypeCheckerBundler implements BundlerInterface {
 
         await this.#generateTsconfigJson(cwd);
 
-        const configFile = ts.readConfigFile(path.join(cwd, "tsconfig.json"), ts.sys.readFile);
+        const configPath = path.join(cwd, "tsconfig.json");
 
-        // Add node_modules/@types to typeRoots if it's not already there
-        // This is needed because there is a bug in Typescript when running the type checker outside of a project
-        // More details here: https://github.com/microsoft/TypeScript/issues/57562
-        if (configFile.config?.compilerOptions !== undefined) {
-            const compilerOptions = configFile.config.compilerOptions;
-            if (compilerOptions.typeRoots === undefined) {
-                compilerOptions.typeRoots = ["node_modules/@types"];
-            } else if (
-                Array.isArray(compilerOptions.typeRoots) &&
-                !compilerOptions.typeRoots.includes("node_modules/@types")
-            ) {
-                compilerOptions.typeRoots.push("node_modules/@types");
-            }
+        const config = ts.getParsedCommandLineOfConfigFile(configPath, undefined, {
+            ...ts.sys,
+            onUnRecoverableConfigFileDiagnostic: () => {},
+        });
+        if (!config) {
+            throw new Error("Failed to parse tsconfig.json");
         }
 
-        const config = ts.parseJsonConfigFileContent(configFile.config, ts.sys, cwd);
         const program = ts.createProgram({
             rootNames: config.fileNames,
             options: config.options,
