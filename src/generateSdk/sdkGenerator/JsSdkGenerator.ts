@@ -7,7 +7,12 @@ import {
     SdkGeneratorOutput,
     IndexModel,
 } from "../../models/genezioModels.js";
-import { nodeSdkJsRemoteNode, nodeSdkJsRemoteBrowser, nodeSdkJsRemoteGeneric, storageJs } from "../templates/nodeSdkJs.js";
+import {
+    nodeSdkJsRemoteNode,
+    nodeSdkJsRemoteBrowser,
+    nodeSdkJsRemoteGeneric,
+    storageJs,
+} from "../templates/nodeSdkJs.js";
 import Mustache from "mustache";
 
 const indexTemplate = `/**
@@ -121,11 +126,12 @@ class SdkGenerator implements SdkGeneratorInterface {
             if (classDefinition === undefined) {
                 continue;
             }
-            
-            const remoteImport = sdkGeneratorInput.sdkTypeMetadata.type === SdkType.package ?
-                `import { Remote } from "@genezio-sdk/${sdkGeneratorInput.sdkTypeMetadata.projectName}_${sdkGeneratorInput.sdkTypeMetadata.region}";` :
-                `import { Remote } from "./remote";`;
-            
+
+            const remoteImport =
+                sdkGeneratorInput.sdkTypeMetadata.type === SdkType.package
+                    ? `import { Remote } from "@genezio-sdk/${sdkGeneratorInput.sdkTypeMetadata.projectName}_${sdkGeneratorInput.sdkTypeMetadata.region}/remote";`
+                    : `import { Remote } from "./remote";`;
+
             const view: ViewType = {
                 remoteImport,
                 className: classDefinition.name,
@@ -204,12 +210,12 @@ class SdkGenerator implements SdkGeneratorInterface {
             // generate remote.js
             generateSdkOutput.files.push({
                 className: "Remote",
-                path: "remote.ts",
+                path: "remote.js",
                 data: nodeSdkJsRemoteBrowser.replace("%%%url%%%", "undefined"),
             });
             generateSdkOutput.files.push({
                 className: "Remote",
-                path: "remote.node.ts",
+                path: "remote.node.js",
                 data: nodeSdkJsRemoteNode.replace("%%%url%%%", "undefined"),
             });
         } else {
