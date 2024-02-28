@@ -17,7 +17,9 @@ import { generateSdk } from "../generateSdk/sdkGeneratorHandler.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import inquirer from "inquirer";
 import { GenezioSdkOptions, SdkType, SourceType } from "../models/commandOptions.js";
+import { SdkType as SdkTypeModel } from "../yamlProjectConfiguration/models.js";
 import {
+    SdkTypeMetadata,
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
 } from "../generateSdk/generateSdkApi.js";
@@ -47,6 +49,9 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
     }
 
     const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
+        {
+            type: SdkTypeModel.folder,
+        },
         options.language,
         mapYamlClassToSdkClassConfiguration(
             await scanClassesForDecorators({ path: process.cwd(), classes: [] }),
@@ -240,7 +245,21 @@ async function generateRemoteSdkHandler(
         );
     }
 
+    let metadata: SdkTypeMetadata;
+    if (sdkType === SdkType.PACKAGE) {
+        metadata = {
+            type: SdkTypeModel.package,
+            projectName,
+            region,
+        };
+    } else {
+        metadata = {
+            type: SdkTypeModel.folder,
+        };
+    }
+
     const sdkGeneratorInput: SdkGeneratorInput = {
+        sdkTypeMetadata: metadata,
         classesInfo: projectEnv.classes.map(
             (c): SdkGeneratorClassesInfoInput => ({
                 program: mapDbAstToSdkGeneratorAst(c.ast),

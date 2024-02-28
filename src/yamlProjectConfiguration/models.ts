@@ -16,4 +16,5 @@ export enum TriggerType {
 
 export enum SdkType {
     folder = "folder",
+    package = "package",
 }

@@ -8,13 +8,34 @@ import {
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import { AstGeneratorInput } from "../models/genezioModels.js";
 import fs from "fs";
-import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
+import { Language, SdkType, TriggerType } from "../yamlProjectConfiguration/models.js";
 import path from "path";
 import { YamlClass } from "../yamlProjectConfiguration/v2.js";
+
+interface SdkTypeFolder {
+    type: SdkType.folder;
+}
+
+interface SdkTypePackage {
+    type: SdkType.package;
+    projectName: string;
+    region: string;
+}
+
+/**
+ * SdkTypeMetadata is a union type that represents the metadata of the SDK type.
+ * This helps to determine what type of SDK is being generated.
+ * It can be either a folder or a package.
+ *
+ * If it is a folder, it will have the type property set to SdkType.folder.
+ * If it is a package, it will have the type property set to SdkType.package and the projectName and region properties set.
+ */
+export type SdkTypeMetadata = SdkTypeFolder | SdkTypePackage;
 
 /**
  * Asynchronously handles a request to generate an SDK based on the provided YAML project configuration.
  *
+ * @param {SdkTypeMetadata} sdkTypeMetadata - Specify the type of SDK to generate and its metadata.
  * @param {Language} language - The language to generate the SDK in.
  * @param {SdkClassConfiguration[]} classes - The classes to generate the SDK for.
  * @param {string} backendPath - The path to the backend directory.
@@ -22,6 +43,7 @@ import { YamlClass } from "../yamlProjectConfiguration/v2.js";
  * @throws {Error} If there was an error generating the SDK.
  */
 export async function sdkGeneratorApiHandler(
+    sdkTypeMetadata: SdkTypeMetadata,
     language: Language,
     classes: SdkClassConfiguration[],
     backendPath: string,
@@ -29,6 +51,7 @@ export async function sdkGeneratorApiHandler(
     const inputs: AstGeneratorInput[] = generateAstInputs(classes || [], backendPath);
 
     const sdkGeneratorInput: SdkGeneratorInput = {
+        sdkTypeMetadata,
         classesInfo: [],
     };
 

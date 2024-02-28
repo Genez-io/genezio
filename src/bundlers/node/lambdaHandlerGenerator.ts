@@ -1,7 +1,10 @@
 //const object = new handler.genezio[Object.keys(handler.genezio)[0]]();
 /* eslint-disable no-useless-escape */
 
-export const lambdaHandlerGenerator = (className: string): string => `
+export const lambdaHandlerGenerator = (
+    className: string,
+    timeoutDurationInSeconds: number,
+): string => `
 /** This is an auto generated code. This code should not be modified since the file can be overwritten
  *  if new genezio commands are executed.
  */
@@ -76,6 +79,13 @@ if (!genezioClass) {
     }
 
     handler = handler ?? async function (event, context) {
+        const timeoutPromise = new Promise((resolve) => {
+            setTimeout(() => {
+                console.error("Request timed out.");
+                throw new Error("Request timed out.");
+            }, ${timeoutDurationInSeconds} * 1000 - 100);
+        });
+        
         if (event.genezioEventType === "cron") {
             const method = event.methodName;
 
@@ -89,7 +99,7 @@ if (!genezioClass) {
             );
 
             try {
-                await object[method]();
+                const response = Promise.race([object[method](event.params), timeoutPromise]);
             } catch (error) {
                 console.log("ERROR: cron trigger with error: " + error);
             }
@@ -137,7 +147,7 @@ if (!genezioClass) {
             }
 
             try {
-                const response = await object[method](req);
+                const response = Promise.race([object[method](req), timeoutPromise]);
 
                 if (!response.statusCode) {
                     response.statusCode = 200;
@@ -238,8 +248,8 @@ if (!genezioClass) {
                 });
             });
 
-            try {
-                const response = Promise.resolve(object[method](...(body.params || [])))
+            try {         
+                const response = Promise.race([object[method](body.params), timeoutPromise])
                     .then((result) => {
                         return {
                             statusCode: 200,

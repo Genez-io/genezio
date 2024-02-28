@@ -1,3 +1,4 @@
+import { SdkTypeMetadata } from "../generateSdk/generateSdkApi.js";
 import { TriggerType } from "../yamlProjectConfiguration/models.js";
 
 export enum GenezioCommandTemplates {
@@ -337,6 +338,7 @@ export type SdkGeneratorClassesInfoInput = {
 };
 
 export type SdkGeneratorInput = {
+    sdkTypeMetadata: SdkTypeMetadata;
     classesInfo: SdkGeneratorClassesInfoInput[];
     sdk?: {
         language: string;
@@ -360,7 +362,7 @@ export type SdkMethodConfiguration = {
 };
 
 export type SdkClassConfiguration = {
-    name: string;
+    name?: string;
     path: string;
     language: string;
     type: TriggerType;

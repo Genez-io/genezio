@@ -19,7 +19,6 @@ import {
     isStringLiteral,
 } from "@babel/types";
 import { TriggerType } from "../yamlProjectConfiguration/models.js";
-import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 
 type MethodDecoratorInfo = {
     name: string;
@@ -268,7 +267,6 @@ export async function scanClassesForDecorators(
                     path: path.relative(yamlBackend.path, classInfo[0].path),
                     type: type,
                     methods: methods,
-                    cloudProvider: CloudProviderIdentifier.GENEZIO,
                 });
             }
         }

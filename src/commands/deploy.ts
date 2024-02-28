@@ -10,6 +10,7 @@ import {
 } from "../constants.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG, GENEZIO_NO_CLASSES_FOUND } from "../errors.js";
 import {
+    SdkTypeMetadata,
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
 } from "../generateSdk/generateSdkApi.js";
@@ -247,8 +248,21 @@ export async function deployClasses(
     if (backend.classes.length === 0) {
         throw new Error(GENEZIO_NO_CLASSES_FOUND);
     }
+    let metadata: SdkTypeMetadata;
+    if (backend.sdk?.type === SdkType.folder) {
+        metadata = {
+            type: SdkType.folder,
+        };
+    } else {
+        metadata = {
+            type: SdkType.package,
+            projectName: configuration.name,
+            region: configuration.region,
+        };
+    }
 
     const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
+        metadata,
         backend.language.name,
         mapYamlClassToSdkClassConfiguration(backend.classes, backend.language.name, backend.path),
         backend.path,
@@ -369,7 +383,7 @@ export async function deployClasses(
         })),
     );
 
-    if (backend.sdk && backend.sdk.type === SdkType.folder) {
+    if (backend.sdk) {
         await writeSdkToDisk(sdkResponse, backend.sdk.path);
     } else if (backend.language.name === Language.ts || backend.language.name === Language.js) {
         const localPath = await createLocalTempFolder(
@@ -592,7 +606,10 @@ function getCloudAdapter(provider: string): CloudAdapter {
 
 // If the cloud provider defined in the configuration file is `genezio`,
 // we will randomly change it to in order to test out our experimental runtime.
-export async function performCloudProviderABTesting(projectName: string, projectRegion: string, projectCloudProvider: CloudProviderIdentifier
+export async function performCloudProviderABTesting(
+    projectName: string,
+    projectRegion: string,
+    projectCloudProvider: CloudProviderIdentifier,
 ): Promise<CloudProviderIdentifier> {
     // Skip the AB testing if the project is already deployed
     const isAlreadyDeployed = await isProjectDeployed(projectName, projectRegion);
@@ -605,14 +622,14 @@ export async function performCloudProviderABTesting(projectName: string, project
             debugLogger.debug(
                 "You've been visited by the AB testing fairy! 🧚‍♂️ Your cloud provider is now set to",
                 randomCloudProvider,
-                );
-                debugLogger.debug(
-                    "To disable AB testing, run `DISABLE_AB_TESTING=true genezio deploy`.",
-                );
-                randomCloudProvider;
-            }
-            return randomCloudProvider;
+            );
+            debugLogger.debug(
+                "To disable AB testing, run `DISABLE_AB_TESTING=true genezio deploy`.",
+            );
+            randomCloudProvider;
         }
-
-        return projectCloudProvider;
+        return randomCloudProvider;
     }
+
+    return projectCloudProvider;
+}

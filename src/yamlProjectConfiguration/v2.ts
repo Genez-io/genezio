@@ -1,7 +1,7 @@
-import nativeFs from "fs";
-import { IFs } from "memfs";
 import { YAMLContext, parse as parseYaml, stringify as stringifyYaml } from "yaml-transmute";
 import zod from "zod";
+import nativeFs from "fs";
+import { IFs } from "memfs";
 import { regions } from "../utils/configs.js";
 import { zodFormatError } from "../errors.js";
 import { Language, SdkType } from "./models.js";
@@ -66,22 +66,8 @@ function parseGenezioConfig(config: unknown) {
         );
 
     const classSchema = zod.object({
-        name: zod.string(),
+        name: zod.string().optional(),
         path: zod.string(),
-        cloudProvider: zod
-            .nativeEnum(CloudProviderIdentifier, {
-                errorMap: (issue, ctx) => {
-                    if (issue.code === zod.ZodIssueCode.invalid_enum_value) {
-                        return {
-                            message:
-                                "Invalid enum value. The supported values are `genezio` or `selfHostedAws`.",
-                        };
-                    }
-
-                    return { message: ctx.defaultError };
-                },
-            })
-            .default(CloudProviderIdentifier.GENEZIO),
         type: zod.nativeEnum(TriggerType).optional(),
         methods: zod.array(methodSchema).optional(),
     });
@@ -116,15 +102,6 @@ function parseGenezioConfig(config: unknown) {
                 path: zod.string(),
                 language: zod.nativeEnum(Language),
             })
-            // TODO: Add option to export sdk as a package
-            // .or(
-            //     zod.object({
-            //         type: zod.literal("package"),
-            //         path: zod.string().default("./sdk"),
-            //         packageName: zod.string(),
-            //         language: zod.nativeEnum(Language),
-            //     }),
-            // )
             .optional(),
     });
 
