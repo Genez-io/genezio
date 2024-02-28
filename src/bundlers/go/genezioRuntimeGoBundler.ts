@@ -1,11 +1,10 @@
-import path from "path";
 import log from "loglevel";
-import { template } from "./localGoMain.js";
+import { template } from "./genezioRuntimeGoMain.js";
 import { GoBundler } from "./goBundlerBase.js";
 import { BundlerInput } from "../bundler.interface.js";
 import { $ } from "execa";
 
-export class LocalGoBundler extends GoBundler {
+export class GenezioRuntimeGoBundler extends GoBundler {
     template = template;
 
     generateErrorReturn(): string {
@@ -15,7 +14,7 @@ export class LocalGoBundler extends GoBundler {
         `;
     }
 
-    async compile(folderPath: string, input: BundlerInput) {
+    async compile(folderPath: string, _: BundlerInput) {
         // Compile the Go code locally
         const getDependencyResult = $({ cwd: folderPath })
             .sync`go get github.com/Genez-io/genezio_types`;
@@ -29,7 +28,7 @@ export class LocalGoBundler extends GoBundler {
             log.info(getDependencyResult.stdout.toString());
             throw new Error("Compilation error! Please check your code and try again.");
         }
-        const result = $({ cwd: folderPath }).sync`go build -o main main.go`;
+        const result = $({ cwd: folderPath }).sync`go build -buildmode=plugin -o bootstrap main.go`;
         if (result.exitCode == null) {
             log.info(
                 "There was an error while running the go script, make sure you have the correct permissions.",
@@ -40,11 +39,5 @@ export class LocalGoBundler extends GoBundler {
             log.info(result.stdout.toString());
             throw new Error("Compilation error! Please check your code and try again.");
         }
-
-        input.extra = {
-                ...input.extra,
-                startingCommand: path.join(input.path, "main"),
-                commandParameters: [],
-        };
     }
 }
