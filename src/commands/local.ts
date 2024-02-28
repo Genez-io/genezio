@@ -105,6 +105,13 @@ export async function prepareLocalBackendEnvironment(
 ): Promise<BundlerRestartResponse> {
     try {
         const backend = yamlProjectConfiguration.backend;
+        const frontend = yamlProjectConfiguration.frontend;
+        let sdkLanguage: Language = Language.ts;
+        if (frontend && Array.isArray(frontend)) {
+            sdkLanguage = frontend[0].language;
+        } else if (frontend) {
+            sdkLanguage = frontend.language;
+        }
         if (!backend) {
             throw new Error("No backend component found in the genezio.yaml file.");
         }
@@ -130,7 +137,7 @@ export async function prepareLocalBackendEnvironment(
 
         const sdk = await sdkGeneratorApiHandler(
             metadata,
-            backend.sdk?.language || backend.language.name,
+            backend.sdk?.language || sdkLanguage,
             mapYamlClassToSdkClassConfiguration(
                 backend.classes,
                 backend.language.name,
@@ -196,6 +203,13 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     const backendConfiguration = yamlProjectConfiguration.backend;
     if (!backendConfiguration) {
         throw new Error("No backend component found in the genezio.yaml file.");
+    }
+    const frontend = yamlProjectConfiguration.frontend;
+    let sdkLanguage: Language = Language.ts;
+    if (frontend && Array.isArray(frontend)) {
+        sdkLanguage = frontend[0].language;
+    } else if (frontend) {
+        sdkLanguage = frontend.language;
     }
 
     // We need to check if the user is using an older version of @genezio/types
@@ -290,7 +304,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             );
 
             sdkConfiguration = {
-                language: Language[backendConfiguration.language.name as keyof typeof Language],
+                language: sdkLanguage,
                 path: path.join(sdkPath, "sdk"),
                 type: SdkType.folder,
             };
