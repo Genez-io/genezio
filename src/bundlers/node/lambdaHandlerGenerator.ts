@@ -1,7 +1,10 @@
 //const object = new handler.genezio[Object.keys(handler.genezio)[0]]();
 /* eslint-disable no-useless-escape */
 
-export const lambdaHandlerGenerator = (className: string, timeoutDurationInSeconds: number): string => `
+export const lambdaHandlerGenerator = (
+    className: string,
+    timeoutDurationInSeconds: number,
+): string => `
 /** This is an auto generated code. This code should not be modified since the file can be overwritten
  *  if new genezio commands are executed.
  */

@@ -23,7 +23,12 @@ import {
     SdkGeneratorClassesInfoInput,
 } from "../../models/genezioModels.js";
 import { SdkType, TriggerType } from "../../yamlProjectConfiguration/models.js";
-import { nodeSdkTsRemoteNode, nodeSdkTsRemoteBrowser, nodeSdkTsRemoteGeneric, storageTs } from "../templates/nodeSdkTs.js";
+import {
+    nodeSdkTsRemoteNode,
+    nodeSdkTsRemoteBrowser,
+    nodeSdkTsRemoteGeneric,
+    storageTs,
+} from "../templates/nodeSdkTs.js";
 import path from "path";
 
 const TYPESCRIPT_RESERVED_WORDS = [
@@ -256,10 +261,11 @@ class SdkGenerator implements SdkGeneratorInterface {
             if (classDefinition === undefined) {
                 continue;
             }
-            
-            const remoteImport = sdkGeneratorInput.sdkTypeMetadata.type === SdkType.package ?
-                `import { Remote } from "@genezio-sdk/${sdkGeneratorInput.sdkTypeMetadata.projectName}_${sdkGeneratorInput.sdkTypeMetadata.region}/remote";` :
-                `import { Remote } from "./remote";`;
+
+            const remoteImport =
+                sdkGeneratorInput.sdkTypeMetadata.type === SdkType.package
+                    ? `import { Remote } from "@genezio-sdk/${sdkGeneratorInput.sdkTypeMetadata.projectName}_${sdkGeneratorInput.sdkTypeMetadata.region}/remote";`
+                    : `import { Remote } from "./remote";`;
 
             // @ts-expect-error A refactor need to be performed here to avoid this error
             const view: ViewType = {

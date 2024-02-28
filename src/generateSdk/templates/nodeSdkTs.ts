@@ -172,7 +172,7 @@ async function makeRequestBrowser(request: any, url: any) {
     }
 }
 
-`
+`;
 
 export const nodeSdkTsRemoteNode = `
 /**

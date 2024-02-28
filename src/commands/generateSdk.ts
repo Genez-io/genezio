@@ -49,8 +49,8 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
     }
 
     const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
-        { 
-            type : SdkTypeModel.folder
+        {
+            type: SdkTypeModel.folder,
         },
         options.language,
         mapYamlClassToSdkClassConfiguration(

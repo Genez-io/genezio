@@ -378,7 +378,7 @@ export class NodeJsBundler implements BundlerInterface {
 
     getHandlerGeneratorForProvider(
         provider: CloudProviderIdentifier,
-    ): ((className: string, timeoutDuration:number) => string) | null {
+    ): ((className: string, timeoutDuration: number) => string) | null {
         switch (provider) {
             case CloudProviderIdentifier.GENEZIO:
                 return lambdaHandlerGenerator;
@@ -438,7 +438,12 @@ export class NodeJsBundler implements BundlerInterface {
             writeToFile(
                 temporaryFolder,
                 "index.mjs",
-                handlerGenerator(`"${input.configuration.name}"`, await getUser().then(user => user?.subscriptionLimits.executionTime).catch(() => 30)),
+                handlerGenerator(
+                    `"${input.configuration.name}"`,
+                    await getUser()
+                        .then((user) => user?.subscriptionLimits.executionTime)
+                        .catch(() => 30),
+                ),
             ),
         ]);
 

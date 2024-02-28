@@ -35,6 +35,7 @@ export type SdkTypeMetadata = SdkTypeFolder | SdkTypePackage;
 /**
  * Asynchronously handles a request to generate an SDK based on the provided YAML project configuration.
  *
+ * @param {SdkTypeMetadata} sdkTypeMetadata - Specify the type of SDK to generate and its metadata.
  * @param {Language} language - The language to generate the SDK in.
  * @param {SdkClassConfiguration[]} classes - The classes to generate the SDK for.
  * @param {string} backendPath - The path to the backend directory.

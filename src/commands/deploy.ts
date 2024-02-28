@@ -53,7 +53,7 @@ import { Status } from "../requests/models.js";
 import { bundle } from "../bundlers/utils.js";
 import { isDependencyVersionCompatible } from "../utils/dependencyChecker.js";
 import { YamlConfigurationIOController } from "../yamlProjectConfiguration/v2.js";
-import { Language } from "../yamlProjectConfiguration/models.js";
+import { Language, SdkType } from "../yamlProjectConfiguration/models.js";
 import { runScript } from "../utils/scripts.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../yamlProjectConfiguration/v2.js";
@@ -248,7 +248,7 @@ export async function deployClasses(
     if (backend.classes.length === 0) {
         throw new Error(GENEZIO_NO_CLASSES_FOUND);
     }
-    let metadata: SdkTypeMetadata
+    let metadata: SdkTypeMetadata;
     if (backend.sdk?.type === SdkType.folder) {
         metadata = {
             type: SdkType.folder,

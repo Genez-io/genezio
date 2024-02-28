@@ -6,7 +6,7 @@ import { Worker } from "worker_threads";
 import { deleteFolder, writeToFile } from "../../utils/file.js";
 import fs from "fs";
 import packageManager from "../../packageManagers/packageManager.js";
-import { listFilesWithExtension } from "../../utils/listFilesWithExtension.js";
+import { listFilesWithExtension } from "../../utils/file.js";
 
 const compilerWorkerScript = `const { parentPort, workerData } = require("worker_threads");
 

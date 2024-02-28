@@ -3,16 +3,19 @@ import getAuthStatus from "../requests/getAuthStatus.js";
 import { getProjectEnvFromProjectByName } from "../requests/getProjectInfoByName.js";
 import { debugLogger } from "./logging.js";
 
-
-
 export const servicesEnvVariables = {
-    "GNZ_AUTH_FUNCTION_URL": getAuthFunctionUrl
-}
+    GNZ_AUTH_FUNCTION_URL: getAuthFunctionUrl,
+};
 
-async function getAuthFunctionUrl(projectName: string, region: string): Promise<string|undefined> {
-    const projectEnv = await getProjectEnvFromProjectByName(projectName, region, "prod").catch(() => {
-        return undefined; 
-    });
+async function getAuthFunctionUrl(
+    projectName: string,
+    region: string,
+): Promise<string | undefined> {
+    const projectEnv = await getProjectEnvFromProjectByName(projectName, region, "prod").catch(
+        () => {
+            return undefined;
+        },
+    );
     if (!projectEnv) {
         return undefined;
     }
@@ -44,4 +47,3 @@ export async function importServiceEnvVariables(projectName: string, region: str
         process.env[key] = envValue;
     }
 }
-
