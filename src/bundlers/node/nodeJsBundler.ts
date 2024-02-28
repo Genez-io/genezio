@@ -99,7 +99,11 @@ export class NodeJsBundler implements BundlerInterface {
         );
     }
 
-    async #bundleNodeJSCode(filePath: string, tempFolderPath: string, cwd?: string): Promise<void> {
+    async #bundleNodeJSCode(
+        filePath: string,
+        tempFolderPath: string,
+        cwd: string = process.cwd(),
+    ): Promise<void> {
         const outputFile = `module.mjs`;
 
         // delete module.js file if it exists
@@ -133,8 +137,7 @@ export class NodeJsBundler implements BundlerInterface {
                         }
                     }
 
-                    const _cwd = cwd ?? process.cwd();
-                    const relativePath = path.relative(_cwd, args.path);
+                    const relativePath = path.relative(cwd, args.path);
                     const components = relativePath.split(path.sep);
                     const contents = await fs.promises.readFile(args.path, "utf8");
                     const loader = getLoader(args.path.split(".").pop()!);
@@ -182,14 +185,13 @@ export class NodeJsBundler implements BundlerInterface {
         const outputFilePath = path.join(tempFolderPath, outputFile);
 
         /*
-         * If genezio was executed from the root of the workspace,
-         * we need to pass the path to the package.json file.
-         * However, if the file does not exist, it will crash.
-         * To avoid this, we make this check based on the information
-         * if this command was executed from within a workspace or not.
+         * ESBuild uses `package.json` file to determine which modules are external.
+         * If the file is not provided, all packages will be bundled and none will be external.
+         * We don't want this because it increases the size of the bundle. So, if
+         * the `package.json` file exists, we inform ESBuild about it.
          */
         let nodeExternalPlugin;
-        if (cwd) {
+        if (fs.existsSync(path.join(cwd, "package.json"))) {
             nodeExternalPlugin = nodeExternalsPlugin({
                 packagePath: path.join(cwd, "package.json"),
             });
