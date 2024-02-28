@@ -21,7 +21,6 @@ import { DependencyInstaller } from "./dependencyInstaller.js";
 import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE } from "../../errors.js";
 import transformDecorators from "../../utils/transformDecorators.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
-import getUser from "../../requests/getUser.js";
 
 export class NodeJsBundler implements BundlerInterface {
     async #copyDependencies(
@@ -380,7 +379,7 @@ export class NodeJsBundler implements BundlerInterface {
 
     getHandlerGeneratorForProvider(
         provider: CloudProviderIdentifier,
-    ): ((className: string, timeoutDuration: number) => string) | null {
+    ): ((className: string) => string) | null {
         switch (provider) {
             case CloudProviderIdentifier.GENEZIO:
                 return lambdaHandlerGenerator;
@@ -440,12 +439,7 @@ export class NodeJsBundler implements BundlerInterface {
             writeToFile(
                 temporaryFolder,
                 "index.mjs",
-                handlerGenerator(
-                    `"${input.configuration.name}"`,
-                    await getUser()
-                        .then((user) => user?.subscriptionLimits.executionTime)
-                        .catch(() => 30),
-                ),
+                handlerGenerator(`"${input.configuration.name}"`),
             ),
         ]);
 
