@@ -20,6 +20,7 @@ import {
 } from "../constants.js";
 import { GENEZIO_NO_CLASSES_FOUND, PORT_ALREADY_USED } from "../errors.js";
 import {
+    SdkTypeMetadata,
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
 } from "../generateSdk/generateSdkApi.js";
@@ -45,7 +46,7 @@ import { GenezioLocalOptions } from "../models/commandOptions.js";
 import { DartBundler } from "../bundlers/dart/localDartBundler.js";
 import axios, { AxiosError, AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
-import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
+import { Language, SdkType, TriggerType } from "../yamlProjectConfiguration/models.js";
 import { PackageManagerType } from "../packageManagers/packageManager.js";
 import {
     YamlConfigurationIOController,
@@ -113,7 +114,22 @@ export async function prepareLocalBackendEnvironment(
             throw new Error(GENEZIO_NO_CLASSES_FOUND);
         }
 
+        let metadata: SdkTypeMetadata;
+
+        if (backend.sdk?.type === SdkType.package) {
+            metadata = {
+                type: SdkType.package,
+                projectName: yamlProjectConfiguration.name,
+                region: yamlProjectConfiguration.region,
+            };
+        } else {
+            metadata = {
+                type: SdkType.folder,
+            };
+        }
+
         const sdk = await sdkGeneratorApiHandler(
+            metadata,
             backend.sdk?.language || backend.language.name,
             mapYamlClassToSdkClassConfiguration(
                 backend.classes,
@@ -276,6 +292,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             sdkConfiguration = {
                 language: Language[backendConfiguration.language.name as keyof typeof Language],
                 path: path.join(sdkPath, "sdk"),
+                type: SdkType.folder,
             };
         }
 

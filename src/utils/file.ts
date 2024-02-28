@@ -8,7 +8,7 @@ import { parse } from "yaml";
 import { exit } from "process";
 import awsCronParser from "aws-cron-parser";
 import log from "loglevel";
-import { promises as fsPromises } from "fs";
+import { promises as fsPromises, Dirent } from "fs";
 import { debugLogger } from "./logging.js";
 import { EnvironmentVariable } from "../models/environmentVariables.js";
 import dotenv from "dotenv";
@@ -443,4 +443,17 @@ export async function readEnvironmentVariablesFile(
         envVars.push({ name: key, value: value });
     }
     return envVars;
+}
+
+export async function listFilesWithExtension(
+    folderPath: string,
+    fileExtension: string,
+): Promise<string[]> {
+    return fsPromises.readdir(folderPath, { withFileTypes: true }).then((dirents: Dirent[]) => {
+        return dirents
+            .filter(
+                (dirent: Dirent) => dirent.isFile() && path.extname(dirent.name) === fileExtension,
+            )
+            .map((dirent: Dirent) => path.join(folderPath, dirent.name));
+    });
 }
