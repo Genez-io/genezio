@@ -1,6 +1,6 @@
 import { YAMLContext, parse as parseYaml, stringify as stringifyYaml } from "yaml-transmute";
 import zod from "zod";
-import * as nativeFs from "fs";
+import nativeFs from "fs";
 import { IFs } from "memfs";
 import { regions } from "../utils/configs.js";
 import { zodFormatError } from "../errors.js";
