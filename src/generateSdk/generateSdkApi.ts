@@ -22,6 +22,14 @@ interface SdkTypePackage {
     region: string;
 }
 
+/**
+ * SdkTypeMetadata is a union type that represents the metadata of the SDK type.
+ * This helps to determine what type of SDK is being generated.
+ * It can be either a folder or a package.
+ *
+ * If it is a folder, it will have the type property set to SdkType.folder.
+ * If it is a package, it will have the type property set to SdkType.package and the projectName and region properties set.
+ */
 export type SdkTypeMetadata = SdkTypeFolder | SdkTypePackage;
 
 /**
