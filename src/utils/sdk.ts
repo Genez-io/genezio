@@ -35,7 +35,7 @@ export async function writeSdkToDisk(sdk: SdkGeneratorResponse, outputPath: stri
         return;
     }
 
-    debugLogger.debug("Writing the SDK to files...", outputPath);
+    debugLogger.debug("Writing the SDK to files...");
     await Promise.all(
         sdk.files.map((file: File) => {
             return writeToFile(outputPath, file.path, file.data, true);
