@@ -48,8 +48,8 @@ export const getNodeModulePackageJsonLocal = (projectName: string, region: strin
     },
     "./remote": {
       "browser": {
-        "require": "./cjs/remote.browser.js",
-        "import": "./esm/remote.browser.js"
+        "require": "./cjs/remote.js",
+        "import": "./esm/remote.js"
       },
       "default": {
         "require": "./cjs/remote.node.js",
@@ -77,8 +77,8 @@ export const getNodeModulePackageJson = (
     },
     "./remote": {
       "browser": {
-        "require": "./cjs/remote.browser.js",
-        "import": "./esm/remote.browser.js"
+        "require": "./cjs/remote.js",
+        "import": "./esm/remote.js"
       },
       "default": {
         "require": "./cjs/remote.node.js",

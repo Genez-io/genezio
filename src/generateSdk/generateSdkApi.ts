@@ -8,9 +8,21 @@ import {
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import { AstGeneratorInput } from "../models/genezioModels.js";
 import fs from "fs";
-import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
+import { Language, SdkType, TriggerType } from "../yamlProjectConfiguration/models.js";
 import path from "path";
 import { YamlClass } from "../yamlProjectConfiguration/v2.js";
+
+interface SdkTypeFolder {
+    type: SdkType.folder;
+}
+
+interface SdkTypePackage {
+    type: SdkType.package;
+    projectName: string;
+    region: string;
+}
+
+export type SdkTypeMetadata = SdkTypeFolder | SdkTypePackage;
 
 /**
  * Asynchronously handles a request to generate an SDK based on the provided YAML project configuration.
@@ -22,6 +34,7 @@ import { YamlClass } from "../yamlProjectConfiguration/v2.js";
  * @throws {Error} If there was an error generating the SDK.
  */
 export async function sdkGeneratorApiHandler(
+    sdkTypeMetadata: SdkTypeMetadata,
     language: Language,
     classes: SdkClassConfiguration[],
     backendPath: string,
@@ -29,6 +42,7 @@ export async function sdkGeneratorApiHandler(
     const inputs: AstGeneratorInput[] = generateAstInputs(classes || [], backendPath);
 
     const sdkGeneratorInput: SdkGeneratorInput = {
+        sdkTypeMetadata,
         classesInfo: [],
     };
 

@@ -10,6 +10,7 @@ import {
 } from "../constants.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG, GENEZIO_NO_CLASSES_FOUND } from "../errors.js";
 import {
+    SdkTypeMetadata,
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
 } from "../generateSdk/generateSdkApi.js";
@@ -247,8 +248,21 @@ export async function deployClasses(
     if (backend.classes.length === 0) {
         throw new Error(GENEZIO_NO_CLASSES_FOUND);
     }
+    let metadata: SdkTypeMetadata
+    if (backend.sdk?.type === SdkType.folder) {
+        metadata = {
+            type: SdkType.folder,
+        };
+    } else {
+        metadata = {
+            type: SdkType.package,
+            projectName: configuration.name,
+            region: configuration.region,
+        };
+    }
 
     const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
+        metadata,
         backend.language.name,
         mapYamlClassToSdkClassConfiguration(backend.classes, backend.language.name, backend.path),
         backend.path,

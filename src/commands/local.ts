@@ -20,6 +20,7 @@ import {
 } from "../constants.js";
 import { GENEZIO_NO_CLASSES_FOUND, PORT_ALREADY_USED } from "../errors.js";
 import {
+    SdkTypeMetadata,
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
 } from "../generateSdk/generateSdkApi.js";
@@ -113,7 +114,22 @@ export async function prepareLocalBackendEnvironment(
             throw new Error(GENEZIO_NO_CLASSES_FOUND);
         }
 
+        let metadata: SdkTypeMetadata;
+
+        if (backend.sdk?.type === SdkType.package) {
+            metadata = {
+                type: SdkType.package,
+                projectName: yamlProjectConfiguration.name,
+                region: yamlProjectConfiguration.region,
+            };
+        } else {
+            metadata = {
+                type: SdkType.folder,
+            };
+        }
+
         const sdk = await sdkGeneratorApiHandler(
+            metadata,
             backend.sdk?.language || backend.language.name,
             mapYamlClassToSdkClassConfiguration(
                 backend.classes,
