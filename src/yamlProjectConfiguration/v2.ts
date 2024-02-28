@@ -4,7 +4,7 @@ import { YAMLContext, parse as parseYaml, stringify as stringifyYaml } from "yam
 import zod from "zod";
 import { regions } from "../utils/configs.js";
 import { zodFormatError } from "../errors.js";
-import { Language, SdkType } from "./models.js";
+import { Language } from "./models.js";
 import { supportedNodeRuntimes } from "../models/nodeRuntime.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { PackageManagerType } from "../packageManagers/packageManager.js";
@@ -66,22 +66,8 @@ function parseGenezioConfig(config: unknown) {
         );
 
     const classSchema = zod.object({
-        name: zod.string(),
+        name: zod.string().optional(),
         path: zod.string(),
-        cloudProvider: zod
-            .nativeEnum(CloudProviderIdentifier, {
-                errorMap: (issue, ctx) => {
-                    if (issue.code === zod.ZodIssueCode.invalid_enum_value) {
-                        return {
-                            message:
-                                "Invalid enum value. The supported values are `genezio` or `selfHostedAws`.",
-                        };
-                    }
-
-                    return { message: ctx.defaultError };
-                },
-            })
-            .default(CloudProviderIdentifier.GENEZIO),
         type: zod.nativeEnum(TriggerType).optional(),
         methods: zod.array(methodSchema).optional(),
     });
@@ -112,19 +98,11 @@ function parseGenezioConfig(config: unknown) {
         classes: zod.array(classSchema).optional(),
         sdk: zod
             .object({
-                type: zod.nativeEnum(SdkType),
+                // TODO: Add option to export sdk as a package
+                // type: zod.nativeEnum(SdkType),
                 path: zod.string(),
                 language: zod.nativeEnum(Language),
             })
-            // TODO: Add option to export sdk as a package
-            // .or(
-            //     zod.object({
-            //         type: zod.literal("package"),
-            //         path: zod.string().default("./sdk"),
-            //         packageName: zod.string(),
-            //         language: zod.nativeEnum(Language),
-            //     }),
-            // )
             .optional(),
     });
 
