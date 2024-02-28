@@ -33,7 +33,7 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
         );
         let backendLanguage;
         if (v1Config.classes && v1Config.classes.length > 0) {
-            backendLanguage = v1Config.classes[0].language;
+            backendLanguage = v1Config.classes[0].language.replace(".", "");
         } else {
             const scannedClasses = await scanClassesForDecorators({
                 path: v1Config.workspace?.backend || ".",
