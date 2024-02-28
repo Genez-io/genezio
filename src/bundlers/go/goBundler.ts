@@ -43,6 +43,9 @@ type MoustanceViewForMain = {
     cronMethods: {
         name: string;
     }[];
+    httpMethods: {
+        name: string;
+    }[];
     jsonRpcMethods: {
         name: string;
         parameters: {
@@ -202,6 +205,9 @@ export class GoBundler implements BundlerInterface {
             cronMethods: classConfiguration.methods
                 .filter((m) => m.type === TriggerType.cron)
                 .map((m) => ({ name: m.name })),
+            httpMethods: classConfiguration.methods
+                .filter((m) => m.type === TriggerType.http)
+                .map((m) => ({ name: m.name })),
             jsonRpcMethods: classConfiguration.methods
                 .filter((m) => m.type === TriggerType.jsonrpc)
                 .map((m: MethodConfiguration) => ({
@@ -227,22 +233,24 @@ export class GoBundler implements BundlerInterface {
 
     async #compile(folderPath: string) {
         // Compile the Go code locally
-        const getDependencyResult = spawnSync(
-            "go",
-            ["get", "github.com/aws/aws-lambda-go/lambda"],
-            {
+        const dependencies = [
+            "github.com/aws/aws-lambda-go/lambda",
+            "github.com/Genez-io/genezio_types",
+        ];
+        for (const dependency of dependencies) {
+            const getDependencyResult = spawnSync("go", ["get", dependency], {
                 cwd: folderPath,
-            },
-        );
-        if (getDependencyResult.status == null) {
-            log.info(
-                "There was an error while running the go script, make sure you have the correct permissions.",
-            );
-            throw new Error("Compilation error! Please check your code and try again.");
-        } else if (getDependencyResult.status != 0) {
-            log.info(getDependencyResult.stderr.toString());
-            log.info(getDependencyResult.stdout.toString());
-            throw new Error("Compilation error! Please check your code and try again.");
+            });
+            if (getDependencyResult.status == null) {
+                log.info(
+                    "There was an error while running the go script, make sure you have the correct permissions.",
+                );
+                throw new Error("Compilation error! Please check your code and try again.");
+            } else if (getDependencyResult.status != 0) {
+                log.info(getDependencyResult.stderr.toString());
+                log.info(getDependencyResult.stdout.toString());
+                throw new Error("Compilation error! Please check your code and try again.");
+            }
         }
         process.env["GOOS"] = "linux";
         process.env["GOARCH"] = "arm64";

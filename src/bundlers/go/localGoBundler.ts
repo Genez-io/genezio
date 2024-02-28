@@ -43,6 +43,9 @@ type MoustanceViewForMain = {
     cronMethods: {
         name: string;
     }[];
+    httpMethods: {
+        name: string;
+    }[];
     jsonRpcMethods: {
         name: string;
         parameters: {
@@ -215,6 +218,11 @@ export class GoBundler implements BundlerInterface {
                         cast: this.#getCastExpression(index, p, ast, imports),
                     })),
                 })),
+            httpMethods: classConfiguration.methods
+                .filter((m) => m.type === TriggerType.http)
+                .map((m: MethodConfiguration) => ({
+                    name: m.name,
+                })),
         };
 
         moustacheViewForMain.imports.push(...imports);
@@ -229,6 +237,19 @@ export class GoBundler implements BundlerInterface {
 
     async #compile(folderPath: string) {
         // Compile the Go code locally
+        const getDependencyResult = spawnSync("go", ["get", "github.com/Genez-io/genezio_types"], {
+            cwd: folderPath,
+        });
+        if (getDependencyResult.status == null) {
+            log.info(
+                "There was an error while running the go script, make sure you have the correct permissions.",
+            );
+            throw new Error("Compilation error! Please check your code and try again.");
+        } else if (getDependencyResult.status != 0) {
+            log.info(getDependencyResult.stderr.toString());
+            log.info(getDependencyResult.stdout.toString());
+            throw new Error("Compilation error! Please check your code and try again.");
+        }
         const result = spawnSync("go", ["build", "-o", "main", "main.go"], {
             cwd: folderPath,
         });
