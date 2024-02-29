@@ -4,7 +4,7 @@ import path from "path";
 import { exit } from "process";
 import {
     ENVIRONMENT,
-    REACT_APP_BASE_URL,
+    DASHBOARD_URL,
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
 } from "../constants.js";
@@ -85,7 +85,6 @@ export async function deployCommand(options: GenezioDeployOptions) {
         exit(1);
     }
 
-
     // TODO: check this in deployClasses function
     //
     // // check if user is logged in
@@ -99,8 +98,8 @@ export async function deployCommand(options: GenezioDeployOptions) {
     // const cloudAdapter = getCloudAdapter(
     //     configuration.cloudProvider || CloudProviderIdentifier.GENEZIO,
     // );
-  let deployClassesResult;
-  backend: if (configuration.backend && !options.frontend) {
+    let deployClassesResult;
+    backend: if (configuration.backend && !options.frontend) {
         if (configuration.backend.classes?.length === 0) {
             log.error(
                 "No classes were found in your genezio.yaml. Add some to be able to deploy your backend.",
@@ -119,7 +118,6 @@ export async function deployCommand(options: GenezioDeployOptions) {
             log.error("Backend `deploy` script failed.");
             exit(1);
         }
-
 
         // Enable cloud provider AB Testing
         // This is ONLY done in the dev environment and if DISABLE_AB_TESTING is not set.
@@ -141,46 +139,48 @@ export async function deployCommand(options: GenezioDeployOptions) {
             eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_START,
             commandOptions: JSON.stringify(options),
         });
-        deployClassesResult = await deployClasses(configuration, options).catch(async (error: AxiosError<Status>) => {
-            await GenezioTelemetry.sendEvent({
-                eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_ERROR,
-                errorTrace: error.toString(),
-                commandOptions: JSON.stringify(options),
-            });
+        deployClassesResult = await deployClasses(configuration, options).catch(
+            async (error: AxiosError<Status>) => {
+                await GenezioTelemetry.sendEvent({
+                    eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_ERROR,
+                    errorTrace: error.toString(),
+                    commandOptions: JSON.stringify(options),
+                });
 
-            const data = error.response?.data;
+                const data = error.response?.data;
 
-            switch (error.response?.status) {
-                case 401:
-                    log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-                    break;
-                case 500:
-                    log.error(error.message);
-                    if (data && data.status === "error") {
-                        log.error(data.error.message);
-                    }
-                    break;
-                case 400:
-                    log.error(error.message);
-                    if (data && data.status === "error") {
-                        log.error(data.error.message);
-                    }
-                    break;
-                default:
-                    if (error.message) {
+                switch (error.response?.status) {
+                    case 401:
+                        log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
+                        break;
+                    case 500:
                         log.error(error.message);
-                    }
-                    break;
-            }
-            exit(1);
-        });
+                        if (data && data.status === "error") {
+                            log.error(data.error.message);
+                        }
+                        break;
+                    case 400:
+                        log.error(error.message);
+                        if (data && data.status === "error") {
+                            log.error(data.error.message);
+                        }
+                        break;
+                    default:
+                        if (error.message) {
+                            log.error(error.message);
+                        }
+                        break;
+                }
+                exit(1);
+            },
+        );
         await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_END,
             commandOptions: JSON.stringify(options),
         });
     }
-    
-    let frontendUrl[];
+
+    const frontendUrls = [];
     if (configuration.frontend && !options.backend) {
         const frontends = Array.isArray(configuration.frontend)
             ? configuration.frontend
@@ -211,27 +211,29 @@ export async function deployCommand(options: GenezioDeployOptions) {
             });
 
             log.info("Deploying your frontend to the genezio infrastructure...");
-            frontendUrl.push(await deployFrontend(
-                configuration.name,
-                configuration.region,
-                frontend,
-                index,
-                options,
-            ).catch(async (error) => {
-                if (error instanceof Error) {
-                    log.error(error.message);
-                    if (error.message == "No frontend entry in genezio configuration file.") {
-                        exit(0);
+            frontendUrls.push(
+                await deployFrontend(
+                    configuration.name,
+                    configuration.region,
+                    frontend,
+                    index,
+                    options,
+                ).catch(async (error) => {
+                    if (error instanceof Error) {
+                        log.error(error.message);
+                        if (error.message == "No frontend entry in genezio configuration file.") {
+                            exit(0);
+                        }
+                        await GenezioTelemetry.sendEvent({
+                            eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_ERROR,
+                            errorTrace: error.toString(),
+                            commandOptions: JSON.stringify(options),
+                        });
                     }
-                    await GenezioTelemetry.sendEvent({
-                        eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_ERROR,
-                        errorTrace: error.toString(),
-                        commandOptions: JSON.stringify(options),
-                    });
-                }
-                exit(1);
-            }));  
-//             log.info("\x1b[36m%s\x1b[0m", `Frontend successfully deployed at ${frontendUrl}`);
+                    exit(1);
+                }),
+            );
+            //             log.info("\x1b[36m%s\x1b[0m", `Frontend successfully deployed at ${frontendUrl}`);
 
             await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_END,
@@ -241,13 +243,14 @@ export async function deployCommand(options: GenezioDeployOptions) {
     }
     if (deployClassesResult) {
         log.info(
-            "\x1b[36m%s\x1b[0m",
-            `Genezio project URL: ${REACT_APP_BASE_URL}/project/${deployClassesResult.projectId}/${deployClassesResult.projectEnvId}`,
+            colors.cyan(
+                `Genezio project URL: ${DASHBOARD_URL}/project/${deployClassesResult.projectId}/${deployClassesResult.projectEnvId}`,
+            ),
         );
     }
-        if (frontendUrl.length > 0) {
-        for (let i = 0; i < frontendUrl.length; i++) {
-            log.info("\x1b[36m%s\x1b[0m", `Frontend URL: ${frontendUrl}`);
+    if (frontendUrls.length > 0) {
+        for (let i = 0; i < frontendUrls.length; i++) {
+            log.info(colors.cyan(`Frontend URL: ${frontendUrls[0]}`));
         }
     }
 }
@@ -412,7 +415,7 @@ export async function deployClasses(
         await compileSdk(path.join(localPath, "sdk"), packageJson, backend.language.name, true);
     }
 
-    let isMonoRepo = configuration.workspace ? true : false;
+    let isMonoRepo = configuration.backend && configuration.frontend ? true : false;
     reportSuccess(
         result.classes,
         sdkResponse,
@@ -467,7 +470,7 @@ export async function deployClasses(
                         log.error(`Loading environment variables failed with: ${error.message}`);
                         log.error(
                             `Try to set the environment variables using the dashboard ${colors.cyan(
-                                REACT_APP_BASE_URL,
+                                DASHBOARD_URL,
                             )}`,
                         );
                         await GenezioTelemetry.sendEvent({
@@ -518,7 +521,7 @@ export async function deployClasses(
                     log.info("");
                     log.info(
                         `${colors.yellow("Go to the dashboard ")}${colors.cyan(
-                            REACT_APP_BASE_URL,
+                            DASHBOARD_URL,
                         )} ${colors.yellow(
                             "to set your environment variables or run ",
                         )} ${colors.cyan(`genezio deploy --env ${relativeEnvFilePath}`)}`,

@@ -1,6 +1,6 @@
 const environment = process.env["NODE_ENV"];
 
-let REACT_APP_BASE_URL: string;
+let DASHBOARD_URL: string;
 let BACKEND_ENDPOINT: string;
 let FRONTEND_DOMAIN: string;
 let PORT_LOCAL_ENVIRONMENT: number;
@@ -18,7 +18,7 @@ const GENEZIO_TELEMETRY_ENDPOINT =
 const NODE_MINIMUM_VERSION: string = "18.2.0";
 
 if (environment === "dev") {
-    REACT_APP_BASE_URL = "https://dev.app.genez.io";
+    DASHBOARD_URL = "https://dev.app.genez.io";
     FRONTEND_DOMAIN = "dev.app.genez.io";
     BACKEND_ENDPOINT = "https://dev.api.genez.io";
     LOCAL_TEST_INTERFACE_URL = "https://dev.app.genez.io/test-interface/local";
@@ -34,7 +34,7 @@ if (environment === "dev") {
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE = ">=1.0.0";
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE = "1.x";
 } else {
-    REACT_APP_BASE_URL = "https://app.genez.io";
+    DASHBOARD_URL = "https://app.genez.io";
     FRONTEND_DOMAIN = "app.genez.io";
     BACKEND_ENDPOINT = "https://api.genez.io";
     LOCAL_TEST_INTERFACE_URL = "https://app.genez.io/test-interface/local";
@@ -52,7 +52,7 @@ if (environment === "dev") {
 }
 
 export {
-    REACT_APP_BASE_URL,
+    DASHBOARD_URL,
     FRONTEND_DOMAIN,
     BACKEND_ENDPOINT,
     PORT_LOCAL_ENVIRONMENT,
