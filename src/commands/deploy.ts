@@ -126,13 +126,17 @@ export async function deployCommand(options: GenezioDeployOptions) {
             configuration.backend &&
             process.env["DISABLE_AB_TESTING"] !== "true"
         ) {
-            configuration.backend.cloudProvider = await performCloudProviderABTesting(
+            const yamlConfig = await configIOController.read(/* fillDefaults= */ false);
+            if (!yamlConfig.backend) {
+                throw new Error("No backend entry in genezio configuration file.");
+            }
+            yamlConfig.backend.cloudProvider = await performCloudProviderABTesting(
                 configuration.name,
                 configuration.region,
                 configuration.backend.cloudProvider,
             );
             // Write the new configuration in the config file
-            await configIOController.write(configuration);
+            await configIOController.write(yamlConfig);
         }
 
         await GenezioTelemetry.sendEvent({
@@ -585,7 +589,7 @@ export async function deployFrontend(
 
         // write the configuration in yaml file
         const yamlConfigIOController = new YamlConfigurationIOController(options.config);
-        const yamlConfig = await yamlConfigIOController.read();
+        const yamlConfig = await yamlConfigIOController.read(/* fillDefaults= */ false);
 
         if (yamlConfig.frontend) {
             const subdomain = generateRandomSubdomain();

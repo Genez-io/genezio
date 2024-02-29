@@ -292,7 +292,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                 },
             ]);
 
-            const yamlConfig = await yamlConfigIOController.read();
+            const yamlConfig = await yamlConfigIOController.read(/* fillDefaults= */ false);
             yamlConfig.backend!.language.packageManager = optionalPackageManager["packageManager"];
             await yamlConfigIOController.write(yamlConfig);
         }
