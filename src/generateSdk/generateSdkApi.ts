@@ -1,35 +1,63 @@
 import { generateAst } from "./astGeneratorHandler.js";
 import { generateSdk } from "./sdkGeneratorHandler.js";
-import { YamlProjectConfiguration } from "../models/yamlProjectConfiguration.js";
-import { getGenerateAstInputs } from "./utils/getFiles.js";
-import { SdkGeneratorInput, SdkGeneratorOutput } from "../models/genezioModels.js";
-import path from "path";
+import {
+    SdkClassConfiguration,
+    SdkGeneratorInput,
+    SdkGeneratorOutput,
+} from "../models/genezioModels.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import { AstGeneratorInput } from "../models/genezioModels.js";
+import fs from "fs";
+import { Language, SdkType, TriggerType } from "../yamlProjectConfiguration/models.js";
+import path from "path";
+import { YamlClass } from "../yamlProjectConfiguration/v2.js";
+
+interface SdkTypeFolder {
+    type: SdkType.folder;
+}
+
+interface SdkTypePackage {
+    type: SdkType.package;
+    projectName: string;
+    region: string;
+}
+
+/**
+ * SdkTypeMetadata is a union type that represents the metadata of the SDK type.
+ * This helps to determine what type of SDK is being generated.
+ * It can be either a folder or a package.
+ *
+ * If it is a folder, it will have the type property set to SdkType.folder.
+ * If it is a package, it will have the type property set to SdkType.package and the projectName and region properties set.
+ */
+export type SdkTypeMetadata = SdkTypeFolder | SdkTypePackage;
 
 /**
  * Asynchronously handles a request to generate an SDK based on the provided YAML project configuration.
  *
- * @param {YamlProjectConfiguration} projectConfiguration - The YAML project configuration to use for generating the SDK.
+ * @param {SdkTypeMetadata} sdkTypeMetadata - Specify the type of SDK to generate and its metadata.
+ * @param {Language} language - The language to generate the SDK in.
+ * @param {SdkClassConfiguration[]} classes - The classes to generate the SDK for.
+ * @param {string} backendPath - The path to the backend directory.
  * @returns {Promise<SdkGeneratorResponse>} A Promise that resolves with the response to the SDK generation request.
  * @throws {Error} If there was an error generating the SDK.
  */
 export async function sdkGeneratorApiHandler(
-    projectConfiguration: YamlProjectConfiguration,
+    sdkTypeMetadata: SdkTypeMetadata,
+    language: Language,
+    classes: SdkClassConfiguration[],
+    backendPath: string,
 ): Promise<SdkGeneratorResponse> {
-    let sdkLanguage: string | undefined = projectConfiguration.language;
-    if (projectConfiguration.sdk?.language) {
-        sdkLanguage = projectConfiguration.sdk?.language;
-    }
-    const inputs: AstGeneratorInput[] = getGenerateAstInputs(projectConfiguration);
+    const inputs: AstGeneratorInput[] = generateAstInputs(classes || [], backendPath);
 
     const sdkGeneratorInput: SdkGeneratorInput = {
+        sdkTypeMetadata,
         classesInfo: [],
     };
 
-    if (sdkLanguage) {
+    if (language) {
         sdkGeneratorInput.sdk = {
-            language: sdkLanguage,
+            language: language,
         };
     } else {
         sdkGeneratorInput.sdk = {
@@ -42,24 +70,72 @@ export async function sdkGeneratorApiHandler(
         // Generate genezio AST from file
         const astGeneratorOutput = await generateAst(
             input,
-            projectConfiguration.plugins?.astGenerator,
+            // TODO: Add AST generator plugin support
+            [],
         );
 
         // prepare input for sdkGenerator
+        const classConfiguration = classes.find((c) => c.path === input.class.path);
+        if (!classConfiguration) {
+            throw new Error(
+                `[Sdk Generator] Class configuration not found for ${input.class.path}`,
+            );
+        }
+
         sdkGeneratorInput.classesInfo.push({
             program: astGeneratorOutput.program,
-            classConfiguration: projectConfiguration.getClassConfiguration(input.class.path),
+            classConfiguration,
             fileName: path.basename(input.class.path),
         });
     }
 
     const sdkOutput: SdkGeneratorOutput = await generateSdk(
         sdkGeneratorInput,
-        projectConfiguration.plugins?.sdkGenerator,
+        // TODO: Add SDK generator plugin support
+        [],
     );
 
     return {
         files: sdkOutput.files,
         sdkGeneratorInput: sdkGeneratorInput,
     };
+}
+
+export function mapYamlClassToSdkClassConfiguration(
+    classes: YamlClass[],
+    language: Language,
+    rootPath: string,
+): SdkClassConfiguration[] {
+    return classes.map((yamlClass) => {
+        return {
+            name: yamlClass.name,
+            path: path.join(rootPath, yamlClass.path),
+            language,
+            type: yamlClass.type || TriggerType.jsonrpc,
+            methods: (yamlClass.methods || []).map((m) => ({ name: m.name, type: m.type })),
+        };
+    });
+}
+
+export function generateAstInputs(
+    classes: SdkClassConfiguration[],
+    root: string,
+): AstGeneratorInput[] {
+    const astGeneratorInputs: AstGeneratorInput[] = [];
+
+    for (const classFile of classes) {
+        // read file from classFile.path
+        const data = fs.readFileSync(classFile.path, "utf-8");
+
+        astGeneratorInputs.push({
+            class: {
+                path: classFile.path,
+                data,
+                name: classFile.name,
+            },
+            root,
+        });
+    }
+
+    return astGeneratorInputs;
 }

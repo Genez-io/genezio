@@ -39,9 +39,10 @@ export function getDartAstGeneratorPath(dartSdkVersion: string): {
     path: string;
 } {
     return {
-        directory: path.join(os.homedir(), ".dart_ast_generator"),
+        directory: path.join(os.homedir(), ".genezio", ".dart_ast_generator"),
         path: path.join(
             os.homedir(),
+            ".genezio",
             ".dart_ast_generator",
             `genezioDartAstGenerator_${dartSdkVersion}_v0.1.aot`,
         ),

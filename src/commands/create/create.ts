@@ -7,7 +7,7 @@ import path from "path";
 import {
     YamlClassConfiguration,
     YamlProjectConfiguration,
-} from "../../models/yamlProjectConfiguration.js";
+} from "../../yamlProjectConfiguration/v1.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import nativeFs from "fs";
 import { setLinkPathForProject } from "../../utils/linkDatabase.js";
@@ -184,6 +184,11 @@ async function createFullstackProject(
         await createProject(fs, backendProjectInfo, "/server");
         await fs.promises.rmdir("/server/.git", { recursive: true });
 
+        // Delete .genezioignore from server as we will create a new .genezioignore file in root
+        if (fs.existsSync("/server/.genezioignore")) {
+            fs.rmSync("/server/.genezioignore");
+        }
+
         // Create frontend, but provide only backend-compatible templates
         if (frontendTemplates[fullstackProjectOpts.frontend] !== undefined) {
             await createProject(fs, frontendProjectInfo, "/client");
@@ -198,8 +203,8 @@ async function createFullstackProject(
             "(•◡•)region(•◡•)": fullstackProjectOpts.region,
         });
 
-        // Create .genezioignore file that ignores the client folder
-        fs.writeFileSync("/.genezioignore", "client\n");
+        // Create .genezioignore file that ignores the client folder and the .git folder
+        fs.writeFileSync("/.genezioignore", "client\n.git\n");
 
         // Create git repository
         await git.init({ fs, dir: "/", defaultBranch: "main" });

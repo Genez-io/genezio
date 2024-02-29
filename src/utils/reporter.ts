@@ -1,6 +1,6 @@
 import log from "loglevel";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
-import { TriggerType } from "../models/yamlProjectConfiguration.js";
+import { TriggerType } from "../yamlProjectConfiguration/models.js";
 import { GenezioCloudResultClass } from "../cloudAdapter/cloudAdapter.js";
 import colors from "colors";
 import boxen from "boxen";

@@ -4,3 +4,4 @@ export const DEFAULT_NODE_RUNTIME: NodeRuntime = "nodejs16.x";
 export type NodeOptions = {
     nodeRuntime: NodeRuntime;
 };
+export const supportedNodeRuntimes = ["nodejs16.x", "nodejs18.x"] as const;

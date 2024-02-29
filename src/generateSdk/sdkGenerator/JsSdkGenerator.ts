@@ -1,4 +1,4 @@
-import { TriggerType } from "../../models/yamlProjectConfiguration.js";
+import { SdkType, TriggerType } from "../../yamlProjectConfiguration/models.js";
 import {
     SdkGeneratorInterface,
     ClassDefinition,
@@ -7,7 +7,12 @@ import {
     SdkGeneratorOutput,
     IndexModel,
 } from "../../models/genezioModels.js";
-import { nodeSdkJs, storageJs } from "../templates/nodeSdkJs.js";
+import {
+    nodeSdkJsRemoteNode,
+    nodeSdkJsRemoteBrowser,
+    nodeSdkJsRemoteGeneric,
+    storageJs,
+} from "../templates/nodeSdkJs.js";
 import Mustache from "mustache";
 
 const indexTemplate = `/**
@@ -27,8 +32,7 @@ const template = `/**
 * if new genezio commands are executed.
 */
 
-import { Remote } from "./remote.js"
-
+{{{remoteImport}}}
 {{#hasGnzContext}}
 import { StorageManager } from "./storage.js"
 {{/hasGnzContext}}
@@ -85,6 +89,7 @@ type MethodViewType = {
 };
 
 type ViewType = {
+    remoteImport: string;
     className: string;
     _url: string;
     methods: MethodViewType[];
@@ -122,7 +127,13 @@ class SdkGenerator implements SdkGeneratorInterface {
                 continue;
             }
 
+            const remoteImport =
+                sdkGeneratorInput.sdkTypeMetadata.type === SdkType.package
+                    ? `import { Remote } from "@genezio-sdk/${sdkGeneratorInput.sdkTypeMetadata.projectName}_${sdkGeneratorInput.sdkTypeMetadata.region}/remote";`
+                    : `import { Remote } from "./remote";`;
+
             const view: ViewType = {
+                remoteImport,
                 className: classDefinition.name,
                 _url: _url,
                 methods: [],
@@ -132,10 +143,11 @@ class SdkGenerator implements SdkGeneratorInterface {
             let exportClassChecker = false;
 
             for (const methodDefinition of classDefinition.methods) {
-                const methodConfigurationType = classConfiguration.getMethodType(
-                    methodDefinition.name,
+                const methodConfiguration = classConfiguration.methods.find(
+                    (e) => e.name === methodDefinition.name,
                 );
-
+                const methodConfigurationType =
+                    methodConfiguration?.type || classConfiguration.type;
                 if (
                     methodConfigurationType !== TriggerType.jsonrpc ||
                     classConfiguration.type !== TriggerType.jsonrpc
@@ -194,12 +206,26 @@ class SdkGenerator implements SdkGeneratorInterface {
             });
         }
 
-        // generate remote.js
-        generateSdkOutput.files.push({
-            className: "Remote",
-            path: "remote.js",
-            data: nodeSdkJs.replace("%%%url%%%", "undefined"),
-        });
+        if (sdkGeneratorInput.sdkTypeMetadata.type === SdkType.package) {
+            // generate remote.js
+            generateSdkOutput.files.push({
+                className: "Remote",
+                path: "remote.js",
+                data: nodeSdkJsRemoteBrowser.replace("%%%url%%%", "undefined"),
+            });
+            generateSdkOutput.files.push({
+                className: "Remote",
+                path: "remote.node.js",
+                data: nodeSdkJsRemoteNode.replace("%%%url%%%", "undefined"),
+            });
+        } else {
+            // generate remote.js
+            generateSdkOutput.files.push({
+                className: "Remote",
+                path: "remote.js",
+                data: nodeSdkJsRemoteGeneric.replace("%%%url%%%", "undefined"),
+            });
+        }
 
         generateSdkOutput.files.push({
             className: "StorageManager",

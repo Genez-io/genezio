@@ -22,8 +22,13 @@ import {
     MapType,
     SdkGeneratorClassesInfoInput,
 } from "../../models/genezioModels.js";
-import { TriggerType } from "../../models/yamlProjectConfiguration.js";
-import { nodeSdkTs, storageTs } from "../templates/nodeSdkTs.js";
+import { SdkType, TriggerType } from "../../yamlProjectConfiguration/models.js";
+import {
+    nodeSdkTsRemoteNode,
+    nodeSdkTsRemoteBrowser,
+    nodeSdkTsRemoteGeneric,
+    storageTs,
+} from "../templates/nodeSdkTs.js";
 import path from "path";
 
 const TYPESCRIPT_RESERVED_WORDS = [
@@ -135,7 +140,7 @@ const template = `/**
 * if new genezio commands are executed.
 */
 
-import { Remote } from "./remote";
+{{{remoteImport}}}
 {{#imports}}
 import { {{#models}}{{{name}}}{{^last}}, {{/last}}{{/models}} } from "./{{{path}}}";
 {{/imports}}
@@ -185,8 +190,6 @@ export class {{{className}}} {
   {{/hasGnzContextAsFirstParameter}}
   {{/methods}}
 }
-
-export { Remote };
 `;
 
 type MethodViewType = {
@@ -206,6 +209,7 @@ type MethodViewType = {
 };
 
 type ViewType = {
+    remoteImport: string;
     className: string;
     _url: string;
     methods: MethodViewType[];
@@ -258,8 +262,14 @@ class SdkGenerator implements SdkGeneratorInterface {
                 continue;
             }
 
+            const remoteImport =
+                sdkGeneratorInput.sdkTypeMetadata.type === SdkType.package
+                    ? `import { Remote } from "@genezio-sdk/${sdkGeneratorInput.sdkTypeMetadata.projectName}_${sdkGeneratorInput.sdkTypeMetadata.region}/remote";`
+                    : `import { Remote } from "./remote";`;
+
             // @ts-expect-error A refactor need to be performed here to avoid this error
             const view: ViewType = {
+                remoteImport: remoteImport,
                 className: classDefinition.name,
                 classDocLines: classDefinition.docString?.replace(/\n+$/, "").split("\n") || [],
                 _url: _url,
@@ -271,9 +281,11 @@ class SdkGenerator implements SdkGeneratorInterface {
             let exportClassChecker = false;
 
             for (const methodDefinition of classDefinition.methods) {
-                const methodConfigurationType = classConfiguration.getMethodType(
-                    methodDefinition.name,
+                const methodConfiguration = classConfiguration.methods.find(
+                    (m) => m.name === methodDefinition.name,
                 );
+                const methodConfigurationType =
+                    methodConfiguration?.type || classConfiguration.type;
 
                 if (
                     methodConfigurationType !== TriggerType.jsonrpc ||
@@ -455,12 +467,26 @@ class SdkGenerator implements SdkGeneratorInterface {
             }
         }
 
-        // generate remote.js
-        generateSdkOutput.files.push({
-            className: "Remote",
-            path: "remote.ts",
-            data: nodeSdkTs.replace("%%%url%%%", "undefined"),
-        });
+        if (sdkGeneratorInput.sdkTypeMetadata.type === SdkType.package) {
+            // generate remote.js
+            generateSdkOutput.files.push({
+                className: "Remote",
+                path: "remote.ts",
+                data: nodeSdkTsRemoteBrowser.replace("%%%url%%%", "undefined"),
+            });
+            generateSdkOutput.files.push({
+                className: "Remote",
+                path: "remote.node.ts",
+                data: nodeSdkTsRemoteNode.replace("%%%url%%%", "undefined"),
+            });
+        } else {
+            // generate remote.js
+            generateSdkOutput.files.push({
+                className: "Remote",
+                path: "remote.ts",
+                data: nodeSdkTsRemoteGeneric.replace("%%%url%%%", "undefined"),
+            });
+        }
 
         generateSdkOutput.files.push({
             className: "StorageManager",

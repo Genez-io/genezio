@@ -72,7 +72,9 @@ if (!genezioClass) {
         }
 
         if (!body || (body && body["jsonrpc"] !== "2.0")) {
-            if (!event.url.searchParams.has('method')) {
+            // For raw http calls, paths should match \`/funcId/className/methodName\`
+            const components = event.http.path.substring(1).split("/");
+            if (!components[2]) {
                 return {
                     statusCode: 404,
                     headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' },
@@ -80,9 +82,15 @@ if (!genezioClass) {
                 };
             }
 
-            let method = event.url.searchParams.get('method')
+            const method = components[2];
+
+            const http2CompliantHeaders = {};
+            for (const header in event.headers) {
+                http2CompliantHeaders[header.toLowerCase()] = event.headers[header];
+            }
+
             const req = {
-                headers: event.headers,
+                headers: http2CompliantHeaders,
                 http: event.http,
                 queryStringParameters: Object.fromEntries([...event.url.searchParams]),
                 timeEpoch: event.requestTimestampMs,
