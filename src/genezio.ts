@@ -396,6 +396,8 @@ program
         "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
     )
     .option("--language <language>", "Language of the SDK.", "ts")
+    .option("--packageName <packageName>", "The name of the package.")
+    .option("--packageVersion <packageVersion>", "The version of the package.", "1.0.0")
     .addOption(
         new Option("--source <source>", "Where the SDK should be generated from.")
             .choices(["local", "remote"])

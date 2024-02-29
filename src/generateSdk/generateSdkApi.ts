@@ -18,8 +18,7 @@ interface SdkTypeFolder {
 
 interface SdkTypePackage {
     type: SdkType.package;
-    projectName: string;
-    region: string;
+    packageName: string;
 }
 
 /**

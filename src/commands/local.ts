@@ -126,8 +126,7 @@ export async function prepareLocalBackendEnvironment(
         if (backend.sdk?.type === SdkType.package) {
             metadata = {
                 type: SdkType.package,
-                projectName: yamlProjectConfiguration.name,
-                region: yamlProjectConfiguration.region,
+                packageName: `@genezio-sdk/${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
             };
         } else {
             metadata = {
@@ -387,8 +386,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             await writeSdkToDisk(sdk, sdkConfiguration.path);
             // compile the sdk
             const packageJson: string = getNodeModulePackageJsonLocal(
-                projectConfiguration.name,
-                projectConfiguration.region,
+                `@genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}`,
             );
             await compileSdk(sdkConfiguration.path, packageJson, sdkConfiguration.language, false);
 

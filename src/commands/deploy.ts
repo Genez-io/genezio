@@ -256,8 +256,7 @@ export async function deployClasses(
     } else {
         metadata = {
             type: SdkType.package,
-            projectName: configuration.name,
-            region: configuration.region,
+            packageName: `@genezio-sdk/${configuration.name}_${configuration.region}`,
         };
     }
 
@@ -391,9 +390,8 @@ export async function deployClasses(
         );
         await writeSdkToDisk(sdkResponse, path.join(localPath, "sdk"));
         const packageJson: string = getNodeModulePackageJson(
-            configuration.name,
-            configuration.region,
-            options.stage,
+            `@genezio-sdk/${configuration.name}_${configuration.region}`,
+            `1.0.0-${options.stage}`,
         );
         await compileSdk(path.join(localPath, "sdk"), packageJson, backend.language.name, true);
     }

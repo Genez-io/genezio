@@ -50,7 +50,8 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
 
     const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
         {
-            type: SdkTypeModel.folder,
+            type: SdkTypeModel.package,
+            packageName: options.packageName,
         },
         options.language,
         mapYamlClassToSdkClassConfiguration(
@@ -80,20 +81,20 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
         })),
     );
 
-    await writeSdkToDisk(sdkResponse, options.output);
+    const tempFolder = path.join(process.cwd(), "temp");
+    await writeSdkToDisk(sdkResponse, tempFolder);
 
     if (options.type === SdkType.PACKAGE) {
         debugLogger.debug("Sdk type is package");
         const packageJson: string = getPackageJsonSdkGenerator(
-            "local-sdk",
-            options.region,
-            options.stage,
+            options.packageName,
+            options.packageVersion,
             options.output,
-            GenezioCommand.local,
+            GenezioCommand.deploy,
         );
         debugLogger.debug("Package json is: " + packageJson);
         debugLogger.debug("Start Compiling sdk local");
-        await compileSdk(options.output, packageJson, options.language, false, "");
+        await compileSdk(tempFolder, packageJson, options.language, false, options.output);
         debugLogger.debug("Sdk compiled successfully");
 
         log.info("Your SDK has been generated successfully in " + options.output);
@@ -249,8 +250,7 @@ async function generateRemoteSdkHandler(
     if (sdkType === SdkType.PACKAGE) {
         metadata = {
             type: SdkTypeModel.package,
-            projectName,
-            region,
+            packageName: `@genezio-sdk/${projectName}_${region}`,
         };
     } else {
         metadata = {
@@ -304,9 +304,8 @@ async function generateRemoteSdkHandler(
     if (sdkType === SdkType.PACKAGE) {
         debugLogger.debug("Sdk type is package for remote sdk");
         const packageJson: string = getPackageJsonSdkGenerator(
-            projectName,
-            region,
-            stage,
+            `@genezio-sdk/${projectName}_${region}`,
+            `1.0.0-${stage}`,
             sdkPath,
             GenezioCommand.deploy,
         );

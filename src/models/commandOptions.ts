@@ -55,6 +55,8 @@ export interface GenezioSdkOptions extends BaseOptions {
     stage: string;
     region: string;
     url?: string;
+    packageName: string;
+    packageVersion: string;
 }
 
 export interface GenezioLinkOptions extends BaseOptions {

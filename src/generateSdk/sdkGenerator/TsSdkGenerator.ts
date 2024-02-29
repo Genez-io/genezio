@@ -264,7 +264,7 @@ class SdkGenerator implements SdkGeneratorInterface {
 
             const remoteImport =
                 sdkGeneratorInput.sdkTypeMetadata.type === SdkType.package
-                    ? `import { Remote } from "@genezio-sdk/${sdkGeneratorInput.sdkTypeMetadata.projectName}_${sdkGeneratorInput.sdkTypeMetadata.region}/remote";`
+                    ? `import { Remote } from "${sdkGeneratorInput.sdkTypeMetadata.packageName}/remote";`
                     : `import { Remote } from "./remote";`;
 
             // @ts-expect-error A refactor need to be performed here to avoid this error

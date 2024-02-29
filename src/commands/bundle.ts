@@ -31,8 +31,7 @@ export async function bundleCommand(options: GenezioBundleOptions) {
     } else {
         metadata = {
             type: SdkType.package,
-            projectName: yamlProjectConfiguration.name,
-            region: yamlProjectConfiguration.region,
+            packageName: `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
         };
     }
 

@@ -10,9 +10,8 @@ function getRandomSemVer() {
 }
 
 export const getPackageJsonSdkGenerator = (
-    projectName: string,
-    region: string,
-    stage: string,
+    packageName: string,
+    version: string,
     sdkPath: string,
     environment: GenezioCommand,
 ): string => {
@@ -24,9 +23,9 @@ export const getPackageJsonSdkGenerator = (
         packageJsonStr = fs.readFileSync(packageJsonPath, "utf8");
     } else {
         if (environment === GenezioCommand.local) {
-            packageJsonStr = getNodeModulePackageJsonLocal(projectName, region);
+            packageJsonStr = getNodeModulePackageJsonLocal(packageName);
         } else {
-            packageJsonStr = getNodeModulePackageJson(projectName, region, stage);
+            packageJsonStr = getNodeModulePackageJson(packageName, version);
         }
     }
 
@@ -38,8 +37,8 @@ export const getPackageJsonSdkGenerator = (
     return JSON.stringify(packageJson, null, 2);
 };
 
-export const getNodeModulePackageJsonLocal = (projectName: string, region: string): string => `{
-  "name": "@genezio-sdk/${projectName}_${region}",
+export const getNodeModulePackageJsonLocal = (packageName: string): string => `{
+  "name": "${packageName}",
   "version": "${getRandomSemVer()}",
   "exports": {
     ".": {
@@ -63,13 +62,9 @@ export const getNodeModulePackageJsonLocal = (projectName: string, region: strin
 }
 `;
 
-export const getNodeModulePackageJson = (
-    projectName: string,
-    region: string,
-    stage: string,
-): string => `{
-  "name": "@genezio-sdk/${projectName}_${region}",
-  "version": "1.0.0-${stage}",
+export const getNodeModulePackageJson = (packageName: string, version: string): string => `{
+  "name": "${packageName}",
+  "version": "${version}",
   "exports": {
     ".": {
       "require": "./cjs/index.js",
