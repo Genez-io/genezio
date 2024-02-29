@@ -4,7 +4,7 @@ import nativeFs from "fs";
 import { IFs } from "memfs";
 import { regions } from "../utils/configs.js";
 import { zodFormatError } from "../errors.js";
-import { Language, SdkType } from "./models.js";
+import { Language } from "./models.js";
 import { supportedNodeRuntimes } from "../models/nodeRuntime.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { PackageManagerType } from "../packageManagers/packageManager.js";
@@ -98,7 +98,6 @@ function parseGenezioConfig(config: unknown) {
         classes: zod.array(classSchema).optional(),
         sdk: zod
             .object({
-                type: zod.nativeEnum(SdkType),
                 path: zod.string(),
                 language: zod.nativeEnum(Language),
             })

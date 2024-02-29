@@ -5,7 +5,7 @@ import { exit } from "process";
 import log from "loglevel";
 import { PackageManagerType } from "../packageManagers/packageManager.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
-import { Language, SdkType } from "./models.js";
+import { Language } from "./models.js";
 import path from "path";
 import { scanClassesForDecorators } from "../utils/configuration.js";
 
@@ -72,7 +72,6 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
                 },
                 sdk: v1Config.sdk
                     ? {
-                          type: SdkType.folder,
                           path: v1Config.sdk.path,
                           language: v1Config.sdk.language as Language,
                       }

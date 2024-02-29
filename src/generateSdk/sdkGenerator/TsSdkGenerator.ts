@@ -22,11 +22,10 @@ import {
     MapType,
     SdkGeneratorClassesInfoInput,
 } from "../../models/genezioModels.js";
-import { SdkType, TriggerType } from "../../yamlProjectConfiguration/models.js";
+import { TriggerType } from "../../yamlProjectConfiguration/models.js";
 import {
     nodeSdkTsRemoteNode,
     nodeSdkTsRemoteBrowser,
-    nodeSdkTsRemoteGeneric,
     storageTs,
 } from "../templates/nodeSdkTs.js";
 import path from "path";
@@ -262,10 +261,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                 continue;
             }
 
-            const remoteImport =
-                sdkGeneratorInput.sdkTypeMetadata.type === SdkType.package
-                    ? `import { Remote } from "${sdkGeneratorInput.sdkTypeMetadata.packageName}/remote";`
-                    : `import { Remote } from "./remote";`;
+            const remoteImport = `import { Remote } from "${sdkGeneratorInput.packageName}/remote";`
 
             // @ts-expect-error A refactor need to be performed here to avoid this error
             const view: ViewType = {
@@ -467,26 +463,17 @@ class SdkGenerator implements SdkGeneratorInterface {
             }
         }
 
-        if (sdkGeneratorInput.sdkTypeMetadata.type === SdkType.package) {
-            // generate remote.js
-            generateSdkOutput.files.push({
-                className: "Remote",
-                path: "remote.ts",
-                data: nodeSdkTsRemoteBrowser.replace("%%%url%%%", "undefined"),
-            });
-            generateSdkOutput.files.push({
-                className: "Remote",
-                path: "remote.node.ts",
-                data: nodeSdkTsRemoteNode.replace("%%%url%%%", "undefined"),
-            });
-        } else {
-            // generate remote.js
-            generateSdkOutput.files.push({
-                className: "Remote",
-                path: "remote.ts",
-                data: nodeSdkTsRemoteGeneric.replace("%%%url%%%", "undefined"),
-            });
-        }
+        // generate remote.js
+        generateSdkOutput.files.push({
+            className: "Remote",
+            path: "remote.ts",
+            data: nodeSdkTsRemoteBrowser.replace("%%%url%%%", "undefined"),
+        });
+        generateSdkOutput.files.push({
+            className: "Remote",
+            path: "remote.node.ts",
+            data: nodeSdkTsRemoteNode.replace("%%%url%%%", "undefined"),
+        });
 
         generateSdkOutput.files.push({
             className: "StorageManager",

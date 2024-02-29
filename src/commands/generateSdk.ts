@@ -16,10 +16,8 @@ import { mapDbAstToSdkGeneratorAst } from "../generateSdk/utils/mapDbAstToFullAs
 import { generateSdk } from "../generateSdk/sdkGeneratorHandler.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import inquirer from "inquirer";
-import { GenezioSdkOptions, SdkType, SourceType } from "../models/commandOptions.js";
-import { SdkType as SdkTypeModel } from "../yamlProjectConfiguration/models.js";
+import { GenezioSdkOptions, SourceType } from "../models/commandOptions.js";
 import {
-    SdkTypeMetadata,
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
 } from "../generateSdk/generateSdkApi.js";
@@ -49,10 +47,6 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
     }
 
     const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
-        {
-            type: SdkTypeModel.package,
-            packageName: options.packageName,
-        },
         options.language,
         mapYamlClassToSdkClassConfiguration(
             await scanClassesForDecorators({ path: process.cwd(), classes: [] }),
@@ -60,6 +54,7 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
             process.cwd(),
         ),
         options.output,
+        options.packageName,
     ).catch((error) => {
         // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
         if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
@@ -84,7 +79,7 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
     const tempFolder = path.join(process.cwd(), "temp");
     await writeSdkToDisk(sdkResponse, tempFolder);
 
-    if (options.type === SdkType.PACKAGE) {
+    if (options.language === Language.js || options.language === Language.ts) {
         debugLogger.debug("Sdk type is package");
         const packageJson: string = getPackageJsonSdkGenerator(
             options.packageName,
@@ -133,7 +128,6 @@ export async function generateRemoteSdkCommand(projectName: string, options: Gen
             projectName,
             stage,
             region,
-            options.type,
         ).catch((error: AxiosError) => {
             if (error.response?.status == 401) {
                 throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
@@ -209,7 +203,6 @@ export async function generateRemoteSdkCommand(projectName: string, options: Gen
             name,
             stage,
             configurationRegion,
-            options.type,
         );
     }
 }
@@ -220,7 +213,6 @@ async function generateRemoteSdkHandler(
     projectName: string,
     stage: string,
     region: string,
-    sdkType: SdkType,
 ) {
     // get all project classes
     const projects = await listProjects();
@@ -246,20 +238,7 @@ async function generateRemoteSdkHandler(
         );
     }
 
-    let metadata: SdkTypeMetadata;
-    if (sdkType === SdkType.PACKAGE) {
-        metadata = {
-            type: SdkTypeModel.package,
-            packageName: `@genezio-sdk/${projectName}_${region}`,
-        };
-    } else {
-        metadata = {
-            type: SdkTypeModel.folder,
-        };
-    }
-
     const sdkGeneratorInput: SdkGeneratorInput = {
-        sdkTypeMetadata: metadata,
         classesInfo: projectEnv.classes.map(
             (c): SdkGeneratorClassesInfoInput => ({
                 program: mapDbAstToSdkGeneratorAst(c.ast),
@@ -276,6 +255,7 @@ async function generateRemoteSdkHandler(
         sdk: {
             language: language as Language,
         },
+        packageName: `@genezio-sdk/${projectName}_${region}`
     };
 
     const sdkGeneratorOutput = await generateSdk(sdkGeneratorInput, undefined);
@@ -301,7 +281,7 @@ async function generateRemoteSdkHandler(
     // write the sdk to disk in the specified path
     await writeSdkToDisk(sdkGeneratorResponse, sdkPath);
 
-    if (sdkType === SdkType.PACKAGE) {
+    if (language === Language.js || language === Language.ts) {
         debugLogger.debug("Sdk type is package for remote sdk");
         const packageJson: string = getPackageJsonSdkGenerator(
             `@genezio-sdk/${projectName}_${region}`,
@@ -334,11 +314,9 @@ async function generateRemoteSdkHandler(
                 }
             }),
         );
-    }
 
-    log.info("Your SDK has been generated successfully in " + sdkPath + "");
+        log.info("Your SDK has been generated successfully in " + sdkPath + "");
 
-    if (sdkType === SdkType.PACKAGE) {
         log.info(
             `You can now publish it to npm using ${colors.cyan(
                 `'npm publish'`,

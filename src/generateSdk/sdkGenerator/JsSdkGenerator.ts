@@ -1,4 +1,4 @@
-import { SdkType, TriggerType } from "../../yamlProjectConfiguration/models.js";
+import { TriggerType } from "../../yamlProjectConfiguration/models.js";
 import {
     SdkGeneratorInterface,
     ClassDefinition,
@@ -10,7 +10,6 @@ import {
 import {
     nodeSdkJsRemoteNode,
     nodeSdkJsRemoteBrowser,
-    nodeSdkJsRemoteGeneric,
     storageJs,
 } from "../templates/nodeSdkJs.js";
 import Mustache from "mustache";
@@ -127,10 +126,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                 continue;
             }
 
-            const remoteImport =
-                sdkGeneratorInput.sdkTypeMetadata.type === SdkType.package
-                    ? `import { Remote } from "${sdkGeneratorInput.sdkTypeMetadata.packageName}/remote";`
-                    : `import { Remote } from "./remote";`;
+            const remoteImport = `import { Remote } from "${sdkGeneratorInput.packageName}/remote";`
 
             const view: ViewType = {
                 remoteImport,
@@ -206,26 +202,17 @@ class SdkGenerator implements SdkGeneratorInterface {
             });
         }
 
-        if (sdkGeneratorInput.sdkTypeMetadata.type === SdkType.package) {
-            // generate remote.js
-            generateSdkOutput.files.push({
-                className: "Remote",
-                path: "remote.js",
-                data: nodeSdkJsRemoteBrowser.replace("%%%url%%%", "undefined"),
-            });
-            generateSdkOutput.files.push({
-                className: "Remote",
-                path: "remote.node.js",
-                data: nodeSdkJsRemoteNode.replace("%%%url%%%", "undefined"),
-            });
-        } else {
-            // generate remote.js
-            generateSdkOutput.files.push({
-                className: "Remote",
-                path: "remote.js",
-                data: nodeSdkJsRemoteGeneric.replace("%%%url%%%", "undefined"),
-            });
-        }
+        // generate remote.js
+        generateSdkOutput.files.push({
+            className: "Remote",
+            path: "remote.js",
+            data: nodeSdkJsRemoteBrowser.replace("%%%url%%%", "undefined"),
+        });
+        generateSdkOutput.files.push({
+            className: "Remote",
+            path: "remote.node.js",
+            data: nodeSdkJsRemoteNode.replace("%%%url%%%", "undefined"),
+        });
 
         generateSdkOutput.files.push({
             className: "StorageManager",

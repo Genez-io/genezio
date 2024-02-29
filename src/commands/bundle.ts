@@ -1,6 +1,5 @@
 import log from "loglevel";
 import {
-    SdkTypeMetadata,
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
 } from "../generateSdk/generateSdkApi.js";
@@ -13,7 +12,6 @@ import { writeToFile, zipDirectory } from "../utils/file.js";
 import path from "path";
 import yamlConfigIOController from "../yamlProjectConfiguration/v2.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
-import { SdkType } from "../yamlProjectConfiguration/models.js";
 
 export async function bundleCommand(options: GenezioBundleOptions) {
     const yamlProjectConfiguration = await yamlConfigIOController.read();
@@ -23,20 +21,7 @@ export async function bundleCommand(options: GenezioBundleOptions) {
     }
     backendConfiguration.classes = await scanClassesForDecorators(backendConfiguration);
 
-    let metadata: SdkTypeMetadata;
-    if (backendConfiguration.sdk?.type === SdkType.folder) {
-        metadata = {
-            type: SdkType.folder,
-        };
-    } else {
-        metadata = {
-            type: SdkType.package,
-            packageName: `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
-        };
-    }
-
     const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
-        metadata,
         backendConfiguration.language.name,
         mapYamlClassToSdkClassConfiguration(
             backendConfiguration.classes,
@@ -44,6 +29,7 @@ export async function bundleCommand(options: GenezioBundleOptions) {
             backendConfiguration.path,
         ),
         backendConfiguration.path,
+        `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`
     ).catch((error) => {
         // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
         if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {

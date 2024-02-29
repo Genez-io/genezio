@@ -20,7 +20,6 @@ import {
 } from "../constants.js";
 import { GENEZIO_NO_CLASSES_FOUND, PORT_ALREADY_USED } from "../errors.js";
 import {
-    SdkTypeMetadata,
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
 } from "../generateSdk/generateSdkApi.js";
@@ -46,7 +45,7 @@ import { GenezioLocalOptions } from "../models/commandOptions.js";
 import { DartBundler } from "../bundlers/dart/localDartBundler.js";
 import axios, { AxiosError, AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
-import { Language, SdkType, TriggerType } from "../yamlProjectConfiguration/models.js";
+import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
 import { PackageManagerType } from "../packageManagers/packageManager.js";
 import {
     YamlConfigurationIOController,
@@ -121,21 +120,7 @@ export async function prepareLocalBackendEnvironment(
             throw new Error(GENEZIO_NO_CLASSES_FOUND);
         }
 
-        let metadata: SdkTypeMetadata;
-
-        if (backend.sdk?.type === SdkType.package) {
-            metadata = {
-                type: SdkType.package,
-                packageName: `@genezio-sdk/${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
-            };
-        } else {
-            metadata = {
-                type: SdkType.folder,
-            };
-        }
-
         const sdk = await sdkGeneratorApiHandler(
-            metadata,
             backend.sdk?.language || sdkLanguage,
             mapYamlClassToSdkClassConfiguration(
                 backend.classes,
@@ -143,6 +128,7 @@ export async function prepareLocalBackendEnvironment(
                 backend.path,
             ),
             backend.path,
+            `@genezio-sdk/${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`
         ).catch((error) => {
             debugLogger.log("An error occurred", error);
             if (error.code === "ENOENT") {
@@ -305,7 +291,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             sdkConfiguration = {
                 language: sdkLanguage,
                 path: path.join(sdkPath, "sdk"),
-                type: SdkType.folder,
             };
         }
 
@@ -654,7 +639,7 @@ async function startServerHttp(
     app.use(bodyParser.raw({ type: () => true, limit: "6mb" }));
     app.use(genezioRequestParser);
 
-    app.get("/get-ast-summary", (req, res) => {
+    app.get("/get-ast-summary", (_req, res) => {
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify({ ...astSummary, name: projectName }));
     });
@@ -806,7 +791,7 @@ function startCronJobs(
 async function stopCronJobs(cronHandlers: LocalEnvCronHandler[]) {
     for (const cronHandler of cronHandlers) {
         if (cronHandler.cronObject) {
-            await cronHandler.cronObject.stop();
+            cronHandler.cronObject.stop();
         }
     }
 }
