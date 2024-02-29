@@ -1,7 +1,7 @@
 import jsonBody from "body/json.js";
 import log from "loglevel";
 import { AddressInfo } from "net";
-import { REACT_APP_BASE_URL } from "../constants.js";
+import { DASHBOARD_URL } from "../constants.js";
 import { saveAuthToken } from "../utils/accounts.js";
 import http from "http";
 import open from "open";
@@ -42,7 +42,7 @@ export async function loginCommand(accessToken: string, logSuccesMessage = true)
                         res.setHeader("Access-Control-Allow-Methods", "POST");
                         res.setHeader("Access-Control-Allow-Credentials", "true");
                         res.writeHead(301, {
-                            Location: `${REACT_APP_BASE_URL}/cli/login/success`,
+                            Location: `${DASHBOARD_URL}/cli/login/success`,
                         });
                         res.end();
 
@@ -58,7 +58,7 @@ export async function loginCommand(accessToken: string, logSuccesMessage = true)
             server.listen(0, "localhost", () => {
                 log.info("Redirecting to browser to complete authentication...");
                 const address = server.address() as AddressInfo;
-                const browserUrl = `${REACT_APP_BASE_URL}/cli/login?redirect_url=http://localhost:${address.port}/`;
+                const browserUrl = `${DASHBOARD_URL}/cli/login?redirect_url=http://localhost:${address.port}/`;
                 open(browserUrl);
             });
         }
