@@ -26,7 +26,7 @@ import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { GenezioCommand } from "../utils/reporter.js";
 import colors from "colors";
 import { debugLogger } from "../utils/logging.js";
-import { deleteFile, deleteFolder } from "../utils/file.js";
+import { createTemporaryFolder, deleteFile, deleteFolder } from "../utils/file.js";
 import { YamlConfigurationIOController } from "../yamlProjectConfiguration/v2.js";
 
 export async function generateSdkCommand(projectName: string, options: GenezioSdkOptions) {
@@ -76,7 +76,7 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
         })),
     );
 
-    const tempFolder = path.join(process.cwd(), "temp");
+    const tempFolder = await createTemporaryFolder();
     await writeSdkToDisk(sdkResponse, tempFolder);
 
     if (options.language === Language.js || options.language === Language.ts) {
@@ -122,18 +122,14 @@ export async function generateRemoteSdkCommand(projectName: string, options: Gen
     }
 
     if (projectName) {
-        await generateRemoteSdkHandler(
-            language,
-            sdkPath,
-            projectName,
-            stage,
-            region,
-        ).catch((error: AxiosError) => {
-            if (error.response?.status == 401) {
-                throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
-            }
-            throw error;
-        });
+        await generateRemoteSdkHandler(language, sdkPath, projectName, stage, region).catch(
+            (error: AxiosError) => {
+                if (error.response?.status == 401) {
+                    throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
+                }
+                throw error;
+            },
+        );
     } else {
         let config = options.config;
         // check if path ends in .genezio.yaml or else append it
@@ -197,13 +193,7 @@ export async function generateRemoteSdkCommand(projectName: string, options: Gen
         const name = configuration.name;
         const configurationRegion = configuration.region;
 
-        await generateRemoteSdkHandler(
-            language,
-            sdkPath,
-            name,
-            stage,
-            configurationRegion,
-        );
+        await generateRemoteSdkHandler(language, sdkPath, name, stage, configurationRegion);
     }
 }
 
@@ -255,7 +245,7 @@ async function generateRemoteSdkHandler(
         sdk: {
             language: language as Language,
         },
-        packageName: `@genezio-sdk/${projectName}_${region}`
+        packageName: `@genezio-sdk/${projectName}_${region}`,
     };
 
     const sdkGeneratorOutput = await generateSdk(sdkGeneratorInput, undefined);
