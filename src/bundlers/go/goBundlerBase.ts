@@ -251,12 +251,7 @@ export abstract class GoBundler implements BundlerInterface {
         // Compile the Go code on the server
         debugLogger.info("Compiling Go...");
         input.path = inputTemporaryFolder;
-        try {
-            await this.compile(inputTemporaryFolder, input);
-        } catch {
-            const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
-            await delay(600 * 1000);
-        }
+        await this.compile(inputTemporaryFolder, input);
         debugLogger.info("Compiling Go finished.");
 
         return {

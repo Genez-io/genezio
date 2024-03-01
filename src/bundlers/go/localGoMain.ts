@@ -129,7 +129,11 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	var body EventBody
 	var responseBody ResponseBody
 
-	err := json.NewDecoder(r.Body).Decode(&event)
+    request, err := io.ReadAll(r.Body)
+    if err != nil {
+        sendError(w, err, JsonRpcMethod)
+    }
+	err = json.Unmarshal(request, &event)
 	if err != nil {
         sendError(w, err, JsonRpcMethod)
 		return
@@ -177,7 +181,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
                 sendError(w, err, HttpMethod)
                 return
             }
-            genezioRequest.Body = string(bodyDecoded)
+            genezioRequest.Body = bodyDecoded
         } else {
             var jsonBody interface{}
             err = json.Unmarshal(eventBody, &jsonBody)
@@ -204,18 +208,21 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
             return
         }
 
-        resultBody, err := json.Marshal(result.Body)
-        if err != nil {
-            sendError(w, err, HttpMethod)
-            return
+        _, ok := result.Body.([]byte)
+        if !ok {
+            resultBody, err := json.Marshal(result.Body)
+            if err != nil {
+                sendError(w, err, HttpMethod)
+                return
+            }
+            result.Body = string(resultBody)
+            w.Header().Set("Content-Type", "application/json")
         }
-        result.Body = string(resultBody)
         response, err := json.Marshal(result)
         if err != nil {
             sendError(w, err, HttpMethod)
             return
         }  
-        w.Header().Set("Content-Type", "application/json")
         w.WriteHeader(http.StatusOK)
         io.WriteString(w, string(response))
         return

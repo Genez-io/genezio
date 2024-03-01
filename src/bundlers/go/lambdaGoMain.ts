@@ -159,10 +159,10 @@ func handleRequest(context context.Context, event *Event) (*Response, error) {
                 errorResponse := sendError(err, HttpMethod)
                 return errorResponse, nil
             }
-            genezioRequest.Body = string(bodyDecoded)
+            genezioRequest.Body = bodyDecoded
         } else {
             var jsonBody interface{}
-            err = json.Unmarshal(eventBody, &jsonBody)
+            err := json.Unmarshal(eventBody, &jsonBody)
             if err != nil {
                 genezioRequest.Body = event.Body
             } else {
@@ -171,6 +171,7 @@ func handleRequest(context context.Context, event *Event) (*Response, error) {
         }
         methodName := path.Base(event.RequestContext.Http.Path)
         var result *genezio_types.GenezioHttpResponse
+        var err error
 
         switch methodName {
         {{#httpMethods}}
@@ -185,10 +186,18 @@ func handleRequest(context context.Context, event *Event) (*Response, error) {
             errorResponse := sendError(errors.New("Http method not found"), HttpMethod)
             return errorResponse, nil
         }
-        responseBody, err := json.Marshal(result.Body)
-        if err != nil {
-            errorResponse := sendError(err, HttpMethod)
-            return errorResponse, nil
+        byteBody, ok := result.Body.([]byte)
+        if !ok {
+            responseBody, err := json.Marshal(result.Body)
+            if err != nil {
+                errorResponse := sendError(err, HttpMethod)
+                return errorResponse, nil
+            }
+            result.Body = string(responseBody)
+        } else {
+            result.Body = base64.StdEncoding.EncodeToString(byteBody)
+            var isBase64Encoded bool = true
+            result.IsBase64Encoded = &isBase64Encoded
         }
         var responseHeaders map[string]string
         if result.Headers != nil {
@@ -196,7 +205,7 @@ func handleRequest(context context.Context, event *Event) (*Response, error) {
         }
         response := &Response{
             StatusCode: result.StatusCode,
-            Body:       string(responseBody),
+            Body:       result.Body.(string),
             Headers:    responseHeaders,
         }
         return response, nil
