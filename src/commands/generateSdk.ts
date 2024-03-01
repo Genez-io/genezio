@@ -274,8 +274,8 @@ async function generateRemoteSdkHandler(
     if (language === Language.js || language === Language.ts) {
         debugLogger.debug("Sdk type is package for remote sdk");
         const packageJson: string = getPackageJsonSdkGenerator(
-            `@genezio-sdk/${projectName}_${region}`,
-            `1.0.0-${stage}`,
+            /* packageName= */ `@genezio-sdk/${projectName}_${region}`,
+            /* packageVersion= */ `1.0.0-${stage}`,
             sdkPath,
             GenezioCommand.deploy,
         );

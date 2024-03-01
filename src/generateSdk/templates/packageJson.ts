@@ -37,34 +37,9 @@ export const getPackageJsonSdkGenerator = (
     return JSON.stringify(packageJson, null, 2);
 };
 
-export const getNodeModulePackageJsonLocal = (packageName: string): string => `{
+export const getNodeModulePackageJson = (packageName: string, version?: string): string => `{
   "name": "${packageName}",
-  "version": "${getRandomSemVer()}",
-  "exports": {
-    ".": {
-      "require": "./cjs/index.js",
-      "import": "./esm/index.js"
-    },
-    "./remote": {
-      "browser": {
-        "require": "./cjs/remote.js",
-        "import": "./esm/remote.js"
-      },
-      "default": {
-        "require": "./cjs/remote.node.js",
-        "import": "./esm/remote.node.js"
-      }
-    }
-  },
-  "description": "",
-  "main": "./cjs/index.js",
-  "module": "./esm/index.js"
-}
-`;
-
-export const getNodeModulePackageJson = (packageName: string, version: string): string => `{
-  "name": "${packageName}",
-  "version": "${version}",
+  "version": "${version || getRandomSemVer()}",
   "exports": {
     ".": {
       "require": "./cjs/index.js",
