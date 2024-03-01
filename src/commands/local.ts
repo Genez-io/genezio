@@ -60,7 +60,7 @@ import inquirer, { Answers } from "inquirer";
 import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
 import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJson.js";
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
-import { exit } from "process";
+import { cwd, exit } from "process";
 import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 import log from "loglevel";
 import { interruptLocalPath } from "../utils/localInterrupt.js";
@@ -652,9 +652,22 @@ async function startServerHttp(
     processForClasses: Map<string, ClassProcess>,
 ): Promise<http.Server> {
     const app = express();
+    const __filename = url.fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
     app.use(cors());
     app.use(bodyParser.raw({ type: () => true, limit: "6mb" }));
     app.use(genezioRequestParser);
+
+    // serve test interface built folder on localhost
+    const builtFolder = path.resolve(
+        __dirname,
+        "../../../node_modules/genezio-test-interface-component/dist/build",
+    );
+    app.use(express.static(builtFolder));
+    app.get(`/test-interface/local/`, (req, res) => {
+        const filePath = path.join(builtFolder, "index.html");
+        res.sendFile(filePath);
+    });
 
     app.get("/get-ast-summary", (req, res) => {
         res.setHeader("Content-Type", "application/json");
@@ -1005,7 +1018,10 @@ To change the server version, go to your ${colors.cyan(
         newVersion,
     );
 
-    log.info("\x1b[32m%s\x1b[0m", `Test your code at ${LOCAL_TEST_INTERFACE_URL}?port=${port}`);
+    log.info(
+        "\x1b[32m%s\x1b[0m",
+        `Test your code at http://localhost:${port}/test-interface/local?port=${port}`,
+    );
 }
 
 function getFunctionUrl(
