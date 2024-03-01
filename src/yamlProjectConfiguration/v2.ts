@@ -213,7 +213,7 @@ export class YamlConfigurationIOController {
         try {
             genezioConfig = parseGenezioConfig(rawConfig);
         } catch (e) {
-            let v2RawConfig: YamlProjectConfiguration | undefined = undefined;
+            let v2RawConfig: RawYamlProjectConfiguration | undefined = undefined;
             if (!("yamlVersion" in (rawConfig as { yamlVerson: string }))) {
                 v2RawConfig = await tryV2Migration(rawConfig);
             }
