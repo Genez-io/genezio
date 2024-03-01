@@ -12,7 +12,6 @@ import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
 import path from "path";
 import { YamlClass } from "../yamlProjectConfiguration/v2.js";
 
-
 /**
  * Asynchronously handles a request to generate an SDK based on the provided YAML project configuration.
  *
@@ -35,17 +34,8 @@ export async function sdkGeneratorApiHandler(
         packageName,
         packageVersion,
         classesInfo: [],
+        language: language ?? "ts",
     };
-
-    if (language) {
-        sdkGeneratorInput.sdk = {
-            language: language,
-        };
-    } else {
-        sdkGeneratorInput.sdk = {
-            language: "ts",
-        };
-    }
 
     // iterate over each class file
     for (const input of inputs) {

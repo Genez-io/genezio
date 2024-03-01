@@ -12,8 +12,9 @@ import { TriggerType } from "./models.js";
 import { isValidCron } from "cron-validator";
 import { tryV2Migration } from "./migration.js";
 import yaml from "yaml";
+import { DeepRequired } from "../utils/types.js";
 
-export type YamlProjectConfiguration = ReturnType<typeof parseGenezioConfig>;
+export type RawYamlProjectConfiguration = ReturnType<typeof parseGenezioConfig>;
 export type YAMLBackend = NonNullable<YamlProjectConfiguration["backend"]>;
 export type YamlClass = NonNullable<YAMLBackend["classes"]>[number];
 export type YamlMethod = NonNullable<YamlClass["methods"]>[number];
@@ -22,11 +23,13 @@ export type YamlFrontend = Exclude<
     Array<unknown>
 >;
 
+export type YamlProjectConfiguration = ReturnType<typeof fillDefaultGenezioConfig>;
+
 function parseGenezioConfig(config: unknown) {
     const languageSchema = zod.object({
         name: zod.nativeEnum(Language),
-        runtime: zod.enum(supportedNodeRuntimes).default("nodejs16.x"),
-        packageManager: zod.nativeEnum(PackageManagerType).default(PackageManagerType.npm),
+        runtime: zod.enum(supportedNodeRuntimes).optional(),
+        packageManager: zod.nativeEnum(PackageManagerType).optional(),
     });
 
     const scriptSchema = zod.array(zod.string()).or(zod.string()).optional();
@@ -94,7 +97,7 @@ function parseGenezioConfig(config: unknown) {
                     return { message: ctx.defaultError };
                 },
             })
-            .default(CloudProviderIdentifier.GENEZIO),
+            .optional(),
         classes: zod.array(classSchema).optional(),
         sdk: zod
             .object({
@@ -123,7 +126,7 @@ function parseGenezioConfig(config: unknown) {
             const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
             return nameRegex.test(value);
         }, "Must start with a letter and contain only letters, numbers and dashes."),
-        region: zod.enum(regions.map((r) => r.value) as [string, ...string[]]).default("us-east-1"),
+        region: zod.enum(regions.map((r) => r.value) as [string, ...string[]]).optional(),
         yamlVersion: zod.number(),
         backend: backendSchema.optional(),
         frontend: zod.array(frontendSchema).or(frontendSchema).optional(),
@@ -132,9 +135,34 @@ function parseGenezioConfig(config: unknown) {
     return v2Schema.parse(config);
 }
 
+function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
+    const defaultConfig = structuredClone(config);
+
+    defaultConfig.region ??= "us-east-1";
+
+    if (defaultConfig.backend) {
+        switch (defaultConfig.backend.language.name) {
+            case Language.ts:
+            case Language.js:
+                defaultConfig.backend.language.packageManager ??= PackageManagerType.npm;
+                defaultConfig.backend.language.runtime ??= "nodejs18.x";
+        }
+
+        defaultConfig.backend.cloudProvider ??= CloudProviderIdentifier.GENEZIO;
+    }
+
+    return defaultConfig as DeepRequired<
+        RawYamlProjectConfiguration,
+        | "region"
+        | "backend.language.packageManager"
+        | "backend.language.runtime"
+        | "backend.cloudProvider"
+    >;
+}
+
 export class YamlConfigurationIOController {
     private ctx: YAMLContext | undefined = undefined;
-    private cachedConfig: YamlProjectConfiguration | undefined = undefined;
+    private cachedConfig: RawYamlProjectConfiguration | undefined = undefined;
     private latestRead: Date | undefined = undefined;
 
     constructor(
@@ -142,7 +170,35 @@ export class YamlConfigurationIOController {
         private fs: typeof nativeFs | IFs = nativeFs,
     ) {}
 
-    async read(cache: boolean = true) {
+    /**
+     * Reads the YAML project configuration from the file.
+     *
+     * @param fillDefaults - Whether to fill default values in the configuration. Default is true.
+     * Set it to false if you want to read the real configuration just to write it back slightly modified.
+     * This way you can avoid saving the default values in the file.
+     * @param cache - Whether to cache the configuration. Default is true. Subsequent reads will not
+     * impact performance if the configuration is not externaly changed. The cache is invalidated when
+     * the file is externally modified.
+     * @returns A Promise that resolves to the parsed YAML project configuration.
+     */
+    async read(fillDefaults?: true, cache?: boolean): Promise<YamlProjectConfiguration>;
+    /**
+     * Reads the YAML project configuration from the file.
+     *
+     * @param fillDefaults - Whether to fill default values in the configuration. Default is true.
+     * Set it to false if you want to read the real configuration just to write it back slightly modified.
+     * This way you can avoid saving the default values in the file.
+     * @param cache - Whether to cache the configuration. Default is true. Subsequent reads will not
+     * impact performance if the configuration is not externaly changed. The cache is invalidated when
+     * the file is externally modified.
+     * @returns A Promise that resolves to the parsed YAML project configuration.
+     */
+    async read(fillDefaults?: false, cache?: boolean): Promise<RawYamlProjectConfiguration>;
+
+    async read(
+        fillDefaults: boolean = true,
+        cache: boolean = true,
+    ): Promise<YamlProjectConfiguration | RawYamlProjectConfiguration> {
         const lastModified = this.fs.statSync(this.filePath).mtime;
         if (this.cachedConfig && cache && this.latestRead && this.latestRead >= lastModified) {
             return structuredClone(this.cachedConfig);
@@ -152,7 +208,7 @@ export class YamlConfigurationIOController {
         this.latestRead = lastModified;
 
         const [rawConfig, ctx] = parseYaml(fileContent);
-        let genezioConfig: YamlProjectConfiguration;
+        let genezioConfig: RawYamlProjectConfiguration;
         try {
             genezioConfig = parseGenezioConfig(rawConfig);
         } catch (e) {
@@ -177,10 +233,15 @@ export class YamlConfigurationIOController {
         this.ctx = ctx;
         this.cachedConfig = structuredClone(genezioConfig);
 
+        // Fill default values
+        if (fillDefaults) {
+            return fillDefaultGenezioConfig(genezioConfig);
+        }
+
         return genezioConfig;
     }
 
-    async write(data: YamlProjectConfiguration) {
+    async write(data: RawYamlProjectConfiguration) {
         await this.fs.promises.writeFile(this.filePath, stringifyYaml(data, this.ctx));
         this.latestRead = new Date();
         this.cachedConfig = structuredClone(data);

@@ -57,7 +57,7 @@ import dotenv from "dotenv";
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
 import inquirer, { Answers } from "inquirer";
 import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
-import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJson.js";
+import { getNodeModulePackageJson } from "../generateSdk/templates/packageJson.js";
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { exit } from "process";
 import { getLinkPathsForProject } from "../utils/linkDatabase.js";
@@ -128,7 +128,7 @@ export async function prepareLocalBackendEnvironment(
                 backend.path,
             ),
             backend.path,
-            `@genezio-sdk/${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`
+            /* packageName= */ `@genezio-sdk/${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
         ).catch((error) => {
             debugLogger.log("An error occurred", error);
             if (error.code === "ENOENT") {
@@ -277,7 +277,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                 },
             ]);
 
-            const yamlConfig = await yamlConfigIOController.read();
+            const yamlConfig = await yamlConfigIOController.read(/* fillDefaults= */ false);
             yamlConfig.backend!.language.packageManager = optionalPackageManager["packageManager"];
             await yamlConfigIOController.write(yamlConfig);
         }
@@ -370,8 +370,8 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             await deleteFolder(sdkConfiguration.path);
             await writeSdkToDisk(sdk, sdkConfiguration.path);
             // compile the sdk
-            const packageJson: string = getNodeModulePackageJsonLocal(
-                `@genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}`,
+            const packageJson: string = getNodeModulePackageJson(
+                /* packageName= */ `@genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}`,
             );
             await compileSdk(sdkConfiguration.path, packageJson, sdkConfiguration.language, false);
 

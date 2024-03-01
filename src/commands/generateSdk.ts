@@ -4,7 +4,6 @@ import { exit } from "process";
 import { languages } from "../utils/languages.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
-import { YamlProjectConfiguration } from "../yamlProjectConfiguration/v2.js";
 import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import listProjects from "../requests/listProjects.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
@@ -136,7 +135,7 @@ export async function generateRemoteSdkCommand(projectName: string, options: Gen
         if (!config.endsWith("genezio.yaml")) {
             config = path.join(config, "genezio.yaml");
         }
-        let configuration: YamlProjectConfiguration | undefined;
+        let configuration;
         const yamlIOController = new YamlConfigurationIOController(config);
         try {
             configuration = await yamlIOController.read();
@@ -242,9 +241,7 @@ async function generateRemoteSdkHandler(
                 fileName: path.basename(c.ast.path),
             }),
         ),
-        sdk: {
-            language: language as Language,
-        },
+        language: language as Language,
         packageName: `@genezio-sdk/${projectName}_${region}`,
     };
 

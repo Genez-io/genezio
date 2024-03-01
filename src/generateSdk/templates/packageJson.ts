@@ -23,7 +23,7 @@ export const getPackageJsonSdkGenerator = (
         packageJsonStr = fs.readFileSync(packageJsonPath, "utf8");
     } else {
         if (environment === GenezioCommand.local) {
-            packageJsonStr = getNodeModulePackageJsonLocal(packageName);
+            packageJsonStr = getNodeModulePackageJson(packageName);
         } else {
             packageJsonStr = getNodeModulePackageJson(packageName, version);
         }

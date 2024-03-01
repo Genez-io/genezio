@@ -338,9 +338,7 @@ export type SdkGeneratorClassesInfoInput = {
 
 export type SdkGeneratorInput = {
     classesInfo: SdkGeneratorClassesInfoInput[];
-    sdk?: {
-        language: string;
-    };
+    language: string;
     packageName?: string;
     packageVersion?: string;
 };
