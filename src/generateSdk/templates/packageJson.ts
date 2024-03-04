@@ -1,5 +1,4 @@
 import path from "path";
-import { GenezioCommand } from "../../utils/reporter.js";
 import fs from "fs";
 function getRandomSemVer() {
     const major = Math.floor(Math.random() * 10); // Random major version between 0 and 9
@@ -11,9 +10,8 @@ function getRandomSemVer() {
 
 export const getPackageJsonSdkGenerator = (
     packageName: string,
-    version: string,
+    version: string|undefined,
     sdkPath: string,
-    environment: GenezioCommand,
 ): string => {
     // check if package.json exists at sdkPath
     const packageJsonPath = path.join(sdkPath, "package.json");
@@ -22,11 +20,7 @@ export const getPackageJsonSdkGenerator = (
         // get package.json
         packageJsonStr = fs.readFileSync(packageJsonPath, "utf8");
     } else {
-        if (environment === GenezioCommand.local) {
-            packageJsonStr = getNodeModulePackageJson(packageName);
-        } else {
-            packageJsonStr = getNodeModulePackageJson(packageName, version);
-        }
+        packageJsonStr = getNodeModulePackageJson(packageName, version);
     }
 
     const packageJson = JSON.parse(packageJsonStr);

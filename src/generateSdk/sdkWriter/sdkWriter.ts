@@ -7,18 +7,17 @@ import { writeSdkTs, writeSdkJs } from './jsSdkWriter.js';
 
 export async function writeSdk(
     language: Language, 
-    projectName: string, 
-    projectRegion: string,
-    stage: string,
+    packageName: string,
+    packageVersion: string|undefined,
     sdkResponse: SdkGeneratorResponse,
     classUrls: ClassUrlMap[],
     publish: boolean, 
     outputPath: string|undefined): Promise<string> {
     switch (language) {
         case Language.ts:
-            return await writeSdkTs(projectName, projectRegion, stage, sdkResponse, classUrls, publish, outputPath);
+            return await writeSdkTs(packageName, packageVersion, sdkResponse, classUrls, publish, outputPath);
         case Language.js:
-            return await writeSdkJs(projectName, projectRegion, stage, sdkResponse, classUrls, publish, outputPath);
+            return await writeSdkJs(packageName, packageVersion, sdkResponse, classUrls, publish, outputPath);
         case Language.go:
         case Language.kt:
         case Language.dart:

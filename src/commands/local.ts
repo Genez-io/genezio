@@ -773,9 +773,8 @@ async function handleSdk(
 
     const path = await writeSdk(
         sdkLanguage,
-        projectName,
-        projectRegion,
-        "local",
+        `@genezio-sdk/${projectName}_${projectRegion}`, 
+        undefined, 
         sdk,
         classUrls,
         false,

@@ -578,9 +578,8 @@ async function handleSdk(configuration: YamlProjectConfiguration, result: Genezi
         }))
         await writeSdk(
             sdkLanguage,
-            configuration.name,
-            configuration.region,
-            options.stage || "prod",
+            `@genezio-sdk/${configuration.name}_${configuration.region}`,
+            `1.0.0-${options.stage}`,
             sdkResponse,
             classUrls,
             true,

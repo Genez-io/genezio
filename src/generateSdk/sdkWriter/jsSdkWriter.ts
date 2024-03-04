@@ -8,9 +8,8 @@ import { SdkGeneratorResponse } from "../../models/sdkGeneratorResponse.js";
 
 
 async function writeSdk(
-    projectName: string,
-    projectRegion: string,
-    stage: string,
+    packageName: string,
+    packageVersion: string|undefined,
     sdkResponse: SdkGeneratorResponse,
     classUrls: ClassUrlMap[],
     publish: boolean,
@@ -22,48 +21,35 @@ async function writeSdk(
     );
 
     const localPath = await createLocalTempFolder(
-        `${projectName}-${projectRegion}`,
+        packageName.replace("@", "").replace("/", "_"),
     );
     const sdkPath = path.join(localPath, "sdk")
     await deleteFolder(sdkPath);
     await writeSdkToDisk(sdkResponse, sdkPath);
-    let packageJson: string;
-
-    if (stage === "local") {
-        packageJson = getNodeModulePackageJson(
-         /* packageName= */ `@genezio-sdk/${projectName}_${projectRegion}`
-        );
-    } else {
-        packageJson = getNodeModulePackageJson(
-         /* packageName= */ `@genezio-sdk/${projectName}_${projectRegion}`,
-         /* version= */ `1.0.0-${stage}`, 
-        );
-    }
+    const packageJson = getNodeModulePackageJson(packageName, packageVersion);
     await compileSdk(sdkPath, packageJson, language, publish, outputPath);
 
     return sdkPath;
 }
 
 export async function writeSdkTs(
-    projectName: string,
-    projectRegion: string,
-    stage: string,
+    packageName: string,
+    packageVersion: string|undefined,
     sdkResponse: SdkGeneratorResponse,
     classUrls: ClassUrlMap[],
     publish: boolean,
     path: string|undefined): Promise<string> {
-    return await writeSdk(projectName, projectRegion, stage, sdkResponse, classUrls, publish, Language.ts, path);
+    return await writeSdk(packageName, packageVersion, sdkResponse, classUrls, publish, Language.ts, path);
 }
 
 export async function writeSdkJs(
     projectName: string,
-    projectRegion: string,
-    stage: string,
+    projectRegion: string|undefined,
     sdkResponse: SdkGeneratorResponse,
     classUrls: ClassUrlMap[],
     publish: boolean,
     path: string|undefined): Promise<string> {
-    return await writeSdk(projectName, projectRegion, stage, sdkResponse, classUrls, publish, Language.js, path);
+    return await writeSdk(projectName, projectRegion, sdkResponse, classUrls, publish, Language.js, path);
 }
 
 
