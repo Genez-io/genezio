@@ -12,9 +12,9 @@ import { default as fsExtra } from "fs-extra";
 import url from "url";
 import * as http from "http";
 import colors from "colors";
+import { createRequire } from "module";
 import { ProjectConfiguration, ClassConfiguration } from "../models/projectConfiguration.js";
 import {
-    LOCAL_TEST_INTERFACE_URL,
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
 } from "../constants.js";
@@ -652,9 +652,19 @@ async function startServerHttp(
     processForClasses: Map<string, ClassProcess>,
 ): Promise<http.Server> {
     const app = express();
+    const require = createRequire(import.meta.url);
     app.use(cors());
     app.use(bodyParser.raw({ type: () => true, limit: "6mb" }));
     app.use(genezioRequestParser);
+    const packagePath = path.dirname(require.resolve("@genezio/test-interface-component"));
+    // serve test interface built folder on localhost
+    const buildFolder = path.join(packagePath, "build");
+
+    app.use(express.static(buildFolder));
+    app.get(`/explore`, (req, res) => {
+        const filePath = path.join(buildFolder, "index.html");
+        res.sendFile(filePath);
+    });
 
     app.get("/get-ast-summary", (req, res) => {
         res.setHeader("Content-Type", "application/json");
@@ -1005,7 +1015,7 @@ To change the server version, go to your ${colors.cyan(
         newVersion,
     );
 
-    log.info("\x1b[32m%s\x1b[0m", `Test your code at ${LOCAL_TEST_INTERFACE_URL}?port=${port}`);
+    log.info(colors.cyan(`Test your code at http://localhost:${port}/explore`));
 }
 
 function getFunctionUrl(
