@@ -14,7 +14,6 @@ import * as http from "http";
 import colors from "colors";
 import { ProjectConfiguration, ClassConfiguration } from "../models/projectConfiguration.js";
 import {
-    LOCAL_TEST_INTERFACE_URL,
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
 } from "../constants.js";
@@ -60,7 +59,7 @@ import inquirer, { Answers } from "inquirer";
 import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
 import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJson.js";
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
-import { cwd, exit } from "process";
+import { exit } from "process";
 import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 import log from "loglevel";
 import { interruptLocalPath } from "../utils/localInterrupt.js";
@@ -659,13 +658,13 @@ async function startServerHttp(
     app.use(genezioRequestParser);
 
     // serve test interface built folder on localhost
-    const builtFolder = path.resolve(
+    const buildFolder = path.resolve(
         __dirname,
         "../../../node_modules/genezio-test-interface-component/dist/build",
     );
-    app.use(express.static(builtFolder));
+    app.use(express.static(buildFolder));
     app.get(`/test-interface/local/`, (req, res) => {
-        const filePath = path.join(builtFolder, "index.html");
+        const filePath = path.join(buildFolder, "index.html");
         res.sendFile(filePath);
     });
 
@@ -1019,8 +1018,7 @@ To change the server version, go to your ${colors.cyan(
     );
 
     log.info(
-        "\x1b[32m%s\x1b[0m",
-        `Test your code at http://localhost:${port}/test-interface/local?port=${port}`,
+        colors.cyan(`Test your code at http://localhost:${port}/test-interface/local?port=${port}`),
     );
 }
 
