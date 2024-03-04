@@ -215,29 +215,27 @@ export async function deployCommand(options: GenezioDeployOptions) {
             });
 
             log.info("Deploying your frontend to the genezio infrastructure...");
-            frontendUrls.push(
-                await deployFrontend(
-                    configuration.name,
-                    configuration.region,
-                    frontend,
-                    index,
-                    options,
-                ).catch(async (error) => {
-                    if (error instanceof Error) {
-                        log.error(error.message);
-                        if (error.message == "No frontend entry in genezio configuration file.") {
-                            exit(0);
-                        }
-                        await GenezioTelemetry.sendEvent({
-                            eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_ERROR,
-                            errorTrace: error.toString(),
-                            commandOptions: JSON.stringify(options),
-                        });
+            const frontendUrl = await deployFrontend(
+                configuration.name,
+                configuration.region,
+                frontend,
+                index,
+                options,
+            ).catch(async (error) => {
+                if (error instanceof Error) {
+                    log.error(error.message);
+                    if (error.message == "No frontend entry in genezio configuration file.") {
+                        exit(0);
                     }
-                    exit(1);
-                }),
-            );
-            //             log.info("\x1b[36m%s\x1b[0m", `Frontend successfully deployed at ${frontendUrl}`);
+                    await GenezioTelemetry.sendEvent({
+                        eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_ERROR,
+                        errorTrace: error.toString(),
+                        commandOptions: JSON.stringify(options),
+                    });
+                }
+                exit(1);
+            });
+            if (frontendUrl) frontendUrls.push(frontendUrl);
 
             await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_END,
@@ -419,7 +417,7 @@ export async function deployClasses(
         await compileSdk(path.join(localPath, "sdk"), packageJson, backend.language.name, true);
     }
 
-    let isMonoRepo = configuration.backend && configuration.frontend ? true : false;
+    const isMonoRepo = configuration.backend && configuration.frontend ? true : false;
     reportSuccess(
         result.classes,
         sdkResponse,
@@ -548,38 +546,47 @@ export async function deployFrontend(
     frontend: YamlFrontend,
     index: number,
     options: GenezioDeployOptions,
-) {
+): Promise<string | undefined> {
     const stage: string = options.stage || "";
+
+    if (!frontend.publish) {
+        log.info(
+            `Skipping frontend deployment for \`${frontend.path}\` because it has no publish folder in the YAML configuration. Check https://genezio.com/docs/project-structure/genezio-configuration-file for more details.`,
+        );
+
+        return;
+    }
 
     // check if subdomain contains only numbers, letters and hyphens
     if (frontend.subdomain && !frontend.subdomain.match(/^[a-z0-9-]+$/)) {
         throw new Error(`The subdomain can only contain letters, numbers and hyphens.`);
     }
-    // check if the build folder exists
-    const frontendPath = path.join(frontend.path, frontend.publish || ".");
+
+    // check if the publish folder exists
+    const frontendPath = path.join(frontend.path, frontend.publish);
     if (!(await fileExists(frontendPath))) {
         throw new Error(
-            `The build folder ${colors.cyan(
+            `The publish folder ${colors.cyan(
                 `${frontendPath}`,
-            )} does not exist. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
+            )} does not exist. Please run the build command first or add a \`deploy\` script in the genezio.yaml file.`,
         );
     }
 
-    // check if the build folder is empty
+    // check if the publish folder is empty
     if (await isDirectoryEmpty(frontendPath)) {
         throw new Error(
-            `The build folder ${colors.cyan(
+            `The publish folder ${colors.cyan(
                 `${frontendPath}`,
-            )} is empty. Please run the build command first or add a preFrontendDeploy script in the genezio.yaml file.`,
+            )} is empty. Please run the build command first or add a \`deploy\` script in the genezio.yaml file.`,
         );
     }
 
-    // check if there are any .html files in the build folder
+    // check if there are any .html files in the publish folder
     if (!(await directoryContainsHtmlFiles(frontendPath))) {
-        log.info("WARNING: No .html files found in the build folder");
+        log.info("WARNING: No .html files found in the publish folder");
     } else if (!(await directoryContainsIndexHtmlFiles(frontendPath))) {
-        // check if there is no index.html file in the build folder
-        log.info("WARNING: No index.html file found in the build folder");
+        // check if there is no index.html file in the publish folder
+        log.info("WARNING: No index.html file found in the publish folder");
     }
 
     if (!options.subdomain && !frontend.subdomain) {
