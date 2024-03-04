@@ -216,20 +216,21 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     // because we migrated the decorators implemented in the @genezio/types package to the stage 3 implementation.
     // Otherwise, the user will get an error at runtime. This check can be removed in the future once no one is using version
     // 0.1.* of @genezio/types.
-    const packageJsonPath = path.join(backendConfiguration.path, "package.json");
-    if (
-        isDependencyVersionCompatible(
-            packageJsonPath,
-            "@genezio/types",
-            REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
-        ) === false
-    ) {
-        log.error(
-            `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To solve this, please update the @genezio/types package on your backend component using the following command: npm install @genezio/types@${RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE}`,
-        );
-        exit(1);
+    if (backendConfiguration.language.name === Language.ts || backendConfiguration.language.name === Language.js) {
+        const packageJsonPath = path.join(backendConfiguration.path, "package.json");
+        if (
+            isDependencyVersionCompatible(
+                packageJsonPath,
+                "@genezio/types",
+                REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
+            ) === false
+        ) {
+            log.error(
+                `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To solve this, please update the @genezio/types package on your backend component using the following command: npm install @genezio/types@${RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE}`,
+            );
+            exit(1);
+        }
     }
-
     const success = await doAdaptiveLogAction("Running backend local scripts", async () => {
         return await runScript(backendConfiguration.scripts?.local, backendConfiguration.path);
     });
