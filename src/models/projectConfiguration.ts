@@ -96,7 +96,6 @@ export class Workspace {
 export class ProjectConfiguration {
     name: string;
     region: string;
-    sdk?: SdkConfiguration;
     options?: NodeOptions;
     cloudProvider: CloudProviderIdentifier;
     astSummary: AstSummary;
@@ -109,7 +108,6 @@ export class ProjectConfiguration {
     ) {
         this.name = yamlConfiguration.name;
         this.region = yamlConfiguration.region;
-        this.sdk = yamlConfiguration.backend?.sdk;
         this.options = {
             nodeRuntime: yamlConfiguration.backend?.language.runtime || supportedNodeRuntimes[1],
         };

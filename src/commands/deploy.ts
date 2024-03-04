@@ -26,27 +26,23 @@ import {
     deleteFolder,
     getBundleFolderSizeLimit,
     readEnvironmentVariablesFile,
-    createLocalTempFolder,
     zipFile,
 } from "../utils/file.js";
 import { printAdaptiveLog, debugLogger, doAdaptiveLogAction } from "../utils/logging.js";
 import { GenezioCommand, reportSuccess } from "../utils/reporter.js";
-import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 import { generateRandomSubdomain } from "../utils/yaml.js";
 import cliProgress from "cli-progress";
 import { YAMLBackend, YamlProjectConfiguration } from "../yamlProjectConfiguration/v2.js";
 import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter.js";
 import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter.js";
-import { CloudAdapter, GenezioCloudInput } from "../cloudAdapter/cloudAdapter.js";
+import { CloudAdapter, GenezioCloudInput, GenezioCloudOutput } from "../cloudAdapter/cloudAdapter.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { GenezioDeployOptions } from "../models/commandOptions.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import { setEnvironmentVariables } from "../requests/setEnvironmentVariables.js";
 import colors from "colors";
 import { getEnvironmentVariables } from "../requests/getEnvironmentVariables.js";
-import { getNodeModulePackageJson } from "../generateSdk/templates/packageJson.js";
 import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
-import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { interruptLocalProcesses } from "../utils/localInterrupt.js";
 import { Status } from "../requests/models.js";
 import { bundle } from "../bundlers/utils.js";
@@ -58,6 +54,7 @@ import { scanClassesForDecorators } from "../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../yamlProjectConfiguration/v2.js";
 import { getRandomCloudProvider, isProjectDeployed } from "../utils/abTesting.js";
 import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
+import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -237,7 +234,6 @@ export async function deployCommand(options: GenezioDeployOptions) {
                     exit(1);
                 }),
             );
-            //             log.info("\x1b[36m%s\x1b[0m", `Frontend successfully deployed at ${frontendUrl}`);
 
             await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_END,
@@ -384,42 +380,8 @@ export async function deployClasses(
         stage: options.stage,
     });
 
-    const frontend = configuration.frontend;
-    let sdkLanguage: Language = Language.ts;
-    if (frontend && Array.isArray(frontend)) {
-        sdkLanguage = frontend[0].language;
-    } else if (frontend) {
-        sdkLanguage = frontend.language;
-    }
-    if (sdkLanguage) {
-        const classUrls = result.classes.map((c) => ({
-            name: c.className,
-            cloudUrl: c.functionUrl,
-        }))
-        await writeSdk(
-            sdkLanguage,
-            configuration.name,
-            configuration.region,
-            options.stage || "prod",
-            sdkResponse,
-            classUrls,
-            true,
-            configuration.backend?.sdk?.path,
-        );
-    }
-    const isMonoRepo = configuration.backend && configuration.frontend ? true : false;
-    reportSuccess(
-        result.classes,
-        sdkResponse,
-        GenezioCommand.deploy,
-        {
-            name: configuration.name,
-            region: configuration.region,
-            stage: options.stage,
-        },
-        !backend.sdk,
-        isMonoRepo,
-    );
+    await handleSdk(configuration, result, sdkResponse, options);
+    reportSuccess(result.classes);
 
     const projectId = result.classes[0].projectId;
     const projectEnvId = result.projectEnvId;
@@ -599,6 +561,38 @@ export async function deployFrontend(
     const cloudAdapter = getCloudAdapter(CloudProviderIdentifier.GENEZIO);
     const url = await cloudAdapter.deployFrontend(name, region, frontend, stage);
     return url;
+}
+
+async function handleSdk(configuration: YamlProjectConfiguration, result: GenezioCloudOutput, sdkResponse: SdkGeneratorResponse, options: GenezioDeployOptions) {
+    const frontend = configuration.frontend;
+    let sdkLanguage: Language = Language.ts;
+    if (frontend && Array.isArray(frontend)) {
+        sdkLanguage = frontend[0].language;
+    } else if (frontend) {
+        sdkLanguage = frontend.language;
+    }
+    if (sdkLanguage) {
+        const classUrls = result.classes.map((c) => ({
+            name: c.className,
+            cloudUrl: c.functionUrl,
+        }))
+        await writeSdk(
+            sdkLanguage,
+            configuration.name,
+            configuration.region,
+            options.stage || "prod",
+            sdkResponse,
+            classUrls,
+            true,
+            undefined,
+        );
+    }
+
+    reportSuccessForSdk(sdkLanguage, sdkResponse, GenezioCommand.deploy, {
+        name: configuration.name,
+        region: configuration.region,
+        stage: options.stage || "prod",
+    });
 }
 
 function getCloudAdapter(provider: string): CloudAdapter {

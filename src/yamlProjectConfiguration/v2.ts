@@ -99,12 +99,6 @@ function parseGenezioConfig(config: unknown) {
             })
             .optional(),
         classes: zod.array(classSchema).optional(),
-        sdk: zod
-            .object({
-                path: zod.string().optional(),
-                language: zod.nativeEnum(Language),
-            })
-            .optional(),
     });
 
     const frontendSchema = zod.object({

@@ -18,7 +18,7 @@ export async function watchPackage(
     projectRegion: string,
     frontend: YamlFrontend[]|undefined,
     sdkPath: string,
-) {
+): Promise<NodeJS.Timeout|undefined> {
     if (frontend === undefined || frontend.length === 0) {
         return;
     }
@@ -26,7 +26,6 @@ export async function watchPackage(
     switch (language) {
         case Language.js:
         case Language.ts:
-            console.log("face watch pe ", projectName, projectRegion, frontend, sdkPath);
             return watchNodeModules(projectName, projectRegion, frontend, sdkPath);
         default:
             return;

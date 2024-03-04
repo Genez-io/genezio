@@ -39,6 +39,7 @@ async function writeSdk(
          /* version= */ `1.0.0-${stage}`, 
         );
     }
+    console.log({outputPath});
     await compileSdk(sdkPath, packageJson, language, publish, outputPath);
 
     return sdkPath;

@@ -40,6 +40,7 @@ export async function compileSdk(
     outDir?: string,
     overwriteIfExists = true,
 ) {
+    console.log({sdkPath})
     const genezioSdkPath = outDir || path.resolve(sdkPath, "../genezio-sdk");
     // delete the old sdk
     if (overwriteIfExists) {
