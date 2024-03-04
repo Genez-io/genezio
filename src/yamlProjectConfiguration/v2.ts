@@ -162,7 +162,7 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
 }
 
 export class YamlConfigurationIOController {
-    private ctx: YAMLContext | undefined = undefined;
+    ctx: YAMLContext | undefined = undefined;
     private cachedConfig: RawYamlProjectConfiguration | undefined = undefined;
     private latestRead: Date | undefined = undefined;
 
@@ -243,7 +243,7 @@ export class YamlConfigurationIOController {
     }
 
     async write(data: RawYamlProjectConfiguration) {
-        await this.fs.promises.writeFile(this.filePath, stringifyYaml(data, this.ctx));
+        this.fs.writeFileSync(this.filePath, stringifyYaml(data, this.ctx));
         this.latestRead = new Date();
         this.cachedConfig = structuredClone(data);
     }

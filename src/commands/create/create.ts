@@ -2,13 +2,7 @@ import colors from "colors";
 import { IFs, memfs } from "memfs";
 import git from "isomorphic-git";
 import http from "isomorphic-git/http/node/index.js";
-import { parse, stringify } from "yaml";
 import path from "path";
-import {
-    YamlClassConfiguration,
-    YamlProjectConfiguration,
-} from "../../yamlProjectConfiguration/v1.js";
-import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import nativeFs from "fs";
 import { setLinkPathForProject } from "../../utils/linkDatabase.js";
 import log from "loglevel";
@@ -17,6 +11,9 @@ import { GenezioCreateOptions } from "../../models/commandOptions.js";
 import { debugLogger, doAdaptiveLogAction } from "../../utils/logging.js";
 import { packageManagers } from "../../packageManagers/packageManager.js";
 import { backendTemplates, frontendTemplates } from "./templates.js";
+import { YamlConfigurationIOController } from "../../yamlProjectConfiguration/v2.js";
+import { YAMLContext, mergeContexts } from "yaml-transmute";
+import _ from "lodash";
 
 type ProjectInfo = {
     name: string;
@@ -242,6 +239,14 @@ async function createProject(fs: IFs, projectInfo: ProjectInfo, projectPath = "/
     // Clone template repository
     await git.clone({ fs, http, dir: projectPath, url: templateRepository });
 
+    // TODO: Remove this before release
+    // Checkout dev branch if it exists
+    await git.checkout({ fs, dir: projectPath, ref: "dev" }).catch(() => {
+        throw new Error(
+            "The selected template does not support `genezio.yaml` v2. Please choose another one",
+        );
+    });
+
     // Remove .git folder
     fs.rmdirSync(path.join(projectPath, ".git"), { recursive: true });
 
@@ -270,87 +275,55 @@ async function createWorkspaceYaml(
     backendPath: string,
     frontendPath: string,
 ) {
-    const backendConfiguration = await readConfiguration(
-        fs,
+    const backendConfigReader = new YamlConfigurationIOController(
         path.join(backendPath, "genezio.yaml"),
+        fs,
     );
+    const backendConfiguration = await backendConfigReader.read(/* fillDefaults= */ false);
     fs.rmSync(path.join(backendPath, "genezio.yaml"));
-    let frontendConfiguration: YamlProjectConfiguration | undefined;
+
+    if (backendConfiguration.backend) {
+        backendConfiguration.backend.path = path.relative(
+            "/",
+            path.join(backendPath, backendConfiguration.backend.path),
+        );
+    }
+
+    const frontendConfigReader = new YamlConfigurationIOController(
+        path.join(frontendPath, "genezio.yaml"),
+        fs,
+    );
+    let frontendConfiguration;
     if (frontendTemplates[fullstackProjectOpts.frontend] === undefined) {
         frontendConfiguration = undefined;
     } else {
-        frontendConfiguration = await readConfiguration(
-            fs,
-            path.join(frontendPath, "genezio.yaml"),
-        );
+        frontendConfiguration = await frontendConfigReader.read(/* fillDefaults= */ false);
         fs.rmSync(path.join(frontendPath, "genezio.yaml"));
+
+        if (frontendConfiguration.frontend) {
+            if (!Array.isArray(frontendConfiguration.frontend)) {
+                frontendConfiguration.frontend.path = path.relative(
+                    "/",
+                    path.join(frontendPath, frontendConfiguration.frontend.path),
+                );
+            } else {
+                for (const frontend of frontendConfiguration.frontend) {
+                    frontend.path = path.relative("/", path.join(frontendPath, frontend.path));
+                }
+            }
+        }
     }
 
-    const workspaceBackendPath = backendPath.startsWith(path.parse(backendPath).root)
-        ? backendPath.slice(path.parse(backendPath).root.length)
-        : backendPath;
-    const workspaceFrontendPath = frontendPath.startsWith(path.parse(frontendPath).root)
-        ? frontendPath.slice(path.parse(frontendPath).root.length)
-        : frontendPath;
+    const yamlWriter = new YamlConfigurationIOController("/genezio.yaml", fs);
 
-    const backendScripts = backendConfiguration.scripts;
+    // It's important to merge the contexts from both backend and frontend configurations
+    // in order to transfer comments from the original files to the new genezio.yaml
+    const contexts = [backendConfigReader.ctx, frontendConfigReader.ctx].filter(
+        (c) => c !== undefined,
+    ) as YAMLContext[];
+    yamlWriter.ctx = mergeContexts(contexts);
 
-    const workspaceConfiguration = new YamlProjectConfiguration(
-        /* name: */ fullstackProjectOpts.name,
-        /* region: */ fullstackProjectOpts.region,
-        /* language: */ backendConfiguration.language,
-        /* sdk: */ undefined,
-        /* cloudProvider: */ CloudProviderIdentifier.GENEZIO,
-        /* classes: */ backendConfiguration.classes
-            .filter((e) => !e.fromDecorator)
-            .map(
-                (e) =>
-                    ({
-                        name: e.name,
-                        type: e.type,
-                        path: path.join(workspaceBackendPath, e.path),
-                        language: e.language,
-                        methods: e.methods.length > 0 ? e.methods : undefined,
-                    }) as YamlClassConfiguration,
-            ),
-        /* frontend: */ frontendConfiguration?.frontend?.path
-            ? { path: path.join(workspaceFrontendPath, frontendConfiguration.frontend?.path) }
-            : undefined,
-        /* scripts: */ {
-            preFrontendDeploy: frontendConfiguration?.scripts?.preFrontendDeploy,
-            postFrontendDeploy: frontendConfiguration?.scripts?.postFrontendDeploy,
-            preBackendDeploy: backendScripts?.preBackendDeploy,
-            postBackendDeploy: backendScripts?.postBackendDeploy,
-            preStartLocal: backendScripts?.preStartLocal
-                ? `cd ${workspaceBackendPath} && ${backendScripts?.preStartLocal}`
-                : undefined,
-            postStartLocal: backendScripts?.postStartLocal
-                ? `cd ${workspaceBackendPath} && ${backendScripts?.postStartLocal}`
-                : undefined,
-            preReloadLocal: backendScripts?.preReloadLocal
-                ? `cd ${workspaceBackendPath} && ${backendScripts?.preReloadLocal}`
-                : undefined,
-        },
-        /* plugins: */ undefined,
-        /* options: */ undefined,
-        /* workspace: */ { backend: workspaceBackendPath, frontend: workspaceFrontendPath },
-        /* packageManager: */ backendConfiguration.packageManager,
-    );
-
-    fs.writeFileSync("/genezio.yaml", stringify(workspaceConfiguration));
-}
-
-async function readConfiguration(fs: IFs, path: string) {
-    const configurationFileContentUTF8 = fs.readFileSync(path, "utf8") as string;
-
-    let configurationFileContent;
-    try {
-        configurationFileContent = parse(configurationFileContentUTF8);
-    } catch (error: unknown) {
-        throw new Error(`The ${path} configuration yaml file is not valid.\n${error}`);
-    }
-
-    return await YamlProjectConfiguration.create(configurationFileContent);
+    yamlWriter.write(_.merge(backendConfiguration, frontendConfiguration));
 }
 
 /**
