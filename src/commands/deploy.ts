@@ -57,6 +57,7 @@ import { runScript } from "../utils/scripts.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../yamlProjectConfiguration/v2.js";
 import { getRandomCloudProvider, isProjectDeployed } from "../utils/abTesting.js";
+import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -383,28 +384,29 @@ export async function deployClasses(
         stage: options.stage,
     });
 
-    await replaceUrlsInSdk(
-        sdkResponse,
-        result.classes.map((c) => ({
+    const frontend = configuration.frontend;
+    let sdkLanguage: Language = Language.ts;
+    if (frontend && Array.isArray(frontend)) {
+        sdkLanguage = frontend[0].language;
+    } else if (frontend) {
+        sdkLanguage = frontend.language;
+    }
+    if (sdkLanguage) {
+        const classUrls = result.classes.map((c) => ({
             name: c.className,
             cloudUrl: c.functionUrl,
-        })),
-    );
-
-    if (backend.sdk) {
-        await writeSdkToDisk(sdkResponse, backend.sdk.path);
-    } else if (backend.language.name === Language.ts || backend.language.name === Language.js) {
-        const localPath = await createLocalTempFolder(
-            `${projectConfiguration.name}-${projectConfiguration.region}`,
+        }))
+        await writeSdk(
+            sdkLanguage,
+            configuration.name,
+            configuration.region,
+            options.stage || "prod",
+            sdkResponse,
+            classUrls,
+            true,
+            configuration.backend?.sdk?.path,
         );
-        await writeSdkToDisk(sdkResponse, path.join(localPath, "sdk"));
-        const packageJson: string = getNodeModulePackageJson(
-            /* packageName= */ `@genezio-sdk/${configuration.name}_${configuration.region}`,
-            /* packageVersion= */ `1.0.0-${options.stage}`,
-        );
-        await compileSdk(path.join(localPath, "sdk"), packageJson, backend.language.name, true);
     }
-
     const isMonoRepo = configuration.backend && configuration.frontend ? true : false;
     reportSuccess(
         result.classes,

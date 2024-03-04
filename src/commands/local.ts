@@ -1,5 +1,3 @@
-import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
-import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
 import express, { Request, Response } from "express";
 import chokidar from "chokidar";
 import cors from "cors";
@@ -65,6 +63,9 @@ import { isDependencyVersionCompatible } from "../utils/dependencyChecker.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
 import { runScript } from "../utils/scripts.js";
 import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
+import { watchPackage } from "../generateSdk/sdkMonitor.js";
+import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
+import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
 
 
 type ClassProcess = {
@@ -340,9 +341,8 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                 name: c.className,
                 cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`,
             }))
-            await writeSdk(
+            const path = await writeSdk(
                 sdkLanguage,
-                yamlProjectConfiguration.frontend,
                 projectConfiguration.name,
                 projectConfiguration.region,
                 "local",
@@ -351,7 +351,11 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                 false,
                 projectConfiguration.sdk?.path)
 
+            if (yamlProjectConfiguration.frontend && !Array.isArray(yamlProjectConfiguration.frontend)) {
+                yamlProjectConfiguration.frontend = [yamlProjectConfiguration.frontend];
+            }
 
+            await watchPackage(sdkLanguage, projectConfiguration.name, projectConfiguration.region, yamlProjectConfiguration.frontend, path);
         }
 
         reportSuccess(projectConfiguration, sdk, options.port, !backendConfiguration.sdk);
@@ -375,7 +379,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 
 
 function logChangeDetection() {
-    console.clear();
     log.info("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
 }
 

@@ -76,9 +76,9 @@ export class ClassConfiguration {
 
 export class SdkConfiguration {
     language: string;
-    path: string;
+    path?: string;
 
-    constructor(language: string, path: string) {
+    constructor(language: string, path: string | undefined) {
         this.language = language;
         this.path = path;
     }

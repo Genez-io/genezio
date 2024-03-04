@@ -101,7 +101,7 @@ function parseGenezioConfig(config: unknown) {
         classes: zod.array(classSchema).optional(),
         sdk: zod
             .object({
-                path: zod.string(),
+                path: zod.string().optional(),
                 language: zod.nativeEnum(Language),
             })
             .optional(),
