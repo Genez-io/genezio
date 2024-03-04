@@ -5,7 +5,7 @@ import { IFs } from "memfs";
 import { regions } from "../utils/configs.js";
 import { zodFormatError } from "../errors.js";
 import { Language, SdkType } from "./models.js";
-import { supportedNodeRuntimes } from "../models/nodeRuntime.js";
+import { DEFAULT_NODE_RUNTIME, supportedNodeRuntimes } from "../models/nodeRuntime.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { PackageManagerType } from "../packageManagers/packageManager.js";
 import { TriggerType } from "./models.js";
@@ -146,7 +146,7 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
             case Language.ts:
             case Language.js:
                 defaultConfig.backend.language.packageManager ??= PackageManagerType.npm;
-                defaultConfig.backend.language.runtime ??= "nodejs18.x";
+                defaultConfig.backend.language.runtime ??= DEFAULT_NODE_RUNTIME;
         }
 
         defaultConfig.backend.cloudProvider ??= CloudProviderIdentifier.GENEZIO;
