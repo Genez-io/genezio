@@ -660,10 +660,10 @@ async function startServerHttp(
     // serve test interface built folder on localhost
     const buildFolder = path.resolve(
         __dirname,
-        "../../../node_modules/genezio-test-interface-component/dist/build",
+        "../../../node_modules/@genezio/test-interface-component/dist/build",
     );
     app.use(express.static(buildFolder));
-    app.get(`/test-interface/local/`, (req, res) => {
+    app.get(`/explore`, (req, res) => {
         const filePath = path.join(buildFolder, "index.html");
         res.sendFile(filePath);
     });
@@ -1017,9 +1017,7 @@ To change the server version, go to your ${colors.cyan(
         newVersion,
     );
 
-    log.info(
-        colors.cyan(`Test your code at http://localhost:${port}/test-interface/local?port=${port}`),
-    );
+    log.info(colors.cyan(`Test your code at http://localhost:${port}/explore`));
 }
 
 function getFunctionUrl(
