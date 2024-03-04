@@ -78,7 +78,7 @@
         "fs-extra": "^11.2.0",
         "glob": "^8.0.3",
         "hash-it": "^6.0.0",
-        "inquirer": "^9.2.12",
+        "inquirer": "^9.2.15",
         "isomorphic-git": "^1.25.2",
         "latest-version": "^8.0.0",
         "loadash": "^1.0.0",
