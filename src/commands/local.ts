@@ -12,6 +12,7 @@ import { default as fsExtra } from "fs-extra";
 import url from "url";
 import * as http from "http";
 import colors from "colors";
+import { createRequire } from "module";
 import { ProjectConfiguration, ClassConfiguration } from "../models/projectConfiguration.js";
 import {
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
@@ -651,17 +652,14 @@ async function startServerHttp(
     processForClasses: Map<string, ClassProcess>,
 ): Promise<http.Server> {
     const app = express();
-    const __filename = url.fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
+    const require = createRequire(import.meta.url);
     app.use(cors());
     app.use(bodyParser.raw({ type: () => true, limit: "6mb" }));
     app.use(genezioRequestParser);
-
+    const packagePath = path.dirname(require.resolve("@genezio/test-interface-component"));
     // serve test interface built folder on localhost
-    const buildFolder = path.resolve(
-        __dirname,
-        "../../../node_modules/@genezio/test-interface-component/dist/build",
-    );
+    const buildFolder = path.join(packagePath, "build");
+
     app.use(express.static(buildFolder));
     app.get(`/explore`, (req, res) => {
         const filePath = path.join(buildFolder, "index.html");

@@ -49,7 +49,7 @@
         "@babel/plugin-proposal-decorators": "^7.23.9",
         "@babel/preset-env": "^7.23.7",
         "@babel/preset-typescript": "^7.23.3",
-        "@genezio/test-interface-component": "^0.0.5",
+        "@genezio/test-interface-component": "^0.0.6",
         "@babel/traverse": "^7.24.0",
         "@sentry/node": "^7.74.1",
         "@sentry/profiling-node": "~7.102.1",
