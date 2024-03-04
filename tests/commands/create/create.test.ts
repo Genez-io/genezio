@@ -19,8 +19,12 @@ vi.mock("isomorphic-git", async (original) => {
             ...git,
             clone: vi.fn((args: { fs: IFs; dir: string }) => {
                 args.fs.mkdirSync(path.join(args.dir, ".git"), { recursive: true });
-                args.fs.writeFileSync(path.join(args.dir, "genezio.yaml"), "name: test");
+                args.fs.writeFileSync(
+                    path.join(args.dir, "genezio.yaml"),
+                    "name: test\nyamlVersion: 2",
+                );
             }),
+            checkout: vi.fn(() => Promise.resolve()),
         },
     };
 });
