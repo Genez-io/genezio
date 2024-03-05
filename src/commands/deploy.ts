@@ -1,5 +1,5 @@
 import { AxiosError } from "axios";
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 import path from "path";
 import { exit } from "process";
 import {
@@ -79,10 +79,9 @@ export async function deployCommand(options: GenezioDeployOptions) {
             REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
         ) === false
     ) {
-        log.error(
+        throw new Error(
             `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To solve this, please update the @genezio/types package on your backend component using the following command: npm install @genezio/types@${RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE}`,
         );
-        exit(1);
     }
 
     // TODO: check this in deployClasses function
@@ -107,17 +106,15 @@ export async function deployCommand(options: GenezioDeployOptions) {
             break backend;
         }
 
-        const success = await doAdaptiveLogAction("Running backend deploy scripts", async () => {
-            return await runScript(configuration.backend?.scripts?.deploy, backendCwd);
-        });
-        if (!success) {
+        await doAdaptiveLogAction("Running backend deploy scripts", async () => {
+            await runScript(configuration.backend?.scripts?.deploy, backendCwd);
+        }).catch(async (error) => {
             await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_PRE_BACKEND_DEPLOY_SCRIPT_ERROR,
                 commandOptions: JSON.stringify(options),
             });
-            log.error("Backend `deploy` script failed.");
-            exit(1);
-        }
+            throw error;
+        });
 
         // Enable cloud provider AB Testing
         // This is ONLY done in the dev environment and if DISABLE_AB_TESTING is not set.
@@ -191,22 +188,22 @@ export async function deployCommand(options: GenezioDeployOptions) {
             : [configuration.frontend];
 
         for (const [index, frontend] of frontends.entries()) {
-            const success = await doAdaptiveLogAction(
-                `Running frontend ${index + 1} deploy script`,
-                async () => {
-                    return await runScript(
-                        frontend.scripts?.deploy,
-                        frontend.path || process.cwd(),
-                    );
-                },
-            );
-            if (!success) {
+            try {
+                await doAdaptiveLogAction(
+                    `Running frontend ${index + 1} deploy script`,
+                    async () => {
+                        return await runScript(
+                            frontend.scripts?.deploy,
+                            frontend.path || process.cwd(),
+                        );
+                    },
+                );
+            } catch (error) {
                 await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_PRE_FRONTEND_DEPLOY_SCRIPT_ERROR,
                     commandOptions: JSON.stringify(options),
                 });
-                log.error("Frontend `deploy` script failed.");
-                exit(1);
+                throw error;
             }
 
             await GenezioTelemetry.sendEvent({
@@ -224,7 +221,6 @@ export async function deployCommand(options: GenezioDeployOptions) {
                     options,
                 ).catch(async (error) => {
                     if (error instanceof Error) {
-                        log.error(error.message);
                         if (error.message == "No frontend entry in genezio configuration file.") {
                             exit(0);
                         }
@@ -233,8 +229,8 @@ export async function deployCommand(options: GenezioDeployOptions) {
                             errorTrace: error.toString(),
                             commandOptions: JSON.stringify(options),
                         });
+                        throw error;
                     }
-                    exit(1);
                 }),
             );
             //             log.info("\x1b[36m%s\x1b[0m", `Frontend successfully deployed at ${frontendUrl}`);
@@ -419,7 +415,7 @@ export async function deployClasses(
         await compileSdk(path.join(localPath, "sdk"), packageJson, backend.language.name, true);
     }
 
-    let isMonoRepo = configuration.backend && configuration.frontend ? true : false;
+    const isMonoRepo = configuration.backend && configuration.frontend ? true : false;
     reportSuccess(
         result.classes,
         sdkResponse,

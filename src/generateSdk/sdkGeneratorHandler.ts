@@ -10,8 +10,6 @@ import {
     SdkGeneratorInterface,
     SdkGeneratorOutput,
 } from "../models/genezioModels.js";
-import log from "loglevel";
-import { exit } from "process";
 import { debugLogger } from "../utils/logging.js";
 import zod from "zod";
 
@@ -38,14 +36,14 @@ export async function generateSdk(
         pluginsImported = await Promise.all(
             plugins?.map(async (plugin) => {
                 const dynamicPlugin = await import(plugin).catch((err) => {
-                    log.error(`Plugin(${plugin}) not found. Install it with npm install ${plugin}`);
                     debugLogger.debug(err);
-                    exit(1);
+                    throw new Error(
+                        `Plugin(${plugin}) not found. Install it with npm install ${plugin}`,
+                    );
                 });
 
                 if (!dynamicPlugin) {
-                    log.error(`Plugin(${plugin}) could not be imported.`);
-                    exit(1);
+                    throw new Error(`Plugin(${plugin}) could not be imported.`);
                 }
 
                 // Check type of plugin at runtime
@@ -54,10 +52,9 @@ export async function generateSdk(
                     supportedExtensions: zod.array(zod.string()),
                 });
                 if (pluginSchema.safeParse(dynamicPlugin).success === false) {
-                    log.error(
+                    throw new Error(
                         `Plugin(${plugin}) is not a valid SDK generator plugin. It must export a SdkGenerator class and supportedLanguages array.`,
                     );
-                    exit(1);
                 }
 
                 return dynamicPlugin as SdkGeneratorPlugin;

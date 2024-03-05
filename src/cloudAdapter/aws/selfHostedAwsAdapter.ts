@@ -19,7 +19,7 @@ import {
 } from "@aws-sdk/client-cloudformation";
 import { HeadObjectCommand, PutObjectCommand, S3 } from "@aws-sdk/client-s3";
 import { debugLogger } from "../../utils/logging.js";
-import log from "loglevel";
+import { log } from "../../utils/logging.js";
 import { YamlFrontend } from "../../yamlProjectConfiguration/v2.js";
 import { getAllFilesRecursively, getFileSize } from "../../utils/file.js";
 import {
@@ -111,7 +111,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
         const entryMimeType = mime.lookup(path);
 
         if (entryMimeType === false) {
-            debugLogger.log(`Skipping file ${path} because it has an unsupported mime type.`);
+            debugLogger.debug(`Skipping file ${path} because it has an unsupported mime type.`);
             return;
         }
 
@@ -527,7 +527,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
         if (!exists) {
             debugLogger.debug("The frontend stack does not exists. Creating a new stack...");
             const createStackTemplate = cloudFormationTemplate.build();
-            debugLogger.log(createStackTemplate);
+            debugLogger.debug(createStackTemplate);
             await cloudFormationClient.send(
                 new CreateStackCommand({
                     StackName: stackName,
@@ -572,7 +572,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
         });
 
         const updateStackTemplate = cloudFormationTemplate.build();
-        debugLogger.log(updateStackTemplate);
+        debugLogger.debug(updateStackTemplate);
         try {
             await cloudFormationClient.send(
                 new UpdateStackCommand({

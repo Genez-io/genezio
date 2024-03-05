@@ -1,9 +1,8 @@
 import { Command, CommanderError, Option } from "commander";
-import { code, setDebuggingLoggerLogLevel } from "./utils/logging.js";
+import { code, logError, setDebuggingLoggerLogLevel } from "./utils/logging.js";
 import { exit } from "process";
 import { PORT_LOCAL_ENVIRONMENT, ENABLE_DEBUG_LOGS_BY_DEFAULT } from "./constants.js";
-import log from "loglevel";
-import prefix from "loglevel-plugin-prefix";
+import { log } from "./utils/logging.js";
 import { accountCommand } from "./commands/account.js";
 import { addClassCommand } from "./commands/addClass.js";
 import { deleteCommand } from "./commands/delete.js";
@@ -46,22 +45,6 @@ import configReader from "./yamlProjectConfiguration/v2.js";
 const program = new Command();
 
 checkNodeMinimumVersion();
-
-// logging setup
-log.setDefaultLevel("INFO");
-prefix.reg(log);
-prefix.apply(log.getLogger("debuggingLogger"), {
-    template: "[%t] %l:",
-    levelFormatter(level) {
-        return level.toUpperCase();
-    },
-    nameFormatter(name) {
-        return name || "global";
-    },
-    timestampFormatter(date) {
-        return date.toISOString();
-    },
-});
 
 if (ENABLE_DEBUG_LOGS_BY_DEFAULT) {
     setDebuggingLoggerLogLevel("debug");
@@ -170,7 +153,7 @@ Use --backend to deploy only the backend application.`,
         setDebuggingLoggerLogLevel(options.logLevel);
 
         await deployCommand(options).catch(async (error) => {
-            log.error(error.message);
+            logError(error);
             await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
                 errorTrace: error.message,
@@ -207,14 +190,12 @@ program
         setDebuggingLoggerLogLevel(options.logLevel);
 
         await startLocalEnvironment(options).catch(async (error) => {
-            if (error.message) {
-                log.error(error.message);
-                await GenezioTelemetry.sendEvent({
-                    eventType: TelemetryEventTypes.GENEZIO_LOCAL_ERROR,
-                    errorTrace: error.message,
-                    commandOptions: JSON.stringify(options),
-                });
-            }
+            logError(error);
+            await GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_LOCAL_ERROR,
+                errorTrace: error.message,
+                commandOptions: JSON.stringify(options),
+            });
             exit(1);
         });
 

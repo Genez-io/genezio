@@ -2,7 +2,7 @@ import path from "path";
 import fs from "fs";
 import { BundlerInput, BundlerInterface, BundlerOutput, Dependency } from "../bundler.interface.js";
 import { fileExists } from "../../utils/file.js";
-import log from "loglevel";
+import { log } from "../../utils/logging.js";
 import { debugLogger } from "../../utils/logging.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore

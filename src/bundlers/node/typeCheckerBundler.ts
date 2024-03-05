@@ -1,6 +1,6 @@
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface.js";
 import ts from "typescript";
-import log from "loglevel";
+import { log } from "../../utils/logging.js";
 import fs from "fs";
 import { tsconfig } from "../../utils/configs.js";
 import path from "path";
@@ -52,7 +52,7 @@ export class TypeCheckerBundler implements BundlerInterface {
             options: config.options,
         });
 
-        debugLogger.log("Typechecking Typescript files...");
+        debugLogger.debug("Typechecking Typescript files...");
         const diagnostics = ts.getPreEmitDiagnostics(program);
 
         if (diagnostics.length > 0) {

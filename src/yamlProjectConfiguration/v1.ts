@@ -6,7 +6,7 @@ import { isValidCron } from "cron-validator";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { DEFAULT_NODE_RUNTIME, NodeOptions, supportedNodeRuntimes } from "../models/nodeRuntime.js";
 import zod from "zod";
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 import { zodFormatError } from "../errors.js";
 import { Language, TriggerType } from "./models.js";
 import { PackageManagerType } from "../packageManagers/packageManager.js";

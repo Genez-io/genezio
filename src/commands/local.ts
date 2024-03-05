@@ -47,7 +47,6 @@ import { DartBundler } from "../bundlers/dart/localDartBundler.js";
 import axios, { AxiosError, AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
 import { Language, SdkType, TriggerType } from "../yamlProjectConfiguration/models.js";
-import { PackageManagerType } from "../packageManagers/packageManager.js";
 import {
     YamlConfigurationIOController,
     YamlProjectConfiguration,
@@ -56,13 +55,12 @@ import hash from "hash-it";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import dotenv from "dotenv";
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
-import inquirer, { Answers } from "inquirer";
 import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
 import { getNodeModulePackageJsonLocal } from "../generateSdk/templates/packageJson.js";
 import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { exit } from "process";
 import { getLinkPathsForProject } from "../utils/linkDatabase.js";
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 import { interruptLocalPath } from "../utils/localInterrupt.js";
 import { compareSync, Options, Result } from "dir-compare";
 import {
@@ -145,7 +143,7 @@ export async function prepareLocalBackendEnvironment(
             ),
             backend.path,
         ).catch((error) => {
-            debugLogger.log("An error occurred", error);
+            debugLogger.debug("An error occurred", error);
             if (error.code === "ENOENT") {
                 log.error(
                     `The file ${error.path} does not exist. Please check your genezio.yaml configuration and make sure that all the file paths are correct.`,
@@ -224,22 +222,21 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
         ) === false
     ) {
-        log.error(
+        throw new Error(
             `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To solve this, please update the @genezio/types package on your backend component using the following command: npm install @genezio/types@${RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE}`,
         );
-        exit(1);
     }
 
-    const success = await doAdaptiveLogAction("Running backend local scripts", async () => {
-        return await runScript(backendConfiguration.scripts?.local, backendConfiguration.path);
-    });
-    if (!success) {
+    try {
+        await doAdaptiveLogAction("Running backend local scripts", async () => {
+            return await runScript(backendConfiguration.scripts?.local, backendConfiguration.path);
+        });
+    } catch (error) {
         await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_PRE_START_LOCAL_SCRIPT_ERROR,
             commandOptions: JSON.stringify(options),
         });
-        log.error("Backend `deploy` script failed.");
-        exit(1);
+        throw error;
     }
 
     let nodeModulesFolderWatcher: NodeJS.Timeout | undefined;
@@ -279,22 +276,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             log.info(
                 "This sdk.language is not supported by default. It will be treated as a custom language.",
             );
-        }
-
-        if (!backendConfiguration.language.packageManager && !backendConfiguration.sdk) {
-            const optionalPackageManager: Answers = await inquirer.prompt([
-                {
-                    type: "list",
-                    name: "packageManager",
-                    message:
-                        "Which package manager are you using to install your frontend dependencies?",
-                    choices: Object.keys(PackageManagerType).filter((key) => isNaN(Number(key))),
-                },
-            ]);
-
-            const yamlConfig = await yamlConfigIOController.read(/* fillDefaults= */ false);
-            yamlConfig.backend!.language.packageManager = optionalPackageManager["packageManager"];
-            await yamlConfigIOController.write(yamlConfig);
         }
 
         let sdkConfiguration = backendConfiguration.sdk;
@@ -560,7 +541,7 @@ async function startProcesses(
         }
         const ast = astClass.program;
 
-        debugLogger.log("Start bundling...");
+        debugLogger.debug("Start bundling...");
         const tmpFolder = await createTemporaryFolder(`${classInfo.name}-${hash(classInfo.path)}`);
         const bundlerOutput = await bundler.bundle({
             projectConfiguration,

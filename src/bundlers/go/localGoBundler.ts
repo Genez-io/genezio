@@ -1,7 +1,7 @@
 import path from "path";
 import Mustache from "mustache";
 import { default as fsExtra } from "fs-extra";
-import log from "loglevel";
+import { log } from "../../utils/logging.js";
 import { $ } from "execa";
 import { template } from "./localGoMain.js";
 // Utils

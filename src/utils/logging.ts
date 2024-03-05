@@ -1,44 +1,84 @@
-import log, { LogLevelDesc } from "loglevel";
-import { Spinner } from "cli-spinner";
+import { Logger } from "tslog";
 import { AbortController } from "node-abort-controller";
-import logUpdate from "log-update";
 import colors from "colors";
+import ora from "ora";
 
-export const spinner = new Spinner("%s  ");
-spinner.setSpinnerString("|/-\\");
+const spinner = ora();
 
-export const debugLogger = log.getLogger("debuggingLogger");
+export const debugLogger = new Logger({
+    name: "debuggingLogger",
+    prettyLogTemplate: "{{dateIsoStr}} {{logLevelName}}\t{{fileNameWithLine}}\t",
+    minLevel: 7,
+    prettyInspectOptions: {
+        depth: 1,
+        colors: true,
+    },
+});
+
+export const log = new Logger({
+    name: "mainLogger",
+    prettyLogTemplate: "",
+    minLevel: 3,
+    hideLogPositionForProduction: true,
+    prettyErrorTemplate: "\n{{errorName}} {{errorMessage}}\n",
+    prettyLogStyles: {
+        errorName: ["bold", "bgRedBright", "whiteBright"],
+        errorMessage: ["bold", "red"],
+    },
+});
+
+export function logError(error: unknown) {
+    debugLogger.fatal(error);
+    if (error instanceof Error) log.error(new Error(error.message));
+    else if (typeof error === "string") log.error(new Error(error));
+    else log.error(new Error("An unknown error occurred"));
+}
+
+function getLogLevel(logLevel: string): number {
+    switch (logLevel) {
+        case "silly":
+            return 0;
+        case "trace":
+            return 1;
+        case "debug":
+            return 2;
+        case "info":
+            return 3;
+        case "warn":
+            return 4;
+        case "error":
+            return 5;
+        case "fatal":
+            return 6;
+        default:
+            return 3;
+    }
+}
 
 export function setDebuggingLoggerLogLevel(logLevel?: string) {
     if (!logLevel) return;
 
-    debugLogger.setLevel(logLevel as LogLevelDesc);
+    debugLogger.settings.minLevel = getLogLevel(logLevel);
 }
 
 export function printAdaptiveLog(message: string, state: string) {
     if (state == "end") {
-        spinner.stop(true);
-        logUpdate(message + "...✅");
-        logUpdate.done();
+        spinner.succeed(`${colors.green(message)}`);
     } else if (state == "start") {
-        logUpdate(message + "...");
-        spinner.start();
+        spinner.start(message);
     } else {
-        spinner.stop(true);
-        logUpdate(message + "...❌");
-        logUpdate.done();
+        spinner.fail(`${colors.red(message)}`);
     }
 }
 
 export async function doAdaptiveLogAction<T>(message: string, action: () => Promise<T>) {
-    printAdaptiveLog(message, "start");
     return action()
         .then((result) => {
-            printAdaptiveLog(message, "end");
+            spinner.succeed(`${colors.green(message)}`);
             return result;
         })
         .catch((error) => {
-            printAdaptiveLog(message, "error");
+            spinner.fail(`${colors.red(message)}`);
             throw error;
         });
 }
@@ -75,14 +115,14 @@ export async function printUninformativeLog(controller: AbortController): Promis
         exitLoop = true;
     });
 
-    spinner.start();
+    // spinner.start();
 
     while (!exitLoop) {
         await delay(250);
         waiting += 250;
 
         if (waiting == 5000) {
-            spinner.stop(true);
+            // spinner.stop(true);
             spinning = false;
             printAdaptiveLog(message, "start");
             firstMessage = true;
@@ -96,7 +136,7 @@ export async function printUninformativeLog(controller: AbortController): Promis
     }
 
     if (spinning) {
-        spinner.stop(true);
+        // spinner.stop(true);
         printAdaptiveLog(finalMessage, "start");
         return finalMessage;
     }

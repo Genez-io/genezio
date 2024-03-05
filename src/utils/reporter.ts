@@ -1,4 +1,4 @@
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import { TriggerType } from "../yamlProjectConfiguration/models.js";
 import { GenezioCloudResultClass } from "../cloudAdapter/cloudAdapter.js";
@@ -88,7 +88,8 @@ export function reportSuccess(
         classInfo.methods.forEach((method) => {
             if (method.type === TriggerType.http) {
                 printHttpString +=
-                    `  - ${classInfo.className}.${method.name}: ${method.functionUrl}` + "\n";
+                    `  - ${classInfo.className}.${method.name}: ${colors.yellow(method.functionUrl)}` +
+                    "\n";
             }
         });
     });

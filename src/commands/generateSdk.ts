@@ -1,5 +1,5 @@
 import { AxiosError } from "axios";
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 import { exit } from "process";
 import { languages } from "../utils/languages.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";

@@ -1,6 +1,6 @@
 import { AxiosError } from "axios";
 import { Spinner } from "cli-spinner";
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import listProjects from "../requests/listProjects.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
