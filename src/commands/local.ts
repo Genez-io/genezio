@@ -399,6 +399,13 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             await writeSdkToDisk(sdk, sdkConfiguration.path);
         }
 
+        // This check makes sense only for js/ts backend, skip for dart, go etc.
+        if (
+            backendConfiguration.language.name === Language.ts ||
+            backendConfiguration.language.name === Language.js
+        ) {
+            reportDifferentNodeRuntime(projectConfiguration.options?.nodeRuntime);
+        }
         reportSuccess(projectConfiguration, sdk, options.port, !backendConfiguration.sdk);
 
         // Start listening for changes in user's code
@@ -967,34 +974,6 @@ function reportSuccess(
         functionUrl: `http://127.0.0.1:${port}/${c.name}`,
     }));
 
-    // get installed version of node
-    const nodeVersion = process.version;
-
-    // get only the major version
-    const nodeMajorVersion = nodeVersion.split(".")[0].slice(1);
-
-    // get server used version
-    let serverRuntime: string = DEFAULT_NODE_RUNTIME as string;
-    if (projectConfiguration.options?.nodeRuntime) {
-        serverRuntime = projectConfiguration.options.nodeRuntime;
-    }
-
-    const serverVersion = serverRuntime.split(".")[0].split("nodejs")[1];
-
-    debugLogger.debug(`Node version: ${nodeVersion}`);
-    debugLogger.debug(`Server version: ${serverRuntime}`);
-
-    // check if server version is different from installed version
-    if (nodeMajorVersion !== serverVersion) {
-        log.warn(
-            `${colors.yellow(`Warning: You are using node version ${nodeVersion} but your server is configured to use ${serverRuntime}. This might cause unexpected behavior.
-To change the server version, go to your ${colors.cyan(
-                "genezio.yaml",
-            )} file and change the ${colors.cyan(
-                "backend.lanuage.nodeRuntime",
-            )} property to the version you want to use.`)}`,
-        );
-    }
     _reportSuccess(
         classesInfo,
         sdk,
@@ -1007,6 +986,33 @@ To change the server version, go to your ${colors.cyan(
     );
 
     log.info(colors.cyan(`Test your code at http://localhost:${port}/explore`));
+}
+
+// This method is used to check if the user has a different node version installed than the one used by the server.
+// If the user has a different version, a warning message will be displayed.
+function reportDifferentNodeRuntime(userDefinedNodeRuntime: string | undefined) {
+    const installedNodeVersion = process.version;
+
+    // get server used version
+    let serverNodeRuntime: string = DEFAULT_NODE_RUNTIME as string;
+    if (userDefinedNodeRuntime) {
+        serverNodeRuntime = userDefinedNodeRuntime;
+    }
+
+    const nodeMajorVersion = installedNodeVersion.split(".")[0].slice(1);
+    const serverMajorVersion = serverNodeRuntime.split(".")[0].split("nodejs")[1];
+
+    // check if server version is different from installed version
+    if (nodeMajorVersion !== serverMajorVersion) {
+        log.warn(
+            `${colors.yellow(`Warning: The installed node version ${installedNodeVersion} but your server is configured to use ${serverNodeRuntime}. This might cause unexpected behavior.
+To change the server version, go to your ${colors.cyan(
+                "genezio.yaml",
+            )} file and change the ${colors.cyan(
+                "backend.language.nodeRuntime",
+            )} property to the version you want to use.`)}`,
+        );
+    }
 }
 
 function getFunctionUrl(
