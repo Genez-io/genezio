@@ -7,9 +7,9 @@ import path from "path";
 import url from "url";
 import * as http from "http";
 import colors from "colors";
+import { createRequire } from "module";
 import { ProjectConfiguration, ClassConfiguration } from "../models/projectConfiguration.js";
 import {
-    LOCAL_TEST_INTERFACE_URL,
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
 } from "../constants.js";
@@ -99,10 +99,8 @@ export async function prepareLocalBackendEnvironment(
         const backend = yamlProjectConfiguration.backend;
         const frontend = yamlProjectConfiguration.frontend;
         let sdkLanguage: Language = Language.ts;
-        if (frontend && Array.isArray(frontend)) {
+        if (frontend && frontend.length > 0) {
             sdkLanguage = frontend[0].language;
-        } else if (frontend) {
-            sdkLanguage = frontend.language;
         }
         if (!backend) {
             throw new Error("No backend component found in the genezio.yaml file.");
@@ -317,9 +315,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 
         // Start cron jobs
         const crons = startCronJobs(projectConfiguration, processForClasses);
-        if (yamlProjectConfiguration.frontend && !Array.isArray(yamlProjectConfiguration.frontend)) {
-            yamlProjectConfiguration.frontend = [yamlProjectConfiguration.frontend];
-        }
+        console.log(yamlProjectConfiguration)
         const watcherTimeout = await handleSdk(
             yamlProjectConfiguration.name,
             yamlProjectConfiguration.region,
@@ -344,7 +340,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         clearTimeout(watcherTimeout);
     }
 }
-
 
 function logChangeDetection() {
     log.info("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
@@ -469,9 +464,19 @@ async function startServerHttp(
     processForClasses: Map<string, ClassProcess>,
 ): Promise<http.Server> {
     const app = express();
+    const require = createRequire(import.meta.url);
     app.use(cors());
     app.use(bodyParser.raw({ type: () => true, limit: "6mb" }));
     app.use(genezioRequestParser);
+    const packagePath = path.dirname(require.resolve("@genezio/test-interface-component"));
+    // serve test interface built folder on localhost
+    const buildFolder = path.join(packagePath, "build");
+
+    app.use(express.static(buildFolder));
+    app.get(`/explore`, (_req, res) => {
+        const filePath = path.join(buildFolder, "index.html");
+        res.sendFile(filePath);
+    });
 
     app.get("/get-ast-summary", (_req, res) => {
         res.setHeader("Content-Type", "application/json");
@@ -763,6 +768,7 @@ async function handleSdk(
     let sdkLanguage: Language = Language.ts;
     let nodeJsWatcher: NodeJS.Timeout|undefined = undefined;
     if (frontends) {
+        console.log(frontends)
         sdkLanguage = frontends[0].language;
     }
 
@@ -841,7 +847,7 @@ To change the server version, go to your ${colors.cyan(
         classesInfo,
     );
 
-    log.info("\x1b[32m%s\x1b[0m", `Test your code at ${LOCAL_TEST_INTERFACE_URL}?port=${port}`);
+    log.info(colors.cyan(`Test your code at http://localhost:${port}/explore`));
 }
 
 function getFunctionUrl(

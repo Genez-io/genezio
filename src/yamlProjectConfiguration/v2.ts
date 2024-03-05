@@ -5,7 +5,7 @@ import { IFs } from "memfs";
 import { regions } from "../utils/configs.js";
 import { zodFormatError } from "../errors.js";
 import { Language } from "./models.js";
-import { supportedNodeRuntimes } from "../models/nodeRuntime.js";
+import { DEFAULT_NODE_RUNTIME, supportedNodeRuntimes } from "../models/nodeRuntime.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { PackageManagerType } from "../packageManagers/packageManager.js";
 import { TriggerType } from "./models.js";
@@ -18,10 +18,7 @@ export type RawYamlProjectConfiguration = ReturnType<typeof parseGenezioConfig>;
 export type YAMLBackend = NonNullable<YamlProjectConfiguration["backend"]>;
 export type YamlClass = NonNullable<YAMLBackend["classes"]>[number];
 export type YamlMethod = NonNullable<YamlClass["methods"]>[number];
-export type YamlFrontend = Exclude<
-    NonNullable<YamlProjectConfiguration["frontend"]>,
-    Array<unknown>
->;
+export type YamlFrontend = NonNullable<YamlProjectConfiguration["frontend"]>[number];
 
 export type YamlProjectConfiguration = ReturnType<typeof fillDefaultGenezioConfig>;
 
@@ -139,23 +136,30 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
             case Language.ts:
             case Language.js:
                 defaultConfig.backend.language.packageManager ??= PackageManagerType.npm;
-                defaultConfig.backend.language.runtime ??= "nodejs18.x";
+                defaultConfig.backend.language.runtime ??= DEFAULT_NODE_RUNTIME;
         }
 
         defaultConfig.backend.cloudProvider ??= CloudProviderIdentifier.GENEZIO;
     }
 
+    if (defaultConfig.frontend && !Array.isArray(defaultConfig.frontend)) {
+        defaultConfig.frontend = [defaultConfig.frontend];
+    }
+
+    console.log("intra pe aici", defaultConfig);
     return defaultConfig as DeepRequired<
-        RawYamlProjectConfiguration,
+        typeof defaultConfig,
         | "region"
         | "backend.language.packageManager"
         | "backend.language.runtime"
         | "backend.cloudProvider"
-    >;
+    > & {
+        frontend: typeof defaultConfig.frontend;
+    };
 }
 
 export class YamlConfigurationIOController {
-    private ctx: YAMLContext | undefined = undefined;
+    ctx: YAMLContext | undefined = undefined;
     private cachedConfig: RawYamlProjectConfiguration | undefined = undefined;
     private latestRead: Date | undefined = undefined;
 
@@ -195,6 +199,10 @@ export class YamlConfigurationIOController {
     ): Promise<YamlProjectConfiguration | RawYamlProjectConfiguration> {
         const lastModified = this.fs.statSync(this.filePath).mtime;
         if (this.cachedConfig && cache && this.latestRead && this.latestRead >= lastModified) {
+            if (fillDefaults) {
+                return fillDefaultGenezioConfig(this.cachedConfig);
+            }
+
             return structuredClone(this.cachedConfig);
         }
 
@@ -206,7 +214,7 @@ export class YamlConfigurationIOController {
         try {
             genezioConfig = parseGenezioConfig(rawConfig);
         } catch (e) {
-            let v2RawConfig: YamlProjectConfiguration | undefined = undefined;
+            let v2RawConfig: RawYamlProjectConfiguration | undefined = undefined;
             if (!("yamlVersion" in (rawConfig as { yamlVerson: string }))) {
                 v2RawConfig = await tryV2Migration(rawConfig);
             }
@@ -236,7 +244,7 @@ export class YamlConfigurationIOController {
     }
 
     async write(data: RawYamlProjectConfiguration) {
-        await this.fs.promises.writeFile(this.filePath, stringifyYaml(data, this.ctx));
+        this.fs.writeFileSync(this.filePath, stringifyYaml(data, this.ctx));
         this.latestRead = new Date();
         this.cachedConfig = structuredClone(data);
     }

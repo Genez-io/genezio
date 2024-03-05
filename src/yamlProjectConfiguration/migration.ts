@@ -1,13 +1,12 @@
 import inquirer from "inquirer";
 import { YamlProjectConfiguration as v1 } from "./v1.js";
-import { YamlMethod, YamlProjectConfiguration as v2 } from "./v2.js";
+import { YamlMethod, RawYamlProjectConfiguration as v2 } from "./v2.js";
 import { exit } from "process";
 import log from "loglevel";
-import { PackageManagerType } from "../packageManagers/packageManager.js";
-import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { Language } from "./models.js";
 import path from "path";
 import { scanClassesForDecorators } from "../utils/configuration.js";
+import _ from "lodash";
 
 export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
     if (process.env["CI"]) return undefined;
@@ -26,11 +25,20 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
             exit(0);
         }
 
-        const frontendPath = v1Config.workspace?.frontend || ".";
-        const frontendPublish = path.relative(
-            frontendPath,
-            v1Config.frontend?.path || frontendPath,
-        );
+        let frontendPath = undefined,
+            frontendPublish = undefined;
+        if (v1Config.workspace?.frontend) {
+            frontendPath = v1Config.workspace.frontend;
+            frontendPublish = path.relative(frontendPath, v1Config.frontend?.path || frontendPath);
+        } else if (v1Config.frontend) {
+            frontendPublish = v1Config.frontend.path;
+            if (/(build|dist)[/\\]?$/.test(frontendPublish)) {
+                frontendPath = path.dirname(frontendPublish);
+            } else {
+                frontendPath = frontendPublish;
+            }
+        }
+
         let backendLanguage;
         if (v1Config.classes && v1Config.classes.length > 0) {
             backendLanguage = v1Config.classes[0].language.replace(".", "");
@@ -41,53 +49,86 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
             backendLanguage =
                 scannedClasses.length > 0
                     ? path.parse(scannedClasses[0].path).ext.replace(".", "")
-                    : Language.ts;
+                    : undefined;
         }
 
         const v2Config: v2 = {
             name: v1Config.name,
             region: v1Config.region,
             yamlVersion: 2,
-            backend: {
-                path: v1Config.workspace?.backend ?? ".",
-                language: {
-                    name: backendLanguage as Language,
-                    runtime: v1Config.options?.nodeRuntime ?? "nodejs18.x",
-                    packageManager: v1Config.packageManager ?? PackageManagerType.npm,
-                },
-                cloudProvider: v1Config.cloudProvider ?? CloudProviderIdentifier.GENEZIO,
-                classes: v1Config.classes.map((c) => ({
-                    name: c.name,
-                    path: path.relative(v1Config.workspace?.backend ?? ".", c.path),
-                    type: c.type,
-                    methods: c.methods.map((m) => ({
-                        name: m.name,
-                        type: m.type,
-                        cronString: m.cronString,
-                    })) as YamlMethod[],
-                })),
-                scripts: {
-                    deploy: v1Config.scripts?.preBackendDeploy?.split("&&").map((s) => s.trim()),
-                    local: v1Config.scripts?.preStartLocal?.split("&&").map((s) => s.trim()),
-                },
-            },
-            frontend: v1Config.frontend
+            backend: backendLanguage
                 ? {
-                      path: frontendPath,
-                      language: v1Config.language,
-                      subdomain: v1Config.frontend.subdomain,
-                      publish: frontendPublish,
+                      path: v1Config.workspace?.backend ?? ".",
+                      language: {
+                          name: backendLanguage as Language,
+                          runtime: v1Config.options?.nodeRuntime,
+                          packageManager: v1Config.packageManager,
+                      },
+                      cloudProvider: v1Config.cloudProvider,
+                      classes: v1Config.classes.map((c) => ({
+                          name: c.name,
+                          path: path.relative(v1Config.workspace?.backend ?? ".", c.path),
+                          type: c.type,
+                          methods: c.methods.map((m) => ({
+                              name: m.name,
+                              type: m.type,
+                              cronString: m.cronString,
+                          })) as YamlMethod[],
+                      })),
                       scripts: {
-                          deploy: v1Config.scripts?.preFrontendDeploy
+                          deploy: v1Config.scripts?.preBackendDeploy
                               ?.split("&&")
                               .map((s) => s.trim()),
+                          local: v1Config.scripts?.preStartLocal?.split("&&").map((s) => s.trim()),
                       },
                   }
                 : undefined,
+            frontend:
+                frontendPath && frontendPublish && v1Config.frontend
+                    ? {
+                          path: frontendPath,
+                          language: v1Config.language,
+                          subdomain: v1Config.frontend.subdomain,
+                          publish: frontendPublish,
+                          scripts: {
+                              deploy: v1Config.scripts?.preFrontendDeploy
+                                  ?.split("&&")
+                                  .map((s) => s.trim()),
+                          },
+                      }
+                    : undefined,
         };
 
-        if (v2Config.backend?.classes?.length === 0) {
+        // Delete empty scripts from backend
+        if (v2Config.backend && _.isEmpty(v2Config.backend.scripts)) {
+            delete v2Config.backend.scripts;
+        }
+
+        // Delete empty scripts from frontend
+        if (_.isArray(v2Config.frontend)) {
+            for (const frontend of v2Config.frontend) {
+                if (_.isEmpty(frontend.scripts)) {
+                    delete frontend.scripts;
+                }
+            }
+        } else {
+            if (v2Config.frontend && _.isEmpty(v2Config.frontend.scripts)) {
+                delete v2Config.frontend.scripts;
+            }
+        }
+
+        // Delete empty classes array from backend
+        if (v2Config.backend && _.isEmpty(v2Config.backend?.classes)) {
             delete v2Config.backend.classes;
+        }
+
+        // Delete empty methods array from classes
+        if (v2Config.backend?.classes) {
+            for (const c of v2Config.backend.classes) {
+                if (_.isEmpty(c.methods)) {
+                    delete c.methods;
+                }
+            }
         }
 
         return v2Config;

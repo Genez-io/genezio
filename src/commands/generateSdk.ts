@@ -7,7 +7,7 @@ import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
 import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import listProjects from "../requests/listProjects.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
-import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
+import { ClassUrlMap } from "../utils/sdk.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import path from "path";
 import { SdkGeneratorClassesInfoInput, SdkGeneratorInput } from "../models/genezioModels.js";
@@ -20,12 +20,8 @@ import {
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
 } from "../generateSdk/generateSdkApi.js";
-import { getPackageJsonSdkGenerator } from "../generateSdk/templates/packageJson.js";
-import { compileSdk } from "../generateSdk/utils/compileSdk.js";
-import { GenezioCommand } from "../utils/reporter.js";
 import colors from "colors";
-import { debugLogger } from "../utils/logging.js";
-import { createTemporaryFolder, deleteFile, deleteFolder } from "../utils/file.js";
+import { deleteFile, deleteFolder } from "../utils/file.js";
 import { YamlConfigurationIOController } from "../yamlProjectConfiguration/v2.js";
 import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
 

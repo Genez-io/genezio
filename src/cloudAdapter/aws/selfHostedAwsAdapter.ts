@@ -38,6 +38,7 @@ import {
 } from "./cloudFormationBuilder.js";
 import mime from "mime-types";
 import path from "path";
+import { DEFAULT_NODE_RUNTIME } from "../../models/nodeRuntime.js";
 
 const BUNDLE_SIZE_LIMIT = 256901120;
 
@@ -128,7 +129,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
         switch (language) {
             case ".js":
             case ".ts":
-                return "nodejs14.x";
+                return DEFAULT_NODE_RUNTIME;
             case ".dart":
                 return "provided.al2";
             default:

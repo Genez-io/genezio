@@ -35,9 +35,9 @@ export async function watchPackage(
 async function watchNodeModules(
     projectName: string,
     projectRegion: string,
-    frontend: YamlFrontend[]|undefined,
+    frontends: YamlFrontend[]|undefined,
     sdkPath: string,
-): Promise<NodeJS.Timeout> {
+): Promise<NodeJS.Timeout|undefined> {
     // We are watching for the following files:
     // - node_modules/@genezio-sdk/<projectName>_<region>/package.json: this file is used to determine if the SDK was changed (by a npm install or npm update)
     // - node_modules/.package-lock.json: this file is used by npm to determine if it should update the packages or not. We are removing this file while "genezio local"
@@ -46,12 +46,8 @@ async function watchNodeModules(
     const sdkName = `${projectName}_${projectRegion}`;
     const nodeModulesSdkDirectoryPath = path.join("node_modules", "@genezio-sdk", sdkName);
 
-    const frontends: YamlFrontend[] =  [];
-
-    if (frontend && !Array.isArray(frontend)) {
-        frontends.push(frontend);
-    } else if (frontend) {
-        frontends.push(...frontend);
+    if (!frontends) {
+        return
     }
 
     for (const f of frontends) {

@@ -208,7 +208,7 @@ program
 
         await startLocalEnvironment(options).catch(async (error) => {
             if (error.message) {
-                log.error(error.message);
+                log.error(error);
                 await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_LOCAL_ERROR,
                     errorTrace: error.message,
