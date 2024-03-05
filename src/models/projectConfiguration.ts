@@ -1,7 +1,7 @@
 import { getAstSummary } from "../generateSdk/utils/getAstSummary.js";
 import { AstSummary } from "./astSummary.js";
 import { CloudProviderIdentifier } from "./cloudProviderIdentifier.js";
-import { NodeOptions, supportedNodeRuntimes } from "./nodeRuntime.js";
+import { DEFAULT_NODE_RUNTIME, NodeOptions } from "./nodeRuntime.js";
 import { SdkGeneratorResponse } from "./sdkGeneratorResponse.js";
 import { TriggerType } from "../yamlProjectConfiguration/models.js";
 import { YamlProjectConfiguration } from "../yamlProjectConfiguration/v2.js";
@@ -111,7 +111,7 @@ export class ProjectConfiguration {
         this.region = yamlConfiguration.region;
         this.sdk = yamlConfiguration.backend?.sdk;
         this.options = {
-            nodeRuntime: yamlConfiguration.backend?.language.runtime || supportedNodeRuntimes[1],
+            nodeRuntime: yamlConfiguration.backend?.language.runtime || DEFAULT_NODE_RUNTIME,
         };
         this.cloudProvider =
             yamlConfiguration.backend?.cloudProvider || CloudProviderIdentifier.GENEZIO;
