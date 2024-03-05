@@ -18,10 +18,7 @@ export type RawYamlProjectConfiguration = ReturnType<typeof parseGenezioConfig>;
 export type YAMLBackend = NonNullable<YamlProjectConfiguration["backend"]>;
 export type YamlClass = NonNullable<YAMLBackend["classes"]>[number];
 export type YamlMethod = NonNullable<YamlClass["methods"]>[number];
-export type YamlFrontend = Exclude<
-    NonNullable<YamlProjectConfiguration["frontend"]>,
-    Array<unknown>
->;
+export type YamlFrontend = NonNullable<YamlProjectConfiguration["frontend"]>[number];
 
 export type YamlProjectConfiguration = ReturnType<typeof fillDefaultGenezioConfig>;
 
@@ -152,13 +149,19 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
         defaultConfig.backend.cloudProvider ??= CloudProviderIdentifier.GENEZIO;
     }
 
+    if (defaultConfig.frontend && !Array.isArray(defaultConfig.frontend)) {
+        defaultConfig.frontend = [defaultConfig.frontend];
+    }
+
     return defaultConfig as DeepRequired<
-        RawYamlProjectConfiguration,
+        typeof defaultConfig,
         | "region"
         | "backend.language.packageManager"
         | "backend.language.runtime"
         | "backend.cloudProvider"
-    >;
+    > & {
+        frontend: typeof defaultConfig.frontend;
+    };
 }
 
 export class YamlConfigurationIOController {

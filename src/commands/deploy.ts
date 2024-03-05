@@ -186,9 +186,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
 
     const frontendUrls = [];
     if (configuration.frontend && !options.backend) {
-        const frontends = Array.isArray(configuration.frontend)
-            ? configuration.frontend
-            : [configuration.frontend];
+        const frontends = configuration.frontend;
 
         for (const [index, frontend] of frontends.entries()) {
             const success = await doAdaptiveLogAction(

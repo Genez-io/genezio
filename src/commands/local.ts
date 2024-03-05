@@ -107,10 +107,8 @@ export async function prepareLocalBackendEnvironment(
         const backend = yamlProjectConfiguration.backend;
         const frontend = yamlProjectConfiguration.frontend;
         let sdkLanguage: Language = Language.ts;
-        if (frontend && Array.isArray(frontend)) {
+        if (frontend && frontend.length > 0) {
             sdkLanguage = frontend[0].language;
-        } else if (frontend) {
-            sdkLanguage = frontend.language;
         }
         if (!backend) {
             throw new Error("No backend component found in the genezio.yaml file.");
@@ -206,10 +204,8 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     }
     const frontend = yamlProjectConfiguration.frontend;
     let sdkLanguage: Language = Language.ts;
-    if (frontend && Array.isArray(frontend)) {
+    if (frontend && frontend.length > 0) {
         sdkLanguage = frontend[0].language;
-    } else if (frontend) {
-        sdkLanguage = frontend.language;
     }
 
     // We need to check if the user is using an older version of @genezio/types
@@ -433,9 +429,6 @@ async function watchNodeModules(
     const sdkName = `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`;
     const nodeModulesSdkDirectoryPath = path.join("node_modules", "@genezio-sdk", sdkName);
 
-    if (yamlProjectConfiguration.frontend && !Array.isArray(yamlProjectConfiguration.frontend)) {
-        yamlProjectConfiguration.frontend = [yamlProjectConfiguration.frontend];
-    }
     const frontends = yamlProjectConfiguration.frontend || [];
     for (const f of frontends) {
         watchPaths.push(path.join(f.path, nodeModulesSdkDirectoryPath));
@@ -499,9 +492,6 @@ async function writeSdkToNodeModules(
         await fsExtra.copy(from, toFinal, { overwrite: true });
     };
 
-    if (yamlProjectConfiguration.frontend && !Array.isArray(yamlProjectConfiguration.frontend)) {
-        yamlProjectConfiguration.frontend = [yamlProjectConfiguration.frontend];
-    }
     const from = path.resolve(originSdkPath, "..", "genezio-sdk");
 
     // Write the SDK to the node_modules folder of each frontend
