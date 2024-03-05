@@ -152,7 +152,7 @@ Use --backend to deploy only the backend application.`,
     .action(async (options: GenezioDeployOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
 
-        await deployCommand(options).catch(async (error) => {
+        await deployCommand(options).catch(async (error: Error) => {
             logError(error);
             await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,

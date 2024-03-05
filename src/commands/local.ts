@@ -105,10 +105,8 @@ export async function prepareLocalBackendEnvironment(
         const backend = yamlProjectConfiguration.backend;
         const frontend = yamlProjectConfiguration.frontend;
         let sdkLanguage: Language = Language.ts;
-        if (frontend && Array.isArray(frontend)) {
+        if (frontend && frontend.length > 0) {
             sdkLanguage = frontend[0].language;
-        } else if (frontend) {
-            sdkLanguage = frontend.language;
         }
         if (!backend) {
             throw new Error("No backend component found in the genezio.yaml file.");
@@ -204,40 +202,41 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     }
     const frontend = yamlProjectConfiguration.frontend;
     let sdkLanguage: Language = Language.ts;
-    if (frontend && Array.isArray(frontend)) {
+    if (frontend && frontend.length > 0) {
         sdkLanguage = frontend[0].language;
-    } else if (frontend) {
-        sdkLanguage = frontend.language;
     }
 
     // We need to check if the user is using an older version of @genezio/types
     // because we migrated the decorators implemented in the @genezio/types package to the stage 3 implementation.
     // Otherwise, the user will get an error at runtime. This check can be removed in the future once no one is using version
     // 0.1.* of @genezio/types.
-    const packageJsonPath = path.join(backendConfiguration.path, "package.json");
     if (
-        isDependencyVersionCompatible(
-            packageJsonPath,
-            "@genezio/types",
-            REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
-        ) === false
+        backendConfiguration.language.name === Language.ts ||
+        backendConfiguration.language.name === Language.js
     ) {
-        throw new Error(
-            `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To solve this, please update the @genezio/types package on your backend component using the following command: npm install @genezio/types@${RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE}`,
-        );
+        const packageJsonPath = path.join(backendConfiguration.path, "package.json");
+        if (
+            isDependencyVersionCompatible(
+                packageJsonPath,
+                "@genezio/types",
+                REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
+            ) === false
+        ) {
+            log.error(
+                `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To solve this, please update the @genezio/types package on your backend component using the following command: npm install @genezio/types@${RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE}`,
+            );
+            exit(1);
+        }
     }
-
-    try {
-        await doAdaptiveLogAction("Running backend local scripts", async () => {
-            return await runScript(backendConfiguration.scripts?.local, backendConfiguration.path);
-        });
-    } catch (error) {
+    await doAdaptiveLogAction("Running backend local scripts", async () => {
+        return await runScript(backendConfiguration.scripts?.local, backendConfiguration.path);
+    }).catch(async (error) => {
         await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_PRE_START_LOCAL_SCRIPT_ERROR,
             commandOptions: JSON.stringify(options),
         });
         throw error;
-    }
+    });
 
     let nodeModulesFolderWatcher: NodeJS.Timeout | undefined;
 
@@ -383,6 +382,13 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             await writeSdkToDisk(sdk, sdkConfiguration.path);
         }
 
+        // This check makes sense only for js/ts backend, skip for dart, go etc.
+        if (
+            backendConfiguration.language.name === Language.ts ||
+            backendConfiguration.language.name === Language.js
+        ) {
+            reportDifferentNodeRuntime(projectConfiguration.options?.nodeRuntime);
+        }
         reportSuccess(projectConfiguration, sdk, options.port, !backendConfiguration.sdk);
 
         // Start listening for changes in user's code
@@ -414,9 +420,6 @@ async function watchNodeModules(
     const sdkName = `${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`;
     const nodeModulesSdkDirectoryPath = path.join("node_modules", "@genezio-sdk", sdkName);
 
-    if (yamlProjectConfiguration.frontend && !Array.isArray(yamlProjectConfiguration.frontend)) {
-        yamlProjectConfiguration.frontend = [yamlProjectConfiguration.frontend];
-    }
     const frontends = yamlProjectConfiguration.frontend || [];
     for (const f of frontends) {
         watchPaths.push(path.join(f.path, nodeModulesSdkDirectoryPath));
@@ -480,9 +483,6 @@ async function writeSdkToNodeModules(
         await fsExtra.copy(from, toFinal, { overwrite: true });
     };
 
-    if (yamlProjectConfiguration.frontend && !Array.isArray(yamlProjectConfiguration.frontend)) {
-        yamlProjectConfiguration.frontend = [yamlProjectConfiguration.frontend];
-    }
     const from = path.resolve(originSdkPath, "..", "genezio-sdk");
 
     // Write the SDK to the node_modules folder of each frontend
@@ -957,34 +957,6 @@ function reportSuccess(
         functionUrl: `http://127.0.0.1:${port}/${c.name}`,
     }));
 
-    // get installed version of node
-    const nodeVersion = process.version;
-
-    // get only the major version
-    const nodeMajorVersion = nodeVersion.split(".")[0].slice(1);
-
-    // get server used version
-    let serverRuntime: string = DEFAULT_NODE_RUNTIME as string;
-    if (projectConfiguration.options?.nodeRuntime) {
-        serverRuntime = projectConfiguration.options.nodeRuntime;
-    }
-
-    const serverVersion = serverRuntime.split(".")[0].split("nodejs")[1];
-
-    debugLogger.debug(`Node version: ${nodeVersion}`);
-    debugLogger.debug(`Server version: ${serverRuntime}`);
-
-    // check if server version is different from installed version
-    if (nodeMajorVersion !== serverVersion) {
-        log.warn(
-            `${colors.yellow(`Warning: You are using node version ${nodeVersion} but your server is configured to use ${serverRuntime}. This might cause unexpected behavior.
-To change the server version, go to your ${colors.cyan(
-                "genezio.yaml",
-            )} file and change the ${colors.cyan(
-                "backend.lanuage.nodeRuntime",
-            )} property to the version you want to use.`)}`,
-        );
-    }
     _reportSuccess(
         classesInfo,
         sdk,
@@ -997,6 +969,33 @@ To change the server version, go to your ${colors.cyan(
     );
 
     log.info(colors.cyan(`Test your code at http://localhost:${port}/explore`));
+}
+
+// This method is used to check if the user has a different node version installed than the one used by the server.
+// If the user has a different version, a warning message will be displayed.
+function reportDifferentNodeRuntime(userDefinedNodeRuntime: string | undefined) {
+    const installedNodeVersion = process.version;
+
+    // get server used version
+    let serverNodeRuntime: string = DEFAULT_NODE_RUNTIME as string;
+    if (userDefinedNodeRuntime) {
+        serverNodeRuntime = userDefinedNodeRuntime;
+    }
+
+    const nodeMajorVersion = installedNodeVersion.split(".")[0].slice(1);
+    const serverMajorVersion = serverNodeRuntime.split(".")[0].split("nodejs")[1];
+
+    // check if server version is different from installed version
+    if (nodeMajorVersion !== serverMajorVersion) {
+        log.warn(
+            `${colors.yellow(`Warning: The installed node version ${installedNodeVersion} but your server is configured to use ${serverNodeRuntime}. This might cause unexpected behavior.
+To change the server version, go to your ${colors.cyan(
+                "genezio.yaml",
+            )} file and change the ${colors.cyan(
+                "backend.language.nodeRuntime",
+            )} property to the version you want to use.`)}`,
+        );
+    }
 }
 
 function getFunctionUrl(

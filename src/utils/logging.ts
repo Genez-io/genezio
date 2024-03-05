@@ -27,11 +27,9 @@ export const log = new Logger({
     },
 });
 
-export function logError(error: unknown) {
+export function logError(error: Error) {
     debugLogger.fatal(error);
-    if (error instanceof Error) log.error(new Error(error.message));
-    else if (typeof error === "string") log.error(new Error(error));
-    else log.error(new Error("An unknown error occurred"));
+    log.error(new Error(error.message));
 }
 
 function getLogLevel(logLevel: string): number {
