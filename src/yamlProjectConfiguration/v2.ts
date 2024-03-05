@@ -146,7 +146,6 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
         defaultConfig.frontend = [defaultConfig.frontend];
     }
 
-    console.log("intra pe aici", defaultConfig);
     return defaultConfig as DeepRequired<
         typeof defaultConfig,
         | "region"

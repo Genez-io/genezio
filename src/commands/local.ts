@@ -315,7 +315,10 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 
         // Start cron jobs
         const crons = startCronJobs(projectConfiguration, processForClasses);
-        console.log(yamlProjectConfiguration)
+        log.info(
+            "\x1b[36m%s\x1b[0m",
+            "Your local server is running and the SDK was successfully generated!",
+        );
         const watcherTimeout = await handleSdk(
             yamlProjectConfiguration.name,
             yamlProjectConfiguration.region,
@@ -767,9 +770,11 @@ async function handleSdk(
     options: GenezioLocalOptions): Promise<NodeJS.Timeout|undefined> {
     let sdkLanguage: Language = Language.ts;
     let nodeJsWatcher: NodeJS.Timeout|undefined = undefined;
-    if (frontends) {
-        console.log(frontends)
+    let frontendPath: string|undefined = undefined;
+
+    if (frontends && frontends.length > 0) {
         sdkLanguage = frontends[0].language;
+        frontendPath = frontends[0].path;
     }
 
     const classUrls = sdk.files.map((c) => ({
@@ -777,16 +782,16 @@ async function handleSdk(
         cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`,
     }))
 
-    const path = await writeSdk(
+    const sdkFolderPath = await writeSdk(
         sdkLanguage,
         `@genezio-sdk/${projectName}_${projectRegion}`, 
         undefined, 
         sdk,
         classUrls,
         false,
-        undefined)
+        frontendPath ? path.join(frontendPath, "sdk") : undefined)
 
-    const timeout = await watchPackage(sdkLanguage, projectName, projectRegion, frontends, path);
+    const timeout = await watchPackage(sdkLanguage, projectName, projectRegion, frontends, sdkFolderPath);
     if (timeout) {
         nodeJsWatcher = timeout;
     }

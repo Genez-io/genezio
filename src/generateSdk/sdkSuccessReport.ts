@@ -16,30 +16,26 @@ export function reportSuccessForSdk(
         case Language.ts:
         case Language.js:
             return reportSuccessForSdkJs(sdkResponse, command, projectConfiguration);
+        case Language.go:
+        case Language.kt:
+        case Language.dart:
+        case Language.swift:
+        case Language.python:
+            return;
         default:
             throw new Error("Language not supported");
     }
 }
-
 
 export function reportSuccessForSdkJs(
     sdkResponse: SdkGeneratorResponse,
     command: GenezioCommand,
     projectConfiguration: ProjectPrimaryKeys,
 ) {
-    if (sdkResponse.files.length <= 0) {
-        log.info("\x1b[36m%s\x1b[0m", "Your backend code was successfully deployed!");
-        return
-    }
-
     const className = sdkResponse.sdkGeneratorInput.
         classesInfo.find((c) => c.classConfiguration.type === TriggerType.jsonrpc)?.
         classConfiguration.name;
     if (command === GenezioCommand.deploy) {
-       log.info(
-           "\x1b[36m%s\x1b[0m",
-           "Your backend code was deployed and the SDK was successfully generated",
-       );
        log.info(
            boxen(
                `${colors.green(
@@ -60,11 +56,7 @@ export function reportSuccessForSdkJs(
            ),
        );
     } else {
-       log.info(
-           "\x1b[36m%s\x1b[0m",
-           "Your local server is running and the SDK was successfully generated!",
-       );
-           log.info(
+      log.info(
            boxen(
                `${colors.green("Import your classes like this:")}\n${colors.magenta(
                    `import { ${className} } from "@genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}"`,

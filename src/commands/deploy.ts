@@ -262,9 +262,13 @@ export async function deployClasses(
     if (backend.classes.length === 0) {
         throw new Error(GENEZIO_NO_CLASSES_FOUND);
     }
+    let sdkLanguage: Language = Language.ts;
+    if (configuration.frontend && configuration.frontend.length > 0) {
+        sdkLanguage = configuration.frontend[0].language;
+    }
 
     const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
-        backend.language.name,
+        sdkLanguage,
         mapYamlClassToSdkClassConfiguration(backend.classes, backend.language.name, backend.path),
         backend.path,
         /* packageName= */ `@genezio-sdk/${configuration.name}_${configuration.region}`,
@@ -377,6 +381,15 @@ export async function deployClasses(
         stage: options.stage,
     });
 
+    if (sdkResponse.files.length <= 0) {
+        log.info("\x1b[36m%s\x1b[0m", "Your backend code was successfully deployed!");
+        return
+    } else {
+       log.info(
+           "\x1b[36m%s\x1b[0m",
+           "Your backend code was deployed and the SDK was successfully generated",
+       );
+    }
     await handleSdk(configuration, result, sdkResponse, options);
     reportSuccess(result.classes);
 
@@ -572,8 +585,10 @@ export async function deployFrontend(
 async function handleSdk(configuration: YamlProjectConfiguration, result: GenezioCloudOutput, sdkResponse: SdkGeneratorResponse, options: GenezioDeployOptions) {
     const frontends = configuration.frontend;
     let sdkLanguage: Language = Language.ts;
-    if (frontends) {
+    let frontendPath: string | undefined; 
+    if (frontends && frontends.length > 0) {
         sdkLanguage = frontends[0].language;
+        frontendPath = frontends[0].path;
     } 
 
     if (sdkLanguage) {
@@ -588,7 +603,7 @@ async function handleSdk(configuration: YamlProjectConfiguration, result: Genezi
             sdkResponse,
             classUrls,
             true,
-            undefined,
+            frontendPath ? path.join(frontendPath, "sdk") : undefined,
         );
     }
 

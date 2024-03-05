@@ -23,7 +23,7 @@ export async function writeSdk(
         case Language.dart:
         case Language.swift:
         case Language.python:
-            return await basicFileWriter(sdkResponse, outputPath!);
+            return await basicFileWriter(sdkResponse, classUrls, outputPath!);
         default:
             throw new Error(`Language ${language} is not supported`);
     }
