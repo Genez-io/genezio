@@ -2,13 +2,17 @@ import { Logger } from "tslog";
 import { AbortController } from "node-abort-controller";
 import colors from "colors";
 import ora from "ora";
+import { AxiosError } from "axios";
+import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
+import { ENVIRONMENT } from "../constants.js";
 
 const spinner = ora();
 
 export const debugLogger = new Logger({
     name: "debuggingLogger",
-    prettyLogTemplate: "{{dateIsoStr}} {{logLevelName}}\t{{fileNameWithLine}}\t",
+    prettyLogTemplate: "{{hh}}:{{MM}}:{{ss}}:{{ms}} {{logLevelName}}\t{{fileNameWithLine}}\t",
     minLevel: 7,
+    hideLogPositionForProduction: ENVIRONMENT === "prod",
     prettyInspectOptions: {
         depth: 1,
         colors: true,
@@ -29,7 +33,34 @@ export const log = new Logger({
 
 export function logError(error: Error) {
     debugLogger.fatal(error);
-    log.error(new Error(error.message));
+    if (error instanceof AxiosError) {
+        const data = error.response?.data;
+
+        switch (error.response?.status) {
+            case 401:
+                log.error(new Error(GENEZIO_NOT_AUTH_ERROR_MSG));
+                break;
+            case 500:
+                log.error(new Error(error.message));
+                if (data && data.status === "error") {
+                    log.error(new Error(data.error.message));
+                }
+                break;
+            case 400:
+                log.error(new Error(error.message));
+                if (data && data.status === "error") {
+                    log.error(new Error(data.error.message));
+                }
+                break;
+            default:
+                if (error.message) {
+                    log.error(new Error(error.message));
+                }
+                break;
+        }
+    } else {
+        log.error(new Error(error.message));
+    }
 }
 
 function getLogLevel(logLevel: string): number {

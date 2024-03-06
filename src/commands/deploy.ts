@@ -8,7 +8,7 @@ import {
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
 } from "../constants.js";
-import { GENEZIO_NOT_AUTH_ERROR_MSG, GENEZIO_NO_CLASSES_FOUND } from "../errors.js";
+import { GENEZIO_NO_CLASSES_FOUND } from "../errors.js";
 import {
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
@@ -35,7 +35,11 @@ import cliProgress from "cli-progress";
 import { YAMLBackend, YamlProjectConfiguration } from "../yamlProjectConfiguration/v2.js";
 import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter.js";
 import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter.js";
-import { CloudAdapter, GenezioCloudInput, GenezioCloudOutput } from "../cloudAdapter/cloudAdapter.js";
+import {
+    CloudAdapter,
+    GenezioCloudInput,
+    GenezioCloudOutput,
+} from "../cloudAdapter/cloudAdapter.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { GenezioDeployOptions } from "../models/commandOptions.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
@@ -148,32 +152,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
                     errorTrace: error.toString(),
                     commandOptions: JSON.stringify(options),
                 });
-
-                const data = error.response?.data;
-
-                switch (error.response?.status) {
-                    case 401:
-                        log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-                        break;
-                    case 500:
-                        log.error(error.message);
-                        if (data && data.status === "error") {
-                            log.error(data.error.message);
-                        }
-                        break;
-                    case 400:
-                        log.error(error.message);
-                        if (data && data.status === "error") {
-                            log.error(data.error.message);
-                        }
-                        break;
-                    default:
-                        if (error.message) {
-                            log.error(error.message);
-                        }
-                        break;
-                }
-                exit(1);
+                throw error;
             },
         );
         await GenezioTelemetry.sendEvent({
@@ -302,7 +281,7 @@ export async function deployClasses(
         cliProgress.Presets.shades_grey,
     );
 
-    printAdaptiveLog("Bundling your code", "start");
+    printAdaptiveLog("Bundling your code\n", "start");
     const bundlerResult: Promise<GenezioCloudInput>[] = projectConfiguration.classes.map(
         async (element) => {
             const ast = sdkResponse.sdkGeneratorInput.classesInfo.find(
@@ -354,9 +333,12 @@ export async function deployClasses(
         },
     );
 
-    const bundlerResultArray = await Promise.all(bundlerResult);
+    const bundlerResultArray = await Promise.all(bundlerResult).catch((error) => {
+        printAdaptiveLog("Bundling your code\n", "error");
+        throw error;
+    });
 
-    printAdaptiveLog("Bundling your code", "end");
+    printAdaptiveLog("Bundling your code\n", "end");
 
     projectConfiguration.astSummary.classes = projectConfiguration.astSummary.classes.map((c) => {
         // remove cwd from path and the extension
@@ -384,11 +366,11 @@ export async function deployClasses(
 
     if (sdkResponse.files.length <= 0) {
         log.info(colors.cyan("Your backend code was successfully deployed!"));
-        return
+        return;
     } else {
-       log.info(colors.cyan(
-           "Your backend code was deployed and the SDK was successfully generated",
-       ));
+        log.info(
+            colors.cyan("Your backend code was deployed and the SDK was successfully generated"),
+        );
     }
     await handleSdk(configuration, result, sdkResponse, options);
     reportSuccess(result.classes);
@@ -582,20 +564,25 @@ export async function deployFrontend(
     return url;
 }
 
-async function handleSdk(configuration: YamlProjectConfiguration, result: GenezioCloudOutput, sdkResponse: SdkGeneratorResponse, options: GenezioDeployOptions) {
+async function handleSdk(
+    configuration: YamlProjectConfiguration,
+    result: GenezioCloudOutput,
+    sdkResponse: SdkGeneratorResponse,
+    options: GenezioDeployOptions,
+) {
     const frontends = configuration.frontend;
     let sdkLanguage: Language = Language.ts;
-    let frontendPath: string | undefined; 
+    let frontendPath: string | undefined;
     if (frontends && frontends.length > 0) {
         sdkLanguage = frontends[0].language;
         frontendPath = frontends[0].path;
-    } 
+    }
 
     if (sdkLanguage) {
         const classUrls = result.classes.map((c) => ({
             name: c.className,
             cloudUrl: c.functionUrl,
-        }))
+        }));
         await writeSdk({
             language: sdkLanguage,
             packageName: `@genezio-sdk/${configuration.name}_${configuration.region}`,

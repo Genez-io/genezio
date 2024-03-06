@@ -22,7 +22,7 @@ export async function bundle(
     installDeps: boolean = true,
 ): Promise<BundlerOutput> {
     if (!(await fileExists(element.path))) {
-        printAdaptiveLog("Bundling your code", "error");
+        printAdaptiveLog("Bundling your code\n", "error");
         log.error(`\`${element.path}\` file does not exist at the indicated path.`);
 
         throw new Error(`\`${element.path}\` file does not exist at the indicated path.`);

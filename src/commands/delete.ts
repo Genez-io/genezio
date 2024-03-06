@@ -1,4 +1,3 @@
-import { AxiosError } from "axios";
 import { Spinner } from "cli-spinner";
 import { log } from "../utils/logging.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
@@ -15,14 +14,7 @@ export async function deleteCommand(projectId: string, options: GenezioDeleteOpt
         throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
 
-    const result = await deleteProjectHandler(projectId, options.force).catch(
-        (error: AxiosError) => {
-            if (error.response?.status == 401) {
-                throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
-            }
-            throw error;
-        },
-    );
+    const result = await deleteProjectHandler(projectId, options.force);
 
     if (result) {
         log.info("Your project has been deleted");

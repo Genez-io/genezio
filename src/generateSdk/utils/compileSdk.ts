@@ -7,6 +7,7 @@ import { deleteFolder, writeToFile } from "../../utils/file.js";
 import fs from "fs";
 import packageManager from "../../packageManagers/packageManager.js";
 import { listFilesWithExtension } from "../../utils/file.js";
+import { printAdaptiveLog } from "../../utils/logging.js";
 
 const compilerWorkerScript = `const { parentPort, workerData } = require("worker_threads");
 
@@ -94,7 +95,11 @@ export async function compileSdk(
     workers.push(writePackagePromise);
     await Promise.all(workers);
     if (publish === true) {
-        console.log("Publishing the SDK...");
-        await packageManager.publish(modulePath);
+        printAdaptiveLog("Publishing the SDK", "start");
+        await packageManager.publish(modulePath).catch((error) => {
+            printAdaptiveLog("Publishing the SDK", "error");
+            throw error;
+        });
+        printAdaptiveLog("Publishing the SDK", "end");
     }
 }

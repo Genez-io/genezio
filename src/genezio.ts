@@ -1,5 +1,5 @@
 import { Command, CommanderError, Option } from "commander";
-import { code, logError, setDebuggingLoggerLogLevel } from "./utils/logging.js";
+import { code, debugLogger, logError, setDebuggingLoggerLogLevel } from "./utils/logging.js";
 import { exit } from "process";
 import { PORT_LOCAL_ENVIRONMENT, ENABLE_DEBUG_LOGS_BY_DEFAULT } from "./constants.js";
 import { log } from "./utils/logging.js";
@@ -13,7 +13,6 @@ import { loginCommand } from "./commands/login.js";
 import { logoutCommand } from "./commands/logout.js";
 import { lsCommand } from "./commands/list.js";
 import {
-    BaseOptions,
     GenezioBundleOptions,
     GenezioCreateBackendOptions,
     GenezioCreateFullstackOptions,
@@ -79,7 +78,7 @@ if (process.argv.length === 2) {
     });
 
     await genezioCommand().catch(async (error: Error) => {
-        log.error(error.message);
+        logError(error);
         await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_COMMAND_ERROR,
             errorTrace: error.message,
@@ -95,6 +94,25 @@ program.helpOption("-h, --help", "Print this help message.");
 program.addHelpCommand("help", "Print this help message.");
 program.configureHelp({
     subcommandTerm: (cmd) => cmd.name(),
+});
+program
+    .addOption(
+        new Option("--logLevel <log-level>", "Show debug logs to console.").choices([
+            "trace",
+            "debug",
+            "info",
+            "warn",
+            "error",
+        ]),
+    )
+    .hook("preAction", (thisCommand: Command) => {
+        setDebuggingLoggerLogLevel(thisCommand.opts()["logLevel"]);
+    });
+program.hook("postAction", async () => {
+    await logOutdatedVersion().catch((error) => {
+        debugLogger.error("Could not log outdated version", error);
+        exit(0);
+    });
 });
 
 // program setup - used to display help and version
@@ -125,10 +143,6 @@ program
 
 program
     .command("deploy")
-    .option(
-        "--logLevel <logLevel>",
-        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
-    )
     .option("--backend", "Deploy only the backend application.", false)
     .option("--frontend", "Deploy only the frontend application.", false)
     .option("--install-deps", "Automatically install missing dependencies", false)
@@ -150,8 +164,6 @@ program
 Use --backend to deploy only the backend application.`,
     )
     .action(async (options: GenezioDeployOptions) => {
-        setDebuggingLoggerLogLevel(options.logLevel);
-
         await deployCommand(options).catch(async (error: Error) => {
             logError(error);
             await GenezioTelemetry.sendEvent({
@@ -161,16 +173,10 @@ Use --backend to deploy only the backend application.`,
             });
             exit(1);
         });
-
-        await logOutdatedVersion();
     });
 
 program
     .command("local")
-    .option(
-        "--logLevel <logLevel>",
-        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
-    )
     .option(
         "-p, --port <port>",
         "Set the port your local server will be running on.",
@@ -187,8 +193,6 @@ program
     )
     .summary("Test a project in a local environment.")
     .action(async (options: GenezioLocalOptions) => {
-        setDebuggingLoggerLogLevel(options.logLevel);
-
         await startLocalEnvironment(options).catch(async (error) => {
             logError(error);
             await GenezioTelemetry.sendEvent({
@@ -198,26 +202,13 @@ program
             });
             exit(1);
         });
-
-        await logOutdatedVersion();
     });
 
 const create = program
     .command("create")
     .option("--path <path>", "Path where to create the project.", undefined)
-    .addOption(
-        new Option("--logLevel <log-level>", "Show debug logs to console.").choices([
-            "trace",
-            "debug",
-            "info",
-            "warn",
-            "error",
-        ]),
-    )
     .summary("Create a new project from a template.")
     .action(async (options: GenezioCreateInteractiveOptions) => {
-        setDebuggingLoggerLogLevel(options.logLevel);
-
         const createOptions = await askCreateOptions(options);
 
         const telemetryEvent = GenezioTelemetry.sendEvent({
@@ -226,7 +217,7 @@ const create = program
         });
 
         await createCommand(createOptions).catch(async (error) => {
-            log.error(error.message);
+            logError(error);
             await telemetryEvent;
             await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
@@ -235,8 +226,6 @@ const create = program
             exit(1);
         });
         await telemetryEvent;
-
-        await logOutdatedVersion();
     });
 
 create
@@ -263,19 +252,8 @@ create
         false,
     )
     .option("--path <path>", "Path where to create the project.", undefined)
-    .addOption(
-        new Option("--logLevel <log-level>", "Show debug logs to console.").choices([
-            "trace",
-            "debug",
-            "info",
-            "warn",
-            "error",
-        ]),
-    )
     .summary("Create a new project from a backend and a frontend template.")
     .action(async (options: GenezioCreateFullstackOptions) => {
-        setDebuggingLoggerLogLevel(options.logLevel);
-
         const createOptions = await askCreateOptions({ ...options, type: "fullstack" });
 
         const telemetryEvent = GenezioTelemetry.sendEvent({
@@ -284,7 +262,7 @@ create
         });
 
         await createCommand(createOptions).catch(async (error) => {
-            log.error(error.message);
+            logError(error);
             await telemetryEvent;
             await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
@@ -293,8 +271,6 @@ create
             exit(1);
         });
         await telemetryEvent;
-
-        await logOutdatedVersion();
     });
 
 create
@@ -311,19 +287,8 @@ create
         ),
     )
     .option("--path <path>", "Path where to create the project.", undefined)
-    .addOption(
-        new Option("--logLevel <log-level>", "Show debug logs to console.").choices([
-            "trace",
-            "debug",
-            "info",
-            "warn",
-            "error",
-        ]),
-    )
     .summary("Create a new project from a backend template.")
     .action(async (options: GenezioCreateBackendOptions) => {
-        setDebuggingLoggerLogLevel(options.logLevel);
-
         const createOptions = await askCreateOptions({ ...options, type: "backend" });
 
         const telemetryEvent = GenezioTelemetry.sendEvent({
@@ -332,7 +297,7 @@ create
         });
 
         await createCommand(createOptions).catch(async (error) => {
-            log.error(error.message);
+            logError(error);
             await telemetryEvent;
             await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
@@ -341,41 +306,27 @@ create
             exit(1);
         });
         await telemetryEvent;
-
-        await logOutdatedVersion();
     });
 
 program
     .command("addClass")
-    .option(
-        "--logLevel <logLevel>",
-        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
-    )
     .argument("<classPath>", "Path of the class you want to add.")
     .argument("[<classType>]", "The type of the class you want to add. [http, jsonrpc, cron]")
     .summary("Add a new genezio class to your project”")
-    .action(async (classPath: string, classType: string, options: BaseOptions) => {
-        setDebuggingLoggerLogLevel(options.logLevel);
-
+    .action(async (classPath: string, classType: string) => {
         await addClassCommand(classPath, classType).catch(async (error: Error) => {
-            log.error(error.message);
+            logError(error);
             await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_ADD_CLASS_ERROR,
                 errorTrace: error.message,
             });
             exit(1);
         });
-
-        await logOutdatedVersion();
     });
 
 program
     .command("sdk")
     .argument("[projectName]", "Name of the project you want to generate an SDK for.")
-    .option(
-        "--logLevel <logLevel>",
-        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
-    )
     .option("--language <language>", "Language of the SDK.", "ts")
     .option("--packageName <packageName>", "The name of the package.")
     .option("--packageVersion <packageVersion>", "The version of the package.", "1.0.0")
@@ -402,15 +353,13 @@ program
         "Generate an SDK corresponding to a deployed or local project.\n\nProvide the project name to generate an SDK for a deployed project.\nEx: genezio sdk my-project --stage prod --region us-east-1\n\nProvide the path to the genezio.yaml on your disk to load project details (name and region) from that file instead of command arguments.\nEx: genezio sdk --source ../my-project",
     )
     .action(async (projectName = "", options: GenezioSdkOptions) => {
-        setDebuggingLoggerLogLevel(options.logLevel);
-
         if ((options.language === "ts" || options.language === "js") && !options.packageName) {
             log.error("The --packageName option is required for TypeScript and JavaScript SDKs.");
             exit(1);
         }
 
         await generateSdkCommand(projectName, options).catch(async (error) => {
-            log.error(error.message);
+            logError(error);
             await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_GENERATE_SDK_ERROR,
                 errorTrace: error.message,
@@ -418,16 +367,10 @@ program
             });
             exit(1);
         });
-
-        await logOutdatedVersion();
     });
 
 program
     .command("link")
-    .option(
-        "--logLevel <logLevel>",
-        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
-    )
     .option(
         "--projectName <projectName>",
         "The name of the project that you want to communicate with.",
@@ -439,25 +382,17 @@ program
 This command is useful when the project has dedicated repositories for the backend and the frontend.",
     )
     .action(async (options: GenezioLinkOptions) => {
-        setDebuggingLoggerLogLevel(options.logLevel);
-
         await linkCommand(options.projectName, options.region).catch((error) => {
-            log.error(error.message);
+            logError(error);
             log.error(
                 "Error: Command execution failed. Please ensure you are running this command from a directory containing 'genezio.yaml' or provide the '--projectName <name>' and '--region <region>' flags.",
             );
             exit(1);
         });
-
-        await logOutdatedVersion();
     });
 
 program
     .command("unlink")
-    .option(
-        "--logLevel <logLevel>",
-        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
-    )
     .option("--all", "Remove all links.", false)
     .option(
         "--projectName <projectName>",
@@ -473,36 +408,26 @@ program
 This reset allows 'genezio local' to stop automatically generating the SDK in that location.",
     )
     .action(async (options: GenezioUnlinkOptions) => {
-        setDebuggingLoggerLogLevel(options.logLevel);
-
         await unlinkCommand(options.all, options.projectName, options.region).catch((error) => {
-            log.error(error.message);
+            logError(error);
             log.error(
                 "Error: Command execution failed. Please ensure you are running this command from a directory containing 'genezio.yaml' or provide the '--projectName <name>' and '--region <region>' flags.",
             );
             exit(1);
         });
-
-        await logOutdatedVersion();
     });
 
 program
     .command("list")
     .argument("[identifier]", "Name or ID of the project you want to display.")
-    .option(
-        "--logLevel <logLevel>",
-        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
-    )
     .option("-l, --long-listed", "List more details for each project", false)
     .summary("List details about the deployed projects.")
     .description(
         "Display details of your projects. You can view them all at once or display a particular one by providing its name or ID.",
     )
     .action(async (identifier = "", options: GenezioListOptions) => {
-        setDebuggingLoggerLogLevel(options.logLevel);
-
         await lsCommand(identifier, options).catch(async (error) => {
-            log.error(error.message);
+            logError(error);
             await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_LS_ERROR,
                 errorTrace: error.message,
@@ -510,112 +435,73 @@ program
             });
             exit(1);
         });
-
-        await logOutdatedVersion();
     });
 
 program
     .command("delete")
     .argument("[projectId]", "ID of the project you want to delete.")
-    .option(
-        "--logLevel <logLevel>",
-        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
-    )
     .option("-f, --force", "Skip confirmation prompt for deletion.", false)
     .summary("Delete a deployed project.")
     .description(
         "Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs.",
     )
     .action(async (projectId = "", options: GenezioDeleteOptions) => {
-        setDebuggingLoggerLogLevel(options.logLevel);
-
         await deleteCommand(projectId, options).catch(async (error) => {
-            log.error(error.message);
+            logError(error);
             await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_DELETE_PROJECT_ERROR,
                 errorTrace: error.toString(),
             });
             exit(1);
         });
-
-        await logOutdatedVersion();
     });
 
 program
     .command("login")
     .argument("[accessToken]", "Set an access token to login with.")
-    .option(
-        "--logLevel <logLevel>",
-        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
-    )
     .summary("Login to the genezio platform.")
-    .action(async (accessToken = "", options: BaseOptions) => {
-        setDebuggingLoggerLogLevel(options.logLevel);
-
+    .action(async (accessToken = "") => {
         await loginCommand(accessToken).catch(async (error) => {
-            log.error(error.message);
+            logError(error);
             await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_LOGIN_ERROR,
                 errorTrace: error.message,
             });
             exit(1);
         });
-
-        await logOutdatedVersion();
     });
 
 program
     .command("bundleClass", { hidden: true })
-    .option(
-        "--logLevel <logLevel>",
-        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
-    )
     .option("--className <className>", "The name of the class that needs to be bundled.")
     .option("--cloudAdapter <cloudAdapter>", "The cloud adapter that will be used.")
     .option("--output <output>", "The output path of the bundled class.")
     .action(async (options: GenezioBundleOptions) => {
-        setDebuggingLoggerLogLevel(options.logLevel);
         // TODO: implement cloud adapter option
         await bundleCommand(options).catch(async (error) => {
-            log.error(error.message);
+            logError(error);
             exit(1);
         });
     });
 
 program
     .command("logout")
-    .option(
-        "--logLevel <logLevel>",
-        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
-    )
     .summary("Logout from the genezio platform.")
-    .action(async (options: BaseOptions) => {
-        setDebuggingLoggerLogLevel(options.logLevel);
-
+    .action(async () => {
         await logoutCommand().catch((error) => {
-            log.error(error.message);
+            logError(error);
             exit(1);
         });
-
-        await logOutdatedVersion();
     });
 
 program
     .command("account")
-    .option(
-        "--logLevel <logLevel>",
-        "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
-    )
     .summary("Display information about the current account.")
-    .action(async (options: BaseOptions) => {
-        setDebuggingLoggerLogLevel(options.logLevel);
-
+    .action(async () => {
         await accountCommand().catch((error) => {
-            log.error(error.message);
+            logError(error);
             exit(1);
         });
-
-        await logOutdatedVersion();
     });
 
 export default program;
