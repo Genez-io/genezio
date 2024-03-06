@@ -531,6 +531,14 @@ export async function deployFrontend(
         return;
     }
 
+    const success = await doAdaptiveLogAction(`Building frontend ${index}`, async () => {
+        return await runScript(frontend.scripts?.build, frontend.path);
+    });
+    if (!success) {
+        log.info(`Skipping frontend ${index} deployment because the build script failed.`);
+        return;
+    }
+
     // check if subdomain contains only numbers, letters and hyphens
     if (frontend.subdomain && !frontend.subdomain.match(/^[a-z0-9-]+$/)) {
         throw new Error(`The subdomain can only contain letters, numbers and hyphens.`);
