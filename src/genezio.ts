@@ -208,7 +208,7 @@ program
 
         await startLocalEnvironment(options).catch(async (error) => {
             if (error.message) {
-                log.error(error);
+                log.error(error.message);
                 await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_LOCAL_ERROR,
                     errorTrace: error.message,
@@ -396,7 +396,7 @@ program
         "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
     )
     .option("--language <language>", "Language of the SDK.", "ts")
-    .requiredOption("--packageName <packageName>", "The name of the package.")
+    .option("--packageName <packageName>", "The name of the package.")
     .option("--packageVersion <packageVersion>", "The version of the package.", "1.0.0")
     .addOption(
         new Option("--source <source>", "Where the SDK should be generated from.")
@@ -422,6 +422,11 @@ program
     )
     .action(async (projectName = "", options: GenezioSdkOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
+
+        if ((options.language === "ts" || options.language === "js") && !options.packageName) {
+            log.error("The --packageName option is required for TypeScript and JavaScript SDKs.");
+            exit(1);
+        }
 
         await generateSdkCommand(projectName, options).catch(async (error) => {
             log.error(error.message);

@@ -782,18 +782,21 @@ async function handleSdk(
         cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`,
     }))
 
-    const sdkFolderPath = await writeSdk(
-        sdkLanguage,
-        `@genezio-sdk/${projectName}_${projectRegion}`, 
-        undefined, 
-        sdk,
+    const sdkFolderPath = await writeSdk({
+        language: sdkLanguage,
+        packageName: `@genezio-sdk/${projectName}_${projectRegion}`, 
+        packageVersion: undefined, 
+        sdkResponse: sdk,
         classUrls,
-        false,
-        frontendPath ? path.join(frontendPath, "sdk") : undefined)
+        publish: false,
+        installPackage: true,
+        outputPath: frontendPath ? path.join(frontendPath, "sdk") : undefined})
 
-    const timeout = await watchPackage(sdkLanguage, projectName, projectRegion, frontends, sdkFolderPath);
-    if (timeout) {
-        nodeJsWatcher = timeout;
+    if (sdkFolderPath) {
+        const timeout = await watchPackage(sdkLanguage, projectName, projectRegion, frontends, sdkFolderPath);
+        if (timeout) {
+            nodeJsWatcher = timeout;
+        }
     }
 
     reportSuccessForSdk(sdkLanguage, sdk, GenezioCommand.local, {

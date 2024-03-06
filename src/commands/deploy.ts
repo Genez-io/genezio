@@ -382,13 +382,12 @@ export async function deployClasses(
     });
 
     if (sdkResponse.files.length <= 0) {
-        log.info("\x1b[36m%s\x1b[0m", "Your backend code was successfully deployed!");
+        log.info(colors.cyan("Your backend code was successfully deployed!"));
         return
     } else {
-       log.info(
-           "\x1b[36m%s\x1b[0m",
+       log.info(colors.cyan(
            "Your backend code was deployed and the SDK was successfully generated",
-       );
+       ));
     }
     await handleSdk(configuration, result, sdkResponse, options);
     reportSuccess(result.classes);
@@ -596,15 +595,16 @@ async function handleSdk(configuration: YamlProjectConfiguration, result: Genezi
             name: c.className,
             cloudUrl: c.functionUrl,
         }))
-        await writeSdk(
-            sdkLanguage,
-            `@genezio-sdk/${configuration.name}_${configuration.region}`,
-            `1.0.0-${options.stage}`,
+        await writeSdk({
+            language: sdkLanguage,
+            packageName: `@genezio-sdk/${configuration.name}_${configuration.region}`,
+            packageVersion: `1.0.0-${options.stage}`,
             sdkResponse,
             classUrls,
-            true,
-            frontendPath ? path.join(frontendPath, "sdk") : undefined,
-        );
+            publish: true,
+            installPackage: true,
+            outputPath: frontendPath ? path.join(frontendPath, "sdk") : undefined,
+        });
     }
 
     reportSuccessForSdk(sdkLanguage, sdkResponse, GenezioCommand.deploy, {

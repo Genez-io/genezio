@@ -68,7 +68,15 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
             name: c.className,
             cloudUrl: url,
         }))
-    await writeSdk(options.language, options.packageName, options.packageVersion, sdkResponse, classUrls, false, options.output); 
+    await writeSdk({
+        language: options.language,
+        packageName: options.packageName,
+        packageVersion: options.packageVersion,
+        sdkResponse,
+        classUrls,
+        publish: false,
+        installPackage: false,
+        outputPath: options.output}); 
 
     log.info("Your SDK has been generated successfully in " + options.output);
     log.info(
@@ -231,17 +239,25 @@ async function generateRemoteSdkHandler(
     };
 
     // replace the placeholder urls in the sdk with the actual cloud urls
-    const classUrlMap: ClassUrlMap[] = [];
+    const classUrls: ClassUrlMap[] = [];
 
     // populate a map of class name and cloud url
     projectEnv.classes.forEach((classInfo) => {
-        classUrlMap.push({
+        classUrls.push({
             name: classInfo.name,
             cloudUrl: classInfo.cloudUrl,
         });
     });
 
-    await writeSdk(language, `@genezio-sdk/${projectName}_${region}`, `1.0.0-${stage}`, sdkGeneratorResponse, classUrlMap, false, sdkPath);
+    await writeSdk({
+        language, 
+        packageName: `@genezio-sdk/${projectName}_${region}`,
+        packageVersion: `1.0.0-${stage}`,
+        sdkResponse: sdkGeneratorResponse,
+        classUrls,
+        publish: false,
+        installPackage: false,
+        outputPath: sdkPath});
 
     await Promise.all(
         sdkGeneratorResponse.files.map(async (file) => {

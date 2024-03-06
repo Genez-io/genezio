@@ -13,7 +13,8 @@ async function writeSdk(
     sdkResponse: SdkGeneratorResponse,
     classUrls: ClassUrlMap[],
     publish: boolean,
-    language: Language,
+    language: Language.js|Language.ts,
+    installPackage: boolean,
     outputPath: string|undefined): Promise<string> {
     await replaceUrlsInSdk(
         sdkResponse,
@@ -27,7 +28,14 @@ async function writeSdk(
     await deleteFolder(sdkPath);
     await writeSdkToDisk(sdkResponse, sdkPath);
     const packageJson = getNodeModulePackageJson(packageName, packageVersion);
-    await compileSdk(sdkPath, packageJson, language, publish, outputPath);
+
+    // If installPackage is true, we will bundle the SDK in a temp folder and we'll handle the installation from there 
+    // Otherwise, we will bundle the SDK in the outputPath folder and the user will have to install it manually
+    if (installPackage) {
+        await compileSdk(sdkPath, packageJson, language, publish);
+    } else {
+        await compileSdk(sdkPath, packageJson, language, publish, outputPath);
+    }
 
     return sdkPath;
 }
@@ -38,8 +46,9 @@ export async function writeSdkTs(
     sdkResponse: SdkGeneratorResponse,
     classUrls: ClassUrlMap[],
     publish: boolean,
+    installPackage: boolean,
     path: string|undefined): Promise<string> {
-    return await writeSdk(packageName, packageVersion, sdkResponse, classUrls, publish, Language.ts, path);
+    return await writeSdk(packageName, packageVersion, sdkResponse, classUrls, publish, Language.ts, installPackage, path);
 }
 
 export async function writeSdkJs(
@@ -48,8 +57,9 @@ export async function writeSdkJs(
     sdkResponse: SdkGeneratorResponse,
     classUrls: ClassUrlMap[],
     publish: boolean,
+    installPackage: boolean,
     path: string|undefined): Promise<string> {
-    return await writeSdk(projectName, projectRegion, sdkResponse, classUrls, publish, Language.js, path);
+    return await writeSdk(projectName, projectRegion, sdkResponse, classUrls, publish, Language.js, installPackage, path);
 }
 
 
