@@ -10,7 +10,6 @@ import {
 } from "../constants.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG, GENEZIO_NO_CLASSES_FOUND } from "../errors.js";
 import {
-    SdkTypeMetadata,
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
 } from "../generateSdk/generateSdkApi.js";
@@ -27,37 +26,35 @@ import {
     deleteFolder,
     getBundleFolderSizeLimit,
     readEnvironmentVariablesFile,
-    createLocalTempFolder,
     zipFile,
 } from "../utils/file.js";
 import { printAdaptiveLog, debugLogger, doAdaptiveLogAction } from "../utils/logging.js";
 import { GenezioCommand, reportSuccess } from "../utils/reporter.js";
-import { replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
 import { generateRandomSubdomain } from "../utils/yaml.js";
 import cliProgress from "cli-progress";
 import { YAMLBackend, YamlProjectConfiguration } from "../yamlProjectConfiguration/v2.js";
 import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter.js";
 import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter.js";
-import { CloudAdapter, GenezioCloudInput } from "../cloudAdapter/cloudAdapter.js";
+import { CloudAdapter, GenezioCloudInput, GenezioCloudOutput } from "../cloudAdapter/cloudAdapter.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { GenezioDeployOptions } from "../models/commandOptions.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import { setEnvironmentVariables } from "../requests/setEnvironmentVariables.js";
 import colors from "colors";
 import { getEnvironmentVariables } from "../requests/getEnvironmentVariables.js";
-import { getNodeModulePackageJson } from "../generateSdk/templates/packageJson.js";
 import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
-import { compileSdk } from "../generateSdk/utils/compileSdk.js";
 import { interruptLocalProcesses } from "../utils/localInterrupt.js";
 import { Status } from "../requests/models.js";
 import { bundle } from "../bundlers/utils.js";
 import { isDependencyVersionCompatible } from "../utils/dependencyChecker.js";
 import { YamlConfigurationIOController } from "../yamlProjectConfiguration/v2.js";
-import { Language, SdkType } from "../yamlProjectConfiguration/models.js";
+import { Language } from "../yamlProjectConfiguration/models.js";
 import { runScript } from "../utils/scripts.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../yamlProjectConfiguration/v2.js";
 import { getRandomCloudProvider, isProjectDeployed } from "../utils/abTesting.js";
+import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
+import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -266,24 +263,16 @@ export async function deployClasses(
     if (backend.classes.length === 0) {
         throw new Error(GENEZIO_NO_CLASSES_FOUND);
     }
-    let metadata: SdkTypeMetadata;
-    if (backend.sdk?.type === SdkType.folder) {
-        metadata = {
-            type: SdkType.folder,
-        };
-    } else {
-        metadata = {
-            type: SdkType.package,
-            projectName: configuration.name,
-            region: configuration.region,
-        };
+    let sdkLanguage: Language = Language.ts;
+    if (configuration.frontend && configuration.frontend.length > 0) {
+        sdkLanguage = configuration.frontend[0].language;
     }
 
     const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
-        metadata,
-        backend.language.name,
+        sdkLanguage,
         mapYamlClassToSdkClassConfiguration(backend.classes, backend.language.name, backend.path),
         backend.path,
+        /* packageName= */ `@genezio-sdk/${configuration.name}_${configuration.region}`,
     ).catch((error) => {
         // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
         if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
@@ -393,42 +382,16 @@ export async function deployClasses(
         stage: options.stage,
     });
 
-    await replaceUrlsInSdk(
-        sdkResponse,
-        result.classes.map((c) => ({
-            name: c.className,
-            cloudUrl: c.functionUrl,
-        })),
-    );
-
-    if (backend.sdk) {
-        await writeSdkToDisk(sdkResponse, backend.sdk.path);
-    } else if (backend.language.name === Language.ts || backend.language.name === Language.js) {
-        const localPath = await createLocalTempFolder(
-            `${projectConfiguration.name}-${projectConfiguration.region}`,
-        );
-        await writeSdkToDisk(sdkResponse, path.join(localPath, "sdk"));
-        const packageJson: string = getNodeModulePackageJson(
-            configuration.name,
-            configuration.region,
-            options.stage,
-        );
-        await compileSdk(path.join(localPath, "sdk"), packageJson, backend.language.name, true);
+    if (sdkResponse.files.length <= 0) {
+        log.info(colors.cyan("Your backend code was successfully deployed!"));
+        return
+    } else {
+       log.info(colors.cyan(
+           "Your backend code was deployed and the SDK was successfully generated",
+       ));
     }
-
-    const isMonoRepo = configuration.backend && configuration.frontend ? true : false;
-    reportSuccess(
-        result.classes,
-        sdkResponse,
-        GenezioCommand.deploy,
-        {
-            name: configuration.name,
-            region: configuration.region,
-            stage: options.stage,
-        },
-        !backend.sdk,
-        isMonoRepo,
-    );
+    await handleSdk(configuration, result, sdkResponse, options);
+    reportSuccess(result.classes);
 
     const projectId = result.classes[0].projectId;
     const projectEnvId = result.projectEnvId;
@@ -617,6 +580,39 @@ export async function deployFrontend(
     const cloudAdapter = getCloudAdapter(CloudProviderIdentifier.GENEZIO);
     const url = await cloudAdapter.deployFrontend(name, region, frontend, stage);
     return url;
+}
+
+async function handleSdk(configuration: YamlProjectConfiguration, result: GenezioCloudOutput, sdkResponse: SdkGeneratorResponse, options: GenezioDeployOptions) {
+    const frontends = configuration.frontend;
+    let sdkLanguage: Language = Language.ts;
+    let frontendPath: string | undefined; 
+    if (frontends && frontends.length > 0) {
+        sdkLanguage = frontends[0].language;
+        frontendPath = frontends[0].path;
+    } 
+
+    if (sdkLanguage) {
+        const classUrls = result.classes.map((c) => ({
+            name: c.className,
+            cloudUrl: c.functionUrl,
+        }))
+        await writeSdk({
+            language: sdkLanguage,
+            packageName: `@genezio-sdk/${configuration.name}_${configuration.region}`,
+            packageVersion: `1.0.0-${options.stage}`,
+            sdkResponse,
+            classUrls,
+            publish: true,
+            installPackage: true,
+            outputPath: frontendPath ? path.join(frontendPath, "sdk") : undefined,
+        });
+    }
+
+    reportSuccessForSdk(sdkLanguage, sdkResponse, GenezioCommand.deploy, {
+        name: configuration.name,
+        region: configuration.region,
+        stage: options.stage || "prod",
+    });
 }
 
 function getCloudAdapter(provider: string): CloudAdapter {

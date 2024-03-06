@@ -37,10 +37,10 @@ export async function compileSdk(
     packageJson: string,
     language: Language,
     publish: boolean,
-    outDir = "../genezio-sdk",
+    outDir?: string,
     overwriteIfExists = true,
 ) {
-    const genezioSdkPath = path.resolve(sdkPath, outDir);
+    const genezioSdkPath = outDir || path.resolve(sdkPath, "../genezio-sdk");
     // delete the old sdk
     if (overwriteIfExists) {
         if (fs.existsSync(genezioSdkPath)) {
@@ -62,7 +62,7 @@ export async function compileSdk(
     const require = createRequire(import.meta.url);
     const typescriptPath = path.resolve(require.resolve("typescript"));
     const cjsOptions = {
-        outDir: path.resolve(sdkPath, outDir, "cjs"),
+        outDir: path.resolve(genezioSdkPath, "cjs"),
         module: ts.ModuleKind.CommonJS,
         rootDir: sdkPath,
         allowJs: true,
@@ -76,7 +76,7 @@ export async function compileSdk(
         }),
     );
     const esmOptions = {
-        outDir: path.resolve(sdkPath, outDir, "esm"),
+        outDir: path.resolve(genezioSdkPath, "esm"),
         module: ts.ModuleKind.ESNext,
         rootDir: sdkPath,
         allowJs: true,
@@ -89,11 +89,12 @@ export async function compileSdk(
             typescriptPath,
         }),
     );
-    const modulePath = path.resolve(sdkPath, outDir);
+    const modulePath = genezioSdkPath;
     const writePackagePromise = writeToFile(modulePath, "package.json", packageJson, true);
     workers.push(writePackagePromise);
     await Promise.all(workers);
     if (publish === true) {
+        console.log("Publishing the SDK...");
         await packageManager.publish(modulePath);
     }
 }

@@ -7,7 +7,7 @@ import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
 import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import listProjects from "../requests/listProjects.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
-import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "../utils/sdk.js";
+import { ClassUrlMap } from "../utils/sdk.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import path from "path";
 import { SdkGeneratorClassesInfoInput, SdkGeneratorInput } from "../models/genezioModels.js";
@@ -15,20 +15,15 @@ import { mapDbAstToSdkGeneratorAst } from "../generateSdk/utils/mapDbAstToFullAs
 import { generateSdk } from "../generateSdk/sdkGeneratorHandler.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import inquirer from "inquirer";
-import { GenezioSdkOptions, SdkType, SourceType } from "../models/commandOptions.js";
-import { SdkType as SdkTypeModel } from "../yamlProjectConfiguration/models.js";
+import { GenezioSdkOptions, SourceType } from "../models/commandOptions.js";
 import {
-    SdkTypeMetadata,
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
 } from "../generateSdk/generateSdkApi.js";
-import { getPackageJsonSdkGenerator } from "../generateSdk/templates/packageJson.js";
-import { compileSdk } from "../generateSdk/utils/compileSdk.js";
-import { GenezioCommand } from "../utils/reporter.js";
 import colors from "colors";
-import { debugLogger } from "../utils/logging.js";
 import { deleteFile, deleteFolder } from "../utils/file.js";
 import { YamlConfigurationIOController } from "../yamlProjectConfiguration/v2.js";
+import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
 
 export async function generateSdkCommand(projectName: string, options: GenezioSdkOptions) {
     switch (options.source) {
@@ -48,9 +43,6 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
     }
 
     const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
-        {
-            type: SdkTypeModel.folder,
-        },
         options.language,
         mapYamlClassToSdkClassConfiguration(
             await scanClassesForDecorators({ path: process.cwd(), classes: [] }),
@@ -58,6 +50,7 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
             process.cwd(),
         ),
         options.output,
+        options.packageName,
     ).catch((error) => {
         // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
         if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
@@ -70,40 +63,29 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
 
         throw error;
     });
-
-    await replaceUrlsInSdk(
-        sdkResponse,
-        sdkResponse.files.map((c) => ({
+    
+    const classUrls = sdkResponse.files.map((c) => ({
             name: c.className,
             cloudUrl: url,
-        })),
+        }))
+    await writeSdk({
+        language: options.language,
+        packageName: options.packageName,
+        packageVersion: options.packageVersion,
+        sdkResponse,
+        classUrls,
+        publish: false,
+        installPackage: false,
+        outputPath: options.output}); 
+
+    log.info("Your SDK has been generated successfully in " + options.output);
+    log.info(
+        `You can now publish it to npm using ${colors.cyan(
+            `'npm publish'`,
+        )} in the sdk directory or use it locally in your project using ${colors.cyan(
+            `'npm link'`,
+        )}`,
     );
-
-    await writeSdkToDisk(sdkResponse, options.output);
-
-    if (options.type === SdkType.PACKAGE) {
-        debugLogger.debug("Sdk type is package");
-        const packageJson: string = getPackageJsonSdkGenerator(
-            "local-sdk",
-            options.region,
-            options.stage,
-            options.output,
-            GenezioCommand.local,
-        );
-        debugLogger.debug("Package json is: " + packageJson);
-        debugLogger.debug("Start Compiling sdk local");
-        await compileSdk(options.output, packageJson, options.language, false, "");
-        debugLogger.debug("Sdk compiled successfully");
-
-        log.info("Your SDK has been generated successfully in " + options.output);
-        log.info(
-            `You can now publish it to npm using ${colors.cyan(
-                `'npm publish'`,
-            )} in the sdk directory or use it locally in your project using ${colors.cyan(
-                `'npm link'`,
-            )}`,
-        );
-    }
 }
 
 export async function generateRemoteSdkCommand(projectName: string, options: GenezioSdkOptions) {
@@ -125,19 +107,14 @@ export async function generateRemoteSdkCommand(projectName: string, options: Gen
     }
 
     if (projectName) {
-        await generateRemoteSdkHandler(
-            language,
-            sdkPath,
-            projectName,
-            stage,
-            region,
-            options.type,
-        ).catch((error: AxiosError) => {
-            if (error.response?.status == 401) {
-                throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
-            }
-            throw error;
-        });
+        await generateRemoteSdkHandler(language, sdkPath, projectName, stage, region).catch(
+            (error: AxiosError) => {
+                if (error.response?.status == 401) {
+                    throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
+                }
+                throw error;
+            },
+        );
     } else {
         let config = options.config;
         // check if path ends in .genezio.yaml or else append it
@@ -201,24 +178,16 @@ export async function generateRemoteSdkCommand(projectName: string, options: Gen
         const name = configuration.name;
         const configurationRegion = configuration.region;
 
-        await generateRemoteSdkHandler(
-            language,
-            sdkPath,
-            name,
-            stage,
-            configurationRegion,
-            options.type,
-        );
+        await generateRemoteSdkHandler(language, sdkPath, name, stage, configurationRegion);
     }
 }
 
 async function generateRemoteSdkHandler(
-    language: string,
+    language: Language,
     sdkPath: string,
     projectName: string,
     stage: string,
     region: string,
-    sdkType: SdkType,
 ) {
     // get all project classes
     const projects = await listProjects();
@@ -244,21 +213,7 @@ async function generateRemoteSdkHandler(
         );
     }
 
-    let metadata: SdkTypeMetadata;
-    if (sdkType === SdkType.PACKAGE) {
-        metadata = {
-            type: SdkTypeModel.package,
-            projectName,
-            region,
-        };
-    } else {
-        metadata = {
-            type: SdkTypeModel.folder,
-        };
-    }
-
     const sdkGeneratorInput: SdkGeneratorInput = {
-        sdkTypeMetadata: metadata,
         classesInfo: projectEnv.classes.map(
             (c): SdkGeneratorClassesInfoInput => ({
                 program: mapDbAstToSdkGeneratorAst(c.ast),
@@ -272,9 +227,8 @@ async function generateRemoteSdkHandler(
                 fileName: path.basename(c.ast.path),
             }),
         ),
-        sdk: {
-            language: language as Language,
-        },
+        language: language as Language,
+        packageName: `@genezio-sdk/${projectName}_${region}`,
     };
 
     const sdkGeneratorOutput = await generateSdk(sdkGeneratorInput, undefined);
@@ -285,66 +239,45 @@ async function generateRemoteSdkHandler(
     };
 
     // replace the placeholder urls in the sdk with the actual cloud urls
-    const classUrlMap: ClassUrlMap[] = [];
+    const classUrls: ClassUrlMap[] = [];
 
     // populate a map of class name and cloud url
     projectEnv.classes.forEach((classInfo) => {
-        classUrlMap.push({
+        classUrls.push({
             name: classInfo.name,
             cloudUrl: classInfo.cloudUrl,
         });
     });
 
-    await replaceUrlsInSdk(sdkGeneratorResponse, classUrlMap);
+    await writeSdk({
+        language, 
+        packageName: `@genezio-sdk/${projectName}_${region}`,
+        packageVersion: `1.0.0-${stage}`,
+        sdkResponse: sdkGeneratorResponse,
+        classUrls,
+        publish: false,
+        installPackage: false,
+        outputPath: sdkPath});
 
-    // write the sdk to disk in the specified path
-    await writeSdkToDisk(sdkGeneratorResponse, sdkPath);
+    await Promise.all(
+        sdkGeneratorResponse.files.map(async (file) => {
+            // delete the files and its parent directories
 
-    if (sdkType === SdkType.PACKAGE) {
-        debugLogger.debug("Sdk type is package for remote sdk");
-        const packageJson: string = getPackageJsonSdkGenerator(
-            projectName,
-            region,
-            stage,
-            sdkPath,
-            GenezioCommand.deploy,
-        );
-        debugLogger.debug("Package json is: " + packageJson);
-        debugLogger.debug("Start Compiling sdk");
-        await compileSdk(
-            sdkPath,
-            packageJson,
-            language as Language,
-            /* publish= */ false,
-            /* outDir= */ "",
-            /* overwriteIfExists= */ false,
-        );
-        debugLogger.debug("Sdk compiled successfully");
-
-        debugLogger.debug("Start sdk cleanup");
-
-        await Promise.all(
-            sdkGeneratorResponse.files.map(async (file) => {
-                // delete the files and its parent directories
-
-                await deleteFile(path.join(sdkPath, file.path));
-                const firstParentDir = path.dirname(file.path).split(path.sep)[0];
-                if (firstParentDir && firstParentDir !== ".") {
-                    await deleteFolder(path.join(sdkPath, firstParentDir));
-                }
-            }),
-        );
-    }
+            await deleteFile(path.join(sdkPath, file.path));
+            const firstParentDir = path.dirname(file.path).split(path.sep)[0];
+            if (firstParentDir && firstParentDir !== ".") {
+                await deleteFolder(path.join(sdkPath, firstParentDir));
+            }
+        }),
+    );
 
     log.info("Your SDK has been generated successfully in " + sdkPath + "");
 
-    if (sdkType === SdkType.PACKAGE) {
-        log.info(
-            `You can now publish it to npm using ${colors.cyan(
-                `'npm publish'`,
-            )} in the sdk directory or use it locally in your project using ${colors.cyan(
-                `'npm link'`,
-            )}`,
-        );
-    }
+    log.info(
+        `You can now publish it to npm using ${colors.cyan(
+            `'npm publish'`,
+        )} in the sdk directory or use it locally in your project using ${colors.cyan(
+            `'npm link'`,
+        )}`,
+    );
 }
