@@ -634,7 +634,6 @@ async function handleSdk(
 
 function getCloudAdapter(provider: string): CloudAdapter {
     switch (provider) {
-        case CloudProviderIdentifier.AWS:
         case CloudProviderIdentifier.GENEZIO:
         case CloudProviderIdentifier.CAPYBARA:
             return new GenezioCloudAdapter();

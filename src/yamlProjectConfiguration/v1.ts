@@ -3,13 +3,21 @@ import yaml from "yaml";
 import { getFileDetails, writeToFile } from "../utils/file.js";
 import { regions } from "../utils/configs.js";
 import { isValidCron } from "cron-validator";
-import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { DEFAULT_NODE_RUNTIME, NodeOptions, supportedNodeRuntimes } from "../models/nodeRuntime.js";
 import zod from "zod";
 import log from "loglevel";
 import { zodFormatError } from "../errors.js";
 import { Language, TriggerType } from "./models.js";
 import { PackageManagerType } from "../packageManagers/packageManager.js";
+
+enum CloudProviderIdentifier {
+    // This was depricated in Genezio YAML v2, so we replicated the enum here.
+    AWS = "aws",
+    GENEZIO = "genezio",
+    SELF_HOSTED_AWS = "selfHostedAws",
+    CAPYBARA = "capybara",
+    CAPYBARA_LINUX = "capybaraLinux",
+}
 
 export function getTriggerTypeFromString(string: string): TriggerType {
     if (string && !TriggerType[string as keyof typeof TriggerType]) {
