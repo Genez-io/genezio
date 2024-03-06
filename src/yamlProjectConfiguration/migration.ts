@@ -66,7 +66,7 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
                           packageManager: v1Config.packageManager,
                       },
                       cloudProvider:
-                          // AWS was depricared in Genezio YAML v2
+                          // AWS was deprecated in Genezio YAML v2
                           v1Config.cloudProvider === "aws"
                               ? CloudProviderIdentifier.GENEZIO
                               : (v1Config.cloudProvider as CloudProviderIdentifier),
