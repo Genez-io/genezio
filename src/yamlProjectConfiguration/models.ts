@@ -14,7 +14,3 @@ export enum TriggerType {
     http = "http",
 }
 
-export enum SdkType {
-    folder = "folder",
-    package = "package",
-}

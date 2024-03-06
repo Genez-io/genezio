@@ -81,12 +81,6 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
                               .map((s) => s.trim()),
                           local: v1Config.scripts?.preStartLocal?.split("&&").map((s) => s.trim()),
                       },
-                      sdk: v1Config.sdk
-                          ? {
-                                path: v1Config.sdk.path,
-                                language: v1Config.sdk.language as Language,
-                            }
-                          : undefined,
                   }
                 : undefined,
             frontend:

@@ -4,7 +4,7 @@ import nativeFs from "fs";
 import { IFs } from "memfs";
 import { regions } from "../utils/configs.js";
 import { zodFormatError } from "../errors.js";
-import { Language, SdkType } from "./models.js";
+import { Language } from "./models.js";
 import { DEFAULT_NODE_RUNTIME, supportedNodeRuntimes } from "../models/nodeRuntime.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { PackageManagerType } from "../packageManagers/packageManager.js";
@@ -96,13 +96,6 @@ function parseGenezioConfig(config: unknown) {
             })
             .optional(),
         classes: zod.array(classSchema).optional(),
-        sdk: zod
-            .object({
-                type: zod.nativeEnum(SdkType).optional(),
-                path: zod.string(),
-                language: zod.nativeEnum(Language),
-            })
-            .optional(),
     });
 
     const frontendSchema = zod.object({
@@ -205,6 +198,10 @@ export class YamlConfigurationIOController {
     ): Promise<YamlProjectConfiguration | RawYamlProjectConfiguration> {
         const lastModified = this.fs.statSync(this.filePath).mtime;
         if (this.cachedConfig && cache && this.latestRead && this.latestRead >= lastModified) {
+            if (fillDefaults) {
+                return fillDefaultGenezioConfig(this.cachedConfig);
+            }
+
             return structuredClone(this.cachedConfig);
         }
 

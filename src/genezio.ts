@@ -396,6 +396,8 @@ program
         "Show debug logs to console. Possible levels: trace/debug/info/warn/error.",
     )
     .option("--language <language>", "Language of the SDK.", "ts")
+    .option("--packageName <packageName>", "The name of the package.")
+    .option("--packageVersion <packageVersion>", "The version of the package.", "1.0.0")
     .addOption(
         new Option("--source <source>", "Where the SDK should be generated from.")
             .choices(["local", "remote"])
@@ -414,20 +416,17 @@ program
     .option("--stage <stage>", "Stage of the project.", "prod")
     .option("--url <url>", "The url of the server.")
     .option("--region <region>", "Region where your project is deployed.", "us-east-1")
-    .addOption(
-        new Option(
-            "--type <type>",
-            "Type of the SDK. Package will generate a npm package and classic will generate a classic SDK with typescript files.",
-        )
-            .choices(["package", "classic"])
-            .default("classic"),
-    )
     .summary("Generate an SDK for a deployed or local project.")
     .description(
         "Generate an SDK corresponding to a deployed or local project.\n\nProvide the project name to generate an SDK for a deployed project.\nEx: genezio sdk my-project --stage prod --region us-east-1\n\nProvide the path to the genezio.yaml on your disk to load project details (name and region) from that file instead of command arguments.\nEx: genezio sdk --source ../my-project",
     )
     .action(async (projectName = "", options: GenezioSdkOptions) => {
         setDebuggingLoggerLogLevel(options.logLevel);
+
+        if ((options.language === "ts" || options.language === "js") && !options.packageName) {
+            log.error("The --packageName option is required for TypeScript and JavaScript SDKs.");
+            exit(1);
+        }
 
         await generateSdkCommand(projectName, options).catch(async (error) => {
             log.error(error.message);

@@ -73,17 +73,14 @@ export async function generateSdk(
     pluginsImported.push(KotlinSdkGenerator);
     pluginsImported.push(GoSdkGenerator);
 
-    const sdk = sdkGeneratorInput.sdk;
-    if (!sdk) {
-        throw new Error(`SDK language not specified`);
-    }
+    const language = sdkGeneratorInput.language;
 
     const sdkGeneratorElem = pluginsImported.find((plugin) => {
-        return plugin.supportedLanguages.includes(sdk.language ?? "");
+        return plugin.supportedLanguages.includes(language ?? "");
     });
 
     if (!sdkGeneratorElem) {
-        throw new Error(`SDK language(${sdk.language}) not supported`);
+        throw new Error(`SDK language(${language}) not supported`);
     }
 
     const sdkGeneratorClass = new sdkGeneratorElem.SdkGenerator();
