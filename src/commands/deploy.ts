@@ -506,10 +506,11 @@ export async function deployFrontend(
         return;
     }
 
-    const success = await doAdaptiveLogAction(`Building frontend ${index}`, async () => {
-        return await runScript(frontend.scripts?.build, frontend.path);
-    });
-    if (!success) {
+    try {
+        await doAdaptiveLogAction(`Building frontend ${index}`, async () => {
+            return await runScript(frontend.scripts?.build, frontend.path);
+        });
+    } catch (error) {
         log.info(`Skipping frontend ${index} deployment because the build script failed.`);
         return;
     }
