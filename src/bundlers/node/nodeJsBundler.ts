@@ -463,8 +463,7 @@ export class NodeJsBundler implements BundlerInterface {
         ]);
 
         if (isDeployedToCluster) {
-            debugLogger.log("Writing docker file for container packaging");
-
+            debugLogger.log("Writing docker file for container packaging and building image");
             // build image
             const dockerBuildProcess = spawnSync(
                 "docker",
@@ -477,13 +476,12 @@ export class NodeJsBundler implements BundlerInterface {
                     input.projectConfiguration.name + "-" + input.configuration.name.toLowerCase(),
                     temporaryFolder || ".",
                 ],
-                { stdio: "inherit", cwd: temporaryFolder },
+                { cwd: temporaryFolder },
             );
             if (dockerBuildProcess.status !== 0) {
-                log.error(dockerBuildProcess.stderr);
-                log.error(dockerBuildProcess.stdout);
-                throw new Error("Docker build failed");
+                throw new Error("Container image build failed");
             }
+            debugLogger.log("Container image successfully built");
         }
         return {
             ...input,

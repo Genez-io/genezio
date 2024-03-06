@@ -17,6 +17,7 @@ enum CloudProviderIdentifier {
     SELF_HOSTED_AWS = "selfHostedAws",
     CAPYBARA = "capybara",
     CAPYBARA_LINUX = "capybaraLinux",
+    CLUSTER = "cluster",
 }
 
 export function getTriggerTypeFromString(string: string): TriggerType {

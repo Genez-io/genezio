@@ -1,6 +1,6 @@
 import log from "loglevel";
 import { ProjectConfiguration } from "../../models/projectConfiguration.js";
-import { YamlFrontend } from "../../models/yamlProjectConfiguration.js";
+import { YamlFrontend } from "../../yamlProjectConfiguration/v2.js";
 import {
     CloudAdapter,
     CloudAdapterOptions,
@@ -8,7 +8,10 @@ import {
     GenezioCloudOutput,
 } from "../cloudAdapter.js";
 import { debugLogger } from "../../utils/logging.js";
-import { getContainerRegistryCreds } from "../../requests/getContainerRegistryCreds.js";
+import {
+    getContainerRegistry,
+    getContainerRegistryCredentials,
+} from "../../requests/containerRegistry.js";
 import { SpawnSyncReturns, spawnSync } from "child_process";
 import { deployRequest } from "../../requests/deployCode.js";
 import { getAuthToken } from "../../utils/accounts.js";
@@ -35,35 +38,27 @@ export class ClusterCloudAdapter implements CloudAdapter {
 
         // Login to container repository
         let dockerlogin: SpawnSyncReturns<Buffer> | null = null;
-
-        const dockerPasswd = `HRBR${((await getAuthToken()) || "").substring(0, 64)}`;
+        const containerRegistryInfo = await getContainerRegistry();
+        const containerRegistryCreds = await getContainerRegistryCredentials();
         const promisesDeploy = input.map(async (element) => {
             debugLogger.debug(`Get the registry push data for class name ${element.name}.`);
-            const registryCreds = await getContainerRegistryCreds(
-                projectConfiguration.name,
-                element.name,
-            );
 
             if (dockerlogin === null) {
-                spawnSync("docker", ["logout", registryCreds.repository], {
-                    stdio: "inherit",
-                });
+                spawnSync("docker", ["logout", containerRegistryInfo.repository]);
 
-                dockerlogin = spawnSync(
-                    "docker",
-                    [
-                        "login",
-                        "-u",
-                        registryCreds.username,
-                        "-p",
-                        dockerPasswd,
-                        registryCreds.repository,
-                    ],
-                    { stdio: "inherit" },
-                );
+                dockerlogin = spawnSync("docker", [
+                    "login",
+                    "-u",
+                    containerRegistryInfo.username,
+                    "-p",
+                    containerRegistryCreds.password,
+                    containerRegistryInfo.repository,
+                ]);
 
                 if (dockerlogin.status !== 0) {
-                    throw new Error(`Error during docker login. Exit code: ${dockerlogin.status}`);
+                    throw new Error(
+                        `Error during container repository login. Exit code: ${dockerlogin.status}`,
+                    );
                 }
             }
 
@@ -73,27 +68,29 @@ export class ClusterCloudAdapter implements CloudAdapter {
             // TODO: discuss with team about timestamp based tagging/versioning of images
             const timestamp = Date.now().toString();
             const tag =
-                `${registryCreds.repository}/${registryCreds.username}/${element.name}:${timestamp}`.toLowerCase();
+                `${containerRegistryInfo.repository}/${containerRegistryInfo.username}/${projectConfiguration.name}/${element.name}:${timestamp}`.toLowerCase();
 
             projectConfiguration.classes.find((c) => c.name === element.name)!.options = {
                 ...projectConfiguration.classes.find((c) => c.name === element.name)!.options,
                 timestamp,
             };
 
-            const dockerTag = spawnSync(
-                "docker",
-                ["tag", `${projectConfiguration.name}-${element.name}`.toLowerCase(), tag],
-
-                { stdio: "inherit" },
-            );
+            const dockerTag = spawnSync("docker", [
+                "tag",
+                `${projectConfiguration.name}-${element.name}`.toLowerCase(),
+                tag,
+            ]);
             if (dockerTag.status !== 0) {
-                throw new Error(`Error during docker tag. Exit code: ${dockerTag.status}`);
+                throw new Error(`Error during container image tag. Exit code: ${dockerTag.status}`);
             }
 
             // push image
-            const dockerPush = spawnSync("docker", ["push", tag], { stdio: "inherit" });
+            debugLogger.debug(`Pushing the container image for ${element.name}...`);
+            const dockerPush = spawnSync("docker", ["push", tag]);
             if (dockerPush.status !== 0) {
-                throw new Error(`Error during docker push. Exit code: ${dockerPush.status}`);
+                throw new Error(
+                    `Error during container image push. Exit code: ${dockerPush.status}`,
+                );
             }
             debugLogger.debug(`Done uploading the container image for ${element.name}.`);
         });
