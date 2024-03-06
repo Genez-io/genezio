@@ -113,14 +113,11 @@ export async function printUninformativeLog(controller: AbortController): Promis
         exitLoop = true;
     });
 
-    // spinner.start();
-
     while (!exitLoop) {
         await delay(250);
         waiting += 250;
 
         if (waiting == 5000) {
-            // spinner.stop(true);
             spinning = false;
             printAdaptiveLog(message, "start");
             firstMessage = true;
@@ -134,7 +131,6 @@ export async function printUninformativeLog(controller: AbortController): Promis
     }
 
     if (spinning) {
-        // spinner.stop(true);
         printAdaptiveLog(finalMessage, "start");
         return finalMessage;
     }
