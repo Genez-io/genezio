@@ -94,8 +94,13 @@ export async function prepareLocalBackendEnvironment(
         const backend = yamlProjectConfiguration.backend;
         const frontend = yamlProjectConfiguration.frontend;
         let sdkLanguage: Language = Language.ts;
-        if (frontend && frontend.length > 0) {
-            sdkLanguage = frontend[0].language;
+        if (frontend) {
+            for (const f of frontend) {
+                if (f.language) {
+                    sdkLanguage = f.language;
+                    break;
+                }
+            }
         }
         if (!backend) {
             throw new Error("No backend component found in the genezio.yaml file.");
@@ -779,7 +784,7 @@ async function handleSdk(
     let frontendPath: string | undefined = undefined;
 
     if (frontends && frontends.length > 0) {
-        sdkLanguage = frontends[0].language;
+        sdkLanguage = frontends[0].language || Language.ts;
         frontendPath = frontends[0].path;
     }
 

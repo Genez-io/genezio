@@ -243,8 +243,13 @@ export async function deployClasses(
         throw new Error(GENEZIO_NO_CLASSES_FOUND);
     }
     let sdkLanguage: Language = Language.ts;
-    if (configuration.frontend && configuration.frontend.length > 0) {
-        sdkLanguage = configuration.frontend[0].language;
+    if (configuration.frontend) {
+        for (const frontend of configuration.frontend) {
+            if (frontend.language) {
+                sdkLanguage = frontend.language;
+                break;
+            }
+        }
     }
 
     const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
@@ -501,6 +506,14 @@ export async function deployFrontend(
         return;
     }
 
+    const success = await doAdaptiveLogAction(`Building frontend ${index}`, async () => {
+        return await runScript(frontend.scripts?.build, frontend.path);
+    });
+    if (!success) {
+        log.info(`Skipping frontend ${index} deployment because the build script failed.`);
+        return;
+    }
+
     // check if subdomain contains only numbers, letters and hyphens
     if (frontend.subdomain && !frontend.subdomain.match(/^[a-z0-9-]+$/)) {
         throw new Error(`The subdomain can only contain letters, numbers and hyphens.`);
@@ -574,7 +587,7 @@ async function handleSdk(
     let sdkLanguage: Language = Language.ts;
     let frontendPath: string | undefined;
     if (frontends && frontends.length > 0) {
-        sdkLanguage = frontends[0].language;
+        sdkLanguage = frontends[0].language || Language.ts;
         frontendPath = frontends[0].path;
     }
 
