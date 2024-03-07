@@ -1,4 +1,3 @@
-import { GenezioCloudOutput } from "../../cloudAdapter/cloudAdapter.js";
 import { SdkGeneratorResponse } from "../../models/sdkGeneratorResponse.js";
 import { ClassUrlMap } from "../../utils/sdk.js";
 import { Language } from "../../yamlProjectConfiguration/models.js";
@@ -12,8 +11,6 @@ type WriteSdkInput = {
     packageName: string;
     // The version of the package or undefined if it is not defined. Defaults to 1.0.0-<stage>
     packageVersion: string | undefined;
-    //
-    cloudOutput: GenezioCloudOutput;
     // The generated SDK
     sdkResponse: SdkGeneratorResponse;
     // A map between class names and their cloud URLs

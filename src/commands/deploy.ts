@@ -610,7 +610,6 @@ async function handleSdk(
         }));
         await writeSdk({
             language: sdkLanguage,
-            result,
             packageName: `@genezio-sdk/${configuration.name}`,
             packageVersion: `1.0.0-${options.stage}`,
             sdkResponse,
