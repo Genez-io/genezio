@@ -47,14 +47,14 @@ import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBu
 import inquirer, { Answers } from "inquirer";
 import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
 import { exit } from "process";
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 import { interruptLocalPath } from "../utils/localInterrupt.js";
 import {
     AwsApiGatewayRequest,
     CloudProviderIdentifier,
     LambdaResponse,
 } from "../models/cloudProviderIdentifier.js";
-import { GoBundler } from "../bundlers/go/localGoBundler.js";
+import { LocalGoBundler } from "../bundlers/go/localGoBundler.js";
 import { importServiceEnvVariables } from "../utils/servicesEnvVariables.js";
 import { isDependencyVersionCompatible } from "../utils/dependencyChecker.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
@@ -121,7 +121,7 @@ export async function prepareLocalBackendEnvironment(
             backend.path,
             /* packageName= */ `@genezio-sdk/${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
         ).catch((error) => {
-            debugLogger.log("An error occurred", error);
+            debugLogger.debug("An error occurred", error);
             if (error.code === "ENOENT") {
                 log.error(
                     `The file ${error.path} does not exist. Please check your genezio.yaml configuration and make sure that all the file paths are correct.`,
@@ -203,17 +203,15 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             exit(1);
         }
     }
-    const success = await doAdaptiveLogAction("Running backend local scripts", async () => {
-        return await runScript(backendConfiguration.scripts?.local, backendConfiguration.path);
-    });
-    if (!success) {
+    await doAdaptiveLogAction("Running backend local scripts", async () => {
+        await runScript(backendConfiguration.scripts?.local, backendConfiguration.path);
+    }).catch(async (error) => {
         await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_PRE_START_LOCAL_SCRIPT_ERROR,
             commandOptions: JSON.stringify(options),
         });
-        log.error("Backend `deploy` script failed.");
-        exit(1);
-    }
+        throw error;
+    });
 
     // Check if a deployment is in progress and if it is, stop the local environment
     chokidar.watch(interruptLocalPath, { ignoreInitial: true }).on("all", async () => {
@@ -387,7 +385,7 @@ async function startProcesses(
         }
         const ast = astClass.program;
 
-        debugLogger.log("Start bundling...");
+        debugLogger.debug("Start bundling...");
         const tmpFolder = await createTemporaryFolder(`${classInfo.name}-${hash(classInfo.path)}`);
         const bundlerOutput = await bundler.bundle({
             projectConfiguration,
@@ -461,7 +459,7 @@ function getBundler(classConfiguration: ClassConfiguration): BundlerInterface | 
             break;
         }
         case "go": {
-            bundler = new GoBundler();
+            bundler = new LocalGoBundler();
             break;
         }
         default: {

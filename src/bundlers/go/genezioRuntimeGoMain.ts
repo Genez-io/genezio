@@ -8,17 +8,21 @@ package main
 
 import (
 	"encoding/json"
-    "encoding/base64"
+	"net/http"
+    "io"
     "errors"
-    "context"
     "path"
+    "strconv"
+    "strings"
+    "time"
     "github.com/Genez-io/genezio_types"
-    "github.com/aws/aws-lambda-go/lambda"
 
     {{#imports}}
     {{#named}}{{name}} {{/named}}"{{{path}}}"
     {{/imports}}
 )
+
+type requestHandler string
 
 type RequestContext struct {
     TimeEpoch int64 \`json:"timeEpoch"\`
@@ -29,16 +33,6 @@ type RequestContext struct {
 		UserAgent string \`json:"userAgent"\`
 		SourceIp  string \`json:"sourceIp"\`
     } \`json:"http"\`
-}
-
-type Event struct {
-	Body string \`json:"body"\`
-    Headers map[string]string \`json:"headers"\`
-    GenezioEventType string \`json:"genezioEventType,omitempty"\`
-    MethodName string \`json:"methodName,omitempty"\`
-    RequestContext RequestContext \`json:"requestContext,omitempty"\`
-    QueryStringParameters map[string]string \`json:"queryStringParameters,omitempty"\`
-    IsBase64Encoded bool \`json:"isBase64Encoded,omitempty"\`
 }
 
 type EventBody struct {
@@ -80,11 +74,12 @@ const (
     JsonRpcMethod MethodType = "jsonrpc"
 )
 
-func sendError(err error, methodType MethodType) *Response {
+func sendError(w http.ResponseWriter, err error, methodType MethodType) {
     genezioError := make(map[string]interface{})
     byteError, error := json.Marshal(err)
     if error != nil {
-        return nil
+        http.Error(w, error.Error(), http.StatusInternalServerError)
+        return
     }
     json.Unmarshal(byteError, &genezioError)
 	var responseError ResponseBodyError
@@ -102,9 +97,10 @@ func sendError(err error, methodType MethodType) *Response {
     }
     responseErrorByte, err := json.Marshal(responseError)
     if err != nil {
-        return nil
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
     }
-	response := &Response{
+	response := Response{
 		StatusCode: "200",
 		Body:       string(responseErrorByte),
 		Headers: map[string]string{
@@ -112,97 +108,110 @@ func sendError(err error, methodType MethodType) *Response {
 			"X-Powered-By": "genezio",
 		},
 	}
-    return response
+	responseByte, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	io.WriteString(w, string(responseByte))
 }
 
-func handleRequest(context context.Context, event *Event) (*Response, error) {
-	var body EventBody
-	var responseBody ResponseBody
+func (g requestHandler) HandleRequest(w http.ResponseWriter, r *http.Request) {
+    var body EventBody
+    var responseBody ResponseBody
+    var err error
 
-	class := {{class.packageName}}.New()
+    defer r.Body.Close()
 
-    var isJsonRpcRequest bool
+    class := {{class.packageName}}.New()
+    eventBody, _ := io.ReadAll(r.Body)
 
-    eventBody := []byte(event.Body)
+    isJsonRpcRequest := false
+
     // Decode the request body into struct and check for errors
     bodyUnmarshallError := json.Unmarshal(eventBody, &body)
     if bodyUnmarshallError == nil && body.Jsonrpc == "2.0" {
         isJsonRpcRequest = true
     }
 
-    if event.GenezioEventType == "cron" {
-        methodName := event.MethodName
-        switch methodName {
-        {{#cronMethods}}
-        case "{{name}}":
-            err := class.{{name}}()
-            if err != nil {
-                errorResponse := sendError(err, CronMethod)
-                return errorResponse, nil
-            }
-        {{/cronMethods}}
-        default:
-            errorResponse := sendError(errors.New("Cron method not found"), CronMethod)
-            return errorResponse, nil
+    if !isJsonRpcRequest {
+        headers := map[string]string{}
+        for name, values := range r.Header {
+            headers[name] = strings.Join(values[:], ", ")
         }
-    } else if !isJsonRpcRequest {
+
+        params := map[string]string{}
+        query := r.URL.Query()
+        for name, values := range query {
+            params[name] = strings.Join(values[:], ", ")
+        }
+
         genezioRequest := genezio_types.GenezioHttpRequest{
-            Headers: event.Headers,
-            QueryStringParameters: &event.QueryStringParameters,
-            TimeEpoch: event.RequestContext.TimeEpoch,
-            Http: event.RequestContext.Http,
+            Headers: headers,
+            QueryStringParameters: &params,
+            TimeEpoch: time.Now().UnixMilli(),
+            Http: struct {
+                Method    string \`json:"method"\`
+                Path      string \`json:"path"\`
+                Protocol  string \`json:"protocol"\`
+                UserAgent string \`json:"userAgent"\`
+                SourceIp  string \`json:"sourceIp"\`
+            } {
+                Method: r.Method,
+                Path: r.URL.Path,
+                Protocol: r.Proto,
+                UserAgent: r.UserAgent(),
+                SourceIp: r.RemoteAddr,
+            },
+            RawBody: string(eventBody),
         }
-        if event.IsBase64Encoded {
-            bodyDecoded, err := base64.StdEncoding.DecodeString(event.Body)
-            if err != nil {
-                errorResponse := sendError(err, HttpMethod)
-                return errorResponse, nil
-            }
-            genezioRequest.Body = string(bodyDecoded)
-        } else if bodyUnmarshallError != nil {
-            genezioRequest.Body = event.Body
+        var jsonBody interface{}
+        err = json.Unmarshal(eventBody, &jsonBody)
+        if err != nil {
+            genezioRequest.Body = genezioRequest.RawBody
         } else {
-            var mapBody map[string]interface{}
-            json.Unmarshal(eventBody, &mapBody)
-            genezioRequest.Body = mapBody
+            genezioRequest.Body = jsonBody
         }
-        methodName := path.Base(event.RequestContext.Http.Path)
+        methodName := path.Base(r.URL.Path)
+        var result *genezio_types.GenezioHttpResponse
+
         switch methodName {
         {{#httpMethods}}
         case "{{name}}":
-            result, err := class.{{name}}(genezioRequest)
+            result, err = class.{{name}}(genezioRequest)
             if err != nil {
-                errorResponse := sendError(err, HttpMethod)
-                return errorResponse, nil
+                sendError(w, err, HttpMethod)
+                return
             }
-            responseBody, err := json.Marshal(result.Body)
-            if err != nil {
-                errorResponse := sendError(err, HttpMethod)
-                return errorResponse, nil
-            }
-            var responseHeaders map[string]string
-            if result.Headers != nil {
-                responseHeaders = *result.Headers
-            }
-            response := &Response{
-                StatusCode: result.StatusCode,
-                Body:       string(responseBody),
-                Headers:    responseHeaders,
-            }
-            return response, nil
         {{/httpMethods}}
         default:
-            errorResponse := sendError(errors.New("Http method not found"), HttpMethod)
-            return errorResponse, nil
+            sendError(w, errors.New("http method not found"), HttpMethod)
+            return
         }
+
+        strBody, ok := result.Body.(string)
+        if !ok {
+            resultBody, err := json.Marshal(result.Body)
+            if err != nil {
+                sendError(w, err, HttpMethod)
+                return
+            }
+            strBody = string(resultBody)
+            w.Header().Set("Content-Type", "application/json")
+        }
+        if result.Headers != nil {
+            for name, value := range *result.Headers {
+                w.Header().Set(name, value)
+            }
+        }
+        sts, err := strconv.Atoi(result.StatusCode)
+        if err == nil {
+                w.WriteHeader(sts)
+        }
+        io.WriteString(w, strBody)
+        return
     } else {
-        eventBody := []byte(event.Body)
-        // Decode the request body into struct and check for errors
-        err := json.Unmarshal(eventBody, &body)
-        if err != nil {
-            errorResponse := sendError(err, JsonRpcMethod)
-            return errorResponse, nil
-        }
         // Call the appropriate method
         switch body.Method {
         {{#jsonRpcMethods}}
@@ -212,8 +221,8 @@ func handleRequest(context context.Context, event *Event) (*Response, error) {
             {{/parameters}}
             {{^isVoid}}result, {{/isVoid}}err {{^isVoid}}:{{/isVoid}}= class.{{name}}({{#parameters}}param{{index}}{{^last}}, {{/last}}{{/parameters}})
             if err != nil {
-                errorResponse := sendError(err, JsonRpcMethod)
-                return errorResponse, nil
+                sendError(w, err, JsonRpcMethod)
+                return
             }
             {{^isVoid}}
             responseBody.Result = result
@@ -223,26 +232,25 @@ func handleRequest(context context.Context, event *Event) (*Response, error) {
         case "{{class.name}}.{{name}}":
             err := class.{{name}}()
             if err != nil {
-                errorResponse := sendError(err, JsonRpcMethod)
-                return errorResponse, nil
+                sendError(w, err, JsonRpcMethod)
+                return
             }
         {{/cronMethods}}
         default:
-            errorResponse := sendError(errors.New("Method not found"), JsonRpcMethod)
-            return errorResponse, nil
+            sendError(w, errors.New("method not found"), JsonRpcMethod)
+            return
         }
+        responseBody.Id = body.Id
+        responseBody.Jsonrpc = body.Jsonrpc
     }
-
-	responseBody.Id = body.Id
-	responseBody.Jsonrpc = body.Jsonrpc
 
     bodyString, err := json.Marshal(responseBody)
     if err != nil {
-        errorResponse := sendError(err, JsonRpcMethod)
-        return errorResponse, nil
+        sendError(w, err, JsonRpcMethod)
+        return
     }
 
-	response := &Response{
+	response := Response{
         StatusCode: "200",
 		Body:       string(bodyString),
 		Headers: map[string]string{
@@ -250,10 +258,17 @@ func handleRequest(context context.Context, event *Event) (*Response, error) {
 		},
 	}
 
-    return response, nil
+    // Encode the struct into JSON and check for errors
+	responseByte, err := json.Marshal(response)
+	if err != nil {
+        sendError(w, err, JsonRpcMethod)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+	io.WriteString(w, string(responseByte))
 }
 
-func main() {
-    lambda.Start(handleRequest)
-}
+// exported
+var RequestHandler requestHandler
 `;

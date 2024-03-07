@@ -1,8 +1,6 @@
 import inquirer from "inquirer";
 import { YamlProjectConfiguration as v1 } from "./v1.js";
 import { YamlMethod, RawYamlProjectConfiguration as v2 } from "./v2.js";
-import { exit } from "process";
-import log from "loglevel";
 import { Language } from "./models.js";
 import path from "path";
 import { scanClassesForDecorators } from "../utils/configuration.js";
@@ -22,8 +20,7 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
         });
         if (!migrate) {
             // TODO: Add migration article link
-            log.error("genezio >= 1.0.0 needs a `genezio.yaml` file with version 2");
-            exit(0);
+            throw new Error("genezio >= 1.0.0 needs a `genezio.yaml` file with version 2");
         }
 
         let frontendPath = undefined,

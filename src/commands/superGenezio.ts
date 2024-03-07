@@ -12,7 +12,7 @@ import {
     GenezioLocalOptions,
 } from "../models/commandOptions.js";
 import { askCreateOptions } from "./create/interactive.js";
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 import currentGenezioVersion from "../utils/version.js";
 import { createCommand } from "./create/create.js";
 

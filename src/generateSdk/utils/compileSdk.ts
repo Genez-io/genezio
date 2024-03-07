@@ -9,6 +9,9 @@ import { default as fsExtra } from "fs-extra";
 import packageManager from "../../packageManagers/packageManager.js";
 import { listFilesWithExtension } from "../../utils/file.js";
 import { fileURLToPath } from "url";
+import { doAdaptiveLogAction } from "../../utils/logging.js";
+
+
 const compilerWorkerScript = `const { parentPort, workerData } = require("worker_threads");
 
 const { compilerOptions, fileNames, typescriptPath } = workerData;
@@ -103,7 +106,8 @@ export async function compileSdk(
     );
 
     if (publish === true) {
-        console.log("Publishing the SDK...");
-        await packageManager.publish(modulePath);
+        await doAdaptiveLogAction("Publishing the SDK", async () => {
+            await packageManager.publish(modulePath);
+        });
     }
 }

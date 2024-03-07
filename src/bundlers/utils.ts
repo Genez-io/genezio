@@ -1,4 +1,4 @@
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 import { ClassConfiguration } from "../models/projectConfiguration.js";
 import { fileExists } from "../utils/file.js";
 import { BundlerInterface, BundlerOutput } from "./bundler.interface.js";
@@ -9,7 +9,7 @@ import { NodeJsBinaryDependenciesBundler } from "./node/nodeJsBinaryDependencies
 import { BundlerComposer } from "./bundlerComposer.js";
 import { DartBundler } from "./dart/dartBundler.js";
 import { KotlinBundler } from "./kotlin/kotlinBundler.js";
-import { GoBundler } from "./go/goBundler.js";
+import { NewGoBundler } from "./go/goBundler.js";
 import { debugLogger, printAdaptiveLog } from "../utils/logging.js";
 import { createTemporaryFolder } from "../utils/file.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
@@ -22,7 +22,7 @@ export async function bundle(
     installDeps: boolean = true,
 ): Promise<BundlerOutput> {
     if (!(await fileExists(element.path))) {
-        printAdaptiveLog("Bundling your code and uploading it", "error");
+        printAdaptiveLog("Bundling your code\n", "error");
         log.error(`\`${element.path}\` file does not exist at the indicated path.`);
 
         throw new Error(`\`${element.path}\` file does not exist at the indicated path.`);
@@ -59,7 +59,7 @@ export async function bundle(
             break;
         }
         case "go": {
-            bundler = new GoBundler();
+            bundler = NewGoBundler(projectConfiguration);
             break;
         }
         default:

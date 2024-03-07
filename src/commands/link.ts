@@ -3,7 +3,7 @@ import {
     deleteAllLinkPaths,
     setLinkPathForProject,
 } from "../utils/linkDatabase.js";
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 import yamlConfigIOController from "../yamlProjectConfiguration/v2.js";
 
 export async function linkCommand(

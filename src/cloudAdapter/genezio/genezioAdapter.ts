@@ -4,7 +4,7 @@ import path from "path";
 import { getPresignedURL } from "../../requests/getPresignedURL.js";
 import { debugLogger } from "../../utils/logging.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
-import log from "loglevel";
+import { log } from "../../utils/logging.js";
 import { deployRequest } from "../../requests/deployCode.js";
 import {
     CloudAdapter,

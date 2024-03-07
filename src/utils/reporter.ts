@@ -1,6 +1,7 @@
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 import { TriggerType } from "../yamlProjectConfiguration/models.js";
 import { GenezioCloudResultClass } from "../cloudAdapter/cloudAdapter.js";
+import colors from "colors";
 
 export enum GenezioCommand {
     deploy = "deploy",
@@ -13,9 +14,7 @@ export type ProjectPrimaryKeys = {
     stage?: string;
 };
 
-export function reportSuccess(
-    classesInfo: GenezioCloudResultClass[],
-) {
+export function reportSuccess(classesInfo: GenezioCloudResultClass[]) {
     // print function urls
     let printHttpString = "";
 
@@ -23,7 +22,8 @@ export function reportSuccess(
         classInfo.methods.forEach((method) => {
             if (method.type === TriggerType.http) {
                 printHttpString +=
-                    `  - ${classInfo.className}.${method.name}: ${method.functionUrl}` + "\n";
+                    `  - ${classInfo.className}.${method.name}: ${colors.yellow(method.functionUrl)}` +
+                    "\n";
             }
         });
     });

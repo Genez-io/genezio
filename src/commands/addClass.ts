@@ -1,4 +1,4 @@
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 import path from "path";
 import { newClassTemplateNode } from "../generateSdk/templates/newProject.js";
 
