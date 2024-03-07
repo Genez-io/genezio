@@ -9,7 +9,7 @@
         "preinstall-locally": "npx tsc; cd sdk-external-modules/remote-ts; npm run build",
         "install-locally": "node solveEnvVariables.js build/src/constants.js",
         "postinstall-locally": "npm install -g",
-        "build": "npx tsc && node solveEnvVariables.js build/src/constants.js",
+        "build": "npx tsc && node solveEnvVariables.js build/src/constants.js && cd sdk-external-modules/remote-ts && npm run build",
         "install-locally-dev": "npm run install-locally -- dev",
         "build-dev": "npx tsc && node solveEnvVariables.js build/src/constants.js -- dev",
         "checkChangesInVariables": "node scripts/checkConstants.js",
