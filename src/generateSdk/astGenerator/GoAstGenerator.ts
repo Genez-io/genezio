@@ -1,7 +1,7 @@
 import path from "path";
 import os from "os";
 import fs from "fs";
-import log from "loglevel";
+import { log } from "../../utils/logging.js";
 import {
     AstGeneratorInput,
     AstGeneratorInterface,

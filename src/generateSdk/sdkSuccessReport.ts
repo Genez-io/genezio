@@ -1,4 +1,4 @@
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 import { GenezioCommand, ProjectPrimaryKeys } from "../utils/reporter.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import colors from "colors";

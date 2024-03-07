@@ -1,5 +1,5 @@
 import { AxiosError } from "axios";
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 import path from "path";
 import { exit } from "process";
 import {
@@ -8,7 +8,7 @@ import {
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
 } from "../constants.js";
-import { GENEZIO_NOT_AUTH_ERROR_MSG, GENEZIO_NO_CLASSES_FOUND } from "../errors.js";
+import { GENEZIO_NO_CLASSES_FOUND } from "../errors.js";
 import {
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
@@ -84,10 +84,9 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
             ) === false
         ) {
-            log.error(
+            throw new Error(
                 `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To solve this, please update the @genezio/types package on your backend component using the following command: npm install @genezio/types@${RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE}`,
             );
-            exit(1);
         }
     }
     // TODO: check this in deployClasses function
@@ -112,17 +111,15 @@ export async function deployCommand(options: GenezioDeployOptions) {
             break backend;
         }
 
-        const success = await doAdaptiveLogAction("Running backend deploy scripts", async () => {
-            return await runScript(configuration.backend?.scripts?.deploy, backendCwd);
-        });
-        if (!success) {
+        await doAdaptiveLogAction("Running backend deploy scripts", async () => {
+            await runScript(configuration.backend?.scripts?.deploy, backendCwd);
+        }).catch(async (error) => {
             await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_PRE_BACKEND_DEPLOY_SCRIPT_ERROR,
                 commandOptions: JSON.stringify(options),
             });
-            log.error("Backend `deploy` script failed.");
-            exit(1);
-        }
+            throw error;
+        });
 
         // Enable cloud provider AB Testing
         // This is ONLY done in the dev environment and if DISABLE_AB_TESTING is not set.
@@ -155,32 +152,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
                     errorTrace: error.toString(),
                     commandOptions: JSON.stringify(options),
                 });
-
-                const data = error.response?.data;
-
-                switch (error.response?.status) {
-                    case 401:
-                        log.error(GENEZIO_NOT_AUTH_ERROR_MSG);
-                        break;
-                    case 500:
-                        log.error(error.message);
-                        if (data && data.status === "error") {
-                            log.error(data.error.message);
-                        }
-                        break;
-                    case 400:
-                        log.error(error.message);
-                        if (data && data.status === "error") {
-                            log.error(data.error.message);
-                        }
-                        break;
-                    default:
-                        if (error.message) {
-                            log.error(error.message);
-                        }
-                        break;
-                }
-                exit(1);
+                throw error;
             },
         );
         await GenezioTelemetry.sendEvent({
@@ -194,22 +166,22 @@ export async function deployCommand(options: GenezioDeployOptions) {
         const frontends = configuration.frontend;
 
         for (const [index, frontend] of frontends.entries()) {
-            const success = await doAdaptiveLogAction(
-                `Running frontend ${index + 1} deploy script`,
-                async () => {
-                    return await runScript(
-                        frontend.scripts?.deploy,
-                        frontend.path || process.cwd(),
-                    );
-                },
-            );
-            if (!success) {
+            try {
+                await doAdaptiveLogAction(
+                    `Running frontend ${index + 1} deploy script`,
+                    async () => {
+                        return await runScript(
+                            frontend.scripts?.deploy,
+                            frontend.path || process.cwd(),
+                        );
+                    },
+                );
+            } catch (error) {
                 await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_PRE_FRONTEND_DEPLOY_SCRIPT_ERROR,
                     commandOptions: JSON.stringify(options),
                 });
-                log.error("Frontend `deploy` script failed.");
-                exit(1);
+                throw error;
             }
 
             await GenezioTelemetry.sendEvent({
@@ -226,8 +198,8 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 options,
             ).catch(async (error) => {
                 if (error instanceof Error) {
-                    log.error(error.message);
                     if (error.message == "No frontend entry in genezio configuration file.") {
+                        log.error(error.message);
                         exit(0);
                     }
                     await GenezioTelemetry.sendEvent({
@@ -235,8 +207,8 @@ export async function deployCommand(options: GenezioDeployOptions) {
                         errorTrace: error.toString(),
                         commandOptions: JSON.stringify(options),
                     });
+                    throw error;
                 }
-                exit(1);
             });
             if (frontendUrl) frontendUrls.push(frontendUrl);
 
@@ -271,8 +243,13 @@ export async function deployClasses(
         throw new Error(GENEZIO_NO_CLASSES_FOUND);
     }
     let sdkLanguage: Language = Language.ts;
-    if (configuration.frontend && configuration.frontend.length > 0) {
-        sdkLanguage = configuration.frontend[0].language;
+    if (configuration.frontend) {
+        for (const frontend of configuration.frontend) {
+            if (frontend.language) {
+                sdkLanguage = frontend.language;
+                break;
+            }
+        }
     }
 
     const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
@@ -309,7 +286,7 @@ export async function deployClasses(
         cliProgress.Presets.shades_grey,
     );
 
-    printAdaptiveLog("Bundling your code", "start");
+    printAdaptiveLog("Bundling your code\n", "start");
     const bundlerResult: Promise<GenezioCloudInput>[] = projectConfiguration.classes.map(
         async (element) => {
             const ast = sdkResponse.sdkGeneratorInput.classesInfo.find(
@@ -361,9 +338,12 @@ export async function deployClasses(
         },
     );
 
-    const bundlerResultArray = await Promise.all(bundlerResult);
+    const bundlerResultArray = await Promise.all(bundlerResult).catch((error) => {
+        printAdaptiveLog("Bundling your code\n", "error");
+        throw error;
+    });
 
-    printAdaptiveLog("Bundling your code", "end");
+    printAdaptiveLog("Bundling your code\n", "end");
 
     projectConfiguration.astSummary.classes = projectConfiguration.astSummary.classes.map((c) => {
         // remove cwd from path and the extension
@@ -526,6 +506,15 @@ export async function deployFrontend(
         return;
     }
 
+    try {
+        await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
+            await runScript(frontend.scripts?.build, frontend.path);
+        });
+    } catch (error) {
+        log.info(`Skipping frontend ${index} deployment because the build script failed.`);
+        return;
+    }
+
     // check if subdomain contains only numbers, letters and hyphens
     if (frontend.subdomain && !frontend.subdomain.match(/^[a-z0-9-]+$/)) {
         throw new Error(`The subdomain can only contain letters, numbers and hyphens.`);
@@ -599,7 +588,7 @@ async function handleSdk(
     let sdkLanguage: Language = Language.ts;
     let frontendPath: string | undefined;
     if (frontends && frontends.length > 0) {
-        sdkLanguage = frontends[0].language;
+        sdkLanguage = frontends[0].language || Language.ts;
         frontendPath = frontends[0].path;
     }
 
@@ -629,7 +618,6 @@ async function handleSdk(
 
 function getCloudAdapter(provider: string): CloudAdapter {
     switch (provider) {
-        case CloudProviderIdentifier.AWS:
         case CloudProviderIdentifier.GENEZIO:
         case CloudProviderIdentifier.CAPYBARA:
             return new GenezioCloudAdapter();

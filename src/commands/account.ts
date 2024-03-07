@@ -1,5 +1,5 @@
 import getUser from "../requests/getUser.js";
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 import { isLoggedIn } from "../utils/accounts.js";
 import { debugLogger } from "../utils/logging.js";
 import { loginCommand } from "./login.js";
