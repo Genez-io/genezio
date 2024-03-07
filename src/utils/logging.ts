@@ -118,16 +118,24 @@ export function code(code: string): string {
 
 const uninformativeMessages = [
     "Calling the API for witty loading messages",
-    "Asking on StackOverflow how to deploy your project",
     "Changing the plumbing of the pipeline",
     "Rearranging the code randomly",
     "Calling the mothership for further instructions",
-    "Deploying...crossing our fingers",
     "Doing a barrel roll",
     "*playing elevator music*",
     "Spraying your code with bug repellents",
     "Baking a cake",
     "Changing spaces to tabs",
+    "Tightening the screws of our servers",
+    "Seeding some new clouds for your deployment...",
+    "Drying up a cloud for future usage...",
+    "Warming up the servers with some hot drinks",
+    "Instructing the servers into the ways of the Force",
+    "Giving some food for thought to our neural network",
+    "Booting the servers, because someone has to do it...",
+    "Casting an efficiency spell on your code",
+    "Unpacking your code archive with care",
+    "Preparing our server hamsters for your code's grand entrance",
 ];
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
