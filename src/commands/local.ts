@@ -204,7 +204,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         }
     }
     await doAdaptiveLogAction("Running backend local scripts", async () => {
-        return await runScript(backendConfiguration.scripts?.local, backendConfiguration.path);
+        await runScript(backendConfiguration.scripts?.local, backendConfiguration.path);
     }).catch(async (error) => {
         await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_PRE_START_LOCAL_SCRIPT_ERROR,

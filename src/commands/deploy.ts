@@ -508,7 +508,7 @@ export async function deployFrontend(
 
     try {
         await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
-            return await runScript(frontend.scripts?.build, frontend.path);
+            await runScript(frontend.scripts?.build, frontend.path);
         });
     } catch (error) {
         log.info(`Skipping frontend ${index} deployment because the build script failed.`);
