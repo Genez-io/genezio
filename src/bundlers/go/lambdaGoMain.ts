@@ -9,12 +9,11 @@ package main
 import (
 	"encoding/json"
     "encoding/base64"
-	"net/http"
-	"os"
-    "io"
     "errors"
+    "context"
     "path"
     "github.com/Genez-io/genezio_types"
+    "github.com/aws/aws-lambda-go/lambda"
 
     {{#imports}}
     {{#named}}{{name}} {{/named}}"{{{path}}}"
@@ -81,12 +80,11 @@ const (
     JsonRpcMethod MethodType = "jsonrpc"
 )
 
-func sendError(w http.ResponseWriter, err error, methodType MethodType) {
+func sendError(err error, methodType MethodType) *Response {
     genezioError := make(map[string]interface{})
     byteError, error := json.Marshal(err)
     if error != nil {
-        http.Error(w, error.Error(), http.StatusInternalServerError)
-        return
+        return nil
     }
     json.Unmarshal(byteError, &genezioError)
 	var responseError ResponseBodyError
@@ -104,10 +102,9 @@ func sendError(w http.ResponseWriter, err error, methodType MethodType) {
     }
     responseErrorByte, err := json.Marshal(responseError)
     if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
+        return nil
     }
-	response := Response{
+	response := &Response{
 		StatusCode: "200",
 		Body:       string(responseErrorByte),
 		Headers: map[string]string{
@@ -115,33 +112,14 @@ func sendError(w http.ResponseWriter, err error, methodType MethodType) {
 			"X-Powered-By": "genezio",
 		},
 	}
-	responseByte, err := json.Marshal(response)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	io.WriteString(w, string(responseByte))
+    return response
 }
 
-func handleRequest(w http.ResponseWriter, r *http.Request) {
-	var event Event
+func handleRequest(context context.Context, event *Event) (*Response, error) {
 	var body EventBody
 	var responseBody ResponseBody
 
-    request, err := io.ReadAll(r.Body)
-    if err != nil {
-        sendError(w, err, JsonRpcMethod)
-    }
-	err = json.Unmarshal(request, &event)
-	if err != nil {
-        sendError(w, err, JsonRpcMethod)
-		return
-	}
-
-    defer r.Body.Close()
-
-    class := {{class.packageName}}.New()
+	class := {{class.packageName}}.New()
 
     var isJsonRpcRequest bool
 
@@ -159,13 +137,13 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
         case "{{name}}":
             err := class.{{name}}()
             if err != nil {
-                sendError(w, err, CronMethod)
-                return
+                errorResponse := sendError(err, CronMethod)
+                return errorResponse, nil
             }
         {{/cronMethods}}
         default:
-            sendError(w, errors.New("cron method not found"), CronMethod)
-            return
+            errorResponse := sendError(errors.New("Cron method not found"), CronMethod)
+            return errorResponse, nil
         }
     } else if !isJsonRpcRequest {
         genezioRequest := genezio_types.GenezioHttpRequest{
@@ -178,13 +156,13 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
         if event.IsBase64Encoded {
             bodyDecoded, err := base64.StdEncoding.DecodeString(event.Body)
             if err != nil {
-                sendError(w, err, HttpMethod)
-                return
+                errorResponse := sendError(err, HttpMethod)
+                return errorResponse, nil
             }
             genezioRequest.Body = bodyDecoded
         } else {
             var jsonBody interface{}
-            err = json.Unmarshal(eventBody, &jsonBody)
+            err := json.Unmarshal(eventBody, &jsonBody)
             if err != nil {
                 genezioRequest.Body = event.Body
             } else {
@@ -193,40 +171,52 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
         }
         methodName := path.Base(event.RequestContext.Http.Path)
         var result *genezio_types.GenezioHttpResponse
+        var err error
 
         switch methodName {
         {{#httpMethods}}
         case "{{name}}":
             result, err = class.{{name}}(genezioRequest)
             if err != nil {
-                sendError(w, err, HttpMethod)
-                return
+                errorResponse := sendError(err, HttpMethod)
+                return errorResponse, nil
             }
         {{/httpMethods}}
         default:
-            sendError(w, errors.New("http method not found"), HttpMethod)
-            return
+            errorResponse := sendError(errors.New("Http method not found"), HttpMethod)
+            return errorResponse, nil
         }
-
-        _, ok := result.Body.([]byte)
+        byteBody, ok := result.Body.([]byte)
         if !ok {
-            resultBody, err := json.Marshal(result.Body)
+            responseBody, err := json.Marshal(result.Body)
             if err != nil {
-                sendError(w, err, HttpMethod)
-                return
+                errorResponse := sendError(err, HttpMethod)
+                return errorResponse, nil
             }
-            result.Body = string(resultBody)
-            w.Header().Set("Content-Type", "application/json")
+            result.Body = string(responseBody)
+        } else {
+            result.Body = base64.StdEncoding.EncodeToString(byteBody)
+            var isBase64Encoded bool = true
+            result.IsBase64Encoded = &isBase64Encoded
         }
-        response, err := json.Marshal(result)
-        if err != nil {
-            sendError(w, err, HttpMethod)
-            return
-        }  
-        w.WriteHeader(http.StatusOK)
-        io.WriteString(w, string(response))
-        return
+        var responseHeaders map[string]string
+        if result.Headers != nil {
+            responseHeaders = *result.Headers
+        }
+        response := &Response{
+            StatusCode: result.StatusCode,
+            Body:       result.Body.(string),
+            Headers:    responseHeaders,
+        }
+        return response, nil
     } else {
+        eventBody := []byte(event.Body)
+        // Decode the request body into struct and check for errors
+        err := json.Unmarshal(eventBody, &body)
+        if err != nil {
+            errorResponse := sendError(err, JsonRpcMethod)
+            return errorResponse, nil
+        }
         // Call the appropriate method
         switch body.Method {
         {{#jsonRpcMethods}}
@@ -236,8 +226,8 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
             {{/parameters}}
             {{^isVoid}}result, {{/isVoid}}err {{^isVoid}}:{{/isVoid}}= class.{{name}}({{#parameters}}param{{index}}{{^last}}, {{/last}}{{/parameters}})
             if err != nil {
-                sendError(w, err, JsonRpcMethod)
-                return
+                errorResponse := sendError(err, JsonRpcMethod)
+                return errorResponse, nil
             }
             {{^isVoid}}
             responseBody.Result = result
@@ -247,25 +237,26 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
         case "{{class.name}}.{{name}}":
             err := class.{{name}}()
             if err != nil {
-                sendError(w, err, JsonRpcMethod)
-                return
+                errorResponse := sendError(err, JsonRpcMethod)
+                return errorResponse, nil
             }
         {{/cronMethods}}
         default:
-            sendError(w, errors.New("method not found"), JsonRpcMethod)
-            return
+            errorResponse := sendError(errors.New("Method not found"), JsonRpcMethod)
+            return errorResponse, nil
         }
-        responseBody.Id = body.Id
-        responseBody.Jsonrpc = body.Jsonrpc
     }
+
+	responseBody.Id = body.Id
+	responseBody.Jsonrpc = body.Jsonrpc
 
     bodyString, err := json.Marshal(responseBody)
     if err != nil {
-        sendError(w, err, JsonRpcMethod)
-        return
+        errorResponse := sendError(err, JsonRpcMethod)
+        return errorResponse, nil
     }
 
-	response := Response{
+	response := &Response{
         StatusCode: "200",
 		Body:       string(bodyString),
 		Headers: map[string]string{
@@ -273,20 +264,10 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-    // Encode the struct into JSON and check for errors
-	responseByte, err := json.Marshal(response)
-	if err != nil {
-        sendError(w, err, JsonRpcMethod)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-	io.WriteString(w, string(responseByte))
+    return response, nil
 }
 
 func main() {
-	port := os.Args[1]
-	http.HandleFunc("/", handleRequest)
-	http.ListenAndServe(":"+port, nil)
+    lambda.Start(handleRequest)
 }
 `;
