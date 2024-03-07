@@ -11,14 +11,13 @@ import { deleteFolder } from "../utils/file.js";
 
 const POLLING_INTERVAL = 2000;
 
-
 export async function watchPackage(
     language: Language,
     projectName: string,
     projectRegion: string,
-    frontend: YamlFrontend[]|undefined,
+    frontend: YamlFrontend[] | undefined,
     sdkPath: string,
-): Promise<NodeJS.Timeout|undefined> {
+): Promise<NodeJS.Timeout | undefined> {
     if (frontend === undefined || frontend.length === 0) {
         return;
     }
@@ -35,19 +34,19 @@ export async function watchPackage(
 async function watchNodeModules(
     projectName: string,
     projectRegion: string,
-    frontends: YamlFrontend[]|undefined,
+    frontends: YamlFrontend[] | undefined,
     sdkPath: string,
-): Promise<NodeJS.Timeout|undefined> {
+): Promise<NodeJS.Timeout | undefined> {
     // We are watching for the following files:
-    // - node_modules/@genezio-sdk/<projectName>_<region>/package.json: this file is used to determine if the SDK was changed (by a npm install or npm update)
+    // - node_modules/@genezio-sdk/<projectName>/package.json: this file is used to determine if the SDK was changed (by a npm install or npm update)
     // - node_modules/.package-lock.json: this file is used by npm to determine if it should update the packages or not. We are removing this file while "genezio local"
     // is running, because we are modifying node_modules folder manual (reference: https://github.com/npm/cli/blob/653769de359b8d24f0d17b8e7e426708f49cadb8/docs/content/configuring-npm/package-lock-json.md#hidden-lockfiles)
     const watchPaths: string[] = [];
-    const sdkName = `${projectName}_${projectRegion}`;
+    const sdkName = `${projectName}`;
     const nodeModulesSdkDirectoryPath = path.join("node_modules", "@genezio-sdk", sdkName);
 
     if (!frontends) {
-        return
+        return;
     }
 
     for (const f of frontends) {
@@ -55,10 +54,7 @@ async function watchNodeModules(
         watchPaths.push(path.join(f.path, "node_modules", ".package-lock.json"));
     }
 
-    const linkPaths = await getLinkPathsForProject(
-        projectName,
-        projectRegion,
-    );
+    const linkPaths = await getLinkPathsForProject(projectName, projectRegion);
     for (const linkPath of linkPaths) {
         watchPaths.push(path.join(linkPath, nodeModulesSdkDirectoryPath));
         watchPaths.push(path.join(linkPath, "node_modules", ".package-lock.json"));
@@ -120,19 +116,9 @@ async function writeSdkToNodeModules(
     // A frontend can be explicitly declared in the genezio.yaml file or it can be linked to the project
     const frontendPaths = (frontends || [])
         .map((f) => f.path)
-        .concat(
-            await getLinkPathsForProject(
-                projectName,
-                projectRegion,
-            ),
-        );
+        .concat(await getLinkPathsForProject(projectName, projectRegion));
     for (const frontendPath of frontendPaths) {
-        const to = path.join(
-            frontendPath,
-            "node_modules",
-            "@genezio-sdk",
-            `${projectName}_${projectRegion}`,
-        );
+        const to = path.join(frontendPath, "node_modules", "@genezio-sdk", `${projectName}`);
 
         await writeSdk(from, to).catch(() => {
             debugLogger.debug(`[WRITE_SDK_TO_NODE_MODULES] Error writing SDK to node_modules`);

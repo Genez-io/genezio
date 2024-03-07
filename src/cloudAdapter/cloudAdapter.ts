@@ -22,7 +22,11 @@ export type GenezioCloudResultClass = {
 };
 
 export type GenezioCloudOutput = {
+    status: string;
+    projectId: string;
     projectEnvId: string;
+    createdAt: number;
+    updatedAt: number;
     classes: GenezioCloudResultClass[];
 };
 

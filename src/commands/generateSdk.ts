@@ -63,11 +63,11 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
 
         throw error;
     });
-    
+
     const classUrls = sdkResponse.files.map((c) => ({
-            name: c.className,
-            cloudUrl: url,
-        }))
+        name: c.className,
+        cloudUrl: url,
+    }));
     await writeSdk({
         language: options.language,
         packageName: options.packageName,
@@ -76,7 +76,8 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
         classUrls,
         publish: false,
         installPackage: false,
-        outputPath: options.output}); 
+        outputPath: options.output,
+    });
 
     log.info("Your SDK has been generated successfully in " + options.output);
     log.info(
@@ -228,7 +229,7 @@ async function generateRemoteSdkHandler(
             }),
         ),
         language: language as Language,
-        packageName: `@genezio-sdk/${projectName}_${region}`,
+        packageName: `@genezio-sdk/${projectName}`,
     };
 
     const sdkGeneratorOutput = await generateSdk(sdkGeneratorInput, undefined);
@@ -250,14 +251,15 @@ async function generateRemoteSdkHandler(
     });
 
     await writeSdk({
-        language, 
-        packageName: `@genezio-sdk/${projectName}_${region}`,
+        language,
+        packageName: `@genezio-sdk/${projectName}`,
         packageVersion: `1.0.0-${stage}`,
         sdkResponse: sdkGeneratorResponse,
         classUrls,
         publish: false,
         installPackage: false,
-        outputPath: sdkPath});
+        outputPath: sdkPath,
+    });
 
     await Promise.all(
         sdkGeneratorResponse.files.map(async (file) => {

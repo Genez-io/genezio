@@ -32,42 +32,40 @@ export function reportSuccessForSdkJs(
     command: GenezioCommand,
     projectConfiguration: ProjectPrimaryKeys,
 ) {
-    const className = sdkResponse.sdkGeneratorInput.
-        classesInfo.find((c) => c.classConfiguration.type === TriggerType.jsonrpc)?.
-        classConfiguration.name;
+    const className = sdkResponse.sdkGeneratorInput.classesInfo.find(
+        (c) => c.classConfiguration.type === TriggerType.jsonrpc,
+    )?.classConfiguration.name;
     if (command === GenezioCommand.deploy) {
-       log.info(
-           boxen(
-               `${colors.green(
-                   "To install the SDK in your client, run this command in your client's root:",
-               )}\n${colors.magenta(
-                   `${packageManager.command} add @genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}@1.0.0-${projectConfiguration.stage}`,
-               )}\n\n${colors.green(
-                   "Then import your classes like this:",
-               )}\n${colors.magenta(
-                   `import { ${className} } from "@genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}"`,
-               )}`,
-               {
-                   padding: 1,
-                   margin: 1,
-                   borderStyle: "round",
-                   borderColor: "magentaBright",
-               },
-           ),
-       );
+        log.info(
+            boxen(
+                `${colors.green(
+                    "To install the SDK in your client, run this command in your client's root:",
+                )}\n${colors.magenta(
+                    `${packageManager.command} add @genezio-sdk/${projectConfiguration.name}@1.0.0`,
+                )}\n\n${colors.green("Then import your classes like this:")}\n${colors.magenta(
+                    `import { ${className} } from "@genezio-sdk/${projectConfiguration.name}"`,
+                )}`,
+                {
+                    padding: 1,
+                    margin: 1,
+                    borderStyle: "round",
+                    borderColor: "magentaBright",
+                },
+            ),
+        );
     } else {
-      log.info(
-           boxen(
-               `${colors.green("Import your classes like this:")}\n${colors.magenta(
-                   `import { ${className} } from "@genezio-sdk/${projectConfiguration.name}_${projectConfiguration.region}"`,
-               )}`,
-               {
-                   padding: 1,
-                   margin: 1,
-                   borderStyle: "round",
-                   borderColor: "magentaBright",
-               },
-           ),
-       );
+        log.info(
+            boxen(
+                `${colors.green("Import your classes like this:")}\n${colors.magenta(
+                    `import { ${className} } from "@genezio-sdk/${projectConfiguration.name}"`,
+                )}`,
+                {
+                    padding: 1,
+                    margin: 1,
+                    borderStyle: "round",
+                    borderColor: "magentaBright",
+                },
+            ),
+        );
     }
 }

@@ -29,7 +29,7 @@ export async function bundleCommand(options: GenezioBundleOptions) {
             backendConfiguration.path,
         ),
         backendConfiguration.path,
-        /* packageName= */ `@genezio-sdk/${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
+        /* packageName= */ `@genezio-sdk/${yamlProjectConfiguration.name}`,
     ).catch((error) => {
         // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
         if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {

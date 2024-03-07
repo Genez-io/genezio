@@ -26,11 +26,7 @@ import { genezioRequestParser } from "../utils/genezioRequestParser.js";
 import { debugLogger, doAdaptiveLogAction } from "../utils/logging.js";
 import { rectifyCronString } from "../utils/rectifyCronString.js";
 import cron from "node-cron";
-import {
-    createTemporaryFolder,
-    fileExists,
-    readUTF8File,
-} from "../utils/file.js";
+import { createTemporaryFolder, fileExists, readUTF8File } from "../utils/file.js";
 import { GenezioCommand, reportSuccess as _reportSuccess } from "../utils/reporter.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import { GenezioLocalOptions } from "../models/commandOptions.js";
@@ -68,7 +64,6 @@ import { watchPackage } from "../generateSdk/sdkMonitor.js";
 import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
 import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
-
 
 type ClassProcess = {
     process: ChildProcess;
@@ -119,7 +114,7 @@ export async function prepareLocalBackendEnvironment(
                 backend.path,
             ),
             backend.path,
-            /* packageName= */ `@genezio-sdk/${yamlProjectConfiguration.name}_${yamlProjectConfiguration.region}`,
+            /* packageName= */ `@genezio-sdk/${yamlProjectConfiguration.name}`,
         ).catch((error) => {
             debugLogger.log("An error occurred", error);
             if (error.code === "ENOENT") {
@@ -185,7 +180,10 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     // because we migrated the decorators implemented in the @genezio/types package to the stage 3 implementation.
     // Otherwise, the user will get an error at runtime. This check can be removed in the future once no one is using version
     // 0.1.* of @genezio/types.
-    if (backendConfiguration.language.name === Language.ts || backendConfiguration.language.name === Language.js) {
+    if (
+        backendConfiguration.language.name === Language.ts ||
+        backendConfiguration.language.name === Language.js
+    ) {
         const packageJsonPath = path.join(backendConfiguration.path, "package.json");
         if (
             isDependencyVersionCompatible(
@@ -260,8 +258,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         let processForClasses: Map<string, ClassProcess>;
         let projectConfiguration: ProjectConfiguration;
 
-        const promiseListenForChanges: Promise<BundlerRestartResponse> =
-            listenForChanges();
+        const promiseListenForChanges: Promise<BundlerRestartResponse> = listenForChanges();
         const bundlerPromise: Promise<BundlerRestartResponse> = prepareLocalBackendEnvironment(
             yamlProjectConfiguration,
             options,
@@ -325,7 +322,8 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             yamlProjectConfiguration.region,
             yamlProjectConfiguration.frontend,
             sdk,
-            options)
+            options,
+        );
         reportSuccess(projectConfiguration, options.port);
 
         // This check makes sense only for js/ts backend, skip for dart, go etc.
@@ -774,12 +772,13 @@ async function listenForChanges() {
 async function handleSdk(
     projectName: string,
     projectRegion: string,
-    frontends: YamlFrontend[]|undefined,
+    frontends: YamlFrontend[] | undefined,
     sdk: SdkGeneratorResponse,
-    options: GenezioLocalOptions): Promise<NodeJS.Timeout|undefined> {
+    options: GenezioLocalOptions,
+): Promise<NodeJS.Timeout | undefined> {
     let sdkLanguage: Language = Language.ts;
-    let nodeJsWatcher: NodeJS.Timeout|undefined = undefined;
-    let frontendPath: string|undefined = undefined;
+    let nodeJsWatcher: NodeJS.Timeout | undefined = undefined;
+    let frontendPath: string | undefined = undefined;
 
     if (frontends && frontends.length > 0) {
         sdkLanguage = frontends[0].language;
@@ -789,20 +788,27 @@ async function handleSdk(
     const classUrls = sdk.files.map((c) => ({
         name: c.className,
         cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`,
-    }))
+    }));
 
     const sdkFolderPath = await writeSdk({
         language: sdkLanguage,
-        packageName: `@genezio-sdk/${projectName}_${projectRegion}`, 
-        packageVersion: undefined, 
+        packageName: `@genezio-sdk/${projectName}`,
+        packageVersion: undefined,
         sdkResponse: sdk,
         classUrls,
         publish: false,
         installPackage: true,
-        outputPath: frontendPath ? path.join(frontendPath, "sdk") : undefined})
+        outputPath: frontendPath ? path.join(frontendPath, "sdk") : undefined,
+    });
 
     if (sdkFolderPath) {
-        const timeout = await watchPackage(sdkLanguage, projectName, projectRegion, frontends, sdkFolderPath);
+        const timeout = await watchPackage(
+            sdkLanguage,
+            projectName,
+            projectRegion,
+            frontends,
+            sdkFolderPath,
+        );
         if (timeout) {
             nodeJsWatcher = timeout;
         }
@@ -814,13 +820,10 @@ async function handleSdk(
         stage: "local",
     });
 
-    return nodeJsWatcher
+    return nodeJsWatcher;
 }
 
-function reportSuccess(
-    projectConfiguration: ProjectConfiguration,
-    port: number,
-) {
+function reportSuccess(projectConfiguration: ProjectConfiguration, port: number) {
     const classesInfo = projectConfiguration.classes.map((c) => ({
         className: c.name,
         methods: c.methods.map((m) => ({
@@ -832,9 +835,7 @@ function reportSuccess(
         functionUrl: `http://127.0.0.1:${port}/${c.name}`,
     }));
 
-    _reportSuccess(
-        classesInfo,
-    );
+    _reportSuccess(classesInfo);
 
     log.info(colors.cyan(`Test your code at http://localhost:${port}/explore`));
 }

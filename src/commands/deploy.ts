@@ -35,7 +35,11 @@ import cliProgress from "cli-progress";
 import { YAMLBackend, YamlProjectConfiguration } from "../yamlProjectConfiguration/v2.js";
 import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter.js";
 import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter.js";
-import { CloudAdapter, GenezioCloudInput, GenezioCloudOutput } from "../cloudAdapter/cloudAdapter.js";
+import {
+    CloudAdapter,
+    GenezioCloudInput,
+    GenezioCloudOutput,
+} from "../cloudAdapter/cloudAdapter.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { GenezioDeployOptions } from "../models/commandOptions.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
@@ -68,7 +72,10 @@ export async function deployCommand(options: GenezioDeployOptions) {
     // because we migrated the decorators implemented in the @genezio/types package to the stage 3 implementation.
     // Otherwise, the user will get an error at runtime. This check can be removed in the future once no one is using version
     // 0.1.* of @genezio/types.
-    if (configuration.backend?.language.name === Language.ts || configuration.backend?.language.name === Language.js) {
+    if (
+        configuration.backend?.language.name === Language.ts ||
+        configuration.backend?.language.name === Language.js
+    ) {
         const packageJsonPath = path.join(backendCwd, "package.json");
         if (
             isDependencyVersionCompatible(
@@ -272,7 +279,7 @@ export async function deployClasses(
         sdkLanguage,
         mapYamlClassToSdkClassConfiguration(backend.classes, backend.language.name, backend.path),
         backend.path,
-        /* packageName= */ `@genezio-sdk/${configuration.name}_${configuration.region}`,
+        /* packageName= */ `@genezio-sdk/${configuration.name}`,
     ).catch((error) => {
         // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
         if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
@@ -384,11 +391,11 @@ export async function deployClasses(
 
     if (sdkResponse.files.length <= 0) {
         log.info(colors.cyan("Your backend code was successfully deployed!"));
-        return
+        return;
     } else {
-       log.info(colors.cyan(
-           "Your backend code was deployed and the SDK was successfully generated",
-       ));
+        log.info(
+            colors.cyan("Your backend code was deployed and the SDK was successfully generated"),
+        );
     }
     await handleSdk(configuration, result, sdkResponse, options);
     reportSuccess(result.classes);
@@ -582,23 +589,29 @@ export async function deployFrontend(
     return url;
 }
 
-async function handleSdk(configuration: YamlProjectConfiguration, result: GenezioCloudOutput, sdkResponse: SdkGeneratorResponse, options: GenezioDeployOptions) {
+async function handleSdk(
+    configuration: YamlProjectConfiguration,
+    result: GenezioCloudOutput,
+    sdkResponse: SdkGeneratorResponse,
+    options: GenezioDeployOptions,
+) {
     const frontends = configuration.frontend;
     let sdkLanguage: Language = Language.ts;
-    let frontendPath: string | undefined; 
+    let frontendPath: string | undefined;
     if (frontends && frontends.length > 0) {
         sdkLanguage = frontends[0].language;
         frontendPath = frontends[0].path;
-    } 
+    }
 
     if (sdkLanguage) {
         const classUrls = result.classes.map((c) => ({
             name: c.className,
             cloudUrl: c.functionUrl,
-        }))
+        }));
         await writeSdk({
             language: sdkLanguage,
-            packageName: `@genezio-sdk/${configuration.name}_${configuration.region}`,
+            result,
+            packageName: `@genezio-sdk/${configuration.name}`,
             packageVersion: `1.0.0-${options.stage}`,
             sdkResponse,
             classUrls,
