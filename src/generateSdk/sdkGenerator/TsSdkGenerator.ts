@@ -23,11 +23,7 @@ import {
     SdkGeneratorClassesInfoInput,
 } from "../../models/genezioModels.js";
 import { TriggerType } from "../../yamlProjectConfiguration/models.js";
-import {
-    nodeSdkTsRemoteNode,
-    nodeSdkTsRemoteBrowser,
-    storageTs,
-} from "../templates/nodeSdkTs.js";
+import { storageTs } from "../templates/nodeSdkTs.js";
 import path from "path";
 
 const TYPESCRIPT_RESERVED_WORDS = [
@@ -139,7 +135,7 @@ const template = `/**
 * if new genezio commands are executed.
 */
 
-{{{remoteImport}}}
+import { Remote } from "genezio-remote";
 {{#imports}}
 import { {{#models}}{{{name}}}{{^last}}, {{/last}}{{/models}} } from "./{{{path}}}";
 {{/imports}}
@@ -208,7 +204,6 @@ type MethodViewType = {
 };
 
 type ViewType = {
-    remoteImport: string;
     className: string;
     _url: string;
     methods: MethodViewType[];
@@ -261,11 +256,8 @@ class SdkGenerator implements SdkGeneratorInterface {
                 continue;
             }
 
-            const remoteImport = `import { Remote } from "${sdkGeneratorInput.packageName}/remote";`
-
             // @ts-expect-error A refactor need to be performed here to avoid this error
             const view: ViewType = {
-                remoteImport: remoteImport,
                 className: classDefinition.name,
                 classDocLines: classDefinition.docString?.replace(/\n+$/, "").split("\n") || [],
                 _url: _url,
@@ -462,18 +454,6 @@ class SdkGenerator implements SdkGeneratorInterface {
                 });
             }
         }
-
-        // generate remote.js
-        generateSdkOutput.files.push({
-            className: "Remote",
-            path: "remote.ts",
-            data: nodeSdkTsRemoteBrowser.replace("%%%url%%%", "undefined"),
-        });
-        generateSdkOutput.files.push({
-            className: "Remote",
-            path: "remote.node.ts",
-            data: nodeSdkTsRemoteNode.replace("%%%url%%%", "undefined"),
-        });
 
         generateSdkOutput.files.push({
             className: "StorageManager",

@@ -9,6 +9,7 @@ module.exports = {
     ],
     ignorePatterns: [
         "tests",
+        "sdk-external-modules",
         "src/telemetry",
         "jest.config.js",
         "solveEnvVariables.js",

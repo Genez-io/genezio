@@ -6,7 +6,7 @@
     "type": "module",
     "scripts": {
         "start": "npx tsc && node build/src/index.js",
-        "preinstall-locally": "npx tsc",
+        "preinstall-locally": "npx tsc; cd sdk-external-modules/remote-ts; npm run build",
         "install-locally": "node solveEnvVariables.js build/src/constants.js",
         "postinstall-locally": "npm install -g",
         "build": "npx tsc && node solveEnvVariables.js build/src/constants.js",
