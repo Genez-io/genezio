@@ -507,7 +507,7 @@ export async function deployFrontend(
     }
 
     try {
-        await doAdaptiveLogAction(`Building frontend ${index}`, async () => {
+        await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
             return await runScript(frontend.scripts?.build, frontend.path);
         });
     } catch (error) {
