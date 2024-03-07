@@ -41,7 +41,7 @@ export function reportSuccessForSdkJs(
                 `${colors.green(
                     "To install the SDK in your client, run this command in your client's root:",
                 )}\n${colors.magenta(
-                    `${packageManager.command} add @genezio-sdk/${projectConfiguration.name}@1.0.0`,
+                    `${packageManager.command} add @genezio-sdk/${projectConfiguration.name}@1.0.0-${projectConfiguration.stage}`,
                 )}\n\n${colors.green("Then import your classes like this:")}\n${colors.magenta(
                     `import { ${className} } from "@genezio-sdk/${projectConfiguration.name}"`,
                 )}`,
