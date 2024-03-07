@@ -101,7 +101,6 @@ export async function compileSdk(
         path.join(__dirname, "../../genezio-remote"),
         path.join(genezioSdkPath, "node_modules/genezio-remote"),
     );
-    fs.writeFileSync(path.join(genezioSdkPath, ".npmignore"), "!node_modules\n");
 
     if (publish === true) {
         console.log("Publishing the SDK...");
