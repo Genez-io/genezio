@@ -24,7 +24,7 @@ import { default as fsExtra } from "fs-extra";
 import { DART_COMPILATION_ENDPOINT } from "../../constants.js";
 import { TriggerType } from "../../yamlProjectConfiguration/models.js";
 import { spawnSync } from "child_process";
-import log from "loglevel";
+import { log } from "../../utils/logging.js";
 import { runNewProcess } from "../../utils/process.js";
 import { getAllFilesFromCurrentPath } from "../../utils/file.js";
 import FileDetails from "../../models/fileDetails.js";

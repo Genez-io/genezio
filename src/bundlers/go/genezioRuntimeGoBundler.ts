@@ -1,4 +1,4 @@
-import log from "loglevel";
+import { log } from "../../utils/logging.js";
 import { template } from "./genezioRuntimeGoMain.js";
 import { GoBundler } from "./goBundlerBase.js";
 import { BundlerInput } from "../bundler.interface.js";
@@ -30,10 +30,10 @@ export class GenezioRuntimeGoBundler extends GoBundler {
         }
         process.env["GOOS"] = "linux";
         process.env["GOARCH"] = "amd64";
-        process.env["CGO_ENABLED"]="1"
+        process.env["CGO_ENABLED"] = "1";
         if (process.platform !== "linux") {
-            process.env["CC"]="x86_64-linux-musl-gcc"
-            process.env["CXX"]="x86_64-linux-musl-g++"
+            process.env["CC"] = "x86_64-linux-musl-gcc";
+            process.env["CXX"] = "x86_64-linux-musl-g++";
         }
         const result = $({
             cwd: folderPath,

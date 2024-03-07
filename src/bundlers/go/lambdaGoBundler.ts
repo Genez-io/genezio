@@ -1,6 +1,6 @@
 import { GoBundler } from "./goBundlerBase.js";
 import { template } from "./lambdaGoMain.js";
-import log from "loglevel";
+import { log } from "../../utils/logging.js";
 import { $ } from "execa";
 import { BundlerInput } from "../bundler.interface.js";
 

@@ -12,7 +12,7 @@ import FileDetails from "../../models/fileDetails.js";
 import { default as fsExtra } from "fs-extra";
 import { lambdaHandlerGenerator } from "./lambdaHandlerGenerator.js";
 import { genezioRuntimeHandlerGenerator } from "./genezioRuntimeHandlerGenerator.js";
-import log from "loglevel";
+import { log } from "../../utils/logging.js";
 import { debugLogger } from "../../utils/logging.js";
 import esbuild, { BuildResult, Plugin, BuildFailure, Message, Loader } from "esbuild";
 import { nodeExternalsPlugin } from "esbuild-node-externals";

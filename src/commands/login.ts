@@ -1,5 +1,5 @@
 import jsonBody from "body/json.js";
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 import { AddressInfo } from "net";
 import { DASHBOARD_URL } from "../constants.js";
 import { saveAuthToken } from "../utils/accounts.js";

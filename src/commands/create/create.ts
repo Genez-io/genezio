@@ -5,7 +5,7 @@ import http from "isomorphic-git/http/node/index.js";
 import path from "path";
 import nativeFs from "fs";
 import { setLinkPathForProject } from "../../utils/linkDatabase.js";
-import log from "loglevel";
+import { log } from "../../utils/logging.js";
 import { platform } from "os";
 import { GenezioCreateOptions } from "../../models/commandOptions.js";
 import { debugLogger, doAdaptiveLogAction } from "../../utils/logging.js";

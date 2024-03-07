@@ -1,8 +1,6 @@
-import { AxiosError } from "axios";
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 import { exit } from "process";
 import { languages } from "../utils/languages.js";
-import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
 import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import listProjects from "../requests/listProjects.js";
@@ -63,11 +61,11 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
 
         throw error;
     });
-    
+
     const classUrls = sdkResponse.files.map((c) => ({
-            name: c.className,
-            cloudUrl: url,
-        }))
+        name: c.className,
+        cloudUrl: url,
+    }));
     await writeSdk({
         language: options.language,
         packageName: options.packageName,
@@ -76,7 +74,8 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
         classUrls,
         publish: false,
         installPackage: false,
-        outputPath: options.output}); 
+        outputPath: options.output,
+    });
 
     log.info("Your SDK has been generated successfully in " + options.output);
     log.info(
@@ -107,14 +106,7 @@ export async function generateRemoteSdkCommand(projectName: string, options: Gen
     }
 
     if (projectName) {
-        await generateRemoteSdkHandler(language, sdkPath, projectName, stage, region).catch(
-            (error: AxiosError) => {
-                if (error.response?.status == 401) {
-                    throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
-                }
-                throw error;
-            },
-        );
+        await generateRemoteSdkHandler(language, sdkPath, projectName, stage, region);
     } else {
         let config = options.config;
         // check if path ends in .genezio.yaml or else append it
@@ -250,14 +242,15 @@ async function generateRemoteSdkHandler(
     });
 
     await writeSdk({
-        language, 
+        language,
         packageName: `@genezio-sdk/${projectName}_${region}`,
         packageVersion: `1.0.0-${stage}`,
         sdkResponse: sdkGeneratorResponse,
         classUrls,
         publish: false,
         installPackage: false,
-        outputPath: sdkPath});
+        outputPath: sdkPath,
+    });
 
     await Promise.all(
         sdkGeneratorResponse.files.map(async (file) => {

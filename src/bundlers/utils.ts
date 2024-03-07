@@ -1,4 +1,4 @@
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 import { ClassConfiguration } from "../models/projectConfiguration.js";
 import { fileExists } from "../utils/file.js";
 import { BundlerInterface, BundlerOutput } from "./bundler.interface.js";
@@ -22,7 +22,7 @@ export async function bundle(
     installDeps: boolean = true,
 ): Promise<BundlerOutput> {
     if (!(await fileExists(element.path))) {
-        printAdaptiveLog("Bundling your code and uploading it", "error");
+        printAdaptiveLog("Bundling your code\n", "error");
         log.error(`\`${element.path}\` file does not exist at the indicated path.`);
 
         throw new Error(`\`${element.path}\` file does not exist at the indicated path.`);

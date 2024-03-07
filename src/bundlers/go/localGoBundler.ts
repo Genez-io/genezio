@@ -1,5 +1,5 @@
 import path from "path";
-import log from "loglevel";
+import { log } from "../../utils/logging.js";
 import { template } from "./localGoMain.js";
 import { GoBundler } from "./goBundlerBase.js";
 import { BundlerInput } from "../bundler.interface.js";
@@ -42,9 +42,9 @@ export class LocalGoBundler extends GoBundler {
         }
 
         input.extra = {
-                ...input.extra,
-                startingCommand: path.join(input.path, "main"),
-                commandParameters: [],
+            ...input.extra,
+            startingCommand: path.join(input.path, "main"),
+            commandParameters: [],
         };
     }
 }
