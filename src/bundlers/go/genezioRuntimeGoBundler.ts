@@ -28,7 +28,19 @@ export class GenezioRuntimeGoBundler extends GoBundler {
             log.info(getDependencyResult.stdout.toString());
             throw new Error("Compilation error! Please check your code and try again.");
         }
-        const result = $({ cwd: folderPath }).sync`go build -buildmode=plugin -o bootstrap main.go`;
+        process.env["GOOS"] = "linux";
+        process.env["GOARCH"] = "amd64";
+        process.env["CGO_ENABLED"]="1"
+        if (process.platform !== "linux") {
+            process.env["CC"]="x86_64-linux-musl-gcc"
+            process.env["CXX"]="x86_64-linux-musl-g++"
+        }
+        const result = $({
+            cwd: folderPath,
+            env: {
+                ...process.env,
+            },
+        }).sync`go build -buildmode=plugin -o bootstrap main.go`;
         if (result.exitCode == null) {
             log.info(
                 "There was an error while running the go script, make sure you have the correct permissions.",
