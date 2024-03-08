@@ -20,7 +20,7 @@
     "scripts": {
         "build:cjs": "tsc -p tsconfig.cjs.json",
         "build:esm": "tsc -p tsconfig.esm.json",
-        "build": "npm run build:cjs && npm run build:esm && cp package.json ../../build/src/genezio-remote/"
+        "build": "npm run build:cjs && npm run build:esm && shx cp package.json ../../build/src/genezio-remote/"
     },
     "files": [
         "dist"
