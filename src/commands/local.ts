@@ -56,7 +56,10 @@ import {
 } from "../models/cloudProviderIdentifier.js";
 import { LocalGoBundler } from "../bundlers/go/localGoBundler.js";
 import { importServiceEnvVariables } from "../utils/servicesEnvVariables.js";
-import { isDependencyVersionCompatible } from "../utils/dependencyChecker.js";
+import {
+    isDependencyVersionCompatible,
+    checkExperimentalDecorators,
+} from "../utils/jsProjectChecker.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
 import { runScript } from "../utils/scripts.js";
 import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
@@ -202,6 +205,8 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             );
             exit(1);
         }
+
+        checkExperimentalDecorators(backendConfiguration.path);
     }
     await doAdaptiveLogAction("Running backend local scripts", async () => {
         await runScript(backendConfiguration.scripts?.local, backendConfiguration.path);

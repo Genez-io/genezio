@@ -50,7 +50,10 @@ import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import { interruptLocalProcesses } from "../utils/localInterrupt.js";
 import { Status } from "../requests/models.js";
 import { bundle } from "../bundlers/utils.js";
-import { isDependencyVersionCompatible } from "../utils/dependencyChecker.js";
+import {
+    checkExperimentalDecorators,
+    isDependencyVersionCompatible,
+} from "../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../yamlProjectConfiguration/v2.js";
 import { Language } from "../yamlProjectConfiguration/models.js";
 import { runScript } from "../utils/scripts.js";
@@ -88,6 +91,8 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To solve this, please update the @genezio/types package on your backend component using the following command: npm install @genezio/types@${RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE}`,
             );
         }
+
+        checkExperimentalDecorators(backendCwd);
     }
     // TODO: check this in deployClasses function
     //
