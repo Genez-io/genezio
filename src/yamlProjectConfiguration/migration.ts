@@ -86,7 +86,7 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
                   }
                 : undefined,
             frontend:
-                frontendPath && frontendPublish && v1Config.frontend
+                frontendPath && v1Config.frontend
                     ? {
                           path: frontendPath,
                           language: v1Config.language,
