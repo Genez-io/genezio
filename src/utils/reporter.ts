@@ -6,6 +6,7 @@ import colors from "colors";
 export enum GenezioCommand {
     deploy = "deploy",
     local = "local",
+    sdk = "sdk",
 }
 
 export type ProjectPrimaryKeys = {
