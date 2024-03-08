@@ -7,7 +7,7 @@ import archiver from "archiver";
 import { parse } from "yaml";
 import { exit } from "process";
 import awsCronParser from "aws-cron-parser";
-import log from "loglevel";
+import { log } from "./logging.js";
 import { promises as fsPromises, Dirent } from "fs";
 import { debugLogger } from "./logging.js";
 import { EnvironmentVariable } from "../models/environmentVariables.js";

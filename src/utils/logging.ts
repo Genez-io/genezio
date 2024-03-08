@@ -1,44 +1,113 @@
-import log, { LogLevelDesc } from "loglevel";
-import { Spinner } from "cli-spinner";
+import { Logger } from "tslog";
 import { AbortController } from "node-abort-controller";
-import logUpdate from "log-update";
 import colors from "colors";
+import ora from "ora";
+import { AxiosError } from "axios";
+import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
+import { ENVIRONMENT } from "../constants.js";
 
-export const spinner = new Spinner("%s  ");
-spinner.setSpinnerString("|/-\\");
+const spinner = ora();
 
-export const debugLogger = log.getLogger("debuggingLogger");
+export const debugLogger = new Logger({
+    name: "debuggingLogger",
+    prettyLogTemplate: "{{hh}}:{{MM}}:{{ss}}:{{ms}} {{logLevelName}}\t{{fileNameWithLine}}\t",
+    minLevel: 7,
+    hideLogPositionForProduction: ENVIRONMENT === "prod",
+    prettyInspectOptions: {
+        depth: 1,
+        colors: true,
+    },
+});
+
+export const log = new Logger({
+    name: "mainLogger",
+    prettyLogTemplate: "",
+    minLevel: 3,
+    hideLogPositionForProduction: true,
+    prettyErrorTemplate: "\n{{errorName}} {{errorMessage}}\n",
+    prettyLogStyles: {
+        errorName: ["bold", "bgRedBright", "whiteBright"],
+        errorMessage: ["bold", "red"],
+    },
+});
+
+export function logError(error: Error) {
+    debugLogger.fatal(error);
+    if (error instanceof AxiosError) {
+        const data = error.response?.data;
+
+        switch (error.response?.status) {
+            case 401:
+                log.error(new Error(GENEZIO_NOT_AUTH_ERROR_MSG));
+                break;
+            case 500:
+                log.error(new Error(error.message));
+                if (data && data.status === "error") {
+                    log.error(new Error(data.error.message));
+                }
+                break;
+            case 400:
+                log.error(new Error(error.message));
+                if (data && data.status === "error") {
+                    log.error(new Error(data.error.message));
+                }
+                break;
+            default:
+                if (error.message) {
+                    log.error(new Error(error.message));
+                }
+                break;
+        }
+    } else {
+        log.error(new Error(error.message));
+    }
+}
+
+function getLogLevel(logLevel: string): number {
+    switch (logLevel) {
+        case "silly":
+            return 0;
+        case "trace":
+            return 1;
+        case "debug":
+            return 2;
+        case "info":
+            return 3;
+        case "warn":
+            return 4;
+        case "error":
+            return 5;
+        case "fatal":
+            return 6;
+        default:
+            return 3;
+    }
+}
 
 export function setDebuggingLoggerLogLevel(logLevel?: string) {
     if (!logLevel) return;
 
-    debugLogger.setLevel(logLevel as LogLevelDesc);
+    debugLogger.settings.minLevel = getLogLevel(logLevel);
 }
 
 export function printAdaptiveLog(message: string, state: string) {
     if (state == "end") {
-        spinner.stop(true);
-        logUpdate(message + "...✅");
-        logUpdate.done();
+        spinner.succeed(`${colors.green(message)}`);
     } else if (state == "start") {
-        logUpdate(message + "...");
-        spinner.start();
+        spinner.start(message);
     } else {
-        spinner.stop(true);
-        logUpdate(message + "...❌");
-        logUpdate.done();
+        spinner.fail(`${colors.red(message)}`);
     }
 }
 
 export async function doAdaptiveLogAction<T>(message: string, action: () => Promise<T>) {
-    printAdaptiveLog(message, "start");
     return action()
         .then((result) => {
-            printAdaptiveLog(message, "end");
+            spinner.succeed(`${colors.green(message)}`);
             return result;
         })
         .catch((error) => {
-            printAdaptiveLog(message, "error");
+            spinner.fail(`${colors.red(message)}`);
             throw error;
         });
 }
@@ -49,16 +118,24 @@ export function code(code: string): string {
 
 const uninformativeMessages = [
     "Calling the API for witty loading messages",
-    "Asking on StackOverflow how to deploy your project",
     "Changing the plumbing of the pipeline",
     "Rearranging the code randomly",
     "Calling the mothership for further instructions",
-    "Deploying...crossing our fingers",
     "Doing a barrel roll",
     "*playing elevator music*",
     "Spraying your code with bug repellents",
     "Baking a cake",
     "Changing spaces to tabs",
+    "Tightening the screws of our servers",
+    "Seeding some new clouds for your deployment...",
+    "Drying up a cloud for future usage...",
+    "Warming up the servers with some hot drinks",
+    "Instructing the servers into the ways of the Force",
+    "Giving some food for thought to our neural network",
+    "Booting the servers, because someone has to do it...",
+    "Casting an efficiency spell on your code",
+    "Unpacking your code archive with care",
+    "Preparing our server hamsters for your code's grand entrance",
 ];
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -75,14 +152,11 @@ export async function printUninformativeLog(controller: AbortController): Promis
         exitLoop = true;
     });
 
-    spinner.start();
-
     while (!exitLoop) {
         await delay(250);
         waiting += 250;
 
         if (waiting == 5000) {
-            spinner.stop(true);
             spinning = false;
             printAdaptiveLog(message, "start");
             firstMessage = true;
@@ -96,7 +170,6 @@ export async function printUninformativeLog(controller: AbortController): Promis
     }
 
     if (spinning) {
-        spinner.stop(true);
         printAdaptiveLog(finalMessage, "start");
         return finalMessage;
     }

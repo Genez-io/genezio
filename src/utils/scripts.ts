@@ -3,9 +3,9 @@ import { runNewProcess } from "./process.js";
 export async function runScript(
     scripts: string | string[] | undefined,
     cwd: string,
-): Promise<boolean> {
+): Promise<void> {
     if (!scripts) {
-        return true;
+        return;
     }
 
     if (!Array.isArray(scripts)) {
@@ -15,8 +15,6 @@ export async function runScript(
     for (const script of scripts) {
         // TODO: use execa instead of runNewProcess
         const success = await runNewProcess(script, cwd);
-        if (!success) return false;
+        if (!success) throw new Error(`Failed to run script: ${script}`);
     }
-
-    return true;
 }

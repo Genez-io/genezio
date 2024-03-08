@@ -2,7 +2,7 @@
 import path from "path";
 import Mustache from "mustache";
 import { default as fsExtra } from "fs-extra";
-import log from "loglevel";
+import { log } from "../../utils/logging.js";
 import { spawnSync } from "child_process";
 // Kotlin stuff
 import { checkIfKotlinReqsAreInstalled } from "../../utils/kotlin.js";

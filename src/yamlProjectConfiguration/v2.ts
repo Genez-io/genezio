@@ -100,7 +100,7 @@ function parseGenezioConfig(config: unknown) {
 
     const frontendSchema = zod.object({
         path: zod.string(),
-        language: zod.nativeEnum(Language),
+        language: zod.nativeEnum(Language).optional(),
         subdomain: zod.string().optional(),
         publish: zod.string().optional(),
         scripts: zod
