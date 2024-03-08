@@ -5,9 +5,12 @@ import ts from "typescript";
 import { Worker } from "worker_threads";
 import { deleteFolder, writeToFile } from "../../utils/file.js";
 import fs from "fs";
+import { default as fsExtra } from "fs-extra";
 import packageManager from "../../packageManagers/packageManager.js";
 import { listFilesWithExtension } from "../../utils/file.js";
+import { fileURLToPath } from "url";
 import { doAdaptiveLogAction } from "../../utils/logging.js";
+
 
 const compilerWorkerScript = `const { parentPort, workerData } = require("worker_threads");
 
@@ -94,6 +97,14 @@ export async function compileSdk(
     const writePackagePromise = writeToFile(modulePath, "package.json", packageJson, true);
     workers.push(writePackagePromise);
     await Promise.all(workers);
+
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    fsExtra.copySync(
+        path.join(__dirname, "../../genezio-remote"),
+        path.join(genezioSdkPath, "node_modules/genezio-remote"),
+    );
+
     if (publish === true) {
         await doAdaptiveLogAction("Publishing the SDK", async () => {
             await packageManager.publish(modulePath);

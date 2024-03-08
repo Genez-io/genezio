@@ -7,11 +7,7 @@ import {
     SdkGeneratorOutput,
     IndexModel,
 } from "../../models/genezioModels.js";
-import {
-    nodeSdkJsRemoteNode,
-    nodeSdkJsRemoteBrowser,
-    storageJs,
-} from "../templates/nodeSdkJs.js";
+import { storageJs } from "../templates/nodeSdkJs.js";
 import Mustache from "mustache";
 
 const indexTemplate = `/**
@@ -31,7 +27,7 @@ const template = `/**
 * if new genezio commands are executed.
 */
 
-{{{remoteImport}}}
+import { Remote } from "genezio-remote";
 {{#hasGnzContext}}
 import { StorageManager } from "./storage.js"
 {{/hasGnzContext}}
@@ -88,7 +84,6 @@ type MethodViewType = {
 };
 
 type ViewType = {
-    remoteImport: string;
     className: string;
     _url: string;
     methods: MethodViewType[];
@@ -126,10 +121,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                 continue;
             }
 
-            const remoteImport = `import { Remote } from "${sdkGeneratorInput.packageName}/remote";`
-
             const view: ViewType = {
-                remoteImport,
                 className: classDefinition.name,
                 _url: _url,
                 methods: [],
@@ -201,18 +193,6 @@ class SdkGenerator implements SdkGeneratorInterface {
                 className: classDefinition.name,
             });
         }
-
-        // generate remote.js
-        generateSdkOutput.files.push({
-            className: "Remote",
-            path: "remote.js",
-            data: nodeSdkJsRemoteBrowser.replace("%%%url%%%", "undefined"),
-        });
-        generateSdkOutput.files.push({
-            className: "Remote",
-            path: "remote.node.js",
-            data: nodeSdkJsRemoteNode.replace("%%%url%%%", "undefined"),
-        });
 
         generateSdkOutput.files.push({
             className: "StorageManager",

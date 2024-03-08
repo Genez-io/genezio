@@ -220,7 +220,7 @@ async function generateRemoteSdkHandler(
             }),
         ),
         language: language as Language,
-        packageName: `@genezio-sdk/${projectName}_${region}`,
+        packageName: `@genezio-sdk/${projectName}`,
     };
 
     const sdkGeneratorOutput = await generateSdk(sdkGeneratorInput, undefined);
@@ -243,7 +243,7 @@ async function generateRemoteSdkHandler(
 
     await writeSdk({
         language,
-        packageName: `@genezio-sdk/${projectName}_${region}`,
+        packageName: `@genezio-sdk/${projectName}`,
         packageVersion: `1.0.0-${stage}`,
         sdkResponse: sdkGeneratorResponse,
         classUrls,

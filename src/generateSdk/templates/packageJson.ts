@@ -10,7 +10,7 @@ function getRandomSemVer() {
 
 export const getPackageJsonSdkGenerator = (
     packageName: string,
-    version: string|undefined,
+    version: string | undefined,
     sdkPath: string,
 ): string => {
     // check if package.json exists at sdkPath
@@ -38,20 +38,16 @@ export const getNodeModulePackageJson = (packageName: string, version?: string):
     ".": {
       "require": "./cjs/index.js",
       "import": "./esm/index.js"
-    },
-    "./remote": {
-      "browser": {
-        "require": "./cjs/remote.js",
-        "import": "./esm/remote.js"
-      },
-      "default": {
-        "require": "./cjs/remote.node.js",
-        "import": "./esm/remote.node.js"
-      }
     }
-  },
+   },
+  "bundleDependencies": [
+    "genezio-remote"
+  ],
   "description": "",
   "main": "./cjs/index.js",
-  "module": "./esm/index.js"
+  "module": "./esm/index.js",
+  "dependencies": {
+    "genezio-remote": "1.0.0"
+  }
 }
 `;

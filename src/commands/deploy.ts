@@ -256,7 +256,7 @@ export async function deployClasses(
         sdkLanguage,
         mapYamlClassToSdkClassConfiguration(backend.classes, backend.language.name, backend.path),
         backend.path,
-        /* packageName= */ `@genezio-sdk/${configuration.name}_${configuration.region}`,
+        /* packageName= */ `@genezio-sdk/${configuration.name}`,
     ).catch((error) => {
         // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
         if (error.code === "BABEL_PARSER_SYNTAX_ERROR") {
@@ -599,7 +599,7 @@ async function handleSdk(
         }));
         await writeSdk({
             language: sdkLanguage,
-            packageName: `@genezio-sdk/${configuration.name}_${configuration.region}`,
+            packageName: `@genezio-sdk/${configuration.name}`,
             packageVersion: `1.0.0-${options.stage}`,
             sdkResponse,
             classUrls,
