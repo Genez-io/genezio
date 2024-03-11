@@ -3,29 +3,18 @@
     "version": "1.0.0",
     "exports": {
         ".": {
-            "browser": {
-                "require": "./dist/cjs/index.js",
-                "import": "./dist/esm/index.js"
-            },
-            "react-native": {
-                "require": "./dist/cjs/index.js",
-                "import": "./dist/esm/index.js"
-            },
-            "default": {
-                "require": "./dist/cjs/index.node.js",
-                "import": "./dist/esm/index.node.js"
-            }
+            "browser": "./dist/lib/index.js",
+            "react-native": "./dist/lib/index.js",
+            "default": "./dist/lib/index.node.js"
         }
     },
     "scripts": {
         "build:cjs": "tsc -p tsconfig.cjs.json",
-        "build:esm": "tsc -p tsconfig.esm.json",
-        "build": "npm run build:cjs && npm run build:esm && shx cp package.json ../../build/src/genezio-remote/"
+        "build": "npm run build:cjs && shx cp package.json ../../build/src/genezio-remote/"
     },
     "files": [
         "dist"
     ],
     "description": "",
-    "main": "./dist/cjs/index.js",
-    "module": "./dist/esm/index.js"
+    "main": "./dist/lib/index.js"
 }

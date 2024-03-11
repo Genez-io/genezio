@@ -11,7 +11,6 @@ import { listFilesWithExtension } from "../../utils/file.js";
 import { fileURLToPath } from "url";
 import { doAdaptiveLogAction } from "../../utils/logging.js";
 
-
 const compilerWorkerScript = `const { parentPort, workerData } = require("worker_threads");
 
 const { compilerOptions, fileNames, typescriptPath } = workerData;
@@ -66,7 +65,7 @@ export async function compileSdk(
     const require = createRequire(import.meta.url);
     const typescriptPath = path.resolve(require.resolve("typescript"));
     const cjsOptions = {
-        outDir: path.resolve(genezioSdkPath, "cjs"),
+        outDir: path.resolve(genezioSdkPath, "lib"),
         module: ts.ModuleKind.CommonJS,
         rootDir: sdkPath,
         allowJs: true,
@@ -76,20 +75,6 @@ export async function compileSdk(
         createWorker(compilerWorkerScript, {
             fileNames: filenames,
             compilerOptions: cjsOptions,
-            typescriptPath,
-        }),
-    );
-    const esmOptions = {
-        outDir: path.resolve(genezioSdkPath, "esm"),
-        module: ts.ModuleKind.ESNext,
-        rootDir: sdkPath,
-        allowJs: true,
-        declaration: true,
-    };
-    workers.push(
-        createWorker(compilerWorkerScript, {
-            fileNames: filenames,
-            compilerOptions: esmOptions,
             typescriptPath,
         }),
     );
