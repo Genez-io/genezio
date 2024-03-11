@@ -28,7 +28,7 @@ import {
     readEnvironmentVariablesFile,
     zipFile,
 } from "../utils/file.js";
-import { printAdaptiveLog, debugLogger, doAdaptiveLogAction } from "../utils/logging.js";
+import { debugLogger, doAdaptiveLogAction } from "../utils/logging.js";
 import { GenezioCommand, reportSuccess } from "../utils/reporter.js";
 import { generateRandomSubdomain } from "../utils/yaml.js";
 import cliProgress from "cli-progress";
@@ -48,7 +48,6 @@ import colors from "colors";
 import { getEnvironmentVariables } from "../requests/getEnvironmentVariables.js";
 import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import { interruptLocalProcesses } from "../utils/localInterrupt.js";
-import { Status } from "../requests/models.js";
 import { bundle } from "../bundlers/utils.js";
 import {
     checkExperimentalDecorators,
@@ -62,9 +61,15 @@ import configIOController, { YamlFrontend } from "../yamlProjectConfiguration/v2
 import { getRandomCloudProvider, isProjectDeployed } from "../utils/abTesting.js";
 import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
+import { Listr } from "listr2";
+import { DeepRequired } from "../utils/types.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
+
+    const listrTasks = new Listr([], {
+        rendererOptions: { collapseSubtasks: false },
+    });
 
     const configIOController = new YamlConfigurationIOController(options.config);
     const configuration = await configIOController.read();
@@ -108,63 +113,84 @@ export async function deployCommand(options: GenezioDeployOptions) {
     //     configuration.cloudProvider || CloudProviderIdentifier.GENEZIO,
     // );
     let deployClassesResult;
-    backend: if (configuration.backend && !options.frontend) {
-        if (configuration.backend.classes?.length === 0) {
-            log.error(
-                "No classes were found in your genezio.yaml. Add some to be able to deploy your backend.",
-            );
-            break backend;
-        }
+    if (!options.frontend) {
+        listrTasks.add({
+            title: "Deploying your backend to the genezio infrastructure",
+            task: async (_, task) => {
+                if (!configuration.backend) {
+                    task.skip(
+                        "Skipped deploying backend: No backend entry in genezio configuration file.",
+                    );
+                    return;
+                }
 
-        await doAdaptiveLogAction("Running backend deploy scripts", async () => {
-            await runScript(configuration.backend?.scripts?.deploy, backendCwd);
-        }).catch(async (error) => {
-            await GenezioTelemetry.sendEvent({
-                eventType: TelemetryEventTypes.GENEZIO_PRE_BACKEND_DEPLOY_SCRIPT_ERROR,
-                commandOptions: JSON.stringify(options),
-            });
-            throw error;
-        });
+                const backendTasks = new Listr([]);
 
-        // Enable cloud provider AB Testing
-        // This is ONLY done in the dev environment and if DISABLE_AB_TESTING is not set.
-        if (
-            ENVIRONMENT === "dev" &&
-            configuration.backend &&
-            process.env["DISABLE_AB_TESTING"] !== "true"
-        ) {
-            const yamlConfig = await configIOController.read(/* fillDefaults= */ false);
-            if (!yamlConfig.backend) {
-                throw new Error("No backend entry in genezio configuration file.");
-            }
-            yamlConfig.backend.cloudProvider = await performCloudProviderABTesting(
-                configuration.name,
-                configuration.region,
-                configuration.backend.cloudProvider,
-            );
-            // Write the new configuration in the config file
-            await configIOController.write(yamlConfig);
-        }
+                backendTasks.add({
+                    title: "Running backend deploy scripts",
+                    task: async (_, task) => {
+                        await runScript(configuration.backend?.scripts?.deploy, backendCwd, {
+                            task,
+                            skipMessage: "Skipped running deploy scripts: None provided",
+                            errorMessage: "Failed to run deploy scripts:",
+                        }).catch(async (error) => {
+                            await GenezioTelemetry.sendEvent({
+                                eventType:
+                                    TelemetryEventTypes.GENEZIO_PRE_BACKEND_DEPLOY_SCRIPT_ERROR,
+                                commandOptions: JSON.stringify(options),
+                            });
+                            throw error;
+                        });
+                    },
+                });
 
-        await GenezioTelemetry.sendEvent({
-            eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_START,
-            commandOptions: JSON.stringify(options),
-        });
-        deployClassesResult = await deployClasses(configuration, options).catch(
-            async (error: AxiosError<Status>) => {
+                // Enable cloud provider AB Testing
+                // This is ONLY done in the dev environment and if DISABLE_AB_TESTING is not set.
+                if (
+                    ENVIRONMENT === "dev" &&
+                    configuration.backend &&
+                    process.env["DISABLE_AB_TESTING"] !== "true"
+                ) {
+                    const yamlConfig = await configIOController.read(/* fillDefaults= */ false);
+                    if (!yamlConfig.backend) {
+                        throw new Error("No backend entry in genezio configuration file.");
+                    }
+                    yamlConfig.backend.cloudProvider = await performCloudProviderABTesting(
+                        configuration.name,
+                        configuration.region,
+                        configuration.backend.cloudProvider,
+                    );
+                    // Write the new configuration in the config file
+                    await configIOController.write(yamlConfig);
+                }
+
                 await GenezioTelemetry.sendEvent({
-                    eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_ERROR,
-                    errorTrace: error.toString(),
+                    eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_START,
                     commandOptions: JSON.stringify(options),
                 });
-                throw error;
+                // deployClassesResult = await deployClasses(
+                //     configuration as DeepRequired<typeof configuration, "backend">,
+                //     options,
+                //     backendTasks,
+                // ).catch(async (error: AxiosError<Status>) => {
+                //     await GenezioTelemetry.sendEvent({
+                //         eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_ERROR,
+                //         errorTrace: error.toString(),
+                //         commandOptions: JSON.stringify(options),
+                //     });
+                //     throw error;
+                // });
+                await GenezioTelemetry.sendEvent({
+                    eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_END,
+                    commandOptions: JSON.stringify(options),
+                });
+
+                return backendTasks;
             },
-        );
-        await GenezioTelemetry.sendEvent({
-            eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_END,
-            commandOptions: JSON.stringify(options),
         });
     }
+
+    await listrTasks.run();
 
     const frontendUrls = [];
     if (configuration.frontend && !options.backend) {
@@ -224,11 +250,11 @@ export async function deployCommand(options: GenezioDeployOptions) {
         }
     }
     if (deployClassesResult) {
-        log.info(
-            colors.cyan(
-                `Genezio project URL: ${DASHBOARD_URL}/project/${deployClassesResult.projectId}/${deployClassesResult.projectEnvId}`,
-            ),
-        );
+        // log.info(
+        //     colors.cyan(
+        //         `Genezio project URL: ${DASHBOARD_URL}/project/${deployClassesResult.projectId}/${deployClassesResult.projectEnvId}`,
+        //     ),
+        // );
     }
     if (frontendUrls.length > 0) {
         for (let i = 0; i < frontendUrls.length; i++) {
@@ -238,10 +264,11 @@ export async function deployCommand(options: GenezioDeployOptions) {
 }
 
 export async function deployClasses(
-    configuration: YamlProjectConfiguration,
+    configuration: DeepRequired<YamlProjectConfiguration, "backend">,
     options: GenezioDeployOptions,
+    backendTasks: Listr,
 ) {
-    const backend: YAMLBackend = configuration.backend!;
+    const backend: YAMLBackend = configuration.backend;
     backend.classes = await scanClassesForDecorators(backend);
 
     if (backend.classes.length === 0) {
@@ -291,7 +318,6 @@ export async function deployClasses(
         cliProgress.Presets.shades_grey,
     );
 
-    printAdaptiveLog("Bundling your code\n", "start");
     const bundlerResult: Promise<GenezioCloudInput>[] = projectConfiguration.classes.map(
         async (element) => {
             const ast = sdkResponse.sdkGeneratorInput.classesInfo.find(
@@ -343,12 +369,16 @@ export async function deployClasses(
         },
     );
 
-    const bundlerResultArray = await Promise.all(bundlerResult).catch((error) => {
-        printAdaptiveLog("Bundling your code\n", "error");
-        throw error;
-    });
+    const tasks = new Listr<{ bundlerResultArray: GenezioCloudInput[] }>([
+        {
+            title: "Bundling your code",
+            task: async (ctx) => {
+                ctx.bundlerResultArray = await Promise.all(bundlerResult);
+            },
+        },
+    ]);
 
-    printAdaptiveLog("Bundling your code\n", "end");
+    const bundlerResultArray = (await tasks.run()).bundlerResultArray;
 
     projectConfiguration.astSummary.classes = projectConfiguration.astSummary.classes.map((c) => {
         // remove cwd from path and the extension

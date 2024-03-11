@@ -5,6 +5,7 @@ import ora from "ora";
 import { AxiosError } from "axios";
 import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
 import { ENVIRONMENT } from "../constants.js";
+import { Listr } from "listr2";
 
 const spinner = ora();
 
@@ -101,15 +102,17 @@ export function printAdaptiveLog(message: string, state: string) {
 }
 
 export async function doAdaptiveLogAction<T>(message: string, action: () => Promise<T>) {
-    return action()
-        .then((result) => {
-            spinner.succeed(`${colors.green(message)}`);
-            return result;
-        })
-        .catch((error) => {
-            spinner.fail(`${colors.red(message)}`);
-            throw error;
-        });
+    const task = new Listr(
+        [
+            {
+                title: message,
+                task: action,
+            },
+        ],
+        { concurrent: false },
+    );
+
+    await task.run();
 }
 
 export function code(code: string): string {
