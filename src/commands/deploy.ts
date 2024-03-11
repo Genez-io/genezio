@@ -62,6 +62,7 @@ import configIOController, { YamlFrontend } from "../yamlProjectConfiguration/v2
 import { getRandomCloudProvider, isProjectDeployed } from "../utils/abTesting.js";
 import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
+import { getHttpMethodsWithWrongReturnType } from "../utils/httpMethodsCheck.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -273,7 +274,8 @@ export async function deployClasses(
         throw error;
     });
     const projectConfiguration = new ProjectConfiguration(configuration, sdkResponse);
-
+    const httpMethodsChecked = getHttpMethodsWithWrongReturnType(projectConfiguration.classes);
+    log.info("The classes are= ", JSON.stringify(httpMethodsChecked));
     const classesWithNoMethods = getNoMethodClasses(projectConfiguration.classes);
     if (classesWithNoMethods.length) {
         const errorClasses = classesWithNoMethods.join(", ");
