@@ -34,6 +34,7 @@ import {
     Node,
     Program,
 } from "../../models/genezioModels.js";
+import { UserError } from "../../errors.js";
 
 export class KotlinBundler implements BundlerInterface {
     async #compile(folderPath: string) {
@@ -48,11 +49,11 @@ export class KotlinBundler implements BundlerInterface {
                     gradlew +
                     " script, make sure you have the correct permissions.",
             );
-            throw new Error("Compilation error! Please check your code and try again.");
+            throw new UserError("Compilation error! Please check your code and try again.");
         } else if (result.status != 0) {
             log.info(result.stderr.toString());
             log.info(result.stdout.toString());
-            throw new Error("Compilation error! Please check your code and try again.");
+            throw new UserError("Compilation error! Please check your code and try again.");
         }
         // Move the stand alone jar to its own folder
         fsExtra.mkdirSync(path.join(folderPath, "final_build"));
@@ -120,7 +121,7 @@ export class KotlinBundler implements BundlerInterface {
 
         // Error check: User is using Windows but paths are unix style (possible when cloning projects from git)
         if (process.platform === "win32" && classConfigPath.includes("/")) {
-            throw new Error(
+            throw new UserError(
                 "Error: You are using Windows but your project contains unix style paths. Please use Windows style paths in genezio.yaml instead.",
             );
         }

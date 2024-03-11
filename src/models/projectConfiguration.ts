@@ -6,6 +6,7 @@ import { SdkGeneratorResponse } from "./sdkGeneratorResponse.js";
 import { TriggerType } from "../yamlProjectConfiguration/models.js";
 import { YamlProjectConfiguration } from "../yamlProjectConfiguration/v2.js";
 import path from "path";
+import { UserError } from "../errors.js";
 export class ParameterType {
     name: string;
     type: any;
@@ -126,7 +127,7 @@ export class ProjectConfiguration {
                 (yamlC) => path.join(yamlConfiguration.backend?.path || ".", yamlC.path) === c.path,
             );
             if (!yamlClass) {
-                throw new Error(
+                throw new UserError(
                     `[Project Configuration] Class configuration not found for ${c.path}`,
                 );
             }

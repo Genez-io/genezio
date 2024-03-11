@@ -3,7 +3,7 @@ import zod from "zod";
 import nativeFs from "fs";
 import { IFs } from "memfs";
 import { regions } from "../utils/configs.js";
-import { zodFormatError } from "../errors.js";
+import { UserError, zodFormatError } from "../errors.js";
 import { Language } from "./models.js";
 import { DEFAULT_NODE_RUNTIME, supportedNodeRuntimes } from "../models/nodeRuntime.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
@@ -222,11 +222,11 @@ export class YamlConfigurationIOController {
                 await this.fs.promises.writeFile(this.filePath, yaml.stringify(genezioConfig));
             } else {
                 if (e instanceof zod.ZodError) {
-                    throw new Error(
+                    throw new UserError(
                         `There was a problem parsing your YAML configuration!\n${zodFormatError(e)}`,
                     );
                 }
-                throw new Error(`There was a problem parsing your YAML configuration!\n${e}`);
+                throw new UserError(`There was a problem parsing your YAML configuration!\n${e}`);
             }
         }
 

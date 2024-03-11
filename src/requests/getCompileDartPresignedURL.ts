@@ -4,16 +4,17 @@ import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
 import { AxiosResponse } from "axios";
 import { StatusOk } from "./models.js";
+import { UserError } from "../errors.js";
 
 export async function getCompileDartPresignedURL(archiveName: string) {
     if (!archiveName) {
-        throw new Error("Missing required parameters");
+        throw new UserError("Missing required parameters");
     }
 
     // Check if user is authenticated
     const authToken = await getAuthToken();
     if (!authToken) {
-        throw new Error(
+        throw new UserError(
             "You are not logged in. Run 'genezio login' before you deploy your function.",
         );
     }
@@ -36,7 +37,7 @@ export async function getCompileDartPresignedURL(archiveName: string) {
         });
 
     if (response.data.presignedURL === undefined) {
-        throw new Error("The endpoint did not return a presigned url.");
+        throw new UserError("The endpoint did not return a presigned url.");
     }
 
     return { ...response.data, presignedURL: response.data.presignedURL };

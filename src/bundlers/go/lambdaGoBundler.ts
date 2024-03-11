@@ -3,6 +3,7 @@ import { template } from "./lambdaGoMain.js";
 import { log } from "../../utils/logging.js";
 import { $ } from "execa";
 import { BundlerInput } from "../bundler.interface.js";
+import { UserError } from "../../errors.js";
 
 export class LambdaGoBundler extends GoBundler {
     template = template;
@@ -26,11 +27,11 @@ export class LambdaGoBundler extends GoBundler {
                 log.info(
                     "There was an error while running the go script, make sure you have the correct permissions.",
                 );
-                throw new Error("Compilation error! Please check your code and try again.");
+                throw new UserError("Compilation error! Please check your code and try again.");
             } else if (getDependencyResult.exitCode != 0) {
                 log.info(getDependencyResult.stderr.toString());
                 log.info(getDependencyResult.stdout.toString());
-                throw new Error("Compilation error! Please check your code and try again.");
+                throw new UserError("Compilation error! Please check your code and try again.");
             }
         }
         process.env["GOOS"] = "linux";
@@ -45,11 +46,11 @@ export class LambdaGoBundler extends GoBundler {
             log.info(
                 "There was an error while running the go script, make sure you have the correct permissions.",
             );
-            throw new Error("Compilation error! Please check your code and try again.");
+            throw new UserError("Compilation error! Please check your code and try again.");
         } else if (result.exitCode != 0) {
             log.info(result.stderr.toString());
             log.info(result.stdout.toString());
-            throw new Error("Compilation error! Please check your code and try again.");
+            throw new UserError("Compilation error! Please check your code and try again.");
         }
     }
 }

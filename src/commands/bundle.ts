@@ -12,12 +12,13 @@ import { writeToFile, zipDirectory } from "../utils/file.js";
 import path from "path";
 import yamlConfigIOController from "../yamlProjectConfiguration/v2.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
+import { UserError } from "../errors.js";
 
 export async function bundleCommand(options: GenezioBundleOptions) {
     const yamlProjectConfiguration = await yamlConfigIOController.read();
     const backendConfiguration = yamlProjectConfiguration.backend;
     if (!backendConfiguration) {
-        throw new Error("Please provide a valid backend configuration.");
+        throw new UserError("Please provide a valid backend configuration.");
     }
     backendConfiguration.classes = await scanClassesForDecorators(backendConfiguration);
 
@@ -47,7 +48,7 @@ export async function bundleCommand(options: GenezioBundleOptions) {
     );
 
     if (!element) {
-        throw new Error(`Class ${options.className} not found.`);
+        throw new UserError(`Class ${options.className} not found.`);
     }
 
     const ast = sdkResponse.sdkGeneratorInput.classesInfo.find(

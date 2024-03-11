@@ -7,6 +7,7 @@ import { fileExists, writeToFile } from "../utils/file.js";
 import { supportedExtensions } from "../utils/languages.js";
 import configIOController, { YamlClass } from "../yamlProjectConfiguration/v2.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
+import { UserError } from "../errors.js";
 
 export async function addClassCommand(classPath: string, classType: string) {
     await GenezioTelemetry.sendEvent({
@@ -16,30 +17,30 @@ export async function addClassCommand(classPath: string, classType: string) {
     if (classType === undefined) {
         classType = "jsonrpc";
     } else if (!["http", "jsonrpc"].includes(classType)) {
-        throw new Error("Invalid class type. Valid class types are 'http' and 'jsonrpc'.");
+        throw new UserError("Invalid class type. Valid class types are 'http' and 'jsonrpc'.");
     }
 
     if (classPath === undefined || classPath === "") {
-        throw new Error("Please provide a path to the class you want to add.");
+        throw new UserError("Please provide a path to the class you want to add.");
     }
 
     const backendConfiguration = (await configIOController.read()).backend;
 
     if (!backendConfiguration) {
-        throw new Error("Please provide a valid backend configuration.");
+        throw new UserError("Please provide a valid backend configuration.");
     }
     backendConfiguration.classes = await scanClassesForDecorators(backendConfiguration);
 
     const className = classPath.split(path.sep).pop();
 
     if (!className) {
-        throw new Error("Please provide a valid class path.");
+        throw new UserError("Please provide a valid class path.");
     }
 
     const classExtension = className.split(".").pop();
 
     if (!classExtension || className.split(".").length < 2) {
-        throw new Error("Please provide a class name with a valid class extension.");
+        throw new UserError("Please provide a class name with a valid class extension.");
     }
 
     // check if class is supported
@@ -48,7 +49,7 @@ export async function addClassCommand(classPath: string, classType: string) {
             supportedExtensions.slice(0, -1).join(", ") +
             (supportedExtensions.length > 1 ? " and " : "") +
             supportedExtensions.slice(-1);
-        throw new Error(
+        throw new UserError(
             `Class language(${classExtension}) not supported. Currently supporting: ${supportedExtensionsString}`,
         );
     }
@@ -60,7 +61,7 @@ export async function addClassCommand(classPath: string, classType: string) {
                 .map((c: YamlClass) => c.path.split(path.sep).pop())
                 .includes(className)
         ) {
-            throw new Error("Class already exists.");
+            throw new UserError("Class already exists.");
         }
     }
 

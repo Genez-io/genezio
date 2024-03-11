@@ -3,8 +3,9 @@ import { AbortController } from "node-abort-controller";
 import colors from "colors";
 import ora from "ora";
 import { AxiosError } from "axios";
-import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
+import { GENEZIO_NOT_AUTH_ERROR_MSG, UserError } from "../errors.js";
 import { ENVIRONMENT } from "../constants.js";
+import * as Sentry from "@sentry/node";
 
 const spinner = ora();
 
@@ -32,7 +33,6 @@ export const log = new Logger({
 });
 
 export function logError(error: Error) {
-    debugLogger.fatal(error);
     if (error instanceof AxiosError) {
         const data = error.response?.data;
 
@@ -58,7 +58,11 @@ export function logError(error: Error) {
                 }
                 break;
         }
+    } else if (error instanceof UserError) {
+        log.error(new Error(error.message));
     } else {
+        Sentry.captureException(error);
+        debugLogger.fatal(error);
         log.error(new Error(error.message));
     }
 }
@@ -79,6 +83,8 @@ function getLogLevel(logLevel: string): number {
             return 5;
         case "fatal":
             return 6;
+        case "disable":
+            return 7;
         default:
             return 3;
     }

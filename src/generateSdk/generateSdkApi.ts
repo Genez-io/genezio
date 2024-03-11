@@ -11,6 +11,7 @@ import fs from "fs";
 import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
 import path from "path";
 import { YamlClass } from "../yamlProjectConfiguration/v2.js";
+import { UserError } from "../errors.js";
 
 /**
  * Asynchronously handles a request to generate an SDK based on the provided YAML project configuration.
@@ -49,7 +50,7 @@ export async function sdkGeneratorApiHandler(
         // prepare input for sdkGenerator
         const classConfiguration = classes.find((c) => c.path === input.class.path);
         if (!classConfiguration) {
-            throw new Error(
+            throw new UserError(
                 `[Sdk Generator] Class configuration not found for ${input.class.path}`,
             );
         }

@@ -6,7 +6,7 @@ import { isValidCron } from "cron-validator";
 import { DEFAULT_NODE_RUNTIME, NodeOptions, supportedNodeRuntimes } from "../models/nodeRuntime.js";
 import zod from "zod";
 import { log } from "../utils/logging.js";
-import { zodFormatError } from "../errors.js";
+import { UserError, zodFormatError } from "../errors.js";
 import { Language, TriggerType } from "./models.js";
 import { PackageManagerType } from "../packageManagers/packageManager.js";
 
@@ -22,7 +22,7 @@ enum CloudProviderIdentifier {
 export function getTriggerTypeFromString(string: string): TriggerType {
     if (string && !TriggerType[string as keyof typeof TriggerType]) {
         const triggerTypes: string = Object.keys(TriggerType).join(", ");
-        throw new Error(
+        throw new UserError(
             "Specified class type for " +
                 string +
                 " is incorrect. Accepted values: " +
@@ -217,7 +217,7 @@ export class YamlProjectConfiguration {
         );
 
         if (!classConfiguration) {
-            throw new Error("Class configuration not found for path " + path);
+            throw new UserError("Class configuration not found for path " + path);
         }
 
         return classConfiguration;
@@ -362,11 +362,11 @@ export class YamlProjectConfiguration {
             configurationFile = configurationFileSchema.parse(configurationFileContent);
         } catch (e) {
             if (e instanceof zod.ZodError) {
-                throw new Error(
+                throw new UserError(
                     `There was a problem parsing your YAML configuration!\n${zodFormatError(e)}`,
                 );
             }
-            throw new Error(`There was a problem parsing your YAML configuration!\n${e}`);
+            throw new UserError(`There was a problem parsing your YAML configuration!\n${e}`);
         }
 
         const unparsedClasses = configurationFile.classes || [];

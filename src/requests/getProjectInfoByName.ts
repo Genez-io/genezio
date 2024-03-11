@@ -4,6 +4,7 @@ import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
 import { ProjectDetails, StatusOk } from "./models.js";
 import { AxiosResponse } from "axios";
+import { UserError } from "../errors.js";
 
 export default async function getProjectInfoByName(
     projectName: string,
@@ -12,7 +13,7 @@ export default async function getProjectInfoByName(
     const authToken = await getAuthToken();
 
     if (!authToken) {
-        throw new Error(
+        throw new UserError(
             "You are not logged in. Run 'genezio login' before you deploy your function.",
         );
     }

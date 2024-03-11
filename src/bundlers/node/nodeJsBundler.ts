@@ -18,7 +18,7 @@ import esbuild, { BuildResult, Plugin, BuildFailure, Message, Loader } from "esb
 import { nodeExternalsPlugin } from "esbuild-node-externals";
 import colors from "colors";
 import { DependencyInstaller } from "./dependencyInstaller.js";
-import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE } from "../../errors.js";
+import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE, UserError } from "../../errors.js";
 import transformDecorators from "../../utils/transformDecorators.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 
@@ -89,7 +89,7 @@ export class NodeJsBundler implements BundlerInterface {
                 const sourceFilePath = path.join(cwd, filePath.path);
                 return fs.promises.copyFile(sourceFilePath, fileDestinationPath).catch((error) => {
                     if (error.code === "EACCES") {
-                        throw new Error(GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE(filePath.path));
+                        throw new UserError(GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE(filePath.path));
                     }
 
                     throw error;
@@ -341,7 +341,7 @@ export class NodeJsBundler implements BundlerInterface {
         }
 
         if (output.metafile === undefined) {
-            throw new Error("Could not get dependencies info");
+            throw new UserError("Could not get dependencies info");
         }
 
         const dependencyMap: Map<string, string> = new Map();
@@ -362,7 +362,7 @@ export class NodeJsBundler implements BundlerInterface {
             // This should not ever happen. If you got here... Good luck!
             const existingDependencyPath = dependencyMap.get(dependencyName);
             if (existingDependencyPath !== undefined && existingDependencyPath !== dependencyPath) {
-                throw new Error(
+                throw new UserError(
                     `Dependency ${dependencyName} has two different paths: ${existingDependencyPath} and ${dependencyPath}`,
                 );
             }
@@ -398,12 +398,12 @@ export class NodeJsBundler implements BundlerInterface {
         const cloudProvider = input.projectConfiguration.cloudProvider;
 
         if (mode === "development" && !tmpFolder) {
-            throw new Error("tmpFolder is required in development mode.");
+            throw new UserError("tmpFolder is required in development mode.");
         }
 
         const handlerGenerator = this.getHandlerGeneratorForProvider(cloudProvider);
         if (handlerGenerator === null) {
-            throw new Error(`Can't generate handler for cloud provider ${cloudProvider}.`);
+            throw new UserError(`Can't generate handler for cloud provider ${cloudProvider}.`);
         }
 
         const temporaryFolder = mode === "production" ? await createTemporaryFolder() : tmpFolder!;

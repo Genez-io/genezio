@@ -23,6 +23,7 @@ import {
     isExportNamedDeclaration,
     Comment,
 } from "@babel/types";
+import { UserError } from "../../errors.js";
 
 class AstGenerator implements AstGeneratorInterface {
     async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
@@ -191,7 +192,7 @@ class AstGenerator implements AstGeneratorInterface {
         });
 
         if (classDefinition == undefined) {
-            throw new Error("No class definition found");
+            throw new UserError("No class definition found");
         } else {
             return {
                 program: {

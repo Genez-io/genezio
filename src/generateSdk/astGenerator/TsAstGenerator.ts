@@ -34,6 +34,7 @@ import typescript from "typescript";
 import { readdirSync } from "fs";
 import path from "path";
 import { statSync } from "fs";
+import { UserError } from "../../errors.js";
 
 type Declaration = StructLiteral | TypeAlias | Enum;
 
@@ -141,7 +142,7 @@ export class AstGenerator implements AstGeneratorInterface {
                     }
                 }
                 if (!typeAtLocationPath) {
-                    throw new Error(
+                    throw new UserError(
                         `Type ${escapedText} is not supported by genezio. Take a look at the documentation to see the supported types. https://docs.genezio.com/`,
                     );
                 }
@@ -277,7 +278,7 @@ export class AstGenerator implements AstGeneratorInterface {
                         }
                     }
                     if (classDeclaration.name === undefined) {
-                        throw new Error("Class name is undefined");
+                        throw new UserError("Class name is undefined");
                     }
                     const typeAtLocation = typeChecker.getTypeAtLocation(classDeclaration.name);
                     let typeAtLocationPath =
@@ -286,7 +287,7 @@ export class AstGenerator implements AstGeneratorInterface {
                         typeAtLocationPath = typeAtLocationPath.slice(0, -3);
                     }
                     if (!typeAtLocationPath) {
-                        throw new Error("Could not find class declaration file path");
+                        throw new UserError("Could not find class declaration file path");
                     }
                     const pathFile = path
                         .relative(process.cwd(), typeAtLocationPath)
@@ -346,7 +347,7 @@ export class AstGenerator implements AstGeneratorInterface {
                     member.type
                 ) {
                     if (member.name && typescript.isComputedPropertyName(member.name)) {
-                        throw new Error("Computed property names are not supported");
+                        throw new UserError("Computed property names are not supported");
                     }
 
                     const field: PropertyDefinition = {
@@ -420,7 +421,7 @@ export class AstGenerator implements AstGeneratorInterface {
                 methodName = methodDeclarationCopy.name.text;
                 break;
             case typescript.SyntaxKind.ComputedPropertyName:
-                throw new Error("Computed property names as method names are not supported");
+                throw new UserError("Computed property names as method names are not supported");
         }
 
         let docString: string | undefined = undefined;
@@ -461,7 +462,7 @@ export class AstGenerator implements AstGeneratorInterface {
             name: enumDeclarationCopy.name.text,
             cases: enumDeclarationCopy.members.map((member, index: number) => {
                 if (typescript.isComputedPropertyName(member.name)) {
-                    throw new Error("Computed property names as enum cases are not supported");
+                    throw new UserError("Computed property names as enum cases are not supported");
                 }
 
                 if (!member.initializer) {
@@ -486,7 +487,7 @@ export class AstGenerator implements AstGeneratorInterface {
                             type: AstNodeType.StringLiteral,
                         };
                     default:
-                        throw new Error("Unsupported enum value type");
+                        throw new UserError("Unsupported enum value type");
                 }
             }),
         };
@@ -521,7 +522,7 @@ export class AstGenerator implements AstGeneratorInterface {
         });
 
         if (!this.rootNode) {
-            throw new Error("No root node found");
+            throw new UserError("No root node found");
         }
         let classDefinition: ClassDefinition | undefined = undefined;
         const declarations: Declaration[] = [];
@@ -539,7 +540,7 @@ export class AstGenerator implements AstGeneratorInterface {
         });
 
         if (!classDefinition) {
-            throw new Error("No exported class found in file.");
+            throw new UserError("No exported class found in file.");
         }
 
         return {

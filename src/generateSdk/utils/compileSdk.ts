@@ -10,6 +10,7 @@ import packageManager from "../../packageManagers/packageManager.js";
 import { listFilesWithExtension } from "../../utils/file.js";
 import { fileURLToPath } from "url";
 import { doAdaptiveLogAction } from "../../utils/logging.js";
+import { UserError } from "../../errors.js";
 
 const compilerWorkerScript = `const { parentPort, workerData } = require("worker_threads");
 
@@ -29,7 +30,7 @@ function createWorker(workerScript: string, workerData: object) {
         worker.on("error", reject);
         worker.on("exit", (code) => {
             if (code !== 0) {
-                reject(new Error(`Worker stopped with exit code ${code}`));
+                reject(new UserError(`Worker stopped with exit code ${code}`));
             }
         });
     });
@@ -57,7 +58,7 @@ export async function compileSdk(
     } else if (language === Language.js) {
         extension = ".js";
     } else {
-        throw new Error("Language not supported");
+        throw new UserError("Language not supported");
     }
     const filenames = await listFilesWithExtension(sdkPath, extension);
     // compile the sdk to cjs and esm using worker threads

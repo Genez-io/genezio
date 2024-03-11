@@ -19,6 +19,7 @@ import {
     isStringLiteral,
 } from "@babel/types";
 import { TriggerType } from "../yamlProjectConfiguration/models.js";
+import { UserError } from "../errors.js";
 
 type MethodDecoratorInfo = {
     name: string;
@@ -278,7 +279,7 @@ export async function scanClassesForDecorators(
 export function getTriggerTypeFromString(string: string): TriggerType {
     if (string && !TriggerType[string as keyof typeof TriggerType]) {
         const triggerTypes: string = Object.keys(TriggerType).join(", ");
-        throw new Error(
+        throw new UserError(
             "Specified class type for " +
                 string +
                 " is incorrect. Accepted values: " +

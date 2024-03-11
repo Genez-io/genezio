@@ -2,6 +2,7 @@ import fs from "fs";
 import { getAuthToken } from "../utils/accounts.js";
 import https from "https";
 import { OutgoingHttpHeaders } from "http";
+import { UserError } from "../errors.js";
 
 export async function uploadContentToS3(
     presignedURL: string | undefined,
@@ -10,17 +11,17 @@ export async function uploadContentToS3(
     userId?: string,
 ) {
     if (!presignedURL) {
-        throw new Error("Missing presigned URL");
+        throw new UserError("Missing presigned URL");
     }
 
     if (!archivePath) {
-        throw new Error("Missing required parameters");
+        throw new UserError("Missing required parameters");
     }
 
     // Check if user is authenticated
     const authToken = await getAuthToken();
     if (!authToken) {
-        throw new Error(
+        throw new UserError(
             "You are not logged in. Run 'genezio login' before you deploy your function.",
         );
     }

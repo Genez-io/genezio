@@ -25,6 +25,7 @@ import { getFileSize } from "../../utils/file.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import { calculateBiggestFiles } from "../../utils/calculateBiggestProjectFiles.js";
 import Table from "cli-table";
+import { UserError } from "../../errors.js";
 
 const BUNDLE_SIZE_LIMIT = 256901120;
 
@@ -52,7 +53,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
             if (element.unzippedBundleSize > BUNDLE_SIZE_LIMIT) {
                 // Throw this error if bundle size is too big and the user is not using js or ts files.
                 if (!dependenciesInfo || !allNonJsFilesPaths) {
-                    throw new Error(
+                    throw new UserError(
                         `Your class ${element.name} is too big: ${element.unzippedBundleSize} bytes. The maximum size is 250MB. Try to reduce the size of your class.`,
                     );
                 }
@@ -105,7 +106,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
 
                 log.info(dependenciesTable.toString());
                 log.info(filesTable.toString());
-                throw new Error(`
+                throw new UserError(`
 Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFixed(
                     2,
                 )}MB. The maximum size is ${
@@ -124,7 +125,7 @@ Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFix
 
             const size = await getFileSize(element.archivePath);
             if (size > BUNDLE_SIZE_LIMIT) {
-                throw new Error(
+                throw new UserError(
                     `Your class ${element.name} is too big: ${size} bytes. The maximum size is 250MB. Try to reduce the size of your class.`,
                 );
             }
@@ -192,11 +193,11 @@ Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFix
         const result = await getFrontendPresignedURL(finalSubdomain, projectName, stage);
 
         if (!result.presignedURL) {
-            throw new Error("An error occurred (missing presignedUrl). Please try again!");
+            throw new UserError("An error occurred (missing presignedUrl). Please try again!");
         }
 
         if (!result.userId) {
-            throw new Error("An error occurred (missing userId). Please try again!");
+            throw new UserError("An error occurred (missing userId). Please try again!");
         }
 
         debugLogger.debug("Content of the folder zipped. Uploading to S3.");

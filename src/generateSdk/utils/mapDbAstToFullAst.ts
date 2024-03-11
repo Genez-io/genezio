@@ -1,3 +1,4 @@
+import { UserError } from "../../errors.js";
 import { AstSummaryClassResponse } from "../../models/astSummary.js";
 import {
     AstNodeType,
@@ -12,7 +13,7 @@ import {
 
 export function mapDbAstToSdkGeneratorAst(ast: AstSummaryClassResponse): Program {
     if (ast.version !== "2") {
-        throw new Error(
+        throw new UserError(
             "Cannot generate SDK due to unsupported version. Please update your genezio CLI tool, redeploy your project, and try again.",
         );
     }

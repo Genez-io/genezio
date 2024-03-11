@@ -24,6 +24,7 @@ import {
 } from "../../models/genezioModels.js";
 import { checkIfGoIsInstalled } from "../../utils/go.js";
 import { TriggerType } from "../../yamlProjectConfiguration/models.js";
+import { UserError } from "../../errors.js";
 
 type ImportView = {
     name: string;
@@ -186,7 +187,7 @@ export abstract class GoBundler implements BundlerInterface {
 
         // Error check: User is using Windows but paths are unix style (possible when cloning projects from git)
         if (process.platform === "win32" && classConfigPath.includes("/")) {
-            throw new Error(
+            throw new UserError(
                 "Error: You are using Windows but your project contains unix style paths. Please use Windows style paths in genezio.yaml instead.",
             );
         }

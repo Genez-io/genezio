@@ -42,7 +42,7 @@ import {
     castArrayRecursivelyInitial,
     castMapRecursivelyInitial,
 } from "../../utils/dartAstCasting.js";
-import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE } from "../../errors.js";
+import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE, UserError } from "../../errors.js";
 import { Status } from "../../requests/models.js";
 
 export class DartBundler implements BundlerInterface {
@@ -57,7 +57,7 @@ export class DartBundler implements BundlerInterface {
 
         if (result.status != 0) {
             log.info(result.stdout.toString().split("\n").slice(1).join("\n"));
-            throw new Error("Compilation error! Please check your code and try again.");
+            throw new UserError("Compilation error! Please check your code and try again.");
         }
     }
 
@@ -74,7 +74,7 @@ export class DartBundler implements BundlerInterface {
             });
 
         if (response.data.status === "error") {
-            throw new Error(response.data.error.message);
+            throw new UserError(response.data.error.message);
         }
 
         return response.data;
@@ -147,7 +147,7 @@ export class DartBundler implements BundlerInterface {
             .find((m) => m.name == method.name)
             ?.params.find((p) => p.name == parameterType.name);
 
-        if (!type) throw new Error("Type not found");
+        if (!type) throw new UserError("Type not found");
 
         return `${this.#castParameterToPropertyType(type.paramType, `params[${index}]`)}`;
     }
@@ -225,7 +225,7 @@ export class DartBundler implements BundlerInterface {
         );
 
         if (!success) {
-            throw new Error("Error while adding aws_lambda_dart_runtime dependency");
+            throw new UserError("Error while adding aws_lambda_dart_runtime dependency");
         }
     }
 
@@ -253,7 +253,7 @@ export class DartBundler implements BundlerInterface {
                 const fileDestinationPath = path.join(tempFolderPath, filePath.path);
                 return fs.promises.copyFile(filePath.path, fileDestinationPath).catch((error) => {
                     if (error.code === "EACCES") {
-                        throw new Error(GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE(filePath.path));
+                        throw new UserError(GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE(filePath.path));
                     }
 
                     throw error;
@@ -277,7 +277,7 @@ export class DartBundler implements BundlerInterface {
                 (c: ClassConfiguration) => c.path == input.path,
             );
 
-            if (!userClass) throw new Error("Class not found while bundling");
+            if (!userClass) throw new UserError("Class not found while bundling");
 
             this.#createRouterFileForClass(userClass, input.ast, inputTemporaryFolder);
 
@@ -300,7 +300,7 @@ export class DartBundler implements BundlerInterface {
             debugLogger.debug("Compiling Dart finished.");
 
             if (s3Zip.success === false) {
-                throw new Error("Failed to upload code for compiling.");
+                throw new UserError("Failed to upload code for compiling.");
             }
 
             temporaryFolder = await createTemporaryFolder();

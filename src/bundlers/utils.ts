@@ -14,6 +14,7 @@ import { debugLogger, printAdaptiveLog } from "../utils/logging.js";
 import { createTemporaryFolder } from "../utils/file.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
 import { Program } from "../models/genezioModels.js";
+import { UserError } from "../errors.js";
 
 export async function bundle(
     projectConfiguration: ProjectConfiguration,
@@ -25,7 +26,7 @@ export async function bundle(
         printAdaptiveLog("Bundling your code\n", "error");
         log.error(`\`${element.path}\` file does not exist at the indicated path.`);
 
-        throw new Error(`\`${element.path}\` file does not exist at the indicated path.`);
+        throw new UserError(`\`${element.path}\` file does not exist at the indicated path.`);
     }
 
     let bundler: BundlerInterface;
@@ -63,7 +64,7 @@ export async function bundle(
             break;
         }
         default:
-            throw new Error(`Unsupported ${element.language}`);
+            throw new UserError(`Unsupported ${element.language}`);
     }
 
     debugLogger.debug(`The bundling process has started for file ${element.path}...`);

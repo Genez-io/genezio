@@ -24,6 +24,7 @@ import {
 import { TriggerType } from "../../yamlProjectConfiguration/models.js";
 import { pythonSdk } from "../templates/pythonSdk.js";
 import path from "path";
+import { UserError } from "../../errors.js";
 
 const PYTHON_RESERVED_WORDS = [
     "False",
@@ -347,7 +348,7 @@ class SdkGenerator implements SdkGeneratorInterface {
         const allTypesAreTheSame = e.cases.map((v) => v.type).every((type) => type === enumType);
 
         if (!allTypesAreTheSame) {
-            throw new Error(
+            throw new UserError(
                 "All enum cases must be the same type. Fix enum " + e.name + " and try again.",
             );
         }
@@ -362,7 +363,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                     .map((e: EnumCase) => `${e.name} = ${e.value}`)
                     .join("\n\t")}`;
             default:
-                throw new Error("Unsupported enum type");
+                throw new UserError("Unsupported enum type");
         }
     }
 

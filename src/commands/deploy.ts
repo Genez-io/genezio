@@ -8,7 +8,7 @@ import {
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
 } from "../constants.js";
-import { GENEZIO_NO_CLASSES_FOUND } from "../errors.js";
+import { GENEZIO_NO_CLASSES_FOUND, UserError } from "../errors.js";
 import {
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
@@ -87,7 +87,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
             ) === false
         ) {
-            throw new Error(
+            throw new UserError(
                 `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To solve this, please update the @genezio/types package on your backend component using the following command: npm install @genezio/types@${RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE}`,
             );
         }
@@ -135,7 +135,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
         ) {
             const yamlConfig = await configIOController.read(/* fillDefaults= */ false);
             if (!yamlConfig.backend) {
-                throw new Error("No backend entry in genezio configuration file.");
+                throw new UserError("No backend entry in genezio configuration file.");
             }
             yamlConfig.backend.cloudProvider = await performCloudProviderABTesting(
                 configuration.name,
@@ -245,7 +245,7 @@ export async function deployClasses(
     backend.classes = await scanClassesForDecorators(backend);
 
     if (backend.classes.length === 0) {
-        throw new Error(GENEZIO_NO_CLASSES_FOUND);
+        throw new UserError(GENEZIO_NO_CLASSES_FOUND);
     }
     let sdkLanguage: Language = Language.ts;
     if (configuration.frontend) {
@@ -277,7 +277,7 @@ export async function deployClasses(
     const classesWithNoMethods = getNoMethodClasses(projectConfiguration.classes);
     if (classesWithNoMethods.length) {
         const errorClasses = classesWithNoMethods.join(", ");
-        throw new Error(
+        throw new UserError(
             `Unable to deploy classes [${errorClasses}] as they do not have any methods.`,
         );
     }
@@ -406,7 +406,7 @@ export async function deployClasses(
                 const projectEnv = await getProjectEnvFromProject(projectId, options.stage);
 
                 if (!projectEnv) {
-                    throw new Error("Project environment not found.");
+                    throw new UserError("Project environment not found.");
                 }
 
                 // Upload environment variables to the project
@@ -446,7 +446,7 @@ export async function deployClasses(
                 const projectEnv = await getProjectEnvFromProject(projectId, options.stage);
 
                 if (!projectEnv) {
-                    throw new Error("Project environment not found.");
+                    throw new UserError("Project environment not found.");
                 }
 
                 // get remoteEnvVars from project
@@ -522,13 +522,13 @@ export async function deployFrontend(
 
     // check if subdomain contains only numbers, letters and hyphens
     if (frontend.subdomain && !frontend.subdomain.match(/^[a-z0-9-]+$/)) {
-        throw new Error(`The subdomain can only contain letters, numbers and hyphens.`);
+        throw new UserError(`The subdomain can only contain letters, numbers and hyphens.`);
     }
 
     // check if the publish folder exists
     const frontendPath = path.join(frontend.path, frontend.publish);
     if (!(await fileExists(frontendPath))) {
-        throw new Error(
+        throw new UserError(
             `The publish folder ${colors.cyan(
                 `${frontendPath}`,
             )} does not exist. Please run the build command first or add a \`deploy\` script in the genezio.yaml file.`,
@@ -537,7 +537,7 @@ export async function deployFrontend(
 
     // check if the publish folder is empty
     if (await isDirectoryEmpty(frontendPath)) {
-        throw new Error(
+        throw new UserError(
             `The publish folder ${colors.cyan(
                 `${frontendPath}`,
             )} is empty. Please run the build command first or add a \`deploy\` script in the genezio.yaml file.`,
@@ -572,7 +572,7 @@ export async function deployFrontend(
 
             frontend.subdomain = subdomain;
         } else {
-            throw new Error("No frontend entry in genezio configuration file.");
+            throw new UserError("No frontend entry in genezio configuration file.");
         }
 
         await configIOController.write(yamlConfig);
@@ -631,7 +631,7 @@ function getCloudAdapter(provider: string): CloudAdapter {
         case CloudProviderIdentifier.SELF_HOSTED_AWS:
             return new SelfHostedAwsAdapter();
         default:
-            throw new Error(`Unsupported cloud provider: ${provider}`);
+            throw new UserError(`Unsupported cloud provider: ${provider}`);
     }
 }
 

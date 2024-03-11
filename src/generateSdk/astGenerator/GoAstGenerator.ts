@@ -17,6 +17,7 @@ import {
 import { runNewProcess, runNewProcessWithResultAndReturnCode } from "../../utils/process.js";
 import { checkIfGoIsInstalled } from "../../utils/go.js";
 import { createTemporaryFolder } from "../../utils/file.js";
+import { UserError } from "../../errors.js";
 
 const releaseTag = "v0.1";
 const binaryName = `golang_ast_generator_${releaseTag}`;
@@ -29,7 +30,7 @@ export class AstGenerator implements AstGeneratorInterface {
             folder,
         );
         if (!astClone) {
-            throw new Error(
+            throw new UserError(
                 "Error: Failed to clone Go AST parser repository to " +
                     folder +
                     " temporary folder!",
@@ -38,7 +39,7 @@ export class AstGenerator implements AstGeneratorInterface {
         await runNewProcess(`git checkout --quiet tags/${releaseTag}`, folder);
         const goBuildSuccess = await runNewProcess(`go build -o ${binaryName} cmd/main.go`, folder);
         if (!goBuildSuccess) {
-            throw new Error(
+            throw new UserError(
                 "Error: Failed to build Go AST parser in " + folder + " temporary folder!",
             );
         }
@@ -78,18 +79,18 @@ export class AstGenerator implements AstGeneratorInterface {
         );
         if (result.code !== 0) {
             console.error(result.stderr);
-            throw new Error("Error: Failed to generate AST for class " + input.class.path);
+            throw new UserError("Error: Failed to generate AST for class " + input.class.path);
         }
 
         const ast = JSON.parse(result.stdout);
         const error = ast.error;
         if (error) {
             log.error(error);
-            throw new Error("Error: Failed to generate AST for class " + input.class.path);
+            throw new UserError("Error: Failed to generate AST for class " + input.class.path);
         }
         const goAstBody = ast.body;
         if (!goAstBody) {
-            throw new Error("Error: Failed to generate AST for class " + input.class.path);
+            throw new UserError("Error: Failed to generate AST for class " + input.class.path);
         }
 
         const body: Node[] = [];

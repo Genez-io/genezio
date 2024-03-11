@@ -13,7 +13,7 @@ import {
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
 } from "../constants.js";
-import { GENEZIO_NO_CLASSES_FOUND, PORT_ALREADY_USED } from "../errors.js";
+import { GENEZIO_NO_CLASSES_FOUND, PORT_ALREADY_USED, UserError } from "../errors.js";
 import {
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
@@ -106,12 +106,12 @@ export async function prepareLocalBackendEnvironment(
             }
         }
         if (!backend) {
-            throw new Error("No backend component found in the genezio.yaml file.");
+            throw new UserError("No backend component found in the genezio.yaml file.");
         }
         backend.classes = await scanClassesForDecorators(backend);
 
         if (backend.classes.length === 0) {
-            throw new Error(GENEZIO_NO_CLASSES_FOUND);
+            throw new UserError(GENEZIO_NO_CLASSES_FOUND);
         }
 
         const sdk = await sdkGeneratorApiHandler(
@@ -181,7 +181,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     const yamlProjectConfiguration = await yamlConfigIOController.read();
     const backendConfiguration = yamlProjectConfiguration.backend;
     if (!backendConfiguration) {
-        throw new Error("No backend component found in the genezio.yaml file.");
+        throw new UserError("No backend component found in the genezio.yaml file.");
     }
 
     // We need to check if the user is using an older version of @genezio/types
@@ -379,14 +379,14 @@ async function startProcesses(
         const bundler = getBundler(classInfo);
 
         if (!bundler) {
-            throw new Error("Unsupported language ${classConfiguration.language}.");
+            throw new UserError("Unsupported language ${classConfiguration.language}.");
         }
 
         const astClass = sdk.sdkGeneratorInput.classesInfo.find(
             (c) => c.classConfiguration.path === classInfo.path,
         );
         if (astClass === undefined) {
-            throw new Error("AST class not found.");
+            throw new UserError("AST class not found.");
         }
         const ast = astClass.program;
 
@@ -419,11 +419,11 @@ async function startProcesses(
         const extra = bundlerOutput.extra;
 
         if (!extra) {
-            throw new Error("Bundler output is missing extra field.");
+            throw new UserError("Bundler output is missing extra field.");
         }
 
         if (!extra.startingCommand) {
-            throw new Error("No starting command found for this language.");
+            throw new UserError("No starting command found for this language.");
         }
 
         await startClassProcess(
@@ -588,7 +588,7 @@ async function startServerHttp(
         server.on("error", (error) => {
             const err = error as NodeJS.ErrnoException;
             if (err.code === "EADDRINUSE") {
-                reject(new Error(PORT_ALREADY_USED(port)));
+                reject(new UserError(PORT_ALREADY_USED(port)));
             }
 
             reject(error);

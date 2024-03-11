@@ -5,6 +5,7 @@ import colors from "colors";
 import boxen from "boxen";
 import packageManager from "../packageManagers/packageManager.js";
 import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
+import { UserError } from "../errors.js";
 
 export function reportSuccessForSdk(
     language: Language,
@@ -24,7 +25,7 @@ export function reportSuccessForSdk(
             return reportSuccessForSdkOtherLanguages();
             return;
         default:
-            throw new Error("Language not supported");
+            throw new UserError("Language not supported");
     }
 }
 

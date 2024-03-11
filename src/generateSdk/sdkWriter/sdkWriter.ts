@@ -1,3 +1,4 @@
+import { UserError } from "../../errors.js";
 import { SdkGeneratorResponse } from "../../models/sdkGeneratorResponse.js";
 import { ClassUrlMap } from "../../utils/sdk.js";
 import { Language } from "../../yamlProjectConfiguration/models.js";
@@ -65,6 +66,6 @@ export async function writeSdk(input: WriteSdkInput): Promise<string | undefined
             }
             break;
         default:
-            throw new Error(`Language ${input.language} is not supported`);
+            throw new UserError(`Language ${input.language} is not supported`);
     }
 }

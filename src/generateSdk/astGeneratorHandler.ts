@@ -9,6 +9,7 @@ import { debugLogger } from "../utils/logging.js";
 import { supportedExtensions } from "../utils/languages.js";
 import zod from "zod";
 import GoAstGenerator from "./astGenerator/GoAstGenerator.js";
+import { UserError } from "../errors.js";
 
 interface AstGeneratorPlugin {
     AstGenerator: new () => AstGeneratorInterface;
@@ -34,13 +35,13 @@ export async function generateAst(
             plugins?.map(async (plugin) => {
                 const dynamicPlugin = await import(plugin).catch((err) => {
                     debugLogger.debug(err);
-                    throw new Error(
+                    throw new UserError(
                         `Plugin(${plugin}) not found. Install it with npm install ${plugin}`,
                     );
                 });
 
                 if (!dynamicPlugin) {
-                    throw new Error(`Plugin(${plugin}) could not be imported.`);
+                    throw new UserError(`Plugin(${plugin}) could not be imported.`);
                 }
 
                 // Check type of plugin at runtime
@@ -49,7 +50,7 @@ export async function generateAst(
                     supportedExtensions: zod.array(zod.string()),
                 });
                 if (pluginSchema.safeParse(dynamicPlugin).success === false) {
-                    throw new Error(
+                    throw new UserError(
                         `Plugin(${plugin}) is not a valid AST generator plugin. It must export a AstGenerator class and supportedExtensions array.`,
                     );
                 }
@@ -75,7 +76,7 @@ export async function generateAst(
             (supportedExtensions.length > 1 ? " and " : "") +
             supportedExtensions.slice(-1);
 
-        throw new Error(
+        throw new UserError(
             `Class language(${extension}) not supported. Currently supporting: ${supportedExtensionsString}. You can delete the class from genezio.yaml`,
         );
     }
