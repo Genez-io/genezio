@@ -24,24 +24,22 @@ const binaryName = `golang_ast_generator_${releaseTag}`;
 export class AstGenerator implements AstGeneratorInterface {
     async #compileGenezioGoAstExtractor() {
         const folder = await createTemporaryFolder();
-        const astClone = await runNewProcess(
+        await runNewProcess(
             "git clone --quiet https://github.com/Genez-io/go-ast.git .",
             folder,
-        );
-        if (!astClone) {
+        ).catch(() => {
             throw new Error(
                 "Error: Failed to clone Go AST parser repository to " +
                     folder +
                     " temporary folder!",
             );
-        }
+        });
         await runNewProcess(`git checkout --quiet tags/${releaseTag}`, folder);
-        const goBuildSuccess = await runNewProcess(`go build -o ${binaryName} cmd/main.go`, folder);
-        if (!goBuildSuccess) {
+        await runNewProcess(`go build -o ${binaryName} cmd/main.go`, folder).catch(() => {
             throw new Error(
                 "Error: Failed to build Go AST parser in " + folder + " temporary folder!",
             );
-        }
+        });
 
         if (!fs.existsSync(path.join(os.homedir(), ".genezio", ".golang_ast_generator"))) {
             fs.mkdirSync(path.join(os.homedir(), ".genezio", ".golang_ast_generator"));

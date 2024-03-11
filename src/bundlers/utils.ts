@@ -10,7 +10,7 @@ import { BundlerComposer } from "./bundlerComposer.js";
 import { DartBundler } from "./dart/dartBundler.js";
 import { KotlinBundler } from "./kotlin/kotlinBundler.js";
 import { NewGoBundler } from "./go/goBundler.js";
-import { debugLogger, printAdaptiveLog } from "../utils/logging.js";
+import { debugLogger } from "../utils/logging.js";
 import { createTemporaryFolder } from "../utils/file.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
 import { Program } from "../models/genezioModels.js";
@@ -22,7 +22,6 @@ export async function bundle(
     installDeps: boolean = true,
 ): Promise<BundlerOutput> {
     if (!(await fileExists(element.path))) {
-        printAdaptiveLog("Bundling your code\n", "error");
         log.error(`\`${element.path}\` file does not exist at the indicated path.`);
 
         throw new Error(`\`${element.path}\` file does not exist at the indicated path.`);

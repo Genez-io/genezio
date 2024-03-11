@@ -1,32 +1,17 @@
 import { exec } from "child_process";
-import { log } from "./logging.js";
 import { debugLogger } from "./logging.js";
 
-export function runNewProcess(
-    command: string,
-    cwd?: string,
-    showStdoutOutput = false,
-    showStderrOutput = true,
-): Promise<boolean> {
-    return new Promise(function (resolve) {
+export function runNewProcess(command: string, cwd?: string): Promise<void> {
+    return new Promise(function (resolve, reject) {
         exec(command, { cwd }, (err, stdout, stderr) => {
             if (err) {
-                log.error(err);
-                resolve(false);
+                reject(err);
             } else {
-                resolve(true);
+                resolve();
             }
 
-            if (showStdoutOutput) {
-                log.info(stdout);
-            } else {
-                debugLogger.debug(stdout);
-            }
-
-            if (showStderrOutput && stderr.length > 0) {
-                log.info(command + " ❌");
-                log.info(stderr);
-            }
+            debugLogger.debug(stdout);
+            debugLogger.debug(stderr);
         });
     });
 }
