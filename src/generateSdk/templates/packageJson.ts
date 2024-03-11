@@ -34,18 +34,11 @@ export const getPackageJsonSdkGenerator = (
 export const getNodeModulePackageJson = (packageName: string, version?: string): string => `{
   "name": "${packageName}",
   "version": "${version || getRandomSemVer()}",
-  "exports": {
-    ".": {
-      "require": "./cjs/index.js",
-      "import": "./esm/index.js"
-    }
-   },
   "bundleDependencies": [
     "genezio-remote"
   ],
   "description": "",
-  "main": "./cjs/index.js",
-  "module": "./esm/index.js",
+  "main": "./lib/index.js",
   "dependencies": {
     "genezio-remote": "1.0.0"
   }
