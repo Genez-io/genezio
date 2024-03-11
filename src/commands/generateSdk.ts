@@ -22,6 +22,8 @@ import colors from "colors";
 import { deleteFile, deleteFolder } from "../utils/file.js";
 import { YamlConfigurationIOController } from "../yamlProjectConfiguration/v2.js";
 import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
+import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
+import { GenezioCommand } from "../utils/reporter.js";
 
 export async function generateSdkCommand(projectName: string, options: GenezioSdkOptions) {
     switch (options.source) {
@@ -77,14 +79,7 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
         outputPath: options.output,
     });
 
-    log.info("Your SDK has been generated successfully in " + options.output);
-    log.info(
-        `You can now publish it to npm using ${colors.cyan(
-            `'npm publish'`,
-        )} in the sdk directory or use it locally in your project using ${colors.cyan(
-            `'npm link'`,
-        )}`,
-    );
+    reportSuccessForSdk(options.language, sdkResponse, GenezioCommand.sdk)
 }
 
 export async function generateRemoteSdkCommand(projectName: string, options: GenezioSdkOptions) {
@@ -252,25 +247,5 @@ async function generateRemoteSdkHandler(
         outputPath: sdkPath,
     });
 
-    await Promise.all(
-        sdkGeneratorResponse.files.map(async (file) => {
-            // delete the files and its parent directories
-
-            await deleteFile(path.join(sdkPath, file.path));
-            const firstParentDir = path.dirname(file.path).split(path.sep)[0];
-            if (firstParentDir && firstParentDir !== ".") {
-                await deleteFolder(path.join(sdkPath, firstParentDir));
-            }
-        }),
-    );
-
-    log.info("Your SDK has been generated successfully in " + sdkPath + "");
-
-    log.info(
-        `You can now publish it to npm using ${colors.cyan(
-            `'npm publish'`,
-        )} in the sdk directory or use it locally in your project using ${colors.cyan(
-            `'npm link'`,
-        )}`,
-    );
+    reportSuccessForSdk(language, sdkGeneratorResponse, GenezioCommand.sdk)
 }

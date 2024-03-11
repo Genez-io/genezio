@@ -10,7 +10,7 @@ export function reportSuccessForSdk(
     language: Language,
     sdkResponse: SdkGeneratorResponse,
     command: GenezioCommand,
-    projectConfiguration: ProjectPrimaryKeys,
+    projectConfiguration?: ProjectPrimaryKeys,
 ) {
     switch (language) {
         case Language.ts:
@@ -21,16 +21,21 @@ export function reportSuccessForSdk(
         case Language.dart:
         case Language.swift:
         case Language.python:
+            return reportSuccessForSdkOtherLanguages();
             return;
         default:
             throw new Error("Language not supported");
     }
 }
 
+export function reportSuccessForSdkOtherLanguages() {
+    log.info("Your SDK has been generated successfully");
+}
+
 export function reportSuccessForSdkJs(
     sdkResponse: SdkGeneratorResponse,
     command: GenezioCommand,
-    projectConfiguration: ProjectPrimaryKeys,
+    projectConfiguration?: ProjectPrimaryKeys,
 ) {
     const className = sdkResponse.sdkGeneratorInput.classesInfo.find(
         (c) => c.classConfiguration.type === TriggerType.jsonrpc,
@@ -41,9 +46,23 @@ export function reportSuccessForSdkJs(
                 `${colors.green(
                     "To install the SDK in your client, run this command in your client's root:",
                 )}\n${colors.magenta(
-                    `${packageManager.command} add @genezio-sdk/${projectConfiguration.name}@1.0.0-${projectConfiguration.stage}`,
+                    `${packageManager.command} add @genezio-sdk/${projectConfiguration!.name}@1.0.0-${projectConfiguration!.stage}`,
                 )}\n\n${colors.green("Then import your classes like this:")}\n${colors.magenta(
-                    `import { ${className} } from "@genezio-sdk/${projectConfiguration.name}"`,
+                    `import { ${className} } from "@genezio-sdk/${projectConfiguration!.name}"`,
+                )}`,
+                {
+                    padding: 1,
+                    margin: 1,
+                    borderStyle: "round",
+                    borderColor: "magentaBright",
+                },
+            ),
+        );
+    } else if (command === GenezioCommand.local) {
+        log.info(
+            boxen(
+                `${colors.green("Import your classes like this:")}\n${colors.magenta(
+                    `import { ${className} } from "@genezio-sdk/${projectConfiguration!.name}"`,
                 )}`,
                 {
                     padding: 1,
@@ -54,18 +73,13 @@ export function reportSuccessForSdkJs(
             ),
         );
     } else {
+        log.info("Your SDK has been generated successfully");
         log.info(
-            boxen(
-                `${colors.green("Import your classes like this:")}\n${colors.magenta(
-                    `import { ${className} } from "@genezio-sdk/${projectConfiguration.name}"`,
-                )}`,
-                {
-                    padding: 1,
-                    margin: 1,
-                    borderStyle: "round",
-                    borderColor: "magentaBright",
-                },
-            ),
+            `You can now publish it to npm using ${colors.cyan(
+                `'npm publish'`,
+            )} in the sdk directory or use it locally in your project using ${colors.cyan(
+                `'npm link'`,
+            )}`,
         );
     }
 }
