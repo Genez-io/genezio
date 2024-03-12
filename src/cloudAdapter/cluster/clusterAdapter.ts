@@ -1,4 +1,3 @@
-import log from "loglevel";
 import { ProjectConfiguration } from "../../models/projectConfiguration.js";
 import { YamlFrontend } from "../../yamlProjectConfiguration/v2.js";
 import {
@@ -7,7 +6,7 @@ import {
     GenezioCloudInput,
     GenezioCloudOutput,
 } from "../cloudAdapter.js";
-import { debugLogger } from "../../utils/logging.js";
+import { debugLogger, log } from "../../utils/logging.js";
 import {
     getContainerRegistry,
     getContainerRegistryCredentials,
@@ -25,6 +24,7 @@ import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL.
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import { createFrontendProject } from "../../requests/createFrontendProject.js";
 import { FRONTEND_DOMAIN } from "../../constants.js";
+import { UserError } from "../../errors.js";
 
 export class ClusterCloudAdapter implements CloudAdapter {
     async deploy(
@@ -56,7 +56,7 @@ export class ClusterCloudAdapter implements CloudAdapter {
                 ]);
 
                 if (dockerlogin.status !== 0) {
-                    throw new Error(
+                    throw new UserError(
                         `Error during container repository login. Exit code: ${dockerlogin.status}`,
                     );
                 }
@@ -64,8 +64,6 @@ export class ClusterCloudAdapter implements CloudAdapter {
 
             debugLogger.debug(`Upload the content to Harbor registry for class ${element.name}.`);
 
-            // tag image
-            // TODO: discuss with team about timestamp based tagging/versioning of images
             const timestamp = Date.now().toString();
             const tag =
                 `${containerRegistryInfo.repository}/${containerRegistryInfo.username}/${projectConfiguration.name}/${element.name}:${timestamp}`.toLowerCase();
@@ -81,14 +79,16 @@ export class ClusterCloudAdapter implements CloudAdapter {
                 tag,
             ]);
             if (dockerTag.status !== 0) {
-                throw new Error(`Error during container image tag. Exit code: ${dockerTag.status}`);
+                throw new UserError(
+                    `Error during container image tag. Exit code: ${dockerTag.status}`,
+                );
             }
 
             // push image
             debugLogger.debug(`Pushing the container image for ${element.name}...`);
             const dockerPush = spawnSync("docker", ["push", tag]);
             if (dockerPush.status !== 0) {
-                throw new Error(
+                throw new UserError(
                     `Error during container image push. Exit code: ${dockerPush.status}`,
                 );
             }
@@ -110,6 +110,7 @@ export class ClusterCloudAdapter implements CloudAdapter {
             projectId: response.projectId,
         }));
 
+        console.log(classesInfo);
         return {
             projectEnvId: "",
             classes: classesInfo,

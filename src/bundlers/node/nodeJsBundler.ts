@@ -22,8 +22,10 @@ import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE, UserError } from "../../errors.
 import transformDecorators from "../../utils/transformDecorators.js";
 import { spawnSync } from "child_process";
 import { generateNodeContainerManifest } from "./containerManifest.js";
-import { clusterWrapperCode } from "./clusterHandler.js";
+import { generateNodeClusterHandler } from "./clusterHandler.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
+import { clusterHandlerGenerator } from "./clusterHandlerGenerator.js";
+import { DEFAULT_NODE_RUNTIME } from "../../models/nodeRuntime.js";
 
 export class NodeJsBundler implements BundlerInterface {
     async #copyDependencies(
@@ -384,8 +386,9 @@ export class NodeJsBundler implements BundlerInterface {
         provider: CloudProviderIdentifier,
     ): ((className: string) => string) | null {
         switch (provider) {
-            case CloudProviderIdentifier.GENEZIO:
             case CloudProviderIdentifier.CLUSTER:
+                return clusterHandlerGenerator;
+            case CloudProviderIdentifier.GENEZIO:
                 return lambdaHandlerGenerator;
             case CloudProviderIdentifier.CAPYBARA:
             case CloudProviderIdentifier.CAPYBARA_LINUX:
@@ -436,8 +439,9 @@ export class NodeJsBundler implements BundlerInterface {
         );
 
         const isDeployedToCluster = input.projectConfiguration.cloudProvider === "cluster";
-        const nodeVersion =
-            input.projectConfiguration.options?.nodeRuntime === "nodejs18.x" ? "18" : "16";
+        const nodeVersion = input.projectConfiguration.options?.nodeRuntime || DEFAULT_NODE_RUNTIME;
+        const socketsEnabled = input.configuration.sockets;
+
         // 2. Copy non js files and node_modules and write index.mjs file
         await Promise.all([
             this.#copyNonJsFiles(temporaryFolder, input, cwd),
@@ -447,11 +451,11 @@ export class NodeJsBundler implements BundlerInterface {
             writeToFile(
                 temporaryFolder,
                 "index.mjs",
-                handlerGenerator(`"${input.configuration.name}"`),
+                handlerGenerator(`${socketsEnabled ? "socket-" : ""}${input.configuration.name}"`),
             ),
             ...(isDeployedToCluster
                 ? [
-                      writeToFile(temporaryFolder, "local.mjs", clusterWrapperCode, true),
+                      writeToFile(temporaryFolder, "local.mjs", generateNodeClusterHandler(), true),
                       writeToFile(
                           temporaryFolder,
                           "Dockerfile",
@@ -463,7 +467,7 @@ export class NodeJsBundler implements BundlerInterface {
         ]);
 
         if (isDeployedToCluster) {
-            debugLogger.log("Writing docker file for container packaging and building image");
+            log.info("Writing docker file for container packaging and building image");
             // build image
             const dockerBuildProcess = spawnSync(
                 "docker",
@@ -481,7 +485,7 @@ export class NodeJsBundler implements BundlerInterface {
             if (dockerBuildProcess.status !== 0) {
                 throw new Error("Container image build failed");
             }
-            debugLogger.log("Container image successfully built");
+            log.info("Container image successfully built");
         }
         return {
             ...input,
