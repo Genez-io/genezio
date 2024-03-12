@@ -100,7 +100,12 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
                 frontendPath && v1Config.frontend
                     ? {
                           path: frontendPath,
-                          language: (v1Config.sdk?.language || Language.ts) as Language,
+                          sdk: v1Config.sdk
+                              ? {
+                                    language: v1Config.sdk.language as Language,
+                                    path: path.relative(frontendPath, v1Config.sdk.path),
+                                }
+                              : undefined,
                           subdomain: v1Config.frontend.subdomain,
                           publish: frontendPublish,
                           scripts: {

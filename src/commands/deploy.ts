@@ -250,8 +250,8 @@ export async function deployClasses(
     let sdkLanguage: Language = Language.ts;
     if (configuration.frontend) {
         for (const frontend of configuration.frontend) {
-            if (frontend.language) {
-                sdkLanguage = frontend.language;
+            if (frontend.sdk?.language) {
+                sdkLanguage = frontend.sdk.language;
                 break;
             }
         }
@@ -591,10 +591,16 @@ async function handleSdk(
 ) {
     const frontends = configuration.frontend;
     let sdkLanguage: Language = Language.ts;
-    let frontendPath: string | undefined;
+    let sdkPath, frontendPath: string | undefined;
+
     if (frontends && frontends.length > 0) {
-        sdkLanguage = frontends[0].language || Language.ts;
+        sdkLanguage = frontends[0].sdk?.language || Language.ts;
         frontendPath = frontends[0].path;
+        if (frontendPath) {
+            sdkPath = frontends[0].sdk?.path
+                ? path.join(frontendPath, frontends[0].sdk?.path)
+                : path.join(frontendPath, "sdk");
+        }
     }
 
     if (sdkLanguage) {
@@ -610,7 +616,7 @@ async function handleSdk(
             classUrls,
             publish: true,
             installPackage: true,
-            outputPath: frontendPath ? path.join(frontendPath, "sdk") : undefined,
+            outputPath: sdkPath,
         });
     }
 
