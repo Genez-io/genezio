@@ -164,7 +164,8 @@ export class KotlinBundler implements BundlerInterface {
 
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
         // Create a temporary folder were we copy user code to prepare everything.
-        const folderPath = input.genezioConfigurationFilePath;
+        const folderPath =
+            input.projectConfiguration.workspace?.backend ?? input.genezioConfigurationFilePath;
         const inputTemporaryFolder = await createTemporaryFolder();
         await fsExtra.copy(folderPath, inputTemporaryFolder);
         debugLogger.debug(`Copy files in temp folder ${inputTemporaryFolder}`);
