@@ -262,7 +262,7 @@ export class NodeJsBundler implements BundlerInterface {
         const errToDeps = error.errors.map((error: Message) => {
             const regexGroups = resolveRegex.exec(error.text)?.groups;
             const packageName = regexGroups ? regexGroups["dependencyName"] : undefined;
-            if (packageName && !error.location?.file.startsWith("node_modules/")) {
+            if (packageName && !error.location?.file.includes("node_modules/")) {
                 npmInstallRequired = true;
                 return null;
             }
