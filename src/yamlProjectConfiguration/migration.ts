@@ -8,6 +8,14 @@ import _ from "lodash";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { UserError } from "../errors.js";
 
+function compressArray<T>(array: T[] | undefined): T[] | T | undefined {
+    if (!array) return undefined;
+
+    if (array.length === 1) return array[0];
+
+    return array;
+}
+
 export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
     if (process.env["CI"]) return undefined;
 
@@ -79,10 +87,12 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
                           })) as YamlMethod[],
                       })),
                       scripts: {
-                          deploy: v1Config.scripts?.preBackendDeploy
-                              ?.split("&&")
-                              .map((s) => s.trim()),
-                          local: v1Config.scripts?.preStartLocal?.split("&&").map((s) => s.trim()),
+                          deploy: compressArray(
+                              v1Config.scripts?.preBackendDeploy?.split("&&").map((s) => s.trim()),
+                          ),
+                          local: compressArray(
+                              v1Config.scripts?.preStartLocal?.split("&&").map((s) => s.trim()),
+                          ),
                       },
                   }
                 : undefined,
@@ -94,9 +104,11 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
                           subdomain: v1Config.frontend.subdomain,
                           publish: frontendPublish,
                           scripts: {
-                              deploy: v1Config.scripts?.preFrontendDeploy
-                                  ?.split("&&")
-                                  .map((s) => s.trim()),
+                              deploy: compressArray(
+                                  v1Config.scripts?.preFrontendDeploy
+                                      ?.split("&&")
+                                      .map((s) => s.trim()),
+                              ),
                           },
                       }
                     : undefined,

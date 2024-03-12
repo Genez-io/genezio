@@ -337,7 +337,7 @@ export class YamlProjectConfiguration {
                     frontend: zod.string(),
                 })
                 .optional(),
-            packageManager: zod.nativeEnum(PackageManagerType).default(PackageManagerType.npm),
+            packageManager: zod.nativeEnum(PackageManagerType).optional(),
             scripts: zod
                 .object({
                     preBackendDeploy: zod.string().optional(),
