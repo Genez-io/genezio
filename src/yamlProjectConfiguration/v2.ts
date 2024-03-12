@@ -199,7 +199,7 @@ export class YamlConfigurationIOController {
         let lastModified: Date;
         try {
             lastModified = this.fs.statSync(this.filePath).mtime;
-        } catch (e) {
+        } catch {
             throw new UserError(GENEZIO_CONFIGURATION_FILE_NOT_FOUND);
         }
         if (this.cachedConfig && cache && this.latestRead && this.latestRead >= lastModified) {
