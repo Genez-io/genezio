@@ -41,6 +41,13 @@ export function reportSuccessForSdkJs(
     const className = sdkResponse.sdkGeneratorInput.classesInfo.find(
         (c) => c.classConfiguration.type === TriggerType.jsonrpc,
     )?.classConfiguration.name;
+
+    // No JSON RPC class means that no SDK was generated. We can skip
+    // all the info regarding SDK.
+    if (!className) {
+        return;
+    }
+
     if (command === GenezioCommand.deploy) {
         log.info(
             boxen(
