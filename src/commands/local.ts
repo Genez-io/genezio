@@ -34,7 +34,6 @@ import { DartBundler } from "../bundlers/dart/localDartBundler.js";
 import axios, { AxiosError, AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
 import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
-import { PackageManagerType } from "../packageManagers/packageManager.js";
 import {
     YamlConfigurationIOController,
     YamlFrontend,
@@ -44,7 +43,6 @@ import hash from "hash-it";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import dotenv from "dotenv";
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
-import inquirer, { Answers } from "inquirer";
 import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
 import { exit } from "process";
 import { log } from "../utils/logging.js";
@@ -244,22 +242,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             }
             logChangeDetection();
             continue;
-        }
-
-        if (!backendConfiguration.language.packageManager) {
-            const optionalPackageManager: Answers = await inquirer.prompt([
-                {
-                    type: "list",
-                    name: "packageManager",
-                    message:
-                        "Which package manager are you using to install your frontend dependencies?",
-                    choices: Object.keys(PackageManagerType).filter((key) => isNaN(Number(key))),
-                },
-            ]);
-
-            const yamlConfig = await yamlConfigIOController.read(/* fillDefaults= */ false);
-            yamlConfig.backend!.language.packageManager = optionalPackageManager["packageManager"];
-            await yamlConfigIOController.write(yamlConfig);
         }
 
         let sdk: SdkGeneratorResponse;

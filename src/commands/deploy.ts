@@ -226,7 +226,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
     if (deployClassesResult) {
         log.info(
             colors.cyan(
-                `Genezio project URL: ${DASHBOARD_URL}/project/${deployClassesResult.projectId}/${deployClassesResult.projectEnvId}`,
+                `App Dashboard URL: ${DASHBOARD_URL}/project/${deployClassesResult.projectId}/${deployClassesResult.projectEnvId}`,
             ),
         );
     }

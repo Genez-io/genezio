@@ -3,7 +3,7 @@ import zod from "zod";
 import nativeFs from "fs";
 import { IFs } from "memfs";
 import { regions } from "../utils/configs.js";
-import { UserError, zodFormatError } from "../errors.js";
+import { GENEZIO_CONFIGURATION_FILE_NOT_FOUND, UserError, zodFormatError } from "../errors.js";
 import { Language } from "./models.js";
 import { DEFAULT_NODE_RUNTIME, supportedNodeRuntimes } from "../models/nodeRuntime.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
@@ -196,7 +196,12 @@ export class YamlConfigurationIOController {
         fillDefaults: boolean = true,
         cache: boolean = true,
     ): Promise<YamlProjectConfiguration | RawYamlProjectConfiguration> {
-        const lastModified = this.fs.statSync(this.filePath).mtime;
+        let lastModified: Date;
+        try {
+            lastModified = this.fs.statSync(this.filePath).mtime;
+        } catch (e) {
+            throw new UserError(GENEZIO_CONFIGURATION_FILE_NOT_FOUND);
+        }
         if (this.cachedConfig && cache && this.latestRead && this.latestRead >= lastModified) {
             if (fillDefaults) {
                 return fillDefaultGenezioConfig(this.cachedConfig);

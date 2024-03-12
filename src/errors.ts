@@ -35,6 +35,8 @@ export const GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE = function (filePath: string
 export const GENEZIO_GIT_NOT_FOUND = `Git is not installed. Please install it and try again.
 https://git-scm.com/book/en/v2/Getting-Started-Installing-Git`;
 
+export const GENEZIO_CONFIGURATION_FILE_NOT_FOUND = `The genezio.yaml configuration file was not found. Please execute this command at the root of your project.\nIf you don't have a project yet, you can create one by running the command 'genezio create'.`;
+
 function collectIssueMap(e: zod.ZodError, issueMap: Map<string, string[]>) {
     for (const issue of e.issues) {
         if (issue.code === "invalid_union") {
