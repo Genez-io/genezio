@@ -8,6 +8,7 @@ import { debugLogger } from "../../utils/logging.js";
 // @ts-ignore
 import exec from "await-exec";
 import packageManager from "../../packageManagers/packageManager.js";
+import { UserError } from "../../errors.js";
 
 export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
     async #handleBinaryDependencies(dependenciesInfo: Dependency[], tempFolderPath: string) {
@@ -75,7 +76,7 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
             } catch (error) {
                 debugLogger.debug("[BinaryDepStdOut]", error);
                 log.error("An error has occurred while installing binary dependencies.");
-                throw new Error("An error has occurred while installing binary dependencies.");
+                throw new UserError("An error has occurred while installing binary dependencies.");
             }
         }
     }

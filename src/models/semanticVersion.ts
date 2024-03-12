@@ -1,3 +1,5 @@
+import { UserError } from "../errors.js";
+
 export class SemanticVersion {
     major: number;
     minor: number;
@@ -6,7 +8,7 @@ export class SemanticVersion {
     constructor(versionString: string) {
         const match = versionString.match(/^(\d+)\.(\d+)\.(\d+)$/);
         if (!match) {
-            throw new Error(`Invalid SemVer version string: ${versionString}`);
+            throw new UserError(`Invalid SemVer version string: ${versionString}`);
         }
 
         this.major = Number(match[1]);

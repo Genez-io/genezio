@@ -6,6 +6,7 @@ import { tsconfig } from "../../utils/configs.js";
 import path from "path";
 import { writeToFile } from "../../utils/file.js";
 import { debugLogger } from "../../utils/logging.js";
+import { UserError } from "../../errors.js";
 
 export class TypeCheckerBundler implements BundlerInterface {
     // Call this class only once
@@ -44,7 +45,7 @@ export class TypeCheckerBundler implements BundlerInterface {
             onUnRecoverableConfigFileDiagnostic: () => {},
         });
         if (!config) {
-            throw new Error("Failed to parse tsconfig.json");
+            throw new UserError("Failed to parse tsconfig.json");
         }
 
         const program = ts.createProgram({
@@ -69,7 +70,7 @@ export class TypeCheckerBundler implements BundlerInterface {
                 }
             });
 
-            throw new Error("Typescript compilation failed.");
+            throw new UserError("Typescript compilation failed.");
         }
 
         return input;

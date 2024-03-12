@@ -18,12 +18,11 @@ import {
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
 } from "../generateSdk/generateSdkApi.js";
-import colors from "colors";
-import { deleteFile, deleteFolder } from "../utils/file.js";
 import { YamlConfigurationIOController } from "../yamlProjectConfiguration/v2.js";
 import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
 import { GenezioCommand } from "../utils/reporter.js";
+import { UserError } from "../errors.js";
 
 export async function generateSdkCommand(projectName: string, options: GenezioSdkOptions) {
     switch (options.source) {
@@ -39,7 +38,7 @@ export async function generateSdkCommand(projectName: string, options: GenezioSd
 export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
     const url = options.url;
     if (!url) {
-        throw new Error("You must provide a url when generating a local SDK.");
+        throw new UserError("You must provide a url when generating a local SDK.");
     }
 
     const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
@@ -79,7 +78,7 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
         outputPath: options.output,
     });
 
-    reportSuccessForSdk(options.language, sdkResponse, GenezioCommand.sdk)
+    reportSuccessForSdk(options.language, sdkResponse, GenezioCommand.sdk);
 }
 
 export async function generateRemoteSdkCommand(projectName: string, options: GenezioSdkOptions) {
@@ -95,7 +94,7 @@ export async function generateRemoteSdkCommand(projectName: string, options: Gen
 
     // check if language is supported using languages array
     if (!languages.includes(language)) {
-        throw new Error(
+        throw new UserError(
             `The language you specified is not supported. Please use one of the following: ${languages}.`,
         );
     }
@@ -185,7 +184,7 @@ async function generateRemoteSdkHandler(
     );
 
     if (!project) {
-        throw new Error(
+        throw new UserError(
             `The project ${projectName} on region ${region} doesn't exist. You must deploy it first with 'genezio deploy'.`,
         );
     }
@@ -195,7 +194,7 @@ async function generateRemoteSdkHandler(
 
     // if the project doesn't exist, throw an error
     if (!projectEnv) {
-        throw new Error(
+        throw new UserError(
             `The project ${projectName} on stage ${stage} doesn't exist in the region ${region}. You must deploy it first with 'genezio deploy'.`,
         );
     }
@@ -247,5 +246,5 @@ async function generateRemoteSdkHandler(
         outputPath: sdkPath,
     });
 
-    reportSuccessForSdk(language, sdkGeneratorResponse, GenezioCommand.sdk)
+    reportSuccessForSdk(language, sdkGeneratorResponse, GenezioCommand.sdk);
 }

@@ -5,12 +5,13 @@ import version from "../utils/version.js";
 import { AuthStatus } from "./models.js";
 import { AxiosResponse } from "axios";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
+import { UserError } from "../errors.js";
 
 export default async function getAuthStatus(envId: string): Promise<AuthStatus> {
     const authToken = await getAuthToken();
 
     if (!authToken) {
-        throw new Error(
+        throw new UserError(
             "You are not logged in. Run 'genezio login' before you deploy your function.",
         );
     }
@@ -38,7 +39,7 @@ export default async function getAuthStatus(envId: string): Promise<AuthStatus> 
                 authStatus.token = id;
                 break;
             default:
-                throw new Error("Wrong auth token format. Check your token and try again");
+                throw new UserError("Wrong auth token format. Check your token and try again");
         }
     }
 

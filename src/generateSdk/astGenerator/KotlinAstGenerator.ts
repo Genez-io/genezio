@@ -29,6 +29,7 @@ import { createTemporaryFolder, fileExists } from "../../utils/file.js";
 import { runNewProcess, runNewProcessWithResult } from "../../utils/process.js";
 import { PropertyDefinition } from "../../models/genezioModels.js";
 import { default as fsExtra } from "fs-extra";
+import { UserError } from "../../errors.js";
 
 interface KotlinAstParameterDefinition {
     paramName: string;
@@ -55,7 +56,7 @@ export class AstGenerator implements AstGeneratorInterface {
             folder,
         );
         if (!ast_clone_success) {
-            throw new Error(
+            throw new UserError(
                 "Error: Failed to clone Kotlin AST parser repository to " +
                     folder +
                     " temporary folder!",
@@ -65,7 +66,7 @@ export class AstGenerator implements AstGeneratorInterface {
         const gradlew = "." + path.sep + "gradlew" + (os.platform() === "win32" ? ".bat" : "");
         const gradle_build_success = await runNewProcess(gradlew + " --quiet fatJar", folder);
         if (!gradle_build_success) {
-            throw new Error(
+            throw new UserError(
                 'Error: Failed to build Kotlin AST parser while executing "./gradlew --quiet fatJar" in ' +
                     folder +
                     " temporary folder!",
@@ -219,7 +220,7 @@ export class AstGenerator implements AstGeneratorInterface {
         ) as KotlinAstClassDescription;
 
         if (!mainClass) {
-            throw new Error(
+            throw new UserError(
                 `No class named ${input.class.name} found. Check in the 'genezio.yaml' file and make sure the path is correct.`,
             );
         }

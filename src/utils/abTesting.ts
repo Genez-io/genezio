@@ -4,7 +4,7 @@ import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { ProjectDetails, StatusOk } from "../requests/models.js";
 import { getAuthToken } from "./accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
-import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
+import { GENEZIO_NOT_AUTH_ERROR_MSG, UserError } from "../errors.js";
 
 // This function is used to check if the project is already deployed.
 // Do not reuse this method in the future, this is only used for AB testing and it will be removed soon.
@@ -15,7 +15,7 @@ export async function isProjectDeployed(name: string, region: string): Promise<b
         const authToken = await getAuthToken();
 
         if (!authToken) {
-            throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
+            throw new UserError(GENEZIO_NOT_AUTH_ERROR_MSG);
         }
 
         const response: AxiosResponse<StatusOk<{ project: ProjectDetails }>> =

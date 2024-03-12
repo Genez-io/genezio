@@ -35,6 +35,7 @@ import { runNewProcess, runNewProcessWithResultAndReturnCode } from "../../utils
 import {
     GENEZIO_NO_SUPPORT_FOR_BUILT_IN_TYPE,
     GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART,
+    UserError,
 } from "../../errors.js";
 
 // These are dart:core build-in errors that are not currently supported by the Genezio AST
@@ -92,7 +93,7 @@ export class AstGenerator implements AstGeneratorInterface {
             const lastIndex = type.length - 1;
             // If the List is optional, we need to remove the last character
             if (type[type.length - 1] === "?") {
-                throw new Error(GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART);
+                throw new UserError(GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART);
             }
 
             // Check for not supported built-in types
@@ -100,7 +101,9 @@ export class AstGenerator implements AstGeneratorInterface {
                 dartNotSupportedBuiltInTypes.includes(type) ||
                 dartNotSupportedBuiltInErrors.includes(type)
             ) {
-                throw new Error(`${type} not supported.\n` + GENEZIO_NO_SUPPORT_FOR_BUILT_IN_TYPE);
+                throw new UserError(
+                    `${type} not supported.\n` + GENEZIO_NO_SUPPORT_FOR_BUILT_IN_TYPE,
+                );
             }
 
             const extractedString = type.substring(listToken.length, lastIndex);
@@ -120,7 +123,7 @@ export class AstGenerator implements AstGeneratorInterface {
             const lastIndex = cleanedType.length - 1;
             // If the Map is optional, we need to remove the last character
             if (cleanedType[cleanedType.length - 1] === "?") {
-                throw new Error(GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART);
+                throw new UserError(GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART);
             }
 
             // Check for not supported built-in types
@@ -128,7 +131,9 @@ export class AstGenerator implements AstGeneratorInterface {
                 dartNotSupportedBuiltInTypes.includes(type) ||
                 dartNotSupportedBuiltInErrors.includes(type)
             ) {
-                throw new Error(`${type} not supported.\n` + GENEZIO_NO_SUPPORT_FOR_BUILT_IN_TYPE);
+                throw new UserError(
+                    `${type} not supported.\n` + GENEZIO_NO_SUPPORT_FOR_BUILT_IN_TYPE,
+                );
             }
 
             const extractedString = cleanedType.substring(mapToken.length, lastIndex);
@@ -187,7 +192,7 @@ export class AstGenerator implements AstGeneratorInterface {
 
         // Remove the Optional property for now, we don't support it.
         if (type[type.length - 1] === "?") {
-            throw new Error(GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART);
+            throw new UserError(GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART);
         }
 
         // Check for not supported built-in types
@@ -195,7 +200,7 @@ export class AstGenerator implements AstGeneratorInterface {
             dartNotSupportedBuiltInTypes.includes(type) ||
             dartNotSupportedBuiltInErrors.includes(type)
         ) {
-            throw new Error(`${type} not supported.\n` + GENEZIO_NO_SUPPORT_FOR_BUILT_IN_TYPE);
+            throw new UserError(`${type} not supported.\n` + GENEZIO_NO_SUPPORT_FOR_BUILT_IN_TYPE);
         }
 
         switch (type) {
@@ -260,7 +265,7 @@ export class AstGenerator implements AstGeneratorInterface {
         // Get the dart sdk version.
         const dartSdkVersion = getDartSdkVersion()?.toString();
         if (!dartSdkVersion) {
-            throw new Error("Unable to get the dart sdk version.");
+            throw new UserError("Unable to get the dart sdk version.");
         }
 
         // Get the path of the dart ast extractor.
@@ -286,13 +291,13 @@ export class AstGenerator implements AstGeneratorInterface {
 
         // If the result is not 0, it means that the ast generator failed.
         if (result.code !== 0) {
-            throw new Error(`Dart runtime error: ${result.stderr}`);
+            throw new UserError(`Dart runtime error: ${result.stderr}`);
         }
         const ast = JSON.parse(result.stdout);
 
         const mainClasses = ast.classes.filter((c: any) => c.name === input.class.name);
         if (mainClasses.length == 0) {
-            throw new Error(
+            throw new UserError(
                 `No class named ${input.class.name} found. Check in the 'genezio.yaml' file and make sure the path is correct.`,
             );
         }

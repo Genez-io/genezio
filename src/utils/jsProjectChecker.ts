@@ -2,6 +2,7 @@ import fs from "fs";
 import semver from "semver";
 import { debugLogger } from "./logging.js";
 import path from "path";
+import { UserError } from "../errors.js";
 
 /**
  * Reads the package.json file from a given path and checks if the version
@@ -50,7 +51,7 @@ export function checkExperimentalDecorators(backendPath: string) {
         // ignore error
     }
     if (tsconfig?.compilerOptions?.experimentalDecorators === true) {
-        throw new Error(
+        throw new UserError(
             `The experimentalDecorators option is enabled in your ${tsconfigPath} file. Please disable it to use genezio decorators.`,
         );
     }

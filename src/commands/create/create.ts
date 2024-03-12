@@ -14,6 +14,7 @@ import { backendTemplates, frontendTemplates } from "./templates.js";
 import { YamlConfigurationIOController } from "../../yamlProjectConfiguration/v2.js";
 import { YAMLContext, mergeContexts } from "yaml-transmute";
 import _ from "lodash";
+import { UserError } from "../../errors.js";
 
 type ProjectInfo = {
     name: string;
@@ -127,7 +128,7 @@ export async function createCommand(options: GenezioCreateOptions) {
 export function checkProjectName(projectName: string) {
     const projectNameRegex = /^[a-zA-Z][a-zA-Z0-9-]+$/;
     if (!projectNameRegex.test(projectName)) {
-        throw new Error(
+        throw new UserError(
             "Project name must start with a letter and contain only letters, numbers and dashes",
         );
     }
@@ -140,7 +141,7 @@ export function checkPathIsEmpty(projectPath: string) {
         for (const file of files) {
             const allowedFiles = ["README.md", "README", ".git", ".gitignore", "LICENSE"];
             if (!allowedFiles.includes(file)) {
-                throw new Error(
+                throw new UserError(
                     `A folder named '${projectPath}' already exists. You can't create a project in a non-empty folder.`,
                 );
             }
@@ -242,7 +243,7 @@ async function createProject(fs: IFs, projectInfo: ProjectInfo, projectPath = "/
     // TODO: Remove this before release
     // Checkout dev branch if it exists
     await git.checkout({ fs, dir: projectPath, ref: "dev" }).catch(() => {
-        throw new Error(
+        throw new UserError(
             "The selected template does not support `genezio.yaml` v2. Please choose another one",
         );
     });

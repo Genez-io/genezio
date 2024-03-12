@@ -1,3 +1,4 @@
+import { UserError } from "../errors.js";
 import { runNewProcess } from "./process.js";
 
 export async function runScript(
@@ -15,6 +16,6 @@ export async function runScript(
     for (const script of scripts) {
         // TODO: use execa instead of runNewProcess
         const success = await runNewProcess(script, cwd);
-        if (!success) throw new Error(`Failed to run script: ${script}`);
+        if (!success) throw new UserError(`Failed to run script: ${script}`);
     }
 }

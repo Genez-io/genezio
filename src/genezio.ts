@@ -103,6 +103,7 @@ program
             "info",
             "warn",
             "error",
+            "disable",
         ]),
     )
     .hook("preAction", (thisCommand: Command) => {

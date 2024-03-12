@@ -1,4 +1,5 @@
 import { execSync } from "child_process";
+import { UserError } from "../errors.js";
 
 export function checkIfGoIsInstalled() {
     const GoNotFoundError = `Error: Go not found`;
@@ -7,7 +8,7 @@ export function checkIfGoIsInstalled() {
     try {
         execSync("go version");
     } catch (error) {
-        const goErr = new Error(GoNotFoundError);
+        const goErr = new UserError(GoNotFoundError);
         goErr.stack = "";
         throw goErr;
     }

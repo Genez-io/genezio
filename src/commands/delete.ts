@@ -1,6 +1,6 @@
 import { Spinner } from "cli-spinner";
 import { log } from "../utils/logging.js";
-import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
+import { GENEZIO_NOT_AUTH_ERROR_MSG, UserError } from "../errors.js";
 import deleteProject from "../requests/deleteProject.js";
 import listProjects from "../requests/listProjects.js";
 import { getAuthToken } from "../utils/accounts.js";
@@ -11,7 +11,7 @@ export async function deleteCommand(projectId: string, options: GenezioDeleteOpt
     // check if user is logged in
     const authToken = await getAuthToken();
     if (!authToken) {
-        throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
+        throw new UserError(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
 
     const result = await deleteProjectHandler(projectId, options.force);

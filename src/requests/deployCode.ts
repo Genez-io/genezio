@@ -9,6 +9,7 @@ import { AbortController } from "node-abort-controller";
 import version from "../utils/version.js";
 import { AxiosResponse } from "axios";
 import { StatusOk } from "./models.js";
+import { UserError } from "../errors.js";
 
 export async function deployRequest(
     projectConfiguration: ProjectConfiguration,
@@ -19,7 +20,7 @@ export async function deployRequest(
     const authToken = await getAuthToken();
     if (!authToken) {
         printAdaptiveLog("Checking your credentials", "error");
-        throw new Error(
+        throw new UserError(
             "You are not logged in. Run 'genezio login' before you deploy your function.",
         );
     }

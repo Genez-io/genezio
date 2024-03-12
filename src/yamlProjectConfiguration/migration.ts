@@ -6,6 +6,7 @@ import path from "path";
 import { scanClassesForDecorators } from "../utils/configuration.js";
 import _ from "lodash";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
+import { UserError } from "../errors.js";
 
 export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
     if (process.env["CI"]) return undefined;
@@ -20,7 +21,7 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
         });
         if (!migrate) {
             // TODO: Add migration article link
-            throw new Error("genezio >= 1.0.0 needs a `genezio.yaml` file with version 2");
+            throw new UserError("genezio >= 1.0.0 needs a `genezio.yaml` file with version 2");
         }
 
         let frontendPath = undefined,

@@ -12,6 +12,7 @@ import {
 } from "../models/genezioModels.js";
 import { debugLogger } from "../utils/logging.js";
 import zod from "zod";
+import { UserError } from "../errors.js";
 
 interface SdkGeneratorPlugin {
     SdkGenerator: new () => SdkGeneratorInterface;
@@ -37,13 +38,13 @@ export async function generateSdk(
             plugins?.map(async (plugin) => {
                 const dynamicPlugin = await import(plugin).catch((err) => {
                     debugLogger.debug(err);
-                    throw new Error(
+                    throw new UserError(
                         `Plugin(${plugin}) not found. Install it with npm install ${plugin}`,
                     );
                 });
 
                 if (!dynamicPlugin) {
-                    throw new Error(`Plugin(${plugin}) could not be imported.`);
+                    throw new UserError(`Plugin(${plugin}) could not be imported.`);
                 }
 
                 // Check type of plugin at runtime
@@ -52,7 +53,7 @@ export async function generateSdk(
                     supportedExtensions: zod.array(zod.string()),
                 });
                 if (pluginSchema.safeParse(dynamicPlugin).success === false) {
-                    throw new Error(
+                    throw new UserError(
                         `Plugin(${plugin}) is not a valid SDK generator plugin. It must export a SdkGenerator class and supportedLanguages array.`,
                     );
                 }
@@ -77,7 +78,7 @@ export async function generateSdk(
     });
 
     if (!sdkGeneratorElem) {
-        throw new Error(`SDK language(${language}) not supported`);
+        throw new UserError(`SDK language(${language}) not supported`);
     }
 
     const sdkGeneratorClass = new sdkGeneratorElem.SdkGenerator();

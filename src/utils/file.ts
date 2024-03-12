@@ -14,6 +14,7 @@ import { EnvironmentVariable } from "../models/environmentVariables.js";
 import dotenv from "dotenv";
 import fsExtra from "fs-extra";
 import packageManager from "../packageManagers/packageManager.js";
+import { UserError } from "../errors.js";
 
 export async function getAllFilesRecursively(folderPath: string): Promise<string[]> {
     let files: string[] = [];
@@ -388,7 +389,7 @@ export async function validateYamlFile() {
     try {
         configurationFileContent = await parse(configurationFileContentUTF8);
     } catch (error) {
-        throw new Error(`The configuration yaml file is not valid.\n${error}`);
+        throw new UserError(`The configuration yaml file is not valid.\n${error}`);
     }
 
     if (configurationFileContent.classes.length === 0) {
