@@ -99,8 +99,8 @@ export async function prepareLocalBackendEnvironment(
         let sdkLanguage: Language = Language.ts;
         if (frontend) {
             for (const f of frontend) {
-                if (f.language) {
-                    sdkLanguage = f.language;
+                if (f.sdk?.language) {
+                    sdkLanguage = f.sdk.language;
                     break;
                 }
             }
@@ -786,11 +786,16 @@ async function handleSdk(
 ): Promise<NodeJS.Timeout | undefined> {
     let sdkLanguage: Language = Language.ts;
     let nodeJsWatcher: NodeJS.Timeout | undefined = undefined;
-    let frontendPath: string | undefined = undefined;
+    let sdkPath, frontendPath: string | undefined;
 
     if (frontends && frontends.length > 0) {
-        sdkLanguage = frontends[0].language || Language.ts;
+        sdkLanguage = frontends[0].sdk?.language || Language.ts;
         frontendPath = frontends[0].path;
+        if (frontendPath) {
+            sdkPath = frontends[0].sdk?.path
+                ? path.join(frontendPath, frontends[0].sdk?.path)
+                : path.join(frontendPath, "sdk");
+        }
     }
 
     const classUrls = sdk.files.map((c) => ({
@@ -806,7 +811,7 @@ async function handleSdk(
         classUrls,
         publish: false,
         installPackage: true,
-        outputPath: frontendPath ? path.join(frontendPath, "sdk") : undefined,
+        outputPath: sdkPath,
     });
 
     if (sdkFolderPath) {
