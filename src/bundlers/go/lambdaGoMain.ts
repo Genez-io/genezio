@@ -183,7 +183,8 @@ func handleRequest(context context.Context, event *Event) (*Response, error) {
             }
         {{/httpMethods}}
         default:
-            errorResponse := sendError(errors.New("Http method not found"), HttpMethod)
+            err = errors.New("Http method not found")
+            errorResponse := sendError(err, HttpMethod)
             return errorResponse, nil
         }
         byteBody, ok := result.Body.([]byte)
