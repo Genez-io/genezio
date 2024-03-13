@@ -129,7 +129,6 @@ export class KotlinBundler implements BundlerInterface {
         };
 
         const routerFileContent = Mustache.render(template, moustacheViewForMain);
-        console.log(folderPath);
         await writeToFile(
             folderPath,
             path.join(classConfigPath, "GeneratedCaller.kt"),
@@ -192,7 +191,6 @@ export class KotlinBundler implements BundlerInterface {
                 "",
             );
         }
-        console.log(userClass.path);
         await this.#createRouterFileForClass(userClass, input.ast, inputTemporaryFolder);
 
         checkIfKotlinReqsAreInstalled();
