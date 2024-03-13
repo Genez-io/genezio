@@ -35,11 +35,21 @@ import {
     Program,
 } from "../../models/genezioModels.js";
 import { UserError } from "../../errors.js";
+import fs from "fs";
 
 export class KotlinBundler implements BundlerInterface {
     async #compile(folderPath: string) {
         // Compile the Kotlin code locally
         const gradlew = "." + path.sep + "gradlew" + (process.platform === "win32" ? ".bat" : "");
+        fs.chmod(
+            `${folderPath}${path.sep}${"gradlew" + (process.platform === "win32" ? ".bat" : "")}`,
+            0o755,
+            (err) => {
+                if (err) {
+                    throw Error("Error while changing gradlew permissions");
+                }
+            },
+        );
         const result = spawnSync(gradlew, ["--quiet", "fatJar"], {
             cwd: folderPath,
         });
@@ -174,6 +184,14 @@ export class KotlinBundler implements BundlerInterface {
         const userClass = input.projectConfiguration.classes.find(
             (c: ClassConfiguration) => c.path == input.path,
         )!;
+
+        // If workspace.backend is defined we need to subtract it from the userClass.path
+        if (input.projectConfiguration.workspace?.backend) {
+            userClass.path = userClass.path.replace(
+                input.projectConfiguration.workspace.backend,
+                "",
+            );
+        }
         await this.#createRouterFileForClass(userClass, input.ast, inputTemporaryFolder);
 
         checkIfKotlinReqsAreInstalled();

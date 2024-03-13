@@ -4,7 +4,7 @@ export enum Language {
     swift = "swift",
     python = "python",
     dart = "dart",
-    kt = "kotlin",
+    kt = "kt",
     go = "go",
 }
 
@@ -13,4 +13,3 @@ export enum TriggerType {
     cron = "cron",
     http = "http",
 }
-
