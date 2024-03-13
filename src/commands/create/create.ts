@@ -430,7 +430,6 @@ const SUCCESSFULL_CREATE_MONOREPO = (
 
       Terminal 2 (start the frontend): 
         cd ${projectName}/client
-        npm install
         npm run dev
 `;
 
@@ -460,7 +459,6 @@ const SUCCESSFULL_CREATE_MULTIREPO = (
 
       Terminal 2 (start the frontend): 
         cd ${projectName}/client
-        npm install
         npm run dev
 `;
 
