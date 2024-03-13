@@ -361,7 +361,7 @@ async function startProcesses(
         const bundler = getBundler(classInfo);
 
         if (!bundler) {
-            throw new UserError("Unsupported language ${classConfiguration.language}.");
+            throw new UserError(`Unsupported language ${classInfo.language}.`);
         }
 
         const astClass = sdk.sdkGeneratorInput.classesInfo.find(
