@@ -236,14 +236,6 @@ async function createProject(fs: IFs, projectInfo: ProjectInfo, projectPath = "/
     // Clone template repository
     await git.clone({ fs, http, dir: projectPath, url: templateRepository });
 
-    // TODO: Remove this before release
-    // Checkout dev branch if it exists
-    await git.checkout({ fs, dir: projectPath, ref: "dev" }).catch(() => {
-        throw new UserError(
-            "The selected template does not support `genezio.yaml` v2. Please choose another one",
-        );
-    });
-
     // Remove .git folder
     fs.rmdirSync(path.join(projectPath, ".git"), { recursive: true });
 
