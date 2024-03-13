@@ -383,7 +383,7 @@ program
 This command is useful when the project has dedicated repositories for the backend and the frontend.",
     )
     .action(async (options: GenezioLinkOptions) => {
-        await linkCommand(options.projectName, options.region).catch((error) => {
+        await linkCommand(options.projectName).catch((error) => {
             logError(error);
             log.error(
                 "Error: Command execution failed. Please ensure you are running this command from a directory containing 'genezio.yaml' or provide the '--projectName <name>' and '--region <region>' flags.",
@@ -409,7 +409,7 @@ program
 This reset allows 'genezio local' to stop automatically generating the SDK in that location.",
     )
     .action(async (options: GenezioUnlinkOptions) => {
-        await unlinkCommand(options.all, options.projectName, options.region).catch((error) => {
+        await unlinkCommand(options.all, options.projectName).catch((error) => {
             logError(error);
             log.error(
                 "Error: Command execution failed. Please ensure you are running this command from a directory containing 'genezio.yaml' or provide the '--projectName <name>' and '--region <region>' flags.",

@@ -77,11 +77,7 @@ export async function createCommand(options: GenezioCreateOptions) {
                     break;
                 case true:
                     // Genezio link inside the client project
-                    await setLinkPathForProject(
-                        options.name,
-                        options.region,
-                        path.join(projectPath, "client"),
-                    );
+                    await setLinkPathForProject(options.name, path.join(projectPath, "client"));
                     log.info(SUCCESSFULL_CREATE_MULTIREPO(projectPath, options.name));
                     break;
             }
