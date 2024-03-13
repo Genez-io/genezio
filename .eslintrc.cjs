@@ -9,6 +9,7 @@ module.exports = {
     ],
     ignorePatterns: [
         "tests",
+        "sdk-external-modules",
         "src/telemetry",
         "jest.config.js",
         "solveEnvVariables.js",
@@ -17,5 +18,9 @@ module.exports = {
     env: {
         node: true,
         es6: true,
+    },
+    rules: {
+        "no-unused-vars": "off",
+        "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     },
 };

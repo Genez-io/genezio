@@ -1,7 +1,8 @@
+import { UserError } from "../errors.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import { removeAuthToken } from "../utils/accounts.js";
 import { debugLogger } from "../utils/logging.js";
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 
 export async function logoutCommand() {
     await GenezioTelemetry.sendEvent({
@@ -10,7 +11,7 @@ export async function logoutCommand() {
 
     await removeAuthToken().then(([login, ...scopedRegistries]) => {
         if (login.status === "rejected") {
-            throw new Error("Logout failed!");
+            throw new UserError("Logout failed!");
         }
 
         scopedRegistries.forEach((scopedRegistry) => {

@@ -1,0 +1,20 @@
+{
+    "name": "genezio-remote",
+    "version": "1.0.0",
+    "exports": {
+        ".": {
+            "browser": "./dist/lib/index.js",
+            "react-native": "./dist/lib/index.js",
+            "default": "./dist/lib/index.node.js"
+        }
+    },
+    "scripts": {
+        "build:cjs": "tsc -p tsconfig.cjs.json",
+        "build": "npm run build:cjs && shx cp package.json ../../build/src/genezio-remote/"
+    },
+    "files": [
+        "dist"
+    ],
+    "description": "",
+    "main": "./dist/lib/index.js"
+}

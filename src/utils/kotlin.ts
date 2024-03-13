@@ -1,4 +1,5 @@
 import { execSync } from "child_process";
+import { UserError } from "../errors.js";
 
 export function checkIfKotlinReqsAreInstalled() {
     const JavaNotFoundError = `Error: Java not found`;
@@ -10,7 +11,7 @@ export function checkIfKotlinReqsAreInstalled() {
     try {
         execSync("javac -version");
     } catch (error) {
-        const java_err = new Error(JavaNotFoundError);
+        const java_err = new UserError(JavaNotFoundError);
         java_err.stack = "";
         throw java_err;
     }
@@ -19,7 +20,7 @@ export function checkIfKotlinReqsAreInstalled() {
     try {
         execSync("kotlin -version");
     } catch (error) {
-        const kotlin_err = new Error(KotlinNotFoundError);
+        const kotlin_err = new UserError(KotlinNotFoundError);
         kotlin_err.stack = "";
         throw kotlin_err;
     }
@@ -28,7 +29,7 @@ export function checkIfKotlinReqsAreInstalled() {
     try {
         execSync("gradle -version");
     } catch (error) {
-        const gradle_err = new Error(GradleNotFoundError);
+        const gradle_err = new UserError(GradleNotFoundError);
         gradle_err.stack = "";
         throw gradle_err;
     }

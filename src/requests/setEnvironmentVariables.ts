@@ -3,6 +3,7 @@ import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
 import { EnvironmentVariable } from "../models/environmentVariables.js";
+import { UserError } from "../errors.js";
 
 export async function setEnvironmentVariables(
     projectId: string,
@@ -11,13 +12,13 @@ export async function setEnvironmentVariables(
 ) {
     // validate parameters
     if (!projectId) {
-        throw new Error("Missing required parameters");
+        throw new UserError("Missing required parameters");
     }
 
     // Check if user is authenticated
     const authToken = await getAuthToken();
     if (!authToken) {
-        throw new Error(
+        throw new UserError(
             "You are not logged in. Run 'genezio login' before you deploy your function.",
         );
     }

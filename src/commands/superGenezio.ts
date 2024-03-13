@@ -12,7 +12,7 @@ import {
     GenezioLocalOptions,
 } from "../models/commandOptions.js";
 import { askCreateOptions } from "./create/interactive.js";
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 import currentGenezioVersion from "../utils/version.js";
 import { createCommand } from "./create/create.js";
 
@@ -48,6 +48,9 @@ export async function genezioCommand() {
                 const options: GenezioDeployOptions = {
                     installDeps: true,
                     config: "./genezio.yaml",
+                    stage: "prod",
+                    backend: false,
+                    frontend: false,
                 };
 
                 return await deployCommand(options).catch(async (error) => {

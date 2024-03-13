@@ -1,4 +1,4 @@
-import { Language } from "./yamlProjectConfiguration.js";
+import { Language } from "../yamlProjectConfiguration/models.js";
 
 export interface BaseOptions {
     logLevel?: string;
@@ -19,11 +19,11 @@ export interface GenezioLocalOptions extends BaseOptions {
 }
 
 export interface GenezioDeployOptions extends BaseOptions {
-    backend?: boolean;
-    frontend?: boolean;
+    backend: boolean;
+    frontend: boolean;
     installDeps: boolean;
     env?: string;
-    stage?: string;
+    stage: string;
     subdomain?: string;
     config: string;
 }
@@ -41,31 +41,25 @@ export enum SourceType {
     REMOTE = "remote",
 }
 
-export enum SdkType {
-    PACKAGE = "package",
-    CLASSIC = "classic",
-}
-
 export interface GenezioSdkOptions extends BaseOptions {
     source: SourceType;
-    type: SdkType;
     config: string;
     language: Language;
     output: string;
     stage: string;
     region: string;
     url?: string;
+    packageName: string;
+    packageVersion: string;
 }
 
 export interface GenezioLinkOptions extends BaseOptions {
     projectName?: string;
-    region?: string;
 }
 
 export interface GenezioUnlinkOptions extends BaseOptions {
     all: boolean;
     projectName?: string;
-    region?: string;
 }
 
 export interface GenezioCreateInteractiveOptions extends BaseOptions {

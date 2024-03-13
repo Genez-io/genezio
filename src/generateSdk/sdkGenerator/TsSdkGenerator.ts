@@ -22,8 +22,8 @@ import {
     MapType,
     SdkGeneratorClassesInfoInput,
 } from "../../models/genezioModels.js";
-import { TriggerType } from "../../models/yamlProjectConfiguration.js";
-import { nodeSdkTs, storageTs } from "../templates/nodeSdkTs.js";
+import { TriggerType } from "../../yamlProjectConfiguration/models.js";
+import { storageTs } from "../templates/nodeSdkTs.js";
 import path from "path";
 
 const TYPESCRIPT_RESERVED_WORDS = [
@@ -135,7 +135,7 @@ const template = `/**
 * if new genezio commands are executed.
 */
 
-import { Remote } from "./remote";
+import { Remote } from "genezio-remote";
 {{#imports}}
 import { {{#models}}{{{name}}}{{^last}}, {{/last}}{{/models}} } from "./{{{path}}}";
 {{/imports}}
@@ -185,8 +185,6 @@ export class {{{className}}} {
   {{/hasGnzContextAsFirstParameter}}
   {{/methods}}
 }
-
-export { Remote };
 `;
 
 type MethodViewType = {
@@ -271,9 +269,11 @@ class SdkGenerator implements SdkGeneratorInterface {
             let exportClassChecker = false;
 
             for (const methodDefinition of classDefinition.methods) {
-                const methodConfigurationType = classConfiguration.getMethodType(
-                    methodDefinition.name,
+                const methodConfiguration = classConfiguration.methods.find(
+                    (m) => m.name === methodDefinition.name,
                 );
+                const methodConfigurationType =
+                    methodConfiguration?.type || classConfiguration.type;
 
                 if (
                     methodConfigurationType !== TriggerType.jsonrpc ||
@@ -454,13 +454,6 @@ class SdkGenerator implements SdkGeneratorInterface {
                 });
             }
         }
-
-        // generate remote.js
-        generateSdkOutput.files.push({
-            className: "Remote",
-            path: "remote.ts",
-            data: nodeSdkTs.replace("%%%url%%%", "undefined"),
-        });
 
         generateSdkOutput.files.push({
             className: "StorageManager",

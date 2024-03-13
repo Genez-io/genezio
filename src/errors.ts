@@ -1,3 +1,12 @@
+import zod from "zod";
+
+export class UserError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "Oops!";
+    }
+}
+
 // Constant strings used for output/error messages
 export const GENEZIO_NOT_AUTH_ERROR_MSG =
     "You are not logged in or your token is invalid. Please run `genezio login` before running this command.";
@@ -5,7 +14,7 @@ export const PORT_ALREADY_USED = function (port: number) {
     return `The port ${port} is already in use. Please use a different port by specifying --port <port> to start your local server.`;
 };
 export const GENEZIO_NO_CLASSES_FOUND =
-    "You don't have any class in specified in the genezio.yaml configuration file. Add a class with 'genezio addClass <className> <classType>' field and then call again 'genezio deploy'.";
+    "You don't have any class specified in the genezio.yaml configuration file.\nYou have to mark at least one class from your backend for deployment with the @GenezioDeploy decorator. Check out how to do that here https://genezio.com/docs/features/backend-deployment/#code-structure.";
 export const GENEZIO_DART_NOT_FOUND = `
 Error: Dart not found
 
@@ -25,3 +34,46 @@ export const GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE = function (filePath: string
 
 export const GENEZIO_GIT_NOT_FOUND = `Git is not installed. Please install it and try again.
 https://git-scm.com/book/en/v2/Getting-Started-Installing-Git`;
+
+export const GENEZIO_CONFIGURATION_FILE_NOT_FOUND = `The genezio.yaml configuration file was not found. Please execute this command at the root of your project.\nIf you don't have a project yet, you can create one by running the command 'genezio create'.`;
+
+function collectIssueMap(e: zod.ZodError, issueMap: Map<string, string[]>) {
+    for (const issue of e.issues) {
+        if (issue.code === "invalid_union") {
+            for (const issueError of issue.unionErrors) {
+                collectIssueMap(issueError, issueMap);
+            }
+        }
+
+        if (issueMap.has(issue.path.join("."))) {
+            issueMap.get(issue.path.join("."))?.push(issue.message);
+        } else {
+            issueMap.set(issue.path.join("."), [issue.message]);
+        }
+    }
+}
+
+export function zodFormatError(e: zod.ZodError) {
+    let errorString = "";
+    const issueMap = new Map<string, string[]>();
+
+    collectIssueMap(e, issueMap);
+
+    const formErrors = issueMap.get("");
+    if (formErrors && formErrors.length > 0) {
+        errorString += "Form errors:\n";
+        for (const error of formErrors) {
+            errorString += `\t- ${error}\n`;
+        }
+    }
+
+    const fieldErrors = Array.from(issueMap.entries()).filter((entry) => entry[0] !== "");
+    for (const [field, errors] of fieldErrors) {
+        if (errors === undefined) continue;
+
+        errorString += `Field \`${field}\`:\n`;
+        errorString += `\t- ${errors.join("\n\t- ")}\n`;
+    }
+
+    return errorString;
+}

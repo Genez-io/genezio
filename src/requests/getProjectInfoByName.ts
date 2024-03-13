@@ -4,12 +4,16 @@ import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
 import { ProjectDetails, StatusOk } from "./models.js";
 import { AxiosResponse } from "axios";
+import { UserError } from "../errors.js";
 
-export default async function getProjectInfoByName(projectName: string, region: string): Promise<ProjectDetails> {
+export default async function getProjectInfoByName(
+    projectName: string,
+    region: string,
+): Promise<ProjectDetails> {
     const authToken = await getAuthToken();
 
     if (!authToken) {
-        throw new Error(
+        throw new UserError(
             "You are not logged in. Run 'genezio login' before you deploy your function.",
         );
     }
@@ -18,7 +22,7 @@ export default async function getProjectInfoByName(projectName: string, region: 
         method: "GET",
         url: `${BACKEND_ENDPOINT}/projects/name/${projectName}`,
         params: {
-            region: region
+            region: region,
         },
         headers: {
             Authorization: `Bearer ${authToken}`,
@@ -29,7 +33,11 @@ export default async function getProjectInfoByName(projectName: string, region: 
     return response.data.project;
 }
 
-export async function getProjectEnvFromProjectByName(projectName: string, region: string, stageName: string) {
+export async function getProjectEnvFromProjectByName(
+    projectName: string,
+    region: string,
+    stageName: string,
+) {
     const completeProjectInfo = await getProjectInfoByName(projectName, region);
     const projectEnv = completeProjectInfo.projectEnvs.find(
         (projectEnv) => projectEnv.name == stageName,

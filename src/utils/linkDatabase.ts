@@ -32,13 +32,9 @@ export async function getLinkPathsForProject(
     return content.get(key) || [];
 }
 
-export async function setLinkPathForProject(
-    projectName: string,
-    region: string,
-    linkPath: string,
-): Promise<void> {
+export async function setLinkPathForProject(projectName: string, linkPath: string): Promise<void> {
     const content = await getLinkContent();
-    const key = `${projectName}:${region}`;
+    const key = `${projectName}`;
     const paths = content.get(key) || [];
     if (paths.includes(linkPath)) {
         return;
@@ -52,9 +48,9 @@ export async function deleteAllLinkPaths(): Promise<void> {
     await saveLinkContent(new Map<string, string[]>());
 }
 
-export async function deleteLinkPathForProject(projectName: string, region: string): Promise<void> {
+export async function deleteLinkPathForProject(projectName: string): Promise<void> {
     const content = await getLinkContent();
-    const key = `${projectName}:${region}`;
+    const key = `${projectName}`;
     content.delete(key);
     await saveLinkContent(content);
 }

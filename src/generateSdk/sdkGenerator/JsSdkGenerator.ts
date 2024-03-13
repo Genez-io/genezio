@@ -1,4 +1,4 @@
-import { TriggerType } from "../../models/yamlProjectConfiguration.js";
+import { TriggerType } from "../../yamlProjectConfiguration/models.js";
 import {
     SdkGeneratorInterface,
     ClassDefinition,
@@ -7,7 +7,7 @@ import {
     SdkGeneratorOutput,
     IndexModel,
 } from "../../models/genezioModels.js";
-import { nodeSdkJs, storageJs } from "../templates/nodeSdkJs.js";
+import { storageJs } from "../templates/nodeSdkJs.js";
 import Mustache from "mustache";
 
 const indexTemplate = `/**
@@ -27,8 +27,7 @@ const template = `/**
 * if new genezio commands are executed.
 */
 
-import { Remote } from "./remote.js"
-
+import { Remote } from "genezio-remote";
 {{#hasGnzContext}}
 import { StorageManager } from "./storage.js"
 {{/hasGnzContext}}
@@ -132,10 +131,11 @@ class SdkGenerator implements SdkGeneratorInterface {
             let exportClassChecker = false;
 
             for (const methodDefinition of classDefinition.methods) {
-                const methodConfigurationType = classConfiguration.getMethodType(
-                    methodDefinition.name,
+                const methodConfiguration = classConfiguration.methods.find(
+                    (e) => e.name === methodDefinition.name,
                 );
-
+                const methodConfigurationType =
+                    methodConfiguration?.type || classConfiguration.type;
                 if (
                     methodConfigurationType !== TriggerType.jsonrpc ||
                     classConfiguration.type !== TriggerType.jsonrpc
@@ -193,13 +193,6 @@ class SdkGenerator implements SdkGeneratorInterface {
                 className: classDefinition.name,
             });
         }
-
-        // generate remote.js
-        generateSdkOutput.files.push({
-            className: "Remote",
-            path: "remote.js",
-            data: nodeSdkJs.replace("%%%url%%%", "undefined"),
-        });
 
         generateSdkOutput.files.push({
             className: "StorageManager",

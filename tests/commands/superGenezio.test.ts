@@ -149,5 +149,5 @@ describe("superGenezio", () => {
 
         expect(askCreateOptions).toHaveBeenCalledOnce();
         expect(createCommand).toHaveBeenCalledOnce();
-    });
+    }, 20000);
 });

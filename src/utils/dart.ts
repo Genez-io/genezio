@@ -1,7 +1,7 @@
 import which from "which";
 import os from "os";
 import path from "path";
-import { GENEZIO_DARTAOTRUNTIME_NOT_FOUND, GENEZIO_DART_NOT_FOUND } from "../errors.js";
+import { GENEZIO_DARTAOTRUNTIME_NOT_FOUND, GENEZIO_DART_NOT_FOUND, UserError } from "../errors.js";
 import { SemanticVersion } from "../models/semanticVersion.js";
 import { execSync } from "child_process";
 
@@ -24,14 +24,14 @@ export async function checkIfDartIsInstalled(): Promise<boolean> {
     try {
         await which("dartaotruntime");
     } catch (e) {
-        throw new Error(GENEZIO_DARTAOTRUNTIME_NOT_FOUND);
+        throw new UserError(GENEZIO_DARTAOTRUNTIME_NOT_FOUND);
     }
 
     if (version) {
         return true;
     }
 
-    throw new Error(GENEZIO_DART_NOT_FOUND);
+    throw new UserError(GENEZIO_DART_NOT_FOUND);
 }
 
 export function getDartAstGeneratorPath(dartSdkVersion: string): {
@@ -39,9 +39,10 @@ export function getDartAstGeneratorPath(dartSdkVersion: string): {
     path: string;
 } {
     return {
-        directory: path.join(os.homedir(), ".dart_ast_generator"),
+        directory: path.join(os.homedir(), ".genezio", ".dart_ast_generator"),
         path: path.join(
             os.homedir(),
+            ".genezio",
             ".dart_ast_generator",
             `genezioDartAstGenerator_${dartSdkVersion}_v0.1.aot`,
         ),

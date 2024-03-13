@@ -1,7 +1,5 @@
-import { AxiosError } from "axios";
 import { Spinner } from "cli-spinner";
-import log from "loglevel";
-import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
+import { log } from "../utils/logging.js";
 import listProjects from "../requests/listProjects.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import { GenezioListOptions } from "../models/commandOptions.js";
@@ -21,12 +19,7 @@ export async function lsCommand(identifier: string, options: GenezioListOptions)
         await loginCommand("", false);
     }
 
-    await lsHandler(identifier, options.longListed).catch((error: AxiosError) => {
-        if (error.response?.status === 401) {
-            throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
-        }
-        throw error;
-    });
+    await lsHandler(identifier, options.longListed);
 }
 
 async function lsHandler(identifier: string, l: boolean) {
@@ -57,7 +50,7 @@ async function lsHandler(identifier: string, l: boolean) {
             log.info(
                 `[${1 + index}]: Project name: ${project.name},\n\tRegion: ${
                     project.region
-                },\n\tID: ${project.id},\n\tCreated: ${createdAt},\n\tUpdated: ${updatedAt}`,
+                },\n\tID: ${project.id},\n\tCloud Provider: ${project.cloudProvider}\n\tCreated: ${createdAt},\n\tUpdated: ${updatedAt}`,
             );
         } else {
             log.info(

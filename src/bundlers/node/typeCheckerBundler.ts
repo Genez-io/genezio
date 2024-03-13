@@ -1,25 +1,26 @@
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface.js";
 import ts from "typescript";
-import log from "loglevel";
+import { log } from "../../utils/logging.js";
 import fs from "fs";
 import { tsconfig } from "../../utils/configs.js";
 import path from "path";
 import { writeToFile } from "../../utils/file.js";
 import { debugLogger } from "../../utils/logging.js";
+import { UserError } from "../../errors.js";
 
 export class TypeCheckerBundler implements BundlerInterface {
     // Call this class only once
     static used = false;
 
-    async #generateTsconfigJson() {
-        if (fs.existsSync("tsconfig.json")) {
+    async #generateTsconfigJson(cwd: string) {
+        if (fs.existsSync(path.join(cwd, "tsconfig.json"))) {
             return;
         } else {
             log.info("No tsconfig.json file found. We will create one...");
             tsconfig.compilerOptions.rootDir = ".";
             tsconfig.compilerOptions.outDir = path.join(".", "build");
             tsconfig.include = [path.join(".", "**/*")];
-            await writeToFile(process.cwd(), "tsconfig.json", JSON.stringify(tsconfig, null, 4));
+            await writeToFile(cwd, "tsconfig.json", JSON.stringify(tsconfig, null, 4));
         }
     }
 
@@ -33,16 +34,26 @@ export class TypeCheckerBundler implements BundlerInterface {
         }
         TypeCheckerBundler.used = true;
 
-        await this.#generateTsconfigJson();
+        const cwd = input.projectConfiguration.workspace?.backend || process.cwd();
 
-        const configFile = ts.readConfigFile("tsconfig.json", ts.sys.readFile);
-        const config = ts.parseJsonConfigFileContent(configFile.config, ts.sys, process.cwd());
+        await this.#generateTsconfigJson(cwd);
+
+        const configPath = path.join(cwd, "tsconfig.json");
+
+        const config = ts.getParsedCommandLineOfConfigFile(configPath, undefined, {
+            ...ts.sys,
+            onUnRecoverableConfigFileDiagnostic: () => {},
+        });
+        if (!config) {
+            throw new UserError("Failed to parse tsconfig.json");
+        }
+
         const program = ts.createProgram({
             rootNames: config.fileNames,
             options: config.options,
         });
 
-        debugLogger.log("Typechecking Typescript files...");
+        debugLogger.debug("Typechecking Typescript files...");
         const diagnostics = ts.getPreEmitDiagnostics(program);
 
         if (diagnostics.length > 0) {
@@ -59,7 +70,7 @@ export class TypeCheckerBundler implements BundlerInterface {
                 }
             });
 
-            throw new Error("Typescript compilation failed.");
+            throw new UserError("Typescript compilation failed.");
         }
 
         return input;

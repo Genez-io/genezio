@@ -19,8 +19,8 @@ import {
 } from "@aws-sdk/client-cloudformation";
 import { HeadObjectCommand, PutObjectCommand, S3 } from "@aws-sdk/client-s3";
 import { debugLogger } from "../../utils/logging.js";
-import log from "loglevel";
-import { YamlFrontend } from "../../models/yamlProjectConfiguration.js";
+import { log } from "../../utils/logging.js";
+import { YamlFrontend } from "../../yamlProjectConfiguration/v2.js";
 import { getAllFilesRecursively, getFileSize } from "../../utils/file.js";
 import {
     GenezioCloudFormationBuilder,
@@ -37,6 +37,9 @@ import {
     getS3BucketResource,
 } from "./cloudFormationBuilder.js";
 import mime from "mime-types";
+import path from "path";
+import { DEFAULT_NODE_RUNTIME } from "../../models/nodeRuntime.js";
+import { UserError } from "../../errors.js";
 
 const BUNDLE_SIZE_LIMIT = 256901120;
 
@@ -109,7 +112,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
         const entryMimeType = mime.lookup(path);
 
         if (entryMimeType === false) {
-            debugLogger.log(`Skipping file ${path} because it has an unsupported mime type.`);
+            debugLogger.debug(`Skipping file ${path} because it has an unsupported mime type.`);
             return;
         }
 
@@ -127,11 +130,11 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
         switch (language) {
             case ".js":
             case ".ts":
-                return "nodejs14.x";
+                return DEFAULT_NODE_RUNTIME;
             case ".dart":
                 return "provided.al2";
             default:
-                throw new Error("Unsupported language: " + language);
+                throw new UserError("Unsupported language: " + language);
         }
     }
 
@@ -211,7 +214,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
             !successCloudFormationStatus.includes(bucketStackDetails["Stacks"][0]["StackStatus"])
         ) {
             debugLogger.error("Stack does not exists!", JSON.stringify(bucketStackDetails));
-            throw new Error(
+            throw new UserError(
                 "A problem occurred while deploying your application. Please check the status of your CloudFormation stack.",
             );
         }
@@ -222,7 +225,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
                 "Could not find bucket name output in cloud formation describe output.",
                 JSON.stringify(bucketStackDetails),
             );
-            throw new Error(
+            throw new UserError(
                 "A problem occurred while deploying your application. Please check the status of your CloudFormation stack.",
             );
         }
@@ -251,7 +254,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
 
         const credentials = await s3Client.config.credentials();
         if (!credentials) {
-            throw new Error("AWS credentials not found");
+            throw new UserError("AWS credentials not found");
         }
         log.info(
             `Deploying your backend project to the account represented by access key ID ${credentials.accessKeyId}...`,
@@ -300,7 +303,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
 
         const uploadFilesPromises = input.map(async (inputItem) => {
             if (inputItem.unzippedBundleSize > BUNDLE_SIZE_LIMIT) {
-                throw new Error(
+                throw new UserError(
                     `Class ${inputItem.name} is too big: ${(
                         inputItem.unzippedBundleSize / 1048576
                     ).toFixed(2)}MB. The maximum size is ${
@@ -313,7 +316,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
 
             const size = await getFileSize(inputItem.archivePath);
             if (size > BUNDLE_SIZE_LIMIT) {
-                throw new Error(
+                throw new UserError(
                     `Your class ${inputItem.name} is too big: ${size} bytes. The maximum size is 250MB. Try to reduce the size of your class.`,
                 );
             }
@@ -486,7 +489,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
 
         const credentials = await s3Client.config.credentials();
         if (!credentials) {
-            throw new Error("AWS credentials not found");
+            throw new UserError("AWS credentials not found");
         }
         log.info(
             `Deploying your frontend project to the account represented by access key ID ${credentials.accessKeyId}...`,
@@ -525,7 +528,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
         if (!exists) {
             debugLogger.debug("The frontend stack does not exists. Creating a new stack...");
             const createStackTemplate = cloudFormationTemplate.build();
-            debugLogger.log(createStackTemplate);
+            debugLogger.debug(createStackTemplate);
             await cloudFormationClient.send(
                 new CreateStackCommand({
                     StackName: stackName,
@@ -551,8 +554,9 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
             "GenezioDeploymentBucketName",
         );
 
-        const promises = (await getAllFilesRecursively(frontend.path)).map((filePath) => {
-            const path = filePath.replace(frontend.path, "");
+        const frontendPath = path.join(frontend.path, frontend.publish || ".");
+        const promises = (await getAllFilesRecursively(frontendPath)).map((filePath) => {
+            const path = filePath.replace(frontendPath, "");
             const bucketKey = path.startsWith("/") ? path.substring(1) : path;
             debugLogger.debug(`Uploading file ${filePath} to S3 with key ${bucketKey}.`);
             return this.#uploadFileToS3(s3Client, bucketName, bucketKey, filePath);
@@ -569,7 +573,7 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
         });
 
         const updateStackTemplate = cloudFormationTemplate.build();
-        debugLogger.log(updateStackTemplate);
+        debugLogger.debug(updateStackTemplate);
         try {
             await cloudFormationClient.send(
                 new UpdateStackCommand({

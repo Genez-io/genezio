@@ -1,10 +1,12 @@
 import { getAstSummary } from "../generateSdk/utils/getAstSummary.js";
 import { AstSummary } from "./astSummary.js";
 import { CloudProviderIdentifier } from "./cloudProviderIdentifier.js";
-import { NodeOptions } from "./nodeRuntime.js";
+import { DEFAULT_NODE_RUNTIME, NodeOptions } from "./nodeRuntime.js";
 import { SdkGeneratorResponse } from "./sdkGeneratorResponse.js";
-import { TriggerType, YamlProjectConfiguration } from "./yamlProjectConfiguration.js";
-
+import { TriggerType } from "../yamlProjectConfiguration/models.js";
+import { YamlProjectConfiguration } from "../yamlProjectConfiguration/v2.js";
+import path from "path";
+import { UserError } from "../errors.js";
 export class ParameterType {
     name: string;
     type: any;
@@ -75,22 +77,16 @@ export class ClassConfiguration {
 
 export class SdkConfiguration {
     language: string;
-    path: string;
+    path?: string;
 
-    constructor(language: string, path: string) {
+    constructor(language: string, path: string | undefined) {
         this.language = language;
         this.path = path;
     }
 }
 
 export class Workspace {
-    backend: string;
-    frontend: string;
-
-    constructor(backend: string, frontend: string) {
-        this.backend = backend;
-        this.frontend = frontend;
-    }
+    constructor(public backend: string) {}
 }
 
 /**
@@ -101,7 +97,6 @@ export class Workspace {
 export class ProjectConfiguration {
     name: string;
     region: string;
-    sdk?: SdkConfiguration;
     options?: NodeOptions;
     cloudProvider: CloudProviderIdentifier;
     astSummary: AstSummary;
@@ -114,11 +109,12 @@ export class ProjectConfiguration {
     ) {
         this.name = yamlConfiguration.name;
         this.region = yamlConfiguration.region;
-        this.sdk = yamlConfiguration.sdk;
-        this.options = yamlConfiguration.options;
-        this.cloudProvider = yamlConfiguration.cloudProvider || CloudProviderIdentifier.GENEZIO;
-        this, (this.workspace = yamlConfiguration.workspace);
-
+        this.options = {
+            nodeRuntime: yamlConfiguration.backend?.language.runtime || DEFAULT_NODE_RUNTIME,
+        };
+        this.cloudProvider =
+            yamlConfiguration.backend?.cloudProvider || CloudProviderIdentifier.GENEZIO;
+        this.workspace = new Workspace(yamlConfiguration.backend?.path || process.cwd());
         // Generate AST Summary
         this.astSummary = {
             version: "2",
@@ -127,16 +123,31 @@ export class ProjectConfiguration {
 
         this.classes = this.astSummary.classes.map((c) => {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const yamlClass = yamlConfiguration.classes!.find((yamlC) => yamlC.path === c.path)!;
+            const yamlClass = yamlConfiguration.backend?.classes?.find(
+                (yamlC) => path.join(yamlConfiguration.backend?.path || ".", yamlC.path) === c.path,
+            );
+            if (!yamlClass) {
+                throw new UserError(
+                    `[Project Configuration] Class configuration not found for ${c.path}`,
+                );
+            }
+
             const methods = c?.methods.map((m) => {
-                const yamlMethod = yamlClass.methods.find((yamlM) => yamlM.name === m.name);
+                const yamlMethod = yamlClass.methods?.find((yamlM) => yamlM.name === m.name);
+
+                const cronString =
+                    yamlMethod !== undefined &&
+                    (yamlMethod?.type === TriggerType.cron ||
+                        (yamlMethod?.type === undefined && yamlClass.type === TriggerType.cron))
+                        ? yamlMethod!.cronString
+                        : undefined;
 
                 return {
                     name: m.name,
                     parameters: m.params.map((p) => new ParameterType(p.name, p.type, p.optional)),
-                    cronString: yamlMethod?.cronString,
+                    cronString: cronString,
                     language: c.language,
-                    type: yamlClass?.getMethodType(m.name),
+                    type: yamlMethod?.type || yamlClass.type || TriggerType.jsonrpc,
                     returnType: m.returnType,
                     docString: m.docString,
                 };
@@ -146,7 +157,7 @@ export class ProjectConfiguration {
                 name: c.name,
                 path: c.path,
                 type: yamlClass?.type ?? TriggerType.jsonrpc,
-                language: yamlClass.language,
+                language: yamlConfiguration.backend?.language.name || "ts",
                 methods: methods,
                 types: c.types,
                 version: this.astSummary.version,

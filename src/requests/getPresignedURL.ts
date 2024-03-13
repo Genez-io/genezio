@@ -4,6 +4,7 @@ import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
 import { AxiosResponse } from "axios";
 import { StatusOk } from "./models.js";
+import { UserError } from "../errors.js";
 
 export async function getPresignedURL(
     region = "us-east-1",
@@ -12,13 +13,13 @@ export async function getPresignedURL(
     className: string,
 ) {
     if (!region || !archiveName || !projectName || !className) {
-        throw new Error("Missing required parameters");
+        throw new UserError("Missing required parameters");
     }
 
     // Check if user is authenticated
     const authToken = await getAuthToken();
     if (!authToken) {
-        throw new Error(
+        throw new UserError(
             "You are not logged in. Run 'genezio login' before you deploy your function.",
         );
     }

@@ -10,10 +10,9 @@ import {
     SdkGeneratorInterface,
     SdkGeneratorOutput,
 } from "../models/genezioModels.js";
-import log from "loglevel";
-import { exit } from "process";
 import { debugLogger } from "../utils/logging.js";
 import zod from "zod";
+import { UserError } from "../errors.js";
 
 interface SdkGeneratorPlugin {
     SdkGenerator: new () => SdkGeneratorInterface;
@@ -38,14 +37,14 @@ export async function generateSdk(
         pluginsImported = await Promise.all(
             plugins?.map(async (plugin) => {
                 const dynamicPlugin = await import(plugin).catch((err) => {
-                    log.error(`Plugin(${plugin}) not found. Install it with npm install ${plugin}`);
                     debugLogger.debug(err);
-                    exit(1);
+                    throw new UserError(
+                        `Plugin(${plugin}) not found. Install it with npm install ${plugin}`,
+                    );
                 });
 
                 if (!dynamicPlugin) {
-                    log.error(`Plugin(${plugin}) could not be imported.`);
-                    exit(1);
+                    throw new UserError(`Plugin(${plugin}) could not be imported.`);
                 }
 
                 // Check type of plugin at runtime
@@ -54,10 +53,9 @@ export async function generateSdk(
                     supportedExtensions: zod.array(zod.string()),
                 });
                 if (pluginSchema.safeParse(dynamicPlugin).success === false) {
-                    log.error(
+                    throw new UserError(
                         `Plugin(${plugin}) is not a valid SDK generator plugin. It must export a SdkGenerator class and supportedLanguages array.`,
                     );
-                    exit(1);
                 }
 
                 return dynamicPlugin as SdkGeneratorPlugin;
@@ -73,17 +71,14 @@ export async function generateSdk(
     pluginsImported.push(KotlinSdkGenerator);
     pluginsImported.push(GoSdkGenerator);
 
-    const sdk = sdkGeneratorInput.sdk;
-    if (!sdk) {
-        throw new Error(`SDK language not specified`);
-    }
+    const language = sdkGeneratorInput.language;
 
     const sdkGeneratorElem = pluginsImported.find((plugin) => {
-        return plugin.supportedLanguages.includes(sdk.language ?? "");
+        return plugin.supportedLanguages.includes(language ?? "");
     });
 
     if (!sdkGeneratorElem) {
-        throw new Error(`SDK language(${sdk.language}) not supported`);
+        throw new UserError(`SDK language(${language}) not supported`);
     }
 
     const sdkGeneratorClass = new sdkGeneratorElem.SdkGenerator();

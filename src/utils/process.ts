@@ -1,5 +1,5 @@
 import { exec } from "child_process";
-import log from "loglevel";
+import { log } from "./logging.js";
 import { debugLogger } from "./logging.js";
 
 export function runNewProcess(
@@ -23,7 +23,8 @@ export function runNewProcess(
                 debugLogger.debug(stdout);
             }
 
-            if (showStderrOutput) {
+            if (showStderrOutput && stderr.length > 0) {
+                log.info(command + " ❌");
                 log.info(stderr);
             }
         });

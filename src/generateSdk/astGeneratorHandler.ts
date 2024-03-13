@@ -1,16 +1,15 @@
-import log from "loglevel";
 import path from "path";
 import { AstGeneratorInterface, AstGeneratorOutput } from "../models/genezioModels.js";
 import { AstGeneratorInput } from "../models/genezioModels.js";
 import JsAstGenerator from "./astGenerator/JsAstGenerator.js";
 import TsAstGenerator from "./astGenerator/TsAstGenerator.js";
 import KotlinAstGenerator from "./astGenerator/KotlinAstGenerator.js";
-import { exit } from "process";
 import DartAstGenerator from "./astGenerator/DartAstGenerator.js";
 import { debugLogger } from "../utils/logging.js";
 import { supportedExtensions } from "../utils/languages.js";
 import zod from "zod";
 import GoAstGenerator from "./astGenerator/GoAstGenerator.js";
+import { UserError } from "../errors.js";
 
 interface AstGeneratorPlugin {
     AstGenerator: new () => AstGeneratorInterface;
@@ -35,14 +34,14 @@ export async function generateAst(
         pluginsImported = await Promise.all(
             plugins?.map(async (plugin) => {
                 const dynamicPlugin = await import(plugin).catch((err) => {
-                    log.error(`Plugin(${plugin}) not found. Install it with npm install ${plugin}`);
                     debugLogger.debug(err);
-                    exit(1);
+                    throw new UserError(
+                        `Plugin(${plugin}) not found. Install it with npm install ${plugin}`,
+                    );
                 });
 
                 if (!dynamicPlugin) {
-                    log.error(`Plugin(${plugin}) could not be imported.`);
-                    exit(1);
+                    throw new UserError(`Plugin(${plugin}) could not be imported.`);
                 }
 
                 // Check type of plugin at runtime
@@ -51,10 +50,9 @@ export async function generateAst(
                     supportedExtensions: zod.array(zod.string()),
                 });
                 if (pluginSchema.safeParse(dynamicPlugin).success === false) {
-                    log.error(
+                    throw new UserError(
                         `Plugin(${plugin}) is not a valid AST generator plugin. It must export a AstGenerator class and supportedExtensions array.`,
                     );
-                    exit(1);
                 }
 
                 return dynamicPlugin as AstGeneratorPlugin;
@@ -78,7 +76,7 @@ export async function generateAst(
             (supportedExtensions.length > 1 ? " and " : "") +
             supportedExtensions.slice(-1);
 
-        throw new Error(
+        throw new UserError(
             `Class language(${extension}) not supported. Currently supporting: ${supportedExtensionsString}. You can delete the class from genezio.yaml`,
         );
     }
@@ -86,7 +84,7 @@ export async function generateAst(
     const astGeneratorClass = new plugin.AstGenerator();
 
     return await astGeneratorClass.generateAst(input).catch((err) => {
-        debugLogger.log("An error has occurred", err);
+        debugLogger.debug("An error has occurred", err);
         throw Object.assign(err, { path: input.class.path });
     });
 }

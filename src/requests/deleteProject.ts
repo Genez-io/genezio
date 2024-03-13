@@ -5,7 +5,7 @@ import { debugLogger, printAdaptiveLog, printUninformativeLog } from "../utils/l
 import { AbortController } from "node-abort-controller";
 import version from "../utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
-import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
+import { GENEZIO_NOT_AUTH_ERROR_MSG, UserError } from "../errors.js";
 import { AxiosResponse } from "axios";
 import { StatusOk } from "./models.js";
 
@@ -18,7 +18,7 @@ export default async function deleteProject(projectId: string): Promise<boolean>
     const authToken = await getAuthToken();
     if (!authToken) {
         printAdaptiveLog("Checking your credentials", "error");
-        throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
+        throw new UserError(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
     printAdaptiveLog("Checking your credentials", "end");
 

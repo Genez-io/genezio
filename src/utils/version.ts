@@ -2,9 +2,10 @@ import boxen from "boxen";
 import colors from "colors";
 import { cmp } from "semver";
 import latestVersion from "latest-version";
-import log from "loglevel";
+import { log } from "./logging.js";
 import { createRequire } from "module";
 import { NODE_MINIMUM_VERSION } from "../constants.js";
+import { UserError } from "../errors.js";
 const requireESM = createRequire(import.meta.url);
 
 const pjson = requireESM("../../package.json");
@@ -35,9 +36,8 @@ export async function logOutdatedVersion() {
 
 export function checkNodeMinimumVersion() {
     if (cmp(process.version, "<", NODE_MINIMUM_VERSION)) {
-        log.error(
+        throw new UserError(
             `Genezio CLI requires Node.js version v${NODE_MINIMUM_VERSION} or higher. You are currently running Node.js ${process.version}. Please update your version of Node.js.`,
         );
-        process.exit(1);
     }
 }

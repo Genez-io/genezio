@@ -1,3 +1,4 @@
+import { UserError } from "../errors.js";
 import { BundlerInput, BundlerInterface, BundlerOutput } from "./bundler.interface.js";
 
 export class BundlerComposer implements BundlerInterface {
@@ -9,7 +10,7 @@ export class BundlerComposer implements BundlerInterface {
 
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
         if (this.bundlers.length === 0) {
-            throw new Error("Invalid number of bundlers.");
+            throw new UserError("Invalid number of bundlers.");
         }
 
         let arg = await this.bundlers[0].bundle(input);

@@ -1,6 +1,8 @@
 import fs from "fs";
 import semver from "semver";
 import { debugLogger } from "./logging.js";
+import path from "path";
+import { UserError } from "../errors.js";
 
 /**
  * Reads the package.json file from a given path and checks if the version
@@ -26,10 +28,31 @@ export function isDependencyVersionCompatible(
             return undefined;
         }
 
-        const minDependencyVersion = semver.minVersion(depVersion)
+        const minDependencyVersion = semver.minVersion(depVersion);
         return semver.satisfies(minDependencyVersion!, version);
     } catch (error) {
         debugLogger.error(`Error while reading package.json file: ${error}`);
         return undefined;
+    }
+}
+
+/**
+ * Check if the experimentalDecorators option is enabled in the tsconfig.json file.
+ * @param backendPath - The path to the backend folder.
+ * @returns void
+ * @throws Error if the experimentalDecorators option is enabled.
+ */
+export function checkExperimentalDecorators(backendPath: string) {
+    const tsconfigPath = path.join(backendPath, "tsconfig.json");
+    let tsconfig;
+    try {
+        tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, "utf8"));
+    } catch {
+        // ignore error
+    }
+    if (tsconfig?.compilerOptions?.experimentalDecorators === true) {
+        throw new UserError(
+            `The experimentalDecorators option is enabled in your ${tsconfigPath} file. Please disable it to use genezio decorators.`,
+        );
     }
 }

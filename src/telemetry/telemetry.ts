@@ -91,7 +91,7 @@ export class GenezioTelemetry {
         const timeZone: string = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
         // send event to telemetry
-        debugLogger.debug(
+        debugLogger.trace(
             `[GenezioTelemetry]`,
             `${timeZone} ${eventRequest.eventType} ${sessionId} ${userLanguage} ${operatingSystem} ${eventRequest.cloudProvider} ${eventRequest.errorTrace}`,
         );

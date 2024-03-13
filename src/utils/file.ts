@@ -7,13 +7,14 @@ import archiver from "archiver";
 import { parse } from "yaml";
 import { exit } from "process";
 import awsCronParser from "aws-cron-parser";
-import log from "loglevel";
-import { promises as fsPromises } from "fs";
+import { log } from "./logging.js";
+import { promises as fsPromises, Dirent } from "fs";
 import { debugLogger } from "./logging.js";
 import { EnvironmentVariable } from "../models/environmentVariables.js";
 import dotenv from "dotenv";
 import fsExtra from "fs-extra";
 import packageManager from "../packageManagers/packageManager.js";
+import { UserError } from "../errors.js";
 
 export async function getAllFilesRecursively(folderPath: string): Promise<string[]> {
     let files: string[] = [];
@@ -388,7 +389,7 @@ export async function validateYamlFile() {
     try {
         configurationFileContent = await parse(configurationFileContentUTF8);
     } catch (error) {
-        throw new Error(`The configuration yaml file is not valid.\n${error}`);
+        throw new UserError(`The configuration yaml file is not valid.\n${error}`);
     }
 
     if (configurationFileContent.classes.length === 0) {
@@ -443,4 +444,17 @@ export async function readEnvironmentVariablesFile(
         envVars.push({ name: key, value: value });
     }
     return envVars;
+}
+
+export async function listFilesWithExtension(
+    folderPath: string,
+    fileExtension: string,
+): Promise<string[]> {
+    return fsPromises.readdir(folderPath, { withFileTypes: true }).then((dirents: Dirent[]) => {
+        return dirents
+            .filter(
+                (dirent: Dirent) => dirent.isFile() && path.extname(dirent.name) === fileExtension,
+            )
+            .map((dirent: Dirent) => path.join(folderPath, dirent.name));
+    });
 }

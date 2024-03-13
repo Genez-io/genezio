@@ -1,4 +1,4 @@
-import log from "loglevel";
+import { log } from "../utils/logging.js";
 import { ClassConfiguration } from "../models/projectConfiguration.js";
 import { fileExists } from "../utils/file.js";
 import { BundlerInterface, BundlerOutput } from "./bundler.interface.js";
@@ -9,11 +9,12 @@ import { NodeJsBinaryDependenciesBundler } from "./node/nodeJsBinaryDependencies
 import { BundlerComposer } from "./bundlerComposer.js";
 import { DartBundler } from "./dart/dartBundler.js";
 import { KotlinBundler } from "./kotlin/kotlinBundler.js";
-import { GoBundler } from "./go/goBundler.js";
+import { NewGoBundler } from "./go/goBundler.js";
 import { debugLogger, printAdaptiveLog } from "../utils/logging.js";
 import { createTemporaryFolder } from "../utils/file.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
 import { Program } from "../models/genezioModels.js";
+import { UserError } from "../errors.js";
 
 export async function bundle(
     projectConfiguration: ProjectConfiguration,
@@ -22,16 +23,16 @@ export async function bundle(
     installDeps: boolean = true,
 ): Promise<BundlerOutput> {
     if (!(await fileExists(element.path))) {
-        printAdaptiveLog("Bundling your code and uploading it", "error");
+        printAdaptiveLog("Bundling your code\n", "error");
         log.error(`\`${element.path}\` file does not exist at the indicated path.`);
 
-        throw new Error(`\`${element.path}\` file does not exist at the indicated path.`);
+        throw new UserError(`\`${element.path}\` file does not exist at the indicated path.`);
     }
 
     let bundler: BundlerInterface;
 
     switch (element.language) {
-        case ".ts": {
+        case "ts": {
             const requiredDepsBundler = new TsRequiredDepsBundler();
             const typeCheckerBundler = new TypeCheckerBundler();
             const standardBundler = new NodeJsBundler();
@@ -44,27 +45,26 @@ export async function bundle(
             ]);
             break;
         }
-        case ".js": {
+        case "js": {
             const standardBundler = new NodeJsBundler();
             const binaryDepBundler = new NodeJsBinaryDependenciesBundler();
             bundler = new BundlerComposer([standardBundler, binaryDepBundler]);
             break;
         }
-        case ".dart": {
+        case "dart": {
             bundler = new DartBundler();
             break;
         }
-        case ".kt": {
+        case "kt": {
             bundler = new KotlinBundler();
             break;
         }
-        case ".go": {
-            bundler = new GoBundler();
+        case "go": {
+            bundler = NewGoBundler(projectConfiguration);
             break;
         }
         default:
-            log.error(`Unsupported ${element.language}`);
-            throw new Error(`Unsupported ${element.language}`);
+            throw new UserError(`Unsupported ${element.language}`);
     }
 
     debugLogger.debug(`The bundling process has started for file ${element.path}...`);

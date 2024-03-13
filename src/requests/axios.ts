@@ -1,7 +1,7 @@
 import axios, { AxiosError } from "axios";
 import { debugLogger } from "../utils/logging.js";
 import { StatusError } from "./models.js";
-import { GENEZIO_NOT_AUTH_ERROR_MSG } from "../errors.js";
+import { GENEZIO_NOT_AUTH_ERROR_MSG, UserError } from "../errors.js";
 
 enum GenezioErrorCode {
     UnknownError = 0,
@@ -23,28 +23,28 @@ axios.interceptors.response.use(
     function (error: AxiosError<StatusError>) {
         const response = error.response;
         if (!response) {
-            throw new Error("There was an error connecting to the server.");
+            throw new UserError("There was an error connecting to the server.");
         }
 
         if (response.status === 402) {
-            throw new Error(
+            throw new UserError(
                 "You've hit the maximum number of projects. To continue, please upgrade your subscription.",
             );
         }
         if (response.data.error.code === GenezioErrorCode.UpdateRequired) {
-            throw new Error("Please update your genezio CLI. Run 'npm update -g genezio'.");
+            throw new UserError("Please update your genezio CLI. Run 'npm update -g genezio'.");
         }
         if (response.data.error.code === GenezioErrorCode.Unauthorized) {
-            throw new Error(GENEZIO_NOT_AUTH_ERROR_MSG);
+            throw new UserError(GENEZIO_NOT_AUTH_ERROR_MSG);
         }
 
         debugLogger.debug("Axios error received:", JSON.stringify(response.data.error));
 
         if (response.data.status === "error") {
-            throw new Error(response.data.error.message);
+            throw new UserError(response.data.error.message);
         }
 
-        throw new Error("An unknown error occurred. Please file a bug report.");
+        throw new UserError("An unknown error occurred. Please file a bug report.");
     },
 );
 

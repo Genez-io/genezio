@@ -12,8 +12,8 @@ import {
 import { template } from "./localDartMain.js";
 import { default as fsExtra } from "fs-extra";
 import { spawnSync } from "child_process";
-import { TriggerType } from "../../models/yamlProjectConfiguration.js";
-import log from "loglevel";
+import { TriggerType } from "../../yamlProjectConfiguration/models.js";
+import { log } from "../../utils/logging.js";
 import {
     ArrayType,
     AstNodeType,
@@ -28,6 +28,7 @@ import {
     castArrayRecursivelyInitial,
     castMapRecursivelyInitial,
 } from "../../utils/dartAstCasting.js";
+import { UserError } from "../../errors.js";
 
 export class DartBundler implements BundlerInterface {
     async #analyze(path: string) {
@@ -41,7 +42,7 @@ export class DartBundler implements BundlerInterface {
             // Delete the temporary folder if the compilation fails
             await deleteFolder(path);
 
-            throw new Error("Compilation error! Please check your code and try again.");
+            throw new UserError("Compilation error! Please check your code and try again.");
         }
     }
 
@@ -149,7 +150,7 @@ export class DartBundler implements BundlerInterface {
             // Delete the temporary folder if the compilation fails
             await deleteFolder(folderPath);
 
-            throw new Error("Compilation error! Please check your code and try again.");
+            throw new UserError("Compilation error! Please check your code and try again.");
         }
     }
 

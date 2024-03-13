@@ -12,13 +12,13 @@ import FileDetails from "../../models/fileDetails.js";
 import { default as fsExtra } from "fs-extra";
 import { lambdaHandlerGenerator } from "./lambdaHandlerGenerator.js";
 import { genezioRuntimeHandlerGenerator } from "./genezioRuntimeHandlerGenerator.js";
-import log from "loglevel";
+import { log } from "../../utils/logging.js";
 import { debugLogger } from "../../utils/logging.js";
 import esbuild, { BuildResult, Plugin, BuildFailure, Message, Loader } from "esbuild";
 import { nodeExternalsPlugin } from "esbuild-node-externals";
 import colors from "colors";
 import { DependencyInstaller } from "./dependencyInstaller.js";
-import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE } from "../../errors.js";
+import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE, UserError } from "../../errors.js";
 import transformDecorators from "../../utils/transformDecorators.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 
@@ -89,7 +89,7 @@ export class NodeJsBundler implements BundlerInterface {
                 const sourceFilePath = path.join(cwd, filePath.path);
                 return fs.promises.copyFile(sourceFilePath, fileDestinationPath).catch((error) => {
                     if (error.code === "EACCES") {
-                        throw new Error(GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE(filePath.path));
+                        throw new UserError(GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE(filePath.path));
                     }
 
                     throw error;
@@ -98,7 +98,11 @@ export class NodeJsBundler implements BundlerInterface {
         );
     }
 
-    async #bundleNodeJSCode(filePath: string, tempFolderPath: string, cwd?: string): Promise<void> {
+    async #bundleNodeJSCode(
+        filePath: string,
+        tempFolderPath: string,
+        cwd: string = process.cwd(),
+    ): Promise<void> {
         const outputFile = `module.mjs`;
 
         // delete module.js file if it exists
@@ -132,8 +136,7 @@ export class NodeJsBundler implements BundlerInterface {
                         }
                     }
 
-                    const _cwd = cwd ?? process.cwd();
-                    const relativePath = path.relative(_cwd, args.path);
+                    const relativePath = path.relative(cwd, args.path);
                     const components = relativePath.split(path.sep);
                     const contents = await fs.promises.readFile(args.path, "utf8");
                     const loader = getLoader(args.path.split(".").pop()!);
@@ -181,14 +184,13 @@ export class NodeJsBundler implements BundlerInterface {
         const outputFilePath = path.join(tempFolderPath, outputFile);
 
         /*
-         * If genezio was executed from the root of the workspace,
-         * we need to pass the path to the package.json file.
-         * However, if the file does not exist, it will crash.
-         * To avoid this, we make this check based on the information
-         * if this command was executed from within a workspace or not.
+         * ESBuild uses `package.json` file to determine which modules are external.
+         * If the file is not provided, all packages will be bundled and none will be external.
+         * We don't want this because it increases the size of the bundle. So, if
+         * the `package.json` file exists, we inform ESBuild about it.
          */
         let nodeExternalPlugin;
-        if (cwd) {
+        if (fs.existsSync(path.join(cwd, "package.json"))) {
             nodeExternalPlugin = nodeExternalsPlugin({
                 packagePath: path.join(cwd, "package.json"),
             });
@@ -260,7 +262,7 @@ export class NodeJsBundler implements BundlerInterface {
         const errToDeps = error.errors.map((error: Message) => {
             const regexGroups = resolveRegex.exec(error.text)?.groups;
             const packageName = regexGroups ? regexGroups["dependencyName"] : undefined;
-            if (packageName && !error.location?.file.startsWith("node_modules/")) {
+            if (packageName && !error.location?.file.includes("node_modules/")) {
                 npmInstallRequired = true;
                 return null;
             }
@@ -339,7 +341,7 @@ export class NodeJsBundler implements BundlerInterface {
         }
 
         if (output.metafile === undefined) {
-            throw new Error("Could not get dependencies info");
+            throw new UserError("Could not get dependencies info");
         }
 
         const dependencyMap: Map<string, string> = new Map();
@@ -360,7 +362,7 @@ export class NodeJsBundler implements BundlerInterface {
             // This should not ever happen. If you got here... Good luck!
             const existingDependencyPath = dependencyMap.get(dependencyName);
             if (existingDependencyPath !== undefined && existingDependencyPath !== dependencyPath) {
-                throw new Error(
+                throw new UserError(
                     `Dependency ${dependencyName} has two different paths: ${existingDependencyPath} and ${dependencyPath}`,
                 );
             }
@@ -396,12 +398,12 @@ export class NodeJsBundler implements BundlerInterface {
         const cloudProvider = input.projectConfiguration.cloudProvider;
 
         if (mode === "development" && !tmpFolder) {
-            throw new Error("tmpFolder is required in development mode.");
+            throw new UserError("tmpFolder is required in development mode.");
         }
 
         const handlerGenerator = this.getHandlerGeneratorForProvider(cloudProvider);
         if (handlerGenerator === null) {
-            throw new Error(`Can't generate handler for cloud provider ${cloudProvider}.`);
+            throw new UserError(`Can't generate handler for cloud provider ${cloudProvider}.`);
         }
 
         const temporaryFolder = mode === "production" ? await createTemporaryFolder() : tmpFolder!;

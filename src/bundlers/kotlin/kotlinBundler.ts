@@ -2,7 +2,7 @@
 import path from "path";
 import Mustache from "mustache";
 import { default as fsExtra } from "fs-extra";
-import log from "loglevel";
+import { log } from "../../utils/logging.js";
 import { spawnSync } from "child_process";
 
 // Kotlin stuff
@@ -24,7 +24,7 @@ import {
     MethodConfiguration,
     ParameterType,
 } from "../../models/projectConfiguration.js";
-import { TriggerType } from "../../models/yamlProjectConfiguration.js";
+import { TriggerType } from "../../yamlProjectConfiguration/models.js";
 import {
     ArrayType,
     AstNodeType,
@@ -34,11 +34,22 @@ import {
     Node,
     Program,
 } from "../../models/genezioModels.js";
+import { UserError } from "../../errors.js";
+import fs from "fs";
 
 export class KotlinBundler implements BundlerInterface {
     async #compile(folderPath: string) {
         // Compile the Kotlin code locally
         const gradlew = "." + path.sep + "gradlew" + (process.platform === "win32" ? ".bat" : "");
+        fs.chmod(
+            `${folderPath}${path.sep}${"gradlew" + (process.platform === "win32" ? ".bat" : "")}`,
+            0o755,
+            (err) => {
+                if (err) {
+                    throw Error("Error while changing gradlew permissions");
+                }
+            },
+        );
         const result = spawnSync(gradlew, ["--quiet", "fatJar"], {
             cwd: folderPath,
         });
@@ -48,11 +59,11 @@ export class KotlinBundler implements BundlerInterface {
                     gradlew +
                     " script, make sure you have the correct permissions.",
             );
-            throw new Error("Compilation error! Please check your code and try again.");
+            throw new UserError("Compilation error! Please check your code and try again.");
         } else if (result.status != 0) {
             log.info(result.stderr.toString());
             log.info(result.stdout.toString());
-            throw new Error("Compilation error! Please check your code and try again.");
+            throw new UserError("Compilation error! Please check your code and try again.");
         }
         // Move the stand alone jar to its own folder
         fsExtra.mkdirSync(path.join(folderPath, "final_build"));
@@ -120,7 +131,7 @@ export class KotlinBundler implements BundlerInterface {
 
         // Error check: User is using Windows but paths are unix style (possible when cloning projects from git)
         if (process.platform === "win32" && classConfigPath.includes("/")) {
-            throw new Error(
+            throw new UserError(
                 "Error: You are using Windows but your project contains unix style paths. Please use Windows style paths in genezio.yaml instead.",
             );
         }
@@ -163,7 +174,8 @@ export class KotlinBundler implements BundlerInterface {
 
     async bundle(input: BundlerInput): Promise<BundlerOutput> {
         // Create a temporary folder were we copy user code to prepare everything.
-        const folderPath = input.genezioConfigurationFilePath;
+        const folderPath =
+            input.projectConfiguration.workspace?.backend ?? input.genezioConfigurationFilePath;
         const inputTemporaryFolder = await createTemporaryFolder();
         await fsExtra.copy(folderPath, inputTemporaryFolder);
         debugLogger.debug(`Copy files in temp folder ${inputTemporaryFolder}`);
@@ -172,6 +184,14 @@ export class KotlinBundler implements BundlerInterface {
         const userClass = input.projectConfiguration.classes.find(
             (c: ClassConfiguration) => c.path == input.path,
         )!;
+
+        // If workspace.backend is defined we need to subtract it from the userClass.path
+        if (input.projectConfiguration.workspace?.backend) {
+            userClass.path = userClass.path.replace(
+                input.projectConfiguration.workspace.backend,
+                "",
+            );
+        }
         await this.#createRouterFileForClass(userClass, input.ast, inputTemporaryFolder);
 
         checkIfKotlinReqsAreInstalled();
