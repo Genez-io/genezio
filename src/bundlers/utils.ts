@@ -55,7 +55,7 @@ export async function bundle(
             bundler = new DartBundler();
             break;
         }
-        case "kotlin": {
+        case "kt": {
             bundler = new KotlinBundler();
             break;
         }
