@@ -18,10 +18,6 @@ export async function watchPackage(
     frontend: YamlFrontend[] | undefined,
     sdkPath: string,
 ): Promise<NodeJS.Timeout | undefined> {
-    if (frontend === undefined || frontend.length === 0) {
-        return;
-    }
-
     switch (language) {
         case Language.js:
         case Language.ts:
@@ -45,13 +41,11 @@ async function watchNodeModules(
     const sdkName = `${projectName}`;
     const nodeModulesSdkDirectoryPath = path.join("node_modules", "@genezio-sdk", sdkName);
 
-    if (!frontends) {
-        return;
-    }
-
-    for (const f of frontends) {
-        watchPaths.push(path.join(f.path, nodeModulesSdkDirectoryPath));
-        watchPaths.push(path.join(f.path, "node_modules", ".package-lock.json"));
+    if (frontends) {
+        for (const f of frontends) {
+            watchPaths.push(path.join(f.path, nodeModulesSdkDirectoryPath));
+            watchPaths.push(path.join(f.path, "node_modules", ".package-lock.json"));
+        }
     }
 
     const linkPaths = await getLinkPathsForProject(projectName, projectRegion);
@@ -85,7 +79,12 @@ async function watchNodeModules(
                 const res: Result = compareSync(genezioSdkPath, watchPath, options);
                 if (!res.same) {
                     debugLogger.debug(`[WATCH_NODE_MODULES] Rewriting the SDK to node_modules...`);
-                    await writeSdkToNodeModules(projectName, projectRegion, frontends, sdkPath);
+                    await writeSdkToNodeModules(
+                        projectName,
+                        projectRegion,
+                        frontends ?? [],
+                        sdkPath,
+                    );
                 }
             }
         }
