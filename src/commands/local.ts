@@ -562,7 +562,7 @@ async function startServerHttp(
     });
 
     return await new Promise((resolve, reject) => {
-        const server = app.listen(port, () => {
+        const server = app.listen(port, "0.0.0.0", () => {
             log.info(`Server listening on port ${port}`);
             resolve(server);
         });
