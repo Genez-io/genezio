@@ -376,7 +376,6 @@ program
         "--projectName <projectName>",
         "The name of the project that you want to communicate with.",
     )
-    .option("--region <region>", "The region of the project that you want to communicate with.")
     .summary("Links the genezio generated SDK in the current working directory")
     .description(
         "Linking a client with a deployed project will enable `genezio local` to figure out where to generate the SDK to call the backend methods.\n\
@@ -398,10 +397,6 @@ program
     .option(
         "--projectName <projectName>",
         "The name of the project that you want to communicate with. If --all is used, this option is ignored.",
-    )
-    .option(
-        "--region <region>",
-        "The region of the project that you want to communicate with. If --all is used, this option is ignored.",
     )
     .summary("Unlink the generated SDK from a client.")
     .description(
