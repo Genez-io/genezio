@@ -342,6 +342,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 }
 
 function logChangeDetection() {
+    console.clear();
     log.info("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
 }
 
