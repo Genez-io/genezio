@@ -107,6 +107,7 @@ export function printAdaptiveLog(message: string, state: string) {
 }
 
 export async function doAdaptiveLogAction<T>(message: string, action: () => Promise<T>) {
+    spinner.start(message);
     return action()
         .then((result) => {
             spinner.succeed(`${colors.green(message)}`);
