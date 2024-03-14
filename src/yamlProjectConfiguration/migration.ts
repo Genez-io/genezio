@@ -17,7 +17,10 @@ function compressArray<T>(array: T[] | undefined): T[] | T | undefined {
 }
 
 export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
-    if (process.env["CI"]) return undefined;
+    if (process.env["CI"] === "true")
+        throw new UserError(
+            `You are using an old version of the YAML configuration file. Please update it to the latest version. For more information, check the migration guide at https://genezio.com/docs/learn-more/upgrading-to-v1`,
+        );
 
     try {
         const v1Config = await v1.create(config);
@@ -28,8 +31,9 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
                 "Your project configuration is using an old version of the YAML configuration file. Would you like to migrate it to the latest version?",
         });
         if (!migrate) {
-            // TODO: Add migration article link
-            throw new UserError("genezio >= 1.0.0 needs a `genezio.yaml` file with version 2");
+            throw new UserError(
+                "genezio >= 1.0.0 needs a `genezio.yaml` file with version 2. For more information, check the migration guide at https://genezio.com/docs/learn-more/upgrading-to-v1",
+            );
         }
 
         let frontendPath = undefined,
