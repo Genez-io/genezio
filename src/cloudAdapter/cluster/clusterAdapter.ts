@@ -110,7 +110,6 @@ export class ClusterCloudAdapter implements CloudAdapter {
             projectId: response.projectId,
         }));
 
-        console.log(classesInfo);
         return {
             projectEnvId: "",
             classes: classesInfo,
