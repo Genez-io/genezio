@@ -24,4 +24,10 @@ jobs:
                   node-version: ${{ matrix.node-version }}
             - run: npm ci
             - run: npm run install-locally
+            - name: Unset CI
+              run: echo "CI=false" >> "$GITHUB_ENV"
+              if: runner.os != 'Windows'
+            - name: Unset CI
+              run: echo "CI=false" | Out-File -FilePath $env:GITHUB_ENV -Append
+              if: runner.os == 'Windows'
             - run: npm test
