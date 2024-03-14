@@ -53,6 +53,8 @@ export class ClassConfiguration {
     types: any[];
     version: string;
     docString?: string;
+    sockets?: boolean;
+    options?: { [key: string]: string };
 
     constructor(
         name: string,
@@ -63,6 +65,7 @@ export class ClassConfiguration {
         types: any[],
         version: string,
         docString?: string,
+        sockets?: boolean,
     ) {
         this.name = name;
         this.path = path;
@@ -72,6 +75,7 @@ export class ClassConfiguration {
         this.types = types;
         this.version = version;
         this.docString = docString;
+        this.sockets = sockets;
     }
 }
 
@@ -162,6 +166,7 @@ export class ProjectConfiguration {
                 types: c.types,
                 version: this.astSummary.version,
                 docString: c.docString,
+                sockets: yamlClass?.sockets,
             };
         });
     }

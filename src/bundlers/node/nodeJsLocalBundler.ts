@@ -1,14 +1,15 @@
 import { writeToFile } from "../../utils/file.js";
 import path from "path";
 import { BundlerInput, BundlerInterface, BundlerOutput } from "../bundler.interface.js";
-
+import { generateNodeContainerManifest } from "./containerManifest.js";
+import { spawnSync } from "child_process";
+import { debugLogger } from "../../utils/logging.js";
 // This file is the wrapper that is used to run the user's code in a separate process.
 // It listens for messages from the parent process and runs the user's code when it receives a message.
 const localWrapperCode = `
 import { handler as userHandler } from "./index.mjs";
 import http from "http";
 
-const hostname = '127.0.0.1';
 const port = process.argv[2];
 
 const server = http.createServer((req, res) => {
@@ -30,7 +31,7 @@ const server = http.createServer((req, res) => {
   }
 });
 
-server.listen(port, hostname, () => {
+server.listen(port, () => {
 });
 `;
 

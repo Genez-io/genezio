@@ -63,6 +63,15 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
                     : undefined;
         }
 
+        if (
+            (v1Config.cloudProvider as unknown as CloudProviderIdentifier) ===
+            CloudProviderIdentifier.CLUSTER
+        ) {
+            throw new UserError(
+                "genezio >= 1.0.0 is required for the migration of the cloud provider to cluster",
+            );
+        }
+
         const v2Config: v2 = {
             name: v1Config.name,
             region: v1Config.region,
@@ -79,7 +88,7 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
                           // AWS was deprecated in Genezio YAML v2
                           v1Config.cloudProvider === "aws"
                               ? CloudProviderIdentifier.GENEZIO
-                              : (v1Config.cloudProvider as CloudProviderIdentifier),
+                              : (v1Config.cloudProvider as unknown as CloudProviderIdentifier),
                       classes: v1Config.classes.map((c) => ({
                           name: c.name,
                           path: path.relative(v1Config.workspace?.backend ?? ".", c.path),

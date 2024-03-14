@@ -70,6 +70,7 @@ function parseGenezioConfig(config: unknown) {
         path: zod.string(),
         type: zod.nativeEnum(TriggerType).optional(),
         methods: zod.array(methodSchema).optional(),
+        sockets: zod.boolean().optional(),
     });
 
     const backendSchema = zod.object({
@@ -133,7 +134,6 @@ function parseGenezioConfig(config: unknown) {
 
 function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
     const defaultConfig = structuredClone(config);
-
     defaultConfig.region ??= "us-east-1";
 
     if (defaultConfig.backend) {
