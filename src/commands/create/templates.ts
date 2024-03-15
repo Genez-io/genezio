@@ -78,6 +78,11 @@ export const frontendTemplates: Record<string, Template | undefined> = {
         pkgManager: undefined,
         coloring: colors.yellow,
     },
+    flutter: {
+        name: "Flutter",
+        pkgManager: undefined,
+        coloring: colors.magenta,
+    },
     "onboarding-react": {
         name: "React (TypeScript) for Onboarding",
         pkgManager: "npm",
