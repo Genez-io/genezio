@@ -857,7 +857,7 @@ function reportDifferentNodeRuntime(userDefinedNodeRuntime: string | undefined) 
 To change the server version, go to your ${colors.cyan(
                 "genezio.yaml",
             )} file and change the ${colors.cyan(
-                "backend.language.nodeRuntime",
+                "backend.language.runtime",
             )} property to the version you want to use.`)}`,
         );
     }
