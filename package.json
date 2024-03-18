@@ -54,7 +54,7 @@
         "@sentry/node": "^7.74.1",
         "@sentry/profiling-node": "~7.102.1",
         "archiver": "^6.0.0",
-        "async-mutex": "^0.4.1",
+        "async-mutex": "^0.5.0",
         "await-exec": "^0.1.2",
         "aws-cron-parser": "^1.1.12",
         "axios": "^1.6.7",
