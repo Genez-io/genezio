@@ -1,4 +1,5 @@
 import zod from "zod";
+import colors from "colors";
 
 export class UserError extends Error {
     constructor(message: string) {
@@ -12,6 +13,10 @@ export const GENEZIO_NOT_AUTH_ERROR_MSG =
     "You are not logged in or your token is invalid. Please run `genezio login` before running this command.";
 export const PORT_ALREADY_USED = function (port: number) {
     return `The port ${port} is already in use. Please use a different port by specifying --port <port> to start your local server.`;
+};
+
+export const INVALID_HTTP_METHODS_FOUND = function (invalidHttpMethodsString: string) {
+    return `Invalid http methods found, the following methods are invalid:\n${invalidHttpMethodsString}\n${colors.yellow(`Please check the documentation for more information about how to define http methods\nhttps://genezio.com/docs/features/http-methods-webhooks`)}`;
 };
 export const GENEZIO_NO_CLASSES_FOUND =
     "You don't have any class specified in the genezio.yaml configuration file.\nYou have to mark at least one class from your backend for deployment with the @GenezioDeploy decorator. Check out how to do that here https://genezio.com/docs/features/backend-deployment/#code-structure.";

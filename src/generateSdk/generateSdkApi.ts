@@ -1,9 +1,13 @@
 import { generateAst } from "./astGeneratorHandler.js";
 import { generateSdk } from "./sdkGeneratorHandler.js";
 import {
+    AstNodeType,
+    ClassDefinition,
+    MethodDefinition,
     SdkClassConfiguration,
     SdkGeneratorInput,
     SdkGeneratorOutput,
+    UnsupportedType,
 } from "../models/genezioModels.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import { AstGeneratorInput } from "../models/genezioModels.js";
@@ -11,7 +15,8 @@ import fs from "fs";
 import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
 import path from "path";
 import { YamlClass } from "../yamlProjectConfiguration/v2.js";
-import { UserError } from "../errors.js";
+import { INVALID_HTTP_METHODS_FOUND, UserError } from "../errors.js";
+import colors from "colors";
 
 /**
  * Asynchronously handles a request to generate an SDK based on the provided YAML project configuration.
@@ -38,6 +43,8 @@ export async function sdkGeneratorApiHandler(
         language: language ?? "ts",
     };
 
+    let invalidHttpMethods: MethodDefinition[] = [];
+    let invalidHttpMethodsString = "";
     // iterate over each class file
     for (const input of inputs) {
         // Generate genezio AST from file
@@ -55,11 +62,28 @@ export async function sdkGeneratorApiHandler(
             );
         }
 
+        if (astGeneratorOutput.program.body !== undefined && language === "ts") {
+            const astClassDefinition = astGeneratorOutput.program.body.find(
+                (node) =>
+                    node.type === AstNodeType.ClassDefinition &&
+                    (node as ClassDefinition).name === classConfiguration.name,
+            ) as ClassDefinition;
+            const currentInvalidHttpMethods = checkInvalidHttpMethods(
+                classConfiguration,
+                astClassDefinition,
+            );
+            invalidHttpMethods = invalidHttpMethods.concat(currentInvalidHttpMethods.methods);
+            invalidHttpMethodsString += currentInvalidHttpMethods.methodsString;
+        }
+
         sdkGeneratorInput.classesInfo.push({
             program: astGeneratorOutput.program,
             classConfiguration,
             fileName: path.basename(input.class.path),
         });
+    }
+    if (invalidHttpMethods.length > 0) {
+        throw new UserError(INVALID_HTTP_METHODS_FOUND(invalidHttpMethodsString));
     }
 
     const sdkOutput: SdkGeneratorOutput = await generateSdk(
@@ -72,6 +96,33 @@ export async function sdkGeneratorApiHandler(
         files: sdkOutput.files,
         sdkGeneratorInput: sdkGeneratorInput,
     };
+}
+
+function checkInvalidHttpMethods(
+    sdkClass: SdkClassConfiguration,
+    astClass: ClassDefinition,
+): { methods: MethodDefinition[]; methodsString: string } {
+    const methods: MethodDefinition[] = [];
+    let methodsString = "";
+    for (const method of sdkClass.methods) {
+        if (method.type === TriggerType.http) {
+            const astMethod = astClass.methods.find((m) => m.name === method.name);
+            if (
+                astMethod &&
+                (astMethod.params.length != 1 ||
+                    astMethod.params[0].paramType.type != AstNodeType.UnsupportedType ||
+                    astMethod.params[0].paramType.name != "Request" ||
+                    astMethod.params[0].optional != false ||
+                    astMethod.returnType.type != AstNodeType.PromiseType ||
+                    astMethod.returnType.generic.type != AstNodeType.UnsupportedType ||
+                    (astMethod.returnType.generic as UnsupportedType).name != "Response")
+            ) {
+                methods.push(astMethod);
+                methodsString += ` ${colors.red(`- ${astClass.name}.${astMethod.name}`)}` + "\n";
+            }
+        }
+    }
+    return { methods, methodsString };
 }
 
 export function mapYamlClassToSdkClassConfiguration(

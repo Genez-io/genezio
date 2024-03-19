@@ -28,6 +28,7 @@ import {
     EnumType,
     DateType,
     MapType,
+    UnsupportedType,
 } from "../../models/genezioModels.js";
 
 import typescript from "typescript";
@@ -60,7 +61,8 @@ export class AstGenerator implements AstGeneratorInterface {
         | PromiseType
         | VoidType
         | EnumType
-        | MapType {
+        | MapType
+        | UnsupportedType {
         switch (type.kind) {
             case typescript.SyntaxKind.LiteralType: {
                 const literalType = type as typescript.LiteralTypeNode;
@@ -142,9 +144,7 @@ export class AstGenerator implements AstGeneratorInterface {
                     }
                 }
                 if (!typeAtLocationPath) {
-                    throw new UserError(
-                        `Type ${escapedText} is not supported by genezio. Take a look at the documentation to see the supported types. https://docs.genezio.com/`,
-                    );
+                    return { type: AstNodeType.UnsupportedType, name: escapedText };
                 }
                 const pathFile = path
                     .relative(process.cwd(), typeAtLocationPath)
