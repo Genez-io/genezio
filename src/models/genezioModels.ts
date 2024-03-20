@@ -82,7 +82,6 @@ export enum AstNodeType {
     MethodDefinition = "MethodDefinition",
     ClassDefinition = "ClassDefinition",
     PropertyDefinition = "PropertyDefinition",
-    UnsupportedType = "UnsupportedType",
     ResponseType = "ResponseType",
     RequestType = "RequestType",
 }
@@ -188,11 +187,6 @@ export interface PromiseType extends Node {
     generic: Node;
 }
 
-export interface UnsupportedType extends Node {
-    type: AstNodeType.UnsupportedType;
-    name: string;
-}
-
 export interface RequestType extends Node {
     type: AstNodeType.RequestType;
     name: string;
@@ -234,7 +228,6 @@ export interface PropertyDefinition {
         | VoidType
         | EnumType
         | MapType
-        | UnsupportedType
         | ResponseType
         | RequestType;
 }
@@ -269,7 +262,6 @@ export interface TypeAlias extends Node {
         | VoidType
         | EnumType
         | MapType
-        | UnsupportedType
         | ResponseType
         | RequestType;
 }
@@ -300,7 +292,6 @@ export interface ParameterDefinition extends Node {
         | VoidType
         | EnumType
         | MapType
-        | UnsupportedType
         | RequestType
         | ResponseType;
     optional: boolean;
@@ -334,7 +325,6 @@ export interface MethodDefinition extends Node {
         | EnumType
         | DateType
         | MapType
-        | UnsupportedType
         | RequestType
         | ResponseType;
 }

@@ -4,7 +4,6 @@ import {
     AstNodeType,
     ClassDefinition,
     MethodDefinition,
-    ResponseType,
     SdkClassConfiguration,
     SdkGeneratorInput,
     SdkGeneratorOutput,
@@ -43,8 +42,6 @@ export async function sdkGeneratorApiHandler(
         language: language ?? "ts",
     };
 
-    let invalidHttpMethods: MethodDefinition[] = [];
-    let invalidHttpMethodsString = "";
     // iterate over each class file
     for (const input of inputs) {
         // Generate genezio AST from file
@@ -62,19 +59,13 @@ export async function sdkGeneratorApiHandler(
             );
         }
 
-        if (astGeneratorOutput.program.body !== undefined) {
+        if (astGeneratorOutput.program.body !== undefined && language === "ts") {
             const astClassDefinition = astGeneratorOutput.program.body.find(
                 (node) =>
                     node.type === AstNodeType.ClassDefinition &&
                     (node as ClassDefinition).name === classConfiguration.name,
             ) as ClassDefinition;
-            const currentInvalidHttpMethods = checkInvalidHttpMethods(
-                classConfiguration,
-                astClassDefinition,
-                language,
-            );
-            invalidHttpMethods = invalidHttpMethods.concat(currentInvalidHttpMethods.methods);
-            invalidHttpMethodsString += currentInvalidHttpMethods.methodsString;
+            checkInvalidHttpMethods(classConfiguration, astClassDefinition);
         }
 
         sdkGeneratorInput.classesInfo.push({
@@ -82,9 +73,6 @@ export async function sdkGeneratorApiHandler(
             classConfiguration,
             fileName: path.basename(input.class.path),
         });
-    }
-    if (invalidHttpMethods.length > 0) {
-        throw new UserError(INVALID_HTTP_METHODS_FOUND(invalidHttpMethodsString));
     }
 
     const sdkOutput: SdkGeneratorOutput = await generateSdk(
@@ -99,57 +87,27 @@ export async function sdkGeneratorApiHandler(
     };
 }
 
-function checkInvalidHttpMethods(
-    sdkClass: SdkClassConfiguration,
-    astClass: ClassDefinition,
-    language: Language,
-): { methods: MethodDefinition[]; methodsString: string } {
+function checkInvalidHttpMethods(sdkClass: SdkClassConfiguration, astClass: ClassDefinition): void {
     const methods: MethodDefinition[] = [];
     let methodsString = "";
-    switch (language) {
-        case "ts":
-            for (const method of sdkClass.methods) {
-                if (method.type === TriggerType.http) {
-                    const astMethod = astClass.methods.find((m) => m.name === method.name);
-                    if (
-                        astMethod &&
-                        (astMethod.params.length != 1 ||
-                            astMethod.params[0].paramType.type != AstNodeType.RequestType ||
-                            astMethod.params[0].paramType.name != "Request" ||
-                            astMethod.params[0].optional != false ||
-                            astMethod.returnType.type != AstNodeType.PromiseType ||
-                            astMethod.returnType.generic.type != AstNodeType.ResponseType ||
-                            (astMethod.returnType.generic as ResponseType).name != "Response")
-                    ) {
-                        methods.push(astMethod);
-                        methodsString +=
-                            ` ${colors.red(`- ${astClass.name}.${astMethod.name}`)}` + "\n";
-                    }
-                }
+    for (const method of sdkClass.methods) {
+        if (method.type === TriggerType.http) {
+            const astMethod = astClass.methods.find((m) => m.name === method.name);
+            if (
+                astMethod &&
+                (astMethod.params.length != 1 ||
+                    astMethod.params[0].paramType.type != AstNodeType.RequestType ||
+                    astMethod.params[0].optional != false ||
+                    astMethod.returnType.type != AstNodeType.PromiseType ||
+                    astMethod.returnType.generic.type != AstNodeType.ResponseType)
+            ) {
+                methods.push(astMethod);
+                methodsString += ` ${colors.red(`- ${astClass.name}.${astMethod.name}`)}` + "\n";
             }
-            return { methods, methodsString };
-        default:
-            methodsString = "";
-            for (const method of sdkClass.methods) {
-                if (method.type === TriggerType.http) {
-                    const astMethod = astClass.methods.find((m) => m.name === method.name);
-                    if (
-                        astMethod &&
-                        (astMethod.params.length != 1 ||
-                            astMethod.params[0].paramType.type != AstNodeType.RequestType ||
-                            astMethod.params[0].paramType.name != "Request" ||
-                            astMethod.params[0].optional != false ||
-                            astMethod.returnType.type != AstNodeType.PromiseType ||
-                            astMethod.returnType.generic.type != AstNodeType.ResponseType ||
-                            (astMethod.returnType.generic as ResponseType).name != "Response")
-                    ) {
-                        methods.push(astMethod);
-                        methodsString +=
-                            ` ${colors.red(`- ${astClass.name}.${astMethod.name}`)}` + "\n";
-                    }
-                }
-            }
-            return { methods, methodsString };
+        }
+    }
+    if (methods.length > 0) {
+        throw new UserError(INVALID_HTTP_METHODS_FOUND(methodsString));
     }
 }
 

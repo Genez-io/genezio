@@ -28,7 +28,6 @@ import {
     EnumType,
     DateType,
     MapType,
-    UnsupportedType,
     ResponseType,
     RequestType,
 } from "../../models/genezioModels.js";
@@ -64,7 +63,6 @@ export class AstGenerator implements AstGeneratorInterface {
         | VoidType
         | EnumType
         | MapType
-        | UnsupportedType
         | ResponseType
         | RequestType {
         switch (type.kind) {
