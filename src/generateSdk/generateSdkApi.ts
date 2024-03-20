@@ -4,10 +4,10 @@ import {
     AstNodeType,
     ClassDefinition,
     MethodDefinition,
+    ResponseType,
     SdkClassConfiguration,
     SdkGeneratorInput,
     SdkGeneratorOutput,
-    UnsupportedType,
 } from "../models/genezioModels.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import { AstGeneratorInput } from "../models/genezioModels.js";
@@ -62,7 +62,7 @@ export async function sdkGeneratorApiHandler(
             );
         }
 
-        if (astGeneratorOutput.program.body !== undefined && language === "ts") {
+        if (astGeneratorOutput.program.body !== undefined) {
             const astClassDefinition = astGeneratorOutput.program.body.find(
                 (node) =>
                     node.type === AstNodeType.ClassDefinition &&
@@ -71,6 +71,7 @@ export async function sdkGeneratorApiHandler(
             const currentInvalidHttpMethods = checkInvalidHttpMethods(
                 classConfiguration,
                 astClassDefinition,
+                language,
             );
             invalidHttpMethods = invalidHttpMethods.concat(currentInvalidHttpMethods.methods);
             invalidHttpMethodsString += currentInvalidHttpMethods.methodsString;
@@ -101,28 +102,55 @@ export async function sdkGeneratorApiHandler(
 function checkInvalidHttpMethods(
     sdkClass: SdkClassConfiguration,
     astClass: ClassDefinition,
+    language: Language,
 ): { methods: MethodDefinition[]; methodsString: string } {
     const methods: MethodDefinition[] = [];
     let methodsString = "";
-    for (const method of sdkClass.methods) {
-        if (method.type === TriggerType.http) {
-            const astMethod = astClass.methods.find((m) => m.name === method.name);
-            if (
-                astMethod &&
-                (astMethod.params.length != 1 ||
-                    astMethod.params[0].paramType.type != AstNodeType.UnsupportedType ||
-                    astMethod.params[0].paramType.name != "Request" ||
-                    astMethod.params[0].optional != false ||
-                    astMethod.returnType.type != AstNodeType.PromiseType ||
-                    astMethod.returnType.generic.type != AstNodeType.UnsupportedType ||
-                    (astMethod.returnType.generic as UnsupportedType).name != "Response")
-            ) {
-                methods.push(astMethod);
-                methodsString += ` ${colors.red(`- ${astClass.name}.${astMethod.name}`)}` + "\n";
+    switch (language) {
+        case "ts":
+            for (const method of sdkClass.methods) {
+                if (method.type === TriggerType.http) {
+                    const astMethod = astClass.methods.find((m) => m.name === method.name);
+                    if (
+                        astMethod &&
+                        (astMethod.params.length != 1 ||
+                            astMethod.params[0].paramType.type != AstNodeType.RequestType ||
+                            astMethod.params[0].paramType.name != "Request" ||
+                            astMethod.params[0].optional != false ||
+                            astMethod.returnType.type != AstNodeType.PromiseType ||
+                            astMethod.returnType.generic.type != AstNodeType.ResponseType ||
+                            (astMethod.returnType.generic as ResponseType).name != "Response")
+                    ) {
+                        methods.push(astMethod);
+                        methodsString +=
+                            ` ${colors.red(`- ${astClass.name}.${astMethod.name}`)}` + "\n";
+                    }
+                }
             }
-        }
+            return { methods, methodsString };
+        default:
+            methodsString = "";
+            for (const method of sdkClass.methods) {
+                if (method.type === TriggerType.http) {
+                    const astMethod = astClass.methods.find((m) => m.name === method.name);
+                    if (
+                        astMethod &&
+                        (astMethod.params.length != 1 ||
+                            astMethod.params[0].paramType.type != AstNodeType.RequestType ||
+                            astMethod.params[0].paramType.name != "Request" ||
+                            astMethod.params[0].optional != false ||
+                            astMethod.returnType.type != AstNodeType.PromiseType ||
+                            astMethod.returnType.generic.type != AstNodeType.ResponseType ||
+                            (astMethod.returnType.generic as ResponseType).name != "Response")
+                    ) {
+                        methods.push(astMethod);
+                        methodsString +=
+                            ` ${colors.red(`- ${astClass.name}.${astMethod.name}`)}` + "\n";
+                    }
+                }
+            }
+            return { methods, methodsString };
     }
-    return { methods, methodsString };
 }
 
 export function mapYamlClassToSdkClassConfiguration(
