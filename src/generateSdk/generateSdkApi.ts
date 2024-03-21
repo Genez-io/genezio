@@ -87,20 +87,29 @@ export async function sdkGeneratorApiHandler(
     };
 }
 
+function isValidReturnType(astMethod: MethodDefinition): boolean {
+    return (
+        astMethod.returnType.type === AstNodeType.ResponseType ||
+        (astMethod.returnType.type === AstNodeType.PromiseType &&
+            astMethod.returnType.generic.type === AstNodeType.ResponseType)
+    );
+}
+
+function isValidParam(astMethod: MethodDefinition): boolean {
+    return (
+        astMethod.params.length === 1 &&
+        astMethod.params[0].paramType.type === AstNodeType.RequestType &&
+        astMethod.params[0].optional === false
+    );
+}
+
 function checkInvalidHttpMethods(sdkClass: SdkClassConfiguration, astClass: ClassDefinition): void {
     const methods: MethodDefinition[] = [];
     let methodsString = "";
     for (const method of sdkClass.methods) {
         if (method.type === TriggerType.http) {
             const astMethod = astClass.methods.find((m) => m.name === method.name);
-            if (
-                astMethod &&
-                (astMethod.params.length != 1 ||
-                    astMethod.params[0].paramType.type != AstNodeType.RequestType ||
-                    astMethod.params[0].optional != false ||
-                    astMethod.returnType.type != AstNodeType.PromiseType ||
-                    astMethod.returnType.generic.type != AstNodeType.ResponseType)
-            ) {
+            if (astMethod && (!isValidReturnType(astMethod) || !isValidParam(astMethod))) {
                 methods.push(astMethod);
                 methodsString += ` ${colors.red(`- ${astClass.name}.${astMethod.name}`)}` + "\n";
             }
