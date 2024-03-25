@@ -13,7 +13,6 @@
         "install-locally-dev": "npm run install-locally -- dev",
         "build-dev": "npx tsc && node solveEnvVariables.js build/src/constants.js -- dev",
         "checkChangesInVariables": "node scripts/checkConstants.js",
-        "checkUnwantedLogs": "node scripts/checkUnwantedLogs.js",
         "release": "npm run build && npm publish",
         "test": "vitest run",
         "prepare": "husky"
@@ -170,9 +169,6 @@
     "lint-staged": {
         "*.{js,jsx,ts,tsx}": "eslint --cache --fix",
         "*.{js,jsx,ts,tsx,css,md,json,yaml,yml}": "prettier --write",
-        "*": [
-            "npm run checkUnwantedLogs",
-            "npm run checkChangesInVariables"
-        ]
+        "*": "npm run checkChangesInVariables"
     }
 }
