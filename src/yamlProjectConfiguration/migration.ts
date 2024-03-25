@@ -62,7 +62,6 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
                     runtime: "nodejs20.x",
                     packageManager: PackageManagerType.npm,
                 },
-                classes: [],
             });
             backendLanguage =
                 scannedClasses.length > 0
