@@ -89,7 +89,7 @@
         "mustache": "^4.2.0",
         "node-abort-controller": "^3.1.1",
         "node-cron": "^3.0.3",
-        "open": "^9.1.0",
+        "open": "^10.1.0",
         "ora": "^8.0.1",
         "semver": "^7.5.4",
         "tslog": "^4.9.2",
