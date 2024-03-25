@@ -246,7 +246,7 @@ export async function deployClasses(
     backend.classes = await scanClassesForDecorators(backend);
 
     if (backend.classes.length === 0) {
-        throw new UserError(GENEZIO_NO_CLASSES_FOUND);
+        throw new UserError(GENEZIO_NO_CLASSES_FOUND(backend.language.name));
     }
     let sdkLanguage: Language = Language.ts;
     if (configuration.frontend) {
