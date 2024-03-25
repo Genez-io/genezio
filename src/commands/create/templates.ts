@@ -53,6 +53,11 @@ export const frontendTemplates: Record<string, Template | undefined> = {
         pkgManager: "npm",
         coloring: colors.blue,
     },
+    "react-native": {
+        name: "React Native (TypeScript)",
+        pkgManager: "npm",
+        coloring: colors.blue,
+    },
     "vue-ts": {
         name: "Vue (TypeScript)",
         pkgManager: "npm",
