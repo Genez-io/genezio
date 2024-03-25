@@ -51,7 +51,7 @@
         "@babel/traverse": "^7.24.0",
         "@genezio/test-interface-component": "^1.0.0",
         "@sentry/node": "^7.74.1",
-        "@sentry/profiling-node": "~7.102.1",
+        "@sentry/profiling-node": "~7.108.0",
         "archiver": "^6.0.0",
         "async-mutex": "^0.5.0",
         "await-exec": "^0.1.2",
