@@ -25,22 +25,30 @@ export class GoDecoratorExtractor implements DecoratorExtractor {
                     const className = child.child(1)?.firstChild?.text || "";
                     const comment = child.previousSibling;
                     if (!comment) {
-                        return;
+                        break;
                     }
                     const commentText = comment.text;
-                    if (commentText.endsWith("genezio: deploy")) {
-                        const classInfo: ClassInfo = {
-                            path: file,
-                            name: className,
-                            decorators: [
-                                {
-                                    name: "GenezioDeploy",
-                                },
-                            ],
-                            methods: [],
-                        };
-                        classes.push(classInfo);
+                    if (!commentText.includes("genezio: deploy")) {
+                        break;
                     }
+                    const genezioDeployArguments = commentText
+                        .split("genezio: deploy")[1]
+                        .split(" ")
+                        .filter((arg) => arg !== "");
+                    const classInfo: ClassInfo = {
+                        path: file,
+                        name: className,
+                        decorators: [
+                            {
+                                name: "GenezioDeploy",
+                                arguments: {
+                                    type: genezioDeployArguments[0] || "jsonrpc",
+                                },
+                            },
+                        ],
+                        methods: [],
+                    };
+                    classes.push(classInfo);
                     break;
                 }
                 case "method_declaration": {
@@ -69,44 +77,39 @@ export class GoDecoratorExtractor implements DecoratorExtractor {
                     if (genezioMethodArguments.length < 1) {
                         break;
                     }
+                    let decoratorArguments = {};
                     switch (genezioMethodArguments[0]) {
                         case "http": {
-                            const classInfo = classes.find((c) => c.name === className);
-                            if (classInfo) {
-                                classInfo.methods.push({
-                                    name: methodName,
-                                    decorators: [
-                                        {
-                                            name: "GenezioMethod",
-                                            arguments: {
-                                                type: "http",
-                                            },
-                                        },
-                                    ],
-                                });
-                            }
+                            decoratorArguments = {
+                                type: "http",
+                            };
                             break;
                         }
                         case "cron": {
-                            const classInfo = classes.find((c) => c.name === className);
-                            if (classInfo) {
-                                classInfo.methods.push({
-                                    name: methodName,
-                                    decorators: [
-                                        {
-                                            name: "GenezioMethod",
-                                            arguments: {
-                                                type: "cron",
-                                                cronString: genezioMethodArguments
-                                                    .slice(1)
-                                                    .join(" "),
-                                            },
-                                        },
-                                    ],
-                                });
-                            }
+                            decoratorArguments = {
+                                type: "cron",
+                                cronString: genezioMethodArguments.slice(1).join(" "),
+                            };
                             break;
                         }
+                        default: {
+                            decoratorArguments = {
+                                type: "jsonrpc",
+                            };
+                            break;
+                        }
+                    }
+                    const classInfo = classes.find((c) => c.name === className);
+                    if (classInfo) {
+                        classInfo.methods.push({
+                            name: methodName,
+                            decorators: [
+                                {
+                                    name: "GenezioMethod",
+                                    arguments: decoratorArguments,
+                                },
+                            ],
+                        });
                     }
                 }
             }

@@ -17,6 +17,7 @@ import {
 } from "@babel/types";
 import babel from "@babel/core";
 import { createRequire } from "module";
+import { default as Parser } from "tree-sitter";
 
 export class JsTsDecoratorExtractor implements DecoratorExtractor {
     fileFilter(cwd: string): (file: FileDetails) => boolean {
@@ -139,6 +140,130 @@ export class JsTsDecoratorExtractor implements DecoratorExtractor {
             configFile: false,
         });
 
+        const treeSitterClasses = await this.getDecoratorsTreeSitter(file);
+        classes.push(...treeSitterClasses);
+
+        return classes;
+    }
+
+    async getDecoratorsTreeSitter(file: string): Promise<ClassInfo[]> {
+        const inputCode = fs.readFileSync(file, "utf8");
+        const classes: ClassInfo[] = [];
+
+        const require = createRequire(import.meta.url);
+        const go = require("tree-sitter-typescript").typescript;
+        const parser = new Parser();
+        parser.setLanguage(go);
+
+        const tree = parser.parse(inputCode);
+
+        const root = tree.rootNode;
+        root.namedChildren.forEach((child) => {
+            switch (child.type) {
+                case "export_statement": {
+                    const exportType = child.child(1)?.type;
+                    if (exportType !== "class_declaration") {
+                        break;
+                    }
+                    const classStmt = child.child(1);
+                    const className = classStmt?.child(1)?.text || "";
+                    const comment = child.previousSibling;
+                    if (!comment) {
+                        break;
+                    }
+                    const commentText = comment.text;
+                    if (!commentText.includes("genezio: deploy")) {
+                        break;
+                    }
+                    const genezioDeployArguments = commentText
+                        .split("genezio: deploy")[1]
+                        .split(" ")
+                        .filter((arg) => arg !== "");
+                    const classInfo: ClassInfo = {
+                        path: file,
+                        name: className,
+                        decorators: [
+                            {
+                                name: "GenezioDeploy",
+                                arguments: {
+                                    type: genezioDeployArguments[0] || "jsonrpc",
+                                },
+                            },
+                        ],
+                        methods: [],
+                    };
+                    classStmt?.namedChildren.forEach((child) => {
+                        switch (child.type) {
+                            case "class_body": {
+                                child.namedChildren.forEach((child) => {
+                                    if (child.type !== "method_definition") {
+                                        return;
+                                    }
+                                    let methodName = child.child(0)?.text || "";
+                                    if (methodName === "async") {
+                                        methodName = child.child(1)?.text || "";
+                                    }
+                                    const comment = child.previousSibling;
+                                    if (comment?.type !== "comment") {
+                                        return;
+                                    }
+                                    const commentText = comment?.text || "";
+                                    if (!commentText.includes("genezio:")) {
+                                        return;
+                                    }
+                                    const genezioMethodArguments = commentText
+                                        .split("genezio:")[1]
+                                        .split(" ")
+                                        .filter((arg) => arg !== "");
+                                    if (genezioMethodArguments.length < 1) {
+                                        return;
+                                    }
+                                    let decoratorArguments = {};
+                                    switch (genezioMethodArguments[0]) {
+                                        case "http": {
+                                            decoratorArguments = {
+                                                type: "http",
+                                            };
+                                            break;
+                                        }
+                                        case "cron": {
+                                            decoratorArguments = {
+                                                type: "cron",
+                                                cronString: genezioMethodArguments
+                                                    .slice(1)
+                                                    .join(" "),
+                                            };
+                                            break;
+                                        }
+                                        default: {
+                                            decoratorArguments = {
+                                                type: "jsonrpc",
+                                            };
+                                            break;
+                                        }
+                                    }
+                                    classInfo.methods.push({
+                                        name: methodName,
+                                        decorators: [
+                                            {
+                                                name: "GenezioMethod",
+                                                arguments: decoratorArguments,
+                                            },
+                                        ],
+                                    });
+                                });
+                                break;
+                            }
+                            default: {
+                                break;
+                            }
+                        }
+                    });
+                    classes.push(classInfo);
+                    break;
+                }
+            }
+        });
         return classes;
     }
 
