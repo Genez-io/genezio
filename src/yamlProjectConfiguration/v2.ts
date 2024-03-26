@@ -153,10 +153,7 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
 
     return defaultConfig as DeepRequired<
         typeof defaultConfig,
-        | "region"
-        | "backend.language.packageManager"
-        | "backend.language.runtime"
-        | "backend.cloudProvider"
+        "region" | "backend.cloudProvider"
     > & {
         frontend: typeof defaultConfig.frontend;
     };

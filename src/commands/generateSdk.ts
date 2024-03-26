@@ -23,6 +23,7 @@ import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
 import { GenezioCommand } from "../utils/reporter.js";
 import { UserError } from "../errors.js";
+import fs from "fs";
 
 export async function generateSdkCommand(projectName: string, options: GenezioSdkOptions) {
     switch (options.source) {
@@ -35,31 +36,35 @@ export async function generateSdkCommand(projectName: string, options: GenezioSd
     }
 }
 
+function inferProjectLanguage(): Language {
+    if (fs.existsSync("package.json")) {
+        return Language.ts;
+    } else if (fs.existsSync("go.mod")) {
+        return Language.go;
+    }
+    return Language.ts;
+}
+
 export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
     const url = options.url;
     if (!url) {
         throw new UserError("You must provide a url when generating a local SDK.");
     }
 
-    const configIOController = new YamlConfigurationIOController(options.config);
-    const configuration = await configIOController.read();
-
-    if (!configuration) {
-        throw new UserError("The configuration file does not exist.");
-    }
-
-    if (!configuration.backend) {
-        throw new UserError("The configuration file does not contain a backend path.");
-    }
-
     const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
         options.language,
         mapYamlClassToSdkClassConfiguration(
-            await scanClassesForDecorators(configuration.backend),
+            await scanClassesForDecorators({
+                path: process.cwd(),
+                classes: [],
+                language: {
+                    name: inferProjectLanguage(),
+                },
+            }),
             options.language,
             process.cwd(),
         ),
-        configuration.backend.path,
+        options.output,
         options.packageName,
     ).catch((error) => {
         // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
