@@ -1,5 +1,4 @@
-export function generateNodeClusterHandler() {
-    return `
+export const clusterWrapperCode = `
 import http from "http";
 import { handler as userHandler } from "./index.mjs";
 
@@ -57,4 +56,3 @@ server.listen(port, () => {
 export { server }
     
 `;
-}
