@@ -266,6 +266,7 @@ async function createWorkspaceYaml(
 ) {
     const backendConfigReader = new YamlConfigurationIOController(
         path.join(backendPath, "genezio.yaml"),
+        {},
         fs,
     );
     const backendConfiguration = await backendConfigReader.read(/* fillDefaults= */ false);
@@ -280,6 +281,7 @@ async function createWorkspaceYaml(
 
     const frontendConfigReader = new YamlConfigurationIOController(
         path.join(frontendPath, "genezio.yaml"),
+        {},
         fs,
     );
     let frontendConfiguration;
@@ -303,7 +305,7 @@ async function createWorkspaceYaml(
         }
     }
 
-    const yamlWriter = new YamlConfigurationIOController("/genezio.yaml", fs);
+    const yamlWriter = new YamlConfigurationIOController("/genezio.yaml", {}, fs);
 
     // It's important to merge the contexts from both backend and frontend configurations
     // in order to transfer comments from the original files to the new genezio.yaml

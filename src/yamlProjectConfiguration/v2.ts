@@ -19,6 +19,8 @@ export type YAMLBackend = NonNullable<YamlProjectConfiguration["backend"]>;
 export type YamlClass = NonNullable<YAMLBackend["classes"]>[number];
 export type YamlMethod = NonNullable<YamlClass["methods"]>[number];
 export type YamlFrontend = NonNullable<YamlProjectConfiguration["frontend"]>[number];
+type YamlScripts = NonNullable<YAMLBackend["scripts"]> | NonNullable<YamlFrontend["scripts"]>;
+export type YamlScript = YamlScripts[keyof YamlScripts];
 
 export type YamlProjectConfiguration = ReturnType<typeof fillDefaultGenezioConfig>;
 
@@ -162,6 +164,65 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
     };
 }
 
+type Variables = Partial<{
+    projectName: string;
+    stage: string;
+}>;
+
+function replaceVariableInScript(script: YamlScript, variables: Variables): YamlScript {
+    if (!script) {
+        return script;
+    }
+
+    if (Array.isArray(script)) {
+        return script.map((s) => replaceVariableInScript(s, variables)) as YamlScript;
+    } else {
+        let newScript = script;
+        if (variables.projectName) {
+            newScript = newScript.replaceAll(/\${{\s*projectName\s*}}/g, variables.projectName);
+        }
+        if (variables.stage) {
+            newScript = newScript.replaceAll(/\${{\s*stage\s*}}/g, variables.stage);
+        }
+
+        return newScript;
+    }
+}
+
+function replaceVariables(
+    config: RawYamlProjectConfiguration,
+    variables: Variables,
+): RawYamlProjectConfiguration {
+    if (config.backend?.scripts) {
+        for (const [key, script] of Object.entries(config.backend.scripts)) {
+            config.backend.scripts[key as keyof typeof config.backend.scripts] =
+                replaceVariableInScript(script, variables);
+        }
+    }
+
+    if (config.frontend) {
+        if (Array.isArray(config.frontend)) {
+            for (const frontend of config.frontend) {
+                if (frontend.scripts) {
+                    for (const [key, script] of Object.entries(frontend.scripts)) {
+                        frontend.scripts[key as keyof typeof frontend.scripts] =
+                            replaceVariableInScript(script, variables);
+                    }
+                }
+            }
+        } else {
+            if (config.frontend.scripts) {
+                for (const [key, script] of Object.entries(config.frontend.scripts)) {
+                    config.frontend.scripts[key as keyof typeof config.frontend.scripts] =
+                        replaceVariableInScript(script, variables);
+                }
+            }
+        }
+    }
+
+    return config;
+}
+
 export class YamlConfigurationIOController {
     ctx: YAMLContext | undefined = undefined;
     private cachedConfig: RawYamlProjectConfiguration | undefined = undefined;
@@ -169,6 +230,7 @@ export class YamlConfigurationIOController {
 
     constructor(
         private filePath: string = "./genezio.yaml",
+        private variables: Variables = { stage: "prod" },
         private fs: typeof nativeFs | IFs = nativeFs,
     ) {}
 
@@ -207,9 +269,12 @@ export class YamlConfigurationIOController {
         } catch {
             throw new UserError(GENEZIO_CONFIGURATION_FILE_NOT_FOUND);
         }
+
         if (this.cachedConfig && cache && this.latestRead && this.latestRead >= lastModified) {
             if (fillDefaults) {
-                return fillDefaultGenezioConfig(this.cachedConfig);
+                return fillDefaultGenezioConfig(
+                    replaceVariables(structuredClone(this.cachedConfig), this.variables),
+                );
             }
 
             return structuredClone(this.cachedConfig);
@@ -240,13 +305,15 @@ export class YamlConfigurationIOController {
             }
         }
 
+        this.variables.projectName = genezioConfig.name;
+
         // Cache the context and the checked config
         this.ctx = ctx;
         this.cachedConfig = structuredClone(genezioConfig);
 
         // Fill default values
         if (fillDefaults) {
-            return fillDefaultGenezioConfig(genezioConfig);
+            return fillDefaultGenezioConfig(replaceVariables(genezioConfig, this.variables));
         }
 
         return genezioConfig;

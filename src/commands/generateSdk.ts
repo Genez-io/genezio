@@ -124,7 +124,9 @@ export async function generateRemoteSdkCommand(projectName: string, options: Gen
             config = path.join(config, "genezio.yaml");
         }
         let configuration;
-        const yamlIOController = new YamlConfigurationIOController(config);
+        const yamlIOController = new YamlConfigurationIOController(config, {
+            stage: options.stage,
+        });
         try {
             configuration = await yamlIOController.read();
         } catch (error) {
