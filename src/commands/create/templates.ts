@@ -53,6 +53,11 @@ export const frontendTemplates: Record<string, Template | undefined> = {
         pkgManager: "npm",
         coloring: colors.blue,
     },
+    "react-native": {
+        name: "React Native (TypeScript)",
+        pkgManager: "npm",
+        coloring: colors.blue,
+    },
     "vue-ts": {
         name: "Vue (TypeScript)",
         pkgManager: "npm",
@@ -77,6 +82,11 @@ export const frontendTemplates: Record<string, Template | undefined> = {
         name: "HTML (Vanilla JS)",
         pkgManager: undefined,
         coloring: colors.yellow,
+    },
+    flutter: {
+        name: "Flutter",
+        pkgManager: undefined,
+        coloring: colors.magenta,
     },
     "onboarding-react": {
         name: "React (TypeScript) for Onboarding",

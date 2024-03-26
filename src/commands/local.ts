@@ -109,7 +109,7 @@ export async function prepareLocalBackendEnvironment(
         backend.classes = await scanClassesForDecorators(backend);
 
         if (backend.classes.length === 0) {
-            throw new UserError(GENEZIO_NO_CLASSES_FOUND);
+            throw new UserError(GENEZIO_NO_CLASSES_FOUND(backend.language.name));
         }
 
         const sdk = await sdkGeneratorApiHandler(
@@ -857,7 +857,7 @@ function reportDifferentNodeRuntime(userDefinedNodeRuntime: string | undefined) 
 To change the server version, go to your ${colors.cyan(
                 "genezio.yaml",
             )} file and change the ${colors.cyan(
-                "backend.language.nodeRuntime",
+                "backend.language.runtime",
             )} property to the version you want to use.`)}`,
         );
     }
