@@ -20,14 +20,7 @@ async function tryToReadClassInformationFromDecorators(
     return await Promise.all(
         allFilesPaths.map((file) => {
             const filePath = path.join(cwd, file.path);
-            return decoratorExtractor.getDecoratorsFromFile(filePath).catch((error) => {
-                if (error.reasonCode == "MissingOneOfPlugins") {
-                    debugLogger.error(`Error while parsing the file ${file.path}`, error);
-                    return [];
-                } else {
-                    throw error;
-                }
-            });
+            return decoratorExtractor.getDecoratorsFromFile(filePath);
         }),
     );
 }

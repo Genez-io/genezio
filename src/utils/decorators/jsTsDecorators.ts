@@ -18,6 +18,7 @@ import {
 import babel from "@babel/core";
 import { createRequire } from "module";
 import { default as Parser } from "tree-sitter";
+import { debugLogger } from "../logging.js";
 
 export class JsTsDecoratorExtractor implements DecoratorExtractor {
     fileFilter(cwd: string): (file: FileDetails) => boolean {
@@ -33,6 +34,12 @@ export class JsTsDecoratorExtractor implements DecoratorExtractor {
     }
 
     async getDecoratorsFromFile(file: string): Promise<ClassInfo[]> {
+        const babelClasses = await this.getDecoratorsBabel(file);
+        const treeSitterClasses = await this.getDecoratorsTreeSitter(file);
+        return [...babelClasses, ...treeSitterClasses];
+    }
+
+    async getDecoratorsBabel(file: string): Promise<ClassInfo[]> {
         const inputCode = fs.readFileSync(file, "utf8");
         const classes: ClassInfo[] = [];
         const extractorFunction = function extract() {
@@ -129,19 +136,25 @@ export class JsTsDecoratorExtractor implements DecoratorExtractor {
 
         const require = createRequire(import.meta.url);
         const packagePath = path.dirname(require.resolve("@babel/plugin-syntax-decorators"));
-        // const presetTypescript = path.dirname(require.resolve("@babel/preset-typescript"));
-        await babel.transformAsync(inputCode, {
-            presets: [require.resolve("@babel/preset-typescript")],
-            plugins: [
-                [packagePath, { version: "2023-05", decoratorsBeforeExport: false }],
-                extractorFunction,
-            ],
-            filename: file,
-            configFile: false,
-        });
 
-        const treeSitterClasses = await this.getDecoratorsTreeSitter(file);
-        classes.push(...treeSitterClasses);
+        await babel
+            .transformAsync(inputCode, {
+                presets: [require.resolve("@babel/preset-typescript")],
+                plugins: [
+                    [packagePath, { version: "2023-05", decoratorsBeforeExport: false }],
+                    extractorFunction,
+                ],
+                filename: file,
+                configFile: false,
+            })
+            .catch((error) => {
+                if (error.reasonCode == "MissingOneOfPlugins") {
+                    debugLogger.error(`Error while parsing the file ${file}`, error);
+                    return [];
+                } else {
+                    throw error;
+                }
+            });
 
         return classes;
     }
