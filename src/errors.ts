@@ -1,4 +1,5 @@
 import zod from "zod";
+import { Language } from "./yamlProjectConfiguration/models.js";
 
 export class UserError extends Error {
     constructor(message: string) {
@@ -13,8 +14,26 @@ export const GENEZIO_NOT_AUTH_ERROR_MSG =
 export const PORT_ALREADY_USED = function (port: number) {
     return `The port ${port} is already in use. Please use a different port by specifying --port <port> to start your local server.`;
 };
-export const GENEZIO_NO_CLASSES_FOUND =
-    "You don't have any class specified in the genezio.yaml configuration file.\nYou have to mark at least one class from your backend for deployment with the @GenezioDeploy decorator. Check out how to do that here https://genezio.com/docs/features/backend-deployment/#code-structure.";
+export const GENEZIO_NO_CLASSES_FOUND = (_language: Language) => {
+    let decoratorSyntax = "";
+    switch (_language) {
+        case Language.ts:
+        case Language.js:
+            decoratorSyntax = "@GenezioDeploy";
+            break;
+        case Language.go:
+            decoratorSyntax = "genezio: deploy";
+            break;
+        default:
+            break;
+    }
+    let errorMessage: string =
+        "You don't have any class specified in the genezio.yaml configuration file.";
+    if (decoratorSyntax) {
+        errorMessage += `\nYou have to mark at least one class from your backend for deployment with the ${decoratorSyntax} decorator. Check out how to do that here https://genezio.com/docs/features/backend-deployment/#code-structure.`;
+    }
+    return errorMessage;
+};
 export const GENEZIO_DART_NOT_FOUND = `
 Error: Dart not found
 

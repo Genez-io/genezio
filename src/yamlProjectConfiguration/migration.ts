@@ -7,6 +7,7 @@ import { scanClassesForDecorators } from "../utils/configuration.js";
 import _ from "lodash";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { UserError } from "../errors.js";
+import { PackageManagerType } from "../packageManagers/packageManager.js";
 
 function compressArray<T>(array: T[] | undefined): T[] | T | undefined {
     if (!array) return undefined;
@@ -56,6 +57,11 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
         } else {
             const scannedClasses = await scanClassesForDecorators({
                 path: v1Config.workspace?.backend || ".",
+                language: {
+                    name: Language.ts,
+                    runtime: "nodejs20.x",
+                    packageManager: PackageManagerType.npm,
+                },
             });
             backendLanguage =
                 scannedClasses.length > 0

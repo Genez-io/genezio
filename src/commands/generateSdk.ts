@@ -41,14 +41,25 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
         throw new UserError("You must provide a url when generating a local SDK.");
     }
 
+    const configIOController = new YamlConfigurationIOController(options.config);
+    const configuration = await configIOController.read();
+
+    if (!configuration) {
+        throw new UserError("The configuration file does not exist.");
+    }
+
+    if (!configuration.backend) {
+        throw new UserError("The configuration file does not contain a backend path.");
+    }
+
     const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
         options.language,
         mapYamlClassToSdkClassConfiguration(
-            await scanClassesForDecorators({ path: process.cwd(), classes: [] }),
+            await scanClassesForDecorators(configuration.backend),
             options.language,
             process.cwd(),
         ),
-        options.output,
+        configuration.backend.path,
         options.packageName,
     ).catch((error) => {
         // TODO: this is not very generic error handling. The SDK should throw Genezio errors, not babel.
