@@ -40,7 +40,9 @@ export async function addClassCommand(classPath: string, classType: string) {
     const classExtension = className.split(".").pop();
 
     if (!classExtension || className.split(".").length < 2) {
-        throw new UserError("Please provide a class name with a valid class extension.");
+        throw new UserError(
+            "Please provide a class name with a valid class extension (.ts, .js, or .dart.",
+        );
     }
 
     // check if class is supported
