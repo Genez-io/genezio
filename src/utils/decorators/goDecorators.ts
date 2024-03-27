@@ -1,12 +1,12 @@
 import path from "path";
 import FileDetails from "../../models/fileDetails.js";
-import { DecoratorExtractor } from "./decoratorFactory.js";
 import { ClassInfo } from "./decoratorTypes.js";
 import fs from "fs";
 import { createRequire } from "module";
 import { default as Parser } from "tree-sitter";
+import { DecoratorExtractor } from "./baseDecoratorExtractor.js";
 
-export class GoDecoratorExtractor implements DecoratorExtractor {
+export class GoDecoratorExtractor extends DecoratorExtractor {
     async getDecoratorsFromFile(file: string): Promise<ClassInfo[]> {
         const inputCode = fs.readFileSync(file, "utf8");
         const classes: ClassInfo[] = [];
@@ -31,23 +31,7 @@ export class GoDecoratorExtractor implements DecoratorExtractor {
                     if (!commentText.includes("genezio: deploy")) {
                         break;
                     }
-                    const genezioDeployArguments = commentText
-                        .split("genezio: deploy")[1]
-                        .split(" ")
-                        .filter((arg) => arg !== "");
-                    const classInfo: ClassInfo = {
-                        path: file,
-                        name: className,
-                        decorators: [
-                            {
-                                name: "GenezioDeploy",
-                                arguments: {
-                                    type: genezioDeployArguments[0] || "jsonrpc",
-                                },
-                            },
-                        ],
-                        methods: [],
-                    };
+                    const classInfo = this.createGenezioClassInfo(className, file, commentText);
                     classes.push(classInfo);
                     break;
                 }
@@ -70,46 +54,12 @@ export class GoDecoratorExtractor implements DecoratorExtractor {
                     if (!commentText.includes("genezio:")) {
                         break;
                     }
-                    const genezioMethodArguments = commentText
-                        .split("genezio:")[1]
-                        .split(" ")
-                        .filter((arg) => arg !== "");
-                    if (genezioMethodArguments.length < 1) {
-                        break;
-                    }
-                    let decoratorArguments = {};
-                    switch (genezioMethodArguments[0]) {
-                        case "http": {
-                            decoratorArguments = {
-                                type: "http",
-                            };
-                            break;
-                        }
-                        case "cron": {
-                            decoratorArguments = {
-                                type: "cron",
-                                cronString: genezioMethodArguments.slice(1).join(" "),
-                            };
-                            break;
-                        }
-                        default: {
-                            decoratorArguments = {
-                                type: "jsonrpc",
-                            };
-                            break;
-                        }
-                    }
                     const classInfo = classes.find((c) => c.name === className);
                     if (classInfo) {
-                        classInfo.methods.push({
-                            name: methodName,
-                            decorators: [
-                                {
-                                    name: "GenezioMethod",
-                                    arguments: decoratorArguments,
-                                },
-                            ],
-                        });
+                        const methodInfo = this.createGenezioMethodInfo(methodName, commentText);
+                        if (methodInfo) {
+                            classInfo.methods.push(methodInfo);
+                        }
                     }
                 }
             }
