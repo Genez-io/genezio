@@ -6,8 +6,9 @@ import { AxiosError } from "axios";
 import { GENEZIO_NOT_AUTH_ERROR_MSG, UserError } from "../errors.js";
 import { ENVIRONMENT } from "../constants.js";
 import * as Sentry from "@sentry/node";
+import { stdout } from "process";
 
-const spinner = ora();
+const spinner = ora({ stream: stdout });
 
 export const debugLogger = new Logger({
     name: "debuggingLogger",
