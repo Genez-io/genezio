@@ -473,7 +473,6 @@ program
     .option("--cloudAdapter <cloudAdapter>", "The cloud adapter that will be used.")
     .option("--output <output>", "The output path of the bundled class.")
     .action(async (options: GenezioBundleOptions) => {
-        // TODO: implement cloud adapter option
         await bundleCommand(options).catch(async (error) => {
             logError(error);
             exit(1);

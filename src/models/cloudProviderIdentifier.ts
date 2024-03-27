@@ -1,6 +1,12 @@
 import { Request } from "express";
 import { OutgoingHttpHeaders } from "http2";
 
+export enum CloudAdapterIdentifier {
+    AWS = "aws",
+    RUNTIME = "runtime",
+    CLUSTER = "cluster",
+}
+
 export enum CloudProviderIdentifier {
     GENEZIO = "genezio",
     SELF_HOSTED_AWS = "selfHostedAws",
