@@ -67,7 +67,9 @@ import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
 
-    const configIOController = new YamlConfigurationIOController(options.config);
+    const configIOController = new YamlConfigurationIOController(options.config, {
+        stage: options.stage,
+    });
     const configuration = await configIOController.read();
 
     const backendCwd = configuration.backend?.path || process.cwd();
