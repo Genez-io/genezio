@@ -309,8 +309,8 @@ export async function deployClasses(
 
             // .jar files cannot be parsed by AWS Lambda, skip this step for AWS Lambda
             if (element.language === "kt") {
-                console.debug("Skipping ZIP due to .jar file");
-                console.debug(path.join(output.path, "app-standalone.jar"));
+                debugLogger.debug("Skipping ZIP due to .jar file");
+                debugLogger.debug(path.join(output.path, "app-standalone.jar"));
                 return {
                     name: element.name,
                     archivePath: path.join(output.path, "app-standalone.jar"),

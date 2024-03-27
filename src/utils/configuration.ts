@@ -7,7 +7,9 @@ import { UserError } from "../errors.js";
 import { DecoratorExtractorFactory } from "./decorators/decoratorFactory.js";
 
 async function tryToReadClassInformationFromDecorators(
-    yamlBackend: Pick<YAMLBackend, "path" | "classes" | "language">,
+    yamlBackend: Pick<YAMLBackend, "path" | "classes"> & {
+        language: Pick<YAMLBackend["language"], "name">;
+    },
 ) {
     const cwd = yamlBackend.path || process.cwd();
 
@@ -26,7 +28,9 @@ async function tryToReadClassInformationFromDecorators(
 }
 
 export async function scanClassesForDecorators(
-    yamlBackend: Pick<YAMLBackend, "path" | "classes" | "language">,
+    yamlBackend: Pick<YAMLBackend, "path" | "classes"> & {
+        language: Pick<YAMLBackend["language"], "name">;
+    },
 ): Promise<YamlClass[]> {
     const result = await tryToReadClassInformationFromDecorators(yamlBackend).catch((error) => {
         if (error instanceof UserError && error.message.includes("Language not supported")) {
