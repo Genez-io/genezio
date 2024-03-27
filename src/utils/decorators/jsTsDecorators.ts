@@ -192,6 +192,17 @@ export class JsTsDecoratorExtractor implements DecoratorExtractor {
                         .split("genezio: deploy")[1]
                         .split(" ")
                         .filter((arg) => arg !== "");
+                    let classType: string = "jsonrpc";
+                    switch (genezioDeployArguments[0]) {
+                        case "http": {
+                            classType = "http";
+                            break;
+                        }
+                        case "cron": {
+                            classType = "cron";
+                            break;
+                        }
+                    }
                     const classInfo: ClassInfo = {
                         path: file,
                         name: className,
@@ -199,7 +210,7 @@ export class JsTsDecoratorExtractor implements DecoratorExtractor {
                             {
                                 name: "GenezioDeploy",
                                 arguments: {
-                                    type: genezioDeployArguments[0] || "jsonrpc",
+                                    type: classType,
                                 },
                             },
                         ],
