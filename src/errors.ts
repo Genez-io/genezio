@@ -1,4 +1,5 @@
 import zod from "zod";
+import colors from "colors";
 import { Language } from "./yamlProjectConfiguration/models.js";
 
 export class UserError extends Error {
@@ -14,6 +15,12 @@ export const GENEZIO_NOT_AUTH_ERROR_MSG =
 export const PORT_ALREADY_USED = function (port: number) {
     return `The port ${port} is already in use. Please use a different port by specifying --port <port> to start your local server.`;
 };
+
+
+export const INVALID_HTTP_METHODS_FOUND = function (invalidHttpMethodsString: string) {
+    return `Invalid http methods found, the following methods are invalid:\n${invalidHttpMethodsString}\n${colors.yellow(`Please check the documentation for more information about how to define http methods\nhttps://genezio.com/docs/features/http-methods-webhooks`)}`;
+};
+
 export const GENEZIO_NO_CLASSES_FOUND = (_language: Language) => {
     let decoratorSyntax = "";
     switch (_language) {

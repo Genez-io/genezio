@@ -1,6 +1,9 @@
 import { generateAst } from "./astGeneratorHandler.js";
 import { generateSdk } from "./sdkGeneratorHandler.js";
 import {
+    AstNodeType,
+    ClassDefinition,
+    MethodDefinition,
     SdkClassConfiguration,
     SdkGeneratorInput,
     SdkGeneratorOutput,
@@ -11,7 +14,8 @@ import fs from "fs";
 import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
 import path from "path";
 import { YamlClass } from "../yamlProjectConfiguration/v2.js";
-import { UserError } from "../errors.js";
+import { INVALID_HTTP_METHODS_FOUND, UserError } from "../errors.js";
+import colors from "colors";
 
 /**
  * Asynchronously handles a request to generate an SDK based on the provided YAML project configuration.
@@ -55,6 +59,15 @@ export async function sdkGeneratorApiHandler(
             );
         }
 
+        if (astGeneratorOutput.program.body !== undefined && language === "ts") {
+            const astClassDefinition = astGeneratorOutput.program.body.find(
+                (node) =>
+                    node.type === AstNodeType.ClassDefinition &&
+                    (node as ClassDefinition).name === classConfiguration.name,
+            ) as ClassDefinition;
+            checkInvalidHttpMethods(classConfiguration, astClassDefinition);
+        }
+
         sdkGeneratorInput.classesInfo.push({
             program: astGeneratorOutput.program,
             classConfiguration,
@@ -72,6 +85,39 @@ export async function sdkGeneratorApiHandler(
         files: sdkOutput.files,
         sdkGeneratorInput: sdkGeneratorInput,
     };
+}
+
+function isValidReturnType(astMethod: MethodDefinition): boolean {
+    return (
+        astMethod.returnType.type === AstNodeType.ResponseType ||
+        (astMethod.returnType.type === AstNodeType.PromiseType &&
+            astMethod.returnType.generic.type === AstNodeType.ResponseType)
+    );
+}
+
+function isValidParam(astMethod: MethodDefinition): boolean {
+    return (
+        astMethod.params.length === 1 &&
+        astMethod.params[0].paramType.type === AstNodeType.RequestType &&
+        astMethod.params[0].optional === false
+    );
+}
+
+function checkInvalidHttpMethods(sdkClass: SdkClassConfiguration, astClass: ClassDefinition): void {
+    const methods: MethodDefinition[] = [];
+    let methodsString = "";
+    for (const method of sdkClass.methods) {
+        if (method.type === TriggerType.http) {
+            const astMethod = astClass.methods.find((m) => m.name === method.name);
+            if (astMethod && (!isValidReturnType(astMethod) || !isValidParam(astMethod))) {
+                methods.push(astMethod);
+                methodsString += ` ${colors.red(`- ${astClass.name}.${astMethod.name}`)}` + "\n";
+            }
+        }
+    }
+    if (methods.length > 0) {
+        throw new UserError(INVALID_HTTP_METHODS_FOUND(methodsString));
+    }
 }
 
 export function mapYamlClassToSdkClassConfiguration(

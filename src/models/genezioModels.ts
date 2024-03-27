@@ -82,6 +82,8 @@ export enum AstNodeType {
     MethodDefinition = "MethodDefinition",
     ClassDefinition = "ClassDefinition",
     PropertyDefinition = "PropertyDefinition",
+    ResponseType = "ResponseType",
+    RequestType = "RequestType",
 }
 
 export interface CustomAstNodeType extends Node {
@@ -185,6 +187,16 @@ export interface PromiseType extends Node {
     generic: Node;
 }
 
+export interface RequestType extends Node {
+    type: AstNodeType.RequestType;
+    name: string;
+}
+
+export interface ResponseType extends Node {
+    type: AstNodeType.ResponseType;
+    name: string;
+}
+
 export interface EnumCase {
     name: string;
     value: string | number;
@@ -215,7 +227,9 @@ export interface PropertyDefinition {
         | PromiseType
         | VoidType
         | EnumType
-        | MapType;
+        | MapType
+        | ResponseType
+        | RequestType;
 }
 
 export interface TypeLiteral extends Node {
@@ -247,7 +261,9 @@ export interface TypeAlias extends Node {
         | PromiseType
         | VoidType
         | EnumType
-        | MapType;
+        | MapType
+        | ResponseType
+        | RequestType;
 }
 
 export interface UnionType extends Node {
@@ -275,7 +291,9 @@ export interface ParameterDefinition extends Node {
         | PromiseType
         | VoidType
         | EnumType
-        | MapType;
+        | MapType
+        | RequestType
+        | ResponseType;
     optional: boolean;
     defaultValue?: {
         value: string;
@@ -306,7 +324,9 @@ export interface MethodDefinition extends Node {
         | VoidType
         | EnumType
         | DateType
-        | MapType;
+        | MapType
+        | RequestType
+        | ResponseType;
 }
 
 export interface ClassDefinition extends Node {
