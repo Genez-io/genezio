@@ -26,6 +26,7 @@ import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js
 import { calculateBiggestFiles } from "../../utils/calculateBiggestProjectFiles.js";
 import Table from "cli-table";
 import { UserError } from "../../errors.js";
+import { stdout } from "process";
 
 const BUNDLE_SIZE_LIMIT = 256901120;
 
@@ -40,6 +41,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
         log.info("Deploying your backend project to the genezio infrastructure...");
         const multibar = new cliProgress.MultiBar(
             {
+                stream: stdout,
                 clearOnComplete: false,
                 hideCursor: true,
                 format: "Uploading {filename}: {bar} | {value}% | {eta_formatted}",
