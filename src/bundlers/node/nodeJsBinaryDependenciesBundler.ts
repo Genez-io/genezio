@@ -1,17 +1,27 @@
 import path from "path";
 import fs from "fs";
 import { BundlerInput, BundlerInterface, BundlerOutput, Dependency } from "../bundler.interface.js";
+import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import { fileExists } from "../../utils/file.js";
 import { log } from "../../utils/logging.js";
 import { debugLogger } from "../../utils/logging.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import exec from "await-exec";
 import packageManager from "../../packageManagers/packageManager.js";
 import { UserError } from "../../errors.js";
+import { $ } from "execa";
+
+enum Architecture {
+    ARM64 = "arm64",
+    X64 = "x64",
+}
 
 export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
-    async #handleBinaryDependencies(dependenciesInfo: Dependency[], tempFolderPath: string) {
+    async #handleBinaryDependencies(
+        dependenciesInfo: Dependency[],
+        tempFolderPath: string,
+        architecture: Architecture,
+    ) {
         // create node_modules folder in tmp folder
         const nodeModulesPath = path.join(tempFolderPath, "node_modules");
         const binaryDependencies = [];
@@ -66,11 +76,9 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
 
         for (const dependency of binaryDependencies) {
             try {
-                const { stdout, stderr } = await exec(
-                    "npx node-pre-gyp --update-binary --fallback-to-build --target_arch=arm64 --target_platform=linux --target_libc=glibc clean install " +
-                        dependency.name,
-                    { cwd: dependency.path },
-                );
+                const { stdout, stderr } = await $({
+                    cwd: dependency.path,
+                })`npx node-pre-gyp --update-binary --fallback-to-build --target_arch=${architecture} --target_platform=linux --target_libc=glibc clean install ${dependency.name}`;
                 debugLogger.debug("[BinaryDepStdOut]", stdout);
                 debugLogger.debug("[BinaryDepStdErr]", stderr);
             } catch (error) {
@@ -92,8 +100,16 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
         debugLogger.debug(
             `[NodeJSBinaryDependenciesBundler] Redownload binary dependencies if necessary for file ${input.path}...`,
         );
+        const architecture =
+            input.projectConfiguration.cloudProvider == CloudProviderIdentifier.GENEZIO
+                ? Architecture.ARM64
+                : Architecture.X64;
         // 4. Redownload binary dependencies if necessary
-        await this.#handleBinaryDependencies(input.extra.dependenciesInfo, input.path);
+        await this.#handleBinaryDependencies(
+            input.extra.dependenciesInfo,
+            input.path,
+            architecture,
+        );
         debugLogger.debug(
             `[NodeJSBinaryDependenciesBundler] Redownload binary dependencies done for file ${input.path}.`,
         );
