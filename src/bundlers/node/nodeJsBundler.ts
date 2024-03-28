@@ -22,7 +22,7 @@ import { GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE, UserError } from "../../errors.
 import transformDecorators from "../../utils/transformDecorators.js";
 import { spawnSync } from "child_process";
 import { generateNodeContainerManifest } from "./containerManifest.js";
-import { generateNodeClusterHandler } from "./clusterHandler.js";
+import { clusterWrapperCode } from "./clusterHandler.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import { clusterHandlerGenerator } from "./clusterHandlerGenerator.js";
 import { DEFAULT_NODE_RUNTIME } from "../../models/nodeRuntime.js";
@@ -442,6 +442,10 @@ export class NodeJsBundler implements BundlerInterface {
         const nodeVersion = input.projectConfiguration.options?.nodeRuntime || DEFAULT_NODE_RUNTIME;
         const socketsEnabled = input.configuration.sockets;
 
+        if (socketsEnabled && cloudProvider !== CloudProviderIdentifier.CLUSTER) {
+            throw new UserError("Sockets are only available for cluster deployments.");
+        }
+
         // 2. Copy non js files and node_modules and write index.mjs file
         await Promise.all([
             this.#copyNonJsFiles(temporaryFolder, input, cwd),
@@ -455,7 +459,7 @@ export class NodeJsBundler implements BundlerInterface {
             ),
             ...(isDeployedToCluster
                 ? [
-                      writeToFile(temporaryFolder, "local.mjs", generateNodeClusterHandler(), true),
+                      writeToFile(temporaryFolder, "local.mjs", clusterWrapperCode, true),
                       writeToFile(
                           temporaryFolder,
                           "Dockerfile",
@@ -467,6 +471,9 @@ export class NodeJsBundler implements BundlerInterface {
         ]);
 
         if (isDeployedToCluster) {
+            if (socketsEnabled) {
+                await DependencyInstaller.instance.install(["socket.io"], temporaryFolder);
+            }
             log.info("Writing docker file for container packaging and building image");
             // build image
             const dockerBuildProcess = spawnSync(
@@ -483,7 +490,9 @@ export class NodeJsBundler implements BundlerInterface {
                 { cwd: temporaryFolder },
             );
             if (dockerBuildProcess.status !== 0) {
-                throw new Error("Container image build failed");
+                throw new Error(
+                    `Container image build failed, Docker daemon returned the following error: [${dockerBuildProcess.output}]`,
+                );
             }
             log.info("Container image successfully built");
         }
