@@ -1,6 +1,11 @@
 import { Request } from "express";
 import { OutgoingHttpHeaders } from "http2";
 
+/*
+ * Use cloud adapter to alternate between the supported cloud infrastructures.
+ * This information is not meant to be user-facing.
+ * It's meant to organize resources on genezio infrastructure.
+ */
 export enum CloudAdapterIdentifier {
     AWS = "aws",
     RUNTIME = "runtime",
