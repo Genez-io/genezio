@@ -12,8 +12,8 @@ import { UserError } from "../../errors.js";
 import { $ } from "execa";
 
 enum Architecture {
-    ARM = "arm64",
-    X86 = "amd64",
+    ARM64 = "arm64",
+    X64 = "x64",
 }
 
 export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
@@ -102,8 +102,8 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
         );
         const architecture =
             input.projectConfiguration.cloudProvider == CloudProviderIdentifier.GENEZIO
-                ? Architecture.ARM
-                : Architecture.X86;
+                ? Architecture.ARM64
+                : Architecture.X64;
         // 4. Redownload binary dependencies if necessary
         await this.#handleBinaryDependencies(
             input.extra.dependenciesInfo,
