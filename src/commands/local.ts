@@ -133,7 +133,7 @@ export async function prepareLocalBackendEnvironment(
         });
         const projectConfiguration = new ProjectConfiguration(yamlProjectConfiguration, sdk);
 
-        // Local deployments always use the genezio cloud provider unless the user uses sockets/the cluster deployment
+        // Local deployments always use the genezio cloud provider unless the user uses the cluster deployment
         if (projectConfiguration.cloudProvider !== CloudProviderIdentifier.CLUSTER) {
             projectConfiguration.cloudProvider = CloudProviderIdentifier.GENEZIO;
         }

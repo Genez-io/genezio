@@ -440,11 +440,6 @@ export class NodeJsBundler implements BundlerInterface {
 
         const isDeployedToCluster = input.projectConfiguration.cloudProvider === "cluster";
         const nodeVersion = input.projectConfiguration.options?.nodeRuntime || DEFAULT_NODE_RUNTIME;
-        const socketsEnabled = input.configuration.sockets;
-
-        if (socketsEnabled && cloudProvider !== CloudProviderIdentifier.CLUSTER) {
-            throw new UserError("Sockets are only available for cluster deployments.");
-        }
 
         // 2. Copy non js files and node_modules and write index.mjs file
         await Promise.all([
@@ -452,11 +447,7 @@ export class NodeJsBundler implements BundlerInterface {
             mode === "production"
                 ? this.#copyDependencies(input.extra.dependenciesInfo, temporaryFolder, mode, cwd)
                 : Promise.resolve(),
-            writeToFile(
-                temporaryFolder,
-                "index.mjs",
-                handlerGenerator(`${socketsEnabled ? "socket-" : ""}${input.configuration.name}"`),
-            ),
+            writeToFile(temporaryFolder, "index.mjs", handlerGenerator(input.configuration.name)),
             ...(isDeployedToCluster
                 ? [
                       writeToFile(temporaryFolder, "local.mjs", clusterWrapperCode, true),
@@ -471,9 +462,6 @@ export class NodeJsBundler implements BundlerInterface {
         ]);
 
         if (isDeployedToCluster) {
-            if (socketsEnabled) {
-                await DependencyInstaller.instance.install(["socket.io"], temporaryFolder);
-            }
             log.info("Writing docker file for container packaging and building image");
             // build image
             const dockerBuildProcess = spawnSync(
