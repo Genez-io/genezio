@@ -1,5 +1,9 @@
+import { spawn } from "child_process";
 import { UserError } from "../errors.js";
 import { runNewProcess } from "./process.js";
+import { log } from "./logging.js";
+import colors from "colors";
+import _ from "lodash";
 
 export async function runScript(
     scripts: string | string[] | undefined,
@@ -14,8 +18,67 @@ export async function runScript(
     }
 
     for (const script of scripts) {
-        // TODO: use execa instead of runNewProcess
         const success = await runNewProcess(script, cwd);
         if (!success) throw new UserError(`Failed to run script: ${script}`);
+    }
+}
+
+export async function runFrontendStartScript(
+    scripts: string | string[] | undefined,
+    cwd: string,
+): Promise<void> {
+    if (!scripts) {
+        return;
+    }
+
+    if (!Array.isArray(scripts)) {
+        scripts = [scripts];
+    }
+
+    for (const script of scripts) {
+        await new Promise<void>((resolve, reject) => {
+            const child = spawn(script, { cwd, shell: true, stdio: "pipe" });
+
+            let debounceCount = 0;
+            let logsBuffer: Buffer[] = [];
+            // A debounce is needed when logs are printed on `data` event because the logs are printed in chunks.
+            // We want to print chunkc of logs together if they are printed within a short time frame.
+            const debouncedLog = _.debounce(() => {
+                debounceCount = 0;
+                if (logsBuffer.length === 0) return;
+
+                const logs = Buffer.concat(logsBuffer).toString().trim();
+                log.info(
+                    `${colors.magenta("[Frontend logs]\n| ")}${logs.split("\n").join(`\n${colors.magenta("| ")}`)}`,
+                );
+                logsBuffer = [];
+            }, 400);
+
+            child.stdout.on("data", (logChunk) => {
+                logsBuffer.push(logChunk);
+
+                debounceCount += 1;
+                // If we have 5 debounces, we should flush the logs
+                if (debounceCount >= 5) {
+                    debouncedLog.flush();
+                    return;
+                }
+
+                debouncedLog();
+            });
+
+            child.on("error", (error) => {
+                reject(`Failed to run script: ${script} - ${error}`);
+            });
+
+            child.on("exit", (code) => {
+                if (code !== 0 && code !== null) {
+                    reject(`Failed to run script: ${script}`);
+                }
+                resolve();
+            });
+        }).catch((error) => {
+            throw new UserError(error);
+        });
     }
 }
