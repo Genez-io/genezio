@@ -13,6 +13,10 @@ import path from "path";
 import yamlConfigIOController from "../yamlProjectConfiguration/v2.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
 import { UserError } from "../errors.js";
+import {
+    CloudAdapterIdentifier,
+    CloudProviderIdentifier,
+} from "../models/cloudProviderIdentifier.js";
 
 export async function bundleCommand(options: GenezioBundleOptions) {
     const yamlProjectConfiguration = await yamlConfigIOController.read();
@@ -21,6 +25,19 @@ export async function bundleCommand(options: GenezioBundleOptions) {
         throw new UserError("Please provide a valid backend configuration.");
     }
     backendConfiguration.classes = await scanClassesForDecorators(backendConfiguration);
+
+    // Override cloud provider if it's set using command line args
+    switch (options.cloudAdapter) {
+        case CloudAdapterIdentifier.AWS:
+            backendConfiguration.cloudProvider = CloudProviderIdentifier.GENEZIO;
+            break;
+        case CloudAdapterIdentifier.RUNTIME:
+            backendConfiguration.cloudProvider = CloudProviderIdentifier.CAPYBARA_LINUX;
+            break;
+        case CloudAdapterIdentifier.CLUSTER:
+            backendConfiguration.cloudProvider = CloudProviderIdentifier.CLUSTER;
+            break;
+    }
 
     const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
         backendConfiguration.language.name,
@@ -42,6 +59,7 @@ export async function bundleCommand(options: GenezioBundleOptions) {
         throw error;
     });
 
+    yamlProjectConfiguration.backend = backendConfiguration;
     const projectConfiguration = new ProjectConfiguration(yamlProjectConfiguration, sdkResponse);
     const element = projectConfiguration.classes.find(
         (classInfo) => classInfo.name == options.className,

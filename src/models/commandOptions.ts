@@ -1,4 +1,5 @@
 import { Language } from "../yamlProjectConfiguration/models.js";
+import { CloudAdapterIdentifier } from "./cloudProviderIdentifier.js";
 
 export interface BaseOptions {
     logLevel?: string;
@@ -7,6 +8,7 @@ export interface BaseOptions {
 export interface GenezioBundleOptions extends BaseOptions {
     className: string;
     output: string;
+    cloudAdapter?: CloudAdapterIdentifier;
 }
 
 export interface GenezioLocalOptions extends BaseOptions {
