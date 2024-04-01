@@ -23,12 +23,9 @@ async function getLinkContent(): Promise<Map<string, string[]>> {
     }
 }
 
-export async function getLinkPathsForProject(
-    projectName: string,
-    region: string,
-): Promise<string[]> {
+export async function getLinkPathsForProject(projectName: string): Promise<string[]> {
     const content = await getLinkContent();
-    const key = `${projectName}:${region}`;
+    const key = `${projectName}`;
     return content.get(key) || [];
 }
 

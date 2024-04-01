@@ -625,7 +625,6 @@ async function handleSdk(
 
     reportSuccessForSdk(sdkLanguage, sdkResponse, GenezioCommand.deploy, {
         name: configuration.name,
-        region: configuration.region,
         stage: options.stage || "prod",
     });
 }

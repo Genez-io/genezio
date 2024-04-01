@@ -19,7 +19,6 @@ import {
     GenezioCreateInteractiveOptions,
     GenezioDeleteOptions,
     GenezioDeployOptions,
-    GenezioLinkOptions,
     GenezioListOptions,
     GenezioLocalOptions,
     GenezioSdkOptions,
@@ -372,21 +371,15 @@ program
 
 program
     .command("link")
-    .option(
-        "--projectName <projectName>",
-        "The name of the project that you want to communicate with.",
-    )
+    .argument("[projectName]", "The name of the project that you want to communicate with.")
     .summary("Links the genezio generated SDK in the current working directory")
     .description(
         "Linking a client with a deployed project will enable `genezio local` to figure out where to generate the SDK to call the backend methods.\n\
 This command is useful when the project has dedicated repositories for the backend and the frontend.",
     )
-    .action(async (options: GenezioLinkOptions) => {
-        await linkCommand(options.projectName).catch((error) => {
+    .action(async (projectName: string) => {
+        await linkCommand(projectName).catch((error) => {
             logError(error);
-            log.error(
-                "Error: Command execution failed. Please ensure you are running this command from a directory containing 'genezio.yaml' or provide the '--projectName <name>' and '--region <region>' flags.",
-            );
             exit(1);
         });
     });
@@ -394,8 +387,8 @@ This command is useful when the project has dedicated repositories for the backe
 program
     .command("unlink")
     .option("--all", "Remove all links.", false)
-    .option(
-        "--projectName <projectName>",
+    .argument(
+        "[projectName]",
         "The name of the project that you want to communicate with. If --all is used, this option is ignored.",
     )
     .summary("Unlink the generated SDK from a client.")
@@ -403,12 +396,9 @@ program
         "Clear the previously set path for your frontend app, which is useful when managing a project with multiple repositories.\n\
 This reset allows 'genezio local' to stop automatically generating the SDK in that location.",
     )
-    .action(async (options: GenezioUnlinkOptions) => {
-        await unlinkCommand(options.all, options.projectName).catch((error) => {
+    .action(async (projectName: string, options: GenezioUnlinkOptions) => {
+        await unlinkCommand(options.all, projectName).catch((error) => {
             logError(error);
-            log.error(
-                "Error: Command execution failed. Please ensure you are running this command from a directory containing 'genezio.yaml' or provide the '--projectName <name>' and '--region <region>' flags.",
-            );
             exit(1);
         });
     });
