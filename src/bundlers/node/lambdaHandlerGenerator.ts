@@ -79,10 +79,11 @@ if (!genezioClass) {
     }
 
     handler = handler ?? async function (event, context) {
-        const timeoutPromise = new Promise((resolve) => {
-            setTimeout(() => {
+        let timeoutHandle;
+        const timeoutPromise = new Promise((_, reject) => {
+            timeoutHandle = setTimeout(() => {
                 console.error("Request timed out.");
-                throw new Error("Request timed out.");
+                reject(new Error("Request timed out."));
             }, ${timeoutDurationInSeconds} * 1000 - 100);
         });
         if (event.genezioEventType === "cron") {
@@ -99,6 +100,7 @@ if (!genezioClass) {
 
             try {
                 const response = await Promise.race([object[method](event.params), timeoutPromise]);
+                clearTimeout(timeoutHandle);
             } catch (error) {
                 console.log("ERROR: cron trigger with error: " + error);
             }
@@ -147,7 +149,7 @@ if (!genezioClass) {
 
             try {
                 const response = await Promise.race([object[method](req), timeoutPromise]);
-
+                clearTimeout(timeoutHandle);
                 if (!response.statusCode) {
                     response.statusCode = 200;
                 }
@@ -250,6 +252,7 @@ if (!genezioClass) {
             try {
                 const response = Promise.race([object[method](body.params), timeoutPromise])
                     .then((result) => {
+                        clearTimeout(timeoutHandle);
                         return {
                             statusCode: 200,
                             body: JSON.stringify({
@@ -276,6 +279,7 @@ if (!genezioClass) {
                     });
 
                 const result = await Promise.race([errorPromise, response]);
+                clearTimeout(timeoutHandle);
                 return result;
             } catch (err) {
                 console.error(err);
