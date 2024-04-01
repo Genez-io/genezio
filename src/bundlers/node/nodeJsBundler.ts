@@ -26,6 +26,7 @@ import { clusterWrapperCode } from "./clusterHandler.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import { clusterHandlerGenerator } from "./clusterHandlerGenerator.js";
 import { DEFAULT_NODE_RUNTIME } from "../../models/nodeRuntime.js";
+import getUser from "../../requests/getUser.js";
 
 export class NodeJsBundler implements BundlerInterface {
     async #copyDependencies(
@@ -384,7 +385,7 @@ export class NodeJsBundler implements BundlerInterface {
 
     getHandlerGeneratorForProvider(
         provider: CloudProviderIdentifier,
-    ): ((className: string) => string) | null {
+    ): ((className: string, timeoutDuration: number) => string) | null {
         switch (provider) {
             case CloudProviderIdentifier.CLUSTER:
                 return clusterHandlerGenerator;
@@ -455,7 +456,12 @@ export class NodeJsBundler implements BundlerInterface {
             writeToFile(
                 temporaryFolder,
                 "index.mjs",
-                handlerGenerator(`${socketsEnabled ? "socket-" : ""}${input.configuration.name}"`),
+                handlerGenerator(
+                    `${socketsEnabled ? "socket-" : ""}${input.configuration.name}"`,
+                    await getUser()
+                        .then((user) => user?.subscriptionLimits.executionTime)
+                        .catch(() => 30),
+                ),
             ),
             ...(isDeployedToCluster
                 ? [
