@@ -11,7 +11,6 @@ export enum GenezioCommand {
 
 export type ProjectPrimaryKeys = {
     name: string;
-    region: string;
     stage?: string;
 };
 
