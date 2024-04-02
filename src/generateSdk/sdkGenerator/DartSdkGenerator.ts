@@ -140,10 +140,24 @@ class {{name}} {
 
 {{/otherClasses}}
 
+{{#classDocLines.length}}
+/**
+{{#classDocLines}}
+ * {{.}}
+{{/classDocLines}}
+ */
+{{/classDocLines.length}}
 class {{{className}}} {
   static final remote = Remote("{{{_url}}}");
 
   {{#methods}}
+  {{#methodDocLines.length}}
+  /**
+  {{#methodDocLines}}
+   * {{.}}
+  {{/methodDocLines}}
+   */
+  {{/methodDocLines.length}}
   static {{{returnType}}} {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) async {
     {{#returnTypeCast}}
     final response = await remote.call({{{methodCaller}}}, [{{#sendParameters}}{{{name}}}{{^last}}, {{/last}}{{/sendParameters}}]);
@@ -187,6 +201,7 @@ class SdkGenerator implements SdkGeneratorInterface {
                 _url: _url,
                 methods: [],
                 imports: [],
+                classDocLines: [],
             };
 
             const mainClass = classInfo.program.body.find(
@@ -196,6 +211,7 @@ class SdkGenerator implements SdkGeneratorInterface {
             for (const elem of classInfo.program.body) {
                 if (elem.type === AstNodeType.ClassDefinition) {
                     classDefinition = elem as ClassDefinition;
+                    view.classDocLines = classDefinition.docString?.replace(/\n+$/, "").split("\n") || [],
                     this.populateViewForMainClass(classDefinition, classConfiguration, view);
                 } else if (elem.type === AstNodeType.StructLiteral) {
                     const structLiteral = elem as StructLiteral;
@@ -276,6 +292,7 @@ class SdkGenerator implements SdkGeneratorInterface {
             const methodView: any = {
                 name: methodDefinition.name,
                 parameters: [],
+                methodDocLines: methodDefinition.docString?.replace(/\n+$/, "").split("\n") || [],
                 methodCaller:
                     methodDefinition.params.length === 0
                         ? `"${classDefinition.name}.${methodDefinition.name}"`
