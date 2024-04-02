@@ -143,7 +143,7 @@ class {{name}} {
 {{#classDocLines.length}}
 /**
 {{#classDocLines}}
- * {{.}}
+ * {{{.}}}
 {{/classDocLines}}
  */
 {{/classDocLines.length}}
@@ -154,7 +154,7 @@ class {{{className}}} {
   {{#methodDocLines.length}}
   /**
   {{#methodDocLines}}
-   * {{.}}
+   * {{{.}}}
   {{/methodDocLines}}
    */
   {{/methodDocLines.length}}
