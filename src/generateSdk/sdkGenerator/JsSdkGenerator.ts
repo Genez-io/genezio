@@ -35,7 +35,7 @@ import { StorageManager } from "./storage.js"
 {{#classDocLines.length}}
 /**
 {{#classDocLines}}
- * {{.}}
+ * {{{.}}}
 {{/classDocLines}}
  */
 {{/classDocLines.length}}
@@ -47,7 +47,7 @@ export class {{{className}}} {
   {{#methodDocLines.length}}
   /**
   {{#methodDocLines}}
-   * {{.}}
+   * {{{.}}}
   {{/methodDocLines}}
    */
   {{/methodDocLines.length}}
@@ -59,7 +59,7 @@ export class {{{className}}} {
   {{#methodDocLines.length}}
   /**
   {{#methodDocLines}}
-   * {{.}}
+   * {{{.}}}
   {{/methodDocLines}}
    */
   {{/methodDocLines.length}}
