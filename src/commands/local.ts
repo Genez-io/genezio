@@ -65,6 +65,7 @@ import { watchPackage } from "../generateSdk/sdkMonitor.js";
 import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
 import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
+import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 
 type ClassProcess = {
     process: ChildProcess;
@@ -311,7 +312,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         );
         const watcherTimeout = await handleSdk(
             yamlProjectConfiguration.name,
-            yamlProjectConfiguration.region,
             yamlProjectConfiguration.frontend,
             sdk,
             options,
@@ -344,6 +344,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 }
 
 function logChangeDetection() {
+    // eslint-disable-next-line no-console
     console.clear();
     log.info("\x1b[36m%s\x1b[0m", "Change detected, reloading...");
 }
@@ -764,7 +765,6 @@ async function listenForChanges() {
  */
 async function handleSdk(
     projectName: string,
-    projectRegion: string,
     frontends: YamlFrontend[] | undefined,
     sdk: SdkGeneratorResponse,
     options: GenezioLocalOptions,
@@ -780,6 +780,12 @@ async function handleSdk(
             sdkPath = frontends[0].sdk?.path
                 ? path.join(frontendPath, frontends[0].sdk?.path)
                 : path.join(frontendPath, "sdk");
+        }
+    } else {
+        const linkedPaths = await getLinkPathsForProject(projectName);
+        if (linkedPaths.length > 0) {
+            const linkedPath = linkedPaths[0];
+            sdkPath = path.join(linkedPath, "sdk");
         }
     }
 
@@ -800,13 +806,7 @@ async function handleSdk(
     });
 
     if (sdkFolderPath) {
-        const timeout = await watchPackage(
-            sdkLanguage,
-            projectName,
-            projectRegion,
-            frontends,
-            sdkFolderPath,
-        );
+        const timeout = await watchPackage(sdkLanguage, projectName, frontends, sdkFolderPath);
         if (timeout) {
             nodeJsWatcher = timeout;
         }
@@ -814,7 +814,6 @@ async function handleSdk(
 
     reportSuccessForSdk(sdkLanguage, sdk, GenezioCommand.local, {
         name: projectName,
-        region: projectRegion,
         stage: "local",
     });
 

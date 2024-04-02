@@ -14,14 +14,13 @@ const POLLING_INTERVAL = 2000;
 export async function watchPackage(
     language: Language,
     projectName: string,
-    projectRegion: string,
     frontend: YamlFrontend[] | undefined,
     sdkPath: string,
 ): Promise<NodeJS.Timeout | undefined> {
     switch (language) {
         case Language.js:
         case Language.ts:
-            return watchNodeModules(projectName, projectRegion, frontend, sdkPath);
+            return watchNodeModules(projectName, frontend, sdkPath);
         default:
             return;
     }
@@ -29,7 +28,6 @@ export async function watchPackage(
 
 async function watchNodeModules(
     projectName: string,
-    projectRegion: string,
     frontends: YamlFrontend[] | undefined,
     sdkPath: string,
 ): Promise<NodeJS.Timeout | undefined> {
@@ -48,7 +46,7 @@ async function watchNodeModules(
         }
     }
 
-    const linkPaths = await getLinkPathsForProject(projectName, projectRegion);
+    const linkPaths = await getLinkPathsForProject(projectName);
     for (const linkPath of linkPaths) {
         watchPaths.push(path.join(linkPath, nodeModulesSdkDirectoryPath));
         watchPaths.push(path.join(linkPath, "node_modules", ".package-lock.json"));
@@ -79,12 +77,7 @@ async function watchNodeModules(
                 const res: Result = compareSync(genezioSdkPath, watchPath, options);
                 if (!res.same) {
                     debugLogger.debug(`[WATCH_NODE_MODULES] Rewriting the SDK to node_modules...`);
-                    await writeSdkToNodeModules(
-                        projectName,
-                        projectRegion,
-                        frontends ?? [],
-                        sdkPath,
-                    );
+                    await writeSdkToNodeModules(projectName, frontends ?? [], sdkPath);
                 }
             }
         }
@@ -93,7 +86,6 @@ async function watchNodeModules(
 
 async function writeSdkToNodeModules(
     projectName: string,
-    projectRegion: string,
     frontends: YamlFrontend[],
     originSdkPath: string,
 ) {
@@ -115,7 +107,7 @@ async function writeSdkToNodeModules(
     // A frontend can be explicitly declared in the genezio.yaml file or it can be linked to the project
     const frontendPaths = (frontends || [])
         .map((f) => f.path)
-        .concat(await getLinkPathsForProject(projectName, projectRegion));
+        .concat(await getLinkPathsForProject(projectName));
     for (const frontendPath of frontendPaths) {
         const to = path.join(frontendPath, "node_modules", "@genezio-sdk", `${projectName}`);
 

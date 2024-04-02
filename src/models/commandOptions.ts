@@ -55,13 +55,8 @@ export interface GenezioSdkOptions extends BaseOptions {
     packageVersion: string;
 }
 
-export interface GenezioLinkOptions extends BaseOptions {
-    projectName?: string;
-}
-
 export interface GenezioUnlinkOptions extends BaseOptions {
     all: boolean;
-    projectName?: string;
 }
 
 export interface GenezioCreateInteractiveOptions extends BaseOptions {
