@@ -348,6 +348,7 @@ program
     .option("--stage <stage>", "Stage of the project.", "prod")
     .option("--url <url>", "The url of the server.")
     .option("--region <region>", "Region where your project is deployed.", "us-east-1")
+    .option("--tarball", "Export the SDK as a tarball.", false)
     .summary("Generate an SDK for a deployed or local project.")
     .description(
         "Generate an SDK corresponding to a deployed or local project.\n\nProvide the project name to generate an SDK for a deployed project.\nEx: genezio sdk my-project --stage prod --region us-east-1\n\nProvide the path to the genezio.yaml on your disk to load project details (name and region) from that file instead of command arguments.\nEx: genezio sdk --source ../my-project",
