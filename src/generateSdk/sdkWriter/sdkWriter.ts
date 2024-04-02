@@ -18,6 +18,8 @@ type WriteSdkInput = {
     classUrls: ClassUrlMap[];
     // Whether to publish the package. If the language does not support "package SDK", this value is ignored.
     publish: boolean;
+    // Whether to export the SDK as a tarball. If the language does not support "package SDK", this value is ignored.
+    exportAsTarball?: boolean;
     // Whether to install the package. If the language does not support "package SDK", this value is ignored.
     installPackage: boolean;
     // The output path for the SDK if the SDK is written to disk.
@@ -45,6 +47,7 @@ export async function writeSdk(input: WriteSdkInput): Promise<string | undefined
                 input.publish,
                 input.installPackage,
                 input.outputPath,
+                input.exportAsTarball,
             );
         case Language.js:
             return await writeSdkJs(
@@ -55,6 +58,7 @@ export async function writeSdk(input: WriteSdkInput): Promise<string | undefined
                 input.publish,
                 input.installPackage,
                 input.outputPath,
+                input.exportAsTarball,
             );
         case Language.go:
         case Language.kt:

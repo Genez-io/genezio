@@ -43,7 +43,7 @@ export async function compileSdk(
     publish: boolean,
     outDir?: string,
     overwriteIfExists = true,
-) {
+): Promise<string> {
     const genezioSdkPath = outDir || path.resolve(sdkPath, "../genezio-sdk");
     // delete the old sdk
     if (overwriteIfExists) {
@@ -96,4 +96,6 @@ export async function compileSdk(
             await packageManager.publish(modulePath);
         });
     }
+
+    return genezioSdkPath;
 }
