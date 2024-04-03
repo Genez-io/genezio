@@ -28,7 +28,7 @@ class Remote {
     var response = await makeRequest(requestContent, url);
     if (response != null) {
       if (response['error'] != null) {
-        return response['error'];
+        throw Exception(response['error']['message']);
       } else {
         return response['result'];
       }

@@ -92,6 +92,7 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
         publish: false,
         installPackage: false,
         outputPath: options.output,
+        exportAsTarball: options.tarball,
     });
 
     reportSuccessForSdk(options.language, sdkResponse, GenezioCommand.sdk);

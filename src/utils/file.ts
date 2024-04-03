@@ -300,7 +300,7 @@ export async function createLocalTempFolder(
             name = Math.random().toString(36).substring(2, 8);
         }
 
-        const tempFolder = path.join(os.tmpdir(), folderName, name);
+        const tempFolder = path.join(fs.realpathSync(os.tmpdir()), folderName, name);
         if (fs.existsSync(tempFolder)) {
             if (shouldDeleteContents) {
                 fsExtra.emptyDirSync(tempFolder);

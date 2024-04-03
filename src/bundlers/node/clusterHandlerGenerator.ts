@@ -2,18 +2,12 @@
 /* eslint-disable no-useless-escape */
 
 export const clusterHandlerGenerator = (className: string) => {
-    // if className contains 'socket-' then it is a socket class
-    const sockets = className.includes("socket-");
-    className = className.replace("socket-", "");
-    const socketio_import = sockets ? 'import { Server } from "socket.io"' : "";
-    const constructor_call = sockets ? `genezioClass(new Server(server))` : "genezioClass()";
     return `
 /** This is an auto generated code. This code should not be modified since the file can be overwritten
  *  if new genezio commands are executed.
  */
 
 import {  ${className.replace(/["]/g, "")} as genezioClass } from "./module.mjs";
-${socketio_import}
 import { server } from "./local.mjs"
 
 var handler = undefined;
@@ -64,7 +58,7 @@ if (!genezioClass) {
 
     let object;
     try {
-        object = new ${constructor_call};
+        object = new genezioClass(server);
     } catch (error) {
         handler = async function (event, context) {
             await sendSentryError(error);

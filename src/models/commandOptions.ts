@@ -53,6 +53,7 @@ export interface GenezioSdkOptions extends BaseOptions {
     url?: string;
     packageName: string;
     packageVersion: string;
+    tarball: boolean;
 }
 
 export interface GenezioUnlinkOptions extends BaseOptions {
