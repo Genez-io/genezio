@@ -147,6 +147,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
             );
             // Write the new configuration in the config file
             await configIOController.write(yamlConfig);
+            configuration.backend.cloudProvider = yamlConfig.backend.cloudProvider;
         }
 
         await GenezioTelemetry.sendEvent({
