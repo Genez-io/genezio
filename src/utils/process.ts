@@ -11,7 +11,13 @@ export function runNewProcess(
     return new Promise(function (resolve) {
         exec(command, { cwd }, (err, stdout, stderr) => {
             if (err) {
-                log.error(err);
+                debugLogger.error("Process exited with error:", err);
+
+                if (showStderrOutput && stderr.length > 0) {
+                    log.info(command + " ❌");
+                    log.info(stderr);
+                }
+
                 resolve(false);
             } else {
                 resolve(true);
@@ -21,11 +27,6 @@ export function runNewProcess(
                 log.info(stdout);
             } else {
                 debugLogger.debug(stdout);
-            }
-
-            if (showStderrOutput && stderr.length > 0) {
-                log.info(command + " ❌");
-                log.info(stderr);
             }
         });
     });
