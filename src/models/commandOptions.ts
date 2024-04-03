@@ -18,6 +18,7 @@ export interface GenezioLocalOptions extends BaseOptions {
     path?: string;
     language?: string;
     config: string;
+    stage: string;
 }
 
 export interface GenezioDeployOptions extends BaseOptions {

@@ -394,7 +394,11 @@ async function startProcesses(
     });
 
     const bundlersOutput = await Promise.all(bundlersOutputPromise);
-    await importServiceEnvVariables(projectConfiguration.name, projectConfiguration.region);
+    await importServiceEnvVariables(
+        projectConfiguration.name,
+        projectConfiguration.region,
+        options.stage ? options.stage : "prod",
+    );
 
     const envVars: dotenv.DotenvPopulateInput = {};
     const envFile = projectConfiguration.workspace?.backend
