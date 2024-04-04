@@ -582,6 +582,8 @@ export async function deployFrontend(
         await configIOController.write(yamlConfig);
     }
 
+    frontend.subdomain = options.subdomain || frontend.subdomain;
+
     const cloudAdapter = getCloudAdapter(CloudProviderIdentifier.GENEZIO);
     const url = await cloudAdapter.deployFrontend(name, region, frontend, stage);
     return url;
