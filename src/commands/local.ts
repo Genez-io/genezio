@@ -401,11 +401,17 @@ async function startProcesses(
         process.env["LOGGED_IN_LOCAL"] = "false";
     } else {
         process.env["LOGGED_IN_LOCAL"] = "true";
-        await importServiceEnvVariables(
-            projectConfiguration.name,
-            projectConfiguration.region,
-            options.stage ? options.stage : "prod",
-        );
+        try {
+            await importServiceEnvVariables(
+                projectConfiguration.name,
+                projectConfiguration.region,
+                options.stage ? options.stage : "prod",
+            );
+        } catch (error) {
+            if (error instanceof UserError) {
+                throw error;
+            }
+        }
     }
 
     const envVars: dotenv.DotenvPopulateInput = {};

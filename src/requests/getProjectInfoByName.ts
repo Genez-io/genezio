@@ -29,7 +29,6 @@ export default async function getProjectInfoByName(
             "Accept-Version": `genezio-cli/${version}`,
         },
     });
-
     return response.data.project;
 }
 
@@ -38,10 +37,22 @@ export async function getProjectEnvFromProjectByName(
     region: string,
     stageName: string,
 ) {
-    const completeProjectInfo = await getProjectInfoByName(projectName, region);
-    const projectEnv = completeProjectInfo.projectEnvs.find(
-        (projectEnv) => projectEnv.name == stageName,
-    );
+    let completeProjectInfo;
+    try {
+        completeProjectInfo = await getProjectInfoByName(projectName, region);
+    } catch (e) {}
 
-    return projectEnv;
+    if (completeProjectInfo != undefined) {
+        const projectEnv = completeProjectInfo.projectEnvs.find(
+            (projectEnv) => projectEnv.name == stageName,
+        );
+        if (!projectEnv) {
+            throw new UserError(
+                `Stage ${stageName} not found in project ${projectName}. Please run 'genezio deploy --stage ${stageName}' to deploy your project to a new stage.`,
+            );
+        }
+
+        return projectEnv;
+    }
+    return undefined;
 }
