@@ -78,11 +78,6 @@ export const frontendTemplates: Record<string, Template | undefined> = {
         pkgManager: "npm",
         coloring: colors.red,
     },
-    "vanilla-js": {
-        name: "HTML (Vanilla JS)",
-        pkgManager: undefined,
-        coloring: colors.yellow,
-    },
     flutter: {
         name: "Flutter",
         pkgManager: undefined,
