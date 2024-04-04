@@ -23,6 +23,11 @@ export async function runScript(
     }
 }
 
+const frontendLogsColors = {
+    order: [colors.magenta, colors.yellow, colors.green, colors.blue, colors.red],
+    index: 0,
+};
+
 export async function runFrontendStartScript(
     scripts: string | string[] | undefined,
     cwd: string,
@@ -34,6 +39,9 @@ export async function runFrontendStartScript(
     if (!Array.isArray(scripts)) {
         scripts = [scripts];
     }
+
+    const logColor =
+        frontendLogsColors.order[frontendLogsColors.index++ % frontendLogsColors.order.length];
 
     for (const script of scripts) {
         await new Promise<void>((resolve, reject) => {
@@ -49,7 +57,7 @@ export async function runFrontendStartScript(
 
                 const logs = Buffer.concat(logsBuffer).toString().trim();
                 log.info(
-                    `${colors.magenta("[Frontend logs]\n| ")}${logs.split("\n").join(`\n${colors.magenta("| ")}`)}`,
+                    `${logColor(`[Frontend logs, path: ${cwd}]\n| `)}${logs.split("\n").join(`\n${logColor("| ")}`)}`,
                 );
                 logsBuffer = [];
             }, 400);
