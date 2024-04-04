@@ -66,6 +66,7 @@ import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
 import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
 import { getLinkPathsForProject } from "../utils/linkDatabase.js";
+import { getAuthToken } from "../utils/accounts.js";
 
 type ClassProcess = {
     process: ChildProcess;
@@ -394,11 +395,18 @@ async function startProcesses(
     });
 
     const bundlersOutput = await Promise.all(bundlersOutputPromise);
-    await importServiceEnvVariables(
-        projectConfiguration.name,
-        projectConfiguration.region,
-        options.stage ? options.stage : "prod",
-    );
+
+    const authToken = await getAuthToken();
+    if (!authToken) {
+        process.env["LOGGED_IN_LOCAL"] = "false";
+    } else {
+        process.env["LOGGED_IN_LOCAL"] = "true";
+        await importServiceEnvVariables(
+            projectConfiguration.name,
+            projectConfiguration.region,
+            options.stage ? options.stage : "prod",
+        );
+    }
 
     const envVars: dotenv.DotenvPopulateInput = {};
     const envFile = projectConfiguration.workspace?.backend
@@ -886,6 +894,7 @@ async function clearAllResources(
     processForClasses: Map<string, ClassProcess>,
     crons: LocalEnvCronHandler[],
 ) {
+    process.env["LOGGED_IN_LOCAL"] = "";
     server.close();
     await stopCronJobs(crons);
 

@@ -39,7 +39,6 @@ export async function getProjectEnvFromProjectByName(
     stageName: string,
 ) {
     const completeProjectInfo = await getProjectInfoByName(projectName, region);
-    console.log(`the complete project info is`, JSON.stringify(completeProjectInfo));
     const projectEnv = completeProjectInfo.projectEnvs.find(
         (projectEnv) => projectEnv.name == stageName,
     );

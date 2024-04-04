@@ -12,17 +12,14 @@ async function getAuthFunctionUrl(
     region: string,
     stage: string,
 ): Promise<string | undefined> {
-    console.log("stage", stage);
     const projectEnv = await getProjectEnvFromProjectByName(projectName, region, stage).catch(
-        (e: any) => {
-            console.log(`error`, e);
+        () => {
             return undefined;
         },
     );
     if (!projectEnv) {
         return undefined;
     }
-    console.log(`the project env is`, JSON.stringify(projectEnv));
 
     const authStatus = await getAuthStatus(projectEnv.id).catch(() => {
         return undefined;
@@ -48,7 +45,6 @@ export async function importServiceEnvVariables(
 ) {
     for (const [key, value] of Object.entries(servicesEnvVariables)) {
         const envValue = await value(projectName, region, stage);
-        console.log(`envValue`, envValue);
         if (!envValue) {
             continue;
         }
