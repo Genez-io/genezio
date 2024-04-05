@@ -66,7 +66,6 @@ import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
 import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
 import { getLinkPathsForProject } from "../utils/linkDatabase.js";
-import { getAuthToken } from "../utils/accounts.js";
 
 type ClassProcess = {
     process: ChildProcess;
@@ -396,21 +395,15 @@ async function startProcesses(
 
     const bundlersOutput = await Promise.all(bundlersOutputPromise);
 
-    const authToken = await getAuthToken();
-    if (!authToken) {
-        process.env["LOGGED_IN_LOCAL"] = "false";
-    } else {
-        process.env["LOGGED_IN_LOCAL"] = "true";
-        try {
-            await importServiceEnvVariables(
-                projectConfiguration.name,
-                projectConfiguration.region,
-                options.stage ? options.stage : "prod",
-            );
-        } catch (error) {
-            if (error instanceof UserError) {
-                throw error;
-            }
+    try {
+        await importServiceEnvVariables(
+            projectConfiguration.name,
+            projectConfiguration.region,
+            options.stage ? options.stage : "prod",
+        );
+    } catch (error) {
+        if (error instanceof UserError) {
+            throw error;
         }
     }
 
