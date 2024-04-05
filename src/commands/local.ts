@@ -35,6 +35,7 @@ import axios, { AxiosError, AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
 import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
 import {
+    YAMLBackend,
     YamlConfigurationIOController,
     YamlFrontend,
     YamlProjectConfiguration,
@@ -59,13 +60,14 @@ import {
     checkExperimentalDecorators,
 } from "../utils/jsProjectChecker.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
-import { runScript } from "../utils/scripts.js";
+import { runScript, runFrontendStartScript } from "../utils/scripts.js";
 import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
 import { watchPackage } from "../generateSdk/sdkMonitor.js";
 import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
 import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
 import { getLinkPathsForProject } from "../utils/linkDatabase.js";
+import { Mutex } from "async-mutex";
 
 type ClassProcess = {
     process: ChildProcess;
@@ -171,8 +173,7 @@ export async function prepareLocalBackendEnvironment(
     }
 }
 
-// Function that starts the local environment.
-// It also monitors for changes in the user's code and restarts the environment when changes are detected.
+// Function that starts the local environment. It starts the backend watcher and the frontends.
 export async function startLocalEnvironment(options: GenezioLocalOptions) {
     await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_LOCAL,
@@ -180,9 +181,83 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     });
     const yamlConfigIOController = new YamlConfigurationIOController(options.config);
     const yamlProjectConfiguration = await yamlConfigIOController.read();
-    const backendConfiguration = yamlProjectConfiguration.backend;
+    // This mutex is used to make the frontends wait until the first Genezio SDK is generated.
+    const sdkSynchronizer = new Mutex();
+    // It is locked until the first Genezio SDK is generated.
+    sdkSynchronizer.acquire();
+
+    if (!yamlProjectConfiguration.backend && !yamlProjectConfiguration.frontend) {
+        throw new UserError(
+            "No backend or frontend components found in the genezio.yaml file. You need at least one component to start the local environment.",
+        );
+    }
+    if (
+        !yamlProjectConfiguration.backend &&
+        yamlProjectConfiguration.frontend &&
+        yamlProjectConfiguration.frontend.every((f) => !f.scripts?.start)
+    ) {
+        throw new UserError(
+            "No start script found for any frontend component. You need at least one start script to start the local environment.",
+        );
+    }
+
+    await Promise.all([
+        startBackendWatcher(yamlProjectConfiguration.backend, options, sdkSynchronizer).catch(
+            (e) => {
+                log.error(new Error(`Failed to start the backend: ${e.message}`));
+                sdkSynchronizer.release();
+            },
+        ),
+        startFrontends(yamlProjectConfiguration.frontend, sdkSynchronizer),
+    ]);
+}
+
+/**
+ * Starts the frontends based on the provided configuration.
+ *
+ * @param frontendConfiguration - The configuration for the frontends.
+ * @param sdkSynchronizer - The mutex used for synchronizing the SDK generation.
+ * @returns Never returns, because it runs the frontends indefinitely.
+ */
+async function startFrontends(
+    frontendConfiguration: YamlFrontend[] | undefined,
+    sdkSynchronizer: Mutex,
+) {
+    if (!frontendConfiguration) return;
+
+    // Start the frontends only after the first Genezio SDK was generated, until then wait.
+    await sdkSynchronizer.waitForUnlock();
+
+    await Promise.all(
+        frontendConfiguration.map(async (frontend) => {
+            await runFrontendStartScript(frontend.scripts?.start, frontend.path).catch(
+                (e: UserError) =>
+                    log.error(
+                        new Error(
+                            `Failed to start frontend located in \`${frontend.path}\`: ${e.message}`,
+                        ),
+                    ),
+            );
+        }),
+    );
+}
+
+/**
+ * Starts the backend watcher for local development.
+ *
+ * @param backendConfiguration - The backend configuration.
+ * @param options - The Genezio local options.
+ * @param sdkSynchronizer - The mutex for synchronizing SDK generation.
+ * @returns Never returns, because it runs the local environment indefinitely.
+ */
+async function startBackendWatcher(
+    backendConfiguration: YAMLBackend | undefined,
+    options: GenezioLocalOptions,
+    sdkSynchronizer: Mutex,
+) {
     if (!backendConfiguration) {
-        throw new UserError("No backend component found in the genezio.yaml file.");
+        sdkSynchronizer.release();
+        return;
     }
 
     // We need to check if the user is using an older version of @genezio/types
@@ -209,6 +284,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
 
         checkExperimentalDecorators(backendConfiguration.path);
     }
+
     await doAdaptiveLogAction("Running backend local scripts", async () => {
         await runScript(backendConfiguration.scripts?.local, backendConfiguration.path);
     }).catch(async (error) => {
@@ -230,7 +306,9 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         // Read the project configuration every time because it might change
         let yamlProjectConfiguration;
         try {
-            yamlProjectConfiguration = await yamlConfigIOController.read();
+            yamlProjectConfiguration = await new YamlConfigurationIOController(
+                options.config,
+            ).read();
         } catch (error) {
             if (error instanceof Error) {
                 log.error(error.message);
@@ -317,6 +395,8 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             options,
         );
         reportSuccess(projectConfiguration, options.port);
+
+        if (sdkSynchronizer.isLocked()) sdkSynchronizer.release();
 
         // This check makes sense only for js/ts backend, skip for dart, go etc.
         if (
