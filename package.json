@@ -150,7 +150,7 @@
     },
     "optionalDependencies": {
         "@rollup/rollup-android-arm-eabi": "4.9.4",
-        "@rollup/rollup-android-arm64": "4.13.2",
+        "@rollup/rollup-android-arm64": "4.14.1",
         "@rollup/rollup-darwin-arm64": "4.13.0",
         "@rollup/rollup-darwin-x64": "4.13.2",
         "@rollup/rollup-linux-arm-gnueabihf": "4.13.0",
