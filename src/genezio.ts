@@ -182,6 +182,11 @@ program
         "Set the port your local server will be running on.",
         String(PORT_LOCAL_ENVIRONMENT),
     )
+    .option(
+        "-s, --stage <stage>",
+        "Set the stage on which you want to test your services on",
+        "prod",
+    )
     .option("--env <envFile>", "Load environment variables from a given .env file.", undefined)
     .option("--path <path>", "Set the path where to generate your local sdk.")
     .option("-l | --language <language>", "Language of the generated sdk.")

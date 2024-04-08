@@ -474,7 +474,18 @@ async function startProcesses(
     });
 
     const bundlersOutput = await Promise.all(bundlersOutputPromise);
-    await importServiceEnvVariables(projectConfiguration.name, projectConfiguration.region);
+
+    try {
+        await importServiceEnvVariables(
+            projectConfiguration.name,
+            projectConfiguration.region,
+            options.stage ? options.stage : "prod",
+        );
+    } catch (error) {
+        if (error instanceof UserError) {
+            throw error;
+        }
+    }
 
     const envVars: dotenv.DotenvPopulateInput = {};
     const envFile = projectConfiguration.workspace?.backend
@@ -962,6 +973,7 @@ async function clearAllResources(
     processForClasses: Map<string, ClassProcess>,
     crons: LocalEnvCronHandler[],
 ) {
+    process.env["LOGGED_IN_LOCAL"] = "";
     server.close();
     await stopCronJobs(crons);
 

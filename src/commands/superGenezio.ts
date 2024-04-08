@@ -68,6 +68,7 @@ export async function genezioCommand() {
                     port: PORT_LOCAL_ENVIRONMENT,
                     installDeps: true,
                     config: "./genezio.yaml",
+                    stage: "prod",
                 };
 
                 return await startLocalEnvironment(options).catch(async (error) => {
