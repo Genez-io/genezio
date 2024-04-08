@@ -183,7 +183,7 @@ program
         String(PORT_LOCAL_ENVIRONMENT),
     )
     .option(
-        "-s --stage <stage>",
+        "-s, --stage <stage>",
         "Set the stage on which you want to test your services on",
         "prod",
     )
