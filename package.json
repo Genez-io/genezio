@@ -97,7 +97,7 @@
         "tree-sitter-go": "0.20.0",
         "tree-sitter-typescript": "^0.20.5",
         "tslog": "^4.9.2",
-        "typescript": "^5.3.3",
+        "typescript": "^5.4.4",
         "unique-names-generator": "^4.7.1",
         "uuid": "^9.0.1",
         "whatwg-mimetype": "~3.0.0",
