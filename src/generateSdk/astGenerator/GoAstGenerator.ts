@@ -19,7 +19,7 @@ import { checkIfGoIsInstalled } from "../../utils/go.js";
 import { createTemporaryFolder } from "../../utils/file.js";
 import { UserError } from "../../errors.js";
 
-const releaseTag = "v0.1";
+const releaseTag = "v0.1.1";
 const binaryName = `golang_ast_generator_${releaseTag}`;
 
 export class AstGenerator implements AstGeneratorInterface {
@@ -78,7 +78,7 @@ export class AstGenerator implements AstGeneratorInterface {
             input.root,
         );
         if (result.code !== 0) {
-            console.error(result.stderr);
+            log.error(result.stderr);
             throw new UserError("Error: Failed to generate AST for class " + input.class.path);
         }
 
