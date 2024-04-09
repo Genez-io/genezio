@@ -4,6 +4,16 @@ import { getTelemetrySessionId, saveTelemetrySessionId } from "./session.js";
 import { v4 as uuidv4 } from "uuid";
 import { ENVIRONMENT } from "../constants.js";
 import version from "../utils/version.js";
+import { trackEvent } from "../requests/gaTrackEvent.js";
+import { track, init, Types } from '@amplitude/analytics-node';
+import getUser from "../requests/getUser.js";
+import { UserPayload } from "../requests/models.js";
+
+init("a679983c996d08c941a2585b2354b169", {
+    flushQueueSize: 1,
+    flushIntervalMillis: 100,
+}
+);
 
 export type EventRequest = {
     eventType: TelemetryEventTypes;
@@ -11,6 +21,15 @@ export type EventRequest = {
     errorTrace?: string;
     commandOptions?: string;
 };
+
+let user: UserPayload | undefined;
+
+async function getCachedUser(): Promise<UserPayload|undefined> {
+    if (!user) {
+        user = await getUser().catch(() => undefined);
+    }
+    return user;
+}
 
 export enum TelemetryEventTypes {
     GENEZIO_CANCEL = "GENEZIO_CANCEL",
@@ -111,10 +130,18 @@ export class GenezioTelemetry {
             isCI: process.env["CI"] ? true : false,
             nodeVersion: process.version,
         };
+        const user = await getCachedUser().catch(() => undefined);
+        const eventName = (eventRequest.eventType as string).toLowerCase();
 
-        await AnalyticsHandler.sendEvent(analyticsData).catch((err) => {
+        const amplitudePromise = track(eventName, undefined, {
+            device_id: sessionId,
+            user_id: user?.id,
+        }).promise
+        const gaPromise = trackEvent((eventRequest.eventType as string).toLowerCase(), user?.id);
+        const analytics = AnalyticsHandler.sendEvent(analyticsData).catch((err) => {
             debugLogger.debug(`[GenezioTelemetry]`, `Error sending event to analytics: ${err}`);
         });
-        return;
+
+        await Promise.all([gaPromise, analytics, amplitudePromise]);
     }
 }

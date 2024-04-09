@@ -1,4 +1,4 @@
-const environment = process.env["NODE_ENV"];
+let environment: string = "prod"
 
 let DASHBOARD_URL: string;
 let BACKEND_ENDPOINT: string;
