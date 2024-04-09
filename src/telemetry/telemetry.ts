@@ -133,11 +133,11 @@ export class GenezioTelemetry {
         const user = await getCachedUser().catch(() => undefined);
         const eventName = (eventRequest.eventType as string).toLowerCase();
 
-        const amplitudePromise = track(eventName, undefined, {
+        const amplitudePromise = ENVIRONMENT === "dev" ? Promise.resolve() : track(eventName, undefined, {
             device_id: sessionId,
             user_id: user?.id,
         }).promise
-        const gaPromise = trackEvent((eventRequest.eventType as string).toLowerCase(), user?.id);
+        const gaPromise = ENVIRONMENT === "dev" ? Promise.resolve() : trackEvent((eventRequest.eventType as string).toLowerCase(), user?.id);
         const analytics = AnalyticsHandler.sendEvent(analyticsData).catch((err) => {
             debugLogger.debug(`[GenezioTelemetry]`, `Error sending event to analytics: ${err}`);
         });
