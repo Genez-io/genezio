@@ -4,7 +4,7 @@ import program from "./genezio.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js";
 import { deleteFolder } from "./utils/file.js";
 import { SENTRY_DSN } from "./constants.js";
-import { debugLogger } from "./utils/logging.js";
+import { debugLogger, logError } from "./utils/logging.js";
 import path from "path";
 import os from "os";
 
@@ -37,7 +37,11 @@ process.on("SIGINT", async () => {
         commandOptions: "",
     });
 
-    await deleteFolder(temporaryFolder);
+    try {
+        await deleteFolder(temporaryFolder);
+    } catch (error) {
+        logError(error as Error);
+    }
     process.exit();
 });
 process.on("exit", async () => {
