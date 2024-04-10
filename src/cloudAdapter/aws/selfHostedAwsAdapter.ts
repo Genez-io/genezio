@@ -38,7 +38,7 @@ import {
 } from "./cloudFormationBuilder.js";
 import mime from "mime-types";
 import path from "path";
-import { DEFAULT_NODE_RUNTIME } from "../../models/nodeRuntime.js";
+import { DEFAULT_NODE_RUNTIME } from "../../models/projectOptions.js";
 import { UserError } from "../../errors.js";
 
 const BUNDLE_SIZE_LIMIT = 256901120;
