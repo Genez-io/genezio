@@ -11,7 +11,7 @@ export const DEFAULT_NODE_RUNTIME_IMAGE = CONTAINER_IMAGE_NODE20;
 
 export type NodeOptions = {
     nodeRuntime: NodeRuntime;
-    architecture?: Architecture;
+    architecture: Architecture;
 };
 
 export const supportedNodeRuntimes = ["nodejs16.x", "nodejs18.x", "nodejs20.x"] as const;
