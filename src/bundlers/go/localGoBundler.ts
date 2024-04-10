@@ -30,7 +30,8 @@ export class LocalGoBundler extends GoBundler {
             log.info(getDependencyResult.stdout.toString());
             throw new UserError("Compilation error! Please check your code and try again.");
         }
-        const result = $({ cwd: folderPath }).sync`go build -o main main.go`;
+        const executableName = process.platform === "win32" ? "main.exe" : "main";
+        const result = $({ cwd: folderPath }).sync`go build -o ${executableName} main.go`;
         if (result.exitCode == null) {
             log.info(
                 "There was an error while running the go script, make sure you have the correct permissions.",
@@ -44,7 +45,7 @@ export class LocalGoBundler extends GoBundler {
 
         input.extra = {
             ...input.extra,
-            startingCommand: path.join(input.path, "main"),
+            startingCommand: path.join(input.path, executableName),
             commandParameters: [],
         };
     }
