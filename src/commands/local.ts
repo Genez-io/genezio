@@ -44,7 +44,7 @@ import hash from "hash-it";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import dotenv from "dotenv";
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
-import { DEFAULT_NODE_RUNTIME } from "../models/nodeRuntime.js";
+import { DEFAULT_NODE_RUNTIME } from "../models/projectOptions.js";
 import { exit } from "process";
 import { log } from "../utils/logging.js";
 import { interruptLocalPath } from "../utils/localInterrupt.js";

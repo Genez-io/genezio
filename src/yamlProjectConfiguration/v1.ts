@@ -3,7 +3,7 @@ import yaml from "yaml";
 import { getFileDetails, writeToFile } from "../utils/file.js";
 import { regions } from "../utils/configs.js";
 import { isValidCron } from "cron-validator";
-import { DEFAULT_NODE_RUNTIME, NodeOptions, supportedNodeRuntimes } from "../models/nodeRuntime.js";
+import { DEFAULT_NODE_RUNTIME, NodeOptions, supportedNodeRuntimes } from "../models/projectOptions.js";
 import zod from "zod";
 import { log } from "../utils/logging.js";
 import { UserError, zodFormatError } from "../errors.js";
