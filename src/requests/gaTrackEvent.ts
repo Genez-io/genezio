@@ -3,6 +3,7 @@ import os from "os";
 import path from "path";
 import { readUTF8File, writeToFile } from "../utils/file.js";
 import { debugLogger } from "../utils/logging.js";
+import { GA_API_SECRET, GA_MEASUREMENT_ID } from "../constants.js";
 
 export async function getStoredClientId(): Promise<string | undefined> {
     const homeDirectory = os.homedir();
@@ -35,11 +36,9 @@ async function generateNewClientId() {
 }
 
 export async function trackEvent(eventName: string, userId?: string) {
-    const measurement_id = "G-VR905VXGKC";
-    const api_secret = "f7rYPh9RQQm6OOtolT94Uw";
     const clientId = await getStoredClientId() || await generateNewClientId();
 
-    await await axios.post(`https://www.google-analytics.com/mp/collect?measurement_id=${measurement_id}&api_secret=${api_secret}`, {
+     await axios.post(`https://www.google-analytics.com/mp/collect?measurement_id=${GA_MEASUREMENT_ID}&api_secret=${GA_API_SECRET}`, {
         client_id: clientId,
         user_id: userId,
         events: [{

@@ -2,14 +2,14 @@ import { debugLogger } from "../utils/logging.js";
 import { AnalyticsData, AnalyticsHandler } from "./sdk/analyticsHandler.sdk.js";
 import { getTelemetrySessionId, saveTelemetrySessionId } from "./session.js";
 import { v4 as uuidv4 } from "uuid";
-import { ENVIRONMENT } from "../constants.js";
+import { AMPLITUDE_API_KEY, ENVIRONMENT } from "../constants.js";
 import version from "../utils/version.js";
 import { trackEvent } from "../requests/gaTrackEvent.js";
 import { track, init, Types } from '@amplitude/analytics-node';
 import getUser from "../requests/getUser.js";
 import { UserPayload } from "../requests/models.js";
 
-init("a679983c996d08c941a2585b2354b169", {
+init(AMPLITUDE_API_KEY, {
     flushQueueSize: 1,
     flushIntervalMillis: 100,
 }
