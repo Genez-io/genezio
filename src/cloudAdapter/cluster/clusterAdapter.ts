@@ -13,7 +13,6 @@ import {
 } from "../../requests/containerRegistry.js";
 import { SpawnSyncReturns, spawnSync } from "child_process";
 import { deployRequest } from "../../requests/deployCode.js";
-import { getAuthToken } from "../../utils/accounts.js";
 import {
     createTemporaryFolder,
     deleteFolder,
@@ -111,7 +110,7 @@ export class ClusterCloudAdapter implements CloudAdapter {
         }));
 
         return {
-            projectEnvId: "",
+            projectEnvId: response.projectEnvId,
             classes: classesInfo,
         };
     }
