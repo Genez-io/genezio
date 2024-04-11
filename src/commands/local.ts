@@ -509,6 +509,7 @@ async function startProcesses(
             bundlerOutput.configuration.name,
             processForClasses,
             envVars,
+            projectConfiguration.workspace?.backend,
         );
     }
 
@@ -988,6 +989,7 @@ async function startClassProcess(
     className: string,
     processForClasses: Map<string, ClassProcess>,
     envVars: dotenv.DotenvPopulateInput = {},
+    cwd?: string,
 ) {
     const availablePort = await findAvailablePort();
     debugLogger.debug(`[START_CLASS_PROCESS] Starting class ${className} on port ${availablePort}`);
@@ -1001,6 +1003,7 @@ async function startClassProcess(
             ...envVars,
             NODE_OPTIONS: "--enable-source-maps",
         },
+        cwd,
     });
     classProcess.stdout.pipe(process.stdout);
     classProcess.stderr.pipe(process.stderr);
