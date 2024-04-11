@@ -31,6 +31,11 @@ axios.interceptors.response.use(
                 "You've hit the maximum number of projects. To continue, please upgrade your subscription.",
             );
         }
+        if (!response.data.error) {
+            throw new UserError(
+                "There was an error on our end. Please try again! If the problem persists, please report it to our issues page on GitHub: https://github.com/Genez-io/genezio/issues",
+            );
+        }
         if (response.data.error.code === GenezioErrorCode.UpdateRequired) {
             throw new UserError("Please update your genezio CLI. Run 'npm update -g genezio'.");
         }
