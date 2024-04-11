@@ -77,13 +77,13 @@ type ClassProcess = {
     envVars: dotenv.DotenvPopulateInput;
 };
 
-type BundlerRestartResponse = {
-    shouldRestartBundling: boolean;
-    bundlerOutput?: LocalBundlerOutput;
+type ClassProcessSpawnResponse = {
+    restartEnvironment: boolean;
+    spawnOutput?: ClassProcessSpawnOutput;
     watcher?: chokidar.FSWatcher;
 };
 
-type LocalBundlerOutput = {
+type ClassProcessSpawnOutput = {
     success: boolean;
     projectConfiguration: ProjectConfiguration;
     processForClasses: Map<string, ClassProcess>;
@@ -93,7 +93,7 @@ type LocalBundlerOutput = {
 export async function prepareLocalBackendEnvironment(
     yamlProjectConfiguration: YamlProjectConfiguration,
     options: GenezioLocalOptions,
-): Promise<BundlerRestartResponse> {
+): Promise<ClassProcessSpawnResponse> {
     try {
         const backend = yamlProjectConfiguration.backend;
         const frontend = yamlProjectConfiguration.frontend;
@@ -142,10 +142,10 @@ export async function prepareLocalBackendEnvironment(
         }
 
         const processForClasses = await startProcesses(projectConfiguration, sdk, options);
-        return new Promise<BundlerRestartResponse>((resolve) => {
+        return new Promise<ClassProcessSpawnResponse>((resolve) => {
             resolve({
-                shouldRestartBundling: false,
-                bundlerOutput: {
+                restartEnvironment: false,
+                spawnOutput: {
                     success: true,
                     projectConfiguration,
                     processForClasses,
@@ -163,10 +163,9 @@ export async function prepareLocalBackendEnvironment(
         // If there was an error generating the SDK, wait for changes and try again.
         const { watcher } = await listenForChanges();
         logChangeDetection();
-        return new Promise<BundlerRestartResponse>((resolve) => {
+        return new Promise<ClassProcessSpawnResponse>((resolve) => {
             resolve({
-                shouldRestartBundling: true,
-                bundlerOutput: undefined,
+                restartEnvironment: true,
                 watcher,
             });
         });
@@ -325,45 +324,27 @@ async function startBackendWatcher(
             continue;
         }
 
-        let sdk: SdkGeneratorResponse;
-        let processForClasses: Map<string, ClassProcess>;
-        let projectConfiguration: ProjectConfiguration;
+        const listenForChangesPromise: Promise<ClassProcessSpawnResponse> = listenForChanges();
+        const classProcessSpawnPromise: Promise<ClassProcessSpawnResponse> =
+            prepareLocalBackendEnvironment(yamlProjectConfiguration, options);
 
-        const promiseListenForChanges: Promise<BundlerRestartResponse> = listenForChanges();
-        const bundlerPromise: Promise<BundlerRestartResponse> = prepareLocalBackendEnvironment(
-            yamlProjectConfiguration,
-            options,
-        );
-
-        let promiseRes: BundlerRestartResponse = await Promise.race([
-            bundlerPromise,
-            promiseListenForChanges,
+        let promiseRes: ClassProcessSpawnResponse = await Promise.race([
+            classProcessSpawnPromise,
+            listenForChangesPromise,
         ]);
 
-        if (promiseRes.shouldRestartBundling === false) {
-            // There was no change in the user's code during the bundling process
-            if (!promiseRes.bundlerOutput || promiseRes.bundlerOutput.success === false) {
+        // If the listenForChanges promise is resolved first, it means that the user made a change in the code and we
+        // need to rebundle and restart the backend.
+        if (promiseRes.restartEnvironment === true) {
+            // Wait for classes to be spawned before restarting the environment
+            promiseRes = await classProcessSpawnPromise;
+
+            if (!promiseRes.spawnOutput || promiseRes.spawnOutput.success === false) {
                 continue;
             }
-
-            // bundling process finished successfully
-            // assign the variables to the values of the bundling process output
-            projectConfiguration = promiseRes.bundlerOutput.projectConfiguration;
-            processForClasses = promiseRes.bundlerOutput.processForClasses;
-            sdk = promiseRes.bundlerOutput.sdk;
-        } else {
-            // where was a change made by the user
-            // so we need to restart the bundler process after the bundling process is finished
-            promiseRes = await bundlerPromise;
-
-            if (!promiseRes.bundlerOutput || promiseRes.bundlerOutput.success === false) {
-                continue;
-            }
-
-            processForClasses = promiseRes.bundlerOutput.processForClasses;
 
             // clean up the old processes
-            processForClasses.forEach((classProcess: ClassProcess) => {
+            promiseRes.spawnOutput.processForClasses.forEach((classProcess: ClassProcess) => {
                 classProcess.process.kill();
             });
 
@@ -373,6 +354,16 @@ async function startBackendWatcher(
             logChangeDetection();
             continue;
         }
+
+        if (!promiseRes.spawnOutput || promiseRes.spawnOutput.success === false) {
+            continue;
+        }
+
+        const projectConfiguration: ProjectConfiguration =
+            promiseRes.spawnOutput.projectConfiguration;
+        const processForClasses: Map<string, ClassProcess> =
+            promiseRes.spawnOutput.processForClasses;
+        const sdk: SdkGeneratorResponse = promiseRes.spawnOutput.sdk;
 
         // Start HTTP Server
         const server = await startServerHttp(
@@ -816,29 +807,24 @@ async function listenForChanges() {
         });
     }
 
-    return new Promise<BundlerRestartResponse>((resolve) => {
+    return new Promise<ClassProcessSpawnResponse>((resolve) => {
         // Watch for changes in the classes and update the handlers
         const watchPaths = [path.join(cwd, "/**/*")];
-        let ignoredPaths: string[] = [];
+        const ignoredPaths: string[] = ["**/node_modules/*", ...ignoredPathsFromGenezioIgnore];
 
-        ignoredPaths = ["**/node_modules/*", ...ignoredPathsFromGenezioIgnore];
-
-        const startWatching = () => {
-            const watch = chokidar
-                .watch(watchPaths, {
-                    // Disable fsevents for macos
-                    useFsEvents: false,
-                    ignored: ignoredPaths,
-                    ignoreInitial: true,
-                })
-                .on("all", async () => {
-                    resolve({
-                        shouldRestartBundling: true,
-                        watcher: watch,
-                    });
+        const watch = chokidar
+            .watch(watchPaths, {
+                // Disable fsevents for macos
+                useFsEvents: false,
+                ignored: ignoredPaths,
+                ignoreInitial: true,
+            })
+            .on("all", async () => {
+                resolve({
+                    restartEnvironment: true,
+                    watcher: watch,
                 });
-        };
-        startWatching();
+            });
     });
 }
 
