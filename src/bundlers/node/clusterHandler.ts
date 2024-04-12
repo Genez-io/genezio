@@ -15,12 +15,13 @@ server.on('request', (req, res) => {
     return;
   }
 
-  let body = '';
+  const chunks = [];
   req.on('data', chunk => {
-    body += chunk.toString();
+    chunks.push(chunk);
   });
   req.on('end', () => {
     try {
+      const body = Buffer.concat(chunks);
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       const parsed_url = url.parse(req.url)
       const requestContext = {
@@ -37,7 +38,7 @@ server.on('request', (req, res) => {
         headers: req.headers,
         body: body,
         requestContext,
-        queryStringParameters: querystring.parse(parsed_url.query)
+        queryStringParameters: querystring.parse(parsed_url.query),
       }).then((response) => {
         res.end(response.body)
       })
