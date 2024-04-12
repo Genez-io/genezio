@@ -174,6 +174,8 @@ export async function prepareLocalBackendEnvironment(
 
 // Function that starts the local environment. It starts the backend watcher and the frontends.
 export async function startLocalEnvironment(options: GenezioLocalOptions) {
+    log.settings.prettyLogTemplate = `${colors.blue("|")} `;
+
     await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_LOCAL,
         commandOptions: JSON.stringify(options),
@@ -989,8 +991,8 @@ async function startClassProcess(
         },
         cwd,
     });
-    classProcess.stdout.pipe(process.stdout);
-    classProcess.stderr.pipe(process.stderr);
+    classProcess.stdout.on("data", (data) => log.info(data.toString().trim()));
+    classProcess.stderr.on("data", (data) => log.info(data.toString().trim()));
 
     processForClasses.set(className, {
         process: classProcess,

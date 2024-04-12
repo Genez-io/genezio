@@ -1,9 +1,9 @@
 import { spawn } from "child_process";
 import { UserError } from "../errors.js";
 import { runNewProcess } from "./process.js";
-import { log } from "./logging.js";
 import colors from "colors";
 import _ from "lodash";
+import { Logger } from "tslog";
 
 export async function runScript(
     scripts: string | string[] | undefined,
@@ -24,7 +24,7 @@ export async function runScript(
 }
 
 const frontendLogsColors = {
-    order: [colors.magenta, colors.yellow, colors.green, colors.blue, colors.red],
+    order: [colors.magenta, colors.yellow, colors.green, colors.red],
     index: 0,
 };
 
@@ -43,6 +43,8 @@ export async function runFrontendStartScript(
     const logColor =
         frontendLogsColors.order[frontendLogsColors.index++ % frontendLogsColors.order.length];
 
+    const frontendLogger = new Logger({ name: "frontendLogger", prettyLogTemplate: "" });
+
     let debounceCount = 0;
     let logsBuffer: Buffer[] = [];
     // A debounce is needed when logs are printed on `data` event because the logs are printed in chunks.
@@ -52,7 +54,7 @@ export async function runFrontendStartScript(
         if (logsBuffer.length === 0) return;
 
         const logs = Buffer.concat(logsBuffer).toString().trim();
-        log.info(
+        frontendLogger.info(
             `${logColor(`[Frontend logs, path: ${cwd}]\n| `)}${logs.split("\n").join(`\n${logColor("| ")}`)}`,
         );
         logsBuffer = [];
