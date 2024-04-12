@@ -43,37 +43,40 @@ export async function runFrontendStartScript(
     const logColor =
         frontendLogsColors.order[frontendLogsColors.index++ % frontendLogsColors.order.length];
 
+    let debounceCount = 0;
+    let logsBuffer: Buffer[] = [];
+    // A debounce is needed when logs are printed on `data` event because the logs are printed in chunks.
+    // We want to print chunk of logs together if they are printed within a short time frame.
+    const debouncedLog = _.debounce(() => {
+        debounceCount = 0;
+        if (logsBuffer.length === 0) return;
+
+        const logs = Buffer.concat(logsBuffer).toString().trim();
+        log.info(
+            `${logColor(`[Frontend logs, path: ${cwd}]\n| `)}${logs.split("\n").join(`\n${logColor("| ")}`)}`,
+        );
+        logsBuffer = [];
+    }, 400);
+
+    const printFrontendLogs = (logChunk: Buffer) => {
+        logsBuffer.push(logChunk);
+
+        debounceCount += 1;
+        // If we have 5 debounces, we should flush the logs
+        if (debounceCount >= 5) {
+            debouncedLog.flush();
+            return;
+        }
+
+        debouncedLog();
+    };
+
     for (const script of scripts) {
         await new Promise<void>((resolve, reject) => {
             const child = spawn(script, { cwd, shell: true, stdio: "pipe" });
 
-            let debounceCount = 0;
-            let logsBuffer: Buffer[] = [];
-            // A debounce is needed when logs are printed on `data` event because the logs are printed in chunks.
-            // We want to print chunkc of logs together if they are printed within a short time frame.
-            const debouncedLog = _.debounce(() => {
-                debounceCount = 0;
-                if (logsBuffer.length === 0) return;
-
-                const logs = Buffer.concat(logsBuffer).toString().trim();
-                log.info(
-                    `${logColor(`[Frontend logs, path: ${cwd}]\n| `)}${logs.split("\n").join(`\n${logColor("| ")}`)}`,
-                );
-                logsBuffer = [];
-            }, 400);
-
-            child.stdout.on("data", (logChunk) => {
-                logsBuffer.push(logChunk);
-
-                debounceCount += 1;
-                // If we have 5 debounces, we should flush the logs
-                if (debounceCount >= 5) {
-                    debouncedLog.flush();
-                    return;
-                }
-
-                debouncedLog();
-            });
+            child.stderr.on("data", printFrontendLogs);
+            child.stdout.on("data", printFrontendLogs);
 
             child.on("error", (error) => {
                 reject(`Failed to run script: ${script} - ${error}`);
