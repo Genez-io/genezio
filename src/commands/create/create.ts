@@ -426,13 +426,8 @@ const SUCCESSFULL_CREATE_MONOREPO = (
 
 
     For ${colors.green("testing")} locally, run:
-      Terminal 1 (start the backend): 
         cd ${projectName}
         genezio local
-
-      Terminal 2 (start the frontend): 
-        cd ${projectName}/client
-        npm run dev
 `;
 
 const SUCCESSFULL_CREATE_MULTIREPO = (
@@ -461,7 +456,7 @@ const SUCCESSFULL_CREATE_MULTIREPO = (
 
       Terminal 2 (start the frontend): 
         cd ${projectName}/client
-        npm run dev
+        genezio local
 `;
 
 const SUCCESSFULL_CREATE_BACKEND = (

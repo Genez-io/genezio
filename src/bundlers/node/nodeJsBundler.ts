@@ -25,7 +25,7 @@ import { generateNodeContainerManifest } from "./containerManifest.js";
 import { clusterWrapperCode } from "./clusterHandler.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import { clusterHandlerGenerator } from "./clusterHandlerGenerator.js";
-import { DEFAULT_NODE_RUNTIME } from "../../models/nodeRuntime.js";
+import { DEFAULT_NODE_RUNTIME } from "../../models/projectOptions.js";
 
 export class NodeJsBundler implements BundlerInterface {
     async #copyDependencies(
@@ -404,6 +404,16 @@ export class NodeJsBundler implements BundlerInterface {
         const cwd = input.projectConfiguration.workspace?.backend || process.cwd();
         const cloudProvider = input.projectConfiguration.cloudProvider;
 
+        // TODO: Remove this check after cluster is fully supported in other regions
+        if (
+            cloudProvider === CloudProviderIdentifier.CLUSTER &&
+            input.projectConfiguration.region !== "us-east-1"
+        ) {
+            throw new UserError(
+                `While in ALPHA phase, persistent deployment is not supported in ${input.projectConfiguration.region} region. Please use us-east-1 region or use "genezio" as cloud provider.`,
+            );
+        }
+
         if (mode === "development" && !tmpFolder) {
             throw new UserError("tmpFolder is required in development mode.");
         }
@@ -461,7 +471,7 @@ export class NodeJsBundler implements BundlerInterface {
                 : []),
         ]);
 
-        if (isDeployedToCluster) {
+        if (isDeployedToCluster && mode === "production") {
             log.info("Writing docker file for container packaging and building image");
             // build image
             const dockerBuildProcess = spawnSync(

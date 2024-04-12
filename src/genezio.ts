@@ -29,7 +29,6 @@ import currentGenezioVersion, {
     logOutdatedVersion,
 } from "./utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js";
-import { genezioCommand } from "./commands/superGenezio.js";
 import { linkCommand, unlinkCommand } from "./commands/link.js";
 import { PackageManagerType, setPackageManager } from "./packageManagers/packageManager.js";
 import colors from "colors";
@@ -65,26 +64,6 @@ try {
     setPackageManager(PackageManagerType.npm);
 } finally {
     setPackageManager(PackageManagerType.npm);
-}
-
-// super-genezio command
-// commander is displaying help by default for calling `genezio` without a subcommand
-// this is a workaround to avoid that
-// Note: no options can be added to this command
-if (process.argv.length === 2) {
-    await GenezioTelemetry.sendEvent({
-        eventType: TelemetryEventTypes.GENEZIO_COMMAND,
-    });
-
-    await genezioCommand().catch(async (error: Error) => {
-        logError(error);
-        await GenezioTelemetry.sendEvent({
-            eventType: TelemetryEventTypes.GENEZIO_COMMAND_ERROR,
-            errorTrace: error.message,
-        });
-        exit(1);
-    });
-    exit(0);
 }
 
 // make genezio --version
@@ -181,6 +160,11 @@ program
         "-p, --port <port>",
         "Set the port your local server will be running on.",
         String(PORT_LOCAL_ENVIRONMENT),
+    )
+    .option(
+        "-s, --stage <stage>",
+        "Set the stage on which you want to test your services on",
+        "prod",
     )
     .option("--env <envFile>", "Load environment variables from a given .env file.", undefined)
     .option("--path <path>", "Set the path where to generate your local sdk.")

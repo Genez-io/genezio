@@ -5,7 +5,7 @@ import { IFs } from "memfs";
 import { regions } from "../utils/configs.js";
 import { GENEZIO_CONFIGURATION_FILE_NOT_FOUND, UserError, zodFormatError } from "../errors.js";
 import { Language } from "./models.js";
-import { DEFAULT_NODE_RUNTIME, supportedNodeRuntimes } from "../models/nodeRuntime.js";
+import { DEFAULT_ARCHITECTURE, DEFAULT_NODE_RUNTIME, supportedArchitectures, supportedNodeRuntimes } from "../models/projectOptions.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { PackageManagerType } from "../packageManagers/packageManager.js";
 import { TriggerType } from "./models.js";
@@ -28,6 +28,7 @@ function parseGenezioConfig(config: unknown) {
     const languageSchema = zod.object({
         name: zod.nativeEnum(Language),
         runtime: zod.enum(supportedNodeRuntimes).optional(),
+        architecture: zod.enum(supportedArchitectures).optional(),
         packageManager: zod.nativeEnum(PackageManagerType).optional(),
     });
 
@@ -143,6 +144,7 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
             case Language.js:
                 defaultConfig.backend.language.packageManager ??= PackageManagerType.npm;
                 defaultConfig.backend.language.runtime ??= DEFAULT_NODE_RUNTIME;
+                defaultConfig.backend.language.architecture ??= DEFAULT_ARCHITECTURE;
         }
 
         defaultConfig.backend.cloudProvider ??= CloudProviderIdentifier.GENEZIO;
@@ -157,6 +159,7 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
         | "region"
         | "backend.language.packageManager"
         | "backend.language.runtime"
+        | "backend.language.architecture"
         | "backend.cloudProvider"
     > & {
         frontend: typeof defaultConfig.frontend;
