@@ -110,7 +110,9 @@ if (!genezioClass) {
 
         try {
             body = JSON.parse(event.body);
-        } catch (error) { }
+        } catch (error) {
+          body = event.body;
+        }
 
         const components = event.requestContext.http.path.substring(1).split("/");
         if (!body || (body && body["jsonrpc"] !== "2.0")) {
@@ -128,7 +130,7 @@ if (!genezioClass) {
                 queryStringParameters: event.queryStringParameters,
                 timeEpoch: event.requestContext.timeEpoch,
                 body: event.isBase64Encoded ? Buffer.from(body, "base64") : body,
-                rawBody: event.body,
+                rawBody: event.body
             };
             if (!object[method]) {
                 return {
