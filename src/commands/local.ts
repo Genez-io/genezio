@@ -68,6 +68,8 @@ import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
 import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 import { Mutex } from "async-mutex";
+import fs from "fs";
+import packageManager from "../packageManagers/packageManager.js";
 
 type ClassProcess = {
     process: ChildProcess;
@@ -231,6 +233,33 @@ async function startFrontends(
 
     await Promise.all(
         frontendConfiguration.map(async (frontend) => {
+            if (
+                fs.existsSync(path.join(frontend.path, "package.json")) &&
+                !fs.existsSync(path.join(frontend.path, "node_modules"))
+            ) {
+                debugLogger.debug(
+                    `Installing frontend dependencies in \`${frontend.path}\` path because \`node_modules\` folder was not found.`,
+                );
+                const waitForSdkRewrite = new Promise<void>((resolve) => {
+                    const watcher = chokidar
+                        .watch(path.join(frontend.path, "node_modules/@genezio-sdk/package.json"))
+                        .on("all", () => {
+                            watcher.close();
+                            resolve();
+                        });
+                });
+
+                await packageManager.install([], frontend.path);
+
+                // Give time to the backend watcher to rewrite the Genezio SDK
+                // inside the node_modules folder before starting the frontend.
+                //
+                // This "hack" was added because sometimes VITE startup is so
+                // fast 🚀 that it starts before the SDK is rewritten, therefore
+                // throwing an error that the SDK is not found.
+                await waitForSdkRewrite;
+            }
+
             await runFrontendStartScript(frontend.scripts?.start, frontend.path).catch(
                 (e: UserError) =>
                     log.error(
