@@ -94,7 +94,7 @@
         "open": "^10.1.0",
         "ora": "^8.0.1",
         "semver": "^7.5.4",
-        "tree-sitter": "0.21.1",
+        "tree-sitter": "0.20.6",
         "tree-sitter-go": "0.20.0",
         "tree-sitter-typescript": "^0.20.5",
         "tslog": "^4.9.2",
