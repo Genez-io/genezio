@@ -71,9 +71,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
 
                 const filesTable = new Table({
                     head: [
-                        `Biggest Non-${projectConfiguration.classes[0].language
-                            .split(".")[1]
-                            .toUpperCase()} Files`,
+                        `Biggest Non-${projectConfiguration.classes[0].language.toUpperCase()} Files`,
                         "Size",
                     ],
                 });
