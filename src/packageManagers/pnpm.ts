@@ -74,4 +74,9 @@ export default class PnpmPackageManager implements PackageManager {
         this.version = stdout.trim();
         return this.version;
     }
+
+    async pack(cwd: string, destination: string): Promise<string> {
+        const { stdout } = await $({ cwd })`pnpm pack --pack-destination ${destination}`;
+        return stdout.trim();
+    }
 }

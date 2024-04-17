@@ -74,4 +74,9 @@ export default class YarnPackageManager implements PackageManager {
         this.version = stdout.trim();
         return this.version;
     }
+
+    async pack(cwd: string, _destination: string): Promise<string> {
+        const { stdout } = await $({ cwd })`yarn pack`;
+        return stdout.trim();
+    }
 }
