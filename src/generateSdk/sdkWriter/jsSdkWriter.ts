@@ -1,12 +1,12 @@
 import path from "path";
-import { createLocalTempFolder, deleteFolder, writeToFile } from "../../utils/file.js";
+import fs from "fs";
+import { createLocalTempFolder, deleteFolder } from "../../utils/file.js";
 import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "../../utils/sdk.js";
 import { getNodeModulePackageJson } from "../templates/packageJson.js";
 import { compileSdk } from "../utils/compileSdk.js";
 import { Language } from "../../yamlProjectConfiguration/models.js";
 import { SdkGeneratorResponse } from "../../models/sdkGeneratorResponse.js";
-// @ts-expect-error libnpmpack is not typed
-import pack from "libnpmpack";
+import { packageManagers, PackageManagerType } from "../../packageManagers/packageManager.js";
 
 async function writeSdk(
     packageName: string,
@@ -33,9 +33,12 @@ async function writeSdk(
         await compileSdk(sdkPath, packageJson, language, publish);
     } else {
         if (exportAsTarball) {
+            const absoluteOutputPath = path.resolve(outputPath!);
+            if (!fs.existsSync(absoluteOutputPath)) {
+                fs.mkdirSync(absoluteOutputPath, { recursive: true });
+            }
             const sdkCompiledPath = await compileSdk(sdkPath, packageJson, language, publish);
-            const data = await pack(sdkCompiledPath);
-            await writeToFile(outputPath!, `${packageName}.tar.gz`, data, true);
+            await packageManagers[PackageManagerType.npm].pack(sdkCompiledPath, absoluteOutputPath);
         } else {
             await compileSdk(sdkPath, packageJson, language, publish, outputPath);
         }

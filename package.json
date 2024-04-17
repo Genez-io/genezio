@@ -82,7 +82,6 @@
         "inquirer": "^9.2.15",
         "isomorphic-git": "^1.25.6",
         "latest-version": "^9.0.0",
-        "libnpmpack": "^6.0.7",
         "lodash": "^4.17.21",
         "log-update": "^6.0.0",
         "loglevel-plugin-prefix": "^0.8.4",
