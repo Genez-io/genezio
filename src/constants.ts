@@ -12,6 +12,9 @@ let SENTRY_DSN: string;
 let GENEZIO_REGISTRY: string;
 let REQUIRED_GENEZIO_TYPES_VERSION_RANGE: string;
 let RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE: string;
+let AMPLITUDE_API_KEY: string;
+let GA_MEASUREMENT_ID: string;
+let GA_API_SECRET: string;
 
 const GENEZIO_TELEMETRY_ENDPOINT =
     "https://c4h2bia7gbokqdxxc6fe5sgj5e0imchy.lambda-url.us-east-1.on.aws/";
@@ -33,6 +36,9 @@ if (environment === "dev") {
         "yptt62gzkhog5xuxtuwxvb6ohi0dtfhg.lambda-url.us-east-1.on.aws/RegistryHTTPHandler";
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE = ">=1.0.0";
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE = "1.x";
+    AMPLITUDE_API_KEY = "";
+    GA_MEASUREMENT_ID = "";
+    GA_API_SECRET = "";
 } else {
     DASHBOARD_URL = "https://app.genez.io";
     FRONTEND_DOMAIN = "app.genez.io";
@@ -49,6 +55,9 @@ if (environment === "dev") {
         "rt3ersglfpyjlkzcjgql3s7xju0nuzym.lambda-url.us-east-1.on.aws/RegistryHTTPHandler";
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE = ">=1.0.0";
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE = "1.x";
+    AMPLITUDE_API_KEY = "a679983c996d08c941a2585b2354b169";
+    GA_MEASUREMENT_ID = "G-VR905VXGKC";
+    GA_API_SECRET = "f7rYPh9RQQm6OOtolT94Uw";
 }
 
 export {
@@ -66,4 +75,7 @@ export {
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
     NODE_MINIMUM_VERSION,
+    AMPLITUDE_API_KEY,
+    GA_MEASUREMENT_ID,
+    GA_API_SECRET,
 };

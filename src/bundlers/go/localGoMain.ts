@@ -141,7 +141,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 
     defer r.Body.Close()
 
-    class := {{class.packageName}}.New()
+    class := {{{class.packageName}}}.New()
 
     var isJsonRpcRequest bool
 

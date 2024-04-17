@@ -1,6 +1,7 @@
-export const clusterWrapperCode = `
-import http from "http";
+export const clusterWrapperCode = `import http from "http";
 import { handler as userHandler } from "./index.mjs";
+import url from "url";
+import querystring from "querystring"
 
 const port = process.argv[2];
 const server = http.createServer()
@@ -14,38 +15,37 @@ server.on('request', (req, res) => {
     return;
   }
 
-  let body = '';
+  const chunks = [];
   req.on('data', chunk => {
-    body += chunk.toString();
+    chunks.push(chunk);
   });
-
   req.on('end', () => {
     try {
+      const body = Buffer.concat(chunks);
       res.writeHead(200, { 'Content-Type': 'text/plain' });
-      if (body === "") {
-        res.end(JSON.stringify({ message: "No body" }));
-        return;
-      }
-
+      const parsed_url = url.parse(req.url)
       const requestContext = {
         http: {
-          method: "POST",
-          path: "/",
-          protocol: "1.1",
-          sourceIp: "::1",
+          method: req.method,
+          path: parsed_url.pathname,
+          protocol: req.protocol,
+          sourceIp: req.socket.remoteAddress,
           userAgent: req.headers["user-agent"],
         }
       }
 
-      const jsonParsedBody = {
+      userHandler({
+        headers: req.headers,
         body: body,
-        requestContext: requestContext
-      };
-
-      userHandler(jsonParsedBody).then((response) => {
-        res.end(response.body);
+        requestContext,
+        queryStringParameters: querystring.parse(parsed_url.query),
+      }).then((response) => {
+        res.end(response.body)
       })
-    } catch (error) {
+    }
+    catch (error) {
+      console.log(error)
+      res.end("400 bad request")
     }
   });
 })
@@ -54,5 +54,5 @@ server.listen(port, () => {
 })
 
 export { server }
-    
+
 `;

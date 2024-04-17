@@ -198,7 +198,7 @@ export abstract class GoBundler implements BundlerInterface {
             imports: [],
             class: {
                 name: mainClass.name,
-                packageName: mainClass.path?.substring(mainClass.path.lastIndexOf(path.sep) + 1),
+                packageName: mainClass.path?.substring(mainClass.path.lastIndexOf("/") + 1),
             },
             cronMethods: classConfiguration.methods
                 .filter((m) => m.type === TriggerType.cron)

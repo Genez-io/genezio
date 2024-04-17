@@ -4,7 +4,7 @@ import {
     CONTAINER_IMAGE_NODE20,
     DEFAULT_NODE_RUNTIME_IMAGE,
     supportedNodeRuntimes,
-} from "../../models/nodeRuntime.js";
+} from "../../models/projectOptions.js";
 
 export function generateNodeContainerManifest(nodeVersion: string) {
     let nodeVersionImage = DEFAULT_NODE_RUNTIME_IMAGE;

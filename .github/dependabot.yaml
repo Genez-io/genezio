@@ -18,6 +18,7 @@ updates:
       ignore:
           - dependency-name: "esbuild"
             versions: [">= 0.18.0"]
+          - dependency-name: "tree-sitter"
     - package-ecosystem: "gitsubmodule"
       target-branch: "main"
       directory: "/"

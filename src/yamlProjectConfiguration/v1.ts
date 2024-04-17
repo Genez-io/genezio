@@ -3,7 +3,7 @@ import yaml from "yaml";
 import { getFileDetails, writeToFile } from "../utils/file.js";
 import { regions } from "../utils/configs.js";
 import { isValidCron } from "cron-validator";
-import { DEFAULT_NODE_RUNTIME, NodeOptions, supportedNodeRuntimes } from "../models/nodeRuntime.js";
+import { DEFAULT_ARCHITECTURE, DEFAULT_NODE_RUNTIME, NodeOptions, supportedArchitectures, supportedNodeRuntimes } from "../models/projectOptions.js";
 import zod from "zod";
 import { log } from "../utils/logging.js";
 import { UserError, zodFormatError } from "../errors.js";
@@ -301,6 +301,7 @@ export class YamlProjectConfiguration {
             options: zod
                 .object({
                     nodeRuntime: zod.enum(supportedNodeRuntimes).default(DEFAULT_NODE_RUNTIME),
+                    architecture: zod.enum(supportedArchitectures).default(DEFAULT_ARCHITECTURE),
                 })
                 .optional(),
             sdk: zod

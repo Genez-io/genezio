@@ -58,4 +58,9 @@ export default class NpmPackageManager implements PackageManager {
         this.version = stdout.trim();
         return this.version;
     }
+
+    async pack(cwd: string, destination: string): Promise<string> {
+        const { stdout } = await $({ cwd })`npm pack --pack-destination ${destination}`;
+        return stdout.trim();
+    }
 }

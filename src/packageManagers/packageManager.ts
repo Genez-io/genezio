@@ -14,6 +14,7 @@ export interface PackageManager {
     addScopedRegistry(scope: string, url: string, authToken?: string): Promise<void>;
     removeScopedRegistry(scope: string): Promise<void>;
     getVersion(): Promise<string>;
+    pack(cwd: string, outputPath: string): Promise<string>;
 }
 
 export enum PackageManagerType {

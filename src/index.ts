@@ -37,7 +37,10 @@ process.on("SIGINT", async () => {
         commandOptions: "",
     });
 
-    await deleteFolder(temporaryFolder);
+    await deleteFolder(temporaryFolder).catch((error) => {
+        debugLogger.error(`Error deleting temporary folder ${temporaryFolder}`, error);
+    });
+
     process.exit();
 });
 process.on("exit", async () => {

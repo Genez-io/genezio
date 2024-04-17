@@ -1,5 +1,6 @@
 import zod from "zod";
 import { Language } from "./yamlProjectConfiguration/models.js";
+import colors from "colors";
 
 export class UserError extends Error {
     constructor(message: string) {
@@ -55,6 +56,15 @@ export const GENEZIO_GIT_NOT_FOUND = `Git is not installed. Please install it an
 https://git-scm.com/book/en/v2/Getting-Started-Installing-Git`;
 
 export const GENEZIO_CONFIGURATION_FILE_NOT_FOUND = `The genezio.yaml configuration file was not found. Please execute this command at the root of your project.\nIf you don't have a project yet, you can create one by running the command 'genezio create'.`;
+
+export const GENEZIO_DECORATOR_YAML_OVERLAP = function (overlappingClasses: string[]) {
+    const multipleOverlaps = overlappingClasses.length > 1;
+
+    return `${colors.yellow(`Warning:`)} found overlapping declarations in both ${colors.magenta("genezio.yaml")} and decorators for class${multipleOverlaps ? "es" : ""}: ${overlappingClasses.map((c) => colors.red(c || ""))}
+Please remove the class${multipleOverlaps ? "es" : ""} from the ${colors.magenta("genezio.yaml")} file to avoid conflicts.`;
+};
+export const GENEZIO_CLASS_STATIC_METHOD_NOT_SUPPORTED =
+    "Static methods are not supported in Genezio classes.";
 
 function collectIssueMap(e: zod.ZodError, issueMap: Map<string, string[]>) {
     for (const issue of e.issues) {

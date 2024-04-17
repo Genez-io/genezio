@@ -1,9 +1,9 @@
 import path from "path";
 import { YAMLBackend, YamlClass, YamlMethod } from "../yamlProjectConfiguration/v2.js";
 import { getAllFilesFromPath } from "./file.js";
-import { debugLogger } from "./logging.js";
+import { debugLogger, log } from "./logging.js";
 import { TriggerType } from "../yamlProjectConfiguration/models.js";
-import { UserError } from "../errors.js";
+import { GENEZIO_DECORATOR_YAML_OVERLAP, UserError } from "../errors.js";
 import { DecoratorExtractorFactory } from "./decorators/decoratorFactory.js";
 
 async function tryToReadClassInformationFromDecorators(
@@ -40,6 +40,7 @@ export async function scanClassesForDecorators(
     });
     const classes: YamlClass[] = yamlBackend.classes || [];
 
+    const overlappingYamlClasses: string[] = [];
     result.forEach((classInfo) => {
         if (classInfo.length < 1) {
             return;
@@ -53,7 +54,6 @@ export async function scanClassesForDecorators(
             const deployDecoratorFound = classInfo[0].decorators.find(
                 (d) => d.name === "GenezioDeploy",
             );
-
             if (!r && deployDecoratorFound) {
                 let type = TriggerType.jsonrpc;
                 const methods = classInfo[0].methods
@@ -91,10 +91,15 @@ export async function scanClassesForDecorators(
                     type: type,
                     methods: methods,
                 });
+            } else {
+                overlappingYamlClasses.push(r?.name || "");
             }
         }
     });
 
+    if (overlappingYamlClasses.length > 0) {
+        log.warn(GENEZIO_DECORATOR_YAML_OVERLAP(overlappingYamlClasses));
+    }
     return classes;
 }
 

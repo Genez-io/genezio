@@ -1,3 +1,4 @@
+import { UserError } from "../errors.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import getAuthStatus from "../requests/getAuthStatus.js";
 import { getProjectEnvFromProjectByName } from "../requests/getProjectInfoByName.js";
@@ -10,9 +11,13 @@ export const servicesEnvVariables = {
 async function getAuthFunctionUrl(
     projectName: string,
     region: string,
+    stage: string,
 ): Promise<string | undefined> {
-    const projectEnv = await getProjectEnvFromProjectByName(projectName, region, "prod").catch(
-        () => {
+    const projectEnv = await getProjectEnvFromProjectByName(projectName, region, stage).catch(
+        (error) => {
+            if (error instanceof UserError) {
+                throw error;
+            }
             return undefined;
         },
     );
@@ -37,9 +42,20 @@ async function getAuthFunctionUrl(
     }
 }
 
-export async function importServiceEnvVariables(projectName: string, region: string) {
+export async function importServiceEnvVariables(
+    projectName: string,
+    region: string,
+    stage: string,
+) {
     for (const [key, value] of Object.entries(servicesEnvVariables)) {
-        const envValue = await value(projectName, region);
+        let envValue;
+        try {
+            envValue = await value(projectName, region, stage);
+        } catch (error) {
+            if (error instanceof UserError) {
+                throw error;
+            }
+        }
         if (!envValue) {
             continue;
         }
