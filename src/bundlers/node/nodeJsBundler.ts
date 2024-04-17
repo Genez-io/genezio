@@ -25,7 +25,7 @@ import { generateNodeContainerManifest } from "./containerManifest.js";
 import { clusterWrapperCode } from "./clusterHandler.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import { clusterHandlerGenerator } from "./clusterHandlerGenerator.js";
-import { DEFAULT_NODE_RUNTIME } from "../../models/nodeRuntime.js";
+import { DEFAULT_NODE_RUNTIME } from "../../models/projectOptions.js";
 import getUser from "../../requests/getUser.js";
 
 export class NodeJsBundler implements BundlerInterface {
