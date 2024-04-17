@@ -76,6 +76,8 @@ if (!genezioClass) {
     }
 
     handler = handler ?? async function (event, context) {
+        console.log("DEBUG: event: " + JSON.stringify(event));
+        console.log("DEBUG: context: " + JSON.stringify(context));
         if (event.genezioEventType === "cron") {
             const method = event.methodName;
 
@@ -238,6 +240,9 @@ if (!genezioClass) {
                 });
             });
 
+            if(body.params && body.params.length > 0 && body.params[0].isGnzContext === true ) {
+                console.log("DEBUG: isGnzContext");
+            }
             try {
                 const response = Promise.resolve(object[method](...(body.params || [])))
                     .then((result) => {
