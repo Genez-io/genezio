@@ -33,7 +33,10 @@ async function writeSdk(
         await compileSdk(sdkPath, packageJson, language, publish);
     } else {
         if (exportAsTarball) {
-            const absoluteOutputPath = path.resolve(outputPath!);
+            if (!outputPath) {
+                throw new Error("Output path is required when exporting as a tarball.");
+            }
+            const absoluteOutputPath = path.resolve(outputPath);
             if (!fs.existsSync(absoluteOutputPath)) {
                 fs.mkdirSync(absoluteOutputPath, { recursive: true });
             }
