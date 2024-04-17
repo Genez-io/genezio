@@ -34,7 +34,7 @@ import typescript from "typescript";
 import { readdirSync } from "fs";
 import path from "path";
 import { statSync } from "fs";
-import { UserError } from "../../errors.js";
+import { GENEZIO_CLASS_STATIC_METHOD_NOT_SUPPORTED, UserError } from "../../errors.js";
 
 type Declaration = StructLiteral | TypeAlias | Enum;
 
@@ -387,6 +387,14 @@ export class AstGenerator implements AstGeneratorInterface {
             methodDeclarationCopy.modifiers?.[0].kind === typescript.SyntaxKind.PrivateKeyword
         ) {
             return undefined;
+        }
+
+        if (
+            methodDeclarationCopy.modifiers?.some(
+                (modifier) => modifier.kind === typescript.SyntaxKind.StaticKeyword,
+            )
+        ) {
+            throw new UserError(GENEZIO_CLASS_STATIC_METHOD_NOT_SUPPORTED);
         }
 
         for (const parameter of methodDeclarationCopy.parameters) {

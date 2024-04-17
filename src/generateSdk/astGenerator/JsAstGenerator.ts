@@ -23,7 +23,7 @@ import {
     isExportNamedDeclaration,
     Comment,
 } from "@babel/types";
-import { UserError } from "../../errors.js";
+import { GENEZIO_CLASS_STATIC_METHOD_NOT_SUPPORTED, UserError } from "../../errors.js";
 
 class AstGenerator implements AstGeneratorInterface {
     async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
@@ -58,6 +58,10 @@ class AstGenerator implements AstGeneratorInterface {
                     isClassMethod(path.node) &&
                     path.node.kind !== "constructor"
                 ) {
+                    if (path.node.static) {
+                        throw new UserError(GENEZIO_CLASS_STATIC_METHOD_NOT_SUPPORTED);
+                    }
+
                     const returnType: AnyType = {
                         type: AstNodeType.AnyLiteral,
                     };
@@ -128,6 +132,11 @@ class AstGenerator implements AstGeneratorInterface {
                     const returnType: AnyType = {
                         type: AstNodeType.AnyLiteral,
                     };
+
+                    if (path.node.static) {
+                        throw new UserError(GENEZIO_CLASS_STATIC_METHOD_NOT_SUPPORTED);
+                    }
+
                     classDefinition?.methods.push({
                         type: AstNodeType.MethodDefinition,
                         docString: createDocStringFromBabelComments(path.node.leadingComments),

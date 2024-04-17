@@ -63,6 +63,8 @@ export const GENEZIO_DECORATOR_YAML_OVERLAP = function (overlappingClasses: stri
     return `${colors.yellow(`Warning:`)} found overlapping declarations in both ${colors.magenta("genezio.yaml")} and decorators for class${multipleOverlaps ? "es" : ""}: ${overlappingClasses.map((c) => colors.red(c || ""))}
 Please remove the class${multipleOverlaps ? "es" : ""} from the ${colors.magenta("genezio.yaml")} file to avoid conflicts.`;
 };
+export const GENEZIO_CLASS_STATIC_METHOD_NOT_SUPPORTED =
+    "Static methods are not supported in Genezio classes.";
 
 function collectIssueMap(e: zod.ZodError, issueMap: Map<string, string[]>) {
     for (const issue of e.issues) {
