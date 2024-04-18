@@ -5,15 +5,14 @@ import { v4 as uuidv4 } from "uuid";
 import { AMPLITUDE_API_KEY, ENVIRONMENT } from "../constants.js";
 import version from "../utils/version.js";
 import { trackEvent } from "../requests/gaTrackEvent.js";
-import { track, init, Types } from '@amplitude/analytics-node';
+import { track, init, Types } from "@amplitude/analytics-node";
 import getUser from "../requests/getUser.js";
 import { UserPayload } from "../requests/models.js";
 
 init(AMPLITUDE_API_KEY, {
     flushQueueSize: 1,
     flushIntervalMillis: 100,
-}
-);
+});
 
 export type EventRequest = {
     eventType: TelemetryEventTypes;
@@ -24,7 +23,7 @@ export type EventRequest = {
 
 let user: UserPayload | undefined;
 
-async function getCachedUser(): Promise<UserPayload|undefined> {
+async function getCachedUser(): Promise<UserPayload | undefined> {
     if (!user) {
         user = await getUser().catch(() => undefined);
     }
@@ -133,15 +132,21 @@ export class GenezioTelemetry {
         const user = await getCachedUser().catch(() => undefined);
         const eventName = (eventRequest.eventType as string).toLowerCase();
 
-        const amplitudePromise = ENVIRONMENT === "dev" ? Promise.resolve() : track(eventName, undefined, {
-            device_id: sessionId,
-            user_id: user?.id,
-        }).promise
-        const gaPromise = ENVIRONMENT === "dev" ? Promise.resolve() : trackEvent((eventRequest.eventType as string).toLowerCase(), user?.id);
-        const analytics = AnalyticsHandler.sendEvent(analyticsData).catch((err) => {
+        const amplitudePromise =
+            ENVIRONMENT === "dev"
+                ? Promise.resolve()
+                : track(eventName, undefined, {
+                      device_id: sessionId,
+                      user_id: user?.id,
+                  }).promise;
+        const gaPromise =
+            ENVIRONMENT === "dev"
+                ? Promise.resolve()
+                : trackEvent((eventRequest.eventType as string).toLowerCase(), user?.id);
+        const analytics = AnalyticsHandler.sendEvent(analyticsData);
+
+        await Promise.all([gaPromise, analytics, amplitudePromise]).catch((err) => {
             debugLogger.debug(`[GenezioTelemetry]`, `Error sending event to analytics: ${err}`);
         });
-
-        await Promise.all([gaPromise, analytics, amplitudePromise]);
     }
 }
