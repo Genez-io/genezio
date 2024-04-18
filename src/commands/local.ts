@@ -203,12 +203,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     }
 
     await Promise.all([
-        startBackendWatcher(yamlProjectConfiguration.backend, options, sdkSynchronizer).catch(
-            (e) => {
-                log.error(new Error(`Failed to start the backend: ${e.message}`));
-                sdkSynchronizer.release();
-            },
-        ),
+        startBackendWatcher(yamlProjectConfiguration.backend, options, sdkSynchronizer),
         startFrontends(yamlProjectConfiguration.frontend, sdkSynchronizer),
     ]);
 }
