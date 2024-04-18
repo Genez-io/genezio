@@ -125,6 +125,11 @@ program
     .option("--backend", "Deploy only the backend application.", false)
     .option("--frontend", "Deploy only the frontend application.", false)
     .option("--install-deps", "Automatically install missing dependencies", false)
+    .option(
+        "--disable-optimization",
+        "Set this flag to true to disable dependency optimization.",
+        false,
+    )
     .option("--env <envFile>", "Load environment variables from a given file", undefined)
     .option("--stage <stage>", "Set the environment name to deploy to", "prod")
     .option(
@@ -447,6 +452,11 @@ program
     .option("--className <className>", "The name of the class that needs to be bundled.")
     .option("--cloudAdapter <cloudAdapter>", "The cloud adapter that will be used.")
     .option("--output <output>", "The output path of the bundled class.")
+    .option(
+        "--disable-optimization",
+        "Set this flag to true to disable dependency optimization.",
+        false,
+    )
     .action(async (options: GenezioBundleOptions) => {
         await bundleCommand(options).catch(async (error) => {
             logError(error);

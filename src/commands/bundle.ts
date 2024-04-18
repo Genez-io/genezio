@@ -73,7 +73,7 @@ export async function bundleCommand(options: GenezioBundleOptions) {
         (classInfo) => classInfo.classConfiguration.path === element.path,
     )!.program;
 
-    const result = await bundle(projectConfiguration, ast, element);
+    const result = await bundle(projectConfiguration, ast, element, options.disableOptimization);
     mkdirSync(options.output, { recursive: true });
     await zipDirectory(result.path, path.join(options.output, "bundle.zip"));
     writeToFile(options.output, "bundle.ast", JSON.stringify(result.configuration));

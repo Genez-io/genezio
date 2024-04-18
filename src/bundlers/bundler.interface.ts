@@ -21,6 +21,7 @@ export type BundlerInput = {
         commandParameters?: string[];
         installDeps?: boolean;
         allNonJsFilesPaths?: FileDetails[];
+        isOptimizationDisabled?: boolean;
     };
 };
 
