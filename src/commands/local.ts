@@ -68,7 +68,7 @@ import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
 import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 import { Mutex } from "async-mutex";
-
+import httpProxy from "http-proxy";
 type ClassProcess = {
     process: ChildProcess;
     startingCommand: string;
@@ -656,6 +656,28 @@ async function startServerHttp(
             }
 
             reject(error);
+        });
+
+        server.on("upgrade", (req, socket, head) => {
+            if (req.url === undefined) {
+                return;
+            }
+
+            const parsedURL = url.parse(req.url, true);
+            const localProcess = processForClasses.get(parsedURL.query["class"] as string);
+            const proxy = httpProxy.createProxyServer({
+                target: {
+                    host: "127.0.0.1",
+                    port: localProcess?.listeningPort || 8080,
+                },
+                ws: true,
+            });
+
+            try {
+                proxy.ws(req, socket, head);
+            } catch (error) {
+                throw new UserError("Error while upgrading the connection to websocket.");
+            }
         });
     });
 }
