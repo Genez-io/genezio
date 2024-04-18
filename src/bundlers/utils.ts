@@ -21,7 +21,7 @@ export async function bundle(
     ast: Program,
     element: ClassConfiguration,
     installDeps: boolean = true,
-    isOptimizationDisabled: boolean = false,
+    disableOptimization: boolean = false,
 ): Promise<BundlerOutput> {
     if (!(await fileExists(element.path))) {
         printAdaptiveLog("Bundling your code\n", "error");
@@ -81,7 +81,7 @@ export async function bundle(
             mode: "production",
             tmpFolder: tmpFolder,
             installDeps,
-            isOptimizationDisabled,
+            disableOptimization,
         },
     });
     debugLogger.debug(`The bundling process finished successfully for file ${element.path}.`);

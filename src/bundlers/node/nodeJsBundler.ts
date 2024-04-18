@@ -440,10 +440,10 @@ export class NodeJsBundler implements BundlerInterface {
             mode === "development"
                 ? this.#copyDependencies(undefined, temporaryFolder, mode, cwd)
                 : Promise.resolve(),
-            mode === "production" && input.extra.isOptimizationDisabled
+            mode === "production" && input.extra.disableOptimization
                 ? this.#copyDependencies(undefined, temporaryFolder, mode, cwd)
                 : Promise.resolve(),
-            mode === "production" && !input.extra.isOptimizationDisabled
+            mode === "production" && !input.extra.disableOptimization
                 ? this.#getDependenciesInfo(input.configuration.path, input, cwd)
                 : Promise.resolve(),
         ]);
