@@ -34,7 +34,6 @@ export default async function deleteProject(projectId: string): Promise<boolean>
     }).catch(async (error: Error) => {
         controller.abort();
         printAdaptiveLog(await messagePromise, "error");
-        debugLogger.debug("Error received", error);
         throw error;
     });
 

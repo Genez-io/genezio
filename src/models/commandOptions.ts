@@ -39,6 +39,7 @@ export interface GenezioListOptions extends BaseOptions {
 
 export interface GenezioDeleteOptions extends BaseOptions {
     force: boolean;
+    stage?: string;
 }
 
 export enum SourceType {

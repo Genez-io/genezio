@@ -417,11 +417,12 @@ program
     .command("delete")
     .argument("[projectId]", "ID of the project you want to delete.")
     .option("-f, --force", "Skip confirmation prompt for deletion.", false)
+    .option("--stage <stage>", "Delete only a specific stage of the project.")
     .summary("Delete a deployed project.")
     .description(
         "Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs.",
     )
-    .action(async (projectId = "", options: GenezioDeleteOptions) => {
+    .action(async (projectId: string | undefined, options: GenezioDeleteOptions) => {
         await deleteCommand(projectId, options).catch(async (error) => {
             logError(error);
             await GenezioTelemetry.sendEvent({
