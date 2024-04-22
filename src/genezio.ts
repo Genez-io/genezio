@@ -59,10 +59,10 @@ try {
         }
 
         setPackageManager(packageManager);
+    } else {
+        setPackageManager(PackageManagerType.npm);
     }
 } catch {
-    setPackageManager(PackageManagerType.npm);
-} finally {
     setPackageManager(PackageManagerType.npm);
 }
 
