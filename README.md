@@ -75,10 +75,9 @@ For more details on how to use `genezio`, you can check out the official [docume
 -   💡 Full static type-safety with **auto-completion** in your favorite editor.
 -   🧩 **Typesafe RPC**: Ensuring type safety and IDE auto-completion across diverse languages like TypeScript, Dart, Kotlin and Go, by leveraging advanced code analysis.
 -   🚀 Tested and production ready for Typescript.
-    -   Beta support for: Kotlin and DART.
-    -   Under development: GoLang and Swift.
+    -   Beta support for: GoLang, Kotlin and Dart.
 -   📦 Export the resulting SDK using dependency managers such as **NPM Registry** - private to your team or public for anybody to use.
--   🌐 **Framework agnostic**: works with React, Vue, Angular, Svelte, ExpressJS, Fastify, etc.
+-   🌐 **Framework agnostic**: works with React, Vue, Angular, Flutter, Svelte, etc.
 -   🎯 **Seamless Bundling and Compiling**
 -   ⚡ **Deploy with one command** the backend and the frontend.
 -   🔄 **Multiple staging environments** supported as well as local development environment.
@@ -123,10 +122,10 @@ The genezio CLI tool supports the commands shown in the following table:
 | genezio create frontend `<template>`                              | Create a new frontend project based on a template. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/genezio-create)                                                            |
 | genezio create templates [filter]                                 | Lists all the available starting templates. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/genezio-create)                                                                   |
 | genezio addClass `<class-path> [<class-type>]`                    | Adds a new class to the 'genezio.yaml' file. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/genezio-addclass)                                                                |
-| genezio generateSdk                                               | Generates an SDK corresponding to a deployed project. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/generatesdk)                                                            |
+| genezio sdk                                                       | Generates an SDK corresponding to a deployed project. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/generatesdk)                                                            |
 | genezio local --port `<port>`                                     | Runs a local environment with your project for testing purposes. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/local)                                                       |
 | genezio deploy                                                    | Deploys your project to the genezio infrastructure. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/deploy)                                                                   |
-| genezio ls `[<identifier>]`                                       | Displays details of your projects. You can view them all at once or display a particular one by providing its name or ID. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/ls) |
+| genezio list `[<identifier>]`                                     | Displays details of your projects. You can view them all at once or display a particular one by providing its name or ID. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/ls) |
 | genezio delete `[<project-id>]`                                   | Deletes the project described by the provided ID. If no ID is provided, lists all the projects and IDs. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/delete)               |
 | genezio account                                                   | Display information about the current account logged in. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/account)                                                             |
 | genezio login `<access-token>`                                    | Authenticates with genezio platform to deploy your code. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/login)                                                               |
@@ -137,38 +136,13 @@ The genezio CLI tool supports the commands shown in the following table:
 
 You can find out more about `genezio` from our [examples repository](https://github.com/Genez-io/genezio-examples).
 
-A detailed list of all the examples is below:
-
--   Javascript
-
-    -   [Getting Starting](https://github.com/Genez-io/genezio-examples/tree/main/javascript/getting-started) - an example for brand new users of `genezio`.
-    -   [Chat-GPT Reprashing App](https://github.com/Genez-io/genezio-examples/tree/main/javascript/chatgpt-project) - an example on how to integrate with ChatGPT API.
-    -   [Smart Contract Indexer with Blast API](https://github.com/Genez-io/genezio-examples/tree/main/javascript/blockchain) - a Web3 example that queries smart contracts events periodically and saves them in a MongoDB using Blast API.
-    -   [Integrate with Stripe](https://github.com/Genez-io/genezio-examples/tree/main/javascript/stripe-js) - an example on how to integrate with Stripe for managing payments.
-    -   [Todo List with React and MongoDB](https://github.com/Genez-io/genezio-examples/tree/main/javascript/todo-list) - an example of a todo application with users, auth and tasks.
-    -   [Todo List with React and SQL](https://github.com/Genez-io/genezio-examples/tree/main/javascript/todo-list-sql) - an example of a todo application with users, auth and tasks.
-    -   [Todo List with Vue and MongoDB](https://github.com/Genez-io/genezio-examples/tree/main/javascript/todo-list-vue) - an example of a todo application with users, auth and tasks.
-    -   [Webhooks](https://github.com/Genez-io/genezio-examples/tree/main/javascript/webhook) - an example on how to use webhooks with `genezio`.
-    -   [Crons](https://github.com/Genez-io/genezio-examples/tree/main/javascript/cron) - a simple class that has a method that will be called every minute.
-
--   Typescript
-
-    -   [Getting Started](https://github.com/Genez-io/genezio-examples/tree/main/typescript/getting-started) - an example for brand new users of `genezio`.
-    -   [Todo List with React and MongoDB](https://github.com/Genez-io/genezio-examples/tree/main/typescript/todo-list) - an example of a todo application with users, auth and tasks.
-    -   [Todo List with Angular and MongoDB](https://github.com/Genez-io/genezio-examples/tree/main/typescript/todo-list-angular) - an example of a todo application with users.
-    -   [Todo List with Flutter and MongoDB](https://github.com/Genez-io/genezio-examples/tree/main/typescript/todo-list-angular) - an example of a todo application with users.
-    -   [MultiversX](https://github.com/Genez-io/genezio-examples/tree/main/typescript/multiversx) - an example on an integration with the MultiversX blockchain. The application queries the balance of an existing account.
-
--   Dart
-    -   [Getting Started](https://github.com/Genez-io/genezio-examples/tree/main/dart/getting-started) - an example for brand new users of `genezio`.
-    -   [Todo List with React and MongoDB](https://github.com/Genez-io/genezio-examples/tree/main/dart/todo-list-react-typescript) - an example of a todo application.
-    -   [Chat with Yoda with ChatGPT API](https://github.com/Genez-io/genezio-examples/tree/main/dart/chat-with-yoda-chatgpt) - an example on how to integrate with ChatGPT API.
-
 # Official documentation
 
 ## How does genezio work?
 
 `genezio` is using JSON RPC 2.0 to facilitate the communication between SDK and your class. Your functions are deployed in the Genezio infrastructure. The functions are not executed on a long lasting Virtual Machine. Instead, our system uses a serverless approach. Whenever a request is received, your code is loaded and executed. This is more cost and energy efficient. However, the developer needs to take into account the following - the values of the global variables are not persistent between runs.
+
+Type safety is ensured by the generated SDK, even if the server and the client are not written in the same language. The CLI tool analyzes the server code generates client side types equivalent to the server side types, as well as functions with equivalent signatures.
 
 ## Detailed documentation
 

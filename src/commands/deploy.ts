@@ -301,7 +301,13 @@ export async function deployClasses(
             const ast = sdkResponse.sdkGeneratorInput.classesInfo.find(
                 (classInfo) => classInfo.classConfiguration.path === element.path,
             )!.program;
-            const output = await bundle(projectConfiguration, ast, element, options.installDeps);
+            const output = await bundle(
+                projectConfiguration,
+                ast,
+                element,
+                options.installDeps,
+                options.disableOptimization,
+            );
 
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             // check if the unzipped folder is smaller than 250MB

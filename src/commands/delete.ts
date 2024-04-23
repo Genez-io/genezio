@@ -6,26 +6,29 @@ import listProjects from "../requests/listProjects.js";
 import { getAuthToken } from "../utils/accounts.js";
 import { askQuestion } from "../utils/prompt.js";
 import { GenezioDeleteOptions } from "../models/commandOptions.js";
+import deleteStage from "../requests/deleteStage.js";
 
-export async function deleteCommand(projectId: string, options: GenezioDeleteOptions) {
+export async function deleteCommand(projectId: string | undefined, options: GenezioDeleteOptions) {
     // check if user is logged in
     const authToken = await getAuthToken();
     if (!authToken) {
         throw new UserError(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
 
-    const result = await deleteProjectHandler(projectId, options.force);
-
-    if (result) {
-        log.info("Your project has been deleted");
-    } else {
-        log.info("Your project has not been deleted. Please try again later.");
-    }
+    await deleteProjectHandler(projectId, options.force, options.stage).catch((error) => {
+        throw new UserError(
+            `Could not delete${options.stage ? " stage " + options.stage + " of" : ""} project ${projectId}: ${error.message}`,
+        );
+    });
 }
 
-async function deleteProjectHandler(projectId: string, forced: boolean): Promise<boolean> {
+async function deleteProjectHandler(
+    projectId: string | undefined,
+    forced: boolean,
+    stage?: string,
+): Promise<void> {
     // show prompt if no project id is selected
-    if (typeof projectId === "string" && projectId.trim().length === 0) {
+    if (!projectId) {
         const spinner = new Spinner("%s  ");
         spinner.setSpinnerString("|/-\\");
         spinner.start();
@@ -43,7 +46,7 @@ async function deleteProjectHandler(projectId: string, forced: boolean): Promise
 
         if (projects.length === 0) {
             log.info("There are no currently deployed projects.");
-            return false;
+            return;
         } else {
             log.info("No project ID specified, select an ID to delete from this list:");
             log.info(projects);
@@ -56,7 +59,7 @@ async function deleteProjectHandler(projectId: string, forced: boolean): Promise
         const selectionNum = Number(selection);
         if (isNaN(selectionNum) || selectionNum <= 0 || selectionNum > projects.length) {
             log.info("No valid selection was made, aborting.");
-            return false;
+            return;
         } else {
             forced = false;
             // get the project id from the selection
@@ -72,11 +75,15 @@ async function deleteProjectHandler(projectId: string, forced: boolean): Promise
 
         if (confirmation !== "y" && confirmation !== "Y") {
             log.warn("Aborted operation.");
-            return false;
+            return;
         }
     }
 
-    const status = await deleteProject(projectId);
-
-    return status;
+    if (stage) {
+        await deleteStage(projectId, stage);
+        log.info(`Stage ${stage} of project ${projectId} has been deleted`);
+    } else {
+        await deleteProject(projectId);
+        log.info(`Project ${projectId} has been deleted`);
+    }
 }

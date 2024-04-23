@@ -8,6 +8,7 @@ export interface BaseOptions {
 export interface GenezioBundleOptions extends BaseOptions {
     className: string;
     output: string;
+    disableOptimization: boolean;
     cloudAdapter?: CloudAdapterIdentifier;
 }
 
@@ -25,6 +26,7 @@ export interface GenezioDeployOptions extends BaseOptions {
     backend: boolean;
     frontend: boolean;
     installDeps: boolean;
+    disableOptimization: boolean;
     env?: string;
     stage: string;
     subdomain?: string;
@@ -37,6 +39,7 @@ export interface GenezioListOptions extends BaseOptions {
 
 export interface GenezioDeleteOptions extends BaseOptions {
     force: boolean;
+    stage?: string;
 }
 
 export enum SourceType {

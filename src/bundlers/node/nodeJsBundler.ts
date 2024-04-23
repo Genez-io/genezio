@@ -430,6 +430,7 @@ export class NodeJsBundler implements BundlerInterface {
         debugLogger.debug(
             `[NodeJSBundler] Get the list of node modules and bundling the javascript code for file ${input.path}.`,
         );
+
         await Promise.all([
             this.#bundleNodeJSCode(
                 input.configuration.path,
@@ -439,7 +440,10 @@ export class NodeJsBundler implements BundlerInterface {
             mode === "development"
                 ? this.#copyDependencies(undefined, temporaryFolder, mode, cwd)
                 : Promise.resolve(),
-            mode === "production"
+            mode === "production" && input.extra.disableOptimization
+                ? this.#copyDependencies(undefined, temporaryFolder, mode, cwd)
+                : Promise.resolve(),
+            mode === "production" && !input.extra.disableOptimization
                 ? this.#getDependenciesInfo(input.configuration.path, input, cwd)
                 : Promise.resolve(),
         ]);

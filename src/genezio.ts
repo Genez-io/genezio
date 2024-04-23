@@ -59,10 +59,10 @@ try {
         }
 
         setPackageManager(packageManager);
+    } else {
+        setPackageManager(PackageManagerType.npm);
     }
 } catch {
-    setPackageManager(PackageManagerType.npm);
-} finally {
     setPackageManager(PackageManagerType.npm);
 }
 
@@ -125,6 +125,11 @@ program
     .option("--backend", "Deploy only the backend application.", false)
     .option("--frontend", "Deploy only the frontend application.", false)
     .option("--install-deps", "Automatically install missing dependencies", false)
+    .option(
+        "--disable-optimization",
+        "Set this flag to true to disable dependency optimization.",
+        false,
+    )
     .option("--env <envFile>", "Load environment variables from a given file", undefined)
     .option("--stage <stage>", "Set the environment name to deploy to", "prod")
     .option(
@@ -412,11 +417,12 @@ program
     .command("delete")
     .argument("[projectId]", "ID of the project you want to delete.")
     .option("-f, --force", "Skip confirmation prompt for deletion.", false)
+    .option("--stage <stage>", "Delete only a specific stage of the project.")
     .summary("Delete a deployed project.")
     .description(
         "Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs.",
     )
-    .action(async (projectId = "", options: GenezioDeleteOptions) => {
+    .action(async (projectId: string | undefined, options: GenezioDeleteOptions) => {
         await deleteCommand(projectId, options).catch(async (error) => {
             logError(error);
             await GenezioTelemetry.sendEvent({
@@ -447,6 +453,11 @@ program
     .option("--className <className>", "The name of the class that needs to be bundled.")
     .option("--cloudAdapter <cloudAdapter>", "The cloud adapter that will be used.")
     .option("--output <output>", "The output path of the bundled class.")
+    .option(
+        "--disable-optimization",
+        "Set this flag to true to disable dependency optimization.",
+        false,
+    )
     .action(async (options: GenezioBundleOptions) => {
         await bundleCommand(options).catch(async (error) => {
             logError(error);
