@@ -26,11 +26,6 @@ export async function deployRequest(
     }
     printAdaptiveLog("Checking your credentials", "end");
 
-    // TODO: Remove this trick when the backend is ready to receive the language without the dot
-    for (const classConfiguration of projectConfiguration.classes) {
-        classConfiguration.language = "." + classConfiguration.language;
-    }
-
     const json = JSON.stringify({
         options: projectConfiguration.options,
         classes: projectConfiguration.classes,
