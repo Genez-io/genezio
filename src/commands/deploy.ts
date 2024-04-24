@@ -63,6 +63,8 @@ import { getRandomCloudProvider, isProjectDeployed } from "../utils/abTesting.js
 import { ClusterCloudAdapter } from "../cloudAdapter/cluster/clusterAdapter.js";
 import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
+import { isLoggedIn } from "../utils/accounts.js";
+import { loginCommand } from "./login.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -97,19 +99,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
 
         checkExperimentalDecorators(backendCwd);
     }
-    // TODO: check this in deployClasses function
-    //
-    // // check if user is logged in
-    // if (configuration.cloudProvider !== CloudProviderIdentifier.SELF_HOSTED_AWS) {
-    //     if (!(await isLoggedIn())) {
-    //         debugLogger.debug("No auth token found. Starting automatic authentication...");
-    //         await loginCommand("", false);
-    //     }
-    // }
-    //
-    // const cloudAdapter = getCloudAdapter(
-    //     configuration.cloudProvider || CloudProviderIdentifier.GENEZIO,
-    // );
+
     let deployClassesResult;
     backend: if (configuration.backend && !options.frontend) {
         if (configuration.backend.classes?.length === 0) {
@@ -375,6 +365,14 @@ export async function deployClasses(
             path: path.relative(process.cwd(), c.path).replace(/\.[^/.]+$/, ""),
         };
     });
+
+    // check if user is logged in
+    if (projectConfiguration.cloudProvider !== CloudProviderIdentifier.SELF_HOSTED_AWS) {
+        if (!(await isLoggedIn())) {
+            debugLogger.debug("No auth token found. Starting automatic authentication...");
+            await loginCommand("", false);
+        }
+    }
 
     // TODO: Enable cloud adapter setting for every class
     const cloudAdapter = getCloudAdapter(

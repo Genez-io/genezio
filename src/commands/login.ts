@@ -9,7 +9,7 @@ import { asciiCapybara } from "../utils/strings.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 
 export async function loginCommand(accessToken: string, logSuccesMessage = true) {
-    log.info(asciiCapybara);
+    if (logSuccesMessage) log.info(asciiCapybara);
 
     await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_LOGIN,
