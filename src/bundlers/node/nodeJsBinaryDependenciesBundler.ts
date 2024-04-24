@@ -5,9 +5,7 @@ import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js
 import { fileExists } from "../../utils/file.js";
 import { log } from "../../utils/logging.js";
 import { debugLogger } from "../../utils/logging.js";
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import packageManager from "../../packageManagers/packageManager.js";
+import { getPackageManager } from "../../packageManagers/packageManager.js";
 import { UserError } from "../../errors.js";
 import { $ } from "execa";
 
@@ -68,7 +66,7 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
         }
 
         if (binaryDependencies.length > 0) {
-            await packageManager.install(
+            await getPackageManager().install(
                 ["node-addon-api", "@mapbox/node-pre-gyp"],
                 tempFolderPath,
             );
