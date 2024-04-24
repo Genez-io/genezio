@@ -524,7 +524,8 @@ export async function deployFrontend(
             await runScript(frontend.scripts?.build, frontend.path);
         });
     } catch (error) {
-        log.info(`Skipping frontend ${index} deployment because the build script failed.`);
+        if (error instanceof Error) log.error(new Error(error.message));
+        log.info(`Skipping frontend ${index + 1} deployment because the build script failed.`);
         return;
     }
 
