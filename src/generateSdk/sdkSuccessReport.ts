@@ -3,7 +3,7 @@ import { GenezioCommand, ProjectPrimaryKeys } from "../utils/reporter.js";
 import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import colors from "colors";
 import boxen from "boxen";
-import packageManager from "../packageManagers/packageManager.js";
+import { getPackageManager } from "../packageManagers/packageManager.js";
 import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
 import { UserError } from "../errors.js";
 
@@ -54,7 +54,7 @@ export function reportSuccessForSdkJs(
                 `${colors.green(
                     "To install the SDK in your client, run this command in your client's root:",
                 )}\n${colors.magenta(
-                    `${packageManager.command} add @genezio-sdk/${projectConfiguration!.name}@1.0.0-${projectConfiguration!.stage}`,
+                    `${getPackageManager().command} add @genezio-sdk/${projectConfiguration!.name}@1.0.0-${projectConfiguration!.stage}`,
                 )}\n\n${colors.green("Then import your classes like this:")}\n${colors.magenta(
                     `import { ${className} } from "@genezio-sdk/${projectConfiguration!.name}"`,
                 )}`,
