@@ -31,12 +31,14 @@ import {
     getDartSdkVersion,
 } from "../../utils/dart.js";
 import { createTemporaryFolder, deleteFolder, fileExists } from "../../utils/file.js";
-import { runNewProcess, runNewProcessWithResultAndReturnCode } from "../../utils/process.js";
+import { runNewProcess } from "../../utils/process.js";
 import {
     GENEZIO_NO_SUPPORT_FOR_BUILT_IN_TYPE,
     GENEZIO_NO_SUPPORT_FOR_OPTIONAL_DART,
     UserError,
 } from "../../errors.js";
+import { $, ExecaError } from "execa";
+import { log } from "../../utils/logging.js";
 
 // These are dart:core build-in errors that are not currently supported by the Genezio AST
 const dartNotSupportedBuiltInErrors = [
@@ -285,14 +287,16 @@ export class AstGenerator implements AstGeneratorInterface {
         const classAbsolutePath = path.resolve(input.class.path);
         const modelsAbsolutePath = path.join(process.cwd(), "lib", "models");
 
-        const result = await runNewProcessWithResultAndReturnCode(
-            `dartaotruntime ${genezioAstExtractorPath} ${classAbsolutePath} ${modelsAbsolutePath}`,
-        );
+        const result =
+            await $`dartaotruntime ${genezioAstExtractorPath} ${classAbsolutePath} ${modelsAbsolutePath}`.catch(
+                (error: ExecaError) => {
+                    log.error(error.stderr);
+                    throw new UserError(
+                        "Error: Failed to generate AST for class " + input.class.path,
+                    );
+                },
+            );
 
-        // If the result is not 0, it means that the ast generator failed.
-        if (result.code !== 0) {
-            throw new UserError(`Dart runtime error: ${result.stderr}`);
-        }
         const ast = JSON.parse(result.stdout);
 
         const mainClasses = ast.classes.filter((c: any) => c.name === input.class.name);

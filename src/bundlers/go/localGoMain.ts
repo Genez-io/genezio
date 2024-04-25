@@ -287,6 +287,6 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 func main() {
 	port := os.Args[1]
 	http.HandleFunc("/", handleRequest)
-	http.ListenAndServe(":"+port, nil)
+	http.ListenAndServe("localhost:"+port, nil)
 }
 `;
