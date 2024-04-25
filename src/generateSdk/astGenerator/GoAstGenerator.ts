@@ -14,10 +14,11 @@ import {
     SourceType,
     StructLiteral,
 } from "../../models/genezioModels.js";
-import { runNewProcess, runNewProcessWithResultAndReturnCode } from "../../utils/process.js";
+import { runNewProcess } from "../../utils/process.js";
 import { checkIfGoIsInstalled } from "../../utils/go.js";
 import { createTemporaryFolder } from "../../utils/file.js";
 import { UserError } from "../../errors.js";
+import { $, ExecaError } from "execa";
 
 const releaseTag = "v0.1.1";
 const binaryName = `golang_ast_generator_${releaseTag}`;
@@ -73,14 +74,12 @@ export class AstGenerator implements AstGeneratorInterface {
             await this.#compileGenezioGoAstExtractor();
         }
         const classAbsolutePath = path.resolve(input.class.path);
-        const result = await runNewProcessWithResultAndReturnCode(
-            `${goAstGeneratorPath} ${classAbsolutePath}`,
-            input.root,
-        );
-        if (result.code !== 0) {
-            log.error(result.stderr);
+        const result = await $({
+            cwd: input.root,
+        })`${goAstGeneratorPath} ${classAbsolutePath}`.catch((error: ExecaError) => {
+            log.error(error.stderr);
             throw new UserError("Error: Failed to generate AST for class " + input.class.path);
-        }
+        });
 
         const ast = JSON.parse(result.stdout);
         const error = ast.error;
