@@ -66,6 +66,9 @@ Please remove the class${multipleOverlaps ? "es" : ""} from the ${colors.magenta
 export const GENEZIO_CLASS_STATIC_METHOD_NOT_SUPPORTED =
     "Static methods are not supported in Genezio classes.";
 
+export const GENEZIO_PLEASE_REPORT_ISSUE =
+    "Three was a problem on our side. Please report this issue at https://github.com/genez-io/genezio/issues.";
+
 function collectIssueMap(e: zod.ZodError, issueMap: Map<string, string[]>) {
     for (const issue of e.issues) {
         if (issue.code === "invalid_union") {
