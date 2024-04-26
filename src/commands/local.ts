@@ -626,13 +626,28 @@ async function startServerHttp(
             return;
         }
 
-        const response = await communicateWithProcess(
-            localProcess,
-            req.params.className,
-            reqToFunction,
-            processForClasses,
-        );
-        sendResponse(res, response.data);
+        try {
+            const response = await communicateWithProcess(
+                localProcess,
+                req.params.className,
+                reqToFunction,
+                processForClasses,
+            );
+            sendResponse(res, response.data);
+        } catch (error) {
+            sendResponse(res, {
+                body: JSON.stringify({
+                    error: { code: -32000, message: "Internal error" },
+                }),
+                isBase64Encoded: false,
+                statusCode: "500",
+                statusDescription: "Internal Server Error",
+                headers: {
+                    "content-type": "application/json",
+                },
+            });
+            return;
+        }
     }
 
     app.all(`/:className/:methodName`, async (req, res) => {
@@ -1018,7 +1033,7 @@ async function communicateWithProcess(
                 processForClasses,
                 localProcess.envVars,
             );
-            throw new UserError("There was an error connecting to the server");
+            log.error(`There was an error connecting to the server. Restarted ${className}.`);
         }
         throw error;
     }
