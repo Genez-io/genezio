@@ -1018,6 +1018,7 @@ async function communicateWithProcess(
                 processForClasses,
                 localProcess.envVars,
             );
+            throw new UserError("There was an error connecting to the server");
         }
         throw error;
     }

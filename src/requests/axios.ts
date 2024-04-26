@@ -2,7 +2,6 @@ import axios, { AxiosError } from "axios";
 import { debugLogger } from "../utils/logging.js";
 import { StatusError } from "./models.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG, UserError } from "../errors.js";
-import Sentry from "@sentry/node";
 
 enum GenezioErrorCode {
     UnknownError = 0,
@@ -24,8 +23,7 @@ axios.interceptors.response.use(
     function (error: AxiosError<StatusError>) {
         const response = error.response;
         if (!response) {
-            Sentry.captureException(error);
-            throw new UserError("There was an error connecting to the server.");
+            throw error;
         }
 
         if (response.status === 402) {
