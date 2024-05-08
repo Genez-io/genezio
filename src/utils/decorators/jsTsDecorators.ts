@@ -16,9 +16,9 @@ import {
 } from "@babel/types";
 import babel from "@babel/core";
 import { createRequire } from "module";
-import { default as Parser } from "tree-sitter";
 import { debugLogger } from "../logging.js";
 import { DecoratorExtractor } from "./baseDecoratorExtractor.js";
+import { isWebContainer } from "@webcontainer/env";
 
 export class JsTsDecoratorExtractor extends DecoratorExtractor {
     fileFilter(cwd: string): (file: FileDetails) => boolean {
@@ -164,9 +164,16 @@ export class JsTsDecoratorExtractor extends DecoratorExtractor {
         const classes: ClassInfo[] = [];
 
         const require = createRequire(import.meta.url);
-        const go = require("tree-sitter-typescript").typescript;
-        const parser = new Parser();
-        parser.setLanguage(go);
+        const ts = require("tree-sitter-typescript").typescript;
+
+        // Tree-Sitter is a binary dependency and it is not supported in web
+        // containers. In web containers, we use the WASM version of Tree-Sitter.
+        const treeSitter = isWebContainer()
+            ? await import("web-tree-sitter")
+            : await import("tree-sitter");
+
+        const parser = new treeSitter.default();
+        parser.setLanguage(ts);
 
         const tree = parser.parse(inputCode);
 
