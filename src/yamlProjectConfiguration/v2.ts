@@ -2,11 +2,20 @@ import { YAMLContext, parse as parseYaml, stringify as stringifyYaml } from "yam
 import zod from "zod";
 import nativeFs from "fs";
 import { IFs } from "memfs";
+import { log } from "../utils/logging.js";
 import { regions } from "../utils/configs.js";
 import { GENEZIO_CONFIGURATION_FILE_NOT_FOUND, UserError, zodFormatError } from "../errors.js";
 import { Language } from "./models.js";
-import { DEFAULT_ARCHITECTURE, DEFAULT_NODE_RUNTIME, supportedArchitectures, supportedNodeRuntimes } from "../models/projectOptions.js";
-import { CloudProviderIdentifier, CloudProviderMapping } from "../models/cloudProviderIdentifier.js";
+import {
+    DEFAULT_ARCHITECTURE,
+    DEFAULT_NODE_RUNTIME,
+    supportedArchitectures,
+    supportedNodeRuntimes,
+} from "../models/projectOptions.js";
+import {
+    CloudProviderIdentifier,
+    CloudProviderMapping,
+} from "../models/cloudProviderIdentifier.js";
 import { PackageManagerType } from "../packageManagers/packageManager.js";
 import { TriggerType } from "./models.js";
 import { isValidCron } from "cron-validator";
@@ -134,8 +143,15 @@ function parseGenezioConfig(config: unknown) {
     const parsedConfig = v2Schema.parse(config);
 
     // Update cloudProvider using the mapping if the current provider is a legacy version
-    if (parsedConfig.backend?.cloudProvider && CloudProviderMapping[parsedConfig.backend.cloudProvider as CloudProviderIdentifier]) {
-        parsedConfig.backend.cloudProvider = CloudProviderMapping[parsedConfig.backend.cloudProvider as CloudProviderIdentifier];
+    if (
+        parsedConfig.backend?.cloudProvider &&
+        CloudProviderMapping[parsedConfig.backend.cloudProvider as CloudProviderIdentifier]
+    ) {
+        log.warn(
+            `Legacy cloud provider used: '${parsedConfig.backend.cloudProvider}'. Use '${CloudProviderMapping[parsedConfig.backend.cloudProvider as CloudProviderIdentifier]}' instead.`,
+        );
+        parsedConfig.backend.cloudProvider =
+            CloudProviderMapping[parsedConfig.backend.cloudProvider as CloudProviderIdentifier];
     }
 
     return parsedConfig;
