@@ -8,6 +8,7 @@ export const genezioRuntimeHandlerGenerator = (className: string): string => `
 import {  ${className.replace(/["]/g, "")} as genezioClass } from "./module.mjs";
 
 var handler = undefined;
+var constructorTimeMilli = undefined;
 
 if (!genezioClass) {
     console.error(
@@ -34,6 +35,7 @@ if (!genezioClass) {
     };
 
     let object;
+    let startTime = new Date();
     try {
         object = new genezioClass();
     } catch (error) {
@@ -53,6 +55,7 @@ if (!genezioClass) {
             };
         };
     }
+    constructorTimeMilli = new Date() - startTime;
 
     handler = handler ?? async function (event) {
         if (event.http && event.http.method === "OPTIONS") {
@@ -251,5 +254,5 @@ if (!genezioClass) {
     }
 }
 
-export { handler };
+export { handler, constructorTimeMilli };
 `;
