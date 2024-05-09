@@ -35,7 +35,7 @@ if (!genezioClass) {
 
     let object;
 
-    handler = handler ?? async function (event) {
+    handler ??= async function (event) {
         if (event.http && event.http.method === "OPTIONS") {
             const response = {
                 statusCode: 200,
@@ -45,7 +45,7 @@ if (!genezioClass) {
         }
 
         try {
-            object = object ?? new genezioClass();
+            object ??= new genezioClass();
         } catch (error) {
             handler = async function (event) {
                 await sendError(error);
