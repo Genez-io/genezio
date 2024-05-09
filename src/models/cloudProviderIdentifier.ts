@@ -13,12 +13,25 @@ export enum CloudAdapterIdentifier {
 }
 
 export enum CloudProviderIdentifier {
-    GENEZIO = "genezio",
+    CAPYBARA_LINUX = "genezioCloud",
+    CAPYBARA = "genezioCloudUnikernel",
+    CLUSTER = "genezioCluster",
+    GENEZIO = "genezioAws",
+
     SELF_HOSTED_AWS = "selfHostedAws",
-    CAPYBARA = "capybara",
-    CAPYBARA_LINUX = "capybaraLinux",
-    CLUSTER = "cluster",
+
+    GENEZIO_LEGACY = "genezio",
+    CAPYBARA_LEGACY = "capybara",
+    CAPYBARA_LINUX_LEGACY = "capybaraLinux",
+    CLUSTER_LEGACY = "cluster",
 }
+
+export const CloudProviderMapping: Partial<Record<CloudProviderIdentifier, CloudProviderIdentifier>> = {
+    [CloudProviderIdentifier.CAPYBARA_LEGACY]: CloudProviderIdentifier.CAPYBARA,
+    [CloudProviderIdentifier.CAPYBARA_LINUX_LEGACY]: CloudProviderIdentifier.CAPYBARA_LINUX,
+    [CloudProviderIdentifier.GENEZIO_LEGACY]: CloudProviderIdentifier.GENEZIO,
+    [CloudProviderIdentifier.CLUSTER_LEGACY]: CloudProviderIdentifier.CLUSTER,
+};
 
 export interface LambdaResponse {
     statusDescription: string;
