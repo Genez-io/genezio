@@ -3,7 +3,6 @@ import { log } from "../utils/logging.js";
 import path from "path";
 import { exit } from "process";
 import {
-    ENVIRONMENT,
     DASHBOARD_URL,
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
@@ -118,27 +117,6 @@ export async function deployCommand(options: GenezioDeployOptions) {
             });
             throw error;
         });
-
-        // Enable cloud provider AB Testing
-        // This is ONLY done in the dev environment and if DISABLE_AB_TESTING is not set.
-        if (
-            ENVIRONMENT === "dev" &&
-            configuration.backend &&
-            process.env["DISABLE_AB_TESTING"] !== "true"
-        ) {
-            const yamlConfig = await configIOController.read(/* fillDefaults= */ false);
-            if (!yamlConfig.backend) {
-                throw new UserError("No backend entry in genezio configuration file.");
-            }
-            yamlConfig.backend.cloudProvider = await performCloudProviderABTesting(
-                configuration.name,
-                configuration.region,
-                configuration.backend.cloudProvider,
-            );
-            // Write the new configuration in the config file
-            await configIOController.write(yamlConfig);
-            configuration.backend.cloudProvider = yamlConfig.backend.cloudProvider;
-        }
 
         await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_START,
