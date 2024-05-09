@@ -200,6 +200,10 @@ if (!genezioClass) {
                 });
             });
 
+            if(body.params && body.params.length > 0 && body.params[0].isGnzContext === true ) {
+                body.params[0].requestContext = event.requestContext;
+                body.params[0].headers = event.headers;
+            }
             try {
                 const response = Promise.resolve(object[method](...(body.params || [])))
                     .then((result) => {
