@@ -13,24 +13,27 @@ export enum CloudAdapterIdentifier {
 }
 
 export enum CloudProviderIdentifier {
-    CAPYBARA_LINUX = "genezio-cloud",
-    CAPYBARA = "genezio-unikernel",
-    CLUSTER = "genezio-cluster",
-    GENEZIO = "genezio-aws",
-
-    SELF_HOSTED_AWS = "selfHostedAws",
+    GENEZIO_CLOUD = "genezio-cloud",
+    GENEZIO_UNIKERNEL = "genezio-unikernel",
+    GENEZIO_CLUSTER = "genezio-cluster",
+    GENEZIO_AWS = "genezio-aws",
+    SELF_HOSTED_AWS = "self-hosted-aws",
 
     GENEZIO_LEGACY = "genezio",
     CAPYBARA_LEGACY = "capybara",
     CAPYBARA_LINUX_LEGACY = "capybaraLinux",
     CLUSTER_LEGACY = "cluster",
+    SELF_HOSTED_AWS_LEGACY = "selfHostedAws",
 }
 
-export const CloudProviderMapping: Partial<Record<CloudProviderIdentifier, CloudProviderIdentifier>> = {
-    [CloudProviderIdentifier.CAPYBARA_LEGACY]: CloudProviderIdentifier.CAPYBARA,
-    [CloudProviderIdentifier.CAPYBARA_LINUX_LEGACY]: CloudProviderIdentifier.CAPYBARA_LINUX,
-    [CloudProviderIdentifier.GENEZIO_LEGACY]: CloudProviderIdentifier.GENEZIO,
-    [CloudProviderIdentifier.CLUSTER_LEGACY]: CloudProviderIdentifier.CLUSTER,
+export const CloudProviderMapping: Partial<
+    Record<CloudProviderIdentifier, CloudProviderIdentifier>
+> = {
+    [CloudProviderIdentifier.CAPYBARA_LEGACY]: CloudProviderIdentifier.GENEZIO_UNIKERNEL,
+    [CloudProviderIdentifier.CAPYBARA_LINUX_LEGACY]: CloudProviderIdentifier.GENEZIO_CLOUD,
+    [CloudProviderIdentifier.GENEZIO_LEGACY]: CloudProviderIdentifier.GENEZIO_AWS,
+    [CloudProviderIdentifier.CLUSTER_LEGACY]: CloudProviderIdentifier.GENEZIO_CLUSTER,
+    [CloudProviderIdentifier.SELF_HOSTED_AWS_LEGACY]: CloudProviderIdentifier.SELF_HOSTED_AWS,
 };
 
 export interface LambdaResponse {

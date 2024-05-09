@@ -29,13 +29,13 @@ export async function bundleCommand(options: GenezioBundleOptions) {
     // Override cloud provider if it's set using command line args
     switch (options.cloudAdapter) {
         case CloudAdapterIdentifier.AWS:
-            backendConfiguration.cloudProvider = CloudProviderIdentifier.GENEZIO;
+            backendConfiguration.cloudProvider = CloudProviderIdentifier.GENEZIO_AWS;
             break;
         case CloudAdapterIdentifier.RUNTIME:
-            backendConfiguration.cloudProvider = CloudProviderIdentifier.CAPYBARA_LINUX;
+            backendConfiguration.cloudProvider = CloudProviderIdentifier.GENEZIO_CLOUD;
             break;
         case CloudAdapterIdentifier.CLUSTER:
-            backendConfiguration.cloudProvider = CloudProviderIdentifier.CLUSTER;
+            backendConfiguration.cloudProvider = CloudProviderIdentifier.GENEZIO_CLUSTER;
             break;
     }
 

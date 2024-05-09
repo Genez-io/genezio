@@ -376,7 +376,7 @@ export async function deployClasses(
 
     // TODO: Enable cloud adapter setting for every class
     const cloudAdapter = getCloudAdapter(
-        configuration.backend?.cloudProvider || CloudProviderIdentifier.GENEZIO,
+        configuration.backend?.cloudProvider || CloudProviderIdentifier.GENEZIO_AWS,
     );
     const result = await cloudAdapter.deploy(bundlerResultArray, projectConfiguration, {
         stage: options.stage,
@@ -589,7 +589,7 @@ export async function deployFrontend(
 
     frontend.subdomain = options.subdomain || frontend.subdomain;
 
-    const cloudAdapter = getCloudAdapter(CloudProviderIdentifier.GENEZIO);
+    const cloudAdapter = getCloudAdapter(CloudProviderIdentifier.GENEZIO_AWS);
     const url = await cloudAdapter.deployFrontend(name, region, frontend, stage);
     return url;
 }
@@ -639,12 +639,12 @@ async function handleSdk(
 
 function getCloudAdapter(provider: string): CloudAdapter {
     switch (provider) {
-        case CloudProviderIdentifier.GENEZIO:
-        case CloudProviderIdentifier.CAPYBARA:
+        case CloudProviderIdentifier.GENEZIO_AWS:
+        case CloudProviderIdentifier.GENEZIO_UNIKERNEL:
             return new GenezioCloudAdapter();
-        case CloudProviderIdentifier.CAPYBARA_LINUX:
+        case CloudProviderIdentifier.GENEZIO_CLOUD:
             return new GenezioCloudAdapter();
-        case CloudProviderIdentifier.CLUSTER:
+        case CloudProviderIdentifier.GENEZIO_CLUSTER:
             return new ClusterCloudAdapter();
         case CloudProviderIdentifier.SELF_HOSTED_AWS:
             return new SelfHostedAwsAdapter();
@@ -664,10 +664,10 @@ export async function performCloudProviderABTesting(
     const isAlreadyDeployed = await isProjectDeployed(projectName, projectRegion);
 
     // We won't perform AB testing if the cloud provider is set for runtime, self-hosted or cluster.
-    if (!isAlreadyDeployed && projectCloudProvider === CloudProviderIdentifier.GENEZIO) {
+    if (!isAlreadyDeployed && projectCloudProvider === CloudProviderIdentifier.GENEZIO_AWS) {
         const randomCloudProvider = getRandomCloudProvider();
 
-        if (randomCloudProvider !== CloudProviderIdentifier.GENEZIO) {
+        if (randomCloudProvider !== CloudProviderIdentifier.GENEZIO_AWS) {
             debugLogger.debug(
                 "You've been visited by the AB testing fairy! 🧚‍♂️ Your cloud provider is now set to",
                 randomCloudProvider,

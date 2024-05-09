@@ -99,7 +99,7 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
             `[NodeJSBinaryDependenciesBundler] Redownload binary dependencies if necessary for file ${input.path}...`,
         );
         const architecture =
-            input.projectConfiguration.cloudProvider == CloudProviderIdentifier.GENEZIO
+            input.projectConfiguration.cloudProvider == CloudProviderIdentifier.GENEZIO_AWS
                 ? Architecture.ARM64
                 : Architecture.X64;
         // 4. Redownload binary dependencies if necessary

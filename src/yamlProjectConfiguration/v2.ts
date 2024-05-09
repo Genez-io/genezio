@@ -134,11 +134,11 @@ function parseGenezioConfig(config: unknown) {
     const parsedConfig = v2Schema.parse(config);
 
     // Update cloudProvider using the mapping if the current provider is a legacy version
-    if (parsedv2Schema.backend?.cloudProvider && CloudProviderMapping[parsedv2Schema.backend.cloudProvider as CloudProviderIdentifier]) {
-        parsedv2Schema.backend.cloudProvider = CloudProviderMapping[parsedv2Schema.backend.cloudProvider as CloudProviderIdentifier];
+    if (parsedConfig.backend?.cloudProvider && CloudProviderMapping[parsedConfig.backend.cloudProvider as CloudProviderIdentifier]) {
+        parsedConfig.backend.cloudProvider = CloudProviderMapping[parsedConfig.backend.cloudProvider as CloudProviderIdentifier];
     }
 
-    return parsedv2Schema;
+    return parsedConfig;
 }
 
 function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
@@ -154,7 +154,7 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
                 defaultConfig.backend.language.architecture ??= DEFAULT_ARCHITECTURE;
         }
 
-        defaultConfig.backend.cloudProvider ??= CloudProviderIdentifier.CAPYBARA_LINUX;
+        defaultConfig.backend.cloudProvider ??= CloudProviderIdentifier.GENEZIO_CLOUD;
     }
 
     if (defaultConfig.frontend && !Array.isArray(defaultConfig.frontend)) {

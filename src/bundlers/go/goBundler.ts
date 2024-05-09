@@ -6,8 +6,8 @@ import { BundlerInterface } from "../bundler.interface.js";
 
 export function NewGoBundler(projectConfiguration: ProjectConfiguration): BundlerInterface {
     if (
-        projectConfiguration.cloudProvider == CloudProviderIdentifier.CAPYBARA ||
-        projectConfiguration.cloudProvider == CloudProviderIdentifier.CAPYBARA_LINUX
+        projectConfiguration.cloudProvider == CloudProviderIdentifier.GENEZIO_UNIKERNEL ||
+        projectConfiguration.cloudProvider == CloudProviderIdentifier.GENEZIO_CLOUD
     ) {
         return new GenezioRuntimeGoBundler();
     }
