@@ -13,10 +13,10 @@ export enum CloudAdapterIdentifier {
 }
 
 export enum CloudProviderIdentifier {
-    CAPYBARA_LINUX = "genezioCloud",
-    CAPYBARA = "genezioCloudUnikernel",
-    CLUSTER = "genezioCluster",
-    GENEZIO = "genezioAws",
+    CAPYBARA_LINUX = "genezio-cloud",
+    CAPYBARA = "genezio-unikernel",
+    CLUSTER = "genezio-cluster",
+    GENEZIO = "genezio-aws",
 
     SELF_HOSTED_AWS = "selfHostedAws",
 

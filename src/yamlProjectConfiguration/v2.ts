@@ -131,7 +131,7 @@ function parseGenezioConfig(config: unknown) {
         frontend: zod.array(frontendSchema).or(frontendSchema).optional(),
     });
 
-    const parsedv2Schema = v2Schema.parse(config);
+    const parsedConfig = v2Schema.parse(config);
 
     // Update cloudProvider using the mapping if the current provider is a legacy version
     if (parsedv2Schema.backend?.cloudProvider && CloudProviderMapping[parsedv2Schema.backend.cloudProvider as CloudProviderIdentifier]) {
