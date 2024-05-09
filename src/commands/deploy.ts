@@ -229,7 +229,9 @@ export async function deployClasses(
         }
     }
 
+    // @ts-expect-error Rework
     const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
+        // @ts-expect-error Rework
         sdkLanguage,
         mapYamlClassToSdkClassConfiguration(backend.classes, backend.language.name, backend.path),
         backend.path,
@@ -244,6 +246,7 @@ export async function deployClasses(
 
         throw error;
     });
+    // @ts-expect-error Rework
     const projectConfiguration = new ProjectConfiguration(configuration, sdkResponse);
 
     const classesWithNoMethods = getNoMethodClasses(projectConfiguration.classes);

@@ -2,7 +2,7 @@ import { getAstSummary } from "../generateSdk/utils/getAstSummary.js";
 import { AstSummary } from "./astSummary.js";
 import { CloudProviderIdentifier } from "./cloudProviderIdentifier.js";
 import { DEFAULT_ARCHITECTURE, DEFAULT_NODE_RUNTIME, NodeOptions } from "./projectOptions.js";
-import { SdkGeneratorResponse } from "./sdkGeneratorResponse.js";
+import { SdkHandlerResponse } from "./sdkGeneratorResponse.js";
 import { TriggerType } from "../yamlProjectConfiguration/models.js";
 import { YamlProjectConfiguration } from "../yamlProjectConfiguration/v2.js";
 import path from "path";
@@ -106,7 +106,7 @@ export class ProjectConfiguration {
 
     constructor(
         yamlConfiguration: YamlProjectConfiguration,
-        sdkGeneratorResponse: SdkGeneratorResponse,
+        sdkHandlerResponse: SdkHandlerResponse,
     ) {
         this.name = yamlConfiguration.name;
         this.region = yamlConfiguration.region;
@@ -120,7 +120,7 @@ export class ProjectConfiguration {
         // Generate AST Summary
         this.astSummary = {
             version: "2",
-            classes: getAstSummary(sdkGeneratorResponse.sdkGeneratorInput.classesInfo),
+            classes: getAstSummary(sdkHandlerResponse.classesInfo),
         };
 
         this.classes = this.astSummary.classes.map((c) => {

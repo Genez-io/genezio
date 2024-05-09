@@ -51,7 +51,9 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
         throw new UserError("You must provide a url when generating a local SDK.");
     }
 
+    // @ts-expect-error Rework
     const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
+        // @ts-expect-error Rework
         options.language,
         mapYamlClassToSdkClassConfiguration(
             await scanClassesForDecorators({

@@ -14,13 +14,13 @@ const POLLING_INTERVAL = 2000;
 export async function watchPackage(
     language: Language,
     projectName: string,
-    frontend: YamlFrontend[] | undefined,
+    frontends: YamlFrontend[] | undefined,
     sdkPath: string,
 ): Promise<NodeJS.Timeout | undefined> {
     switch (language) {
         case Language.js:
         case Language.ts:
-            return watchNodeModules(projectName, frontend, sdkPath);
+            return watchNodeModules(projectName, frontends, sdkPath);
         default:
             return;
     }
