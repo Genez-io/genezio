@@ -13,7 +13,7 @@ import {
     sdkGeneratorApiHandler,
 } from "../generateSdk/generateSdkApi.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
-import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
+import { SdkHandlerResponse } from "../models/sdkGeneratorResponse.js";
 import { getNoMethodClasses } from "../utils/getNoMethodClasses.js";
 import {
     fileExists,
@@ -219,20 +219,13 @@ export async function deployClasses(
     if (backend.classes.length === 0) {
         throw new UserError(GENEZIO_NO_CLASSES_FOUND(backend.language.name));
     }
-    let sdkLanguage: Language = Language.ts;
-    if (configuration.frontend) {
-        for (const frontend of configuration.frontend) {
-            if (frontend.sdk?.language) {
-                sdkLanguage = frontend.sdk.language;
-                break;
-            }
-        }
-    }
 
-    // @ts-expect-error Rework
-    const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
-        // @ts-expect-error Rework
-        sdkLanguage,
+    const sdkLanguages =
+        (configuration.frontend
+            ?.map((f) => f.sdk?.language)
+            .filter((f) => f !== undefined) as Language[]) || [];
+    const sdkResponse: SdkHandlerResponse = await sdkGeneratorApiHandler(
+        sdkLanguages,
         mapYamlClassToSdkClassConfiguration(backend.classes, backend.language.name, backend.path),
         backend.path,
         /* packageName= */ `@genezio-sdk/${configuration.name}`,
@@ -246,7 +239,6 @@ export async function deployClasses(
 
         throw error;
     });
-    // @ts-expect-error Rework
     const projectConfiguration = new ProjectConfiguration(configuration, sdkResponse);
 
     const classesWithNoMethods = getNoMethodClasses(projectConfiguration.classes);
@@ -269,7 +261,7 @@ export async function deployClasses(
     printAdaptiveLog("Bundling your code\n", "start");
     const bundlerResult: Promise<GenezioCloudInput>[] = projectConfiguration.classes.map(
         async (element) => {
-            const ast = sdkResponse.sdkGeneratorInput.classesInfo.find(
+            const ast = sdkResponse.classesInfo.find(
                 (classInfo) => classInfo.classConfiguration.path === element.path,
             )!.program;
             const output = await bundle(
@@ -363,7 +355,10 @@ export async function deployClasses(
         stage: options.stage,
     });
 
-    if (sdkResponse.files.length <= 0) {
+    if (
+        sdkResponse.generatorResponses.length > 0 &&
+        sdkResponse.generatorResponses[0].files.length <= 0
+    ) {
         log.info(colors.cyan("Your backend code was successfully deployed!"));
         return;
     } else {
@@ -578,44 +573,53 @@ export async function deployFrontend(
 async function handleSdk(
     configuration: YamlProjectConfiguration,
     result: GenezioCloudOutput,
-    sdkResponse: SdkGeneratorResponse,
+    sdk: SdkHandlerResponse,
     options: GenezioDeployOptions,
 ) {
     const frontends = configuration.frontend;
-    let sdkLanguage: Language = Language.ts;
-    let sdkPath, frontendPath: string | undefined;
 
-    if (frontends && frontends.length > 0) {
-        sdkLanguage = frontends[0].sdk?.language || Language.ts;
-        frontendPath = frontends[0].path;
-        if (frontendPath) {
-            sdkPath = frontends[0].sdk?.path
-                ? path.join(frontendPath, frontends[0].sdk?.path)
-                : path.join(frontendPath, "sdk");
+    const sdkLocations: Array<{ path: string; language: Language }> = [];
+
+    for (const frontend of frontends || []) {
+        if (frontend.sdk) {
+            sdkLocations.push({
+                path: path.join(frontend.path, frontend.sdk.path || "sdk"),
+                language: frontend.sdk.language,
+            });
         }
     }
 
-    if (sdkLanguage) {
+    // TODO: Add support for externally linked frontends
+
+    for (const sdkLocation of sdkLocations) {
+        const sdkResponse = sdk.generatorResponses.find(
+            (response) => response.sdkGeneratorInput.language === sdkLocation.language,
+        );
+
+        if (!sdkResponse) {
+            throw new UserError("Could not find the SDK for the frontend.");
+        }
+
         const classUrls = result.classes.map((c) => ({
             name: c.className,
             cloudUrl: c.functionUrl,
         }));
         await writeSdk({
-            language: sdkLanguage,
+            language: sdkLocation.language,
             packageName: `@genezio-sdk/${configuration.name}`,
             packageVersion: `1.0.0-${options.stage}`,
             sdkResponse,
             classUrls,
             publish: true,
             installPackage: true,
-            outputPath: sdkPath,
+            outputPath: sdkLocation.path,
+        });
+
+        reportSuccessForSdk(sdkLocation.language, sdkResponse, GenezioCommand.deploy, {
+            name: configuration.name,
+            stage: options.stage || "prod",
         });
     }
-
-    reportSuccessForSdk(sdkLanguage, sdkResponse, GenezioCommand.deploy, {
-        name: configuration.name,
-        stage: options.stage || "prod",
-    });
 }
 
 function getCloudAdapter(provider: string): CloudAdapter {
