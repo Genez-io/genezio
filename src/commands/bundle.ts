@@ -4,7 +4,7 @@ import {
     sdkGeneratorApiHandler,
 } from "../generateSdk/generateSdkApi.js";
 import { GenezioBundleOptions } from "../models/commandOptions.js";
-import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
+import { SdkHandlerResponse } from "../models/sdkGeneratorResponse.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
 import { bundle } from "../bundlers/utils.js";
 import { mkdirSync } from "fs";
@@ -39,10 +39,8 @@ export async function bundleCommand(options: GenezioBundleOptions) {
             break;
     }
 
-    // @ts-expect-error Rework
-    const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
-        // @ts-expect-error Rework
-        backendConfiguration.language.name,
+    const sdkResponse: SdkHandlerResponse = await sdkGeneratorApiHandler(
+        [],
         mapYamlClassToSdkClassConfiguration(
             backendConfiguration.classes,
             backendConfiguration.language.name,
@@ -62,7 +60,6 @@ export async function bundleCommand(options: GenezioBundleOptions) {
     });
 
     yamlProjectConfiguration.backend = backendConfiguration;
-    // @ts-expect-error Rework
     const projectConfiguration = new ProjectConfiguration(yamlProjectConfiguration, sdkResponse);
     const element = projectConfiguration.classes.find(
         (classInfo) => classInfo.name == options.className,
@@ -72,7 +69,7 @@ export async function bundleCommand(options: GenezioBundleOptions) {
         throw new UserError(`Class ${options.className} not found.`);
     }
 
-    const ast = sdkResponse.sdkGeneratorInput.classesInfo.find(
+    const ast = sdkResponse.classesInfo.find(
         (classInfo) => classInfo.classConfiguration.path === element.path,
     )!.program;
 
