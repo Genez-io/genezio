@@ -170,7 +170,7 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
                 defaultConfig.backend.language.architecture ??= DEFAULT_ARCHITECTURE;
         }
 
-        defaultConfig.backend.cloudProvider ??= CloudProviderIdentifier.GENEZIO_CLOUD;
+        defaultConfig.backend.cloudProvider ??= CloudProviderIdentifier.GENEZIO_AWS;
     }
 
     if (defaultConfig.frontend && !Array.isArray(defaultConfig.frontend)) {
