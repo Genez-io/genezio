@@ -115,7 +115,7 @@ export class ProjectConfiguration {
             architecture: yamlConfiguration.backend?.language.architecture || DEFAULT_ARCHITECTURE,
         };
         this.cloudProvider =
-            yamlConfiguration.backend?.cloudProvider || CloudProviderIdentifier.GENEZIO;
+            yamlConfiguration.backend?.cloudProvider || CloudProviderIdentifier.GENEZIO_CLOUD;
         this.workspace = new Workspace(yamlConfiguration.backend?.path || process.cwd());
         // Generate AST Summary
         this.astSummary = {

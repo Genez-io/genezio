@@ -18,10 +18,10 @@ describe("test changing cloud providers for AB testing", () => {
 
         const name = "test";
         const region = "us-east-1";
-        const cloudProvider = CloudProviderIdentifier.GENEZIO;
+        const cloudProvider = CloudProviderIdentifier.GENEZIO_AWS;
 
         await expect(performCloudProviderABTesting(name, region, cloudProvider)).resolves.toEqual(
-            CloudProviderIdentifier.GENEZIO,
+            CloudProviderIdentifier.GENEZIO_AWS,
         );
         expect(isProjectDeployedSpy).toHaveBeenCalledOnce();
     });
@@ -32,10 +32,10 @@ describe("test changing cloud providers for AB testing", () => {
 
         const name = "test";
         const region = "us-east-1";
-        const cloudProvider = CloudProviderIdentifier.CAPYBARA_LINUX;
+        const cloudProvider = CloudProviderIdentifier.GENEZIO_CLOUD;
 
         await expect(performCloudProviderABTesting(name, region, cloudProvider)).resolves.toEqual(
-            CloudProviderIdentifier.CAPYBARA_LINUX,
+            CloudProviderIdentifier.GENEZIO_CLOUD,
         );
         expect(isProjectDeployedSpy).toHaveBeenCalledOnce();
     });
@@ -44,14 +44,14 @@ describe("test changing cloud providers for AB testing", () => {
         const isProjectDeployedSpy = vi.spyOn(abTestingModule, "isProjectDeployed");
         isProjectDeployedSpy.mockResolvedValue(false);
         const getRandomCloudProviderSpy = vi.spyOn(abTestingModule, "getRandomCloudProvider");
-        getRandomCloudProviderSpy.mockReturnValue(CloudProviderIdentifier.CAPYBARA_LINUX);
+        getRandomCloudProviderSpy.mockReturnValue(CloudProviderIdentifier.GENEZIO_CLOUD);
 
         const name = "test";
         const region = "us-east-1";
-        const cloudProvider = CloudProviderIdentifier.GENEZIO;
+        const cloudProvider = CloudProviderIdentifier.GENEZIO_AWS;
 
         await expect(performCloudProviderABTesting(name, region, cloudProvider)).resolves.toEqual(
-            CloudProviderIdentifier.CAPYBARA_LINUX,
+            CloudProviderIdentifier.GENEZIO_CLOUD,
         );
         expect(isProjectDeployedSpy).toHaveBeenCalledOnce();
         expect(getRandomCloudProviderSpy).toHaveBeenCalledOnce();
@@ -61,14 +61,14 @@ describe("test changing cloud providers for AB testing", () => {
         const isProjectDeployedSpy = vi.spyOn(abTestingModule, "isProjectDeployed");
         isProjectDeployedSpy.mockResolvedValue(false);
         const getRandomCloudProviderSpy = vi.spyOn(abTestingModule, "getRandomCloudProvider");
-        getRandomCloudProviderSpy.mockReturnValue(CloudProviderIdentifier.GENEZIO);
+        getRandomCloudProviderSpy.mockReturnValue(CloudProviderIdentifier.GENEZIO_AWS);
 
         const name = "test";
         const region = "us-east-1";
-        const cloudProvider = CloudProviderIdentifier.GENEZIO;
+        const cloudProvider = CloudProviderIdentifier.GENEZIO_AWS;
 
         await expect(performCloudProviderABTesting(name, region, cloudProvider)).resolves.toEqual(
-            CloudProviderIdentifier.GENEZIO,
+            CloudProviderIdentifier.GENEZIO_AWS,
         );
         expect(isProjectDeployedSpy).toHaveBeenCalledOnce();
         expect(getRandomCloudProviderSpy).toHaveBeenCalledOnce();
@@ -78,7 +78,7 @@ describe("test changing cloud providers for AB testing", () => {
         const isProjectDeployedSpy = vi.spyOn(abTestingModule, "isProjectDeployed");
         isProjectDeployedSpy.mockResolvedValue(false);
         const getRandomCloudProviderSpy = vi.spyOn(abTestingModule, "getRandomCloudProvider");
-        getRandomCloudProviderSpy.mockReturnValue(CloudProviderIdentifier.CAPYBARA_LINUX);
+        getRandomCloudProviderSpy.mockReturnValue(CloudProviderIdentifier.GENEZIO_CLOUD);
 
         const name = "test";
         const region = "us-east-1";
