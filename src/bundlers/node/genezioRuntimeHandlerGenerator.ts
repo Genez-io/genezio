@@ -34,33 +34,34 @@ if (!genezioClass) {
     };
 
     let object;
-    try {
-        object = new genezioClass();
-    } catch (error) {
-        handler = async function (event) {
-            await sendError(error);
-            return {
-                statusCode: 500,
-                body: JSON.stringify({
-                    jsonrpc: "2.0",
-                    error: {
-                        code: -1,
-                        message: \`Constructor call failure: \$\{error.message\}\`
-                    },
-                    id: 0,
-                }),
-                headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
-            };
-        };
-    }
 
-    handler = handler ?? async function (event) {
+    handler ??= async function (event) {
         if (event.http && event.http.method === "OPTIONS") {
             const response = {
                 statusCode: 200,
                 headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
             };
             return response;
+        }
+
+        try {
+            object ??= new genezioClass();
+        } catch (error) {
+            handler = async function (event) {
+                await sendError(error);
+                return {
+                    statusCode: 500,
+                    body: JSON.stringify({
+                        jsonrpc: "2.0",
+                        error: {
+                            code: -1,
+                            message: \`Constructor call failure: \$\{error.message\}\`
+                        },
+                        id: 0,
+                    }),
+                    headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
+                };
+            };
         }
 
         let body = event.body;
