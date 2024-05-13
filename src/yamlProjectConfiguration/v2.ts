@@ -306,7 +306,7 @@ export class YamlConfigurationIOController {
         }
 
         const fileContent = (await this.fs.promises.readFile(this.filePath, "utf8")) as string;
-        this.latestRead = lastModified;
+        this.latestRead = new Date();
 
         const [rawConfig, ctx] = parseYaml(fileContent);
         let genezioConfig: RawYamlProjectConfiguration;
