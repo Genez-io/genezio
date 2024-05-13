@@ -5,7 +5,12 @@ import { IFs } from "memfs";
 import { regions } from "../utils/configs.js";
 import { GENEZIO_CONFIGURATION_FILE_NOT_FOUND, UserError, zodFormatError } from "../errors.js";
 import { Language } from "./models.js";
-import { DEFAULT_ARCHITECTURE, DEFAULT_NODE_RUNTIME, supportedArchitectures, supportedNodeRuntimes } from "../models/projectOptions.js";
+import {
+    DEFAULT_ARCHITECTURE,
+    DEFAULT_NODE_RUNTIME,
+    supportedArchitectures,
+    supportedNodeRuntimes,
+} from "../models/projectOptions.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import { PackageManagerType } from "../packageManagers/packageManager.js";
 import { TriggerType } from "./models.js";
@@ -38,6 +43,7 @@ function parseGenezioConfig(config: unknown) {
         .object({
             name: zod.string(),
             type: zod.literal(TriggerType.jsonrpc).or(zod.literal(TriggerType.http)),
+            auth: zod.boolean().optional(),
         })
         .or(
             zod
@@ -45,6 +51,7 @@ function parseGenezioConfig(config: unknown) {
                     name: zod.string(),
                     type: zod.literal(TriggerType.cron),
                     cronString: zod.string(),
+                    auth: zod.boolean().optional(),
                 })
                 .refine(({ type, cronString }) => {
                     if (type === TriggerType.cron && cronString && !isValidCron(cronString)) {

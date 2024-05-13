@@ -34,6 +34,7 @@ type ImportView = {
 
 type MoustanceViewForMain = {
     imports: ImportView[];
+    usesAuth: boolean;
     class: {
         name: string;
         packageName: string | undefined;
@@ -46,6 +47,7 @@ type MoustanceViewForMain = {
     }[];
     jsonRpcMethods: {
         name: string;
+        auth: boolean;
         parameters: {
             index: number;
             cast: string;
@@ -150,8 +152,13 @@ export abstract class GoBundler implements BundlerInterface {
                 }
                 return `paramFloat${index} := body.Params[${index}].(float64)
         param${index} := int(paramFloat${index})`;
-            case AstNodeType.MapType:
             case AstNodeType.CustomNodeLiteral:
+                if ((parameter.type as CustomAstNodeType).rawValue === "GnzContext") {
+                    return `param${index} := ctx`;
+                }
+            // intentional fallthrough
+            // eslint-disable-next-line no-fallthrough
+            case AstNodeType.MapType:
             case AstNodeType.ArrayType:
                 return `var param${index} ${parameter.optional ? "*" : ""}${this.#mapTypeToGoType(
                     parameter.type,
@@ -196,6 +203,7 @@ export abstract class GoBundler implements BundlerInterface {
 
         const moustacheViewForMain: MoustanceViewForMain = {
             imports: [],
+            usesAuth: classConfiguration.methods.some((m) => m.auth),
             class: {
                 name: mainClass.name,
                 packageName: mainClass.path?.substring(mainClass.path.lastIndexOf("/") + 1),
@@ -214,6 +222,7 @@ export abstract class GoBundler implements BundlerInterface {
                 .filter((m) => m.type === TriggerType.jsonrpc)
                 .map((m: MethodConfiguration) => ({
                     name: m.name,
+                    auth: m.auth ?? false,
                     isVoid: m.returnType.type === AstNodeType.VoidLiteral,
                     parameters: m.parameters.map((p, index) => ({
                         index,

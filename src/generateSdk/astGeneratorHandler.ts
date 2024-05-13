@@ -83,8 +83,5 @@ export async function generateAst(
 
     const astGeneratorClass = new plugin.AstGenerator();
 
-    return await astGeneratorClass.generateAst(input).catch((err) => {
-        debugLogger.debug("An error has occurred", err);
-        throw Object.assign(err, { path: input.class.path });
-    });
+    return await astGeneratorClass.generateAst(input);
 }

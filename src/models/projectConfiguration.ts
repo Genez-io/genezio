@@ -23,6 +23,7 @@ export class MethodConfiguration {
     name: string;
     parameters: ParameterType[];
     cronString?: string;
+    auth?: boolean;
     type: TriggerType;
     docString?: string;
     returnType: any;
@@ -149,6 +150,7 @@ export class ProjectConfiguration {
                     parameters: m.params.map((p) => new ParameterType(p.name, p.type, p.optional)),
                     cronString: cronString,
                     language: c.language,
+                    auth: yamlMethod?.auth,
                     type: yamlMethod?.type || yamlClass.type || TriggerType.jsonrpc,
                     returnType: m.returnType,
                     docString: m.docString,

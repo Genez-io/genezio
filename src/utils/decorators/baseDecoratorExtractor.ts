@@ -14,6 +14,11 @@ export abstract class DecoratorExtractor {
             return;
         }
         let decoratorArguments = {};
+        let auth = false;
+        if (genezioMethodArguments[1] === "auth") {
+            auth = true;
+            genezioMethodArguments.shift();
+        }
         switch (genezioMethodArguments[0]) {
             case "http": {
                 decoratorArguments = {
@@ -44,6 +49,12 @@ export abstract class DecoratorExtractor {
                 },
             ],
         };
+        if (auth) {
+            methodInfo.decorators.push({
+                name: "GenezioAuth",
+                arguments: {},
+            });
+        }
         return methodInfo;
     }
 

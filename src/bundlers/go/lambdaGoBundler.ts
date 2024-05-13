@@ -20,6 +20,7 @@ export class LambdaGoBundler extends GoBundler {
         const dependencies = [
             "github.com/aws/aws-lambda-go/lambda",
             "github.com/Genez-io/genezio_types",
+            "github.com/Genez-io/auth",
         ];
         for (const dependency of dependencies) {
             const getDependencyResult = $({ cwd: folderPath }).sync`go get ${dependency}`;
