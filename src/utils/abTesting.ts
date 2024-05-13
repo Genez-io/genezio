@@ -42,6 +42,6 @@ export async function isProjectDeployed(name: string, region: string): Promise<b
 // This function is used to randomly select a cloud provider for AB testing.
 export function getRandomCloudProvider(): CloudProviderIdentifier {
     return Math.random() < 0.5
-        ? CloudProviderIdentifier.GENEZIO
-        : CloudProviderIdentifier.CAPYBARA_LINUX;
+        ? CloudProviderIdentifier.GENEZIO_AWS
+        : CloudProviderIdentifier.GENEZIO_CLOUD;
 }

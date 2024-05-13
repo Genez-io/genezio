@@ -239,8 +239,8 @@ function getClassFunctionUrl(
     className: string,
 ): string {
     if (
-        cloudProvider === CloudProviderIdentifier.CAPYBARA ||
-        cloudProvider === CloudProviderIdentifier.CAPYBARA_LINUX
+        cloudProvider === CloudProviderIdentifier.GENEZIO_UNIKERNEL ||
+        cloudProvider === CloudProviderIdentifier.GENEZIO_CLOUD
     ) {
         return baseUrl;
     } else {

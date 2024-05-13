@@ -3,8 +3,8 @@ import FileDetails from "../../models/fileDetails.js";
 import { ClassInfo } from "./decoratorTypes.js";
 import fs from "fs";
 import { createRequire } from "module";
-import { default as Parser } from "tree-sitter";
 import { DecoratorExtractor } from "./baseDecoratorExtractor.js";
+import { isWebContainer } from "@webcontainer/env";
 
 export class GoDecoratorExtractor extends DecoratorExtractor {
     async getDecoratorsFromFile(file: string): Promise<ClassInfo[]> {
@@ -13,7 +13,14 @@ export class GoDecoratorExtractor extends DecoratorExtractor {
 
         const require = createRequire(import.meta.url);
         const go = require("tree-sitter-go");
-        const parser = new Parser();
+
+        // Tree-Sitter is a binary dependency and it is not supported in web
+        // containers. In web containers, we use the WASM version of Tree-Sitter.
+        const treeSitter = isWebContainer()
+            ? await import("web-tree-sitter")
+            : await import("tree-sitter");
+
+        const parser = new treeSitter.default();
         parser.setLanguage(go);
 
         const tree = parser.parse(inputCode);
