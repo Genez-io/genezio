@@ -139,7 +139,9 @@ export class JsTsDecoratorExtractor extends DecoratorExtractor {
 
         await babel
             .transformAsync(inputCode, {
-                presets: [require.resolve("@babel/preset-typescript")],
+                presets: [
+                    [require.resolve("@babel/preset-typescript"), { allowDeclareFields: true }],
+                ],
                 plugins: [
                     [packagePath, { version: "2023-05", decoratorsBeforeExport: false }],
                     extractorFunction,
