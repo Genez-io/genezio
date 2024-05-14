@@ -39,7 +39,9 @@ export async function bundleCommand(options: GenezioBundleOptions) {
             break;
     }
 
+    // @ts-expect-error Rework
     const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
+        // @ts-expect-error Rework
         backendConfiguration.language.name,
         mapYamlClassToSdkClassConfiguration(
             backendConfiguration.classes,
@@ -60,6 +62,7 @@ export async function bundleCommand(options: GenezioBundleOptions) {
     });
 
     yamlProjectConfiguration.backend = backendConfiguration;
+    // @ts-expect-error Rework
     const projectConfiguration = new ProjectConfiguration(yamlProjectConfiguration, sdkResponse);
     const element = projectConfiguration.classes.find(
         (classInfo) => classInfo.name == options.className,
