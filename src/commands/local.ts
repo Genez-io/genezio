@@ -28,7 +28,7 @@ import { rectifyCronString } from "../utils/rectifyCronString.js";
 import cron from "node-cron";
 import { createTemporaryFolder, fileExists, readUTF8File } from "../utils/file.js";
 import { GenezioCommand, reportSuccess as _reportSuccess } from "../utils/reporter.js";
-import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
+import { SdkHandlerResponse } from "../models/sdkGeneratorResponse.js";
 import { GenezioLocalOptions } from "../models/commandOptions.js";
 import { DartBundler } from "../bundlers/dart/localDartBundler.js";
 import axios, { AxiosError, AxiosResponse } from "axios";
@@ -66,7 +66,6 @@ import { watchPackage } from "../generateSdk/sdkMonitor.js";
 import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
 import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
-import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 import { Mutex } from "async-mutex";
 
 type ClassProcess = {
@@ -87,7 +86,7 @@ type ClassProcessSpawnOutput = {
     success: boolean;
     projectConfiguration: ProjectConfiguration;
     processForClasses: Map<string, ClassProcess>;
-    sdk: SdkGeneratorResponse;
+    sdk: SdkHandlerResponse;
 };
 
 export async function prepareLocalBackendEnvironment(
@@ -97,15 +96,7 @@ export async function prepareLocalBackendEnvironment(
     try {
         const backend = yamlProjectConfiguration.backend;
         const frontend = yamlProjectConfiguration.frontend;
-        let sdkLanguage: Language = Language.ts;
-        if (frontend) {
-            for (const f of frontend) {
-                if (f.sdk?.language) {
-                    sdkLanguage = f.sdk.language;
-                    break;
-                }
-            }
-        }
+
         if (!backend) {
             throw new UserError("No backend component found in the genezio.yaml file.");
         }
@@ -115,8 +106,11 @@ export async function prepareLocalBackendEnvironment(
             throw new UserError(GENEZIO_NO_CLASSES_FOUND(backend.language.name));
         }
 
-        const sdk = await sdkGeneratorApiHandler(
-            sdkLanguage,
+        const sdkLanguages =
+            (frontend?.map((f) => f.sdk?.language).filter((f) => f !== undefined) as Language[]) ||
+            [];
+        const sdkResponse = await sdkGeneratorApiHandler(
+            sdkLanguages,
             mapYamlClassToSdkClassConfiguration(
                 backend.classes,
                 backend.language.name,
@@ -136,11 +130,11 @@ export async function prepareLocalBackendEnvironment(
         });
         const projectConfiguration = new ProjectConfiguration(
             yamlProjectConfiguration,
-            CloudProviderIdentifier.GENEZIO_AWS,
-            sdk,
+            CloudProviderIdentifier.GENEZIO_CLOUD,
+            sdkResponse,
         );
 
-        const processForClasses = await startProcesses(projectConfiguration, sdk, options);
+        const processForClasses = await startProcesses(projectConfiguration, sdkResponse, options);
         return new Promise<ClassProcessSpawnResponse>((resolve) => {
             resolve({
                 restartEnvironment: false,
@@ -148,7 +142,7 @@ export async function prepareLocalBackendEnvironment(
                     success: true,
                     projectConfiguration,
                     processForClasses,
-                    sdk,
+                    sdk: sdkResponse,
                 },
             });
         });
@@ -359,7 +353,7 @@ async function startBackendWatcher(
             promiseRes.spawnOutput.projectConfiguration;
         const processForClasses: Map<string, ClassProcess> =
             promiseRes.spawnOutput.processForClasses;
-        const sdk: SdkGeneratorResponse = promiseRes.spawnOutput.sdk;
+        const sdk: SdkHandlerResponse = promiseRes.spawnOutput.sdk;
 
         // Start HTTP Server
         const server = await startServerHttp(
@@ -375,7 +369,7 @@ async function startBackendWatcher(
             "\x1b[36m%s\x1b[0m",
             "Your local server is running and the SDK was successfully generated!",
         );
-        const watcherTimeout = await handleSdk(
+        const watcherTimeouts = await handleSdk(
             yamlProjectConfiguration.name,
             yamlProjectConfiguration.frontend,
             sdk,
@@ -406,7 +400,7 @@ async function startBackendWatcher(
             eventType: TelemetryEventTypes.GENEZIO_LOCAL_RELOAD,
             commandOptions: JSON.stringify(options),
         });
-        clearTimeout(watcherTimeout);
+        watcherTimeouts.forEach((timeout) => clearTimeout(timeout));
     }
 }
 
@@ -419,7 +413,7 @@ function logChangeDetection() {
  */
 async function startProcesses(
     projectConfiguration: ProjectConfiguration,
-    sdk: SdkGeneratorResponse,
+    sdk: SdkHandlerResponse,
     options: GenezioLocalOptions,
 ): Promise<Map<string, ClassProcess>> {
     const classes = projectConfiguration.classes;
@@ -433,9 +427,7 @@ async function startProcesses(
             throw new UserError(`Unsupported language ${classInfo.language}.`);
         }
 
-        const astClass = sdk.sdkGeneratorInput.classesInfo.find(
-            (c) => c.classConfiguration.path === classInfo.path,
-        );
+        const astClass = sdk.classesInfo.find((c) => c.classConfiguration.path === classInfo.path);
         if (astClass === undefined) {
             throw new UserError("AST class not found.");
         }
@@ -853,58 +845,74 @@ async function listenForChanges() {
 async function handleSdk(
     projectName: string,
     frontends: YamlFrontend[] | undefined,
-    sdk: SdkGeneratorResponse,
+    sdk: SdkHandlerResponse,
     options: GenezioLocalOptions,
-): Promise<NodeJS.Timeout | undefined> {
-    let sdkLanguage: Language = Language.ts;
-    let nodeJsWatcher: NodeJS.Timeout | undefined = undefined;
-    let sdkPath, frontendPath: string | undefined;
+): Promise<Array<NodeJS.Timeout>> {
+    const nodeJsWatchers: Array<NodeJS.Timeout> = [];
 
-    if (frontends && frontends.length > 0) {
-        sdkLanguage = frontends[0].sdk?.language || Language.ts;
-        frontendPath = frontends[0].path;
-        if (frontendPath) {
-            sdkPath = frontends[0].sdk?.path
-                ? path.join(frontendPath, frontends[0].sdk?.path)
-                : path.join(frontendPath, "sdk");
-        }
-    } else {
-        const linkedPaths = await getLinkPathsForProject(projectName);
-        if (linkedPaths.length > 0) {
-            const linkedPath = linkedPaths[0];
-            sdkPath = path.join(linkedPath, "sdk");
+    const sdkLocations: Array<{ path: string; language: Language }> = [];
+
+    for (const frontend of frontends || []) {
+        if (frontend.sdk) {
+            sdkLocations.push({
+                path: path.join(frontend.path, frontend.sdk.path || "sdk"),
+                language: frontend.sdk.language,
+            });
         }
     }
 
-    const classUrls = sdk.files.map((c) => ({
-        name: c.className,
-        cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`,
-    }));
+    // TODO: Add support for externally linked frontends
 
-    const sdkFolderPath = await writeSdk({
-        language: sdkLanguage,
-        packageName: `@genezio-sdk/${projectName}`,
-        packageVersion: undefined,
-        sdkResponse: sdk,
-        classUrls,
-        publish: false,
-        installPackage: true,
-        outputPath: sdkPath,
-    });
+    for (const sdkLocation of sdkLocations) {
+        const sdkResponse = sdk.generatorResponses.find(
+            (response) => response.sdkGeneratorInput.language === sdkLocation.language,
+        );
 
-    if (sdkFolderPath) {
-        const timeout = await watchPackage(sdkLanguage, projectName, frontends, sdkFolderPath);
-        if (timeout) {
-            nodeJsWatcher = timeout;
+        if (!sdkResponse) {
+            throw new UserError("Could not find the SDK for the frontend.");
         }
+
+        const classUrls = sdkResponse.files.map((c) => ({
+            name: c.className,
+            cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`,
+        }));
+
+        const sdkFolderPath = await writeSdk({
+            language: sdkLocation.language,
+            packageName: `@genezio-sdk/${projectName}`,
+            packageVersion: undefined,
+            sdkResponse,
+            classUrls,
+            publish: false,
+            installPackage: true,
+            outputPath: sdkLocation.path,
+        });
+        debugLogger.debug(
+            `SDK for ${sdkLocation.language} written in ${sdkLocation.path}. ${sdkFolderPath}`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+
+        if (sdkFolderPath) {
+            const timeout = await watchPackage(
+                sdkLocation.language,
+                projectName,
+                frontends?.filter(
+                    (f) => f.sdk?.language === Language.ts || f.sdk?.language === Language.js,
+                ),
+                sdkFolderPath,
+            );
+            if (timeout) {
+                nodeJsWatchers.push(timeout);
+            }
+        }
+
+        reportSuccessForSdk(sdkLocation.language, sdkResponse, GenezioCommand.local, {
+            name: projectName,
+            stage: "local",
+        });
     }
 
-    reportSuccessForSdk(sdkLanguage, sdk, GenezioCommand.local, {
-        name: projectName,
-        stage: "local",
-    });
-
-    return nodeJsWatcher;
+    return nodeJsWatchers;
 }
 
 function reportSuccess(projectConfiguration: ProjectConfiguration, port: number) {
