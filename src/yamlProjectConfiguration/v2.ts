@@ -2,7 +2,6 @@ import { YAMLContext, parse as parseYaml, stringify as stringifyYaml } from "yam
 import zod from "zod";
 import nativeFs from "fs";
 import { IFs } from "memfs";
-import { log } from "../utils/logging.js";
 import { regions } from "../utils/configs.js";
 import { GENEZIO_CONFIGURATION_FILE_NOT_FOUND, UserError, zodFormatError } from "../errors.js";
 import { Language } from "./models.js";
@@ -12,10 +11,6 @@ import {
     supportedArchitectures,
     supportedNodeRuntimes,
 } from "../models/projectOptions.js";
-import {
-    CloudProviderIdentifier,
-    CloudProviderMapping,
-} from "../models/cloudProviderIdentifier.js";
 import { PackageManagerType } from "../packageManagers/packageManager.js";
 import { TriggerType } from "./models.js";
 import { isValidCron } from "cron-validator";
@@ -93,20 +88,6 @@ function parseGenezioConfig(config: unknown) {
                 local: scriptSchema,
             })
             .optional(),
-        cloudProvider: zod
-            .nativeEnum(CloudProviderIdentifier, {
-                errorMap: (issue, ctx) => {
-                    if (issue.code === zod.ZodIssueCode.invalid_enum_value) {
-                        return {
-                            message:
-                                "Invalid enum value. The supported values are `genezio` or `selfHostedAws`.",
-                        };
-                    }
-
-                    return { message: ctx.defaultError };
-                },
-            })
-            .optional(),
         classes: zod.array(classSchema).optional(),
     });
 
@@ -142,18 +123,6 @@ function parseGenezioConfig(config: unknown) {
 
     const parsedConfig = v2Schema.parse(config);
 
-    // Update cloudProvider using the mapping if the current provider is a legacy version
-    if (
-        parsedConfig.backend?.cloudProvider &&
-        CloudProviderMapping[parsedConfig.backend.cloudProvider as CloudProviderIdentifier]
-    ) {
-        log.warn(
-            `Legacy cloud provider used: '${parsedConfig.backend.cloudProvider}'. Use '${CloudProviderMapping[parsedConfig.backend.cloudProvider as CloudProviderIdentifier]}' instead.`,
-        );
-        parsedConfig.backend.cloudProvider =
-            CloudProviderMapping[parsedConfig.backend.cloudProvider as CloudProviderIdentifier];
-    }
-
     return parsedConfig;
 }
 
@@ -169,8 +138,6 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
                 defaultConfig.backend.language.runtime ??= DEFAULT_NODE_RUNTIME;
                 defaultConfig.backend.language.architecture ??= DEFAULT_ARCHITECTURE;
         }
-
-        defaultConfig.backend.cloudProvider ??= CloudProviderIdentifier.GENEZIO_AWS;
     }
 
     if (defaultConfig.frontend && !Array.isArray(defaultConfig.frontend)) {
@@ -183,7 +150,6 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
         | "backend.language.packageManager"
         | "backend.language.runtime"
         | "backend.language.architecture"
-        | "backend.cloudProvider"
     > & {
         frontend: typeof defaultConfig.frontend;
     };
