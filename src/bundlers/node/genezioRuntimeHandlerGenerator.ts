@@ -75,7 +75,7 @@ if (!genezioClass) {
         if (!body || (body && body["jsonrpc"] !== "2.0")) {
             // For raw http calls, paths should match \`/funcId/className/methodName\`
             const components = event.http.path.substring(1).split("/");
-            if (!components[2]) {
+            if (!components[1]) {
                 return {
                     statusCode: 404,
                     headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' },
@@ -83,7 +83,7 @@ if (!genezioClass) {
                 };
             }
 
-            const method = components[2];
+            const method = components[1];
 
             const http2CompliantHeaders = {};
             for (const header in event.headers) {
