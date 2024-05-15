@@ -8,6 +8,7 @@ import { StatusOk } from "../requests/models.js";
 import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG, UserError } from "../errors.js";
+import { debugLogger } from "../utils/logging.js";
 
 /** This function gets the cloud provider for a project before deployment
  * It returns the projects cloud provider for existing projects
@@ -29,17 +30,21 @@ export async function getCloudProvider(name: string): Promise<CloudProviderIdent
         throw new UserError(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
 
-    const response: AxiosResponse<StatusOk<{ cloudProvider: CloudProviderIdentifier }>> =
-        await uninterceptedAxiosInstance({
-            method: "GET",
-            url: `${BACKEND_ENDPOINT}/projects/cloud-provider/${name}`,
-            headers: {
-                Authorization: `Bearer ${authToken}`,
-                "Accept-Version": `genezio-cli/${version}`,
-            },
-        });
-    if (response.data.cloudProvider) {
-        return CloudProviderMapping[response.data.cloudProvider] ?? response.data.cloudProvider;
+    try {
+        const response: AxiosResponse<StatusOk<{ cloudProvider: CloudProviderIdentifier }>> =
+            await uninterceptedAxiosInstance({
+                method: "GET",
+                url: `${BACKEND_ENDPOINT}/projects/cloud-provider/${name}`,
+                headers: {
+                    Authorization: `Bearer ${authToken}`,
+                    "Accept-Version": `genezio-cli/${version}`,
+                },
+            });
+        if (response.data.cloudProvider) {
+            return CloudProviderMapping[response.data.cloudProvider] ?? response.data.cloudProvider;
+        }
+    } catch (error) {
+        debugLogger.error(`Error getting cloud provider for project ${name}: ${error}`);
     }
     return CloudProviderIdentifier.GENEZIO_CLOUD;
 }
