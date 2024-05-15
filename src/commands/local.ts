@@ -67,6 +67,7 @@ import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
 import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
 import { Mutex } from "async-mutex";
+import * as readline from "readline";
 
 type ClassProcess = {
     process: ChildProcess;
@@ -1012,8 +1013,16 @@ async function startClassProcess(
         },
         cwd,
     });
-    classProcess.stdout.on("data", (data) => log.info(data.toString().trim()));
-    classProcess.stderr.on("data", (data) => log.info(data.toString().trim()));
+
+    const classStdoutLineStream = readline.createInterface({
+        input: classProcess.stdout,
+    });
+    const classStderrLineStream = readline.createInterface({
+        input: classProcess.stderr,
+    });
+
+    classStdoutLineStream.on("line", (line) => log.info(line));
+    classStderrLineStream.on("line", (line) => log.info(line));
 
     processForClasses.set(className, {
         process: classProcess,
