@@ -68,6 +68,7 @@ import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
 import { Mutex } from "async-mutex";
 import * as readline from "readline";
+import { getLinkedFrontendsForProject } from "../utils/linkDatabase.js";
 
 type ClassProcess = {
     process: ChildProcess;
@@ -107,9 +108,18 @@ export async function prepareLocalBackendEnvironment(
             throw new UserError(GENEZIO_NO_CLASSES_FOUND(backend.language.name));
         }
 
-        const sdkLanguages =
-            (frontend?.map((f) => f.sdk?.language).filter((f) => f !== undefined) as Language[]) ||
-            [];
+        const sdkLanguages: Language[] = [];
+        // Add configuration frontends that contain the SDK field
+        sdkLanguages.push(
+            ...(frontend?.map((f) => f.sdk?.language).filter((f) => f !== undefined) as Language[]),
+        );
+        // Add linked frontends
+        sdkLanguages.push(
+            ...(await getLinkedFrontendsForProject(yamlProjectConfiguration.name)).map(
+                (f) => f.language,
+            ),
+        );
+
         const sdkResponse = await sdkGeneratorApiHandler(
             sdkLanguages,
             mapYamlClassToSdkClassConfiguration(
@@ -866,7 +876,13 @@ async function handleSdk(
         }
     }
 
-    // TODO: Add support for externally linked frontends
+    const linkedFrontends = await getLinkedFrontendsForProject(projectName);
+    linkedFrontends.forEach((f) =>
+        sdkLocations.push({
+            path: f.path,
+            language: f.language,
+        }),
+    );
 
     for (const sdkLocation of sdkLocations) {
         const sdkResponse = sdk.generatorResponses.find(
@@ -895,7 +911,6 @@ async function handleSdk(
         debugLogger.debug(
             `SDK for ${sdkLocation.language} written in ${sdkLocation.path}. ${sdkFolderPath}`,
         );
-        await new Promise((resolve) => setTimeout(resolve, 3000));
 
         if (sdkFolderPath) {
             const timeout = await watchPackage(

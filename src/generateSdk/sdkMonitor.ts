@@ -46,7 +46,9 @@ async function watchNodeModules(
         }
     }
 
-    const linkedFrontends = await getLinkedFrontendsForProject(projectName);
+    const linkedFrontends = (await getLinkedFrontendsForProject(projectName)).filter(
+        (f) => f.language === Language.ts || f.language === Language.js,
+    );
     for (const link of linkedFrontends) {
         watchPaths.push(path.join(link.path, nodeModulesSdkDirectoryPath));
         watchPaths.push(path.join(link.path, "node_modules", ".package-lock.json"));
@@ -107,7 +109,11 @@ async function writeSdkToNodeModules(
     // A frontend can be explicitly declared in the genezio.yaml file or it can be linked to the project
     const frontendPaths = (frontends || [])
         .map((f) => f.path)
-        .concat((await getLinkedFrontendsForProject(projectName)).map((f) => f.path));
+        .concat(
+            (await getLinkedFrontendsForProject(projectName))
+                .filter((f) => f.language === Language.ts || f.language === Language.js)
+                .map((f) => f.path),
+        );
     for (const frontendPath of frontendPaths) {
         const to = path.join(frontendPath, "node_modules", "@genezio-sdk", `${projectName}`);
 
