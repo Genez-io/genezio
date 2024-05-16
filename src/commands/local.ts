@@ -133,7 +133,6 @@ export async function prepareLocalBackendEnvironment(
             backend.path,
             /* packageName= */ `@genezio-sdk/${yamlProjectConfiguration.name}`,
         ).catch((error) => {
-            debugLogger.debug("An error occurred", error);
             if (error.code === "ENOENT") {
                 log.error(
                     `The file ${error.path} does not exist. Please check your genezio.yaml configuration and make sure that all the file paths are correct.`,

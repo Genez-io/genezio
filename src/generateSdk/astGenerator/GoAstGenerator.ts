@@ -20,7 +20,7 @@ import { createTemporaryFolder } from "../../utils/file.js";
 import { UserError } from "../../errors.js";
 import { $, ExecaError } from "execa";
 
-const releaseTag = "v0.1.1";
+const releaseTag = "v0.1.2";
 const binaryName = `golang_ast_generator_${releaseTag}`;
 
 export class AstGenerator implements AstGeneratorInterface {
@@ -84,7 +84,11 @@ export class AstGenerator implements AstGeneratorInterface {
         const ast = JSON.parse(result.stdout);
         const error = ast.error;
         if (error) {
-            log.error(error);
+            if (ast.file && ast.line && ast.column) {
+                log.error(new Error(`${error} at ${ast.file}:${ast.line}:${ast.column}`));
+            } else {
+                log.error(error);
+            }
             throw new UserError("Error: Failed to generate AST for class " + input.class.path);
         }
         const goAstBody = ast.body;

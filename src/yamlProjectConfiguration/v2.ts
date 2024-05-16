@@ -42,6 +42,7 @@ function parseGenezioConfig(config: unknown) {
         .object({
             name: zod.string(),
             type: zod.literal(TriggerType.jsonrpc).or(zod.literal(TriggerType.http)),
+            auth: zod.boolean().optional(),
         })
         .or(
             zod
@@ -49,6 +50,7 @@ function parseGenezioConfig(config: unknown) {
                     name: zod.string(),
                     type: zod.literal(TriggerType.cron),
                     cronString: zod.string(),
+                    auth: zod.boolean().optional(),
                 })
                 .refine(({ type, cronString }) => {
                     if (type === TriggerType.cron && cronString && !isValidCron(cronString)) {
