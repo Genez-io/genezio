@@ -58,13 +58,13 @@ import { Language } from "../yamlProjectConfiguration/models.js";
 import { runScript } from "../utils/scripts.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../yamlProjectConfiguration/v2.js";
-import { getRandomCloudProvider, isProjectDeployed } from "../utils/abTesting.js";
 import { ClusterCloudAdapter } from "../cloudAdapter/cluster/clusterAdapter.js";
 import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
 import { isLoggedIn } from "../utils/accounts.js";
 import { loginCommand } from "./login.js";
 import { getLinkedFrontendsForProject } from "../utils/linkDatabase.js";
+import { getCloudProvider } from "../requests/getCloudProvider.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -248,7 +248,12 @@ export async function deployClasses(
 
         throw error;
     });
-    const projectConfiguration = new ProjectConfiguration(configuration, sdkResponse);
+    const cloudProvider = await getCloudProvider(configuration.name);
+    const projectConfiguration = new ProjectConfiguration(
+        configuration,
+        cloudProvider,
+        sdkResponse,
+    );
 
     const classesWithNoMethods = getNoMethodClasses(projectConfiguration.classes);
     if (classesWithNoMethods.length) {
@@ -357,9 +362,7 @@ export async function deployClasses(
     }
 
     // TODO: Enable cloud adapter setting for every class
-    const cloudAdapter = getCloudAdapter(
-        configuration.backend?.cloudProvider || CloudProviderIdentifier.GENEZIO_AWS,
-    );
+    const cloudAdapter = getCloudAdapter(cloudProvider);
     const result = await cloudAdapter.deploy(bundlerResultArray, projectConfiguration, {
         stage: options.stage,
     });
@@ -574,7 +577,7 @@ export async function deployFrontend(
 
     frontend.subdomain = options.subdomain || frontend.subdomain;
 
-    const cloudAdapter = getCloudAdapter(CloudProviderIdentifier.GENEZIO_AWS);
+    const cloudAdapter = getCloudAdapter(CloudProviderIdentifier.GENEZIO_CLOUD);
     const url = await cloudAdapter.deployFrontend(name, region, frontend, stage);
     return url;
 }
@@ -637,7 +640,7 @@ async function handleSdk(
     }
 }
 
-function getCloudAdapter(provider: string): CloudAdapter {
+function getCloudAdapter(provider: CloudProviderIdentifier): CloudAdapter {
     switch (provider) {
         case CloudProviderIdentifier.GENEZIO_AWS:
         case CloudProviderIdentifier.GENEZIO_UNIKERNEL:
@@ -651,34 +654,4 @@ function getCloudAdapter(provider: string): CloudAdapter {
         default:
             throw new UserError(`Unsupported cloud provider: ${provider}`);
     }
-}
-
-// If the cloud provider defined in the configuration file is `genezio`,
-// we will randomly change it to in order to test out our experimental runtime.
-export async function performCloudProviderABTesting(
-    projectName: string,
-    projectRegion: string,
-    projectCloudProvider: CloudProviderIdentifier,
-): Promise<CloudProviderIdentifier> {
-    // Skip the AB testing if the project is already deployed
-    const isAlreadyDeployed = await isProjectDeployed(projectName, projectRegion);
-
-    // We won't perform AB testing if the cloud provider is set for runtime, self-hosted or cluster.
-    if (!isAlreadyDeployed && projectCloudProvider === CloudProviderIdentifier.GENEZIO_AWS) {
-        const randomCloudProvider = getRandomCloudProvider();
-
-        if (randomCloudProvider !== CloudProviderIdentifier.GENEZIO_AWS) {
-            debugLogger.debug(
-                "You've been visited by the AB testing fairy! 🧚‍♂️ Your cloud provider is now set to",
-                randomCloudProvider,
-            );
-            debugLogger.debug(
-                "To disable AB testing, run `DISABLE_AB_TESTING=true genezio deploy`.",
-            );
-            randomCloudProvider;
-        }
-        return randomCloudProvider;
-    }
-
-    return projectCloudProvider;
 }

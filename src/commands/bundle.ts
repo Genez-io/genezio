@@ -27,15 +27,16 @@ export async function bundleCommand(options: GenezioBundleOptions) {
     backendConfiguration.classes = await scanClassesForDecorators(backendConfiguration);
 
     // Override cloud provider if it's set using command line args
+    let cloudProvider: CloudProviderIdentifier = CloudProviderIdentifier.GENEZIO_CLOUD;
     switch (options.cloudAdapter) {
         case CloudAdapterIdentifier.AWS:
-            backendConfiguration.cloudProvider = CloudProviderIdentifier.GENEZIO_AWS;
+            cloudProvider = CloudProviderIdentifier.GENEZIO_AWS;
             break;
         case CloudAdapterIdentifier.RUNTIME:
-            backendConfiguration.cloudProvider = CloudProviderIdentifier.GENEZIO_CLOUD;
+            cloudProvider = CloudProviderIdentifier.GENEZIO_CLOUD;
             break;
         case CloudAdapterIdentifier.CLUSTER:
-            backendConfiguration.cloudProvider = CloudProviderIdentifier.GENEZIO_CLUSTER;
+            cloudProvider = CloudProviderIdentifier.GENEZIO_CLUSTER;
             break;
     }
 
@@ -60,7 +61,11 @@ export async function bundleCommand(options: GenezioBundleOptions) {
     });
 
     yamlProjectConfiguration.backend = backendConfiguration;
-    const projectConfiguration = new ProjectConfiguration(yamlProjectConfiguration, sdkResponse);
+    const projectConfiguration = new ProjectConfiguration(
+        yamlProjectConfiguration,
+        cloudProvider,
+        sdkResponse,
+    );
     const element = projectConfiguration.classes.find(
         (classInfo) => classInfo.name == options.className,
     );

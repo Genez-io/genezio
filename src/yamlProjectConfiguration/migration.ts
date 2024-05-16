@@ -87,11 +87,6 @@ export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
                           runtime: v1Config.options?.nodeRuntime,
                           packageManager: v1Config.packageManager,
                       },
-                      cloudProvider:
-                          // AWS was deprecated in Genezio YAML v2
-                          v1Config.cloudProvider === "aws"
-                              ? CloudProviderIdentifier.GENEZIO_AWS
-                              : (v1Config.cloudProvider as unknown as CloudProviderIdentifier),
                       classes: v1Config.classes.map((c) => ({
                           name: c.name,
                           path: path.relative(v1Config.workspace?.backend ?? ".", c.path),

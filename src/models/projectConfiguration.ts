@@ -106,6 +106,7 @@ export class ProjectConfiguration {
 
     constructor(
         yamlConfiguration: YamlProjectConfiguration,
+        cloudProvider: CloudProviderIdentifier,
         sdkHandlerResponse: SdkHandlerResponse,
     ) {
         this.name = yamlConfiguration.name;
@@ -114,8 +115,7 @@ export class ProjectConfiguration {
             nodeRuntime: yamlConfiguration.backend?.language.runtime || DEFAULT_NODE_RUNTIME,
             architecture: yamlConfiguration.backend?.language.architecture || DEFAULT_ARCHITECTURE,
         };
-        this.cloudProvider =
-            yamlConfiguration.backend?.cloudProvider || CloudProviderIdentifier.GENEZIO_AWS;
+        this.cloudProvider = cloudProvider || CloudProviderIdentifier.GENEZIO_CLOUD;
         this.workspace = new Workspace(yamlConfiguration.backend?.path || process.cwd());
         // Generate AST Summary
         this.astSummary = {
