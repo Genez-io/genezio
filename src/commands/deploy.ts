@@ -63,6 +63,7 @@ import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
 import { isLoggedIn } from "../utils/accounts.js";
 import { loginCommand } from "./login.js";
+import { getLinkedFrontendsForProject } from "../utils/linkDatabase.js";
 import { getCloudProvider } from "../requests/getCloudProvider.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
@@ -220,10 +221,18 @@ export async function deployClasses(
         throw new UserError(GENEZIO_NO_CLASSES_FOUND(backend.language.name));
     }
 
-    const sdkLanguages =
-        (configuration.frontend
-            ?.map((f) => f.sdk?.language)
-            .filter((f) => f !== undefined) as Language[]) || [];
+    const sdkLanguages: Language[] = [];
+    // Add configuration frontends that contain the SDK field
+    sdkLanguages.push(
+        ...((configuration.frontend || [])
+            .map((f) => f.sdk?.language)
+            .filter((f) => f !== undefined) as Language[]),
+    );
+    // Add linked frontends
+    sdkLanguages.push(
+        ...(await getLinkedFrontendsForProject(configuration.name)).map((f) => f.language),
+    );
+
     const sdkResponse: SdkHandlerResponse = await sdkGeneratorApiHandler(
         sdkLanguages,
         mapYamlClassToSdkClassConfiguration(backend.classes, backend.language.name, backend.path),
@@ -592,7 +601,13 @@ async function handleSdk(
         }
     }
 
-    // TODO: Add support for externally linked frontends
+    const linkedFrontends = await getLinkedFrontendsForProject(configuration.name);
+    linkedFrontends.forEach((f) =>
+        sdkLocations.push({
+            path: f.path,
+            language: f.language,
+        }),
+    );
 
     for (const sdkLocation of sdkLocations) {
         const sdkResponse = sdk.generatorResponses.find(

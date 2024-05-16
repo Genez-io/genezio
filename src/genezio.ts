@@ -362,13 +362,14 @@ program
 program
     .command("link")
     .argument("[projectName]", "The name of the project that you want to communicate with.")
+    .argument("[language]", "The language of the SDK that will be generated.")
     .summary("Links the genezio generated SDK in the current working directory")
     .description(
         "Linking a client with a deployed project will enable `genezio local` to figure out where to generate the SDK to call the backend methods.\n\
 This command is useful when the project has dedicated repositories for the backend and the frontend.",
     )
-    .action(async (projectName: string) => {
-        await linkCommand(projectName).catch((error) => {
+    .action(async (projectName?: string, projectLanguage?: string) => {
+        await linkCommand(projectName, projectLanguage).catch((error) => {
             logError(error);
             exit(1);
         });
