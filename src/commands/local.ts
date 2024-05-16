@@ -112,7 +112,9 @@ export async function prepareLocalBackendEnvironment(
         const sdkLanguages: Language[] = [];
         // Add configuration frontends that contain the SDK field
         sdkLanguages.push(
-            ...(frontend?.map((f) => f.sdk?.language).filter((f) => f !== undefined) as Language[]),
+            ...((frontend || [])
+                .map((f) => f.sdk?.language)
+                .filter((f) => f !== undefined) as Language[]),
         );
         // Add linked frontends
         sdkLanguages.push(

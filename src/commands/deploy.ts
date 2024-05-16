@@ -224,8 +224,8 @@ export async function deployClasses(
     const sdkLanguages: Language[] = [];
     // Add configuration frontends that contain the SDK field
     sdkLanguages.push(
-        ...(configuration.frontend
-            ?.map((f) => f.sdk?.language)
+        ...((configuration.frontend || [])
+            .map((f) => f.sdk?.language)
             .filter((f) => f !== undefined) as Language[]),
     );
     // Add linked frontends
