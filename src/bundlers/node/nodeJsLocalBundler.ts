@@ -50,7 +50,7 @@ export class NodeJsLocalBundler implements BundlerInterface {
         }
 
         const isClusterDeployment =
-            input.projectConfiguration.cloudProvider === CloudProviderIdentifier.CLUSTER;
+            input.projectConfiguration.cloudProvider === CloudProviderIdentifier.GENEZIO_CLUSTER;
         await writeToFile(
             input.path,
             "local.mjs",

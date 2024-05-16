@@ -4,23 +4,23 @@ import { default as fsExtra } from "fs-extra";
 import fsPromises from "fs/promises";
 import fs from "fs";
 import path from "path";
-import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 import { debugLogger } from "../utils/logging.js";
 import { Options, Result, compareSync } from "dir-compare";
 import { deleteFolder } from "../utils/file.js";
+import { getLinkedFrontendsForProject } from "../utils/linkDatabase.js";
 
 const POLLING_INTERVAL = 2000;
 
 export async function watchPackage(
     language: Language,
     projectName: string,
-    frontend: YamlFrontend[] | undefined,
+    frontends: YamlFrontend[] | undefined,
     sdkPath: string,
 ): Promise<NodeJS.Timeout | undefined> {
     switch (language) {
         case Language.js:
         case Language.ts:
-            return watchNodeModules(projectName, frontend, sdkPath);
+            return watchNodeModules(projectName, frontends, sdkPath);
         default:
             return;
     }
@@ -46,10 +46,12 @@ async function watchNodeModules(
         }
     }
 
-    const linkPaths = await getLinkPathsForProject(projectName);
-    for (const linkPath of linkPaths) {
-        watchPaths.push(path.join(linkPath, nodeModulesSdkDirectoryPath));
-        watchPaths.push(path.join(linkPath, "node_modules", ".package-lock.json"));
+    const linkedFrontends = (await getLinkedFrontendsForProject(projectName)).filter(
+        (f) => f.language === Language.ts || f.language === Language.js,
+    );
+    for (const link of linkedFrontends) {
+        watchPaths.push(path.join(link.path, nodeModulesSdkDirectoryPath));
+        watchPaths.push(path.join(link.path, "node_modules", ".package-lock.json"));
     }
 
     return setInterval(async () => {
@@ -107,7 +109,11 @@ async function writeSdkToNodeModules(
     // A frontend can be explicitly declared in the genezio.yaml file or it can be linked to the project
     const frontendPaths = (frontends || [])
         .map((f) => f.path)
-        .concat(await getLinkPathsForProject(projectName));
+        .concat(
+            (await getLinkedFrontendsForProject(projectName))
+                .filter((f) => f.language === Language.ts || f.language === Language.js)
+                .map((f) => f.path),
+        );
     for (const frontendPath of frontendPaths) {
         const to = path.join(frontendPath, "node_modules", "@genezio-sdk", `${projectName}`);
 

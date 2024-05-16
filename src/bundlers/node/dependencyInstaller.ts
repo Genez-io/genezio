@@ -1,6 +1,6 @@
 import { Mutex } from "async-mutex";
 import { debugLogger } from "../../utils/logging.js";
-import packageManager from "../../packageManagers/packageManager.js";
+import { getPackageManager } from "../../packageManagers/packageManager.js";
 
 /**
  * The `DependencyInstaller` class provides a thread-safe way to install dependencies for a Node.js project.
@@ -41,7 +41,7 @@ class DependencyInstaller {
 
             debugLogger.debug(`Installing dependencies: ${toBeInstalled.join(", ")}`);
             // TODO: Add support for no-save for all package managers
-            await packageManager.install(toBeInstalled, cwd);
+            await getPackageManager().install(toBeInstalled, cwd);
         });
     }
 
@@ -53,7 +53,7 @@ class DependencyInstaller {
     async installAll(cwd: string): Promise<void> {
         await this.mutex.runExclusive(async () => {
             debugLogger.debug(`Installing all dependencies`);
-            await packageManager.install([], cwd);
+            await getPackageManager().install([], cwd);
         });
     }
 }

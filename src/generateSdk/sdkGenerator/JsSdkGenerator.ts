@@ -52,7 +52,7 @@ export class {{{className}}} {
    */
   {{/methodDocLines.length}}
   static async {{{name}}}({{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}}) {
-    return {{{className}}}.remote.call({{{methodCaller}}} {"token": StorageManager.getStorage().getItem("token")}, {{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}})
+    return {{{className}}}.remote.call({{{methodCaller}}} {"token": StorageManager.getStorage().getItem("token"),"isGnzContext": true}, {{#parameters}}{{{name}}}{{^last}}, {{/last}}{{/parameters}})
   }
   {{/hasGnzContextAsFirstParameter}}
   {{^hasGnzContextAsFirstParameter}}

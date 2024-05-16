@@ -34,33 +34,34 @@ if (!genezioClass) {
     };
 
     let object;
-    try {
-        object = new genezioClass();
-    } catch (error) {
-        handler = async function (event) {
-            await sendError(error);
-            return {
-                statusCode: 500,
-                body: JSON.stringify({
-                    jsonrpc: "2.0",
-                    error: {
-                        code: -1,
-                        message: \`Constructor call failure: \$\{error.message\}\`
-                    },
-                    id: 0,
-                }),
-                headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
-            };
-        };
-    }
 
-    handler = handler ?? async function (event) {
+    handler ??= async function (event) {
         if (event.http && event.http.method === "OPTIONS") {
             const response = {
                 statusCode: 200,
                 headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
             };
             return response;
+        }
+
+        try {
+            object ??= new genezioClass();
+        } catch (error) {
+            handler = async function (event) {
+                await sendError(error);
+                return {
+                    statusCode: 500,
+                    body: JSON.stringify({
+                        jsonrpc: "2.0",
+                        error: {
+                            code: -1,
+                            message: \`Constructor call failure: \$\{error.message\}\`
+                        },
+                        id: 0,
+                    }),
+                    headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
+                };
+            };
         }
 
         let body = event.body;
@@ -74,7 +75,7 @@ if (!genezioClass) {
         if (!body || (body && body["jsonrpc"] !== "2.0")) {
             // For raw http calls, paths should match \`/funcId/className/methodName\`
             const components = event.http.path.substring(1).split("/");
-            if (!components[2]) {
+            if (!components[1]) {
                 return {
                     statusCode: 404,
                     headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' },
@@ -82,7 +83,7 @@ if (!genezioClass) {
                 };
             }
 
-            const method = components[2];
+            const method = components[1];
 
             const http2CompliantHeaders = {};
             for (const header in event.headers) {
@@ -200,6 +201,10 @@ if (!genezioClass) {
                 });
             });
 
+            if(body.params && body.params.length > 0 && body.params[0].isGnzContext === true ) {
+                body.params[0].requestContext = event.requestContext;
+                body.params[0].headers = event.headers;
+            }
             try {
                 const response = Promise.resolve(object[method](...(body.params || [])))
                     .then((result) => {

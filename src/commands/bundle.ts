@@ -4,7 +4,7 @@ import {
     sdkGeneratorApiHandler,
 } from "../generateSdk/generateSdkApi.js";
 import { GenezioBundleOptions } from "../models/commandOptions.js";
-import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
+import { SdkHandlerResponse } from "../models/sdkGeneratorResponse.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
 import { bundle } from "../bundlers/utils.js";
 import { mkdirSync } from "fs";
@@ -29,18 +29,18 @@ export async function bundleCommand(options: GenezioBundleOptions) {
     // Override cloud provider if it's set using command line args
     switch (options.cloudAdapter) {
         case CloudAdapterIdentifier.AWS:
-            backendConfiguration.cloudProvider = CloudProviderIdentifier.GENEZIO;
+            backendConfiguration.cloudProvider = CloudProviderIdentifier.GENEZIO_AWS;
             break;
         case CloudAdapterIdentifier.RUNTIME:
-            backendConfiguration.cloudProvider = CloudProviderIdentifier.CAPYBARA_LINUX;
+            backendConfiguration.cloudProvider = CloudProviderIdentifier.GENEZIO_CLOUD;
             break;
         case CloudAdapterIdentifier.CLUSTER:
-            backendConfiguration.cloudProvider = CloudProviderIdentifier.CLUSTER;
+            backendConfiguration.cloudProvider = CloudProviderIdentifier.GENEZIO_CLUSTER;
             break;
     }
 
-    const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
-        backendConfiguration.language.name,
+    const sdkResponse: SdkHandlerResponse = await sdkGeneratorApiHandler(
+        [],
         mapYamlClassToSdkClassConfiguration(
             backendConfiguration.classes,
             backendConfiguration.language.name,
@@ -69,7 +69,7 @@ export async function bundleCommand(options: GenezioBundleOptions) {
         throw new UserError(`Class ${options.className} not found.`);
     }
 
-    const ast = sdkResponse.sdkGeneratorInput.classesInfo.find(
+    const ast = sdkResponse.classesInfo.find(
         (classInfo) => classInfo.classConfiguration.path === element.path,
     )!.program;
 

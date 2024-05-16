@@ -11,7 +11,7 @@ import path from "path";
 import { SdkGeneratorClassesInfoInput, SdkGeneratorInput } from "../models/genezioModels.js";
 import { mapDbAstToSdkGeneratorAst } from "../generateSdk/utils/mapDbAstToFullAst.js";
 import { generateSdk } from "../generateSdk/sdkGeneratorHandler.js";
-import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
+import { SdkGeneratorResponse, SdkHandlerResponse } from "../models/sdkGeneratorResponse.js";
 import inquirer from "inquirer";
 import { GenezioSdkOptions, SourceType } from "../models/commandOptions.js";
 import {
@@ -51,8 +51,8 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
         throw new UserError("You must provide a url when generating a local SDK.");
     }
 
-    const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
-        options.language,
+    const sdk: SdkHandlerResponse = await sdkGeneratorApiHandler(
+        [options.language],
         mapYamlClassToSdkClassConfiguration(
             await scanClassesForDecorators({
                 path: process.cwd(),
@@ -79,6 +79,7 @@ export async function generateLocalSdkCommand(options: GenezioSdkOptions) {
         throw error;
     });
 
+    const sdkResponse = sdk.generatorResponses[0];
     const classUrls = sdkResponse.files.map((c) => ({
         name: c.className,
         cloudUrl: url,

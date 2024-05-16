@@ -3,7 +3,6 @@ import { log } from "../utils/logging.js";
 import path from "path";
 import { exit } from "process";
 import {
-    ENVIRONMENT,
     DASHBOARD_URL,
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
@@ -14,7 +13,7 @@ import {
     sdkGeneratorApiHandler,
 } from "../generateSdk/generateSdkApi.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
-import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
+import { SdkHandlerResponse } from "../models/sdkGeneratorResponse.js";
 import { getNoMethodClasses } from "../utils/getNoMethodClasses.js";
 import {
     fileExists,
@@ -63,6 +62,9 @@ import { getRandomCloudProvider, isProjectDeployed } from "../utils/abTesting.js
 import { ClusterCloudAdapter } from "../cloudAdapter/cluster/clusterAdapter.js";
 import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
+import { isLoggedIn } from "../utils/accounts.js";
+import { loginCommand } from "./login.js";
+import { getLinkedFrontendsForProject } from "../utils/linkDatabase.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -97,19 +99,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
 
         checkExperimentalDecorators(backendCwd);
     }
-    // TODO: check this in deployClasses function
-    //
-    // // check if user is logged in
-    // if (configuration.cloudProvider !== CloudProviderIdentifier.SELF_HOSTED_AWS) {
-    //     if (!(await isLoggedIn())) {
-    //         debugLogger.debug("No auth token found. Starting automatic authentication...");
-    //         await loginCommand("", false);
-    //     }
-    // }
-    //
-    // const cloudAdapter = getCloudAdapter(
-    //     configuration.cloudProvider || CloudProviderIdentifier.GENEZIO,
-    // );
+
     let deployClassesResult;
     backend: if (configuration.backend && !options.frontend) {
         if (configuration.backend.classes?.length === 0) {
@@ -128,27 +118,6 @@ export async function deployCommand(options: GenezioDeployOptions) {
             });
             throw error;
         });
-
-        // Enable cloud provider AB Testing
-        // This is ONLY done in the dev environment and if DISABLE_AB_TESTING is not set.
-        if (
-            ENVIRONMENT === "dev" &&
-            configuration.backend &&
-            process.env["DISABLE_AB_TESTING"] !== "true"
-        ) {
-            const yamlConfig = await configIOController.read(/* fillDefaults= */ false);
-            if (!yamlConfig.backend) {
-                throw new UserError("No backend entry in genezio configuration file.");
-            }
-            yamlConfig.backend.cloudProvider = await performCloudProviderABTesting(
-                configuration.name,
-                configuration.region,
-                configuration.backend.cloudProvider,
-            );
-            // Write the new configuration in the config file
-            await configIOController.write(yamlConfig);
-            configuration.backend.cloudProvider = yamlConfig.backend.cloudProvider;
-        }
 
         await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_START,
@@ -251,18 +220,21 @@ export async function deployClasses(
     if (backend.classes.length === 0) {
         throw new UserError(GENEZIO_NO_CLASSES_FOUND(backend.language.name));
     }
-    let sdkLanguage: Language = Language.ts;
-    if (configuration.frontend) {
-        for (const frontend of configuration.frontend) {
-            if (frontend.sdk?.language) {
-                sdkLanguage = frontend.sdk.language;
-                break;
-            }
-        }
-    }
 
-    const sdkResponse: SdkGeneratorResponse = await sdkGeneratorApiHandler(
-        sdkLanguage,
+    const sdkLanguages: Language[] = [];
+    // Add configuration frontends that contain the SDK field
+    sdkLanguages.push(
+        ...(configuration.frontend
+            ?.map((f) => f.sdk?.language)
+            .filter((f) => f !== undefined) as Language[]),
+    );
+    // Add linked frontends
+    sdkLanguages.push(
+        ...(await getLinkedFrontendsForProject(configuration.name)).map((f) => f.language),
+    );
+
+    const sdkResponse: SdkHandlerResponse = await sdkGeneratorApiHandler(
+        sdkLanguages,
         mapYamlClassToSdkClassConfiguration(backend.classes, backend.language.name, backend.path),
         backend.path,
         /* packageName= */ `@genezio-sdk/${configuration.name}`,
@@ -298,7 +270,7 @@ export async function deployClasses(
     printAdaptiveLog("Bundling your code\n", "start");
     const bundlerResult: Promise<GenezioCloudInput>[] = projectConfiguration.classes.map(
         async (element) => {
-            const ast = sdkResponse.sdkGeneratorInput.classesInfo.find(
+            const ast = sdkResponse.classesInfo.find(
                 (classInfo) => classInfo.classConfiguration.path === element.path,
             )!.program;
             const output = await bundle(
@@ -376,15 +348,26 @@ export async function deployClasses(
         };
     });
 
+    // check if user is logged in
+    if (projectConfiguration.cloudProvider !== CloudProviderIdentifier.SELF_HOSTED_AWS) {
+        if (!(await isLoggedIn())) {
+            debugLogger.debug("No auth token found. Starting automatic authentication...");
+            await loginCommand("", false);
+        }
+    }
+
     // TODO: Enable cloud adapter setting for every class
     const cloudAdapter = getCloudAdapter(
-        configuration.backend?.cloudProvider || CloudProviderIdentifier.GENEZIO,
+        configuration.backend?.cloudProvider || CloudProviderIdentifier.GENEZIO_AWS,
     );
     const result = await cloudAdapter.deploy(bundlerResultArray, projectConfiguration, {
         stage: options.stage,
     });
 
-    if (sdkResponse.files.length <= 0) {
+    if (
+        sdkResponse.generatorResponses.length > 0 &&
+        sdkResponse.generatorResponses[0].files.length <= 0
+    ) {
         log.info(colors.cyan("Your backend code was successfully deployed!"));
         return;
     } else {
@@ -526,7 +509,8 @@ export async function deployFrontend(
             await runScript(frontend.scripts?.build, frontend.path);
         });
     } catch (error) {
-        log.info(`Skipping frontend ${index} deployment because the build script failed.`);
+        if (error instanceof Error) log.error(new Error(error.message));
+        log.info(`Skipping frontend ${index + 1} deployment because the build script failed.`);
         return;
     }
 
@@ -590,7 +574,7 @@ export async function deployFrontend(
 
     frontend.subdomain = options.subdomain || frontend.subdomain;
 
-    const cloudAdapter = getCloudAdapter(CloudProviderIdentifier.GENEZIO);
+    const cloudAdapter = getCloudAdapter(CloudProviderIdentifier.GENEZIO_AWS);
     const url = await cloudAdapter.deployFrontend(name, region, frontend, stage);
     return url;
 }
@@ -598,54 +582,69 @@ export async function deployFrontend(
 async function handleSdk(
     configuration: YamlProjectConfiguration,
     result: GenezioCloudOutput,
-    sdkResponse: SdkGeneratorResponse,
+    sdk: SdkHandlerResponse,
     options: GenezioDeployOptions,
 ) {
     const frontends = configuration.frontend;
-    let sdkLanguage: Language = Language.ts;
-    let sdkPath, frontendPath: string | undefined;
 
-    if (frontends && frontends.length > 0) {
-        sdkLanguage = frontends[0].sdk?.language || Language.ts;
-        frontendPath = frontends[0].path;
-        if (frontendPath) {
-            sdkPath = frontends[0].sdk?.path
-                ? path.join(frontendPath, frontends[0].sdk?.path)
-                : path.join(frontendPath, "sdk");
+    const sdkLocations: Array<{ path: string; language: Language }> = [];
+
+    for (const frontend of frontends || []) {
+        if (frontend.sdk) {
+            sdkLocations.push({
+                path: path.join(frontend.path, frontend.sdk.path || "sdk"),
+                language: frontend.sdk.language,
+            });
         }
     }
 
-    if (sdkLanguage) {
+    const linkedFrontends = await getLinkedFrontendsForProject(configuration.name);
+    linkedFrontends.forEach((f) =>
+        sdkLocations.push({
+            path: f.path,
+            language: f.language,
+        }),
+    );
+
+    for (const sdkLocation of sdkLocations) {
+        const sdkResponse = sdk.generatorResponses.find(
+            (response) => response.sdkGeneratorInput.language === sdkLocation.language,
+        );
+
+        if (!sdkResponse) {
+            throw new UserError("Could not find the SDK for the frontend.");
+        }
+
         const classUrls = result.classes.map((c) => ({
             name: c.className,
             cloudUrl: c.functionUrl,
         }));
         await writeSdk({
-            language: sdkLanguage,
+            language: sdkLocation.language,
             packageName: `@genezio-sdk/${configuration.name}`,
             packageVersion: `1.0.0-${options.stage}`,
             sdkResponse,
             classUrls,
             publish: true,
             installPackage: true,
-            outputPath: sdkPath,
+            outputPath: sdkLocation.path,
+        });
+
+        reportSuccessForSdk(sdkLocation.language, sdkResponse, GenezioCommand.deploy, {
+            name: configuration.name,
+            stage: options.stage || "prod",
         });
     }
-
-    reportSuccessForSdk(sdkLanguage, sdkResponse, GenezioCommand.deploy, {
-        name: configuration.name,
-        stage: options.stage || "prod",
-    });
 }
 
 function getCloudAdapter(provider: string): CloudAdapter {
     switch (provider) {
-        case CloudProviderIdentifier.GENEZIO:
-        case CloudProviderIdentifier.CAPYBARA:
+        case CloudProviderIdentifier.GENEZIO_AWS:
+        case CloudProviderIdentifier.GENEZIO_UNIKERNEL:
             return new GenezioCloudAdapter();
-        case CloudProviderIdentifier.CAPYBARA_LINUX:
+        case CloudProviderIdentifier.GENEZIO_CLOUD:
             return new GenezioCloudAdapter();
-        case CloudProviderIdentifier.CLUSTER:
+        case CloudProviderIdentifier.GENEZIO_CLUSTER:
             return new ClusterCloudAdapter();
         case CloudProviderIdentifier.SELF_HOSTED_AWS:
             return new SelfHostedAwsAdapter();
@@ -665,10 +664,10 @@ export async function performCloudProviderABTesting(
     const isAlreadyDeployed = await isProjectDeployed(projectName, projectRegion);
 
     // We won't perform AB testing if the cloud provider is set for runtime, self-hosted or cluster.
-    if (!isAlreadyDeployed && projectCloudProvider === CloudProviderIdentifier.GENEZIO) {
+    if (!isAlreadyDeployed && projectCloudProvider === CloudProviderIdentifier.GENEZIO_AWS) {
         const randomCloudProvider = getRandomCloudProvider();
 
-        if (randomCloudProvider !== CloudProviderIdentifier.GENEZIO) {
+        if (randomCloudProvider !== CloudProviderIdentifier.GENEZIO_AWS) {
             debugLogger.debug(
                 "You've been visited by the AB testing fairy! 🧚‍♂️ Your cloud provider is now set to",
                 randomCloudProvider,

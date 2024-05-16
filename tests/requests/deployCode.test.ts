@@ -21,7 +21,7 @@ test("should throw error if server returns error", async () => {
         const projectConfiguration: ProjectConfiguration = {
             name: "test",
             region: "us-east-1",
-            cloudProvider: CloudProviderIdentifier.GENEZIO,
+            cloudProvider: CloudProviderIdentifier.GENEZIO_AWS,
             astSummary: {
                 classes: [],
                 version: "1.0.0",
@@ -42,7 +42,7 @@ test("should throw error if server returns data.error object", async () => {
         const projectConfiguration: ProjectConfiguration = {
             name: "test",
             region: "us-east-1",
-            cloudProvider: CloudProviderIdentifier.GENEZIO,
+            cloudProvider: CloudProviderIdentifier.GENEZIO_AWS,
             astSummary: {
                 classes: [],
                 version: "1.0.0",
@@ -62,7 +62,7 @@ test("should return response.data if everything is ok", async () => {
     const projectConfiguration: ProjectConfiguration = {
         name: "test",
         region: "us-east-1",
-        cloudProvider: CloudProviderIdentifier.GENEZIO,
+        cloudProvider: CloudProviderIdentifier.GENEZIO_AWS,
         astSummary: {
             classes: [],
             version: "1.0.0",
@@ -88,7 +88,7 @@ test("should read token and pass it to headers", async () => {
     const projectConfiguration: ProjectConfiguration = {
         name: "test",
         region: "us-east-1",
-        cloudProvider: CloudProviderIdentifier.GENEZIO,
+        cloudProvider: CloudProviderIdentifier.GENEZIO_AWS,
         astSummary: {
             classes: [],
             version: "1.0.0",

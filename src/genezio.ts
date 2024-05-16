@@ -59,10 +59,10 @@ try {
         }
 
         setPackageManager(packageManager);
+    } else {
+        setPackageManager(PackageManagerType.npm);
     }
 } catch {
-    setPackageManager(PackageManagerType.npm);
-} finally {
     setPackageManager(PackageManagerType.npm);
 }
 
@@ -362,13 +362,14 @@ program
 program
     .command("link")
     .argument("[projectName]", "The name of the project that you want to communicate with.")
+    .argument("[language]", "The language of the SDK that will be generated.")
     .summary("Links the genezio generated SDK in the current working directory")
     .description(
         "Linking a client with a deployed project will enable `genezio local` to figure out where to generate the SDK to call the backend methods.\n\
 This command is useful when the project has dedicated repositories for the backend and the frontend.",
     )
-    .action(async (projectName: string) => {
-        await linkCommand(projectName).catch((error) => {
+    .action(async (projectName?: string, projectLanguage?: string) => {
+        await linkCommand(projectName, projectLanguage).catch((error) => {
             logError(error);
             exit(1);
         });
@@ -417,11 +418,12 @@ program
     .command("delete")
     .argument("[projectId]", "ID of the project you want to delete.")
     .option("-f, --force", "Skip confirmation prompt for deletion.", false)
+    .option("--stage <stage>", "Delete only a specific stage of the project.")
     .summary("Delete a deployed project.")
     .description(
         "Delete the project described by the provided ID. If no ID is provided, lists all the projects and IDs.",
     )
-    .action(async (projectId = "", options: GenezioDeleteOptions) => {
+    .action(async (projectId: string | undefined, options: GenezioDeleteOptions) => {
         await deleteCommand(projectId, options).catch(async (error) => {
             logError(error);
             await GenezioTelemetry.sendEvent({

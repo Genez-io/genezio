@@ -2,11 +2,20 @@ import { YAMLContext, parse as parseYaml, stringify as stringifyYaml } from "yam
 import zod from "zod";
 import nativeFs from "fs";
 import { IFs } from "memfs";
+import { log } from "../utils/logging.js";
 import { regions } from "../utils/configs.js";
 import { GENEZIO_CONFIGURATION_FILE_NOT_FOUND, UserError, zodFormatError } from "../errors.js";
 import { Language } from "./models.js";
-import { DEFAULT_ARCHITECTURE, DEFAULT_NODE_RUNTIME, supportedArchitectures, supportedNodeRuntimes } from "../models/projectOptions.js";
-import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
+import {
+    DEFAULT_ARCHITECTURE,
+    DEFAULT_NODE_RUNTIME,
+    supportedArchitectures,
+    supportedNodeRuntimes,
+} from "../models/projectOptions.js";
+import {
+    CloudProviderIdentifier,
+    CloudProviderMapping,
+} from "../models/cloudProviderIdentifier.js";
 import { PackageManagerType } from "../packageManagers/packageManager.js";
 import { TriggerType } from "./models.js";
 import { isValidCron } from "cron-validator";
@@ -131,7 +140,21 @@ function parseGenezioConfig(config: unknown) {
         frontend: zod.array(frontendSchema).or(frontendSchema).optional(),
     });
 
-    return v2Schema.parse(config);
+    const parsedConfig = v2Schema.parse(config);
+
+    // Update cloudProvider using the mapping if the current provider is a legacy version
+    if (
+        parsedConfig.backend?.cloudProvider &&
+        CloudProviderMapping[parsedConfig.backend.cloudProvider as CloudProviderIdentifier]
+    ) {
+        log.warn(
+            `Legacy cloud provider used: '${parsedConfig.backend.cloudProvider}'. Use '${CloudProviderMapping[parsedConfig.backend.cloudProvider as CloudProviderIdentifier]}' instead.`,
+        );
+        parsedConfig.backend.cloudProvider =
+            CloudProviderMapping[parsedConfig.backend.cloudProvider as CloudProviderIdentifier];
+    }
+
+    return parsedConfig;
 }
 
 function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
@@ -147,7 +170,7 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
                 defaultConfig.backend.language.architecture ??= DEFAULT_ARCHITECTURE;
         }
 
-        defaultConfig.backend.cloudProvider ??= CloudProviderIdentifier.GENEZIO;
+        defaultConfig.backend.cloudProvider ??= CloudProviderIdentifier.GENEZIO_AWS;
     }
 
     if (defaultConfig.frontend && !Array.isArray(defaultConfig.frontend)) {
@@ -283,7 +306,7 @@ export class YamlConfigurationIOController {
         }
 
         const fileContent = (await this.fs.promises.readFile(this.filePath, "utf8")) as string;
-        this.latestRead = lastModified;
+        this.latestRead = new Date();
 
         const [rawConfig, ctx] = parseYaml(fileContent);
         let genezioConfig: RawYamlProjectConfiguration;

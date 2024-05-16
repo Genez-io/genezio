@@ -386,12 +386,12 @@ export class NodeJsBundler implements BundlerInterface {
         provider: CloudProviderIdentifier,
     ): ((className: string) => string) | null {
         switch (provider) {
-            case CloudProviderIdentifier.CLUSTER:
+            case CloudProviderIdentifier.GENEZIO_CLUSTER:
                 return clusterHandlerGenerator;
-            case CloudProviderIdentifier.GENEZIO:
+            case CloudProviderIdentifier.GENEZIO_AWS:
                 return lambdaHandlerGenerator;
-            case CloudProviderIdentifier.CAPYBARA:
-            case CloudProviderIdentifier.CAPYBARA_LINUX:
+            case CloudProviderIdentifier.GENEZIO_UNIKERNEL:
+            case CloudProviderIdentifier.GENEZIO_CLOUD:
                 return genezioRuntimeHandlerGenerator;
             default:
                 return null;
@@ -406,7 +406,7 @@ export class NodeJsBundler implements BundlerInterface {
 
         // TODO: Remove this check after cluster is fully supported in other regions
         if (
-            cloudProvider === CloudProviderIdentifier.CLUSTER &&
+            cloudProvider === CloudProviderIdentifier.GENEZIO_CLUSTER &&
             input.projectConfiguration.region !== "us-east-1"
         ) {
             throw new UserError(
@@ -440,10 +440,10 @@ export class NodeJsBundler implements BundlerInterface {
             mode === "development"
                 ? this.#copyDependencies(undefined, temporaryFolder, mode, cwd)
                 : Promise.resolve(),
-            mode === "production" && input.extra.isOptimizationDisabled
+            mode === "production" && input.extra.disableOptimization
                 ? this.#copyDependencies(undefined, temporaryFolder, mode, cwd)
                 : Promise.resolve(),
-            mode === "production" && !input.extra.isOptimizationDisabled
+            mode === "production" && !input.extra.disableOptimization
                 ? this.#getDependenciesInfo(input.configuration.path, input, cwd)
                 : Promise.resolve(),
         ]);
