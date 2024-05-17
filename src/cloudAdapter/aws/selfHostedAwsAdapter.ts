@@ -4,6 +4,7 @@ import {
     CloudAdapter,
     CloudAdapterOptions,
     GenezioCloudInput,
+    GenezioCloudInputType,
     GenezioCloudOutput,
 } from "../cloudAdapter.js";
 import {
@@ -328,6 +329,11 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
         await Promise.all(uploadFilesPromises);
 
         for (const inputItem of input) {
+            if (inputItem.type !== GenezioCloudInputType.CLASS) {
+                throw new UserError(
+                    `Unsupported deploy unit type for ${inputItem.type} ${inputItem.name}`,
+                );
+            }
             const classConfiguration = projectConfiguration.classes.find(
                 (c) => c.path === inputItem.filePath,
             );
@@ -448,6 +454,11 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
         );
 
         for (const inputItem of input) {
+            if (inputItem.type !== GenezioCloudInputType.CLASS) {
+                throw new UserError(
+                    `Unsupported deploy unit type for ${inputItem.type} ${inputItem.name}`,
+                );
+            }
             classes.push({
                 className: inputItem.name,
                 methods: inputItem.methods.map((method) => ({

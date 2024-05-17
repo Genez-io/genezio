@@ -5,7 +5,7 @@ import { IFs } from "memfs";
 import { log } from "../utils/logging.js";
 import { regions } from "../utils/configs.js";
 import { GENEZIO_CONFIGURATION_FILE_NOT_FOUND, UserError, zodFormatError } from "../errors.js";
-import { Language } from "./models.js";
+import { FunctionProviderType, Language } from "./models.js";
 import {
     DEFAULT_ARCHITECTURE,
     DEFAULT_NODE_RUNTIME,
@@ -26,6 +26,7 @@ import { DeepRequired } from "../utils/types.js";
 export type RawYamlProjectConfiguration = ReturnType<typeof parseGenezioConfig>;
 export type YAMLBackend = NonNullable<YamlProjectConfiguration["backend"]>;
 export type YamlClass = NonNullable<YAMLBackend["classes"]>[number];
+export type YamlFunction = NonNullable<YAMLBackend["functions"]>[number];
 export type YamlMethod = NonNullable<YamlClass["methods"]>[number];
 export type YamlFrontend = NonNullable<YamlProjectConfiguration["frontend"]>[number];
 type YamlScripts = NonNullable<YAMLBackend["scripts"]> | NonNullable<YamlFrontend["scripts"]>;
@@ -84,6 +85,13 @@ function parseGenezioConfig(config: unknown) {
         methods: zod.array(methodSchema).optional(),
     });
 
+    const functionsSchema = zod.object({
+        name: zod.string(),
+        path: zod.string(),
+        handler: zod.string(),
+        provider: zod.nativeEnum(FunctionProviderType),
+    });
+
     const backendSchema = zod.object({
         path: zod.string(),
         language: languageSchema,
@@ -108,6 +116,7 @@ function parseGenezioConfig(config: unknown) {
             })
             .optional(),
         classes: zod.array(classSchema).optional(),
+        functions: zod.array(functionsSchema).optional(),
     });
 
     const frontendSchema = zod.object({

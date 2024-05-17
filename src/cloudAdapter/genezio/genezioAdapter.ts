@@ -10,6 +10,7 @@ import {
     CloudAdapter,
     CloudAdapterOptions,
     GenezioCloudInput,
+    GenezioCloudInputType,
     GenezioCloudOutput,
 } from "../cloudAdapter.js";
 import {
@@ -29,7 +30,87 @@ import { UserError } from "../../errors.js";
 import { stdout } from "process";
 
 const BUNDLE_SIZE_LIMIT = 256901120;
+async function handleBigElementSizeError(
+    element: GenezioCloudInput,
+    projectConfiguration: ProjectConfiguration,
+    BUNDLE_SIZE_LIMIT: number = 256901120,
+): Promise<void> {
+    const size = await getFileSize(element.archivePath);
+    if (size > BUNDLE_SIZE_LIMIT) {
+        throw new UserError(
+            `Your class ${element.name} is too big: ${size} bytes. The maximum size is 250MB. Try to reduce the size of your class.`,
+        );
+    }
 
+    if (
+        element.unzippedBundleSize > BUNDLE_SIZE_LIMIT &&
+        element.type === GenezioCloudInputType.FUNCTION
+    ) {
+        throw new UserError(
+            `Your function ${element.name} is too big: ${element.unzippedBundleSize} bytes. The maximum size is 250MB. Try to reduce the size of your function.`,
+        );
+    }
+
+    if (
+        !(
+            element.unzippedBundleSize > BUNDLE_SIZE_LIMIT &&
+            element.type === GenezioCloudInputType.CLASS
+        )
+    ) {
+        return;
+    }
+
+    const { dependenciesInfo, allNonJsFilesPaths } = element;
+
+    // Throw this error if bundle size is too big and the user is not using js or ts files.
+    if (!dependenciesInfo || !allNonJsFilesPaths) {
+        throw new UserError(
+            `Your class ${element.name} is too big: ${element.unzippedBundleSize} bytes. The maximum size is 250MB. Try to reduce the size of your class.`,
+        );
+    }
+
+    const allfilesSize = await calculateBiggestFiles(dependenciesInfo, allNonJsFilesPaths);
+
+    const dependenciesTable = new Table({
+        head: ["Biggest Dependencies", "Size"],
+    });
+
+    const filesTable = new Table({
+        head: [
+            `Biggest Non-${projectConfiguration.classes[0].language.toUpperCase()} Files`,
+            "Size",
+        ],
+    });
+
+    const maxLength = Math.max(allfilesSize.dependenciesSize.length, allfilesSize.filesSize.length);
+
+    for (let i = 0; i < maxLength; i++) {
+        const formatedDep: string = allfilesSize.dependenciesSize[i]
+            ? allfilesSize.dependenciesSize[i]
+            : "";
+        const formatedNonJsFile: string = allfilesSize.filesSize[i]
+            ? allfilesSize.filesSize[i]
+            : "";
+
+        if (formatedDep.split("->")[0] && formatedDep.split("->")[1]) {
+            dependenciesTable.push([formatedDep.split("->")[0], formatedDep.split("->")[1]]);
+        }
+
+        if (formatedNonJsFile.split("->")[0] && formatedNonJsFile.split("->")[1]) {
+            filesTable.push([formatedNonJsFile.split("->")[0], formatedNonJsFile.split("->")[1]]);
+        }
+    }
+
+    log.info(dependenciesTable.toString());
+    log.info(filesTable.toString());
+    throw new UserError(`
+Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFixed(
+        2,
+    )}MB. The maximum size is ${
+        BUNDLE_SIZE_LIMIT / 1048576
+    }MB. Try to reduce the size of your class.
+`);
+}
 export class GenezioCloudAdapter implements CloudAdapter {
     async deploy(
         input: GenezioCloudInput[],
@@ -50,72 +131,9 @@ export class GenezioCloudAdapter implements CloudAdapter {
         );
 
         const promisesDeploy = input.map(async (element) => {
-            const { dependenciesInfo, allNonJsFilesPaths } = element;
+            handleBigElementSizeError(element, projectConfiguration, BUNDLE_SIZE_LIMIT);
 
-            if (element.unzippedBundleSize > BUNDLE_SIZE_LIMIT) {
-                // Throw this error if bundle size is too big and the user is not using js or ts files.
-                if (!dependenciesInfo || !allNonJsFilesPaths) {
-                    throw new UserError(
-                        `Your class ${element.name} is too big: ${element.unzippedBundleSize} bytes. The maximum size is 250MB. Try to reduce the size of your class.`,
-                    );
-                }
-
-                const allfilesSize = await calculateBiggestFiles(
-                    dependenciesInfo,
-                    allNonJsFilesPaths,
-                );
-
-                const dependenciesTable = new Table({
-                    head: ["Biggest Dependencies", "Size"],
-                });
-
-                const filesTable = new Table({
-                    head: [
-                        `Biggest Non-${projectConfiguration.classes[0].language.toUpperCase()} Files`,
-                        "Size",
-                    ],
-                });
-
-                const maxLength = Math.max(
-                    allfilesSize.dependenciesSize.length,
-                    allfilesSize.filesSize.length,
-                );
-
-                for (let i = 0; i < maxLength; i++) {
-                    const formatedDep: string = allfilesSize.dependenciesSize[i]
-                        ? allfilesSize.dependenciesSize[i]
-                        : "";
-                    const formatedNonJsFile: string = allfilesSize.filesSize[i]
-                        ? allfilesSize.filesSize[i]
-                        : "";
-
-                    if (formatedDep.split("->")[0] && formatedDep.split("->")[1]) {
-                        dependenciesTable.push([
-                            formatedDep.split("->")[0],
-                            formatedDep.split("->")[1],
-                        ]);
-                    }
-
-                    if (formatedNonJsFile.split("->")[0] && formatedNonJsFile.split("->")[1]) {
-                        filesTable.push([
-                            formatedNonJsFile.split("->")[0],
-                            formatedNonJsFile.split("->")[1],
-                        ]);
-                    }
-                }
-
-                log.info(dependenciesTable.toString());
-                log.info(filesTable.toString());
-                throw new UserError(`
-Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFixed(
-                    2,
-                )}MB. The maximum size is ${
-                    BUNDLE_SIZE_LIMIT / 1048576
-                }MB. Try to reduce the size of your class.
-            `);
-            }
-
-            debugLogger.debug(`Get the presigned URL for class name ${element.name}.`);
+            debugLogger.debug(`Get the presigned URL for ${element.type}: ${element.name}.`);
             const presignedUrl = await getPresignedURL(
                 projectConfiguration.region,
                 "genezioDeploy.zip",
@@ -123,15 +141,8 @@ Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFix
                 element.name,
             );
 
-            const size = await getFileSize(element.archivePath);
-            if (size > BUNDLE_SIZE_LIMIT) {
-                throw new UserError(
-                    `Your class ${element.name} is too big: ${size} bytes. The maximum size is 250MB. Try to reduce the size of your class.`,
-                );
-            }
-
             const bar = multibar.create(100, 0, { filename: element.name });
-            debugLogger.debug(`Upload the content to S3 for file ${element.filePath}.`);
+            debugLogger.debug(`Upload the content to S3 for ${element.type}: ${element.name}..`);
             await uploadContentToS3(presignedUrl, element.archivePath, (percentage) => {
                 bar.update(parseFloat((percentage * 100).toFixed(2)), {
                     filename: element.name,
@@ -142,7 +153,9 @@ Class ${element.name} is too big: ${(element.unzippedBundleSize / 1048576).toFix
                 }
             });
 
-            debugLogger.debug(`Done uploading the content to S3 for file ${element.filePath}.`);
+            debugLogger.debug(
+                `Done uploading the content to S3 for ${element.type}: ${element.name}..`,
+            );
         });
 
         // wait for all promises to finish

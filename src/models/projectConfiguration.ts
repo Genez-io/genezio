@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { getAstSummary } from "../generateSdk/utils/getAstSummary.js";
 import { AstSummary } from "./astSummary.js";
 import { CloudProviderIdentifier } from "./cloudProviderIdentifier.js";
 import { DEFAULT_ARCHITECTURE, DEFAULT_NODE_RUNTIME, NodeOptions } from "./projectOptions.js";
 import { SdkHandlerResponse } from "./sdkGeneratorResponse.js";
-import { TriggerType } from "../yamlProjectConfiguration/models.js";
+import { FunctionProviderType, TriggerType } from "../yamlProjectConfiguration/models.js";
 import { YamlProjectConfiguration } from "../yamlProjectConfiguration/v2.js";
 import path from "path";
 import { UserError } from "../errors.js";
@@ -76,6 +77,28 @@ export class ClassConfiguration {
     }
 }
 
+export class FunctionConfiguration {
+    name: string;
+    path: string;
+    handler: string;
+    language: string;
+    provider: FunctionProviderType;
+
+    constructor(
+        name: string,
+        path: string,
+        handler: string,
+        language: string,
+        provider: FunctionProviderType,
+    ) {
+        this.name = name;
+        this.path = path;
+        this.handler = handler;
+        this.language = language;
+        this.provider = provider;
+    }
+}
+
 export class SdkConfiguration {
     language: string;
     path?: string;
@@ -102,6 +125,7 @@ export class ProjectConfiguration {
     cloudProvider: CloudProviderIdentifier;
     astSummary: AstSummary;
     classes: ClassConfiguration[];
+    functions: FunctionConfiguration[];
     workspace?: Workspace;
 
     constructor(
@@ -166,5 +190,16 @@ export class ProjectConfiguration {
                 docString: c.docString,
             };
         });
+
+        this.functions =
+            yamlConfiguration.backend?.functions?.map((f) => {
+                return {
+                    name: f.name,
+                    path: f.path,
+                    language: yamlConfiguration.backend?.language.name || "ts",
+                    handler: f.handler,
+                    provider: f.provider,
+                };
+            }) || [];
     }
 }

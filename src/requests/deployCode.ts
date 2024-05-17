@@ -29,11 +29,17 @@ export async function deployRequest(
     const json = JSON.stringify({
         options: projectConfiguration.options,
         classes: projectConfiguration.classes,
+        functions: projectConfiguration.functions.map((func) => ({
+            name: func.name,
+            language: func.language,
+        })),
         projectName: projectConfiguration.name,
         region: projectConfiguration.region,
         cloudProvider: projectConfiguration.cloudProvider,
         stage: stage,
     });
+
+    debugLogger.debug("Request body deploy call", json);
 
     const controller = new AbortController();
     const messagePromise = printUninformativeLog(controller);

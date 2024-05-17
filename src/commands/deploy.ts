@@ -37,6 +37,7 @@ import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter.j
 import {
     CloudAdapter,
     GenezioCloudInput,
+    GenezioCloudInputType,
     GenezioCloudOutput,
 } from "../cloudAdapter/cloudAdapter.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
@@ -216,7 +217,7 @@ export async function deployClasses(
     const backend: YAMLBackend = configuration.backend!;
     backend.classes = await scanClassesForDecorators(backend);
 
-    if (backend.classes.length === 0) {
+    if (backend.classes.length === 0 && backend.functions?.length === 0) {
         throw new UserError(GENEZIO_NO_CLASSES_FOUND(backend.language.name));
     }
 
@@ -284,6 +285,7 @@ export async function deployClasses(
                 debugLogger.debug("Skipping ZIP due to .jar file");
                 debugLogger.debug(path.join(output.path, "app-standalone.jar"));
                 return {
+                    type: GenezioCloudInputType.CLASS,
                     name: element.name,
                     archivePath: path.join(output.path, "app-standalone.jar"),
                     filePath: element.path,
@@ -305,16 +307,19 @@ export async function deployClasses(
             await deleteFolder(output.path);
 
             return {
+                type: GenezioCloudInputType.CLASS,
                 name: element.name,
                 archivePath: archivePath,
                 filePath: element.path,
                 methods: element.methods,
-                unzippedBundleSize: unzippedBundleSize,
                 dependenciesInfo: output.extra.dependenciesInfo,
                 allNonJsFilesPaths: output.extra.allNonJsFilesPaths,
+                unzippedBundleSize: unzippedBundleSize,
             };
         },
     );
+
+    // TODO RADU: Add support for functions with bundler and archiver
 
     const bundlerResultArray = await Promise.all(bundlerResult).catch((error) => {
         printAdaptiveLog("Bundling your code\n", "error");
@@ -349,7 +354,7 @@ export async function deployClasses(
 
     // TODO: Enable cloud adapter setting for every class
     const cloudAdapter = getCloudAdapter(
-        configuration.backend?.cloudProvider || CloudProviderIdentifier.GENEZIO_AWS,
+        configuration.backend?.cloudProvider || CloudProviderIdentifier.GENEZIO_CLOUD,
     );
     const result = await cloudAdapter.deploy(bundlerResultArray, projectConfiguration, {
         stage: options.stage,
