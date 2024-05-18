@@ -26,6 +26,7 @@ import {
     getBundleFolderSizeLimit,
     readEnvironmentVariablesFile,
     zipFile,
+    writeToFile,
 } from "../utils/file.js";
 import { printAdaptiveLog, debugLogger, doAdaptiveLogAction } from "../utils/logging.js";
 import { GenezioCommand, reportSuccess } from "../utils/reporter.js";
@@ -55,7 +56,7 @@ import {
     isDependencyVersionCompatible,
 } from "../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../yamlProjectConfiguration/v2.js";
-import { Language } from "../yamlProjectConfiguration/models.js";
+import { FunctionProviderType, Language } from "../yamlProjectConfiguration/models.js";
 import { runScript } from "../utils/scripts.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../yamlProjectConfiguration/v2.js";
@@ -65,6 +66,8 @@ import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
 import { isLoggedIn } from "../utils/accounts.js";
 import { loginCommand } from "./login.js";
+import { AwsFunctionHandlerProvider } from "../functionHandlerProvider/providers/AwsFunctionHandlerProvider.js";
+import fsExtra from "fs-extra/esm";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -307,7 +310,7 @@ export async function deployClasses(
             await deleteFolder(output.path);
 
             return {
-                type: GenezioCloudInputType.CLASS,
+                type: GenezioCloudInputType.CLASS as GenezioCloudInputType.CLASS,
                 name: element.name,
                 archivePath: archivePath,
                 filePath: element.path,
@@ -319,9 +322,57 @@ export async function deployClasses(
         },
     );
 
+    const functionsResultArray: Promise<GenezioCloudInput>[] = projectConfiguration.functions.map(
+        async (element) => {
+            if (element.language !== "js" && element.language !== "ts") {
+                throw new UserError(
+                    `The language ${element.language} is not supported for functions. Only JavaScript and TypeScript are supported.`,
+                );
+            }
+            const handlerProvider = getFunctionHandlerProvider(element.provider);
+
+            const handlerContent = await handlerProvider.getHandler(element);
+
+            // create temporary folder
+            const tmpFolderPath = await createTemporaryFolder();
+            const archivePath = path.join(await createTemporaryFolder(), `genezioDeploy.zip`);
+
+            // copy everything to the temporary folder
+            await fsExtra.copy(element.path, tmpFolderPath);
+
+            const unzippedBundleSize = await getBundleFolderSizeLimit(tmpFolderPath);
+
+            // add the handler to the temporary folder
+            await writeToFile(
+                path.join(tmpFolderPath),
+                "genezio_cloud_runtime_handler.js",
+                handlerContent,
+            );
+
+            debugLogger.debug(`Zip the directory ${tmpFolderPath}.`);
+
+            // zip the temporary folder
+            await zipDirectory(tmpFolderPath, archivePath);
+
+            debugLogger.debug(`Zip created at path: ${archivePath}.`);
+
+            await deleteFolder(tmpFolderPath);
+
+            return {
+                type: GenezioCloudInputType.FUNCTION as GenezioCloudInputType.FUNCTION,
+                name: element.name,
+                archivePath: archivePath,
+                unzippedBundleSize: unzippedBundleSize,
+            };
+        },
+    );
+
     // TODO RADU: Add support for functions with bundler and archiver
 
-    const bundlerResultArray = await Promise.all(bundlerResult).catch((error) => {
+    const cloudAdapterDeployInput = await Promise.all([
+        ...bundlerResult,
+        ...functionsResultArray,
+    ]).catch((error) => {
         printAdaptiveLog("Bundling your code\n", "error");
         throw error;
     });
@@ -356,7 +407,7 @@ export async function deployClasses(
     const cloudAdapter = getCloudAdapter(
         configuration.backend?.cloudProvider || CloudProviderIdentifier.GENEZIO_CLOUD,
     );
-    const result = await cloudAdapter.deploy(bundlerResultArray, projectConfiguration, {
+    const result = await cloudAdapter.deploy(cloudAdapterDeployInput, projectConfiguration, {
         stage: options.stage,
     });
 
@@ -640,6 +691,15 @@ function getCloudAdapter(provider: string): CloudAdapter {
             return new SelfHostedAwsAdapter();
         default:
             throw new UserError(`Unsupported cloud provider: ${provider}`);
+    }
+}
+
+function getFunctionHandlerProvider(provider: FunctionProviderType): AwsFunctionHandlerProvider {
+    switch (provider) {
+        case FunctionProviderType.aws:
+            return new AwsFunctionHandlerProvider();
+        default:
+            throw new UserError(`Unsupported function provider: ${provider}`);
     }
 }
 

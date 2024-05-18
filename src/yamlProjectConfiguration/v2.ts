@@ -88,7 +88,10 @@ function parseGenezioConfig(config: unknown) {
     const functionsSchema = zod.object({
         name: zod.string(),
         path: zod.string(),
-        handler: zod.string(),
+        handler: zod.string().refine((value) => {
+            return value.split(".").length === 2;
+        }, "The handler should be in the format 'file.function'. example: index.handler"),
+
         provider: zod.nativeEnum(FunctionProviderType),
     });
 

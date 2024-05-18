@@ -133,6 +133,11 @@ export class GenezioCloudAdapter implements CloudAdapter {
         const promisesDeploy = input.map(async (element) => {
             handleBigElementSizeError(element, projectConfiguration, BUNDLE_SIZE_LIMIT);
 
+            if (element.type === GenezioCloudInputType.FUNCTION) {
+                // TODO:
+                element.name = element.name.replace(/\//g, "-");
+            }
+
             debugLogger.debug(`Get the presigned URL for ${element.type}: ${element.name}.`);
             const presignedUrl = await getPresignedURL(
                 projectConfiguration.region,
