@@ -15,10 +15,10 @@ import (
     "errors"
     "path"
     "github.com/Genez-io/genezio_types"
-
-    {{^usesAuth}}
-    "github.com/Genez-io/auth"
     "context"
+
+    {{#usesAuth}}
+    "github.com/Genez-io/auth"
     {{/usesAuth}}
 
     {{#imports}}
@@ -86,7 +86,7 @@ const (
     JsonRpcMethod MethodType = "jsonrpc"
 )
 
-func sendError(w http.ResponseWriter, err error, methodType MethodType) {
+func sendError(ctx context.Context, w http.ResponseWriter, err error, methodType MethodType) {
     genezioError := make(map[string]interface{})
     byteError, error := json.Marshal(err)
     if error != nil {
@@ -138,11 +138,11 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 
     request, err := io.ReadAll(r.Body)
     if err != nil {
-        sendError(w, err, JsonRpcMethod)
+        sendError(ctx, w, err, JsonRpcMethod)
     }
 	err = json.Unmarshal(request, &event)
 	if err != nil {
-        sendError(w, err, JsonRpcMethod)
+        sendError(ctx, w, err, JsonRpcMethod)
 		return
 	}
 
@@ -166,12 +166,12 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
         case "{{name}}":
             err := class.{{name}}()
             if err != nil {
-                sendError(w, err, CronMethod)
+                sendError(ctx, w, err, CronMethod)
                 return
             }
         {{/cronMethods}}
         default:
-            sendError(w, errors.New("cron method not found"), CronMethod)
+            sendError(ctx, w, errors.New("cron method not found"), CronMethod)
             return
         }
     } else if !isJsonRpcRequest {
@@ -185,7 +185,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
         if event.IsBase64Encoded {
             bodyDecoded, err := base64.StdEncoding.DecodeString(event.Body)
             if err != nil {
-                sendError(w, err, HttpMethod)
+                sendError(ctx, w, err, HttpMethod)
                 return
             }
             genezioRequest.Body = bodyDecoded
@@ -206,12 +206,12 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
         case "{{name}}":
             result, err = class.{{name}}(genezioRequest)
             if err != nil {
-                sendError(w, err, HttpMethod)
+                sendError(ctx, w, err, HttpMethod)
                 return
             }
         {{/httpMethods}}
         default:
-            sendError(w, errors.New("http method not found"), HttpMethod)
+            sendError(ctx, w, errors.New("http method not found"), HttpMethod)
             return
         }
 
@@ -219,7 +219,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
         if !ok {
             resultBody, err := json.Marshal(result.Body)
             if err != nil {
-                sendError(w, err, HttpMethod)
+                sendError(ctx, w, err, HttpMethod)
                 return
             }
             result.Body = string(resultBody)
@@ -227,7 +227,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
         }
         response, err := json.Marshal(result)
         if err != nil {
-            sendError(w, err, HttpMethod)
+            sendError(ctx, w, err, HttpMethod)
             return
         }  
         w.WriteHeader(http.StatusOK)
@@ -241,27 +241,27 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
             {{#parameters}}
             {{{cast}}}
             {{/parameters}}
-            {{^auth}}
+            {{#auth}}
             gnzContext, ok := body.Params[0].(map[string]interface{})
             if !ok {
-                sendError(w, errors.New("invalid context"), JsonRpcMethod)
+                sendError(ctx, w, errors.New("invalid context"), JsonRpcMethod)
                 return
             }
             token, ok := gnzContext["token"].(string)
             if !ok {
-                sendError(w, errors.New("invalid token"), JsonRpcMethod)
+                sendError(ctx, w, errors.New("invalid token"), JsonRpcMethod)
                 return
             }
             user, err := auth.GetUserByToken(token)
             if err != nil {
-                sendError(w, err, JsonRpcMethod)
+                sendError(ctx, w, err, JsonRpcMethod)
                 return
             }
             param0 = context.WithValue(ctx, "user", user)
             {{/auth}}
             {{^isVoid}}result, {{/isVoid}}err {{^isVoid}}:{{/isVoid}}= class.{{name}}({{#parameters}}param{{index}}{{^last}}, {{/last}}{{/parameters}})
             if err != nil {
-                sendError(w, err, JsonRpcMethod)
+                sendError(ctx, w, err, JsonRpcMethod)
                 return
             }
             {{^isVoid}}
@@ -272,12 +272,12 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
         case "{{class.name}}.{{name}}":
             err := class.{{name}}()
             if err != nil {
-                sendError(w, err, JsonRpcMethod)
+                sendError(ctx, w, err, JsonRpcMethod)
                 return
             }
         {{/cronMethods}}
         default:
-            sendError(w, errors.New("method not found"), JsonRpcMethod)
+            sendError(ctx, w, errors.New("method not found"), JsonRpcMethod)
             return
         }
         responseBody.Id = body.Id
@@ -286,7 +286,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 
     bodyString, err := json.Marshal(responseBody)
     if err != nil {
-        sendError(w, err, JsonRpcMethod)
+        sendError(ctx, w, err, JsonRpcMethod)
         return
     }
 
@@ -301,7 +301,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
     // Encode the struct into JSON and check for errors
 	responseByte, err := json.Marshal(response)
 	if err != nil {
-        sendError(w, err, JsonRpcMethod)
+        sendError(ctx, w, err, JsonRpcMethod)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

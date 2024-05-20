@@ -15,7 +15,7 @@ export abstract class DecoratorExtractor {
         }
         let decoratorArguments = {};
         let auth = false;
-        if (genezioMethodArguments[1] === "auth") {
+        if (genezioMethodArguments[0] === "auth") {
             auth = true;
             genezioMethodArguments.shift();
         }

@@ -15,7 +15,7 @@ import (
     "github.com/Genez-io/genezio_types"
     "github.com/aws/aws-lambda-go/lambda"
 
-    {{^usesAuth}}
+    {{#usesAuth}}
     "github.com/Genez-io/auth"
     {{/usesAuth}}
 
@@ -229,7 +229,7 @@ func handleRequest(ctx context.Context, event *Event) (*Response, error) {
             {{#parameters}}
             {{{cast}}}
             {{/parameters}}
-            {{^auth}}
+            {{#auth}}
             gnzContext, ok := body.Params[0].(map[string]interface{})
             if !ok {
                 errorResponse := sendError(errors.New("invalid context"), JsonRpcMethod)
