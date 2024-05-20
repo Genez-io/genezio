@@ -39,7 +39,7 @@ export async function deployRequest(
         stage: stage,
     });
 
-    debugLogger.debug("Request body deploy call", json);
+    debugLogger.debug("Deploy request sent with body:", json);
 
     const controller = new AbortController();
     const messagePromise = printUninformativeLog(controller);
