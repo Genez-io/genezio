@@ -324,7 +324,7 @@ export async function deployClasses(
             await deleteFolder(output.path);
 
             return {
-                type: GenezioCloudInputType.CLASS as GenezioCloudInputType.CLASS,
+                type: GenezioCloudInputType.CLASS,
                 name: element.name,
                 archivePath: archivePath,
                 filePath: element.path,
