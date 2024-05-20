@@ -70,10 +70,14 @@ export async function scanClassesForDecorators(
                             ? getTriggerTypeFromString(genezioMethodDecorator.arguments["type"])
                             : undefined;
                         const cronString = genezioMethodDecorator.arguments["cronString"];
+
+                        const usesAuth =
+                            m.decorators.find((d) => d.name === "GenezioAuth") !== undefined;
                         return {
                             name: m.name,
                             type: methodType,
                             cronString: cronString,
+                            auth: usesAuth,
                         } as YamlMethod;
                     })
                     .filter((m) => m !== undefined) as YamlMethod[];
