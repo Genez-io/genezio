@@ -29,10 +29,12 @@ export async function deployRequest(
     const json = JSON.stringify({
         options: projectConfiguration.options,
         classes: projectConfiguration.classes,
-        functions: projectConfiguration.functions.map((func) => ({
-            name: func.name,
-            language: func.language,
-        })),
+        functions: projectConfiguration.functions
+            ? projectConfiguration.functions.map((func) => ({
+                  name: func.name,
+                  language: func.language,
+              }))
+            : [],
         projectName: projectConfiguration.name,
         region: projectConfiguration.region,
         cloudProvider: projectConfiguration.cloudProvider,

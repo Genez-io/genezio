@@ -719,6 +719,8 @@ function getFunctionHandlerProvider(provider: FunctionProviderType): AwsFunction
         case FunctionProviderType.aws:
             return new AwsFunctionHandlerProvider();
         default:
-            throw new UserError(`Unsupported function provider: ${provider}`);
+            throw new UserError(
+                `Unsupported function provider: ${provider}. Supported providers are: aws`,
+            );
     }
 }

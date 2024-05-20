@@ -16,6 +16,7 @@ export enum TriggerType {
 
 export enum FunctionProviderType {
     aws = "aws",
-    azure = "azure",
-    gcp = "gcp",
+    // TODO: not implemented
+    // azure = "azure",
+    // gcp = "gcp",
 }

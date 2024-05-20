@@ -37,15 +37,15 @@ export function reportSuccess(classesInfo: GenezioCloudResultClass[]) {
 }
 
 export function reportSuccessFunctions(functions: DeployCodeFunctionResponse[]) {
-    let printHttpString = "";
+    let functionDeploymentsString = "";
 
     functions.forEach((func) => {
-        printHttpString += `  - ${func.name}: ${colors.yellow(func.cloudUrl)}` + "\n";
+        functionDeploymentsString += `  - ${func.name}: ${colors.yellow(func.cloudUrl)}` + "\n";
     });
 
-    if (printHttpString !== "") {
+    if (functionDeploymentsString !== "") {
         log.info("");
         log.info("Functions Deployed:");
-        log.info(printHttpString);
+        log.info(functionDeploymentsString);
     }
 }
