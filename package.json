@@ -94,7 +94,7 @@
         "node-cron": "^3.0.3",
         "open": "^10.1.0",
         "ora": "^8.0.1",
-        "semver": "^7.5.4",
+        "semver": "^7.6.2",
         "tree-sitter": "0.20.6",
         "tree-sitter-go": "0.20.0",
         "tree-sitter-typescript": "^0.20.5",
