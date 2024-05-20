@@ -194,7 +194,7 @@ export class ProjectConfiguration {
         this.functions =
             yamlConfiguration.backend?.functions?.map((f) => {
                 return {
-                    name: f.name,
+                    name: `function-${f.name}`,
                     path: f.path,
                     language: yamlConfiguration.backend?.language.name || "ts",
                     handler: f.handler,

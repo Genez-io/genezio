@@ -29,7 +29,7 @@ import {
     writeToFile,
 } from "../utils/file.js";
 import { printAdaptiveLog, debugLogger, doAdaptiveLogAction } from "../utils/logging.js";
-import { GenezioCommand, reportSuccess } from "../utils/reporter.js";
+import { GenezioCommand, reportSuccess, reportSuccessFunctions } from "../utils/reporter.js";
 import { generateRandomSubdomain } from "../utils/yaml.js";
 import cliProgress from "cli-progress";
 import { YAMLBackend, YamlProjectConfiguration } from "../yamlProjectConfiguration/v2.js";
@@ -338,16 +338,12 @@ export async function deployClasses(
             const archivePath = path.join(await createTemporaryFolder(), `genezioDeploy.zip`);
 
             // copy everything to the temporary folder
-            await fsExtra.copy(element.path, tmpFolderPath);
+            await fsExtra.copy(path.join(backend.path, element.path), tmpFolderPath);
 
             const unzippedBundleSize = await getBundleFolderSizeLimit(tmpFolderPath);
 
             // add the handler to the temporary folder
-            await writeToFile(
-                path.join(tmpFolderPath),
-                "genezio_cloud_runtime_handler.js",
-                handlerContent,
-            );
+            await writeToFile(path.join(tmpFolderPath), "index.mjs", handlerContent);
 
             debugLogger.debug(`Zip the directory ${tmpFolderPath}.`);
 
@@ -366,8 +362,6 @@ export async function deployClasses(
             };
         },
     );
-
-    // TODO RADU: Add support for functions with bundler and archiver
 
     const cloudAdapterDeployInput = await Promise.all([
         ...bundlerResult,
@@ -419,13 +413,21 @@ export async function deployClasses(
         return;
     } else {
         log.info(
-            colors.cyan("Your backend code was deployed and the SDK was successfully generated"),
+            colors.cyan(
+                `Your backend code was ${result.classes.length > 0 ? "deployed and the SDK was successfully generated" : "successfully deployed"}`,
+            ),
         );
     }
-    await handleSdk(configuration, result, sdkResponse, options);
-    reportSuccess(result.classes);
+    if (result.classes.length > 0) {
+        await handleSdk(configuration, result, sdkResponse, options);
+        reportSuccess(result.classes);
+    }
 
-    const projectId = result.classes[0].projectId;
+    if (result.functions.length > 0) {
+        reportSuccessFunctions(result.functions);
+    }
+
+    const projectId = result.projectId;
     const projectEnvId = result.projectEnvId;
     if (projectId) {
         // Deploy environment variables if --upload-env is true

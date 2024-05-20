@@ -63,7 +63,7 @@ export async function deployRequest(
     controller.abort();
     printAdaptiveLog(await messagePromise, "end");
 
-    debugLogger.debug("Response received", response.data);
+    debugLogger.debug("Response received", JSON.stringify(response.data));
 
     return response.data;
 }

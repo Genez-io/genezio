@@ -86,7 +86,10 @@ function parseGenezioConfig(config: unknown) {
     });
 
     const functionsSchema = zod.object({
-        name: zod.string(),
+        name: zod.string().refine((value) => {
+            const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
+            return nameRegex.test(value);
+        }, "Must start with a letter and contain only letters, numbers and dashes."),
         path: zod.string(),
         handler: zod.string().refine((value) => {
             return value.split(".").length === 2;

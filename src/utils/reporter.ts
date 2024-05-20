@@ -2,6 +2,7 @@ import { log } from "../utils/logging.js";
 import { TriggerType } from "../yamlProjectConfiguration/models.js";
 import { GenezioCloudResultClass } from "../cloudAdapter/cloudAdapter.js";
 import colors from "colors";
+import { DeployCodeFunctionResponse } from "../models/deployCodeResponse.js";
 
 export enum GenezioCommand {
     deploy = "deploy",
@@ -31,6 +32,20 @@ export function reportSuccess(classesInfo: GenezioCloudResultClass[]) {
     if (printHttpString !== "") {
         log.info("");
         log.info("HTTP Methods Deployed:");
+        log.info(printHttpString);
+    }
+}
+
+export function reportSuccessFunctions(functions: DeployCodeFunctionResponse[]) {
+    let printHttpString = "";
+
+    functions.forEach((func) => {
+        printHttpString += `  - ${func.name}: ${colors.yellow(func.cloudUrl)}` + "\n";
+    });
+
+    if (printHttpString !== "") {
+        log.info("");
+        log.info("Functions Deployed:");
         log.info(printHttpString);
     }
 }

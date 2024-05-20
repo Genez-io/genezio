@@ -13,9 +13,15 @@ export type DeployCodeClassResponse = {
     methods: DeployCodeMethodResponse[];
 };
 
+export type DeployCodeFunctionResponse = {
+    cloudUrl: string;
+    name: string;
+};
+
 export type DeployCodeResponse = {
     status: string;
     projectId: string;
     projectEnvId: string;
     classes: DeployCodeClassResponse[];
+    functions: DeployCodeFunctionResponse[];
 };

@@ -477,8 +477,10 @@ export class SelfHostedAwsAdapter implements CloudAdapter {
         }
 
         return {
+            projectId: "TODO",
             projectEnvId: "",
             classes: classes,
+            functions: [],
         };
     }
 

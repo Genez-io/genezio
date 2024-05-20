@@ -1,4 +1,7 @@
-import { DeployCodeMethodResponse } from "../models/deployCodeResponse.js";
+import {
+    DeployCodeFunctionResponse,
+    DeployCodeMethodResponse,
+} from "../models/deployCodeResponse.js";
 import { MethodConfiguration, ProjectConfiguration } from "../models/projectConfiguration.js";
 import { YamlFrontend } from "../yamlProjectConfiguration/v2.js";
 import { Dependency } from "../bundlers/bundler.interface.js";
@@ -34,9 +37,18 @@ export type GenezioCloudResultClass = {
     projectId?: string;
 };
 
+export type GenezioCloudResultFunctions = {
+    className: string;
+    methods: DeployCodeMethodResponse[];
+    functionUrl: string;
+    projectId?: string;
+};
+
 export type GenezioCloudOutput = {
+    projectId: string;
     projectEnvId: string;
     classes: GenezioCloudResultClass[];
+    functions: DeployCodeFunctionResponse[];
 };
 
 export type CloudAdapterOptions = {
