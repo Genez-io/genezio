@@ -97,6 +97,7 @@ export async function prepareLocalBackendEnvironment(
     options: GenezioLocalOptions,
 ): Promise<ClassProcessSpawnResponse> {
     try {
+        debugLogger.debug(JSON.stringify(process.env));
         const backend = yamlProjectConfiguration.backend;
         const frontend = yamlProjectConfiguration.frontend;
 
