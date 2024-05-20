@@ -26,9 +26,10 @@ import {
     getBundleFolderSizeLimit,
     readEnvironmentVariablesFile,
     zipFile,
+    writeToFile,
 } from "../utils/file.js";
 import { printAdaptiveLog, debugLogger, doAdaptiveLogAction } from "../utils/logging.js";
-import { GenezioCommand, reportSuccess } from "../utils/reporter.js";
+import { GenezioCommand, reportSuccess, reportSuccessFunctions } from "../utils/reporter.js";
 import { generateRandomSubdomain } from "../utils/yaml.js";
 import cliProgress from "cli-progress";
 import { YAMLBackend, YamlProjectConfiguration } from "../yamlProjectConfiguration/v2.js";
@@ -37,6 +38,7 @@ import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter.j
 import {
     CloudAdapter,
     GenezioCloudInput,
+    GenezioCloudInputType,
     GenezioCloudOutput,
 } from "../cloudAdapter/cloudAdapter.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
@@ -54,7 +56,7 @@ import {
     isDependencyVersionCompatible,
 } from "../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../yamlProjectConfiguration/v2.js";
-import { Language } from "../yamlProjectConfiguration/models.js";
+import { FunctionProviderType, Language } from "../yamlProjectConfiguration/models.js";
 import { runScript } from "../utils/scripts.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../yamlProjectConfiguration/v2.js";
@@ -63,6 +65,8 @@ import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
 import { isLoggedIn } from "../utils/accounts.js";
 import { loginCommand } from "./login.js";
+import { AwsFunctionHandlerProvider } from "../functionHandlerProvider/providers/AwsFunctionHandlerProvider.js";
+import fsExtra from "fs-extra/esm";
 import { getLinkedFrontendsForProject } from "../utils/linkDatabase.js";
 import { getCloudProvider } from "../requests/getCloudProvider.js";
 
@@ -217,7 +221,7 @@ export async function deployClasses(
     const backend: YAMLBackend = configuration.backend!;
     backend.classes = await scanClassesForDecorators(backend);
 
-    if (backend.classes.length === 0) {
+    if (backend.classes.length === 0 && backend.functions?.length === 0) {
         throw new UserError(GENEZIO_NO_CLASSES_FOUND(backend.language.name));
     }
 
@@ -298,6 +302,7 @@ export async function deployClasses(
                 debugLogger.debug("Skipping ZIP due to .jar file");
                 debugLogger.debug(path.join(output.path, "app-standalone.jar"));
                 return {
+                    type: GenezioCloudInputType.CLASS,
                     name: element.name,
                     archivePath: path.join(output.path, "app-standalone.jar"),
                     filePath: element.path,
@@ -319,18 +324,63 @@ export async function deployClasses(
             await deleteFolder(output.path);
 
             return {
+                type: GenezioCloudInputType.CLASS,
                 name: element.name,
                 archivePath: archivePath,
                 filePath: element.path,
                 methods: element.methods,
-                unzippedBundleSize: unzippedBundleSize,
                 dependenciesInfo: output.extra.dependenciesInfo,
                 allNonJsFilesPaths: output.extra.allNonJsFilesPaths,
+                unzippedBundleSize: unzippedBundleSize,
             };
         },
     );
 
-    const bundlerResultArray = await Promise.all(bundlerResult).catch((error) => {
+    const functionsResultArray: Promise<GenezioCloudInput>[] = projectConfiguration.functions.map(
+        async (element) => {
+            if (element.language !== "js" && element.language !== "ts") {
+                throw new UserError(
+                    `The language ${element.language} is not supported for functions. Only JavaScript and TypeScript are supported.`,
+                );
+            }
+            const handlerProvider = getFunctionHandlerProvider(element.provider);
+
+            const handlerContent = await handlerProvider.getHandler(element);
+
+            // create temporary folder
+            const tmpFolderPath = await createTemporaryFolder();
+            const archivePath = path.join(await createTemporaryFolder(), `genezioDeploy.zip`);
+
+            // copy everything to the temporary folder
+            await fsExtra.copy(path.join(backend.path, element.path), tmpFolderPath);
+
+            const unzippedBundleSize = await getBundleFolderSizeLimit(tmpFolderPath);
+
+            // add the handler to the temporary folder
+            await writeToFile(path.join(tmpFolderPath), "index.mjs", handlerContent);
+
+            debugLogger.debug(`Zip the directory ${tmpFolderPath}.`);
+
+            // zip the temporary folder
+            await zipDirectory(tmpFolderPath, archivePath);
+
+            debugLogger.debug(`Zip created at path: ${archivePath}.`);
+
+            await deleteFolder(tmpFolderPath);
+
+            return {
+                type: GenezioCloudInputType.FUNCTION as GenezioCloudInputType.FUNCTION,
+                name: element.name,
+                archivePath: archivePath,
+                unzippedBundleSize: unzippedBundleSize,
+            };
+        },
+    );
+
+    const cloudAdapterDeployInput = await Promise.all([
+        ...bundlerResult,
+        ...functionsResultArray,
+    ]).catch((error) => {
         printAdaptiveLog("Bundling your code\n", "error");
         throw error;
     });
@@ -363,7 +413,7 @@ export async function deployClasses(
 
     // TODO: Enable cloud adapter setting for every class
     const cloudAdapter = getCloudAdapter(cloudProvider);
-    const result = await cloudAdapter.deploy(bundlerResultArray, projectConfiguration, {
+    const result = await cloudAdapter.deploy(cloudAdapterDeployInput, projectConfiguration, {
         stage: options.stage,
     });
 
@@ -375,13 +425,21 @@ export async function deployClasses(
         return;
     } else {
         log.info(
-            colors.cyan("Your backend code was deployed and the SDK was successfully generated"),
+            colors.cyan(
+                `Your backend code was ${result.classes.length > 0 ? "deployed and the SDK was successfully generated" : "successfully deployed"}`,
+            ),
         );
     }
-    await handleSdk(configuration, result, sdkResponse, options);
-    reportSuccess(result.classes);
+    if (result.classes.length > 0) {
+        await handleSdk(configuration, result, sdkResponse, options);
+        reportSuccess(result.classes);
+    }
 
-    const projectId = result.classes[0].projectId;
+    if (result.functions.length > 0) {
+        reportSuccessFunctions(result.functions);
+    }
+
+    const projectId = result.projectId;
     const projectEnvId = result.projectEnvId;
     if (projectId) {
         // Deploy environment variables if --upload-env is true
@@ -653,5 +711,16 @@ function getCloudAdapter(provider: CloudProviderIdentifier): CloudAdapter {
             return new SelfHostedAwsAdapter();
         default:
             throw new UserError(`Unsupported cloud provider: ${provider}`);
+    }
+}
+
+function getFunctionHandlerProvider(provider: FunctionProviderType): AwsFunctionHandlerProvider {
+    switch (provider) {
+        case FunctionProviderType.aws:
+            return new AwsFunctionHandlerProvider();
+        default:
+            throw new UserError(
+                `Unsupported function provider: ${provider}. Supported providers are: aws`,
+            );
     }
 }

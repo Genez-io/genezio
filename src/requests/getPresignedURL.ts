@@ -10,9 +10,9 @@ export async function getPresignedURL(
     region = "us-east-1",
     archiveName = "genezioDeploy.zip",
     projectName: string,
-    className: string,
+    deployUnitName: string,
 ) {
-    if (!region || !archiveName || !projectName || !className) {
+    if (!region || !archiveName || !projectName || !deployUnitName) {
         throw new UserError("Missing required parameters");
     }
 
@@ -26,7 +26,7 @@ export async function getPresignedURL(
 
     const json = JSON.stringify({
         projectName: projectName,
-        className: className,
+        className: deployUnitName, // we keep className for backward compatibility
         filename: archiveName,
         region: region,
     });

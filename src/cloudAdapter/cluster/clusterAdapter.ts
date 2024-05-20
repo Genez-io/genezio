@@ -110,8 +110,10 @@ export class ClusterCloudAdapter implements CloudAdapter {
         }));
 
         return {
+            projectId: response.projectId,
             projectEnvId: response.projectEnvId,
             classes: classesInfo,
+            functions: response.functions,
         };
     }
 

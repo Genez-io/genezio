@@ -29,7 +29,7 @@ export const GENEZIO_NO_CLASSES_FOUND = (_language: Language) => {
             break;
     }
     let errorMessage: string =
-        "You don't have any class specified in the genezio.yaml configuration file.";
+        "You don't have any class or function specified in the genezio.yaml configuration file.";
     if (decoratorSyntax) {
         errorMessage += `\nYou have to mark at least one class from your backend for deployment with the ${decoratorSyntax} decorator. Check out how to do that here https://genezio.com/docs/features/backend-deployment/#code-structure.`;
     }

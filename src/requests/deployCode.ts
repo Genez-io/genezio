@@ -29,11 +29,19 @@ export async function deployRequest(
     const json = JSON.stringify({
         options: projectConfiguration.options,
         classes: projectConfiguration.classes,
+        functions: projectConfiguration.functions
+            ? projectConfiguration.functions.map((func) => ({
+                  name: func.name,
+                  language: func.language,
+              }))
+            : [],
         projectName: projectConfiguration.name,
         region: projectConfiguration.region,
         cloudProvider: projectConfiguration.cloudProvider,
         stage: stage,
     });
+
+    debugLogger.debug("Deploy request sent with body:", json);
 
     const controller = new AbortController();
     const messagePromise = printUninformativeLog(controller);
@@ -57,7 +65,7 @@ export async function deployRequest(
     controller.abort();
     printAdaptiveLog(await messagePromise, "end");
 
-    debugLogger.debug("Response received", response.data);
+    debugLogger.debug("Response received", JSON.stringify(response.data));
 
     return response.data;
 }
