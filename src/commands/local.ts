@@ -67,6 +67,9 @@ import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
 import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
 import { Mutex } from "async-mutex";
+import httpProxy from "http-proxy";
+import * as readline from "readline";
+import { getLinkedFrontendsForProject } from "../utils/linkDatabase.js";
 
 type ClassProcess = {
     process: ChildProcess;
@@ -106,9 +109,20 @@ export async function prepareLocalBackendEnvironment(
             throw new UserError(GENEZIO_NO_CLASSES_FOUND(backend.language.name));
         }
 
-        const sdkLanguages =
-            (frontend?.map((f) => f.sdk?.language).filter((f) => f !== undefined) as Language[]) ||
-            [];
+        const sdkLanguages: Language[] = [];
+        // Add configuration frontends that contain the SDK field
+        sdkLanguages.push(
+            ...((frontend || [])
+                .map((f) => f.sdk?.language)
+                .filter((f) => f !== undefined) as Language[]),
+        );
+        // Add linked frontends
+        sdkLanguages.push(
+            ...(await getLinkedFrontendsForProject(yamlProjectConfiguration.name)).map(
+                (f) => f.language,
+            ),
+        );
+
         const sdkResponse = await sdkGeneratorApiHandler(
             sdkLanguages,
             mapYamlClassToSdkClassConfiguration(
@@ -119,7 +133,6 @@ export async function prepareLocalBackendEnvironment(
             backend.path,
             /* packageName= */ `@genezio-sdk/${yamlProjectConfiguration.name}`,
         ).catch((error) => {
-            debugLogger.debug("An error occurred", error);
             if (error.code === "ENOENT") {
                 log.error(
                     `The file ${error.path} does not exist. Please check your genezio.yaml configuration and make sure that all the file paths are correct.`,
@@ -130,13 +143,9 @@ export async function prepareLocalBackendEnvironment(
         });
         const projectConfiguration = new ProjectConfiguration(
             yamlProjectConfiguration,
+            CloudProviderIdentifier.GENEZIO_CLOUD,
             sdkResponse,
         );
-
-        // Local deployments always use the genezio-aws cloud provider unless the user uses the genezio-cluster deployment
-        if (projectConfiguration.cloudProvider !== CloudProviderIdentifier.GENEZIO_CLUSTER) {
-            projectConfiguration.cloudProvider = CloudProviderIdentifier.GENEZIO_AWS;
-        }
 
         const processForClasses = await startProcesses(projectConfiguration, sdkResponse, options);
         return new Promise<ClassProcessSpawnResponse>((resolve) => {
@@ -667,6 +676,28 @@ async function startServerHttp(
 
             reject(error);
         });
+
+        server.on("upgrade", (req, socket, head) => {
+            if (req.url === undefined) {
+                return;
+            }
+
+            const parsedURL = url.parse(req.url, true);
+            const localProcess = processForClasses.get(parsedURL.query["class"] as string);
+            const proxy = httpProxy.createProxyServer({
+                target: {
+                    host: "127.0.0.1",
+                    port: localProcess?.listeningPort || 8080,
+                },
+                ws: true,
+            });
+
+            try {
+                proxy.ws(req, socket, head);
+            } catch (error) {
+                throw new UserError("Error while upgrading the connection to websocket.");
+            }
+        });
     });
 }
 
@@ -865,7 +896,13 @@ async function handleSdk(
         }
     }
 
-    // TODO: Add support for externally linked frontends
+    const linkedFrontends = await getLinkedFrontendsForProject(projectName);
+    linkedFrontends.forEach((f) =>
+        sdkLocations.push({
+            path: f.path,
+            language: f.language,
+        }),
+    );
 
     for (const sdkLocation of sdkLocations) {
         const sdkResponse = sdk.generatorResponses.find(
@@ -894,7 +931,6 @@ async function handleSdk(
         debugLogger.debug(
             `SDK for ${sdkLocation.language} written in ${sdkLocation.path}. ${sdkFolderPath}`,
         );
-        await new Promise((resolve) => setTimeout(resolve, 3000));
 
         if (sdkFolderPath) {
             const timeout = await watchPackage(
@@ -1012,8 +1048,16 @@ async function startClassProcess(
         },
         cwd,
     });
-    classProcess.stdout.on("data", (data) => log.info(data.toString().trim()));
-    classProcess.stderr.on("data", (data) => log.info(data.toString().trim()));
+
+    const classStdoutLineStream = readline.createInterface({
+        input: classProcess.stdout,
+    });
+    const classStderrLineStream = readline.createInterface({
+        input: classProcess.stderr,
+    });
+
+    classStdoutLineStream.on("line", (line) => log.info(line));
+    classStderrLineStream.on("line", (line) => log.info(line));
 
     processForClasses.set(className, {
         process: classProcess,
