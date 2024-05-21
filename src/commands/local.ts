@@ -913,6 +913,7 @@ async function handleSdk(
             throw new UserError("Could not find the SDK for the frontend.");
         }
 
+        debugLogger.debug(JSON.stringify(process.env));
         let gitPodUrl: string | undefined;
         if (process.env?.["GITPOD_WORKSPACE_URL"]) {
             const workspaceUrl = process.env["GITPOD_WORKSPACE_URL"];
@@ -922,6 +923,7 @@ async function handleSdk(
                 `${options.port}-` +
                 workspaceUrl.slice(insertPortIndex);
         }
+
         const classUrls = sdkResponse.files.map((c) => ({
             name: c.className,
             cloudUrl: gitPodUrl
