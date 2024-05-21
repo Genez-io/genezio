@@ -97,7 +97,6 @@ export async function prepareLocalBackendEnvironment(
     options: GenezioLocalOptions,
 ): Promise<ClassProcessSpawnResponse> {
     try {
-        debugLogger.debug(JSON.stringify(process.env));
         const backend = yamlProjectConfiguration.backend;
         const frontend = yamlProjectConfiguration.frontend;
 
@@ -914,9 +913,20 @@ async function handleSdk(
             throw new UserError("Could not find the SDK for the frontend.");
         }
 
+        let gitPodUrl: string | undefined;
+        if (process.env?.["GITPOD_WORKSPACE_URL"]) {
+            const workspaceUrl = process.env["GITPOD_WORKSPACE_URL"];
+            const insertPortIndex = workspaceUrl.indexOf("https://") + "https://".length;
+            gitPodUrl =
+                workspaceUrl.slice(0, insertPortIndex) +
+                `${options.port}-` +
+                workspaceUrl.slice(insertPortIndex);
+        }
         const classUrls = sdkResponse.files.map((c) => ({
             name: c.className,
-            cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`,
+            cloudUrl: gitPodUrl
+                ? `${gitPodUrl}/${c.className}`
+                : `http://127.0.0.1:${options.port}/${c.className}`,
         }));
 
         const sdkFolderPath = await writeSdk({
