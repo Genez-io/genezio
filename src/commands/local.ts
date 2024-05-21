@@ -913,21 +913,28 @@ async function handleSdk(
             throw new UserError("Could not find the SDK for the frontend.");
         }
 
-        debugLogger.debug(JSON.stringify(process.env));
-        let gitPodUrl: string | undefined;
+        let workspaceUrl: string | undefined;
         if (process.env?.["GITPOD_WORKSPACE_URL"]) {
-            const workspaceUrl = process.env["GITPOD_WORKSPACE_URL"];
-            const insertPortIndex = workspaceUrl.indexOf("https://") + "https://".length;
-            gitPodUrl =
-                workspaceUrl.slice(0, insertPortIndex) +
+            const gitPodWorkspaceUrl = process.env["GITPOD_WORKSPACE_URL"];
+            const insertPortIndex = gitPodWorkspaceUrl.indexOf("https://") + "https://".length;
+            workspaceUrl =
+                gitPodWorkspaceUrl.slice(0, insertPortIndex) +
                 `${options.port}-` +
-                workspaceUrl.slice(insertPortIndex);
+                gitPodWorkspaceUrl.slice(insertPortIndex);
+        }
+        if (
+            process.env?.["CODESPACE_NAME"] &&
+            process.env?.["GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN"]
+        ) {
+            const codespaceName = process.env["CODESPACE_NAME"];
+            const portForwardingDomain = process.env["GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN"];
+            workspaceUrl = `https://${codespaceName}-${options.port}.${portForwardingDomain}`;
         }
 
         const classUrls = sdkResponse.files.map((c) => ({
             name: c.className,
-            cloudUrl: gitPodUrl
-                ? `${gitPodUrl}/${c.className}`
+            cloudUrl: workspaceUrl
+                ? `${workspaceUrl}/${c.className}`
                 : `http://127.0.0.1:${options.port}/${c.className}`,
         }));
 
