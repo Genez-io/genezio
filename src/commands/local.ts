@@ -913,9 +913,25 @@ async function handleSdk(
             throw new UserError("Could not find the SDK for the frontend.");
         }
 
+        let workspaceUrl: string | undefined;
+        if (process.env?.["GITPOD_WORKSPACE_URL"]) {
+            const gitPodWorkspaceUrl = process.env["GITPOD_WORKSPACE_URL"];
+            workspaceUrl = gitPodWorkspaceUrl.replace("https://", `https://${options.port}-`);
+        }
+        if (
+            process.env?.["CODESPACE_NAME"] &&
+            process.env?.["GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN"]
+        ) {
+            const codespaceName = process.env["CODESPACE_NAME"];
+            const portForwardingDomain = process.env["GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN"];
+            workspaceUrl = `https://${codespaceName}-${options.port}.${portForwardingDomain}`;
+        }
+
         const classUrls = sdkResponse.files.map((c) => ({
             name: c.className,
-            cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`,
+            cloudUrl: workspaceUrl
+                ? `${workspaceUrl}/${c.className}`
+                : `http://127.0.0.1:${options.port}/${c.className}`,
         }));
 
         const sdkFolderPath = await writeSdk({
