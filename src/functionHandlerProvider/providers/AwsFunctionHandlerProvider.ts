@@ -3,9 +3,8 @@ import { FunctionHandlerProvider } from "../functionHandlerProvider.js";
 
 export class AwsFunctionHandlerProvider implements FunctionHandlerProvider {
     async getHandler(functionConfiguration: FunctionConfiguration): Promise<string> {
-        const [handlerFile, handlerMethod] = functionConfiguration.handler.split(".");
         return (
-            `import { ${handlerMethod} as genezioDeploy } from "./${handlerFile}.js";
+            `import { ${functionConfiguration.handler} as genezioDeploy } from "./${functionConfiguration.entry}";
 
 function formatTimestamp(timestamp) {
   const date = new Date(timestamp);

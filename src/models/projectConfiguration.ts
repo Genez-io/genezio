@@ -83,6 +83,7 @@ export class FunctionConfiguration {
     path: string;
     handler: string;
     language: string;
+    entry: string;
     provider: FunctionProviderType;
 
     constructor(
@@ -90,12 +91,14 @@ export class FunctionConfiguration {
         path: string,
         handler: string,
         language: string,
+        entry: string,
         provider: FunctionProviderType,
     ) {
         this.name = name;
         this.path = path;
         this.handler = handler;
         this.language = language;
+        this.entry = entry;
         this.provider = provider;
     }
 }
@@ -200,6 +203,7 @@ export class ProjectConfiguration {
                     path: f.path,
                     language: yamlConfiguration.backend?.language.name || "ts",
                     handler: f.handler,
+                    entry: f.entry,
                     provider: f.provider,
                 };
             }) || [];

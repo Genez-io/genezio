@@ -88,10 +88,12 @@ function parseGenezioConfig(config: unknown) {
             return nameRegex.test(value);
         }, "Must start with a letter and contain only letters, numbers and dashes."),
         path: zod.string(),
-        handler: zod.string().refine((value) => {
-            return value.split(".").length === 2;
-        }, "The handler should be in the format 'file.function'. example: index.handler"),
-
+        handler: zod.string(),
+        entry: zod.string().refine((value) => {
+            return (
+                value.split(".").length === 2 && ["js", "mjs", "cjs"].includes(value.split(".")[1])
+            );
+        }, "The handler should be in the format 'file.extension'. example: index.js / index.mjs / index.cjs"),
         provider: zod.nativeEnum(FunctionProviderType),
     });
 
