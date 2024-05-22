@@ -2,7 +2,7 @@ import { YAMLContext, parse as parseYaml, stringify as stringifyYaml } from "yam
 import zod from "zod";
 import nativeFs from "fs";
 import { IFs } from "memfs";
-import { regions } from "../utils/configs.js";
+import { developmentRegion, regions } from "../utils/configs.js";
 import { GENEZIO_CONFIGURATION_FILE_NOT_FOUND, UserError, zodFormatError } from "../errors.js";
 import { FunctionProviderType, Language } from "./models.js";
 import {
@@ -17,6 +17,7 @@ import { isValidCron } from "cron-validator";
 import { tryV2Migration } from "./migration.js";
 import yaml from "yaml";
 import { DeepRequired } from "../utils/types.js";
+import { ENVIRONMENT } from "../constants.js";
 
 export type RawYamlProjectConfiguration = ReturnType<typeof parseGenezioConfig>;
 export type YAMLBackend = NonNullable<YamlProjectConfiguration["backend"]>;
@@ -137,6 +138,12 @@ function parseGenezioConfig(config: unknown) {
         backend: backendSchema.optional(),
         frontend: zod.array(frontendSchema).or(frontendSchema).optional(),
     });
+
+    if (ENVIRONMENT === "dev") {
+        const regionValues = regions.map((region) => region.value);
+        const regionsEnum = [...regionValues, developmentRegion];
+        v2Schema.shape.region = zod.enum(regionsEnum as [string, ...string[]]).optional();
+    }
 
     const parsedConfig = v2Schema.parse(config);
 

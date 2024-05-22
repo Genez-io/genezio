@@ -35,3 +35,5 @@ export const regions = [
     { name: "Europe (Stockholm)", value: "eu-north-1" },
     { name: "South America (São Paulo)", value: "sa-east-1" },
 ] as const;
+
+export const developmentRegion = "dev-fkt";
