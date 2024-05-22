@@ -916,11 +916,7 @@ async function handleSdk(
         let workspaceUrl: string | undefined;
         if (process.env?.["GITPOD_WORKSPACE_URL"]) {
             const gitPodWorkspaceUrl = process.env["GITPOD_WORKSPACE_URL"];
-            const insertPortIndex = gitPodWorkspaceUrl.indexOf("https://") + "https://".length;
-            workspaceUrl =
-                gitPodWorkspaceUrl.slice(0, insertPortIndex) +
-                `${options.port}-` +
-                gitPodWorkspaceUrl.slice(insertPortIndex);
+            workspaceUrl = gitPodWorkspaceUrl.replace("https://", `https://${options.port}-`);
         }
         if (
             process.env?.["CODESPACE_NAME"] &&
