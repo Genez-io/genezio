@@ -558,11 +558,8 @@ async function startServerHttp(
     // serve test interface built folder on localhost
     const buildFolder = path.join(packagePath, "build");
 
-    const isCodespace =
-        process.env?.["CODESPACE_NAME"] &&
-        process.env?.["GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN"];
     app.use(express.static(buildFolder));
-    app.get(isCodespace ? `/` : `/explore`, (_req, res) => {
+    app.get(`/explore`, (_req, res) => {
         const filePath = path.join(buildFolder, "index.html");
         res.sendFile(filePath);
     });
@@ -916,20 +913,7 @@ async function handleSdk(
             throw new UserError("Could not find the SDK for the frontend.");
         }
 
-        let workspaceUrl: string | undefined;
-        if (process.env?.["GITPOD_WORKSPACE_URL"]) {
-            const gitPodWorkspaceUrl = process.env["GITPOD_WORKSPACE_URL"];
-            workspaceUrl = gitPodWorkspaceUrl.replace("https://", `https://${options.port}-`);
-        }
-        if (
-            process.env?.["CODESPACE_NAME"] &&
-            process.env?.["GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN"]
-        ) {
-            const codespaceName = process.env["CODESPACE_NAME"];
-            const portForwardingDomain = process.env["GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN"];
-            workspaceUrl = `https://${codespaceName}-${options.port}.${portForwardingDomain}`;
-        }
-
+        const workspaceUrl = getWorkspaceUrl(options.port);
         const classUrls = sdkResponse.files.map((c) => ({
             name: c.className,
             cloudUrl: workspaceUrl
@@ -974,6 +958,23 @@ async function handleSdk(
     return nodeJsWatchers;
 }
 
+function getWorkspaceUrl(port: number): string | undefined {
+    let workspaceUrl: string | undefined;
+    if (process.env?.["GITPOD_WORKSPACE_URL"]) {
+        const gitPodWorkspaceUrl = process.env["GITPOD_WORKSPACE_URL"];
+        workspaceUrl = gitPodWorkspaceUrl.replace("https://", `https://${port}-`);
+    }
+    if (
+        process.env?.["CODESPACE_NAME"] &&
+        process.env?.["GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN"]
+    ) {
+        const codespaceName = process.env["CODESPACE_NAME"];
+        const portForwardingDomain = process.env["GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN"];
+        workspaceUrl = `https://${codespaceName}-${port}.${portForwardingDomain}`;
+    }
+    return workspaceUrl;
+}
+
 function reportSuccess(projectConfiguration: ProjectConfiguration, port: number) {
     const classesInfo = projectConfiguration.classes.map((c) => ({
         className: c.name,
@@ -988,7 +989,12 @@ function reportSuccess(projectConfiguration: ProjectConfiguration, port: number)
 
     _reportSuccess(classesInfo);
 
-    log.info(colors.cyan(`Test your code at http://localhost:${port}/explore`));
+    const workspaceUrl = getWorkspaceUrl(port);
+    log.info(
+        colors.cyan(
+            `Test your code at ${workspaceUrl ? workspaceUrl : `http://localhost:${port}`}/explore`,
+        ),
+    );
 }
 
 // This method is used to check if the user has a different node version installed than the one used by the server.
