@@ -558,8 +558,11 @@ async function startServerHttp(
     // serve test interface built folder on localhost
     const buildFolder = path.join(packagePath, "build");
 
+    const isCodespace =
+        process.env?.["CODESPACE_NAME"] &&
+        process.env?.["GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN"];
     app.use(express.static(buildFolder));
-    app.get(`/explore`, (_req, res) => {
+    app.get(isCodespace ? `/` : `/explore`, (_req, res) => {
         const filePath = path.join(buildFolder, "index.html");
         res.sendFile(filePath);
     });
