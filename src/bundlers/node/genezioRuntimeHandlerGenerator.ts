@@ -151,7 +151,7 @@ if (!genezioClass) {
 
             if (('Genezio-Event' in event.headers) && event.headers['Genezio-Event'] === 'cron') {
                 console.log(
-                    "DEBUG: trigger cron: " + event.headers['Genezio-CronString'] + " on method: " + body.method
+                    "DEBUG: trigger cron: " + event.headers['Genezio-Cronstring'] + " on method: " + body.method
                 );
             }
 
