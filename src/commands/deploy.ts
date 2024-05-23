@@ -714,7 +714,9 @@ function getCloudAdapter(provider: CloudProviderIdentifier): CloudAdapter {
     }
 }
 
-function getFunctionHandlerProvider(provider: FunctionProviderType): AwsFunctionHandlerProvider {
+export function getFunctionHandlerProvider(
+    provider: FunctionProviderType,
+): AwsFunctionHandlerProvider {
     switch (provider) {
         case FunctionProviderType.aws:
             return new AwsFunctionHandlerProvider();
