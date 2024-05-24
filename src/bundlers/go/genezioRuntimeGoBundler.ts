@@ -10,7 +10,7 @@ export class GenezioRuntimeGoBundler extends GoBundler {
 
     generateErrorReturn(): string {
         return `
-            sendError(w, err, JsonRpcMethod)
+            sendError(ctx, w, err, JsonRpcMethod)
             return
         `;
     }

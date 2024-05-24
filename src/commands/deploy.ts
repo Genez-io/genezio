@@ -252,7 +252,11 @@ export async function deployClasses(
 
         throw error;
     });
-    const cloudProvider = await getCloudProvider(configuration.name);
+    const cloudProvider =
+        // TODO: Remove this as soon as Genezio Cloud supports Go
+        backend.language.name === Language.go
+            ? CloudProviderIdentifier.GENEZIO_AWS
+            : await getCloudProvider(configuration.name);
     const projectConfiguration = new ProjectConfiguration(
         configuration,
         cloudProvider,
