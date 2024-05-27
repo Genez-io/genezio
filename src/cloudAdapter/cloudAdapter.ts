@@ -22,11 +22,13 @@ export type GenezioCloudInput =
           dependenciesInfo?: Dependency[];
           allNonJsFilesPaths?: FileDetails[];
           unzippedBundleSize: number;
+          entryFile: string;
       }
     | {
           type: GenezioCloudInputType.FUNCTION;
           name: string;
           archivePath: string;
+          entryFile: string;
           unzippedBundleSize: number;
       };
 

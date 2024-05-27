@@ -10,9 +10,11 @@ import version from "../utils/version.js";
 import { AxiosResponse } from "axios";
 import { StatusOk } from "./models.js";
 import { UserError } from "../errors.js";
+import { GenezioCloudInput } from "../cloudAdapter/cloudAdapter.js";
 
 export async function deployRequest(
     projectConfiguration: ProjectConfiguration,
+    genezioDeployInput: GenezioCloudInput[],
     stage: string,
 ): Promise<DeployCodeResponse> {
     // auth token
@@ -28,13 +30,19 @@ export async function deployRequest(
 
     const json = JSON.stringify({
         options: projectConfiguration.options,
-        classes: projectConfiguration.classes,
-        functions: projectConfiguration.functions
-            ? projectConfiguration.functions.map((func) => ({
-                  name: func.name,
-                  language: func.language,
-              }))
-            : [],
+        classes: projectConfiguration.classes.map((genezioClass) => ({
+            ...genezioClass,
+            entryFile:
+                genezioDeployInput.find((input) => input.name === genezioClass.name)?.entryFile ??
+                "",
+        })),
+        functions:
+            projectConfiguration.functions?.map((func) => ({
+                name: func.name,
+                language: func.language,
+                entryFile:
+                    genezioDeployInput.find((input) => input.name === func.name)?.entryFile ?? "",
+            })) ?? [],
         projectName: projectConfiguration.name,
         region: projectConfiguration.region,
         cloudProvider: projectConfiguration.cloudProvider,
