@@ -16,7 +16,7 @@ export const tsconfig = {
     include: ["**/*"],
 };
 
-export const regions = [
+export const legacyRegions = [
     { name: "US East (N. Virginia)", value: "us-east-1" },
     { name: "US East (Ohio)", value: "us-east-2" },
     { name: "US West (N. California)", value: "us-west-1" },
@@ -35,3 +35,8 @@ export const regions = [
     { name: "Europe (Stockholm)", value: "eu-north-1" },
     { name: "South America (São Paulo)", value: "sa-east-1" },
 ] as const;
+
+export const regions = [
+    { name: "US East (N. Virginia)", value: "us-east-1" },
+    { name: "Europe (Frankfurt)", value: "eu-central-1" },
+];

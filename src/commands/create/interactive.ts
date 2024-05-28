@@ -139,7 +139,7 @@ async function chooseTemplate(category: "Backend" | "Frontend"): Promise<string>
  */
 async function getClosestRegion(): Promise<string | undefined> {
     const pings = regions.map(async (region) => {
-        const url = `https://lambda.${region.value}.amazonaws.com/ping`;
+        const url = `https://${region.value}.cloud.genez.io/healthcheck`;
 
         const request = await axios({ method: "get", url }).catch(() => ({ status: 400 }));
 

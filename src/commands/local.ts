@@ -152,7 +152,7 @@ export async function prepareLocalBackendEnvironment(
         });
         const projectConfiguration = new ProjectConfiguration(
             yamlProjectConfiguration,
-            CloudProviderIdentifier.GENEZIO_CLOUD,
+            CloudProviderIdentifier.GENEZIO_AWS,
             sdkResponse,
         );
 

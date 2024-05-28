@@ -23,6 +23,7 @@ export type BundlerInput = {
         allNonJsFilesPaths?: FileDetails[];
         disableOptimization?: boolean;
         type?: "class" | "function";
+        entryFile?: string;
     };
 };
 

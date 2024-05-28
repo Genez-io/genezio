@@ -267,6 +267,10 @@ export abstract class GoBundler implements BundlerInterface {
         return {
             ...input,
             path: inputTemporaryFolder,
+            extra: {
+                ...input.extra,
+                entryFile: "bootstrap",
+            },
         };
     }
 

@@ -456,12 +456,13 @@ export class NodeJsBundler implements BundlerInterface {
         const nodeVersion = input.projectConfiguration.options?.nodeRuntime || DEFAULT_NODE_RUNTIME;
 
         // 2. Copy non js files and node_modules and write index.mjs file
+        const entryFile = "index.mjs";
         await Promise.all([
             this.#copyNonJsFiles(temporaryFolder, input, cwd),
             mode === "production"
                 ? this.#copyDependencies(input.extra.dependenciesInfo, temporaryFolder, mode, cwd)
                 : Promise.resolve(),
-            writeToFile(temporaryFolder, "index.mjs", handlerGenerator(input.configuration.name)),
+            writeToFile(temporaryFolder, entryFile, handlerGenerator(input.configuration.name)),
             ...(isDeployedToCluster
                 ? [
                       writeToFile(temporaryFolder, "local.mjs", clusterWrapperCode, true),
@@ -506,6 +507,7 @@ export class NodeJsBundler implements BundlerInterface {
                 originalPath: input.path,
                 dependenciesInfo: input.extra.dependenciesInfo,
                 allNonJsFilesPaths: input.extra.allNonJsFilesPaths,
+                entryFile,
             },
         };
     }
