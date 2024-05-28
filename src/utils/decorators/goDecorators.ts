@@ -5,8 +5,47 @@ import fs from "fs";
 import { createRequire } from "module";
 import { DecoratorExtractor } from "./baseDecoratorExtractor.js";
 import { isWebContainer } from "@webcontainer/env";
+import { createTemporaryFolder } from "../file.js";
+import { runNewProcess } from "../process.js";
+import { UserError } from "../../errors.js";
+import os from "os";
+
+const releaseTag = "v0.1.0";
+const binaryName = `genezio_go_parser_${releaseTag}`;
 
 export class GoDecoratorExtractor extends DecoratorExtractor {
+    async #compileGenezioGoParser() {
+        const folder = await createTemporaryFolder();
+        const parserClone = await runNewProcess(
+            "git clone --quiet https://github.com/Genez-io/go-parser.git .",
+            folder,
+        );
+        if (!parserClone) {
+            throw new UserError(
+                "Error: Failed to clone Go parser repository to " + folder + " temporary folder!",
+            );
+        }
+        await runNewProcess(`git checkout --quiet tags/${releaseTag}`, folder);
+        const goBuildSuccess = await runNewProcess(`go build -o ${binaryName} cmd/main.go`, folder);
+        if (!goBuildSuccess) {
+            throw new UserError(
+                "Error: Failed to build Go parser in " + folder + " temporary folder!",
+            );
+        }
+
+        if (!fs.existsSync(path.join(os.homedir(), ".genezio", ".genezio_go_parser"))) {
+            fs.mkdirSync(path.join(os.homedir(), ".genezio", ".genezio_go_parser"));
+        }
+        const goParserPath = path.join(folder, binaryName);
+        const goParserPathInHome = path.join(
+            os.homedir(),
+            ".genezio",
+            ".genezio_go_parser",
+            binaryName,
+        );
+        fs.copyFileSync(goParserPath, goParserPathInHome);
+    }
+
     async getDecoratorsFromFile(file: string): Promise<ClassInfo[]> {
         const inputCode = fs.readFileSync(file, "utf8");
         const classes: ClassInfo[] = [];
