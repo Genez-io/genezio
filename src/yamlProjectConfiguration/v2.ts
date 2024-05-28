@@ -2,7 +2,7 @@ import { YAMLContext, parse as parseYaml, stringify as stringifyYaml } from "yam
 import zod from "zod";
 import nativeFs from "fs";
 import { IFs } from "memfs";
-import { regions } from "../utils/configs.js";
+import { legacyRegions } from "../utils/configs.js";
 import { GENEZIO_CONFIGURATION_FILE_NOT_FOUND, UserError, zodFormatError } from "../errors.js";
 import { FunctionProviderType, Language } from "./models.js";
 import {
@@ -134,7 +134,7 @@ function parseGenezioConfig(config: unknown) {
             const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
             return nameRegex.test(value);
         }, "Must start with a letter and contain only letters, numbers and dashes."),
-        region: zod.enum(regions.map((r) => r.value) as [string, ...string[]]).optional(),
+        region: zod.enum(legacyRegions.map((r) => r.value) as [string, ...string[]]).optional(),
         yamlVersion: zod.number(),
         backend: backendSchema.optional(),
         frontend: zod.array(frontendSchema).or(frontendSchema).optional(),

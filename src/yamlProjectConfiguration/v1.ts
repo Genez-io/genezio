@@ -1,9 +1,15 @@
 import path from "path";
 import yaml from "yaml";
 import { getFileDetails, writeToFile } from "../utils/file.js";
-import { regions } from "../utils/configs.js";
+import { legacyRegions } from "../utils/configs.js";
 import { isValidCron } from "cron-validator";
-import { DEFAULT_ARCHITECTURE, DEFAULT_NODE_RUNTIME, NodeOptions, supportedArchitectures, supportedNodeRuntimes } from "../models/projectOptions.js";
+import {
+    DEFAULT_ARCHITECTURE,
+    DEFAULT_NODE_RUNTIME,
+    NodeOptions,
+    supportedArchitectures,
+    supportedNodeRuntimes,
+} from "../models/projectOptions.js";
 import zod from "zod";
 import { log } from "../utils/logging.js";
 import { UserError, zodFormatError } from "../errors.js";
@@ -262,7 +268,7 @@ export class YamlProjectConfiguration {
                 return nameRegex.test(value);
             }, "Must start with a letter and contain only letters, numbers and dashes."),
             region: zod
-                .enum(regions.map((r) => r.value) as [string, ...string[]])
+                .enum(legacyRegions.map((r) => r.value) as [string, ...string[]])
                 .default("us-east-1"),
             language: zod.nativeEnum(Language).default(Language.ts),
             cloudProvider: zod
@@ -468,7 +474,7 @@ export class YamlProjectConfiguration {
         const yamlString = yaml.stringify(content);
 
         await writeToFile(fileDetails.path, fileDetails.filename, yamlString).catch((error) => {
-            console.error(error.toString());
+            log.error(error.toString());
         });
     }
 
