@@ -165,7 +165,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
         // This can be removed only if we find a way to avoid clearing lines.
         log.info("");
 
-        const response = await deployRequest(projectConfiguration, stage);
+        const response = await deployRequest(projectConfiguration, input, stage);
         const classesInfo = response.classes.map((c) => ({
             className: c.name,
             methods: c.methods.map((m) => ({

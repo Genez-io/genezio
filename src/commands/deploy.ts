@@ -69,6 +69,7 @@ import { AwsFunctionHandlerProvider } from "../functionHandlerProvider/providers
 import fsExtra from "fs-extra/esm";
 import { getLinkedFrontendsForProject } from "../utils/linkDatabase.js";
 import { getCloudProvider } from "../requests/getCloudProvider.js";
+import fs from "fs";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -308,6 +309,7 @@ export async function deployClasses(
                     filePath: element.path,
                     methods: element.methods,
                     unzippedBundleSize,
+                    entryFile: output.extra.entryFile ?? "app-standalone.jar",
                 };
             }
 
@@ -332,6 +334,7 @@ export async function deployClasses(
                 dependenciesInfo: output.extra.dependenciesInfo,
                 allNonJsFilesPaths: output.extra.allNonJsFilesPaths,
                 unzippedBundleSize: unzippedBundleSize,
+                entryFile: output.extra.entryFile ?? "",
             };
         },
     );
@@ -357,7 +360,15 @@ export async function deployClasses(
             const unzippedBundleSize = await getBundleFolderSizeLimit(tmpFolderPath);
 
             // add the handler to the temporary folder
-            await writeToFile(path.join(tmpFolderPath), "index.mjs", handlerContent);
+            // check if there already is an index.mjs file in user's code
+            let entryFile = "index.mjs";
+            while (fs.existsSync(path.join(tmpFolderPath, entryFile))) {
+                debugLogger.debug(
+                    `[FUNCTION ${element.name}] File ${entryFile} already exists in the temporary folder.`,
+                );
+                entryFile = `index-${Math.random().toString(36).substring(7)}.mjs`;
+            }
+            await writeToFile(path.join(tmpFolderPath), entryFile, handlerContent);
 
             debugLogger.debug(`Zip the directory ${tmpFolderPath}.`);
 
@@ -373,6 +384,7 @@ export async function deployClasses(
                 name: element.name,
                 archivePath: archivePath,
                 unzippedBundleSize: unzippedBundleSize,
+                entryFile,
             };
         },
     );
