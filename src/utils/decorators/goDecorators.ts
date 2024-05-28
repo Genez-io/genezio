@@ -38,7 +38,11 @@ export class GoDecoratorExtractor extends DecoratorExtractor {
                     if (!commentText.includes("genezio: deploy")) {
                         break;
                     }
-                    const classInfo = this.createGenezioClassInfo(className, file, commentText);
+                    const classInfo = DecoratorExtractor.createGenezioClassInfo(
+                        className,
+                        file,
+                        commentText,
+                    );
                     classes.push(classInfo);
                     break;
                 }
@@ -63,7 +67,10 @@ export class GoDecoratorExtractor extends DecoratorExtractor {
                     }
                     const classInfo = classes.find((c) => c.name === className);
                     if (classInfo) {
-                        const methodInfo = this.createGenezioMethodInfo(methodName, commentText);
+                        const methodInfo = DecoratorExtractor.createGenezioMethodInfo(
+                            methodName,
+                            commentText,
+                        );
                         if (methodInfo) {
                             classInfo.methods.push(methodInfo);
                         }

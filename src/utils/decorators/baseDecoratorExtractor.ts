@@ -5,13 +5,27 @@ export abstract class DecoratorExtractor {
     abstract getDecoratorsFromFile(file: string): Promise<ClassInfo[]>;
     abstract fileFilter(cwd: string): (file: FileDetails) => boolean;
 
-    createGenezioMethodInfo(methodName: string, commentText: string): MethodInfo | undefined {
+    static createGenezioMethodInfo(
+        methodName: string,
+        commentText: string,
+    ): MethodInfo | undefined {
         const genezioMethodArguments = commentText
             .split("genezio:")[1]
             .split(" ")
             .filter((arg) => arg !== "");
+
         if (genezioMethodArguments.length < 1) {
-            return;
+            return {
+                name: methodName,
+                decorators: [
+                    {
+                        name: "GenezioMethod",
+                        arguments: {
+                            type: "jsonrpc",
+                        },
+                    },
+                ],
+            };
         }
         let decoratorArguments = {};
         let auth = false;
@@ -58,22 +72,25 @@ export abstract class DecoratorExtractor {
         return methodInfo;
     }
 
-    createGenezioClassInfo(className: string, file: string, commentText: string): ClassInfo {
+    static createGenezioClassInfo(className: string, file: string, commentText: string): ClassInfo {
         const genezioDeployArguments = commentText
             .split("genezio: deploy")[1]
             .split(" ")
             .filter((arg) => arg !== "");
         let classType: string = "jsonrpc";
-        switch (genezioDeployArguments[0]) {
-            case "http": {
-                classType = "http";
-                break;
-            }
-            case "cron": {
-                classType = "cron";
-                break;
+        if (genezioDeployArguments.length > 0) {
+            switch (genezioDeployArguments[0]) {
+                case "http": {
+                    classType = "http";
+                    break;
+                }
+                case "cron": {
+                    classType = "cron";
+                    break;
+                }
             }
         }
+
         const classInfo: ClassInfo = {
             path: file,
             name: className,
