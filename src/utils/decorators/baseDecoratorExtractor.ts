@@ -2,7 +2,7 @@ import FileDetails from "../../models/fileDetails.js";
 import { ClassInfo, MethodInfo } from "./decoratorTypes.js";
 
 export abstract class DecoratorExtractor {
-    abstract getDecoratorsFromFile(file: string): Promise<ClassInfo[]>;
+    abstract getDecoratorsFromFile(file: string, cwd?: string): Promise<ClassInfo[]>;
     abstract fileFilter(cwd: string): (file: FileDetails) => boolean;
 
     static createGenezioMethodInfo(

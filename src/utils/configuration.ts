@@ -22,7 +22,7 @@ async function tryToReadClassInformationFromDecorators(
     return await Promise.all(
         allFilesPaths.map((file) => {
             const filePath = path.join(cwd, file.path);
-            return decoratorExtractor.getDecoratorsFromFile(filePath);
+            return decoratorExtractor.getDecoratorsFromFile(filePath, cwd);
         }),
     );
 }
