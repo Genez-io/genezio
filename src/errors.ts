@@ -29,7 +29,7 @@ export const GENEZIO_NO_CLASSES_FOUND = (_language: Language) => {
             break;
     }
     let errorMessage: string =
-        "You don't have any class specified in the genezio.yaml configuration file.";
+        "You don't have any class or function specified in the genezio.yaml configuration file.";
     if (decoratorSyntax) {
         errorMessage += `\nYou have to mark at least one class from your backend for deployment with the ${decoratorSyntax} decorator. Check out how to do that here https://genezio.com/docs/features/backend-deployment/#code-structure.`;
     }
@@ -65,6 +65,9 @@ Please remove the class${multipleOverlaps ? "es" : ""} from the ${colors.magenta
 };
 export const GENEZIO_CLASS_STATIC_METHOD_NOT_SUPPORTED =
     "Static methods are not supported in Genezio classes.";
+
+export const GENEZIO_PLEASE_REPORT_ISSUE =
+    "Three was a problem on our side. Please report this issue at https://github.com/genez-io/genezio/issues.";
 
 function collectIssueMap(e: zod.ZodError, issueMap: Map<string, string[]>) {
     for (const issue of e.issues) {

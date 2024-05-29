@@ -96,7 +96,7 @@ export class ClusterCloudAdapter implements CloudAdapter {
 
         await Promise.all(promisesDeploy);
 
-        const response = await deployRequest(projectConfiguration, stage);
+        const response = await deployRequest(projectConfiguration, input, stage);
         const classesInfo = response.classes.map((c) => ({
             className: c.name,
             methods: c.methods.map((m) => ({
@@ -110,8 +110,10 @@ export class ClusterCloudAdapter implements CloudAdapter {
         }));
 
         return {
+            projectId: response.projectId,
             projectEnvId: response.projectEnvId,
             classes: classesInfo,
+            functions: response.functions,
         };
     }
 

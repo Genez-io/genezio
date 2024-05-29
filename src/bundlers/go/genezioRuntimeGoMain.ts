@@ -15,7 +15,12 @@ import (
     "strconv"
     "strings"
     "time"
+    "context"
     "github.com/Genez-io/genezio_types"
+
+    {{#usesAuth}}
+    "github.com/Genez-io/auth"
+    {{/usesAuth}}
 
     {{#imports}}
     {{#named}}{{name}} {{/named}}"{{{path}}}"
@@ -74,7 +79,7 @@ const (
     JsonRpcMethod MethodType = "jsonrpc"
 )
 
-func sendError(w http.ResponseWriter, err error, methodType MethodType) {
+func sendError(ctx context.Context, w http.ResponseWriter, err error, methodType MethodType) {
     genezioError := make(map[string]interface{})
     byteError, error := json.Marshal(err)
     if error != nil {
@@ -121,6 +126,8 @@ func (g requestHandler) HandleRequest(w http.ResponseWriter, r *http.Request) {
     var body EventBody
     var responseBody ResponseBody
     var err error
+
+    ctx := r.Context()
 
     defer r.Body.Close()
 
@@ -181,12 +188,12 @@ func (g requestHandler) HandleRequest(w http.ResponseWriter, r *http.Request) {
         case "{{name}}":
             result, err = class.{{name}}(genezioRequest)
             if err != nil {
-                sendError(w, err, HttpMethod)
+                sendError(ctx, w, err, HttpMethod)
                 return
             }
         {{/httpMethods}}
         default:
-            sendError(w, errors.New("http method not found"), HttpMethod)
+            sendError(ctx, w, errors.New("http method not found"), HttpMethod)
             return
         }
 
@@ -194,7 +201,7 @@ func (g requestHandler) HandleRequest(w http.ResponseWriter, r *http.Request) {
         if !ok {
             resultBody, err := json.Marshal(result.Body)
             if err != nil {
-                sendError(w, err, HttpMethod)
+                sendError(ctx, w, err, HttpMethod)
                 return
             }
             strBody = string(resultBody)
@@ -219,9 +226,27 @@ func (g requestHandler) HandleRequest(w http.ResponseWriter, r *http.Request) {
             {{#parameters}}
             {{{cast}}}
             {{/parameters}}
+            {{#auth}}
+            gnzContext, ok := body.Params[0].(map[string]interface{})
+            if !ok {
+                sendError(ctx, w, errors.New("invalid context"), JsonRpcMethod)
+                return
+            }
+            token, ok := gnzContext["token"].(string)
+            if !ok {
+                sendError(ctx, w, errors.New("invalid token"), JsonRpcMethod)
+                return
+            }
+            user, err := auth.GetUserByToken(token)
+            if err != nil {
+                sendError(ctx, w, err, JsonRpcMethod)
+                return
+            }
+            param0 = context.WithValue(ctx, "user", user)
+            {{/auth}}
             {{^isVoid}}result, {{/isVoid}}err {{^isVoid}}:{{/isVoid}}= class.{{name}}({{#parameters}}param{{index}}{{^last}}, {{/last}}{{/parameters}})
             if err != nil {
-                sendError(w, err, JsonRpcMethod)
+                sendError(ctx, w, err, JsonRpcMethod)
                 return
             }
             {{^isVoid}}
@@ -232,12 +257,12 @@ func (g requestHandler) HandleRequest(w http.ResponseWriter, r *http.Request) {
         case "{{class.name}}.{{name}}":
             err := class.{{name}}()
             if err != nil {
-                sendError(w, err, JsonRpcMethod)
+                sendError(ctx, w, err, JsonRpcMethod)
                 return
             }
         {{/cronMethods}}
         default:
-            sendError(w, errors.New("method not found"), JsonRpcMethod)
+            sendError(ctx, w, errors.New("method not found"), JsonRpcMethod)
             return
         }
         responseBody.Id = body.Id
@@ -246,7 +271,7 @@ func (g requestHandler) HandleRequest(w http.ResponseWriter, r *http.Request) {
 
     bodyString, err := json.Marshal(responseBody)
     if err != nil {
-        sendError(w, err, JsonRpcMethod)
+        sendError(ctx, w, err, JsonRpcMethod)
         return
     }
 
@@ -261,7 +286,7 @@ func (g requestHandler) HandleRequest(w http.ResponseWriter, r *http.Request) {
     // Encode the struct into JSON and check for errors
 	responseByte, err := json.Marshal(response)
 	if err != nil {
-        sendError(w, err, JsonRpcMethod)
+        sendError(ctx, w, err, JsonRpcMethod)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

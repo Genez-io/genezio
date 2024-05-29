@@ -13,3 +13,10 @@ export enum TriggerType {
     cron = "cron",
     http = "http",
 }
+
+export enum FunctionProviderType {
+    aws = "aws",
+    // TODO: not implemented
+    // azure = "azure",
+    // gcp = "gcp",
+}

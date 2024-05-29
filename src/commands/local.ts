@@ -20,15 +20,22 @@ import {
 } from "../generateSdk/generateSdkApi.js";
 import { AstSummary } from "../models/astSummary.js";
 import { BundlerInterface } from "../bundlers/bundler.interface.js";
-import { NodeJsLocalBundler } from "../bundlers/node/nodeJsLocalBundler.js";
+import {
+    NodeJsLocalBundler,
+    getLocalFunctionWrapperCode,
+} from "../bundlers/node/nodeJsLocalBundler.js";
 import { BundlerComposer } from "../bundlers/bundlerComposer.js";
 import { genezioRequestParser } from "../utils/genezioRequestParser.js";
 import { debugLogger, doAdaptiveLogAction } from "../utils/logging.js";
 import { rectifyCronString } from "../utils/rectifyCronString.js";
 import cron from "node-cron";
-import { createTemporaryFolder, fileExists, readUTF8File } from "../utils/file.js";
-import { GenezioCommand, reportSuccess as _reportSuccess } from "../utils/reporter.js";
-import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
+import { createTemporaryFolder, fileExists, readUTF8File, writeToFile } from "../utils/file.js";
+import {
+    GenezioCommand,
+    reportSuccess as _reportSuccess,
+    reportSuccessFunctions,
+} from "../utils/reporter.js";
+import { SdkHandlerResponse } from "../models/sdkGeneratorResponse.js";
 import { GenezioLocalOptions } from "../models/commandOptions.js";
 import { DartBundler } from "../bundlers/dart/localDartBundler.js";
 import axios, { AxiosError, AxiosResponse } from "axios";
@@ -66,57 +73,67 @@ import { watchPackage } from "../generateSdk/sdkMonitor.js";
 import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
 import { KotlinBundler } from "../bundlers/kotlin/localKotlinBundler.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
-import { getLinkPathsForProject } from "../utils/linkDatabase.js";
 import { Mutex } from "async-mutex";
+import httpProxy from "http-proxy";
+import * as readline from "readline";
+import { getLinkedFrontendsForProject } from "../utils/linkDatabase.js";
+import fsExtra from "fs-extra/esm";
 
-type ClassProcess = {
+type UnitProcess = {
     process: ChildProcess;
     startingCommand: string;
     parameters: string[];
     listeningPort: number;
     envVars: dotenv.DotenvPopulateInput;
+    type: "class" | "function";
 };
 
-type ClassProcessSpawnResponse = {
+type LocalUnitProcessSpawnResponse = {
     restartEnvironment: boolean;
-    spawnOutput?: ClassProcessSpawnOutput;
+    spawnOutput?: LocalProcessSpawnOutput;
     watcher?: chokidar.FSWatcher;
 };
 
-type ClassProcessSpawnOutput = {
+type LocalProcessSpawnOutput = {
     success: boolean;
     projectConfiguration: ProjectConfiguration;
-    processForClasses: Map<string, ClassProcess>;
-    sdk: SdkGeneratorResponse;
+    processForLocalUnits: Map<string, UnitProcess>;
+    sdk: SdkHandlerResponse;
 };
 
 export async function prepareLocalBackendEnvironment(
     yamlProjectConfiguration: YamlProjectConfiguration,
     options: GenezioLocalOptions,
-): Promise<ClassProcessSpawnResponse> {
+): Promise<LocalUnitProcessSpawnResponse> {
     try {
         const backend = yamlProjectConfiguration.backend;
         const frontend = yamlProjectConfiguration.frontend;
-        let sdkLanguage: Language = Language.ts;
-        if (frontend) {
-            for (const f of frontend) {
-                if (f.sdk?.language) {
-                    sdkLanguage = f.sdk.language;
-                    break;
-                }
-            }
-        }
+
         if (!backend) {
             throw new UserError("No backend component found in the genezio.yaml file.");
         }
         backend.classes = await scanClassesForDecorators(backend);
 
-        if (backend.classes.length === 0) {
+        if (backend.classes.length === 0 && backend.functions?.length === 0) {
             throw new UserError(GENEZIO_NO_CLASSES_FOUND(backend.language.name));
         }
 
-        const sdk = await sdkGeneratorApiHandler(
-            sdkLanguage,
+        const sdkLanguages: Language[] = [];
+        // Add configuration frontends that contain the SDK field
+        sdkLanguages.push(
+            ...((frontend || [])
+                .map((f) => f.sdk?.language)
+                .filter((f) => f !== undefined) as Language[]),
+        );
+        // Add linked frontends
+        sdkLanguages.push(
+            ...(await getLinkedFrontendsForProject(yamlProjectConfiguration.name)).map(
+                (f) => f.language,
+            ),
+        );
+
+        const sdkResponse = await sdkGeneratorApiHandler(
+            sdkLanguages,
             mapYamlClassToSdkClassConfiguration(
                 backend.classes,
                 backend.language.name,
@@ -125,7 +142,6 @@ export async function prepareLocalBackendEnvironment(
             backend.path,
             /* packageName= */ `@genezio-sdk/${yamlProjectConfiguration.name}`,
         ).catch((error) => {
-            debugLogger.debug("An error occurred", error);
             if (error.code === "ENOENT") {
                 log.error(
                     `The file ${error.path} does not exist. Please check your genezio.yaml configuration and make sure that all the file paths are correct.`,
@@ -134,22 +150,26 @@ export async function prepareLocalBackendEnvironment(
 
             throw error;
         });
-        const projectConfiguration = new ProjectConfiguration(yamlProjectConfiguration, sdk);
+        const projectConfiguration = new ProjectConfiguration(
+            yamlProjectConfiguration,
+            CloudProviderIdentifier.GENEZIO_AWS,
+            sdkResponse,
+        );
 
-        // Local deployments always use the genezio cloud provider unless the user uses the cluster deployment
-        if (projectConfiguration.cloudProvider !== CloudProviderIdentifier.CLUSTER) {
-            projectConfiguration.cloudProvider = CloudProviderIdentifier.GENEZIO;
-        }
-
-        const processForClasses = await startProcesses(projectConfiguration, sdk, options);
-        return new Promise<ClassProcessSpawnResponse>((resolve) => {
+        const processForLocalUnits = await startProcesses(
+            backend,
+            projectConfiguration,
+            sdkResponse,
+            options,
+        );
+        return await new Promise<LocalUnitProcessSpawnResponse>((resolve) => {
             resolve({
                 restartEnvironment: false,
                 spawnOutput: {
                     success: true,
                     projectConfiguration,
-                    processForClasses,
-                    sdk,
+                    processForLocalUnits,
+                    sdk: sdkResponse,
                 },
             });
         });
@@ -163,7 +183,7 @@ export async function prepareLocalBackendEnvironment(
         // If there was an error generating the SDK, wait for changes and try again.
         const { watcher } = await listenForChanges();
         logChangeDetection();
-        return new Promise<ClassProcessSpawnResponse>((resolve) => {
+        return new Promise<LocalUnitProcessSpawnResponse>((resolve) => {
             resolve({
                 restartEnvironment: true,
                 watcher,
@@ -321,12 +341,12 @@ async function startBackendWatcher(
             continue;
         }
 
-        const listenForChangesPromise: Promise<ClassProcessSpawnResponse> = listenForChanges();
-        const classProcessSpawnPromise: Promise<ClassProcessSpawnResponse> =
+        const listenForChangesPromise: Promise<LocalUnitProcessSpawnResponse> = listenForChanges();
+        const localUnitProcessSpawnPromise: Promise<LocalUnitProcessSpawnResponse> =
             prepareLocalBackendEnvironment(yamlProjectConfiguration, options);
 
-        let promiseRes: ClassProcessSpawnResponse = await Promise.race([
-            classProcessSpawnPromise,
+        let promiseRes: LocalUnitProcessSpawnResponse = await Promise.race([
+            localUnitProcessSpawnPromise,
             listenForChangesPromise,
         ]);
 
@@ -334,15 +354,15 @@ async function startBackendWatcher(
         // need to rebundle and restart the backend.
         if (promiseRes.restartEnvironment === true) {
             // Wait for classes to be spawned before restarting the environment
-            promiseRes = await classProcessSpawnPromise;
+            promiseRes = await localUnitProcessSpawnPromise;
 
             if (!promiseRes.spawnOutput || promiseRes.spawnOutput.success === false) {
                 continue;
             }
 
             // clean up the old processes
-            promiseRes.spawnOutput.processForClasses.forEach((classProcess: ClassProcess) => {
-                classProcess.process.kill();
+            promiseRes.spawnOutput.processForLocalUnits.forEach((unitProcess: UnitProcess) => {
+                unitProcess.process.kill();
             });
 
             if (promiseRes.watcher) {
@@ -358,25 +378,25 @@ async function startBackendWatcher(
 
         const projectConfiguration: ProjectConfiguration =
             promiseRes.spawnOutput.projectConfiguration;
-        const processForClasses: Map<string, ClassProcess> =
-            promiseRes.spawnOutput.processForClasses;
-        const sdk: SdkGeneratorResponse = promiseRes.spawnOutput.sdk;
+        const processForUnits: Map<string, UnitProcess> =
+            promiseRes.spawnOutput.processForLocalUnits;
+        const sdk: SdkHandlerResponse = promiseRes.spawnOutput.sdk;
 
         // Start HTTP Server
         const server = await startServerHttp(
             options.port,
             projectConfiguration.astSummary,
             yamlProjectConfiguration.name,
-            processForClasses,
+            processForUnits,
         );
 
         // Start cron jobs
-        const crons = startCronJobs(projectConfiguration, processForClasses);
+        const crons = startCronJobs(projectConfiguration, processForUnits);
         log.info(
             "\x1b[36m%s\x1b[0m",
             "Your local server is running and the SDK was successfully generated!",
         );
-        const watcherTimeout = await handleSdk(
+        const watcherTimeouts = await handleSdk(
             yamlProjectConfiguration.name,
             yamlProjectConfiguration.frontend,
             sdk,
@@ -402,12 +422,12 @@ async function startBackendWatcher(
         logChangeDetection();
 
         // When new changes are detected, close everything and restart the process
-        clearAllResources(server, processForClasses, crons);
+        clearAllResources(server, processForUnits, crons);
         await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_LOCAL_RELOAD,
             commandOptions: JSON.stringify(options),
         });
-        clearTimeout(watcherTimeout);
+        watcherTimeouts.forEach((timeout) => clearTimeout(timeout));
     }
 }
 
@@ -419,24 +439,23 @@ function logChangeDetection() {
  * Bundle each class and start a new process for it.
  */
 async function startProcesses(
+    backend: YAMLBackend,
     projectConfiguration: ProjectConfiguration,
-    sdk: SdkGeneratorResponse,
+    sdk: SdkHandlerResponse,
     options: GenezioLocalOptions,
-): Promise<Map<string, ClassProcess>> {
+): Promise<Map<string, UnitProcess>> {
     const classes = projectConfiguration.classes;
-    const processForClasses = new Map<string, ClassProcess>();
+    const processForLocalUnits = new Map<string, UnitProcess>();
 
     // Bundle each class and start a new process for it
-    const bundlersOutputPromise = classes.map(async (classInfo) => {
+    const bundlersOutputPromiseClasses = classes.map(async (classInfo) => {
         const bundler = getBundler(classInfo);
 
         if (!bundler) {
             throw new UserError(`Unsupported language ${classInfo.language}.`);
         }
 
-        const astClass = sdk.sdkGeneratorInput.classesInfo.find(
-            (c) => c.classConfiguration.path === classInfo.path,
-        );
+        const astClass = sdk.classesInfo.find((c) => c.classConfiguration.path === classInfo.path);
         if (astClass === undefined) {
             throw new UserError("AST class not found.");
         }
@@ -456,10 +475,40 @@ async function startProcesses(
                 installDeps: options.installDeps,
             },
         });
-        return bundlerOutput;
+        return { ...bundlerOutput, type: "class" };
     });
 
-    const bundlersOutput = await Promise.all(bundlersOutputPromise);
+    const bundlersOutputPromiseFunctions = projectConfiguration.functions?.map(
+        async (functionInfo) => {
+            const tmpFolder = await createTemporaryFolder(
+                `${functionInfo.name}-${hash(functionInfo.path)}`,
+            );
+            // delete all content in the tmp folder
+            await fsExtra.emptyDir(tmpFolder);
+
+            await fsExtra.copy(path.join(backend.path, functionInfo.path), tmpFolder);
+
+            await writeToFile(
+                path.join(tmpFolder),
+                "local_function_wrapper.mjs",
+                getLocalFunctionWrapperCode(functionInfo.handler, functionInfo.entry),
+            );
+
+            return {
+                configuration: functionInfo,
+                extra: {
+                    type: "function" as const,
+                    startingCommand: "node",
+                    commandParameters: [path.resolve(tmpFolder, "local_function_wrapper.mjs")],
+                },
+            };
+        },
+    );
+
+    const bundlersOutput = await Promise.all([
+        ...bundlersOutputPromiseClasses,
+        ...bundlersOutputPromiseFunctions,
+    ]);
 
     try {
         await importServiceEnvVariables(
@@ -489,17 +538,18 @@ async function startProcesses(
             throw new UserError("No starting command found for this language.");
         }
 
-        await startClassProcess(
+        await startLocalUnitProcess(
             extra.startingCommand,
             extra.commandParameters ? extra.commandParameters : [],
             bundlerOutput.configuration.name,
-            processForClasses,
+            processForLocalUnits,
             envVars,
+            extra.type || "class",
             projectConfiguration.workspace?.backend,
         );
     }
 
-    return processForClasses;
+    return processForLocalUnits;
 }
 
 // Function that returns the correct bundler for the local environment based on language.
@@ -543,7 +593,7 @@ async function startServerHttp(
     port: number,
     astSummary: AstSummary,
     projectName: string,
-    processForClasses: Map<string, ClassProcess>,
+    processForUnits: Map<string, UnitProcess>,
 ): Promise<http.Server> {
     const app = express();
     const require = createRequire(import.meta.url);
@@ -568,7 +618,7 @@ async function startServerHttp(
     app.all(`/:className`, async (req, res) => {
         const reqToFunction = getEventObjectFromRequest(req);
 
-        const localProcess = processForClasses.get(req.params.className);
+        const localProcess = processForUnits.get(req.params.className);
 
         if (!localProcess) {
             sendResponse(res, {
@@ -592,7 +642,7 @@ async function startServerHttp(
                 localProcess,
                 req.params.className,
                 reqToFunction,
-                processForClasses,
+                processForUnits,
             );
             sendResponse(res, response.data);
         } catch (error) {
@@ -613,26 +663,89 @@ async function startServerHttp(
         }
     });
 
+    async function handlerFunctionCall(req: Request<{ functionName: string }>, res: Response) {
+        const reqToFunction = getEventObjectFromRequest(req);
+
+        const localProcess = processForUnits.get(req.params.functionName);
+
+        if (!localProcess) {
+            sendResponse(res, {
+                body: "Function not found!",
+                isBase64Encoded: false,
+                statusCode: "500",
+                statusDescription: "500 Internal Server Error",
+                headers: {
+                    "content-type": "application/json",
+                },
+            });
+            return;
+        }
+
+        try {
+            const response = await communicateWithProcess(
+                localProcess,
+                req.params.functionName,
+                reqToFunction,
+                processForUnits,
+            );
+            sendResponse(res, response.data);
+        } catch (error) {
+            sendResponse(res, {
+                body: JSON.stringify({ message: "Internal server error", error: error }),
+                isBase64Encoded: false,
+                statusCode: "500",
+                statusDescription: "500 Internal Server Error",
+                headers: {
+                    "content-type": "application/json",
+                },
+            });
+            return;
+        }
+    }
+
+    app.all(`/.functions/:functionName/*`, async (req, res) => {
+        await handlerFunctionCall(req, res);
+    });
+
+    app.all(`/.functions/:functionName`, async (req, res) => {
+        await handlerFunctionCall(req, res);
+    });
+
     async function handlerHttpMethod(
         req: Request<{ className: string; methodName: string }>,
         res: Response,
     ) {
         const reqToFunction = getEventObjectFromRequest(req);
 
-        const localProcess = processForClasses.get(req.params.className);
+        const localProcess = processForUnits.get(req.params.className);
 
         if (!localProcess) {
             res.status(404).send(`Class ${req.params.className} not found.`);
             return;
         }
 
-        const response = await communicateWithProcess(
-            localProcess,
-            req.params.className,
-            reqToFunction,
-            processForClasses,
-        );
-        sendResponse(res, response.data);
+        try {
+            const response = await communicateWithProcess(
+                localProcess,
+                req.params.className,
+                reqToFunction,
+                processForUnits,
+            );
+            sendResponse(res, response.data);
+        } catch (error) {
+            sendResponse(res, {
+                body: JSON.stringify({
+                    error: { code: -32000, message: "Internal error" },
+                }),
+                isBase64Encoded: false,
+                statusCode: "500",
+                statusDescription: "Internal Server Error",
+                headers: {
+                    "content-type": "application/json",
+                },
+            });
+            return;
+        }
     }
 
     app.all(`/:className/:methodName`, async (req, res) => {
@@ -657,6 +770,30 @@ async function startServerHttp(
 
             reject(error);
         });
+
+        // this is needed to handle the websocket connections
+        server.on("upgrade", (req, socket, head) => {
+            if (req.url === undefined) {
+                return;
+            }
+
+            const parsedURL = url.parse(req.url, true);
+
+            const localProcess = processForUnits.get(parsedURL.query["class"] as string);
+            const proxy = httpProxy.createProxyServer({
+                target: {
+                    host: "127.0.0.1",
+                    port: localProcess?.listeningPort || 8080,
+                },
+                ws: true,
+            });
+
+            try {
+                proxy.ws(req, socket, head);
+            } catch (error) {
+                throw new UserError("Error while upgrading the connection to websocket.");
+            }
+        });
     });
 }
 
@@ -665,12 +802,12 @@ export type LocalEnvCronHandler = {
     methodName: string;
     cronString: string;
     cronObject: cron.ScheduledTask | null;
-    process: ClassProcess;
+    process: UnitProcess;
 };
 
 function startCronJobs(
     projectConfiguration: ProjectConfiguration,
-    processForClasses: Map<string, ClassProcess>,
+    processForUnits: Map<string, UnitProcess>,
 ): LocalEnvCronHandler[] {
     const cronHandlers: LocalEnvCronHandler[] = [];
     for (const classElement of projectConfiguration.classes) {
@@ -682,7 +819,7 @@ function startCronJobs(
                     methodName: method.name,
                     cronString: rectifyCronString(method.cronString),
                     cronObject: null,
-                    process: processForClasses.get(classElement.name)!,
+                    process: processForUnits.get(classElement.name)!,
                 };
 
                 cronHandler.cronObject = cron.schedule(cronHandler.cronString, () => {
@@ -696,7 +833,7 @@ function startCronJobs(
                         cronHandler.process,
                         cronHandler.className,
                         reqToFunction,
-                        processForClasses,
+                        processForUnits,
                     );
                 });
 
@@ -720,11 +857,15 @@ async function stopCronJobs(cronHandlers: LocalEnvCronHandler[]) {
 function getEventObjectFromRequest(request: AwsApiGatewayRequest) {
     const urlDetails = url.parse(request.url, true);
 
+    const date = new Date();
+
     return {
+        version: "2.0",
+        routeKey: "$default",
+        rawPath: urlDetails.pathname,
         headers: request.headers,
         rawQueryString: urlDetails.search ? urlDetails.search?.slice(1) : "",
         queryStringParameters: urlDetails.search ? Object.assign({}, urlDetails.query) : undefined,
-        timeEpoch: Date.now(),
         body: request.body,
         isBase64Encoded: request.isBase64Encoded,
         requestContext: {
@@ -735,6 +876,15 @@ function getEventObjectFromRequest(request: AwsApiGatewayRequest) {
                 sourceIp: request.socket.remoteAddress,
                 userAgent: request.headers["user-agent"],
             },
+            accountId: "anonymous",
+            apiId: "localhost",
+            domainName: "localhost",
+            domainPrefix: "localhost",
+            requestId: "undefined",
+            routeKey: "$default",
+            stage: "$default",
+            time: formatTimestamp(date),
+            timeEpoch: Date.now(),
         },
     };
 }
@@ -802,7 +952,7 @@ async function listenForChanges() {
         });
     }
 
-    return new Promise<ClassProcessSpawnResponse>((resolve) => {
+    return new Promise<LocalUnitProcessSpawnResponse>((resolve) => {
         // Watch for changes in the classes and update the handlers
         const watchPaths = [path.join(cwd, "/**/*")];
         const ignoredPaths: string[] = ["**/node_modules/*", ...ignoredPathsFromGenezioIgnore];
@@ -839,58 +989,99 @@ async function listenForChanges() {
 async function handleSdk(
     projectName: string,
     frontends: YamlFrontend[] | undefined,
-    sdk: SdkGeneratorResponse,
+    sdk: SdkHandlerResponse,
     options: GenezioLocalOptions,
-): Promise<NodeJS.Timeout | undefined> {
-    let sdkLanguage: Language = Language.ts;
-    let nodeJsWatcher: NodeJS.Timeout | undefined = undefined;
-    let sdkPath, frontendPath: string | undefined;
+): Promise<Array<NodeJS.Timeout>> {
+    const nodeJsWatchers: Array<NodeJS.Timeout> = [];
 
-    if (frontends && frontends.length > 0) {
-        sdkLanguage = frontends[0].sdk?.language || Language.ts;
-        frontendPath = frontends[0].path;
-        if (frontendPath) {
-            sdkPath = frontends[0].sdk?.path
-                ? path.join(frontendPath, frontends[0].sdk?.path)
-                : path.join(frontendPath, "sdk");
-        }
-    } else {
-        const linkedPaths = await getLinkPathsForProject(projectName);
-        if (linkedPaths.length > 0) {
-            const linkedPath = linkedPaths[0];
-            sdkPath = path.join(linkedPath, "sdk");
+    const sdkLocations: Array<{ path: string; language: Language }> = [];
+
+    for (const frontend of frontends || []) {
+        if (frontend.sdk) {
+            sdkLocations.push({
+                path: path.join(frontend.path, frontend.sdk.path || "sdk"),
+                language: frontend.sdk.language,
+            });
         }
     }
 
-    const classUrls = sdk.files.map((c) => ({
-        name: c.className,
-        cloudUrl: `http://127.0.0.1:${options.port}/${c.className}`,
-    }));
+    const linkedFrontends = await getLinkedFrontendsForProject(projectName);
+    linkedFrontends.forEach((f) =>
+        sdkLocations.push({
+            path: f.path,
+            language: f.language,
+        }),
+    );
 
-    const sdkFolderPath = await writeSdk({
-        language: sdkLanguage,
-        packageName: `@genezio-sdk/${projectName}`,
-        packageVersion: undefined,
-        sdkResponse: sdk,
-        classUrls,
-        publish: false,
-        installPackage: true,
-        outputPath: sdkPath,
-    });
+    for (const sdkLocation of sdkLocations) {
+        const sdkResponse = sdk.generatorResponses.find(
+            (response) => response.sdkGeneratorInput.language === sdkLocation.language,
+        );
 
-    if (sdkFolderPath) {
-        const timeout = await watchPackage(sdkLanguage, projectName, frontends, sdkFolderPath);
-        if (timeout) {
-            nodeJsWatcher = timeout;
+        if (!sdkResponse) {
+            throw new UserError("Could not find the SDK for the frontend.");
         }
+
+        const workspaceUrl = getWorkspaceUrl(options.port);
+        const classUrls = sdkResponse.files.map((c) => ({
+            name: c.className,
+            cloudUrl: workspaceUrl
+                ? `${workspaceUrl}/${c.className}`
+                : `http://127.0.0.1:${options.port}/${c.className}`,
+        }));
+
+        const sdkFolderPath = await writeSdk({
+            language: sdkLocation.language,
+            packageName: `@genezio-sdk/${projectName}`,
+            packageVersion: undefined,
+            sdkResponse,
+            classUrls,
+            publish: false,
+            installPackage: true,
+            outputPath: sdkLocation.path,
+        });
+        debugLogger.debug(
+            `SDK for ${sdkLocation.language} written in ${sdkLocation.path}. ${sdkFolderPath}`,
+        );
+
+        if (sdkFolderPath) {
+            const timeout = await watchPackage(
+                sdkLocation.language,
+                projectName,
+                frontends?.filter(
+                    (f) => f.sdk?.language === Language.ts || f.sdk?.language === Language.js,
+                ),
+                sdkFolderPath,
+            );
+            if (timeout) {
+                nodeJsWatchers.push(timeout);
+            }
+        }
+
+        reportSuccessForSdk(sdkLocation.language, sdkResponse, GenezioCommand.local, {
+            name: projectName,
+            stage: "local",
+        });
     }
 
-    reportSuccessForSdk(sdkLanguage, sdk, GenezioCommand.local, {
-        name: projectName,
-        stage: "local",
-    });
+    return nodeJsWatchers;
+}
 
-    return nodeJsWatcher;
+function getWorkspaceUrl(port: number): string | undefined {
+    let workspaceUrl: string | undefined;
+    if (process.env?.["GITPOD_WORKSPACE_URL"]) {
+        const gitPodWorkspaceUrl = process.env["GITPOD_WORKSPACE_URL"];
+        workspaceUrl = gitPodWorkspaceUrl.replace("https://", `https://${port}-`);
+    }
+    if (
+        process.env?.["CODESPACE_NAME"] &&
+        process.env?.["GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN"]
+    ) {
+        const codespaceName = process.env["CODESPACE_NAME"];
+        const portForwardingDomain = process.env["GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN"];
+        workspaceUrl = `https://${codespaceName}-${port}.${portForwardingDomain}`;
+    }
+    return workspaceUrl;
 }
 
 function reportSuccess(projectConfiguration: ProjectConfiguration, port: number) {
@@ -907,7 +1098,21 @@ function reportSuccess(projectConfiguration: ProjectConfiguration, port: number)
 
     _reportSuccess(classesInfo);
 
-    log.info(colors.cyan(`Test your code at http://localhost:${port}/explore`));
+    if (projectConfiguration.functions?.length > 0) {
+        reportSuccessFunctions(
+            projectConfiguration.functions.map((f) => ({
+                name: f.name,
+                cloudUrl: `http://localhost:${port}/.functions/${f.name}`,
+            })),
+        );
+    }
+
+    const workspaceUrl = getWorkspaceUrl(port);
+    log.info(
+        colors.cyan(
+            `Test your code at ${workspaceUrl ? workspaceUrl : `http://localhost:${port}`}/explore`,
+        ),
+    );
 }
 
 // This method is used to check if the user has a different node version installed than the one used by the server.
@@ -952,32 +1157,38 @@ function getFunctionUrl(
 
 async function clearAllResources(
     server: http.Server,
-    processForClasses: Map<string, ClassProcess>,
+    processForUnits: Map<string, UnitProcess>,
     crons: LocalEnvCronHandler[],
 ) {
     process.env["LOGGED_IN_LOCAL"] = "";
-    server.close();
+    // await for server.close();
+    await new Promise((resolve) => {
+        server.close(() => {
+            resolve(true);
+        });
+    });
     await stopCronJobs(crons);
 
-    processForClasses.forEach((classProcess) => {
-        classProcess.process.kill();
+    processForUnits.forEach((unitProcess) => {
+        unitProcess.process.kill();
     });
 }
 
-async function startClassProcess(
+async function startLocalUnitProcess(
     startingCommand: string,
     parameters: string[],
-    className: string,
-    processForClasses: Map<string, ClassProcess>,
+    localUnitName: string,
+    processForUnits: Map<string, UnitProcess>,
     envVars: dotenv.DotenvPopulateInput = {},
+    type: "class" | "function",
     cwd?: string,
 ) {
     const availablePort = await findAvailablePort();
-    debugLogger.debug(`[START_CLASS_PROCESS] Starting class ${className} on port ${availablePort}`);
-    debugLogger.debug(`[START_CLASS_PROCESS] Starting command: ${startingCommand}`);
-    debugLogger.debug(`[START_CLASS_PROCESS] Parameters: ${parameters}`);
+    debugLogger.debug(`[START_Unit_PROCESS] Starting ${localUnitName} on port ${availablePort}`);
+    debugLogger.debug(`[START_Unit_PROCESS] Starting command: ${startingCommand}`);
+    debugLogger.debug(`[START_Unit_PROCESS] Parameters: ${parameters}`);
     const processParameters = [...parameters, availablePort.toString()];
-    const classProcess = spawn(startingCommand, processParameters, {
+    const localUnitProcess = spawn(startingCommand, processParameters, {
         stdio: ["pipe", "pipe", "pipe"],
         env: {
             ...process.env,
@@ -986,11 +1197,20 @@ async function startClassProcess(
         },
         cwd,
     });
-    classProcess.stdout.on("data", (data) => log.info(data.toString().trim()));
-    classProcess.stderr.on("data", (data) => log.info(data.toString().trim()));
 
-    processForClasses.set(className, {
-        process: classProcess,
+    const localUnitStdoutLineStream = readline.createInterface({
+        input: localUnitProcess.stdout,
+    });
+    const localUnitStderrLineStream = readline.createInterface({
+        input: localUnitProcess.stderr,
+    });
+
+    localUnitStdoutLineStream.on("line", (line) => log.info(line));
+    localUnitStderrLineStream.on("line", (line) => log.info(line));
+
+    processForUnits.set(localUnitName, {
+        type: type,
+        process: localUnitProcess,
         listeningPort: availablePort,
         startingCommand: startingCommand,
         parameters: parameters,
@@ -999,10 +1219,10 @@ async function startClassProcess(
 }
 
 async function communicateWithProcess(
-    localProcess: ClassProcess,
-    className: string,
+    localProcess: UnitProcess,
+    unitName: string,
     data: Record<string, unknown>,
-    processForClasses: Map<string, ClassProcess>,
+    processForUnits: Map<string, UnitProcess>,
 ): Promise<AxiosResponse> {
     try {
         return await axios.post(`http://127.0.0.1:${localProcess?.listeningPort}`, data);
@@ -1011,14 +1231,43 @@ async function communicateWithProcess(
             error instanceof AxiosError &&
             (error.code === "ECONNRESET" || error.code === "ECONNREFUSED")
         ) {
-            await startClassProcess(
+            await startLocalUnitProcess(
                 localProcess.startingCommand,
                 localProcess.parameters,
-                className,
-                processForClasses,
+                unitName,
+                processForUnits,
                 localProcess.envVars,
+                localProcess.type,
             );
+            log.error(`There was an error connecting to the server. Restarted ${unitName}.`);
         }
         throw error;
     }
+}
+
+function formatTimestamp(date: Date) {
+    const day = String(date.getUTCDate()).padStart(2, "0");
+    const monthNames = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+    ];
+    const month = monthNames[date.getUTCMonth()];
+    const year = date.getUTCFullYear();
+
+    const hours = String(date.getUTCHours()).padStart(2, "0");
+    const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+    const seconds = String(date.getUTCSeconds()).padStart(2, "0");
+
+    const formattedDate = `${day}/${month}/${year}:${hours}:${minutes}:${seconds} +0000`;
+    return formattedDate;
 }

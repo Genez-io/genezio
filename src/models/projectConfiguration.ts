@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { getAstSummary } from "../generateSdk/utils/getAstSummary.js";
 import { AstSummary } from "./astSummary.js";
 import { CloudProviderIdentifier } from "./cloudProviderIdentifier.js";
 import { DEFAULT_ARCHITECTURE, DEFAULT_NODE_RUNTIME, NodeOptions } from "./projectOptions.js";
-import { SdkGeneratorResponse } from "./sdkGeneratorResponse.js";
-import { TriggerType } from "../yamlProjectConfiguration/models.js";
+import { SdkHandlerResponse } from "./sdkGeneratorResponse.js";
+import { FunctionProviderType, TriggerType } from "../yamlProjectConfiguration/models.js";
 import { YamlProjectConfiguration } from "../yamlProjectConfiguration/v2.js";
 import path from "path";
 import { UserError } from "../errors.js";
@@ -23,6 +24,7 @@ export class MethodConfiguration {
     name: string;
     parameters: ParameterType[];
     cronString?: string;
+    auth?: boolean;
     type: TriggerType;
     docString?: string;
     returnType: any;
@@ -76,6 +78,31 @@ export class ClassConfiguration {
     }
 }
 
+export class FunctionConfiguration {
+    name: string;
+    path: string;
+    handler: string;
+    language: string;
+    entry: string;
+    provider: FunctionProviderType;
+
+    constructor(
+        name: string,
+        path: string,
+        handler: string,
+        language: string,
+        entry: string,
+        provider: FunctionProviderType,
+    ) {
+        this.name = name;
+        this.path = path;
+        this.handler = handler;
+        this.language = language;
+        this.entry = entry;
+        this.provider = provider;
+    }
+}
+
 export class SdkConfiguration {
     language: string;
     path?: string;
@@ -102,11 +129,13 @@ export class ProjectConfiguration {
     cloudProvider: CloudProviderIdentifier;
     astSummary: AstSummary;
     classes: ClassConfiguration[];
+    functions: FunctionConfiguration[];
     workspace?: Workspace;
 
     constructor(
         yamlConfiguration: YamlProjectConfiguration,
-        sdkGeneratorResponse: SdkGeneratorResponse,
+        cloudProvider: CloudProviderIdentifier,
+        sdkHandlerResponse: SdkHandlerResponse,
     ) {
         this.name = yamlConfiguration.name;
         this.region = yamlConfiguration.region;
@@ -114,13 +143,12 @@ export class ProjectConfiguration {
             nodeRuntime: yamlConfiguration.backend?.language.runtime || DEFAULT_NODE_RUNTIME,
             architecture: yamlConfiguration.backend?.language.architecture || DEFAULT_ARCHITECTURE,
         };
-        this.cloudProvider =
-            yamlConfiguration.backend?.cloudProvider || CloudProviderIdentifier.GENEZIO;
+        this.cloudProvider = cloudProvider || CloudProviderIdentifier.GENEZIO_CLOUD;
         this.workspace = new Workspace(yamlConfiguration.backend?.path || process.cwd());
         // Generate AST Summary
         this.astSummary = {
             version: "2",
-            classes: getAstSummary(sdkGeneratorResponse.sdkGeneratorInput.classesInfo),
+            classes: getAstSummary(sdkHandlerResponse.classesInfo),
         };
 
         this.classes = this.astSummary.classes.map((c) => {
@@ -149,6 +177,7 @@ export class ProjectConfiguration {
                     parameters: m.params.map((p) => new ParameterType(p.name, p.type, p.optional)),
                     cronString: cronString,
                     language: c.language,
+                    auth: yamlMethod?.auth,
                     type: yamlMethod?.type || yamlClass.type || TriggerType.jsonrpc,
                     returnType: m.returnType,
                     docString: m.docString,
@@ -166,5 +195,17 @@ export class ProjectConfiguration {
                 docString: c.docString,
             };
         });
+
+        this.functions =
+            yamlConfiguration.backend?.functions?.map((f) => {
+                return {
+                    name: `function-${f.name}`,
+                    path: f.path,
+                    language: yamlConfiguration.backend?.language.name || "ts",
+                    handler: f.handler,
+                    entry: f.entry,
+                    provider: f.provider,
+                };
+            }) || [];
     }
 }

@@ -15,6 +15,10 @@ import (
     "github.com/Genez-io/genezio_types"
     "github.com/aws/aws-lambda-go/lambda"
 
+    {{#usesAuth}}
+    "github.com/Genez-io/auth"
+    {{/usesAuth}}
+
     {{#imports}}
     {{#named}}{{name}} {{/named}}"{{{path}}}"
     {{/imports}}
@@ -115,7 +119,7 @@ func sendError(err error, methodType MethodType) *Response {
     return response
 }
 
-func handleRequest(context context.Context, event *Event) (*Response, error) {
+func handleRequest(ctx context.Context, event *Event) (*Response, error) {
 	var body EventBody
 	var responseBody ResponseBody
 
@@ -225,6 +229,24 @@ func handleRequest(context context.Context, event *Event) (*Response, error) {
             {{#parameters}}
             {{{cast}}}
             {{/parameters}}
+            {{#auth}}
+            gnzContext, ok := body.Params[0].(map[string]interface{})
+            if !ok {
+                errorResponse := sendError(errors.New("invalid context"), JsonRpcMethod)
+                return errorResponse, nil
+            }
+            token, ok := gnzContext["token"].(string)
+            if !ok {
+                errorResponse := sendError(errors.New("invalid token"), JsonRpcMethod)
+                return errorResponse, nil
+            }
+            user, err := auth.GetUserByToken(token)
+            if err != nil {
+                errorResponse := sendError(err, JsonRpcMethod)
+                return errorResponse, nil
+            }
+            param0 = context.WithValue(ctx, "user", user)
+            {{/auth}}
             {{^isVoid}}result, {{/isVoid}}err {{^isVoid}}:{{/isVoid}}= class.{{name}}({{#parameters}}param{{index}}{{^last}}, {{/last}}{{/parameters}})
             if err != nil {
                 errorResponse := sendError(err, JsonRpcMethod)

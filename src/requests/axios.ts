@@ -23,7 +23,7 @@ axios.interceptors.response.use(
     function (error: AxiosError<StatusError>) {
         const response = error.response;
         if (!response) {
-            throw new UserError("There was an error connecting to the server.");
+            throw error;
         }
 
         if (response.status === 402) {

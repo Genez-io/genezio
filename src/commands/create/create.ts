@@ -4,7 +4,6 @@ import git from "isomorphic-git";
 import http from "isomorphic-git/http/node/index.js";
 import path from "path";
 import nativeFs from "fs";
-import { setLinkPathForProject } from "../../utils/linkDatabase.js";
 import { log } from "../../utils/logging.js";
 import { platform } from "os";
 import { GenezioCreateOptions } from "../../models/commandOptions.js";
@@ -15,6 +14,8 @@ import { YamlConfigurationIOController } from "../../yamlProjectConfiguration/v2
 import { YAMLContext, mergeContexts } from "yaml-transmute";
 import _ from "lodash";
 import { UserError } from "../../errors.js";
+import { Language } from "../../yamlProjectConfiguration/models.js";
+import { linkFrontendsToProject } from "../../utils/linkDatabase.js";
 
 type ProjectInfo = {
     name: string;
@@ -77,7 +78,10 @@ export async function createCommand(options: GenezioCreateOptions) {
                     break;
                 case true:
                     // Genezio link inside the client project
-                    await setLinkPathForProject(options.name, path.join(projectPath, "client"));
+                    await linkFrontendsToProject(options.name, [
+                        // TODO: Use the actual template language instead of always TypeScript
+                        { path: path.join(projectPath, "client"), language: Language.ts },
+                    ]);
                     log.info(SUCCESSFULL_CREATE_MULTIREPO(projectPath, options.name));
                     break;
             }

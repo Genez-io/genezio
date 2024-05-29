@@ -4,7 +4,7 @@ import { describe, test, vi, beforeEach, expect } from "vitest";
 import { regions } from "../../../src/utils/configs";
 import { createCommand } from "../../../src/commands/create/create";
 import { GenezioCreateOptions } from "../../../src/models/commandOptions";
-import { setLinkPathForProject } from "../../../src/utils/linkDatabase";
+import { linkFrontendsToProject } from "../../../src/utils/linkDatabase";
 
 vi.mock("fs", () => {
     return { default: memfsFs };
@@ -200,7 +200,7 @@ describe("create", () => {
 
         await createCommand(options);
 
-        expect(setLinkPathForProject).toHaveBeenCalled();
+        expect(linkFrontendsToProject).toHaveBeenCalled();
 
         // Project folder should be created
         expect(vol.existsSync(path.join(process.cwd(), "genezio-project"))).toBe(true);

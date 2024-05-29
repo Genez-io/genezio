@@ -2,11 +2,15 @@ import { YAMLContext, parse as parseYaml, stringify as stringifyYaml } from "yam
 import zod from "zod";
 import nativeFs from "fs";
 import { IFs } from "memfs";
-import { regions } from "../utils/configs.js";
+import { legacyRegions } from "../utils/configs.js";
 import { GENEZIO_CONFIGURATION_FILE_NOT_FOUND, UserError, zodFormatError } from "../errors.js";
-import { Language } from "./models.js";
-import { DEFAULT_ARCHITECTURE, DEFAULT_NODE_RUNTIME, supportedArchitectures, supportedNodeRuntimes } from "../models/projectOptions.js";
-import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
+import { FunctionProviderType, Language } from "./models.js";
+import {
+    DEFAULT_ARCHITECTURE,
+    DEFAULT_NODE_RUNTIME,
+    supportedArchitectures,
+    supportedNodeRuntimes,
+} from "../models/projectOptions.js";
 import { PackageManagerType } from "../packageManagers/packageManager.js";
 import { TriggerType } from "./models.js";
 import { isValidCron } from "cron-validator";
@@ -17,6 +21,7 @@ import { DeepRequired } from "../utils/types.js";
 export type RawYamlProjectConfiguration = ReturnType<typeof parseGenezioConfig>;
 export type YAMLBackend = NonNullable<YamlProjectConfiguration["backend"]>;
 export type YamlClass = NonNullable<YAMLBackend["classes"]>[number];
+export type YamlFunction = NonNullable<YAMLBackend["functions"]>[number];
 export type YamlMethod = NonNullable<YamlClass["methods"]>[number];
 export type YamlFrontend = NonNullable<YamlProjectConfiguration["frontend"]>[number];
 type YamlScripts = NonNullable<YAMLBackend["scripts"]> | NonNullable<YamlFrontend["scripts"]>;
@@ -38,6 +43,7 @@ function parseGenezioConfig(config: unknown) {
         .object({
             name: zod.string(),
             type: zod.literal(TriggerType.jsonrpc).or(zod.literal(TriggerType.http)),
+            auth: zod.boolean().optional(),
         })
         .or(
             zod
@@ -45,6 +51,7 @@ function parseGenezioConfig(config: unknown) {
                     name: zod.string(),
                     type: zod.literal(TriggerType.cron),
                     cronString: zod.string(),
+                    auth: zod.boolean().optional(),
                 })
                 .refine(({ type, cronString }) => {
                     if (type === TriggerType.cron && cronString && !isValidCron(cronString)) {
@@ -75,6 +82,21 @@ function parseGenezioConfig(config: unknown) {
         methods: zod.array(methodSchema).optional(),
     });
 
+    const functionsSchema = zod.object({
+        name: zod.string().refine((value) => {
+            const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
+            return nameRegex.test(value);
+        }, "Must start with a letter and contain only letters, numbers and dashes."),
+        path: zod.string(),
+        handler: zod.string(),
+        entry: zod.string().refine((value) => {
+            return (
+                value.split(".").length === 2 && ["js", "mjs", "cjs"].includes(value.split(".")[1])
+            );
+        }, "The handler should be in the format 'file.extension'. example: index.js / index.mjs / index.cjs"),
+        provider: zod.nativeEnum(FunctionProviderType),
+    });
+
     const backendSchema = zod.object({
         path: zod.string(),
         language: languageSchema,
@@ -84,21 +106,8 @@ function parseGenezioConfig(config: unknown) {
                 local: scriptSchema,
             })
             .optional(),
-        cloudProvider: zod
-            .nativeEnum(CloudProviderIdentifier, {
-                errorMap: (issue, ctx) => {
-                    if (issue.code === zod.ZodIssueCode.invalid_enum_value) {
-                        return {
-                            message:
-                                "Invalid enum value. The supported values are `genezio` or `selfHostedAws`.",
-                        };
-                    }
-
-                    return { message: ctx.defaultError };
-                },
-            })
-            .optional(),
         classes: zod.array(classSchema).optional(),
+        functions: zod.array(functionsSchema).optional(),
     });
 
     const frontendSchema = zod.object({
@@ -125,13 +134,15 @@ function parseGenezioConfig(config: unknown) {
             const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
             return nameRegex.test(value);
         }, "Must start with a letter and contain only letters, numbers and dashes."),
-        region: zod.enum(regions.map((r) => r.value) as [string, ...string[]]).optional(),
+        region: zod.enum(legacyRegions.map((r) => r.value) as [string, ...string[]]).optional(),
         yamlVersion: zod.number(),
         backend: backendSchema.optional(),
         frontend: zod.array(frontendSchema).or(frontendSchema).optional(),
     });
 
-    return v2Schema.parse(config);
+    const parsedConfig = v2Schema.parse(config);
+
+    return parsedConfig;
 }
 
 function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
@@ -146,8 +157,6 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
                 defaultConfig.backend.language.runtime ??= DEFAULT_NODE_RUNTIME;
                 defaultConfig.backend.language.architecture ??= DEFAULT_ARCHITECTURE;
         }
-
-        defaultConfig.backend.cloudProvider ??= CloudProviderIdentifier.GENEZIO;
     }
 
     if (defaultConfig.frontend && !Array.isArray(defaultConfig.frontend)) {
@@ -160,7 +169,6 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
         | "backend.language.packageManager"
         | "backend.language.runtime"
         | "backend.language.architecture"
-        | "backend.cloudProvider"
     > & {
         frontend: typeof defaultConfig.frontend;
     };
@@ -283,7 +291,7 @@ export class YamlConfigurationIOController {
         }
 
         const fileContent = (await this.fs.promises.readFile(this.filePath, "utf8")) as string;
-        this.latestRead = lastModified;
+        this.latestRead = new Date();
 
         const [rawConfig, ctx] = parseYaml(fileContent);
         let genezioConfig: RawYamlProjectConfiguration;

@@ -1,4 +1,4 @@
-import { TriggerType } from "../yamlProjectConfiguration/models.js";
+import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
 
 export enum GenezioCommandTemplates {
     FULLSTACK = "Fullstack",
@@ -338,7 +338,7 @@ export type SdkGeneratorClassesInfoInput = {
 
 export type SdkGeneratorInput = {
     classesInfo: SdkGeneratorClassesInfoInput[];
-    language: string;
+    language: Language;
     packageName?: string;
     packageVersion?: string;
 };

@@ -1,9 +1,9 @@
 import { spawn } from "child_process";
 import { UserError } from "../errors.js";
-import { runNewProcess } from "./process.js";
 import colors from "colors";
 import _ from "lodash";
 import { Logger } from "tslog";
+import { execaCommand } from "execa";
 
 export async function runScript(
     scripts: string | string[] | undefined,
@@ -18,8 +18,7 @@ export async function runScript(
     }
 
     for (const script of scripts) {
-        const success = await runNewProcess(script, cwd);
-        if (!success) throw new UserError(`Failed to run script: ${script}`);
+        await execaCommand(script, { cwd, shell: true });
     }
 }
 

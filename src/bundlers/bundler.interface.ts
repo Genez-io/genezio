@@ -22,6 +22,8 @@ export type BundlerInput = {
         installDeps?: boolean;
         allNonJsFilesPaths?: FileDetails[];
         disableOptimization?: boolean;
+        type?: "class" | "function";
+        entryFile?: string;
     };
 };
 

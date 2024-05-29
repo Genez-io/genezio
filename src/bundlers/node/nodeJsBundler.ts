@@ -386,12 +386,12 @@ export class NodeJsBundler implements BundlerInterface {
         provider: CloudProviderIdentifier,
     ): ((className: string) => string) | null {
         switch (provider) {
-            case CloudProviderIdentifier.CLUSTER:
+            case CloudProviderIdentifier.GENEZIO_CLUSTER:
                 return clusterHandlerGenerator;
-            case CloudProviderIdentifier.GENEZIO:
+            case CloudProviderIdentifier.GENEZIO_AWS:
                 return lambdaHandlerGenerator;
-            case CloudProviderIdentifier.CAPYBARA:
-            case CloudProviderIdentifier.CAPYBARA_LINUX:
+            case CloudProviderIdentifier.GENEZIO_UNIKERNEL:
+            case CloudProviderIdentifier.GENEZIO_CLOUD:
                 return genezioRuntimeHandlerGenerator;
             default:
                 return null;
@@ -406,7 +406,7 @@ export class NodeJsBundler implements BundlerInterface {
 
         // TODO: Remove this check after cluster is fully supported in other regions
         if (
-            cloudProvider === CloudProviderIdentifier.CLUSTER &&
+            cloudProvider === CloudProviderIdentifier.GENEZIO_CLUSTER &&
             input.projectConfiguration.region !== "us-east-1"
         ) {
             throw new UserError(
@@ -456,12 +456,13 @@ export class NodeJsBundler implements BundlerInterface {
         const nodeVersion = input.projectConfiguration.options?.nodeRuntime || DEFAULT_NODE_RUNTIME;
 
         // 2. Copy non js files and node_modules and write index.mjs file
+        const entryFile = "index.mjs";
         await Promise.all([
             this.#copyNonJsFiles(temporaryFolder, input, cwd),
             mode === "production"
                 ? this.#copyDependencies(input.extra.dependenciesInfo, temporaryFolder, mode, cwd)
                 : Promise.resolve(),
-            writeToFile(temporaryFolder, "index.mjs", handlerGenerator(input.configuration.name)),
+            writeToFile(temporaryFolder, entryFile, handlerGenerator(input.configuration.name)),
             ...(isDeployedToCluster
                 ? [
                       writeToFile(temporaryFolder, "local.mjs", clusterWrapperCode, true),
@@ -506,6 +507,7 @@ export class NodeJsBundler implements BundlerInterface {
                 originalPath: input.path,
                 dependenciesInfo: input.extra.dependenciesInfo,
                 allNonJsFilesPaths: input.extra.allNonJsFilesPaths,
+                entryFile,
             },
         };
     }

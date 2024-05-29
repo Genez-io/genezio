@@ -39,11 +39,16 @@ export const packageManagers: {
 
 /*
  * This is the currenly selected package manager.
+ *
+ * Note: It should not be exported, as it is only used internally.
+ * Use the getPackageManager and setPackageManager functions instead.
  */
 let packageManager = packageManagers.npm;
+
+export function getPackageManager(): PackageManager {
+    return packageManager;
+}
 
 export function setPackageManager(packageManagerType: PackageManagerType) {
     packageManager = packageManagers[packageManagerType] ?? packageManagers.npm;
 }
-
-export default packageManager;

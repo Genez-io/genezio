@@ -1,4 +1,4 @@
-import { SdkFileClass, SdkGeneratorInput } from "./genezioModels.js";
+import { SdkFileClass, SdkGeneratorClassesInfoInput, SdkGeneratorInput } from "./genezioModels.js";
 
 export type AstSummaryParam = {
     name: string;
@@ -8,4 +8,9 @@ export type AstSummaryParam = {
 export type SdkGeneratorResponse = {
     files: SdkFileClass[];
     sdkGeneratorInput: SdkGeneratorInput;
+};
+
+export type SdkHandlerResponse = {
+    generatorResponses: SdkGeneratorResponse[];
+    classesInfo: SdkGeneratorClassesInfoInput[];
 };

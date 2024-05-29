@@ -22,7 +22,7 @@ async function tryToReadClassInformationFromDecorators(
     return await Promise.all(
         allFilesPaths.map((file) => {
             const filePath = path.join(cwd, file.path);
-            return decoratorExtractor.getDecoratorsFromFile(filePath);
+            return decoratorExtractor.getDecoratorsFromFile(filePath, cwd);
         }),
     );
 }
@@ -70,10 +70,14 @@ export async function scanClassesForDecorators(
                             ? getTriggerTypeFromString(genezioMethodDecorator.arguments["type"])
                             : undefined;
                         const cronString = genezioMethodDecorator.arguments["cronString"];
+
+                        const usesAuth =
+                            m.decorators.find((d) => d.name === "GenezioAuth") !== undefined;
                         return {
                             name: m.name,
                             type: methodType,
                             cronString: cronString,
+                            auth: usesAuth,
                         } as YamlMethod;
                     })
                     .filter((m) => m !== undefined) as YamlMethod[];

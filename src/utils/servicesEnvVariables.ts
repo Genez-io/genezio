@@ -34,7 +34,7 @@ async function getAuthFunctionUrl(
     }
 
     switch (authStatus.cloudProvider) {
-        case CloudProviderIdentifier.GENEZIO:
+        case CloudProviderIdentifier.GENEZIO_AWS:
             return `https://${authStatus.token}.lambda-url.${region}.on.aws/AuthService`;
         default:
             debugLogger.error(`Cloud provider ${authStatus.cloudProvider} is not supported yet`);

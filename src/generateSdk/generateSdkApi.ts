@@ -2,10 +2,10 @@ import { generateAst } from "./astGeneratorHandler.js";
 import { generateSdk } from "./sdkGeneratorHandler.js";
 import {
     SdkClassConfiguration,
+    SdkGeneratorClassesInfoInput,
     SdkGeneratorInput,
-    SdkGeneratorOutput,
 } from "../models/genezioModels.js";
-import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
+import { SdkGeneratorResponse, SdkHandlerResponse } from "../models/sdkGeneratorResponse.js";
 import { AstGeneratorInput } from "../models/genezioModels.js";
 import fs from "fs";
 import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
@@ -23,20 +23,22 @@ import { UserError } from "../errors.js";
  * @throws {Error} If there was an error generating the SDK.
  */
 export async function sdkGeneratorApiHandler(
-    language: Language,
+    languages: Language[],
     classes: SdkClassConfiguration[],
     backendPath: string,
     packageName?: string,
     packageVersion?: string,
-): Promise<SdkGeneratorResponse> {
+): Promise<SdkHandlerResponse> {
     const inputs: AstGeneratorInput[] = generateAstInputs(classes || [], backendPath);
 
-    const sdkGeneratorInput: SdkGeneratorInput = {
+    const sdkGeneratorInputs: SdkGeneratorInput[] = languages.map((language) => ({
         packageName,
         packageVersion,
         classesInfo: [],
-        language: language ?? "ts",
-    };
+        language,
+    }));
+
+    const classesInfo: SdkGeneratorClassesInfoInput[] = [];
 
     // iterate over each class file
     for (const input of inputs) {
@@ -55,22 +57,31 @@ export async function sdkGeneratorApiHandler(
             );
         }
 
-        sdkGeneratorInput.classesInfo.push({
+        for (const sdkGeneratorInput of sdkGeneratorInputs) {
+            sdkGeneratorInput.classesInfo.push({
+                program: astGeneratorOutput.program,
+                classConfiguration,
+                fileName: path.basename(input.class.path),
+            });
+        }
+
+        classesInfo.push({
             program: astGeneratorOutput.program,
             classConfiguration,
             fileName: path.basename(input.class.path),
         });
     }
 
-    const sdkOutput: SdkGeneratorOutput = await generateSdk(
-        sdkGeneratorInput,
-        // TODO: Add SDK generator plugin support
-        [],
-    );
-
     return {
-        files: sdkOutput.files,
-        sdkGeneratorInput: sdkGeneratorInput,
+        classesInfo,
+        generatorResponses: await Promise.all(
+            sdkGeneratorInputs.map(async (sdkGeneratorInput): Promise<SdkGeneratorResponse> => {
+                return {
+                    files: (await generateSdk(sdkGeneratorInput, [])).files,
+                    sdkGeneratorInput,
+                };
+            }),
+        ),
     };
 }
 
