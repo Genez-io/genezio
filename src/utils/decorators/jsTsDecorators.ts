@@ -13,12 +13,14 @@ import {
     isObjectExpression,
     isObjectProperty,
     isStringLiteral,
+    ExportDeclaration,
+    isExportDefaultDeclaration,
+    isExportNamedDeclaration,
 } from "@babel/types";
 import babel from "@babel/core";
 import { createRequire } from "module";
 import { debugLogger } from "../logging.js";
 import { DecoratorExtractor } from "./baseDecoratorExtractor.js";
-import { isWebContainer } from "@webcontainer/env";
 
 export class JsTsDecoratorExtractor extends DecoratorExtractor {
     fileFilter(cwd: string): (file: FileDetails) => boolean {
@@ -35,8 +37,7 @@ export class JsTsDecoratorExtractor extends DecoratorExtractor {
 
     async getDecoratorsFromFile(file: string): Promise<ClassInfo[]> {
         const babelClasses = await this.getDecoratorsBabel(file);
-        const treeSitterClasses = await this.getDecoratorsTreeSitter(file);
-        return [...babelClasses, ...treeSitterClasses];
+        return [...babelClasses];
     }
 
     async getDecoratorsBabel(file: string): Promise<ClassInfo[]> {
@@ -133,6 +134,98 @@ export class JsTsDecoratorExtractor extends DecoratorExtractor {
                 },
             };
         };
+        const extractorFunctionComments = function extract() {
+            return {
+                name: "extract-comments",
+                visitor: {
+                    ExportDeclaration(path: NodePath<ExportDeclaration>) {
+                        if (
+                            isExportDefaultDeclaration(path.node) ||
+                            isExportNamedDeclaration(path.node)
+                        ) {
+                            const classDeclarationNode = path.node.declaration;
+                            if (isClassDeclaration(classDeclarationNode)) {
+                                const className = classDeclarationNode.id?.name ?? "default";
+                                const comments = path.node.leadingComments;
+                                if (comments && comments.length > 0) {
+                                    const lastComment = comments[comments.length - 1];
+                                    if (
+                                        lastComment.value.includes("genezio: deploy") &&
+                                        lastComment.type === "CommentLine"
+                                    ) {
+                                        const classInfo = DecoratorExtractor.createGenezioClassInfo(
+                                            className,
+                                            file,
+                                            lastComment.value,
+                                        );
+                                        classes.push(classInfo);
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    ClassDeclaration(path: NodePath<ClassDeclaration>) {
+                        if (path.node.leadingComments) {
+                            const leadingComments = path.node.leadingComments;
+                            if (leadingComments.length > 0) {
+                                const lastComment = leadingComments[leadingComments.length - 1];
+                                if (
+                                    lastComment.value.includes("genezio: deploy") &&
+                                    lastComment.type === "CommentLine"
+                                ) {
+                                    const className = path.node.id?.name ?? "default";
+                                    const classInfo = DecoratorExtractor.createGenezioClassInfo(
+                                        className,
+                                        file,
+                                        lastComment.value,
+                                    );
+                                    classes.push(classInfo);
+                                }
+                            }
+                        }
+                    },
+                    ClassMethod(path: NodePath<ClassMethod>) {
+                        const classDeclarationNode = path.context.parentPath.parentPath?.node;
+                        const className = isClassDeclaration(classDeclarationNode)
+                            ? classDeclarationNode.id?.name ?? "defaultClass"
+                            : "defaultClass";
+
+                        const methodIdentifierNode = path.node.key;
+                        const methodName = isIdentifier(methodIdentifierNode)
+                            ? methodIdentifierNode.name
+                            : "defaultMethod";
+                        let existingClass = classes.find((c) => c.name === className);
+                        if (!existingClass) {
+                            existingClass = {
+                                path: file,
+                                name: className,
+                                decorators: [],
+                                methods: [],
+                            };
+                            classes.push(existingClass);
+                        }
+                        if (path.node.leadingComments) {
+                            const leadingComments = path.node.leadingComments;
+                            if (leadingComments.length > 0) {
+                                const lastComment = leadingComments[leadingComments.length - 1];
+                                if (
+                                    lastComment.value.includes("genezio:") &&
+                                    lastComment.type === "CommentLine"
+                                ) {
+                                    const methodInfo = DecoratorExtractor.createGenezioMethodInfo(
+                                        methodName,
+                                        lastComment.value,
+                                    );
+                                    if (methodInfo) {
+                                        existingClass.methods.push(methodInfo);
+                                    }
+                                }
+                            }
+                        }
+                    },
+                },
+            };
+        };
 
         const require = createRequire(import.meta.url);
         const packagePath = path.dirname(require.resolve("@babel/plugin-syntax-decorators"));
@@ -157,84 +250,27 @@ export class JsTsDecoratorExtractor extends DecoratorExtractor {
                     throw error;
                 }
             });
-
-        return classes;
-    }
-
-    async getDecoratorsTreeSitter(file: string): Promise<ClassInfo[]> {
-        const inputCode = fs.readFileSync(file, "utf8");
-        const classes: ClassInfo[] = [];
-
-        const require = createRequire(import.meta.url);
-        const ts = require("tree-sitter-typescript").typescript;
-
-        // Tree-Sitter is a binary dependency and it is not supported in web
-        // containers. In web containers, we use the WASM version of Tree-Sitter.
-        const treeSitter = isWebContainer()
-            ? await import("web-tree-sitter")
-            : await import("tree-sitter");
-
-        const parser = new treeSitter.default();
-        parser.setLanguage(ts);
-
-        const tree = parser.parse(inputCode);
-
-        const root = tree.rootNode;
-        root.namedChildren.forEach((child) => {
-            switch (child.type) {
-                case "export_statement": {
-                    const exportType = child.child(1)?.type;
-                    if (exportType !== "class_declaration") {
-                        break;
-                    }
-                    const classStmt = child.child(1);
-                    if (!classStmt) {
-                        break;
-                    }
-                    const className = classStmt?.child(1)?.text || "";
-                    const comment = child.previousSibling;
-                    if (!comment) {
-                        break;
-                    }
-                    const commentText = comment.text;
-                    if (!commentText.includes("genezio: deploy")) {
-                        break;
-                    }
-                    const classInfo = this.createGenezioClassInfo(className, file, commentText);
-                    classStmt.namedChildren.forEach((child) => {
-                        if (child.type === "class_body") {
-                            child.namedChildren.forEach((child) => {
-                                if (child.type !== "method_definition") {
-                                    return;
-                                }
-                                let methodName = child.child(0)?.text || "";
-                                if (methodName === "async") {
-                                    methodName = child.child(1)?.text || "";
-                                }
-                                const comment = child.previousSibling;
-                                if (comment?.type !== "comment") {
-                                    return;
-                                }
-                                const commentText = comment?.text || "";
-                                if (!commentText.includes("genezio:")) {
-                                    return;
-                                }
-                                const methodInfo = this.createGenezioMethodInfo(
-                                    methodName,
-                                    commentText,
-                                );
-                                if (!methodInfo) {
-                                    return;
-                                }
-                                classInfo.methods.push(methodInfo);
-                            });
-                        }
-                    });
-                    classes.push(classInfo);
-                    break;
+        await babel
+            .transformAsync(inputCode, {
+                presets: [
+                    [require.resolve("@babel/preset-typescript"), { allowDeclareFields: true }],
+                ],
+                plugins: [
+                    [packagePath, { version: "2023-05", decoratorsBeforeExport: false }],
+                    extractorFunctionComments,
+                ],
+                filename: file,
+                configFile: false,
+            })
+            .catch((error) => {
+                if (error.reasonCode == "MissingOneOfPlugins") {
+                    debugLogger.error(`Error while parsing the file ${file}`, error);
+                    return [];
+                } else {
+                    throw error;
                 }
-            }
-        });
+            });
+
         return classes;
     }
 

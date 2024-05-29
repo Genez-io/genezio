@@ -82,7 +82,9 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
             } catch (error) {
                 debugLogger.debug("[BinaryDepStdOut]", error);
                 log.error("An error has occurred while installing binary dependencies.");
-                throw new UserError("An error has occurred while installing binary dependencies.");
+                throw new UserError(
+                    "An error has occurred while installing binary dependencies. If you are using binary dependecies in your project make sure your machine can run node-gyp. If you need to know the requirements for running node-gyp you can check out this link: https://github.com/nodejs/node-gyp?tab=readme-ov-file#installation",
+                );
             }
         }
     }
