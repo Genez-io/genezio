@@ -4,7 +4,7 @@ import { AstSummary } from "./astSummary.js";
 import { CloudProviderIdentifier } from "./cloudProviderIdentifier.js";
 import { DEFAULT_ARCHITECTURE, DEFAULT_NODE_RUNTIME, NodeOptions } from "./projectOptions.js";
 import { SdkHandlerResponse } from "./sdkGeneratorResponse.js";
-import { FunctionProviderType, TriggerType } from "../yamlProjectConfiguration/models.js";
+import { FunctionType, TriggerType } from "../yamlProjectConfiguration/models.js";
 import { YamlProjectConfiguration } from "../yamlProjectConfiguration/v2.js";
 import path from "path";
 import { UserError } from "../errors.js";
@@ -84,7 +84,7 @@ export class FunctionConfiguration {
     handler: string;
     language: string;
     entry: string;
-    provider: FunctionProviderType;
+    type: FunctionType;
 
     constructor(
         name: string,
@@ -92,14 +92,14 @@ export class FunctionConfiguration {
         handler: string,
         language: string,
         entry: string,
-        provider: FunctionProviderType,
+        type: FunctionType,
     ) {
         this.name = name;
         this.path = path;
         this.handler = handler;
         this.language = language;
         this.entry = entry;
-        this.provider = provider;
+        this.type = type;
     }
 }
 
@@ -204,7 +204,7 @@ export class ProjectConfiguration {
                     language: yamlConfiguration.backend?.language.name || "ts",
                     handler: f.handler,
                     entry: f.entry,
-                    provider: f.provider,
+                    type: f.type || FunctionType.aws,
                 };
             }) || [];
     }
