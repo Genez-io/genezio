@@ -105,6 +105,12 @@ export async function deployCommand(options: GenezioDeployOptions) {
         checkExperimentalDecorators(backendCwd);
     }
 
+    // check if user is logged in
+    if (!(await isLoggedIn())) {
+        debugLogger.debug("No auth token found. Starting automatic authentication...");
+        await loginCommand("", false);
+    }
+
     let deployClassesResult;
     backend: if (configuration.backend && !options.frontend) {
         if (configuration.backend.classes?.length === 0) {
@@ -418,14 +424,6 @@ export async function deployClasses(
             path: path.relative(process.cwd(), c.path).replace(/\.[^/.]+$/, ""),
         };
     });
-
-    // check if user is logged in
-    if (projectConfiguration.cloudProvider !== CloudProviderIdentifier.SELF_HOSTED_AWS) {
-        if (!(await isLoggedIn())) {
-            debugLogger.debug("No auth token found. Starting automatic authentication...");
-            await loginCommand("", false);
-        }
-    }
 
     // TODO: Enable cloud adapter setting for every class
     const cloudAdapter = getCloudAdapter(cloudProvider);
