@@ -56,7 +56,7 @@ import {
     isDependencyVersionCompatible,
 } from "../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../yamlProjectConfiguration/v2.js";
-import { FunctionProviderType, Language } from "../yamlProjectConfiguration/models.js";
+import { FunctionType, Language } from "../yamlProjectConfiguration/models.js";
 import { runScript } from "../utils/scripts.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../yamlProjectConfiguration/v2.js";
@@ -356,7 +356,7 @@ export async function deployClasses(
                     `The language ${element.language} is not supported for functions. Only JavaScript and TypeScript are supported.`,
                 );
             }
-            const handlerProvider = getFunctionHandlerProvider(element.provider);
+            const handlerProvider = getFunctionHandlerProvider(element.type);
 
             const handlerContent = await handlerProvider.getHandler(element);
 
@@ -728,15 +728,13 @@ function getCloudAdapter(provider: CloudProviderIdentifier): CloudAdapter {
     }
 }
 
-export function getFunctionHandlerProvider(
-    provider: FunctionProviderType,
-): AwsFunctionHandlerProvider {
-    switch (provider) {
-        case FunctionProviderType.aws:
+export function getFunctionHandlerProvider(functionType: FunctionType): AwsFunctionHandlerProvider {
+    switch (functionType) {
+        case FunctionType.aws:
             return new AwsFunctionHandlerProvider();
         default:
             throw new UserError(
-                `Unsupported function provider: ${provider}. Supported providers are: aws`,
+                `Unsupported function type: ${functionType}. Supported providers are: aws`,
             );
     }
 }

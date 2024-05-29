@@ -14,7 +14,7 @@ export enum TriggerType {
     http = "http",
 }
 
-export enum FunctionProviderType {
+export enum FunctionType {
     aws = "aws",
     // TODO: not implemented
     // azure = "azure",
