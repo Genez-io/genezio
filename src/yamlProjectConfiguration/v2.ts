@@ -4,7 +4,7 @@ import nativeFs from "fs";
 import { IFs } from "memfs";
 import { legacyRegions } from "../utils/configs.js";
 import { GENEZIO_CONFIGURATION_FILE_NOT_FOUND, UserError, zodFormatError } from "../errors.js";
-import { FunctionProviderType, Language } from "./models.js";
+import { FunctionType, Language } from "./models.js";
 import {
     DEFAULT_ARCHITECTURE,
     DEFAULT_NODE_RUNTIME,
@@ -94,7 +94,7 @@ function parseGenezioConfig(config: unknown) {
                 value.split(".").length === 2 && ["js", "mjs", "cjs"].includes(value.split(".")[1])
             );
         }, "The handler should be in the format 'file.extension'. example: index.js / index.mjs / index.cjs"),
-        provider: zod.nativeEnum(FunctionProviderType),
+        type: zod.nativeEnum(FunctionType),
     });
 
     const backendSchema = zod.object({
