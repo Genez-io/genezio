@@ -13,12 +13,10 @@ function prepareForSerialization(e) {
     if (e instanceof Error) {
         const object = { message: e.message, stack: e.stack, info: e.info, code: e.code } 
         return object;
-    } else {
-        console.log(\`Unsupported error type \${typeof e}\`)
-        return { message: "Unknown error occurred. Check logs for more information!" }
     }
+    console.error(\`Unsupported error type \${typeof e}\`)
+    return { message: "Unknown error occurred. Check logs for more information!" }
 }
-
 
 if (!genezioClass) {
     console.error(
