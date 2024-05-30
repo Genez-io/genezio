@@ -28,14 +28,15 @@ export default async function getAuthStatus(envId: string): Promise<AuthStatus> 
     const authStatus = response.data;
 
     if (authStatus.enabled) {
-        const [cloud, id] = authStatus.token.split("-");
+        const cloud = authStatus.token.split("-")[0];
+        const id = authStatus.token.split("-").slice(1).join("-");
         switch (cloud) {
             case "0":
                 authStatus.cloudProvider = CloudProviderIdentifier.GENEZIO_AWS;
                 authStatus.token = id;
                 break;
             case "1":
-                authStatus.cloudProvider = CloudProviderIdentifier.GENEZIO_UNIKERNEL;
+                authStatus.cloudProvider = CloudProviderIdentifier.GENEZIO_CLOUD;
                 authStatus.token = id;
                 break;
             default:
