@@ -35,7 +35,7 @@ export default async function getAuthStatus(envId: string): Promise<AuthStatus> 
                 authStatus.token = id;
                 break;
             case "1":
-                authStatus.cloudProvider = CloudProviderIdentifier.GENEZIO_UNIKERNEL;
+                authStatus.cloudProvider = CloudProviderIdentifier.GENEZIO_CLOUD;
                 authStatus.token = id;
                 break;
             default:
