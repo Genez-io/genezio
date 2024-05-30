@@ -1,3 +1,4 @@
+import { ENVIRONMENT } from "../constants.js";
 import { UserError } from "../errors.js";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
 import getAuthStatus from "../requests/getAuthStatus.js";
@@ -37,7 +38,8 @@ async function getAuthFunctionUrl(
         case CloudProviderIdentifier.GENEZIO_AWS:
             return `https://${authStatus.token}.lambda-url.${region}.on.aws/AuthService`;
         case CloudProviderIdentifier.GENEZIO_CLOUD:
-            return `https://${authStatus.token}.${region}.cloud.genez.io/AuthService`;
+            if (ENVIRONMENT === "dev") region = "dev-fkt";
+            return `https://${authStatus.token}.${region}.cloud.genez.io`;
         default:
             debugLogger.error(`Cloud provider ${authStatus.cloudProvider} is not supported yet`);
             return undefined;
