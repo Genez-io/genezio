@@ -9,6 +9,17 @@ import {  ${className.replace(/["]/g, "")} as genezioClass } from "./module.mjs"
 
 var handler = undefined;
 
+function prepareForSerialization(e) {
+    if (e instanceof Error) {
+        const object = { message: e.message, stack: e.stack, info: e.info, code: e.code } 
+        return object;
+    } else {
+        console.log(\`Unsupported error type \${typeof e}\`)
+        return { message: "Unknown error occurred. Check logs for more information!" }
+    }
+}
+
+
 if (!genezioClass) {
     console.error(
         'Error! No class found with name ${className}. Make sure you exported it from your file.'
@@ -193,7 +204,7 @@ if (!genezioClass) {
                         statusCode: 500,
                         body: JSON.stringify({
                             jsonrpc: "2.0",
-                            error: { code: -1, message: err.toString() },
+                            error: prepareForSerialization(err),
                             id: requestId,
                         }),
                         headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
@@ -229,7 +240,7 @@ if (!genezioClass) {
                             statusCode: 500,
                             body: JSON.stringify({
                                 jsonrpc: "2.0",
-                                error: { code: -1, message: err.toString() },
+                                error: prepareForSerialization(err),
                                 id: requestId,
                             }),
                             headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
@@ -245,7 +256,7 @@ if (!genezioClass) {
                     statusCode: 500,
                     body: JSON.stringify({
                         jsonrpc: "2.0",
-                        error: { code: -1, message: err.toString() },
+                        error: prepareForSerialization(err),
                         id: requestId,
                     }),
                     headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
