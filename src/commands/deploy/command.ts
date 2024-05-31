@@ -3,6 +3,7 @@ import { interruptLocalProcesses } from "../../utils/localInterrupt.js";
 import { debugLogger } from "../../utils/logging.js";
 import { genezioDeploy } from "./genezio.js";
 import fs from "fs";
+import { nextJsDeploy } from "./nextjs.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -15,6 +16,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
             break;
         case DeployType.NextJS:
             debugLogger.debug("Deploying Next.js app");
+            await nextJsDeploy(options);
             break;
     }
 }
