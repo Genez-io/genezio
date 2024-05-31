@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "fs";
+import fs, { existsSync, readFileSync } from "fs";
 import { GenezioDeployOptions } from "../../models/commandOptions.js";
 import { YamlConfigurationIOController } from "../../yamlProjectConfiguration/v2.js";
 import { YamlProjectConfiguration } from "../../yamlProjectConfiguration/v2.js";
@@ -7,11 +7,34 @@ import path from "path";
 import { regions } from "../../utils/configs.js";
 import { checkProjectName } from "../create/create.js";
 import { log } from "../../utils/logging.js";
+import { $ } from "execa";
+import { UserError } from "../../errors.js";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
+    await writeOpenNextConfig();
+    await $({ stdio: "inherit" })`npx --yes open-next@^3 build`.catch(() => {
+        throw new UserError("Failed to build the Next.js project. Check the logs above.");
+    });
+
     const genezioConfig = await readOrAskConfig(options.config);
 
     log.info(`Read the following configuration: ${JSON.stringify(genezioConfig, null, 2)}`);
+}
+
+async function writeOpenNextConfig() {
+    const OPEN_NEXT_CONFIG = `
+    const config = {
+        default: {},
+        imageOptimization: {
+            arch: "x64",
+        },
+    }
+    export default config;`;
+
+    // Write the open-next configuration
+    // TODO: Check if the file already exists and merge the configurations, instead of overwriting it.
+    const openNextConfigPath = path.join(process.cwd(), "open-next.config.ts");
+    await fs.promises.writeFile(openNextConfigPath, OPEN_NEXT_CONFIG);
 }
 
 async function readOrAskConfig(configPath: string): Promise<YamlProjectConfiguration> {
