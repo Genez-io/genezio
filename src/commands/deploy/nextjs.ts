@@ -9,6 +9,11 @@ import { checkProjectName } from "../create/create.js";
 import { log } from "../../utils/logging.js";
 import { $ } from "execa";
 import { UserError } from "../../errors.js";
+import { getCloudProvider } from "../../requests/getCloudProvider.js";
+import { functionToCloudInput, getCloudAdapter } from "./genezio.js";
+import { ProjectConfiguration } from "../../models/projectConfiguration.js";
+import { FunctionType, Language } from "../../yamlProjectConfiguration/models.js";
+import { PackageManagerType } from "../../packageManagers/packageManager.js";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     await writeOpenNextConfig();
@@ -18,7 +23,58 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
 
     const genezioConfig = await readOrAskConfig(options.config);
 
-    log.info(`Read the following configuration: ${JSON.stringify(genezioConfig, null, 2)}`);
+    // Deploy NextJs serverless functions
+    await deployFunctions(genezioConfig, options.stage);
+
+    log.info(`Successfully deployed the Next.js project.`);
+}
+
+async function deployFunctions(config: YamlProjectConfiguration, stage?: string) {
+    const cloudProvider = await getCloudProvider(config.name);
+    const cloudAdapter = getCloudAdapter(cloudProvider);
+
+    const deployConfig: YamlProjectConfiguration = {
+        ...config,
+        backend: {
+            path: ".",
+            language: {
+                name: Language.ts,
+                runtime: "nodejs20.x",
+                architecture: "x86_64",
+                packageManager: PackageManagerType.npm,
+            },
+            functions: [
+                {
+                    path: ".open-next/server-functions/default",
+                    name: "server",
+                    entry: "index.mjs",
+                    handler: "handler",
+                    type: FunctionType.aws,
+                },
+                {
+                    path: ".open-next/image-optimization-function",
+                    name: "image-optimization",
+                    entry: "index.mjs",
+                    handler: "handler",
+                    type: FunctionType.aws,
+                },
+            ],
+        },
+    };
+
+    const projectConfiguration = new ProjectConfiguration(
+        deployConfig,
+        await getCloudProvider(deployConfig.name),
+        {
+            generatorResponses: [],
+            classesInfo: [],
+        },
+    );
+    const cloudInputs = await Promise.all(
+        projectConfiguration.functions.map((f) => functionToCloudInput(f, ".")),
+    );
+
+    await cloudAdapter.deploy(cloudInputs, projectConfiguration, { stage });
 }
 
 async function writeOpenNextConfig() {
