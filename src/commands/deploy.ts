@@ -214,10 +214,8 @@ export async function deployCommand(options: GenezioDeployOptions) {
             ),
         );
     }
-    if (frontendUrls.length > 0) {
-        for (let i = 0; i < frontendUrls.length; i++) {
-            log.info(colors.cyan(`Frontend URL: ${frontendUrls[0]}`));
-        }
+    for (const frontendUrl of frontendUrls) {
+        log.info(colors.cyan(`Frontend URL: ${frontendUrl}`));
     }
 }
 
