@@ -8,6 +8,12 @@ import { packageManagers } from "../packageManagers/packageManager.js";
 import getUser from "../requests/getUser.js";
 
 export async function getAuthToken(): Promise<string | undefined> {
+    // Check if GENEZIO_TOKEN is set
+    if (process.env["GENEZIO_TOKEN"]) {
+        debugLogger.debug("Using GENEZIO_TOKEN because it's defined");
+        const result = process.env["GENEZIO_TOKEN"].trim();
+        return result;
+    }
     const homeDirectory = os.homedir();
     const loginConfigFilePath = path.join(homeDirectory, ".geneziorc");
     try {
