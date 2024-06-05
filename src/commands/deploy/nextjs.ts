@@ -1,4 +1,4 @@
-import fs, { existsSync, readFileSync } from "fs";
+import fs, { cpSync, existsSync, mkdirSync, readFileSync } from "fs";
 import { GenezioDeployOptions } from "../../models/commandOptions.js";
 import { YamlConfigurationIOController } from "../../yamlProjectConfiguration/v2.js";
 import { YamlProjectConfiguration } from "../../yamlProjectConfiguration/v2.js";
@@ -6,7 +6,7 @@ import inquirer from "inquirer";
 import path from "path";
 import { regions } from "../../utils/configs.js";
 import { checkProjectName } from "../create/create.js";
-import { log } from "../../utils/logging.js";
+import { debugLogger, log } from "../../utils/logging.js";
 import { $ } from "execa";
 import { UserError } from "../../errors.js";
 import { getCloudProvider } from "../../requests/getCloudProvider.js";
@@ -14,6 +14,9 @@ import { functionToCloudInput, getCloudAdapter } from "./genezio.js";
 import { ProjectConfiguration } from "../../models/projectConfiguration.js";
 import { FunctionType, Language } from "../../yamlProjectConfiguration/models.js";
 import { PackageManagerType } from "../../packageManagers/packageManager.js";
+import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL.js";
+import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
+import { createTemporaryFolder, zipDirectoryToDestinationPath } from "../../utils/file.js";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     await writeOpenNextConfig();
@@ -26,7 +29,44 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     // Deploy NextJs serverless functions
     await deployFunctions(genezioConfig, options.stage);
 
+    // Deploy NextJs static assets to S3
+    await deployStaticAssets(genezioConfig, options.stage);
+
     log.info(`Successfully deployed the Next.js project.`);
+}
+
+async function deployStaticAssets(config: YamlProjectConfiguration, stage: string) {
+    const { presignedURL, userId, domain } = await getFrontendPresignedURL(
+        /* subdomain= */ undefined,
+        /* projectName= */ config.name,
+        stage,
+        /* type= */ "nextjs",
+    );
+    debugLogger.debug(`Generated presigned URL for Next.js static files. Domain: ${domain}`);
+
+    const temporaryFolder = await createTemporaryFolder();
+    const archivePath = path.join(temporaryFolder, "next-static.zip");
+
+    mkdirSync(path.join(temporaryFolder, "next-static"));
+    cpSync(
+        path.join(process.cwd(), ".open-next", "assets"),
+        path.join(temporaryFolder, "next-static", "_assets"),
+        { recursive: true },
+    );
+    cpSync(
+        path.join(process.cwd(), ".open-next", "cache"),
+        path.join(temporaryFolder, "next-static", "_cache"),
+        { recursive: true },
+    );
+
+    await zipDirectoryToDestinationPath(
+        path.join(temporaryFolder, "next-static"),
+        domain,
+        archivePath,
+    );
+
+    await uploadContentToS3(presignedURL, archivePath, undefined, userId);
+    debugLogger.debug("Uploaded Next.js static files to S3.");
 }
 
 async function deployFunctions(config: YamlProjectConfiguration, stage?: string) {

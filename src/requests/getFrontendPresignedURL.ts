@@ -7,12 +7,13 @@ import version from "../utils/version.js";
 import { StatusOk } from "./models.js";
 
 export async function getFrontendPresignedURL(
-    subdomain: string,
+    subdomain: string | undefined,
     projectName: string,
     stage: string,
+    type?: "nextjs",
 ) {
     const region = "us-east-1";
-    if (!subdomain || !projectName) {
+    if (!projectName) {
         throw new UserError("Missing required parameters");
     }
 
@@ -29,19 +30,19 @@ export async function getFrontendPresignedURL(
         stage: stage,
     });
 
-    const response: AxiosResponse<StatusOk<{ userId: string; presignedURL: string }>> = await axios(
-        {
-            method: "GET",
-            url: `${BACKEND_ENDPOINT}/core/frontend-deployment-url`,
-            data: json,
-            headers: {
-                Authorization: `Bearer ${authToken}`,
-                "Accept-Version": `genezio-cli/${version}`,
-            },
-            maxContentLength: Infinity,
-            maxBodyLength: Infinity,
+    const response: AxiosResponse<
+        StatusOk<{ userId: string; presignedURL: string; domain: string }>
+    > = await axios({
+        method: "GET",
+        url: `${BACKEND_ENDPOINT}/core/frontend-deployment-url${type ? `?type=${type}` : ""}`,
+        data: json,
+        headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Accept-Version": `genezio-cli/${version}`,
         },
-    );
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+    });
 
     return response.data;
 }
