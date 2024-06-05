@@ -17,9 +17,15 @@ import { PackageManagerType } from "../../packageManagers/packageManager.js";
 import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import { createTemporaryFolder, zipDirectoryToDestinationPath } from "../../utils/file.js";
+import { DeployCodeFunctionResponse } from "../../models/deployCodeResponse.js";
+import {
+    createFrontendProjectV2,
+    CreateFrontendV2Origin,
+} from "../../requests/createFrontendProject.js";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     await writeOpenNextConfig();
+    // Build the Next.js project
     await $({ stdio: "inherit" })`npx --yes open-next@^3 build`.catch(() => {
         throw new UserError("Failed to build the Next.js project. Check the logs above.");
     });
@@ -27,12 +33,85 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
 
     // Deploy NextJs serverless functions
-    await deployFunctions(genezioConfig, options.stage);
+    const deployedFunctions = await deployFunctions(genezioConfig, options.stage);
 
     // Deploy NextJs static assets to S3
-    await deployStaticAssets(genezioConfig, options.stage);
+    const domainName = await deployStaticAssets(genezioConfig, options.stage);
 
-    log.info(`Successfully deployed the Next.js project.`);
+    // Deploy CDN that serves the Next.js app
+    const cdnUrl = await deployCDN(deployedFunctions, domainName, genezioConfig, options.stage);
+
+    log.info(`Successfully deployed the Next.js project at ${cdnUrl}.`);
+}
+
+async function deployCDN(
+    deployedFunctions: DeployCodeFunctionResponse[],
+    domainName: string,
+    config: YamlProjectConfiguration,
+    stage: string,
+) {
+    const serverOrigin: CreateFrontendV2Origin = {
+        domain: {
+            id: deployedFunctions.find((f) => f.name === "function-server")?.id ?? "",
+            type: "function",
+        },
+        path: undefined,
+        methods: ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        cachePolicy: "custom-function-cache",
+    };
+
+    const imageOptimizationOrigin: CreateFrontendV2Origin = {
+        domain: {
+            id: deployedFunctions.find((f) => f.name === "function-image-optimization")?.id ?? "",
+            type: "function",
+        },
+        path: undefined,
+        methods: ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        cachePolicy: "custom-function-cache",
+    };
+
+    const s3Origin: CreateFrontendV2Origin = {
+        domain: {
+            id: "frontendHosting",
+            type: "s3",
+        },
+        path: "_assets",
+        methods: ["GET", "HEAD", "OPTIONS"],
+        cachePolicy: "caching-optimized",
+    };
+
+    const paths = [
+        { origin: serverOrigin, pattern: "api/*" },
+        { origin: serverOrigin, pattern: "_next/data/*" },
+        { origin: imageOptimizationOrigin, pattern: "_next/image*" },
+    ];
+    const assetsFolder = path.join(process.cwd(), ".open-next", "assets");
+    for (const file of fs.readdirSync(assetsFolder)) {
+        if (fs.statSync(path.join(assetsFolder, file)).isDirectory()) {
+            paths.push({
+                origin: s3Origin,
+                pattern: `${file}/*`,
+            });
+        } else {
+            paths.push({
+                origin: s3Origin,
+                pattern: file,
+            });
+        }
+    }
+
+    const { domain: distributionUrl } = await createFrontendProjectV2(
+        domainName,
+        config.name,
+        config.region,
+        stage,
+        paths,
+        /* defaultPath= */ {
+            origin: serverOrigin,
+        },
+    );
+
+    return distributionUrl;
 }
 
 async function deployStaticAssets(config: YamlProjectConfiguration, stage: string) {
@@ -67,6 +146,8 @@ async function deployStaticAssets(config: YamlProjectConfiguration, stage: strin
 
     await uploadContentToS3(presignedURL, archivePath, undefined, userId);
     debugLogger.debug("Uploaded Next.js static files to S3.");
+
+    return domain;
 }
 
 async function deployFunctions(config: YamlProjectConfiguration, stage?: string) {
@@ -114,7 +195,10 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
         projectConfiguration.functions.map((f) => functionToCloudInput(f, ".")),
     );
 
-    await cloudAdapter.deploy(cloudInputs, projectConfiguration, { stage });
+    const result = await cloudAdapter.deploy(cloudInputs, projectConfiguration, { stage });
+    debugLogger.debug(`Deployed functions: ${JSON.stringify(result.functions)}`);
+
+    return result.functions;
 }
 
 async function writeOpenNextConfig() {
