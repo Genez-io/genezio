@@ -1,20 +1,20 @@
 import { AxiosError } from "axios";
-import { log } from "../utils/logging.js";
+import { log } from "../../utils/logging.js";
 import path from "path";
 import { exit } from "process";
 import {
     DASHBOARD_URL,
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
-} from "../constants.js";
-import { GENEZIO_NO_CLASSES_FOUND, UserError } from "../errors.js";
+} from "../../constants.js";
+import { GENEZIO_NO_CLASSES_FOUND, UserError } from "../../errors.js";
 import {
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
-} from "../generateSdk/generateSdkApi.js";
-import { ProjectConfiguration } from "../models/projectConfiguration.js";
-import { SdkHandlerResponse } from "../models/sdkGeneratorResponse.js";
-import { getNoMethodClasses } from "../utils/getNoMethodClasses.js";
+} from "../../generateSdk/generateSdkApi.js";
+import { ProjectConfiguration } from "../../models/projectConfiguration.js";
+import { SdkHandlerResponse } from "../../models/sdkGeneratorResponse.js";
+import { getNoMethodClasses } from "../../utils/getNoMethodClasses.js";
 import {
     fileExists,
     createTemporaryFolder,
@@ -27,53 +27,50 @@ import {
     readEnvironmentVariablesFile,
     zipFile,
     writeToFile,
-} from "../utils/file.js";
-import { printAdaptiveLog, debugLogger, doAdaptiveLogAction } from "../utils/logging.js";
-import { GenezioCommand, reportSuccess, reportSuccessFunctions } from "../utils/reporter.js";
-import { generateRandomSubdomain } from "../utils/yaml.js";
+} from "../../utils/file.js";
+import { printAdaptiveLog, debugLogger, doAdaptiveLogAction } from "../../utils/logging.js";
+import { GenezioCommand, reportSuccess, reportSuccessFunctions } from "../../utils/reporter.js";
+import { generateRandomSubdomain } from "../../utils/yaml.js";
 import cliProgress from "cli-progress";
-import { YAMLBackend, YamlProjectConfiguration } from "../yamlProjectConfiguration/v2.js";
-import { GenezioCloudAdapter } from "../cloudAdapter/genezio/genezioAdapter.js";
-import { SelfHostedAwsAdapter } from "../cloudAdapter/aws/selfHostedAwsAdapter.js";
+import { YAMLBackend, YamlProjectConfiguration } from "../../yamlProjectConfiguration/v2.js";
+import { GenezioCloudAdapter } from "../../cloudAdapter/genezio/genezioAdapter.js";
+import { SelfHostedAwsAdapter } from "../../cloudAdapter/aws/selfHostedAwsAdapter.js";
 import {
     CloudAdapter,
     GenezioCloudInput,
     GenezioCloudInputType,
     GenezioCloudOutput,
-} from "../cloudAdapter/cloudAdapter.js";
-import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
-import { GenezioDeployOptions } from "../models/commandOptions.js";
-import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
-import { setEnvironmentVariables } from "../requests/setEnvironmentVariables.js";
+} from "../../cloudAdapter/cloudAdapter.js";
+import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
+import { GenezioDeployOptions } from "../../models/commandOptions.js";
+import { GenezioTelemetry, TelemetryEventTypes } from "../../telemetry/telemetry.js";
+import { setEnvironmentVariables } from "../../requests/setEnvironmentVariables.js";
 import colors from "colors";
-import { getEnvironmentVariables } from "../requests/getEnvironmentVariables.js";
-import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
-import { interruptLocalProcesses } from "../utils/localInterrupt.js";
-import { Status } from "../requests/models.js";
-import { bundle } from "../bundlers/utils.js";
+import { getEnvironmentVariables } from "../../requests/getEnvironmentVariables.js";
+import { getProjectEnvFromProject } from "../../requests/getProjectInfo.js";
+import { Status } from "../../requests/models.js";
+import { bundle } from "../../bundlers/utils.js";
 import {
     checkExperimentalDecorators,
     isDependencyVersionCompatible,
-} from "../utils/jsProjectChecker.js";
-import { YamlConfigurationIOController } from "../yamlProjectConfiguration/v2.js";
-import { FunctionType, Language } from "../yamlProjectConfiguration/models.js";
-import { runScript } from "../utils/scripts.js";
-import { scanClassesForDecorators } from "../utils/configuration.js";
-import configIOController, { YamlFrontend } from "../yamlProjectConfiguration/v2.js";
-import { ClusterCloudAdapter } from "../cloudAdapter/cluster/clusterAdapter.js";
-import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
-import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
-import { isLoggedIn } from "../utils/accounts.js";
-import { loginCommand } from "./login.js";
-import { AwsFunctionHandlerProvider } from "../functionHandlerProvider/providers/AwsFunctionHandlerProvider.js";
+} from "../../utils/jsProjectChecker.js";
+import { YamlConfigurationIOController } from "../../yamlProjectConfiguration/v2.js";
+import { FunctionType, Language } from "../../yamlProjectConfiguration/models.js";
+import { runScript } from "../../utils/scripts.js";
+import { scanClassesForDecorators } from "../../utils/configuration.js";
+import configIOController, { YamlFrontend } from "../../yamlProjectConfiguration/v2.js";
+import { ClusterCloudAdapter } from "../../cloudAdapter/cluster/clusterAdapter.js";
+import { writeSdk } from "../../generateSdk/sdkWriter/sdkWriter.js";
+import { reportSuccessForSdk } from "../../generateSdk/sdkSuccessReport.js";
+import { isLoggedIn } from "../../utils/accounts.js";
+import { loginCommand } from "../login.js";
+import { AwsFunctionHandlerProvider } from "../../functionHandlerProvider/providers/AwsFunctionHandlerProvider.js";
 import fsExtra from "fs-extra/esm";
-import { getLinkedFrontendsForProject } from "../utils/linkDatabase.js";
-import { getCloudProvider } from "../requests/getCloudProvider.js";
+import { getLinkedFrontendsForProject } from "../../utils/linkDatabase.js";
+import { getCloudProvider } from "../../requests/getCloudProvider.js";
 import fs from "fs";
 
-export async function deployCommand(options: GenezioDeployOptions) {
-    await interruptLocalProcesses();
-
+export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
         stage: options.stage,
     });

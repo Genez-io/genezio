@@ -6,7 +6,7 @@ import { log } from "./utils/logging.js";
 import { accountCommand } from "./commands/account.js";
 import { addClassCommand } from "./commands/addClass.js";
 import { deleteCommand } from "./commands/delete.js";
-import { deployCommand } from "./commands/deploy.js";
+import { deployCommand } from "./commands/deploy/command.js";
 import { generateSdkCommand } from "./commands/generateSdk.js";
 import { startLocalEnvironment } from "./commands/local.js";
 import { loginCommand } from "./commands/login.js";
