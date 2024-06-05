@@ -12,7 +12,7 @@ import {
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
 } from "../../generateSdk/generateSdkApi.js";
-import { ProjectConfiguration } from "../../models/projectConfiguration.js";
+import { FunctionConfiguration, ProjectConfiguration } from "../../models/projectConfiguration.js";
 import { SdkHandlerResponse } from "../../models/sdkGeneratorResponse.js";
 import { getNoMethodClasses } from "../../utils/getNoMethodClasses.js";
 import {
@@ -345,53 +345,7 @@ export async function deployClasses(
     );
 
     const functionsResultArray: Promise<GenezioCloudInput>[] = projectConfiguration.functions.map(
-        async (element) => {
-            if (element.language !== "js" && element.language !== "ts") {
-                throw new UserError(
-                    `The language ${element.language} is not supported for functions. Only JavaScript and TypeScript are supported.`,
-                );
-            }
-            const handlerProvider = getFunctionHandlerProvider(element.type);
-
-            const handlerContent = await handlerProvider.getHandler(element);
-
-            // create temporary folder
-            const tmpFolderPath = await createTemporaryFolder();
-            const archivePath = path.join(await createTemporaryFolder(), `genezioDeploy.zip`);
-
-            // copy everything to the temporary folder
-            await fsExtra.copy(path.join(backend.path, element.path), tmpFolderPath);
-
-            const unzippedBundleSize = await getBundleFolderSizeLimit(tmpFolderPath);
-
-            // add the handler to the temporary folder
-            // check if there already is an index.mjs file in user's code
-            let entryFile = "index.mjs";
-            while (fs.existsSync(path.join(tmpFolderPath, entryFile))) {
-                debugLogger.debug(
-                    `[FUNCTION ${element.name}] File ${entryFile} already exists in the temporary folder.`,
-                );
-                entryFile = `index-${Math.random().toString(36).substring(7)}.mjs`;
-            }
-            await writeToFile(path.join(tmpFolderPath), entryFile, handlerContent);
-
-            debugLogger.debug(`Zip the directory ${tmpFolderPath}.`);
-
-            // zip the temporary folder
-            await zipDirectory(tmpFolderPath, archivePath);
-
-            debugLogger.debug(`Zip created at path: ${archivePath}.`);
-
-            await deleteFolder(tmpFolderPath);
-
-            return {
-                type: GenezioCloudInputType.FUNCTION as GenezioCloudInputType.FUNCTION,
-                name: element.name,
-                archivePath: archivePath,
-                unzippedBundleSize: unzippedBundleSize,
-                entryFile,
-            };
-        },
+        (f) => functionToCloudInput(f, backend.path),
     );
 
     const cloudAdapterDeployInput = await Promise.all([
@@ -557,6 +511,57 @@ export async function deployClasses(
     }
 }
 
+export async function functionToCloudInput(
+    functionElement: FunctionConfiguration,
+    backendPath: string,
+): Promise<GenezioCloudInput> {
+    if (functionElement.language !== "js" && functionElement.language !== "ts") {
+        throw new UserError(
+            `The language ${functionElement.language} is not supported for functions. Only JavaScript and TypeScript are supported.`,
+        );
+    }
+    const handlerProvider = getFunctionHandlerProvider(functionElement.type);
+
+    const handlerContent = await handlerProvider.getHandler(functionElement);
+
+    // create temporary folder
+    const tmpFolderPath = await createTemporaryFolder();
+    const archivePath = path.join(await createTemporaryFolder(), `genezioDeploy.zip`);
+
+    // copy everything to the temporary folder
+    await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath);
+
+    const unzippedBundleSize = await getBundleFolderSizeLimit(tmpFolderPath);
+
+    // add the handler to the temporary folder
+    // check if there already is an index.mjs file in user's code
+    let entryFile = "index.mjs";
+    while (fs.existsSync(path.join(tmpFolderPath, entryFile))) {
+        debugLogger.debug(
+            `[FUNCTION ${functionElement.name}] File ${entryFile} already exists in the temporary folder.`,
+        );
+        entryFile = `index-${Math.random().toString(36).substring(7)}.mjs`;
+    }
+    await writeToFile(path.join(tmpFolderPath), entryFile, handlerContent);
+
+    debugLogger.debug(`Zip the directory ${tmpFolderPath}.`);
+
+    // zip the temporary folder
+    await zipDirectory(tmpFolderPath, archivePath);
+
+    debugLogger.debug(`Zip created at path: ${archivePath}.`);
+
+    await deleteFolder(tmpFolderPath);
+
+    return {
+        type: GenezioCloudInputType.FUNCTION as GenezioCloudInputType.FUNCTION,
+        name: functionElement.name,
+        archivePath: archivePath,
+        unzippedBundleSize: unzippedBundleSize,
+        entryFile,
+    };
+}
+
 export async function deployFrontend(
     name: string,
     region: string,
@@ -707,7 +712,7 @@ async function handleSdk(
     }
 }
 
-function getCloudAdapter(provider: CloudProviderIdentifier): CloudAdapter {
+export function getCloudAdapter(provider: CloudProviderIdentifier): CloudAdapter {
     switch (provider) {
         case CloudProviderIdentifier.GENEZIO_AWS:
         case CloudProviderIdentifier.GENEZIO_UNIKERNEL:
