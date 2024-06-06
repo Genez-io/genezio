@@ -39,6 +39,8 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
 
     const genezioConfig = await readOrAskConfig(options.config);
 
+    checkProjectLimitations();
+
     // Deploy NextJs serverless functions
     const deploymentResult = await deployFunctions(genezioConfig, options.stage);
 
@@ -57,6 +59,17 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     );
 
     log.info(`Successfully deployed the Next.js project at ${cdnUrl}.`);
+}
+
+function checkProjectLimitations() {
+    const assetsPath = path.join(process.cwd(), ".open-next", "assets");
+    const fileList = fs.readdirSync(assetsPath);
+
+    if (fileList.length > 20) {
+        throw new UserError(
+            "We currently do not support having more than 20 files and folders within the public/ directory at the root level. As a workaround, you can organize some of these files into a subfolder.",
+        );
+    }
 }
 
 async function setupEnvironmentVariables(deploymentResult: GenezioCloudOutput, domainName: string) {
