@@ -22,6 +22,13 @@ import {
     createFrontendProjectV2,
     CreateFrontendV2Origin,
 } from "../../requests/createFrontendProject.js";
+import { setEnvironmentVariables } from "../../requests/setEnvironmentVariables.js";
+import { GenezioCloudOutput } from "../../cloudAdapter/cloudAdapter.js";
+import {
+    GENEZIO_FRONTEND_DEPLOYMENT_BUCKET,
+    NEXT_JS_GET_ACCESS_KEY,
+    NEXT_JS_GET_SECRET_ACCESS_KEY,
+} from "../../constants.js";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     await writeOpenNextConfig();
@@ -33,15 +40,61 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
 
     // Deploy NextJs serverless functions
-    const deployedFunctions = await deployFunctions(genezioConfig, options.stage);
+    const deploymentResult = await deployFunctions(genezioConfig, options.stage);
 
     // Deploy NextJs static assets to S3
     const domainName = await deployStaticAssets(genezioConfig, options.stage);
 
+    // Set environment variables for the Next.js project
+    await setupEnvironmentVariables(deploymentResult, domainName);
+
     // Deploy CDN that serves the Next.js app
-    const cdnUrl = await deployCDN(deployedFunctions, domainName, genezioConfig, options.stage);
+    const cdnUrl = await deployCDN(
+        deploymentResult.functions,
+        domainName,
+        genezioConfig,
+        options.stage,
+    );
 
     log.info(`Successfully deployed the Next.js project at ${cdnUrl}.`);
+}
+
+async function setupEnvironmentVariables(deploymentResult: GenezioCloudOutput, domainName: string) {
+    debugLogger.debug(`Setting Next.js environment variables, ${JSON.stringify(deploymentResult)}`);
+    await setEnvironmentVariables(deploymentResult.projectId, deploymentResult.projectEnvId, [
+        {
+            name: "BUCKET_KEY_PREFIX",
+            value: `${domainName}/_assets`,
+        },
+        {
+            name: "BUCKET_NAME",
+            value: GENEZIO_FRONTEND_DEPLOYMENT_BUCKET,
+        },
+        {
+            name: "CACHE_BUCKET_KEY_PREFIX",
+            value: `${domainName}/_cache`,
+        },
+        {
+            name: "CACHE_BUCKET_NAME",
+            value: GENEZIO_FRONTEND_DEPLOYMENT_BUCKET,
+        },
+        {
+            name: "CACHE_BUCKET_REGION",
+            value: "us-east-1",
+        },
+        {
+            name: "AWS_ACCESS_KEY_ID",
+            value: NEXT_JS_GET_ACCESS_KEY,
+        },
+        {
+            name: "AWS_SECRET_ACCESS_KEY",
+            value: NEXT_JS_GET_SECRET_ACCESS_KEY,
+        },
+        {
+            name: "AWS_REGION",
+            value: "us-east-1",
+        },
+    ]);
 }
 
 async function deployCDN(
@@ -198,7 +251,7 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
     const result = await cloudAdapter.deploy(cloudInputs, projectConfiguration, { stage });
     debugLogger.debug(`Deployed functions: ${JSON.stringify(result.functions)}`);
 
-    return result.functions;
+    return result;
 }
 
 async function writeOpenNextConfig() {

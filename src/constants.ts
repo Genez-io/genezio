@@ -15,6 +15,9 @@ let RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE: string;
 let AMPLITUDE_API_KEY: string;
 let GA_MEASUREMENT_ID: string;
 let GA_API_SECRET: string;
+let GENEZIO_FRONTEND_DEPLOYMENT_BUCKET: string;
+let NEXT_JS_GET_ACCESS_KEY: string;
+let NEXT_JS_GET_SECRET_ACCESS_KEY: string;
 
 const GENEZIO_TELEMETRY_ENDPOINT =
     "https://c4h2bia7gbokqdxxc6fe5sgj5e0imchy.lambda-url.us-east-1.on.aws/";
@@ -39,6 +42,10 @@ if (environment === "dev") {
     AMPLITUDE_API_KEY = "";
     GA_MEASUREMENT_ID = "";
     GA_API_SECRET = "";
+    GENEZIO_FRONTEND_DEPLOYMENT_BUCKET = "dev-frontend-deployment-v2";
+    // This is a key that only lets users call the GET method on the Next.js bucket which is anyway public
+    NEXT_JS_GET_ACCESS_KEY = "AKIAWD2TRUK4WARFHP7B";
+    NEXT_JS_GET_SECRET_ACCESS_KEY = "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";
 } else {
     DASHBOARD_URL = "https://app.genez.io";
     FRONTEND_DOMAIN = "app.genez.io";
@@ -58,6 +65,10 @@ if (environment === "dev") {
     AMPLITUDE_API_KEY = "a679983c996d08c941a2585b2354b169";
     GA_MEASUREMENT_ID = "G-VR905VXGKC";
     GA_API_SECRET = "f7rYPh9RQQm6OOtolT94Uw";
+    GENEZIO_FRONTEND_DEPLOYMENT_BUCKET = "dev-frontend-deployment";
+    // This is a key that only lets users call the GET method on the Next.js bucket which is anyway public
+    NEXT_JS_GET_ACCESS_KEY = "TODO";
+    NEXT_JS_GET_SECRET_ACCESS_KEY = "TODO";
 }
 
 export {
@@ -78,4 +89,7 @@ export {
     AMPLITUDE_API_KEY,
     GA_MEASUREMENT_ID,
     GA_API_SECRET,
+    GENEZIO_FRONTEND_DEPLOYMENT_BUCKET,
+    NEXT_JS_GET_ACCESS_KEY,
+    NEXT_JS_GET_SECRET_ACCESS_KEY,
 };
