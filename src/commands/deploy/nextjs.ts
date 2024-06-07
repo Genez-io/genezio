@@ -29,6 +29,7 @@ import {
     NEXT_JS_GET_ACCESS_KEY,
     NEXT_JS_GET_SECRET_ACCESS_KEY,
 } from "../../constants.js";
+import getProjectInfoByName from "../../requests/getProjectInfoByName.js";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     await writeOpenNextConfig();
@@ -291,7 +292,7 @@ async function readOrAskConfig(configPath: string): Promise<YamlProjectConfigura
             {
                 type: "list",
                 name: "region",
-                message: "Select the project region:",
+                message: "Select the Genezio project region:",
                 choices: regions,
             },
         ]);
@@ -306,14 +307,20 @@ async function readOrAskProjectName(): Promise<string> {
     if (existsSync("package.json")) {
         // Read package.json content
         const packageJson = readFileSync("package.json", "utf-8");
-        const packageJsonObj = JSON.parse(packageJson);
+        const packageJsonName = JSON.parse(packageJson)["name"];
 
-        const validProjectName: boolean = await (async () =>
-            checkProjectName(packageJsonObj["name"]))()
+        const validProjectName: boolean = await (async () => checkProjectName(packageJsonName))()
             .then(() => true)
             .catch(() => false);
-        // TODO: Check if a project with this name is not already deployed. We don't want to overwrite an existing project by accident.
-        if (packageJsonObj["name"] !== undefined && validProjectName) return packageJsonObj["name"];
+
+        const projectExists = await getProjectInfoByName(packageJsonName)
+            .then(() => true)
+            .catch(() => false);
+
+        // We don't want to automatically use the package.json name if the project
+        // exists, because it could overwrite the existing project by accident.
+        if (packageJsonName !== undefined && validProjectName && !projectExists)
+            return packageJsonName;
     }
 
     // Ask for project name
@@ -321,7 +328,7 @@ async function readOrAskProjectName(): Promise<string> {
         {
             type: "input",
             name: "name",
-            message: "Enter the project name:",
+            message: "Enter the Genezio project name:",
             default: path.basename(process.cwd()),
             validate: checkProjectName,
         },

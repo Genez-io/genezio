@@ -14,14 +14,12 @@ async function getAuthFunctionUrl(
     region: string,
     stage: string,
 ): Promise<string | undefined> {
-    const projectEnv = await getProjectEnvFromProjectByName(projectName, region, stage).catch(
-        (error) => {
-            if (error instanceof UserError) {
-                throw error;
-            }
-            return undefined;
-        },
-    );
+    const projectEnv = await getProjectEnvFromProjectByName(projectName, stage).catch((error) => {
+        if (error instanceof UserError) {
+            throw error;
+        }
+        return undefined;
+    });
     if (!projectEnv) {
         return undefined;
     }
