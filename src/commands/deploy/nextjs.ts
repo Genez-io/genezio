@@ -287,6 +287,12 @@ async function writeOpenNextConfig() {
 async function readOrAskConfig(configPath: string): Promise<YamlProjectConfiguration> {
     const configIOController = new YamlConfigurationIOController(configPath);
     if (!existsSync(configPath)) {
+        if (process.env["CI"]) {
+            throw new UserError(
+                "Please provide a genezio.yaml configuration file in the current folder that contains name, region and yamlVersion. https://genezio.com/docs/project-structure/genezio-configuration-file/",
+            );
+        }
+
         const name = await readOrAskProjectName();
         const { region }: { region: string } = await inquirer.prompt([
             {
