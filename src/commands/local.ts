@@ -402,7 +402,7 @@ async function startBackendWatcher(
             sdk,
             options,
         );
-        reportSuccess(projectConfiguration, options.port);
+        reportSuccess(projectConfiguration, options.port, processForUnits);
 
         if (sdkSynchronizer.isLocked()) sdkSynchronizer.release();
 
@@ -527,6 +527,7 @@ async function startProcesses(
         ? path.join(projectConfiguration.workspace.backend, ".env")
         : path.join(process.cwd(), ".env");
     dotenv.config({ path: options.env || envFile, processEnv: envVars });
+    let functionListeningPort = 10000;
     for (const bundlerOutput of bundlersOutput) {
         const extra = bundlerOutput.extra;
 
@@ -546,6 +547,7 @@ async function startProcesses(
             envVars,
             extra.type || "class",
             projectConfiguration.workspace?.backend,
+            extra.type === "function" ? functionListeningPort++ : undefined,
         );
     }
 
@@ -661,54 +663,6 @@ async function startServerHttp(
             });
             return;
         }
-    });
-
-    async function handlerFunctionCall(req: Request<{ functionName: string }>, res: Response) {
-        const reqToFunction = getEventObjectFromRequest(req);
-
-        const localProcess = processForUnits.get(req.params.functionName);
-
-        if (!localProcess) {
-            sendResponse(res, {
-                body: "Function not found!",
-                isBase64Encoded: false,
-                statusCode: "500",
-                statusDescription: "500 Internal Server Error",
-                headers: {
-                    "content-type": "application/json",
-                },
-            });
-            return;
-        }
-
-        try {
-            const response = await communicateWithProcess(
-                localProcess,
-                req.params.functionName,
-                reqToFunction,
-                processForUnits,
-            );
-            sendResponse(res, response.data);
-        } catch (error) {
-            sendResponse(res, {
-                body: JSON.stringify({ message: "Internal server error", error: error }),
-                isBase64Encoded: false,
-                statusCode: "500",
-                statusDescription: "500 Internal Server Error",
-                headers: {
-                    "content-type": "application/json",
-                },
-            });
-            return;
-        }
-    }
-
-    app.all(`/.functions/:functionName/*`, async (req, res) => {
-        await handlerFunctionCall(req, res);
-    });
-
-    app.all(`/.functions/:functionName`, async (req, res) => {
-        await handlerFunctionCall(req, res);
     });
 
     async function handlerHttpMethod(
@@ -1084,7 +1038,11 @@ function getWorkspaceUrl(port: number): string | undefined {
     return workspaceUrl;
 }
 
-function reportSuccess(projectConfiguration: ProjectConfiguration, port: number) {
+function reportSuccess(
+    projectConfiguration: ProjectConfiguration,
+    port: number,
+    processForUnits: Map<string, UnitProcess>,
+) {
     const classesInfo = projectConfiguration.classes.map((c) => ({
         className: c.name,
         methods: c.methods.map((m) => ({
@@ -1100,11 +1058,14 @@ function reportSuccess(projectConfiguration: ProjectConfiguration, port: number)
 
     if (projectConfiguration.functions?.length > 0) {
         reportSuccessFunctions(
-            projectConfiguration.functions.map((f) => ({
-                name: f.name,
-                id: f.name,
-                cloudUrl: `http://localhost:${port}/.functions/${f.name}`,
-            })),
+            projectConfiguration.functions.map((f) => {
+                const processForUnit = processForUnits.get(f.name);
+                return {
+                    name: f.name,
+                    id: f.name,
+                    cloudUrl: `http://localhost:${processForUnit?.listeningPort}`,
+                };
+            }),
         );
     }
 
@@ -1183,8 +1144,14 @@ async function startLocalUnitProcess(
     envVars: dotenv.DotenvPopulateInput = {},
     type: "class" | "function",
     cwd?: string,
+    hardcodedPort?: number,
 ) {
-    const availablePort = await findAvailablePort();
+    let availablePort: number;
+    if (type === "function" && hardcodedPort) {
+        availablePort = hardcodedPort;
+    } else {
+        availablePort = await findAvailablePort();
+    }
     debugLogger.debug(`[START_Unit_PROCESS] Starting ${localUnitName} on port ${availablePort}`);
     debugLogger.debug(`[START_Unit_PROCESS] Starting command: ${startingCommand}`);
     debugLogger.debug(`[START_Unit_PROCESS] Parameters: ${parameters}`);
@@ -1239,6 +1206,8 @@ async function communicateWithProcess(
                 processForUnits,
                 localProcess.envVars,
                 localProcess.type,
+                undefined,
+                localProcess.type === "function" ? localProcess.listeningPort : undefined,
             );
             log.error(`There was an error connecting to the server. Restarted ${unitName}.`);
         }
