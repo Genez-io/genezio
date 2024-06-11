@@ -527,7 +527,6 @@ async function startProcesses(
         ? path.join(projectConfiguration.workspace.backend, ".env")
         : path.join(process.cwd(), ".env");
     dotenv.config({ path: options.env || envFile, processEnv: envVars });
-    let functionListeningPort = 10000;
     for (const bundlerOutput of bundlersOutput) {
         const extra = bundlerOutput.extra;
 
@@ -547,7 +546,6 @@ async function startProcesses(
             envVars,
             extra.type || "class",
             projectConfiguration.workspace?.backend,
-            extra.type === "function" ? functionListeningPort++ : undefined,
         );
     }
 
@@ -1136,6 +1134,9 @@ async function clearAllResources(
     });
 }
 
+// this global map is used to store ports for each local process and ensure port consistency between genezio local reloads
+const portMap = new Map<string, number>();
+
 async function startLocalUnitProcess(
     startingCommand: string,
     parameters: string[],
@@ -1144,14 +1145,11 @@ async function startLocalUnitProcess(
     envVars: dotenv.DotenvPopulateInput = {},
     type: "class" | "function",
     cwd?: string,
-    hardcodedPort?: number,
 ) {
-    let availablePort: number;
-    if (type === "function" && hardcodedPort) {
-        availablePort = hardcodedPort;
-    } else {
-        availablePort = await findAvailablePort();
-    }
+    // retrieve the port from the map or find a new one
+    const availablePort = portMap.get(localUnitName) ?? (await findAvailablePort());
+    portMap.set(localUnitName, availablePort);
+
     debugLogger.debug(`[START_Unit_PROCESS] Starting ${localUnitName} on port ${availablePort}`);
     debugLogger.debug(`[START_Unit_PROCESS] Starting command: ${startingCommand}`);
     debugLogger.debug(`[START_Unit_PROCESS] Parameters: ${parameters}`);
@@ -1206,8 +1204,6 @@ async function communicateWithProcess(
                 processForUnits,
                 localProcess.envVars,
                 localProcess.type,
-                undefined,
-                localProcess.type === "function" ? localProcess.listeningPort : undefined,
             );
             log.error(`There was an error connecting to the server. Restarted ${unitName}.`);
         }
