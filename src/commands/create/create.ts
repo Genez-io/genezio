@@ -116,6 +116,9 @@ export async function createCommand(options: GenezioCreateOptions) {
             log.info(SUCCESSFULL_CREATE_BACKEND(projectPath, options.name));
             break;
         }
+        default: {
+            throw new UserError("This project type is not yet supported.");
+        }
     }
 }
 
