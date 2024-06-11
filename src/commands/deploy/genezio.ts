@@ -69,8 +69,8 @@ import fsExtra from "fs-extra/esm";
 import { getLinkedFrontendsForProject } from "../../utils/linkDatabase.js";
 import { getCloudProvider } from "../../requests/getCloudProvider.js";
 import fs from "fs";
-import { getPresignedURLForProjectCodePush } from "../requests/getPresignedURLForProjectCodePush.js";
-import { uploadContentToS3 } from "../requests/uploadContentToS3.js";
+import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
+import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
