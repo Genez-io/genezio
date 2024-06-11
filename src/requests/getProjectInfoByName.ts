@@ -6,10 +6,7 @@ import { ProjectDetails, StatusOk } from "./models.js";
 import { AxiosResponse } from "axios";
 import { UserError } from "../errors.js";
 
-export default async function getProjectInfoByName(
-    projectName: string,
-    region: string,
-): Promise<ProjectDetails> {
+export default async function getProjectInfoByName(projectName: string): Promise<ProjectDetails> {
     const authToken = await getAuthToken();
 
     if (!authToken) {
@@ -21,9 +18,6 @@ export default async function getProjectInfoByName(
     const response: AxiosResponse<StatusOk<{ project: ProjectDetails }>> = await axios({
         method: "GET",
         url: `${BACKEND_ENDPOINT}/projects/name/${projectName}`,
-        params: {
-            region: region,
-        },
         headers: {
             Authorization: `Bearer ${authToken}`,
             "Accept-Version": `genezio-cli/${version}`,
@@ -32,15 +26,13 @@ export default async function getProjectInfoByName(
     return response.data.project;
 }
 
-export async function getProjectEnvFromProjectByName(
-    projectName: string,
-    region: string,
-    stageName: string,
-) {
+export async function getProjectEnvFromProjectByName(projectName: string, stageName: string) {
     let completeProjectInfo;
     try {
-        completeProjectInfo = await getProjectInfoByName(projectName, region);
-    } catch (e) {}
+        completeProjectInfo = await getProjectInfoByName(projectName);
+    } catch (e) {
+        /* empty */
+    }
 
     if (completeProjectInfo != undefined) {
         const projectEnv = completeProjectInfo.projectEnvs.find(

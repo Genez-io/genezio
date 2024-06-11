@@ -132,6 +132,8 @@ export function checkProjectName(projectName: string) {
             "Project name must start with a letter and contain only letters, numbers and dashes",
         );
     }
+
+    return true;
 }
 
 export function checkPathIsEmpty(projectPath: string) {

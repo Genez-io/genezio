@@ -14,10 +14,9 @@ function prepareForSerialization(e) {
     if (e instanceof Error) {
         const object = { message: e.message, stack: e.stack, info: e.info, code: e.code } 
         return object;
-    } else {
-        console.log(\`Unsupported error type \${typeof e}\`)
-        return { message: "Unknown error occurred. Check logs for more information!" }
     }
+    console.error(\`Unsupported error type \${typeof e}\`)
+    return { message: "Unknown error occurred. Check logs for more information!" }
 }
 
 if (!genezioClass) {
@@ -238,7 +237,7 @@ if (!genezioClass) {
                 });
             });
 
-            if(body.params && body.params.length > 0 && body.params[0].isGnzContext === true ) {
+            if(body.params && body.params.length > 0 && body.params[0] && body.params[0].isGnzContext === true ) {
                body.params[0].requestContext = event.requestContext;
                body.params[0].headers = event.headers;
             }

@@ -15,6 +15,7 @@ export type DeployCodeClassResponse = {
 
 export type DeployCodeFunctionResponse = {
     cloudUrl: string;
+    id: string;
     name: string;
 };
 

@@ -229,11 +229,13 @@ export class JsTsDecoratorExtractor extends DecoratorExtractor {
 
         const require = createRequire(import.meta.url);
         const packagePath = path.dirname(require.resolve("@babel/plugin-syntax-decorators"));
+        const packageReactPath = path.dirname(require.resolve("@babel/preset-react"));
 
         await babel
             .transformAsync(inputCode, {
                 presets: [
                     [require.resolve("@babel/preset-typescript"), { allowDeclareFields: true }],
+                    [packageReactPath],
                 ],
                 plugins: [
                     [packagePath, { version: "2023-05", decoratorsBeforeExport: false }],
@@ -254,6 +256,7 @@ export class JsTsDecoratorExtractor extends DecoratorExtractor {
             .transformAsync(inputCode, {
                 presets: [
                     [require.resolve("@babel/preset-typescript"), { allowDeclareFields: true }],
+                    [packageReactPath],
                 ],
                 plugins: [
                     [packagePath, { version: "2023-05", decoratorsBeforeExport: false }],

@@ -1102,6 +1102,7 @@ function reportSuccess(projectConfiguration: ProjectConfiguration, port: number)
         reportSuccessFunctions(
             projectConfiguration.functions.map((f) => ({
                 name: f.name,
+                id: f.name,
                 cloudUrl: `http://localhost:${port}/.functions/${f.name}`,
             })),
         );

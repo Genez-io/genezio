@@ -15,7 +15,7 @@ import { PackageManagerType } from "../packageManagers/packageManager.js";
 import { TriggerType } from "./models.js";
 import { isValidCron } from "cron-validator";
 import { tryV2Migration } from "./migration.js";
-import yaml from "yaml";
+import yaml, { YAMLParseError } from "yaml";
 import { DeepRequired } from "../utils/types.js";
 
 export type RawYamlProjectConfiguration = ReturnType<typeof parseGenezioConfig>;
@@ -293,7 +293,18 @@ export class YamlConfigurationIOController {
         const fileContent = (await this.fs.promises.readFile(this.filePath, "utf8")) as string;
         this.latestRead = new Date();
 
-        const [rawConfig, ctx] = parseYaml(fileContent);
+        let rawConfig: unknown, ctx: YAMLContext | undefined;
+        try {
+            [rawConfig, ctx] = parseYaml(fileContent);
+        } catch (e) {
+            if (e instanceof YAMLParseError) {
+                throw new UserError(
+                    `There was a problem parsing your YAML configuration!\n${e.message}`,
+                );
+            }
+            throw e;
+        }
+
         let genezioConfig: RawYamlProjectConfiguration;
         try {
             genezioConfig = parseGenezioConfig(rawConfig);
