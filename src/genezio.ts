@@ -519,6 +519,7 @@ program
             exit(1);
         });
         printAdaptiveLog(`Cloning project ${projectName}...`, "end");
+        log.info(colors.green(`Project ${projectName} cloned to ${path} successfully!`));
         exit(0);
     });
 program
@@ -533,6 +534,8 @@ program
             logError(error);
             exit(1);
         });
+        log.info(colors.green(`Project pulled successfully!`));
+
         exit(0);
     });
 

@@ -8,7 +8,7 @@ import { cloneCommand } from "./clone.js";
 export async function pullCommand(stage: string) {
     await interruptLocalProcesses();
 
-    const configIOController = new YamlConfigurationIOController(".", {
+    const configIOController = new YamlConfigurationIOController("./genezio.yaml", {
         stage: stage,
     });
     const configuration = await configIOController.read();
@@ -28,5 +28,6 @@ export async function pullCommand(stage: string) {
     }
 
     printAdaptiveLog(`Pulling the latest changes from the cloud...`, "start");
-    cloneCommand(configuration.name, configuration.region, stage, ".");
+    await cloneCommand(configuration.name, configuration.region, stage, ".");
+    printAdaptiveLog(`Pulling the latest changes from the cloud...`, "end");
 }

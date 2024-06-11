@@ -5,8 +5,6 @@ import { debugLogger } from "../utils/logging.js";
 import { loginCommand } from "./login.js";
 import path from "path";
 import decompress from "decompress";
-import { log } from "../utils/logging.js";
-import colors from "colors";
 import { getPresignedURLForProjectCodePull } from "../requests/getPresignedURLForProjectCodePull.js";
 
 export async function cloneCommand(
@@ -51,6 +49,4 @@ export async function cloneCommand(
             debugLogger.debug(`Failed to extract files: ${error}`);
             throw new Error("Failed to extract files. Please open an issue on GitHub");
         });
-
-    log.info(colors.green(`Project ${projectName} cloned to ${projectPath} successfully!`));
 }
