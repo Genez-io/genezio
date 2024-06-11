@@ -102,13 +102,24 @@ export async function getAllFilesFromCurrentPath(
     return getAllFilesFromPath(process.cwd(), recursive);
 }
 
-export async function zipDirectory(sourceDir: string, outPath: string): Promise<void> {
+export async function zipDirectory(
+    sourceDir: string,
+    outPath: string,
+    exclusion?: string[],
+): Promise<void> {
     const archive = archiver("zip", { zlib: { level: 9 } });
     const stream = fs.createWriteStream(outPath);
 
+    if (!exclusion) {
+        exclusion = [];
+    }
+
     return new Promise((resolve, reject) => {
         archive
-            .directory(sourceDir, false)
+            .glob("**/*", {
+                cwd: sourceDir,
+                skip: exclusion,
+            })
             .on("error", (err) => reject(err))
             .pipe(stream);
 
