@@ -179,7 +179,7 @@ async function chooseTemplate(category: "Backend" | "Frontend"): Promise<string>
  *
  * @returns A Promise that resolves to the closest region value or undefined if no region is available.
  */
-async function getClosestRegion(): Promise<string | undefined> {
+export async function getClosestRegion(): Promise<string | undefined> {
     const pings = regions.map(async (region) => {
         const url = `https://${region.value}.cloud.genez.io/healthcheck`;
 

@@ -20,6 +20,7 @@ import { logoutCommand } from "./commands/logout.js";
 import { lsCommand } from "./commands/list.js";
 import {
     GenezioBundleOptions,
+    GenezioCloneOptions,
     GenezioCreateBackendOptions,
     GenezioCreateFullstackOptions,
     GenezioCreateInteractiveOptions,
@@ -44,7 +45,7 @@ import { askCreateOptions } from "./commands/create/interactive.js";
 import { regions } from "./utils/configs.js";
 import { backendTemplates, frontendTemplates } from "./commands/create/templates.js";
 import configReader from "./yamlProjectConfiguration/v2.js";
-import { cloneCommand } from "./commands/clone.js";
+import { askCloneOptions, cloneCommand } from "./commands/clone.js";
 import { pullCommand } from "./commands/pull.js";
 
 const program = new Command();
@@ -496,41 +497,36 @@ program
 
 program
     .command("clone")
-    .argument("[projectName]", "Name of the project you want to clone.")
-    .argument("[region]", "Region of the project.")
-    .argument("[stage]", "Stage of the project.")
     .argument("[path]", "Path where to clone the project.")
+    .option("--name <name>", "Name of the project you want to clone.")
+    .option("--region <region>", "Region of the project.")
+    .option("--stage <stage>", "Stage of the project.")
     .summary("Clone a project to your local machine.")
-    .action(async (projectName: string, region: string, stage: string, path: string) => {
-        if (!projectName || !region) {
-            log.error(
-                "Missing required parameters. Example usage: genezio clone my-project us-east-1 ./my-project",
-            );
-            exit(1);
-        }
+    .action(async (path: string, options: GenezioCloneOptions) => {
+        options = await askCloneOptions(options);
         if (!path) {
-            path = `./${projectName}`;
+            path = `./${options.name}`;
         }
-        printAdaptiveLog(`Cloning project ${projectName}...`, "start");
+        printAdaptiveLog(`Cloning project ${options.name}...`, "start");
 
-        await cloneCommand(projectName, region, stage, path).catch((error) => {
+        await cloneCommand(options.name, options.region, options.stage, path).catch((error) => {
             logError(error);
-            printAdaptiveLog(`Cloning project ${projectName}...`, "fail");
+            printAdaptiveLog(`Cloning project ${options.name}...`, "fail");
             exit(1);
         });
-        printAdaptiveLog(`Cloning project ${projectName}...`, "end");
-        log.info(colors.green(`Project ${projectName} cloned to ${path} successfully!`));
+        printAdaptiveLog(`Cloning project ${options.name}...`, "end");
+        log.info(colors.green(`Project ${options.name} cloned to ${path} successfully!`));
         exit(0);
     });
 program
     .command("pull")
-    .argument("[stage]", "Pull the latest changes from the genezio platform of the project.")
+    .option("--stage <stage>", "The stage of the project to pull from.")
     .summary("Pull the latest changes from the genezio platform of the project.")
-    .action(async (stage: string) => {
-        if (!stage) {
-            stage = "prod";
+    .action(async (options: { stage: string }) => {
+        if (!options.stage) {
+            options.stage = "prod";
         }
-        await pullCommand(stage).catch((error) => {
+        await pullCommand(options.stage).catch((error) => {
             logError(error);
             exit(1);
         });

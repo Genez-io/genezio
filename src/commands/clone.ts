@@ -6,6 +6,92 @@ import { loginCommand } from "./login.js";
 import path from "path";
 import decompress from "decompress";
 import { getPresignedURLForProjectCodePull } from "../requests/getPresignedURLForProjectCodePull.js";
+import { GenezioCloneOptions } from "../models/commandOptions.js";
+import { regions } from "../utils/configs.js";
+import inquirer from "inquirer";
+import { checkProjectName } from "./create/create.js";
+import colors from "colors";
+import { getClosestRegion } from "./create/interactive.js";
+
+export async function askCloneOptions(
+    options?: Partial<GenezioCloneOptions>,
+): Promise<GenezioCloneOptions> {
+    const cloneOptions = options ?? {};
+    const closestRegionPromise =
+        cloneOptions.region === undefined ? getClosestRegion() : Promise.resolve(undefined);
+
+    if (cloneOptions.name === undefined) {
+        const {
+            projectName,
+        }: {
+            projectName: string;
+        } = await inquirer.prompt([
+            {
+                type: "input",
+                name: "projectName",
+                message: colors.magenta("Please enter your project name:"),
+                validate: (input: string) => {
+                    try {
+                        checkProjectName(input);
+                        return true;
+                    } catch (error) {
+                        if (error instanceof Error) return colors.red(error.message);
+                        return colors.red("Unavailable project name");
+                    }
+                },
+            },
+        ]);
+
+        cloneOptions.name = projectName;
+    }
+
+    if (cloneOptions.region === undefined) {
+        const closestRegion = await closestRegionPromise;
+        const personalizedRegions = regions
+            .filter((region) => region.value === closestRegion)
+            .concat(regions.filter((region) => region.value !== closestRegion));
+
+        const { projectRegion }: { projectRegion: string } = await inquirer.prompt([
+            {
+                type: "list",
+                name: "projectRegion",
+                message: colors.magenta("Choose a region for your project:"),
+                choices: personalizedRegions,
+                pageSize: personalizedRegions.length,
+            },
+        ]);
+
+        cloneOptions.region = projectRegion;
+    }
+
+    if (cloneOptions.stage === undefined) {
+        const {
+            stage,
+        }: {
+            stage: string;
+        } = await inquirer.prompt([
+            {
+                type: "input",
+                name: "stage",
+                default: "prod",
+                message: colors.magenta("Please enter the name of the stage:"),
+                validate: (input: string) => {
+                    try {
+                        checkProjectName(input);
+                        return true;
+                    } catch (error) {
+                        if (error instanceof Error) return colors.red(error.message);
+                        return colors.red("Unavailable project name");
+                    }
+                },
+            },
+        ]);
+
+        cloneOptions.stage = stage;
+    }
+
+    return cloneOptions as Required<GenezioCloneOptions>;
+}
 
 export async function cloneCommand(
     projectName: string,

@@ -60,6 +60,12 @@ export interface GenezioSdkOptions extends BaseOptions {
     tarball: boolean;
 }
 
+export interface GenezioCloneOptions extends BaseOptions {
+    name: string;
+    region: string;
+    stage: string;
+}
+
 export interface GenezioUnlinkOptions extends BaseOptions {
     all: boolean;
 }
