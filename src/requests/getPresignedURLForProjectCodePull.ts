@@ -30,7 +30,7 @@ export async function getPresignedURLForProjectCodePull(
     });
 
     const response: AxiosResponse<StatusOk<{ presignedURL: string | undefined }>> = await axios({
-        method: "GET",
+        method: "POST",
         url: `${BACKEND_ENDPOINT}/core/get-project-code-url`,
         data: json,
         headers: {
