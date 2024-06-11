@@ -16,6 +16,7 @@ import _ from "lodash";
 import { UserError } from "../../errors.js";
 import { Language } from "../../yamlProjectConfiguration/models.js";
 import { linkFrontendsToProject } from "../../utils/linkDatabase.js";
+import { $ } from "execa";
 
 type ProjectInfo = {
     name: string;
@@ -114,6 +115,22 @@ export async function createCommand(options: GenezioCreateOptions) {
 
             // Print success message
             log.info(SUCCESSFULL_CREATE_BACKEND(projectPath, options.name));
+            break;
+        }
+        case "nextjs": {
+            await $({ stdio: "inherit" })`npx create-next-app ${projectPath}`;
+
+            const yamlIOController = new YamlConfigurationIOController(
+                path.join(projectPath, "genezio.yaml"),
+            );
+            await yamlIOController.write({
+                name: options.name,
+                region: options.region,
+                yamlVersion: 2,
+            });
+
+            log.info(SUCCESSFULL_CREATE_NEXTJS(projectPath));
+
             break;
         }
         default: {
@@ -489,4 +506,13 @@ const SUCCESSFULL_CREATE_NO_FRONTEND = (
 
     You chose not to create a frontend from one of our templates.
     If you want to add a frontend later, place the code in the 'client' folder.
+`;
+
+const SUCCESSFULL_CREATE_NEXTJS = (
+    projectPath: string,
+) => `Project initialized in ${projectPath}. Now run:
+
+    For ${colors.yellow("deployment")} of your Next.js application, run:
+        cd ${path.relative(process.cwd(), projectPath)}
+        genezio deploy
 `;
