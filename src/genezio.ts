@@ -22,8 +22,10 @@ import {
     GenezioBundleOptions,
     GenezioCloneOptions,
     GenezioCreateBackendOptions,
+    GenezioCreateExpressJsOptions,
     GenezioCreateFullstackOptions,
     GenezioCreateInteractiveOptions,
+    GenezioCreateNextJsOptions,
     GenezioDeleteOptions,
     GenezioDeployOptions,
     GenezioListOptions,
@@ -203,7 +205,9 @@ program
     });
 
 const create = program
+    .enablePositionalOptions()
     .command("create")
+    .passThroughOptions()
     .option("--path <path>", "Path where to create the project.", undefined)
     .summary("Create a new project from a template.")
     .action(async (options: GenezioCreateInteractiveOptions) => {
@@ -315,9 +319,39 @@ create
         ),
     )
     .option("--path <path>", "Path where to create the project.", undefined)
-    .summary("Create a new project from a backend and a frontend template.")
-    .action(async (options: GenezioCreateFullstackOptions) => {
+    .summary("Create a new Next.js project.")
+    .action(async (options: GenezioCreateNextJsOptions) => {
         const createOptions = await askCreateOptions({ ...options, type: "nextjs" });
+
+        const telemetryEvent = GenezioTelemetry.sendEvent({
+            eventType: TelemetryEventTypes.GENEZIO_CREATE,
+            commandOptions: JSON.stringify(createOptions),
+        });
+
+        await createCommand(createOptions).catch(async (error) => {
+            logError(error);
+            await telemetryEvent;
+            await GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
+                errorTrace: error.message,
+            });
+            exit(1);
+        });
+        await telemetryEvent;
+    });
+
+create
+    .command("expressjs")
+    .option("--name <name>", "Name of the project.")
+    .addOption(
+        new Option("--region <region>", "Region of the project.").choices(
+            regions.map((region) => region.value),
+        ),
+    )
+    .option("--path <path>", "Path where to create the project.", undefined)
+    .summary("Create a new Express.js project.")
+    .action(async (options: GenezioCreateExpressJsOptions) => {
+        const createOptions = await askCreateOptions({ ...options, type: "expressjs" });
 
         const telemetryEvent = GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_CREATE,

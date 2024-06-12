@@ -6,10 +6,13 @@ import path from "path";
 import nativeFs from "fs";
 import { log } from "../../utils/logging.js";
 import { platform } from "os";
-import { GenezioCreateOptions } from "../../models/commandOptions.js";
+import {
+    GenezioCreateExpressJsOptions,
+    GenezioCreateOptions,
+} from "../../models/commandOptions.js";
 import { debugLogger, doAdaptiveLogAction } from "../../utils/logging.js";
 import { packageManagers } from "../../packageManagers/packageManager.js";
-import { backendTemplates, frontendTemplates } from "./templates.js";
+import { backendTemplates, expressJsTemplate, frontendTemplates } from "./templates.js";
 import { YamlConfigurationIOController } from "../../yamlProjectConfiguration/v2.js";
 import { YAMLContext, mergeContexts } from "yaml-transmute";
 import _ from "lodash";
@@ -17,6 +20,7 @@ import { UserError } from "../../errors.js";
 import { Language } from "../../yamlProjectConfiguration/models.js";
 import { linkFrontendsToProject } from "../../utils/linkDatabase.js";
 import { $ } from "execa";
+import { DeepRequired } from "../../utils/types.js";
 
 type ProjectInfo = {
     name: string;
@@ -136,10 +140,63 @@ export async function createCommand(options: GenezioCreateOptions) {
             log.info(SUCCESSFULL_CREATE_NEXTJS(projectPath));
             break;
         }
+        case "expressjs": {
+            await doAdaptiveLogAction("Cloning Express.js starter template", async () => {
+                // Create the new project in a virtual filesystem (memfs)
+                await createExpressJsProject(fs, options);
+
+                // Copy from memfs to local filesystem
+                copyRecursiveToNativeFs(fs, "/", projectPath, {
+                    keepDotGit: true,
+                    renameReadme: true,
+                });
+            });
+
+            // Install template packages
+            await doAdaptiveLogAction("Installing template dependencies", async () =>
+                installTemplatePackages("npm", projectPath),
+            );
+
+            // Print success message
+            log.info(SUCCESSFULL_CREATE_EXPRESSJS(projectPath));
+            break;
+        }
         default: {
             throw new UserError("This project type is not yet supported.");
         }
     }
+}
+
+/**
+ * Creates an Express.js project by cloning the Express.js template repository, replacing placeholders, and initializing a git repository.
+ *
+ * @param fs - The file system module.
+ * @param options - The project information.
+ * @returns A promise that resolves when the project creation is complete.
+ */
+async function createExpressJsProject(
+    fs: IFs,
+    options: DeepRequired<GenezioCreateExpressJsOptions, "name" | "region">,
+) {
+    await git.clone({ fs, http, url: expressJsTemplate, dir: "/" });
+    await fs.promises.rmdir("/.git", { recursive: true });
+
+    await replacePlaceholders(fs, "/genezio.yaml", {
+        "(•◡•)project-name(•◡•)": options.name,
+        "(•◡•)region(•◡•)": options.region,
+    });
+
+    // Create git repository
+    await git.init({ fs, dir: "/", defaultBranch: "main" });
+    // Add all files
+    await git.add({ fs, dir: "/", filepath: "." });
+    // Commit
+    await git.commit({
+        fs,
+        dir: "/",
+        author: { name: "Genezio", email: "contact@genez.io" },
+        message: "Initial commit",
+    });
 }
 
 /**
@@ -513,4 +570,21 @@ const SUCCESSFULL_CREATE_NEXTJS = (
     For ${colors.yellow("deployment")} of your Next.js application, run:
         cd ${path.relative(process.cwd(), projectPath)}
         genezio deploy
+
+    For ${colors.green("testing")} locally, run:
+        cd ${path.relative(process.cwd(), projectPath)}
+        npm run dev
+`;
+
+const SUCCESSFULL_CREATE_EXPRESSJS = (
+    projectPath: string,
+) => `Project initialized in ${projectPath}. Now run:
+
+    For ${colors.yellow("deployment")} of your Express.js application, run:
+        cd ${path.relative(process.cwd(), projectPath)}
+        genezio deploy
+
+    For ${colors.green("testing")} locally, run:
+        cd ${path.relative(process.cwd(), projectPath)}
+        genezio local
 `;
