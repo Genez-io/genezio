@@ -664,6 +664,8 @@ async function startServerHttp(
     });
 
     async function handlerFunctionCall(req: Request<{ functionName: string }>, res: Response) {
+        // remove /.functions/:functionName from the url in order to get expected path for the function
+        req.url = "/" + req.url.split("/").slice(3).join("/");
         const reqToFunction = getEventObjectFromRequest(req);
 
         const localProcess = processForUnits.get(req.params.functionName);
