@@ -1,6 +1,6 @@
 import inquirer from "inquirer";
 import { interruptLocalProcesses } from "../utils/localInterrupt.js";
-import { log, printAdaptiveLog } from "../utils/logging.js";
+import { doAdaptiveLogAction, log } from "../utils/logging.js";
 import { YamlConfigurationIOController } from "../yamlProjectConfiguration/v2.js";
 import { exit } from "process";
 import { cloneCommand } from "./clone.js";
@@ -27,7 +27,7 @@ export async function pullCommand(stage: string) {
         exit(0);
     }
 
-    printAdaptiveLog(`Pulling the latest changes from the cloud...`, "start");
-    await cloneCommand(configuration.name, configuration.region, stage, ".");
-    printAdaptiveLog(`Pulling the latest changes from the cloud...`, "end");
+    await doAdaptiveLogAction("Pulling the latest changes from the cloud...", async () =>
+        cloneCommand(configuration.name, configuration.region, stage, "."),
+    );
 }
