@@ -91,3 +91,5 @@ export const frontendTemplates: Record<string, Template | undefined> = {
     },
     none: undefined,
 };
+
+export const expressJsTemplate = "https://github.com/Genez-io/expressjs-starter";
