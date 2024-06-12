@@ -78,6 +78,7 @@ import httpProxy from "http-proxy";
 import * as readline from "readline";
 import { getLinkedFrontendsForProject } from "../utils/linkDatabase.js";
 import fsExtra from "fs-extra/esm";
+import { DeployCodeFunctionResponse } from "../models/deployCodeResponse.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -615,6 +616,16 @@ async function startServerHttp(
         res.end(JSON.stringify({ ...astSummary, name: projectName }));
     });
 
+    app.get("/get-functions", (_req, res) => {
+        res.setHeader("Content-Type", "application/json");
+        res.end(
+            JSON.stringify({
+                functions: getProjectFunctions(processForUnits),
+                name: projectName,
+            }),
+        );
+    });
+
     app.all(`/:className`, async (req, res) => {
         const reqToFunction = getEventObjectFromRequest(req);
 
@@ -756,6 +767,23 @@ export type LocalEnvCronHandler = {
     cronObject: cron.ScheduledTask | null;
     process: UnitProcess;
 };
+
+function getProjectFunctions(
+    processForUnits: Map<string, UnitProcess>,
+): DeployCodeFunctionResponse[] {
+    const functions: DeployCodeFunctionResponse[] = [];
+
+    processForUnits.forEach((process, key) => {
+        if (process.type === "function") {
+            functions.push({
+                cloudUrl: `http://localhost:${process.listeningPort}`,
+                id: key,
+                name: key,
+            });
+        }
+    });
+    return functions;
+}
 
 function startCronJobs(
     projectConfiguration: ProjectConfiguration,
