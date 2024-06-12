@@ -2,8 +2,8 @@ import { Command, CommanderError, Option } from "commander";
 import {
     code,
     debugLogger,
+    doAdaptiveLogAction,
     logError,
-    printAdaptiveLog,
     setDebuggingLoggerLogLevel,
 } from "./utils/logging.js";
 import { exit } from "process";
@@ -571,14 +571,14 @@ program
         if (!path) {
             path = `./${options.name}`;
         }
-        printAdaptiveLog(`Cloning project ${options.name}...`, "start");
 
-        await cloneCommand(options.name, options.region, options.stage, path).catch((error) => {
+        await doAdaptiveLogAction(`Cloning project ${options.name}...`, async () =>
+            cloneCommand(options.name, options.region, options.stage, path),
+        ).catch((error) => {
             logError(error);
-            printAdaptiveLog(`Cloning project ${options.name}...`, "fail");
             exit(1);
         });
-        printAdaptiveLog(`Cloning project ${options.name}...`, "end");
+
         log.info(colors.green(`Project ${options.name} cloned to ${path} successfully!`));
         exit(0);
     });
