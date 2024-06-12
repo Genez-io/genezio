@@ -94,7 +94,7 @@ function parseGenezioConfig(config: unknown) {
                 value.split(".").length === 2 && ["js", "mjs", "cjs"].includes(value.split(".")[1])
             );
         }, "The handler should be in the format 'file.extension'. example: index.js / index.mjs / index.cjs"),
-        type: zod.nativeEnum(FunctionType),
+        type: zod.nativeEnum(FunctionType).default(FunctionType.aws),
     });
 
     const backendSchema = zod.object({
