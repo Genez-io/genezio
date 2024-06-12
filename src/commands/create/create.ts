@@ -75,7 +75,7 @@ export async function createCommand(options: GenezioCreateOptions) {
             // Print success message
             switch (options.multirepo) {
                 case false:
-                    log.info(SUCCESSFULL_CREATE_MONOREPO(projectPath, options.name));
+                    log.info(SUCCESSFULL_CREATE_MONOREPO(projectPath));
                     break;
                 case true:
                     // Genezio link inside the client project
@@ -83,7 +83,7 @@ export async function createCommand(options: GenezioCreateOptions) {
                         // TODO: Use the actual template language instead of always TypeScript
                         { path: path.join(projectPath, "client"), language: Language.ts },
                     ]);
-                    log.info(SUCCESSFULL_CREATE_MULTIREPO(projectPath, options.name));
+                    log.info(SUCCESSFULL_CREATE_MULTIREPO(projectPath));
                     break;
             }
 
@@ -114,11 +114,15 @@ export async function createCommand(options: GenezioCreateOptions) {
             );
 
             // Print success message
-            log.info(SUCCESSFULL_CREATE_BACKEND(projectPath, options.name));
+            log.info(SUCCESSFULL_CREATE_BACKEND(projectPath));
             break;
         }
         case "nextjs": {
-            await $({ stdio: "inherit" })`npx create-next-app ${projectPath}`;
+            log.info("Running npx create-next-app...");
+
+            await $({ stdio: "inherit" })`npx --yes create-next-app ${projectPath}`.catch(() => {
+                throw new UserError("Failed to create a Next.js project using create-next-app.");
+            });
 
             const yamlIOController = new YamlConfigurationIOController(
                 path.join(projectPath, "genezio.yaml"),
@@ -130,7 +134,6 @@ export async function createCommand(options: GenezioCreateOptions) {
             });
 
             log.info(SUCCESSFULL_CREATE_NEXTJS(projectPath));
-
             break;
         }
         default: {
@@ -441,28 +444,24 @@ async function installTemplatePackages(packageManager: string | undefined, path:
     }
 }
 
-const SUCCESSFULL_CREATE_MONOREPO = (
-    projectPath: string,
-    projectName: string,
-) => `Project initialized in ${projectPath}.
+const SUCCESSFULL_CREATE_MONOREPO = (projectPath: string) => `Project initialized in ${projectPath}.
 
     For ${colors.yellow("deployment")} of both frontend and backend, run:
-        cd ${projectName}
+        cd ${path.relative(process.cwd(), projectPath)}
         genezio deploy
 
 
     For ${colors.green("testing")} locally, run:
-        cd ${projectName}
+        cd ${path.relative(process.cwd(), projectPath)}
         genezio local
 `;
 
 const SUCCESSFULL_CREATE_MULTIREPO = (
     projectPath: string,
-    projectName: string,
 ) => `Project initialized in ${projectPath}. Now run:
 
     For ${colors.yellow("deployment")} of both frontend and backend, run:
-        cd ${projectName}
+        cd ${path.relative(process.cwd(), projectPath)}
         ${
             platform() !== "win32"
                 ? "(cd server && genezio deploy)"
@@ -477,26 +476,25 @@ const SUCCESSFULL_CREATE_MULTIREPO = (
 
     For ${colors.green("testing")} locally, run:
       Terminal 1 (start the backend): 
-        cd ${projectName}/server
+        cd ${path.join(path.relative(process.cwd(), projectPath), "server")}
         genezio local
 
       Terminal 2 (start the frontend): 
-        cd ${projectName}/client
+        cd ${path.join(path.relative(process.cwd(), projectPath), "client")}
         genezio local
 `;
 
 const SUCCESSFULL_CREATE_BACKEND = (
     projectPath: string,
-    projectName: string,
 ) => `Project initialized in ${projectPath}. Now run:
 
     For ${colors.yellow("deployment")} of the backend, run:
-        cd ${projectName}
+        cd ${path.relative(process.cwd(), projectPath)}
         genezio deploy
 
 
     For ${colors.green("testing")} locally, run:
-        cd ${projectName}
+        cd ${path.relative(process.cwd(), projectPath)}
         genezio local
 `;
 

@@ -306,6 +306,36 @@ create
         await telemetryEvent;
     });
 
+create
+    .command("nextjs")
+    .option("--name <name>", "Name of the project.")
+    .addOption(
+        new Option("--region <region>", "Region of the project.").choices(
+            regions.map((region) => region.value),
+        ),
+    )
+    .option("--path <path>", "Path where to create the project.", undefined)
+    .summary("Create a new project from a backend and a frontend template.")
+    .action(async (options: GenezioCreateFullstackOptions) => {
+        const createOptions = await askCreateOptions({ ...options, type: "nextjs" });
+
+        const telemetryEvent = GenezioTelemetry.sendEvent({
+            eventType: TelemetryEventTypes.GENEZIO_CREATE,
+            commandOptions: JSON.stringify(createOptions),
+        });
+
+        await createCommand(createOptions).catch(async (error) => {
+            logError(error);
+            await telemetryEvent;
+            await GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
+                errorTrace: error.message,
+            });
+            exit(1);
+        });
+        await telemetryEvent;
+    });
+
 program
     .command("addClass")
     .argument("<classPath>", "Path of the class you want to add.")
