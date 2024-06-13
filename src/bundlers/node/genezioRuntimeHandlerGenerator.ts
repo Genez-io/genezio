@@ -97,9 +97,9 @@ if (!genezioClass) {
             const http2CompliantHeaders = {};
             for (const header in event.headers) {
                 http2CompliantHeaders[header.toLowerCase()] = event.headers[header];
-                http2CompliantHeaders['Access-Control-Allow-Origin'] = '*';
-                http2CompliantHeaders['Access-Control-Allow-Headers'] = '*';
-                http2CompliantHeaders['Access-Control-Allow-Methods'] = '*';
+                http2CompliantHeaders['Access-Control-Allow-Origin'.toLowerCase()] = '*';
+                http2CompliantHeaders['Access-Control-Allow-Headers'.toLowerCase()] = '*';
+                http2CompliantHeaders['Access-Control-Allow-Methods'.toLowerCase()] = '*';
             }
 
             const req = {
