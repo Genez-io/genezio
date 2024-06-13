@@ -370,6 +370,36 @@ create
         await telemetryEvent;
     });
 
+create
+    .command("serverless")
+    .option("--name <name>", "Name of the project.")
+    .addOption(
+        new Option("--region <region>", "Region of the project.").choices(
+            regions.map((region) => region.value),
+        ),
+    )
+    .option("--path <path>", "Path where to create the project.", undefined)
+    .summary("Create a new Serverless Function project.")
+    .action(async (options: GenezioCreateExpressJsOptions) => {
+        const createOptions = await askCreateOptions({ ...options, type: "serverless" });
+
+        const telemetryEvent = GenezioTelemetry.sendEvent({
+            eventType: TelemetryEventTypes.GENEZIO_CREATE,
+            commandOptions: JSON.stringify(createOptions),
+        });
+
+        await createCommand(createOptions).catch(async (error) => {
+            logError(error);
+            await telemetryEvent;
+            await GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
+                errorTrace: error.message,
+            });
+            exit(1);
+        });
+        await telemetryEvent;
+    });
+
 program
     .command("addClass")
     .argument("<classPath>", "Path of the class you want to add.")
