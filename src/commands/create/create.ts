@@ -205,7 +205,7 @@ async function cloneAndSetupGenezioRepository(
     await git.clone({ fs, http, url: repositoryUrl, dir: "/" });
     await fs.promises.rmdir("/.git", { recursive: true });
 
-    await replacePlaceholders(fs, "/genezio.yaml", {
+    await replacePlaceholders(fs, "/", {
         "(•◡•)project-name(•◡•)": options.name,
         "(•◡•)region(•◡•)": options.region,
     });
