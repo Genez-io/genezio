@@ -118,6 +118,7 @@ export async function zipDirectory(
         archive
             .glob("**/*", {
                 cwd: sourceDir,
+                dot: true,
                 skip: exclusion,
             })
             .on("error", (err) => reject(err))
