@@ -30,6 +30,9 @@ import {
     NEXT_JS_GET_SECRET_ACCESS_KEY,
 } from "../../constants.js";
 import getProjectInfoByName from "../../requests/getProjectInfoByName.js";
+import ora from "ora";
+import { getFrontendStatus } from "../../requests/getFrontendStatus.js";
+import colors from "colors";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     await writeOpenNextConfig();
@@ -59,7 +62,34 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         options.stage,
     );
 
-    log.info(`Successfully deployed the Next.js project at ${cdnUrl}.`);
+    await waitForCDNDeployment(cdnUrl, domainName);
+}
+
+async function waitForCDNDeployment(cdnUrl: string, domainName: string) {
+    const spinner = ora(
+        `Deploying your Next.js application... It might take a few minutes ${colors.cyan("(Press ANY key to skip waiting)")}`,
+    );
+    spinner.start();
+
+    // Wait asynchronously for a key press to skip the waiting
+    process.stdin.on("data", () => {
+        spinner.stop();
+        log.info(
+            `Looks like you are in a hurry! Your app will be live in a few minutes at: ${colors.cyan(cdnUrl)}`,
+        );
+        process.exit(0);
+    });
+
+    let status = "InProgress";
+    while (status !== "Deployed") {
+        // Sleep 5 seconds
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        status = await getFrontendStatus(domainName);
+    }
+
+    spinner.stop();
+
+    log.info(`Your Next.js app is now live at: ${colors.cyan(cdnUrl)}`);
 }
 
 function checkProjectLimitations() {
