@@ -90,6 +90,8 @@ async function waitForCDNDeployment(cdnUrl: string, domainName: string) {
     spinner.stop();
 
     log.info(`Your Next.js app is now live at: ${colors.cyan(cdnUrl)}`);
+
+    process.exit(0);
 }
 
 function checkProjectLimitations() {
