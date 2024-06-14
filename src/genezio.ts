@@ -168,6 +168,7 @@ Use --backend to deploy only the backend application.`,
             });
             exit(1);
         });
+        process.exit(0);
     });
 
 program
