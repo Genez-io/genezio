@@ -42,6 +42,42 @@ export async function deployCommand(options: GenezioDeployOptions) {
         "node_modules",
         "node_modules/**",
         "**/node_modules/**",
+        // ignore all .git files
+        "**/.git/*",
+        "./.git/*",
+        ".git/*",
+        "**/.git",
+        "./.git",
+        ".git",
+        ".git/**",
+        "**/.git/**",
+        // ignore all .next files
+        "**/.next/*",
+        "./.next/*",
+        ".next/*",
+        "**/.next",
+        "./.next",
+        ".next",
+        ".next/**",
+        "**/.next/**",
+        // ignore all .open-next files
+        "**/.open-next/*",
+        "./.open-next/*",
+        ".open-next/*",
+        "**/.open-next",
+        "./.open-next",
+        ".open-next",
+        ".open-next/**",
+        "**/.open-next/**",
+        // ignore all .vercel files
+        "**/.vercel/*",
+        "./.vercel/*",
+        ".vercel/*",
+        "**/.vercel",
+        "./.vercel",
+        ".vercel",
+        ".vercel/**",
+        "**/.vercel/**",
     ]);
 
     await promiseZip;
