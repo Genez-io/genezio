@@ -67,7 +67,7 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
 
 async function waitForCDNDeployment(cdnUrl: string, domainName: string) {
     const spinner = ora(
-        `Deploying your Next.js application... It might take a few minutes ${colors.cyan("(Press ANY key to skip waiting)")}`,
+        `The app is deployed at ${colors.cyan(cdnUrl)}.\nIt might take a few minutes to be available worldwide. This process will complete when the app is fully up. ${colors.cyan("(Press ANY key to exit and check later)")}`,
     );
     spinner.start();
 
