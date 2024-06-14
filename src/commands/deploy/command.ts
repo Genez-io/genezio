@@ -14,19 +14,6 @@ export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
     // create archive of the project
 
-    const tmpFolderProject = await createTemporaryFolder();
-    debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
-    const promiseZip = zipDirectory(process.cwd(), path.join(tmpFolderProject, "projectCode.zip"), [
-        "**/node_modules/*",
-        "./node_modules/*",
-        "node_modules/*",
-        "**/node_modules",
-        "./node_modules",
-        "node_modules",
-        "node_modules/**",
-        "**/node_modules/**",
-    ]);
-
     const configIOController = new YamlConfigurationIOController(options.config, {
         stage: options.stage,
     });
@@ -43,6 +30,19 @@ export async function deployCommand(options: GenezioDeployOptions) {
             await nextJsDeploy(options);
             break;
     }
+
+    const tmpFolderProject = await createTemporaryFolder();
+    debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
+    const promiseZip = zipDirectory(process.cwd(), path.join(tmpFolderProject, "projectCode.zip"), [
+        "**/node_modules/*",
+        "./node_modules/*",
+        "node_modules/*",
+        "**/node_modules",
+        "./node_modules",
+        "node_modules",
+        "node_modules/**",
+        "**/node_modules/**",
+    ]);
 
     await promiseZip;
     const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(
