@@ -13,7 +13,7 @@ import { getCloudProvider } from "../../requests/getCloudProvider.js";
 import { functionToCloudInput, getCloudAdapter } from "./genezio.js";
 import { ProjectConfiguration } from "../../models/projectConfiguration.js";
 import { FunctionType, Language } from "../../yamlProjectConfiguration/models.js";
-import { PackageManagerType } from "../../packageManagers/packageManager.js";
+import { getPackageManager, PackageManagerType } from "../../packageManagers/packageManager.js";
 import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import { createTemporaryFolder, zipDirectoryToDestinationPath } from "../../utils/file.js";
@@ -35,6 +35,13 @@ import { getFrontendStatus } from "../../requests/getFrontendStatus.js";
 import colors from "colors";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
+    // Check if node_modules exists
+    if (!existsSync("node_modules")) {
+        throw new UserError(
+            `Please run \`${getPackageManager().command} install\` before deploying your Next.js project. This will install the necessary dependencies.`,
+        );
+    }
+
     await writeOpenNextConfig();
     // Build the Next.js project
     await $({ stdio: "inherit" })`npx --yes @genezio/open-next@^3 build`.catch(() => {
