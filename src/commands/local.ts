@@ -402,7 +402,7 @@ async function startBackendWatcher(
             sdk,
             options,
         );
-        reportSuccess(projectConfiguration, options.port, processForUnits);
+        reportSuccess(projectConfiguration, options.port);
 
         if (sdkSynchronizer.isLocked()) sdkSynchronizer.release();
 
@@ -661,6 +661,56 @@ async function startServerHttp(
             });
             return;
         }
+    });
+
+    async function handlerFunctionCall(req: Request<{ functionName: string }>, res: Response) {
+        // remove /.functions/:functionName from the url in order to get expected path for the function
+        req.url = "/" + req.url.split("/").slice(3).join("/");
+        const reqToFunction = getEventObjectFromRequest(req);
+
+        const localProcess = processForUnits.get(req.params.functionName);
+
+        if (!localProcess) {
+            sendResponse(res, {
+                body: "Function not found!",
+                isBase64Encoded: false,
+                statusCode: "500",
+                statusDescription: "500 Internal Server Error",
+                headers: {
+                    "content-type": "application/json",
+                },
+            });
+            return;
+        }
+
+        try {
+            const response = await communicateWithProcess(
+                localProcess,
+                req.params.functionName,
+                reqToFunction,
+                processForUnits,
+            );
+            sendResponse(res, response.data);
+        } catch (error) {
+            sendResponse(res, {
+                body: JSON.stringify({ message: "Internal server error", error: error }),
+                isBase64Encoded: false,
+                statusCode: "500",
+                statusDescription: "500 Internal Server Error",
+                headers: {
+                    "content-type": "application/json",
+                },
+            });
+            return;
+        }
+    }
+
+    app.all(`/.functions/:functionName/*`, async (req, res) => {
+        await handlerFunctionCall(req, res);
+    });
+
+    app.all(`/.functions/:functionName`, async (req, res) => {
+        await handlerFunctionCall(req, res);
     });
 
     async function handlerHttpMethod(
@@ -1036,11 +1086,7 @@ function getWorkspaceUrl(port: number): string | undefined {
     return workspaceUrl;
 }
 
-function reportSuccess(
-    projectConfiguration: ProjectConfiguration,
-    port: number,
-    processForUnits: Map<string, UnitProcess>,
-) {
+function reportSuccess(projectConfiguration: ProjectConfiguration, port: number) {
     const classesInfo = projectConfiguration.classes.map((c) => ({
         className: c.name,
         methods: c.methods.map((m) => ({
@@ -1056,14 +1102,11 @@ function reportSuccess(
 
     if (projectConfiguration.functions?.length > 0) {
         reportSuccessFunctions(
-            projectConfiguration.functions.map((f) => {
-                const processForUnit = processForUnits.get(f.name);
-                return {
-                    name: f.name,
-                    id: f.name,
-                    cloudUrl: `http://localhost:${processForUnit?.listeningPort}`,
-                };
-            }),
+            projectConfiguration.functions.map((f) => ({
+                name: f.name,
+                id: f.name,
+                cloudUrl: `http://localhost:${port}/.functions/${f.name}`,
+            })),
         );
     }
 
@@ -1134,9 +1177,6 @@ async function clearAllResources(
     });
 }
 
-// this global map is used to store ports for each local process and ensure port consistency between genezio local reloads
-const portMap = new Map<string, number>();
-
 async function startLocalUnitProcess(
     startingCommand: string,
     parameters: string[],
@@ -1146,10 +1186,7 @@ async function startLocalUnitProcess(
     type: "class" | "function",
     cwd?: string,
 ) {
-    // retrieve the port from the map or find a new one
-    const availablePort = portMap.get(localUnitName) ?? (await findAvailablePort());
-    portMap.set(localUnitName, availablePort);
-
+    const availablePort = await findAvailablePort();
     debugLogger.debug(`[START_Unit_PROCESS] Starting ${localUnitName} on port ${availablePort}`);
     debugLogger.debug(`[START_Unit_PROCESS] Starting command: ${startingCommand}`);
     debugLogger.debug(`[START_Unit_PROCESS] Parameters: ${parameters}`);
