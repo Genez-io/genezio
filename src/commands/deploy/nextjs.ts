@@ -13,7 +13,7 @@ import { getCloudProvider } from "../../requests/getCloudProvider.js";
 import { functionToCloudInput, getCloudAdapter } from "./genezio.js";
 import { ProjectConfiguration } from "../../models/projectConfiguration.js";
 import { FunctionType, Language } from "../../yamlProjectConfiguration/models.js";
-import { PackageManagerType } from "../../packageManagers/packageManager.js";
+import { getPackageManager, PackageManagerType } from "../../packageManagers/packageManager.js";
 import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import { createTemporaryFolder, zipDirectoryToDestinationPath } from "../../utils/file.js";
@@ -30,11 +30,21 @@ import {
     NEXT_JS_GET_SECRET_ACCESS_KEY,
 } from "../../constants.js";
 import getProjectInfoByName from "../../requests/getProjectInfoByName.js";
+import ora from "ora";
+import { getFrontendStatus } from "../../requests/getFrontendStatus.js";
+import colors from "colors";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
+    // Check if node_modules exists
+    if (!existsSync("node_modules")) {
+        throw new UserError(
+            `Please run \`${getPackageManager().command} install\` before deploying your Next.js project. This will install the necessary dependencies.`,
+        );
+    }
+
     await writeOpenNextConfig();
     // Build the Next.js project
-    await $({ stdio: "inherit" })`npx --yes open-next@^3 build`.catch(() => {
+    await $({ stdio: "inherit" })`npx --yes @genezio/open-next@^3 build`.catch(() => {
         throw new UserError("Failed to build the Next.js project. Check the logs above.");
     });
 
@@ -59,7 +69,34 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         options.stage,
     );
 
-    log.info(`Successfully deployed the Next.js project at ${cdnUrl}.`);
+    await waitForCDNDeployment(cdnUrl, domainName);
+}
+
+async function waitForCDNDeployment(cdnUrl: string, domainName: string) {
+    const spinner = ora(
+        `The app is deployed at ${colors.cyan(cdnUrl)}.\nIt might take a few minutes to be available worldwide. This process will complete when the app is fully up. ${colors.cyan("(Press ANY key to exit and check later)")}`,
+    );
+    spinner.start();
+
+    // Wait asynchronously for a key press to skip the waiting
+    process.stdin.on("data", () => {
+        spinner.stop();
+        log.info(
+            `Looks like you are in a hurry! Your app will be live in a few minutes at: ${colors.cyan(cdnUrl)}`,
+        );
+        process.exit(0);
+    });
+
+    let status = "InProgress";
+    while (status !== "Deployed") {
+        // Sleep 5 seconds
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        status = await getFrontendStatus(domainName);
+    }
+
+    spinner.stop();
+
+    log.info(`Your Next.js app is now live at: ${colors.cyan(cdnUrl)}`);
 }
 
 function checkProjectLimitations() {
@@ -177,6 +214,10 @@ async function deployCDN(
             origin: serverOrigin,
         },
     );
+
+    if (!distributionUrl.startsWith("https://") || !distributionUrl.startsWith("http://")) {
+        return `https://${distributionUrl}`;
+    }
 
     return distributionUrl;
 }

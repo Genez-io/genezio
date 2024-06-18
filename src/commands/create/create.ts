@@ -6,13 +6,15 @@ import path from "path";
 import nativeFs from "fs";
 import { log } from "../../utils/logging.js";
 import { platform } from "os";
-import {
-    GenezioCreateExpressJsOptions,
-    GenezioCreateOptions,
-} from "../../models/commandOptions.js";
+import { GenezioCreateOptions } from "../../models/commandOptions.js";
 import { debugLogger, doAdaptiveLogAction } from "../../utils/logging.js";
 import { packageManagers } from "../../packageManagers/packageManager.js";
-import { backendTemplates, expressJsTemplate, frontendTemplates } from "./templates.js";
+import {
+    backendTemplates,
+    expressJsTemplate,
+    frontendTemplates,
+    serverlessFunctionJsTemplate,
+} from "./templates.js";
 import { YamlConfigurationIOController } from "../../yamlProjectConfiguration/v2.js";
 import { YAMLContext, mergeContexts } from "yaml-transmute";
 import _ from "lodash";
@@ -20,7 +22,6 @@ import { UserError } from "../../errors.js";
 import { Language } from "../../yamlProjectConfiguration/models.js";
 import { linkFrontendsToProject } from "../../utils/linkDatabase.js";
 import { $ } from "execa";
-import { DeepRequired } from "../../utils/types.js";
 
 type ProjectInfo = {
     name: string;
@@ -143,7 +144,7 @@ export async function createCommand(options: GenezioCreateOptions) {
         case "expressjs": {
             await doAdaptiveLogAction("Cloning Express.js starter template", async () => {
                 // Create the new project in a virtual filesystem (memfs)
-                await createExpressJsProject(fs, options);
+                await cloneAndSetupGenezioRepository(expressJsTemplate, fs, options);
 
                 // Copy from memfs to local filesystem
                 copyRecursiveToNativeFs(fs, "/", projectPath, {
@@ -161,6 +162,27 @@ export async function createCommand(options: GenezioCreateOptions) {
             log.info(SUCCESSFULL_CREATE_EXPRESSJS(projectPath));
             break;
         }
+        case "serverless": {
+            await doAdaptiveLogAction("Cloning Serverless Function starter template", async () => {
+                // Create the new project in a virtual filesystem (memfs)
+                await cloneAndSetupGenezioRepository(serverlessFunctionJsTemplate, fs, options);
+
+                // Copy from memfs to local filesystem
+                copyRecursiveToNativeFs(fs, "/", projectPath, {
+                    keepDotGit: true,
+                    renameReadme: true,
+                });
+            });
+
+            // Install template packages
+            await doAdaptiveLogAction("Installing template dependencies", async () =>
+                installTemplatePackages("npm", projectPath),
+            );
+
+            // Print success message
+            log.info(SUCCESSFULL_CREATE_SERVERLESS(projectPath));
+            break;
+        }
         default: {
             throw new UserError("This project type is not yet supported.");
         }
@@ -168,20 +190,22 @@ export async function createCommand(options: GenezioCreateOptions) {
 }
 
 /**
- * Creates an Express.js project by cloning the Express.js template repository, replacing placeholders, and initializing a git repository.
+ * Clone a Genezio repository and replace placeholders in the genezio.yaml file.
  *
+ * @param repositoryUrl - The URL of the repository to clone.
  * @param fs - The file system module.
  * @param options - The project information.
  * @returns A promise that resolves when the project creation is complete.
  */
-async function createExpressJsProject(
+async function cloneAndSetupGenezioRepository(
+    repositoryUrl: string,
     fs: IFs,
-    options: DeepRequired<GenezioCreateExpressJsOptions, "name" | "region">,
+    options: { name: string; region: string },
 ) {
-    await git.clone({ fs, http, url: expressJsTemplate, dir: "/" });
+    await git.clone({ fs, http, url: repositoryUrl, dir: "/" });
     await fs.promises.rmdir("/.git", { recursive: true });
 
-    await replacePlaceholders(fs, "/genezio.yaml", {
+    await replacePlaceholders(fs, "/", {
         "(•◡•)project-name(•◡•)": options.name,
         "(•◡•)region(•◡•)": options.region,
     });
@@ -581,6 +605,19 @@ const SUCCESSFULL_CREATE_EXPRESSJS = (
 ) => `Project initialized in ${projectPath}. Now run:
 
     For ${colors.yellow("deployment")} of your Express.js application, run:
+        cd ${path.relative(process.cwd(), projectPath)}
+        genezio deploy
+
+    For ${colors.green("testing")} locally, run:
+        cd ${path.relative(process.cwd(), projectPath)}
+        genezio local
+`;
+
+const SUCCESSFULL_CREATE_SERVERLESS = (
+    projectPath: string,
+) => `Project initialized in ${projectPath}. Now run:
+
+    For ${colors.yellow("deployment")} of your serverless function application, run:
         cd ${path.relative(process.cwd(), projectPath)}
         genezio deploy
 
