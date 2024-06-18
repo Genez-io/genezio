@@ -22,7 +22,6 @@ import path from "path";
 import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import { createFrontendProject } from "../../requests/createFrontendProject.js";
-import { FRONTEND_DOMAIN } from "../../constants.js";
 import { UserError } from "../../errors.js";
 
 export class ClusterCloudAdapter implements CloudAdapter {
@@ -144,16 +143,17 @@ export class ClusterCloudAdapter implements CloudAdapter {
         debugLogger.debug("Content of the folder zipped. Uploading to S3.");
         await uploadContentToS3(result.presignedURL, archivePath, undefined, result.userId);
         debugLogger.debug("Uploaded to S3.");
-        await createFrontendProject(finalSubdomain, projectName, projectRegion, stage);
+        const finalDomain = await createFrontendProject(
+            finalSubdomain,
+            projectName,
+            projectRegion,
+            stage,
+        );
 
         // clean up temporary folder
         await deleteFolder(path.dirname(archivePath));
 
-        if (stage != "" && stage != "prod") {
-            return `https://${finalSubdomain}.${FRONTEND_DOMAIN}`;
-        }
-
-        return `https://${finalSubdomain}.${FRONTEND_DOMAIN}`;
+        return finalDomain;
     }
 }
 
