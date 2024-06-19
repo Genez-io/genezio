@@ -225,8 +225,7 @@ async function deployCDN(
             origin: serverOrigin,
         },
     );
-
-    if (!distributionUrl.startsWith("https://") || !distributionUrl.startsWith("http://")) {
+    if (!distributionUrl.startsWith("https://") && !distributionUrl.startsWith("http://")) {
         return `https://${distributionUrl}`;
     }
 
