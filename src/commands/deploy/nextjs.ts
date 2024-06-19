@@ -1,4 +1,4 @@
-import fs, { cpSync, existsSync, mkdirSync, readFileSync } from "fs";
+import fs, { existsSync, readFileSync } from "fs";
 import { GenezioDeployOptions } from "../../models/commandOptions.js";
 import { YamlConfigurationIOController } from "../../yamlProjectConfiguration/v2.js";
 import { YamlProjectConfiguration } from "../../yamlProjectConfiguration/v2.js";
@@ -52,22 +52,19 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
 
     checkProjectLimitations();
 
-    // Deploy NextJs serverless functions
-    const deploymentResult = await deployFunctions(genezioConfig, options.stage);
+    const [deploymentResult, domainName] = await Promise.all([
+        // Deploy NextJs serverless functions
+        deployFunctions(genezioConfig, options.stage),
+        // Deploy NextJs static assets to S3
+        deployStaticAssets(genezioConfig, options.stage),
+    ]);
 
-    // Deploy NextJs static assets to S3
-    const domainName = await deployStaticAssets(genezioConfig, options.stage);
-
-    // Set environment variables for the Next.js project
-    await setupEnvironmentVariables(deploymentResult, domainName);
-
-    // Deploy CDN that serves the Next.js app
-    const cdnUrl = await deployCDN(
-        deploymentResult.functions,
-        domainName,
-        genezioConfig,
-        options.stage,
-    );
+    const [, cdnUrl] = await Promise.all([
+        // Set environment variables for the Next.js project
+        setupEnvironmentVariables(deploymentResult, domainName),
+        // Deploy CDN that serves the Next.js app
+        deployCDN(deploymentResult.functions, domainName, genezioConfig, options.stage),
+    ]);
 
     await waitForCDNDeployment(cdnUrl, domainName);
 }
@@ -201,8 +198,10 @@ async function deployCDN(
         { origin: imageOptimizationOrigin, pattern: "_next/image*" },
     ];
     const assetsFolder = path.join(process.cwd(), ".open-next", "assets");
-    for (const file of fs.readdirSync(assetsFolder)) {
-        if (fs.statSync(path.join(assetsFolder, file)).isDirectory()) {
+    for (const file of await fs.promises.readdir(assetsFolder)) {
+        const fileStat = await fs.promises.stat(path.join(assetsFolder, file));
+
+        if (fileStat.isDirectory()) {
             paths.push({
                 origin: s3Origin,
                 pattern: `${file}/*`,
@@ -233,28 +232,32 @@ async function deployCDN(
 }
 
 async function deployStaticAssets(config: YamlProjectConfiguration, stage: string) {
-    const { presignedURL, userId, domain } = await getFrontendPresignedURL(
+    const getFrontendPresignedURLPromise = getFrontendPresignedURL(
         /* subdomain= */ undefined,
         /* projectName= */ config.name,
         stage,
         /* type= */ "nextjs",
     );
-    debugLogger.debug(`Generated presigned URL for Next.js static files. Domain: ${domain}`);
 
     const temporaryFolder = await createTemporaryFolder();
     const archivePath = path.join(temporaryFolder, "next-static.zip");
 
-    mkdirSync(path.join(temporaryFolder, "next-static"));
-    cpSync(
-        path.join(process.cwd(), ".open-next", "assets"),
-        path.join(temporaryFolder, "next-static", "_assets"),
-        { recursive: true },
-    );
-    cpSync(
-        path.join(process.cwd(), ".open-next", "cache"),
-        path.join(temporaryFolder, "next-static", "_cache"),
-        { recursive: true },
-    );
+    await fs.promises.mkdir(path.join(temporaryFolder, "next-static"));
+    await Promise.all([
+        fs.promises.cp(
+            path.join(process.cwd(), ".open-next", "assets"),
+            path.join(temporaryFolder, "next-static", "_assets"),
+            { recursive: true },
+        ),
+        fs.promises.cp(
+            path.join(process.cwd(), ".open-next", "cache"),
+            path.join(temporaryFolder, "next-static", "_cache"),
+            { recursive: true },
+        ),
+    ]);
+
+    const { presignedURL, userId, domain } = await getFrontendPresignedURLPromise;
+    debugLogger.debug(`Generated presigned URL for Next.js static files. Domain: ${domain}`);
 
     await zipDirectoryToDestinationPath(
         path.join(temporaryFolder, "next-static"),
