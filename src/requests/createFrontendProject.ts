@@ -12,7 +12,7 @@ export async function createFrontendProject(
     projectName: string,
     region: string,
     stage: string,
-) {
+): Promise<string> {
     // Check if user is authenticated
     const authToken = await getAuthToken();
     if (!authToken) {
@@ -26,7 +26,7 @@ export async function createFrontendProject(
         stage,
     });
 
-    await axios({
+    const response: AxiosResponse<StatusOk<{ domain: string }>> = await axios({
         method: "PUT",
         url: `${BACKEND_ENDPOINT}/frontend`,
         data: json,
@@ -37,6 +37,12 @@ export async function createFrontendProject(
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
     });
+
+    if (!response.data.domain) {
+        throw new UserError("Could not create frontend project");
+    }
+
+    return response.data.domain;
 }
 
 export interface CreateFrontendV2Request {

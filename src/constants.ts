@@ -2,7 +2,6 @@ const environment = process.env["NODE_ENV"];
 
 let DASHBOARD_URL: string;
 let BACKEND_ENDPOINT: string;
-let FRONTEND_DOMAIN: string;
 let PORT_LOCAL_ENVIRONMENT: number;
 let LOCAL_TEST_INTERFACE_URL: string;
 let DART_COMPILATION_ENDPOINT: string;
@@ -25,7 +24,6 @@ const NODE_MINIMUM_VERSION: string = "18.2.0";
 
 if (environment === "dev") {
     DASHBOARD_URL = "https://dev.app.genez.io";
-    FRONTEND_DOMAIN = "dev.app.genez.io";
     BACKEND_ENDPOINT = "https://dev.api.genez.io";
     LOCAL_TEST_INTERFACE_URL = "https://dev.app.genez.io/test-interface/local";
     PORT_LOCAL_ENVIRONMENT = 8083;
@@ -48,7 +46,6 @@ if (environment === "dev") {
     NEXT_JS_GET_SECRET_ACCESS_KEY = "EZO2GP28pB+VD7Qc7YPrkoWJf/GRBU1KIv+XPF3G";
 } else {
     DASHBOARD_URL = "https://app.genez.io";
-    FRONTEND_DOMAIN = "app.genez.io";
     BACKEND_ENDPOINT = "https://api.genez.io";
     LOCAL_TEST_INTERFACE_URL = "https://app.genez.io/test-interface/local";
     PORT_LOCAL_ENVIRONMENT = 8083;
@@ -73,7 +70,6 @@ if (environment === "dev") {
 
 export {
     DASHBOARD_URL,
-    FRONTEND_DOMAIN,
     BACKEND_ENDPOINT,
     PORT_LOCAL_ENVIRONMENT,
     ENABLE_DEBUG_LOGS_BY_DEFAULT,
