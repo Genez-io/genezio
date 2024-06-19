@@ -682,7 +682,6 @@ async function startServerHttp(
         reqToFunction.rawPath = "/" + reqToFunction.rawPath?.split("/").slice(3).join("/");
         reqToFunction.requestContext.http.path = reqToFunction.rawPath;
 
-
         const localProcess = processForUnits.get(req.params.functionName);
 
         if (!localProcess) {
