@@ -78,25 +78,36 @@ async function waitForCDNDeployment(cdnUrl: string, domainName: string) {
     );
     spinner.start();
 
-    // Wait asynchronously for a key press to skip the waiting
-    process.stdin.on("data", () => {
-        spinner.stop();
-        log.info(
-            `Looks like you are in a hurry! Your app will be live in a few minutes at: ${colors.cyan(cdnUrl)}`,
-        );
-        process.exit(0);
-    });
+    let interval: NodeJS.Timeout | undefined;
+    await Promise.race([
+        // Check the status of the frontend deployment every 5 seconds until it is deployed
+        new Promise<void>((resolve) => {
+            interval = setInterval(async () => {
+                const status = await getFrontendStatus(domainName);
 
-    let status = "InProgress";
-    while (status !== "Deployed") {
-        // Sleep 5 seconds
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-        status = await getFrontendStatus(domainName);
-    }
+                if (status === "Deployed") {
+                    clearInterval(interval);
+                    spinner.stop();
 
-    spinner.stop();
+                    log.info(`Your Next.js app is now live at: ${colors.cyan(cdnUrl)}`);
+                    resolve();
+                }
+            }, 5000);
+        }),
+        // Wait for a key press to skip the waiting
+        new Promise<void>((resolve) => {
+            process.stdin.on("data", () => {
+                spinner.stop();
 
-    log.info(`Your Next.js app is now live at: ${colors.cyan(cdnUrl)}`);
+                log.info(
+                    `Looks like you are in a hurry! Your app will be live in a few minutes at: ${colors.cyan(cdnUrl)}`,
+                );
+                resolve();
+            });
+        }),
+    ]);
+
+    if (interval) clearInterval(interval);
 }
 
 function checkProjectLimitations() {
