@@ -59,7 +59,7 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     const domainName = await deployStaticAssets(genezioConfig, options.stage);
 
     // Set environment variables for the Next.js project
-    await setupEnvironmentVariables(deploymentResult, domainName);
+    await setupEnvironmentVariables(deploymentResult, domainName, genezioConfig.region);
 
     // Deploy CDN that serves the Next.js app
     const cdnUrl = await deployCDN(
@@ -110,7 +110,11 @@ function checkProjectLimitations() {
     }
 }
 
-async function setupEnvironmentVariables(deploymentResult: GenezioCloudOutput, domainName: string) {
+async function setupEnvironmentVariables(
+    deploymentResult: GenezioCloudOutput,
+    domainName: string,
+    region: string,
+) {
     debugLogger.debug(`Setting Next.js environment variables, ${JSON.stringify(deploymentResult)}`);
     await setEnvironmentVariables(deploymentResult.projectId, deploymentResult.projectEnvId, [
         {
@@ -119,7 +123,7 @@ async function setupEnvironmentVariables(deploymentResult: GenezioCloudOutput, d
         },
         {
             name: "BUCKET_NAME",
-            value: GENEZIO_FRONTEND_DEPLOYMENT_BUCKET,
+            value: GENEZIO_FRONTEND_DEPLOYMENT_BUCKET + "-" + region,
         },
         {
             name: "CACHE_BUCKET_KEY_PREFIX",
@@ -127,11 +131,11 @@ async function setupEnvironmentVariables(deploymentResult: GenezioCloudOutput, d
         },
         {
             name: "CACHE_BUCKET_NAME",
-            value: GENEZIO_FRONTEND_DEPLOYMENT_BUCKET,
+            value: GENEZIO_FRONTEND_DEPLOYMENT_BUCKET + "-" + region,
         },
         {
             name: "CACHE_BUCKET_REGION",
-            value: "us-east-1",
+            value: region,
         },
         {
             name: "AWS_ACCESS_KEY_ID",
@@ -143,7 +147,7 @@ async function setupEnvironmentVariables(deploymentResult: GenezioCloudOutput, d
         },
         {
             name: "AWS_REGION",
-            value: "us-east-1",
+            value: region,
         },
     ]);
 }
@@ -215,7 +219,7 @@ async function deployCDN(
         },
     );
 
-    if (!distributionUrl.startsWith("https://") || !distributionUrl.startsWith("http://")) {
+    if (!distributionUrl.startsWith("https://")) {
         return `https://${distributionUrl}`;
     }
 
