@@ -389,6 +389,7 @@ async function startBackendWatcher(
             projectConfiguration.astSummary,
             yamlProjectConfiguration.name,
             processForUnits,
+            projectConfiguration,
         );
 
         // Start cron jobs
@@ -595,6 +596,7 @@ async function startServerHttp(
     astSummary: AstSummary,
     projectName: string,
     processForUnits: Map<string, UnitProcess>,
+    projectConfiguration: ProjectConfiguration,
 ): Promise<http.Server> {
     const app = express();
     const require = createRequire(import.meta.url);
@@ -620,7 +622,7 @@ async function startServerHttp(
         res.setHeader("Content-Type", "application/json");
         res.end(
             JSON.stringify({
-                functions: getProjectFunctions(processForUnits),
+                functions: getProjectFunctions(port, projectConfiguration),
                 name: projectName,
             }),
         );
@@ -819,19 +821,20 @@ export type LocalEnvCronHandler = {
 };
 
 function getProjectFunctions(
-    processForUnits: Map<string, UnitProcess>,
+    port: number,
+    projectConfiguration: ProjectConfiguration,
 ): DeployCodeFunctionResponse[] {
     const functions: DeployCodeFunctionResponse[] = [];
 
-    processForUnits.forEach((process, key) => {
-        if (process.type === "function") {
+    if (projectConfiguration.functions.length > 0) {
+        projectConfiguration.functions.forEach((f) => {
             functions.push({
-                cloudUrl: `http://localhost:${process.listeningPort}`,
-                id: key,
-                name: key,
+                cloudUrl: `http://localhost:${port}/.functions/${f.name}`,
+                id: f.name,
+                name: f.name,
             });
-        }
-    });
+        });
+    }
     return functions;
 }
 
