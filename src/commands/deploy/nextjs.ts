@@ -229,7 +229,7 @@ async function deployCDN(
         },
     );
 
-    if (!distributionUrl.startsWith("https://")) {
+    if (!distributionUrl.startsWith("https://") && !distributionUrl.startsWith("http://")) {
         return `https://${distributionUrl}`;
     }
 
