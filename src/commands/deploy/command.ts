@@ -4,11 +4,6 @@ import { debugLogger } from "../../utils/logging.js";
 import { genezioDeploy } from "./genezio.js";
 import fs from "fs";
 import { nextJsDeploy } from "./nextjs.js";
-import path from "path";
-import { createTemporaryFolder, zipDirectory } from "../../utils/file.js";
-import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
-import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
-import { YamlConfigurationIOController } from "../../yamlProjectConfiguration/v2.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -30,66 +25,6 @@ export async function deployCommand(options: GenezioDeployOptions) {
             await nextJsDeploy(options);
             break;
     }
-
-    const tmpFolderProject = await createTemporaryFolder();
-    debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
-    const promiseZip = zipDirectory(process.cwd(), path.join(tmpFolderProject, "projectCode.zip"), [
-        "**/node_modules/*",
-        "./node_modules/*",
-        "node_modules/*",
-        "**/node_modules",
-        "./node_modules",
-        "node_modules",
-        "node_modules/**",
-        "**/node_modules/**",
-        // ignore all .git files
-        "**/.git/*",
-        "./.git/*",
-        ".git/*",
-        "**/.git",
-        "./.git",
-        ".git",
-        ".git/**",
-        "**/.git/**",
-        // ignore all .next files
-        "**/.next/*",
-        "./.next/*",
-        ".next/*",
-        "**/.next",
-        "./.next",
-        ".next",
-        ".next/**",
-        "**/.next/**",
-        // ignore all .open-next files
-        "**/.open-next/*",
-        "./.open-next/*",
-        ".open-next/*",
-        "**/.open-next",
-        "./.open-next",
-        ".open-next",
-        ".open-next/**",
-        "**/.open-next/**",
-        // ignore all .vercel files
-        "**/.vercel/*",
-        "./.vercel/*",
-        ".vercel/*",
-        "**/.vercel",
-        "./.vercel",
-        ".vercel",
-        ".vercel/**",
-        "**/.vercel/**",
-    ]);
-
-    await promiseZip;
-    const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(
-        configuration.region,
-        configuration.name,
-        options.stage,
-    );
-    await uploadContentToS3(
-        presignedUrlForProjectCode,
-        path.join(tmpFolderProject, "projectCode.zip"),
-    );
 }
 
 enum DeployType {

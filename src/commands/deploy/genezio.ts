@@ -68,11 +68,14 @@ import fsExtra from "fs-extra/esm";
 import { getLinkedFrontendsForProject } from "../../utils/linkDatabase.js";
 import { getCloudProvider } from "../../requests/getCloudProvider.js";
 import fs from "fs";
+import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
+import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 
-export async function genezioDeploy(
-    options: GenezioDeployOptions,
-    configuration: YamlProjectConfiguration,
-) {
+export async function genezioDeploy(options: GenezioDeployOptions) {
+    const configIOController = new YamlConfigurationIOController(options.config, {
+        stage: options.stage,
+    });
+    const configuration = await configIOController.read();
     const backendCwd = configuration.backend?.path || process.cwd();
 
     // We need to check if the user is using an older version of @genezio/types
@@ -104,6 +107,20 @@ export async function genezioDeploy(
         debugLogger.debug("No auth token found. Starting automatic authentication...");
         await loginCommand("", false);
     }
+
+    // create archive of the project
+    const tmpFolderProject = await createTemporaryFolder();
+    debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
+    const promiseZip = zipDirectory(process.cwd(), path.join(tmpFolderProject, "projectCode.zip"), [
+        "**/node_modules/*",
+        "./node_modules/*",
+        "node_modules/*",
+        "**/node_modules",
+        "./node_modules",
+        "node_modules",
+        "node_modules/**",
+        "**/node_modules/**",
+    ]);
 
     let deployClassesResult;
     backend: if (configuration.backend && !options.frontend) {
@@ -143,6 +160,17 @@ export async function genezioDeploy(
             commandOptions: JSON.stringify(options),
         });
     }
+
+    await promiseZip;
+    const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(
+        configuration.region,
+        configuration.name,
+        options.stage,
+    );
+    await uploadContentToS3(
+        presignedUrlForProjectCode,
+        path.join(tmpFolderProject, "projectCode.zip"),
+    );
 
     const frontendUrls = [];
     if (configuration.frontend && !options.backend) {

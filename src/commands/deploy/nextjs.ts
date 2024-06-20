@@ -16,7 +16,11 @@ import { FunctionType, Language } from "../../yamlProjectConfiguration/models.js
 import { getPackageManager, PackageManagerType } from "../../packageManagers/packageManager.js";
 import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
-import { createTemporaryFolder, zipDirectoryToDestinationPath } from "../../utils/file.js";
+import {
+    createTemporaryFolder,
+    zipDirectory,
+    zipDirectoryToDestinationPath,
+} from "../../utils/file.js";
 import { DeployCodeFunctionResponse } from "../../models/deployCodeResponse.js";
 import {
     createFrontendProjectV2,
@@ -33,6 +37,7 @@ import getProjectInfoByName from "../../requests/getProjectInfoByName.js";
 import ora from "ora";
 import { getFrontendStatus } from "../../requests/getFrontendStatus.js";
 import colors from "colors";
+import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     // Check if node_modules exists
@@ -59,7 +64,69 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         deployStaticAssets(genezioConfig, options.stage),
     ]);
 
-    const [, cdnUrl] = await Promise.all([
+    const tmpFolderProject = await createTemporaryFolder();
+    debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
+    const promiseZip = zipDirectory(process.cwd(), path.join(tmpFolderProject, "projectCode.zip"), [
+        "**/node_modules/*",
+        "./node_modules/*",
+        "node_modules/*",
+        "**/node_modules",
+        "./node_modules",
+        "node_modules",
+        "node_modules/**",
+        "**/node_modules/**",
+        // ignore all .git files
+        "**/.git/*",
+        "./.git/*",
+        ".git/*",
+        "**/.git",
+        "./.git",
+        ".git",
+        ".git/**",
+        "**/.git/**",
+        // ignore all .next files
+        "**/.next/*",
+        "./.next/*",
+        ".next/*",
+        "**/.next",
+        "./.next",
+        ".next",
+        ".next/**",
+        "**/.next/**",
+        // ignore all .open-next files
+        "**/.open-next/*",
+        "./.open-next/*",
+        ".open-next/*",
+        "**/.open-next",
+        "./.open-next",
+        ".open-next",
+        ".open-next/**",
+        "**/.open-next/**",
+        // ignore all .vercel files
+        "**/.vercel/*",
+        "./.vercel/*",
+        ".vercel/*",
+        "**/.vercel",
+        "./.vercel",
+        ".vercel",
+        ".vercel/**",
+        "**/.vercel/**",
+    ]);
+
+    await promiseZip;
+    const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(
+        genezioConfig.region,
+        genezioConfig.name,
+        options.stage,
+    );
+    const uploadCodePromise = uploadContentToS3(
+        presignedUrlForProjectCode,
+        path.join(tmpFolderProject, "projectCode.zip"),
+    );
+
+    const [, , cdnUrl] = await Promise.all([
+        // Upload the project code to S3
+        uploadCodePromise,
         // Set environment variables for the Next.js project
         setupEnvironmentVariables(deploymentResult, domainName, genezioConfig.region),
         // Deploy CDN that serves the Next.js app
