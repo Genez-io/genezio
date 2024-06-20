@@ -20,7 +20,6 @@ enum CloudProviderIdentifier {
     // This was depricated in Genezio YAML v2, so we replicated the enum here.
     AWS = "aws",
     GENEZIO = "genezio",
-    SELF_HOSTED_AWS = "selfHostedAws",
     CAPYBARA = "capybara",
     CAPYBARA_LINUX = "capybaraLinux",
 }

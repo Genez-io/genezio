@@ -34,7 +34,6 @@ import { generateRandomSubdomain } from "../../utils/yaml.js";
 import cliProgress from "cli-progress";
 import { YAMLBackend, YamlProjectConfiguration } from "../../yamlProjectConfiguration/v2.js";
 import { GenezioCloudAdapter } from "../../cloudAdapter/genezio/genezioAdapter.js";
-import { SelfHostedAwsAdapter } from "../../cloudAdapter/aws/selfHostedAwsAdapter.js";
 import {
     CloudAdapter,
     GenezioCloudInput,
@@ -748,8 +747,6 @@ export function getCloudAdapter(provider: CloudProviderIdentifier): CloudAdapter
             return new GenezioCloudAdapter();
         case CloudProviderIdentifier.GENEZIO_CLUSTER:
             return new ClusterCloudAdapter();
-        case CloudProviderIdentifier.SELF_HOSTED_AWS:
-            return new SelfHostedAwsAdapter();
         default:
             throw new UserError(`Unsupported cloud provider: ${provider}`);
     }
