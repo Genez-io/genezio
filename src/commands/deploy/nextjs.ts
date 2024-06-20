@@ -63,15 +63,10 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         // Deploy NextJs static assets to S3
         deployStaticAssets(genezioConfig, options.stage),
     ]);
-    const uploadCodePromise = uploadUserCode(
-        genezioConfig.name,
-        genezioConfig.region,
-        options.stage,
-    );
 
     const [, , cdnUrl] = await Promise.all([
-        // Upload the project code to S3
-        uploadCodePromise,
+        // Upload the project code to S3 for in-browser editing
+        uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage),
         // Set environment variables for the Next.js project
         setupEnvironmentVariables(deploymentResult, domainName, genezioConfig.region),
         // Deploy CDN that serves the Next.js app
