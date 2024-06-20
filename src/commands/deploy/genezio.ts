@@ -350,7 +350,7 @@ export async function deployClasses(
             if (element.language === "go") {
                 await zipFile(path.join(output.path, "bootstrap"), archivePath);
             } else {
-                await zipDirectory(output.path, archivePath);
+                await zipDirectory(output.path, archivePath, [".git", ".github"]);
             }
 
             await deleteFolder(output.path);
@@ -572,7 +572,7 @@ export async function functionToCloudInput(
     debugLogger.debug(`Zip the directory ${tmpFolderPath}.`);
 
     // zip the temporary folder
-    await zipDirectory(tmpFolderPath, archivePath);
+    await zipDirectory(tmpFolderPath, archivePath, [".git", ".github"]);
 
     debugLogger.debug(`Zip created at path: ${archivePath}.`);
 
