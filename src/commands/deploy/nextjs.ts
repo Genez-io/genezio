@@ -129,6 +129,24 @@ async function uploadUserCode(name: string, region: string, stage: string): Prom
         ".vercel",
         ".vercel/**",
         "**/.vercel/**",
+        // ignore all .turbo files
+        "**/.turbo/*",
+        "./.turbo/*",
+        ".turbo/*",
+        "**/.turbo",
+        "./.turbo",
+        ".turbo",
+        ".turbo/**",
+        "**/.turbo/**",
+        // ignore all .sst files
+        "**/.sst/*",
+        "./.sst/*",
+        ".sst/*",
+        "**/.sst",
+        "./.sst",
+        ".sst",
+        ".sst/**",
+        "**/.sst/**",
     ]);
 
     await promiseZip;
