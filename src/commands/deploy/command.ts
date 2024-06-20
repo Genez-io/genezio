@@ -7,7 +7,6 @@ import { nextJsDeploy } from "./nextjs.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
-    // create archive of the project
 
     const configIOController = new YamlConfigurationIOController(options.config, {
         stage: options.stage,
