@@ -1,4 +1,4 @@
-import fs, { cpSync, existsSync, mkdirSync, readFileSync } from "fs";
+import fs, { existsSync, readFileSync } from "fs";
 import { GenezioDeployOptions } from "../../models/commandOptions.js";
 import { YamlConfigurationIOController } from "../../yamlProjectConfiguration/v2.js";
 import { YamlProjectConfiguration } from "../../yamlProjectConfiguration/v2.js";
@@ -13,7 +13,7 @@ import { getCloudProvider } from "../../requests/getCloudProvider.js";
 import { functionToCloudInput, getCloudAdapter } from "./genezio.js";
 import { ProjectConfiguration } from "../../models/projectConfiguration.js";
 import { FunctionType, Language } from "../../yamlProjectConfiguration/models.js";
-import { PackageManagerType } from "../../packageManagers/packageManager.js";
+import { getPackageManager, PackageManagerType } from "../../packageManagers/packageManager.js";
 import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import { createTemporaryFolder, zipDirectoryToDestinationPath } from "../../utils/file.js";
@@ -35,6 +35,13 @@ import { getFrontendStatus } from "../../requests/getFrontendStatus.js";
 import colors from "colors";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
+    // Check if node_modules exists
+    if (!existsSync("node_modules")) {
+        throw new UserError(
+            `Please run \`${getPackageManager().command} install\` before deploying your Next.js project. This will install the necessary dependencies.`,
+        );
+    }
+
     await writeOpenNextConfig();
     // Build the Next.js project
     await $({ stdio: "inherit" })`npx --yes @genezio/open-next@^3 build`.catch(() => {
@@ -45,51 +52,59 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
 
     checkProjectLimitations();
 
-    // Deploy NextJs serverless functions
-    const deploymentResult = await deployFunctions(genezioConfig, options.stage);
+    const [deploymentResult, domainName] = await Promise.all([
+        // Deploy NextJs serverless functions
+        deployFunctions(genezioConfig, options.stage),
+        // Deploy NextJs static assets to S3
+        deployStaticAssets(genezioConfig, options.stage),
+    ]);
 
-    // Deploy NextJs static assets to S3
-    const domainName = await deployStaticAssets(genezioConfig, options.stage);
-
-    // Set environment variables for the Next.js project
-    await setupEnvironmentVariables(deploymentResult, domainName);
-
-    // Deploy CDN that serves the Next.js app
-    const cdnUrl = await deployCDN(
-        deploymentResult.functions,
-        domainName,
-        genezioConfig,
-        options.stage,
-    );
+    const [, cdnUrl] = await Promise.all([
+        // Set environment variables for the Next.js project
+        setupEnvironmentVariables(deploymentResult, domainName, genezioConfig.region),
+        // Deploy CDN that serves the Next.js app
+        deployCDN(deploymentResult.functions, domainName, genezioConfig, options.stage),
+    ]);
 
     await waitForCDNDeployment(cdnUrl, domainName);
 }
 
 async function waitForCDNDeployment(cdnUrl: string, domainName: string) {
     const spinner = ora(
-        `Deploying your Next.js application... It might take a few minutes ${colors.cyan("(Press ANY key to skip waiting)")}`,
+        `The app is deployed at ${colors.cyan(cdnUrl)}.\nIt might take a few minutes to be available worldwide. This process will complete when the app is fully up. ${colors.cyan("(Press ANY key to exit and check later)")}`,
     );
     spinner.start();
 
-    // Wait asynchronously for a key press to skip the waiting
-    process.stdin.on("data", () => {
-        spinner.stop();
-        log.info(
-            `Looks like you are in a hurry! Your app will be live in a few minutes at: ${colors.cyan(cdnUrl)}`,
-        );
-        process.exit(0);
-    });
+    let interval: NodeJS.Timeout | undefined;
+    await Promise.race([
+        // Check the status of the frontend deployment every 5 seconds until it is deployed
+        new Promise<void>((resolve) => {
+            interval = setInterval(async () => {
+                const status = await getFrontendStatus(domainName);
 
-    let status = "InProgress";
-    while (status !== "Deployed") {
-        // Sleep 5 seconds
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-        status = await getFrontendStatus(domainName);
-    }
+                if (status === "Deployed") {
+                    clearInterval(interval);
+                    spinner.stop();
 
-    spinner.stop();
+                    log.info(`Your Next.js app is now live at: ${colors.cyan(cdnUrl)}`);
+                    resolve();
+                }
+            }, 5000);
+        }),
+        // Wait for a key press to skip the waiting
+        new Promise<void>((resolve) => {
+            process.stdin.on("data", () => {
+                spinner.stop();
 
-    log.info(`Your Next.js app is now live at: ${colors.cyan(cdnUrl)}`);
+                log.info(
+                    `Looks like you are in a hurry! Your app will be live in a few minutes at: ${colors.cyan(cdnUrl)}`,
+                );
+                resolve();
+            });
+        }),
+    ]);
+
+    if (interval) clearInterval(interval);
 }
 
 function checkProjectLimitations() {
@@ -103,7 +118,11 @@ function checkProjectLimitations() {
     }
 }
 
-async function setupEnvironmentVariables(deploymentResult: GenezioCloudOutput, domainName: string) {
+async function setupEnvironmentVariables(
+    deploymentResult: GenezioCloudOutput,
+    domainName: string,
+    region: string,
+) {
     debugLogger.debug(`Setting Next.js environment variables, ${JSON.stringify(deploymentResult)}`);
     await setEnvironmentVariables(deploymentResult.projectId, deploymentResult.projectEnvId, [
         {
@@ -112,7 +131,7 @@ async function setupEnvironmentVariables(deploymentResult: GenezioCloudOutput, d
         },
         {
             name: "BUCKET_NAME",
-            value: GENEZIO_FRONTEND_DEPLOYMENT_BUCKET,
+            value: GENEZIO_FRONTEND_DEPLOYMENT_BUCKET + "-" + region,
         },
         {
             name: "CACHE_BUCKET_KEY_PREFIX",
@@ -120,11 +139,11 @@ async function setupEnvironmentVariables(deploymentResult: GenezioCloudOutput, d
         },
         {
             name: "CACHE_BUCKET_NAME",
-            value: GENEZIO_FRONTEND_DEPLOYMENT_BUCKET,
+            value: GENEZIO_FRONTEND_DEPLOYMENT_BUCKET + "-" + region,
         },
         {
             name: "CACHE_BUCKET_REGION",
-            value: "us-east-1",
+            value: region,
         },
         {
             name: "AWS_ACCESS_KEY_ID",
@@ -136,7 +155,7 @@ async function setupEnvironmentVariables(deploymentResult: GenezioCloudOutput, d
         },
         {
             name: "AWS_REGION",
-            value: "us-east-1",
+            value: region,
         },
     ]);
 }
@@ -183,8 +202,10 @@ async function deployCDN(
         { origin: imageOptimizationOrigin, pattern: "_next/image*" },
     ];
     const assetsFolder = path.join(process.cwd(), ".open-next", "assets");
-    for (const file of fs.readdirSync(assetsFolder)) {
-        if (fs.statSync(path.join(assetsFolder, file)).isDirectory()) {
+    for (const file of await fs.promises.readdir(assetsFolder)) {
+        const fileStat = await fs.promises.stat(path.join(assetsFolder, file));
+
+        if (fileStat.isDirectory()) {
             paths.push({
                 origin: s3Origin,
                 pattern: `${file}/*`,
@@ -208,32 +229,40 @@ async function deployCDN(
         },
     );
 
+    if (!distributionUrl.startsWith("https://") && !distributionUrl.startsWith("http://")) {
+        return `https://${distributionUrl}`;
+    }
+
     return distributionUrl;
 }
 
 async function deployStaticAssets(config: YamlProjectConfiguration, stage: string) {
-    const { presignedURL, userId, domain } = await getFrontendPresignedURL(
+    const getFrontendPresignedURLPromise = getFrontendPresignedURL(
         /* subdomain= */ undefined,
         /* projectName= */ config.name,
         stage,
         /* type= */ "nextjs",
     );
-    debugLogger.debug(`Generated presigned URL for Next.js static files. Domain: ${domain}`);
 
     const temporaryFolder = await createTemporaryFolder();
     const archivePath = path.join(temporaryFolder, "next-static.zip");
 
-    mkdirSync(path.join(temporaryFolder, "next-static"));
-    cpSync(
-        path.join(process.cwd(), ".open-next", "assets"),
-        path.join(temporaryFolder, "next-static", "_assets"),
-        { recursive: true },
-    );
-    cpSync(
-        path.join(process.cwd(), ".open-next", "cache"),
-        path.join(temporaryFolder, "next-static", "_cache"),
-        { recursive: true },
-    );
+    await fs.promises.mkdir(path.join(temporaryFolder, "next-static"));
+    await Promise.all([
+        fs.promises.cp(
+            path.join(process.cwd(), ".open-next", "assets"),
+            path.join(temporaryFolder, "next-static", "_assets"),
+            { recursive: true },
+        ),
+        fs.promises.cp(
+            path.join(process.cwd(), ".open-next", "cache"),
+            path.join(temporaryFolder, "next-static", "_cache"),
+            { recursive: true },
+        ),
+    ]);
+
+    const { presignedURL, userId, domain } = await getFrontendPresignedURLPromise;
+    debugLogger.debug(`Generated presigned URL for Next.js static files. Domain: ${domain}`);
 
     await zipDirectoryToDestinationPath(
         path.join(temporaryFolder, "next-static"),
@@ -301,7 +330,13 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
 async function writeOpenNextConfig() {
     const OPEN_NEXT_CONFIG = `
     const config = {
-        default: {},
+        default: {
+            override: {
+                queue: "sqs-lite",
+                incrementalCache: "s3-lite",
+                tagCache: "dynamodb-lite",
+            },
+        },
         imageOptimization: {
             arch: "x64",
         },

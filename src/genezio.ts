@@ -206,9 +206,7 @@ program
     });
 
 const create = program
-    .enablePositionalOptions()
     .command("create")
-    .passThroughOptions()
     .option("--path <path>", "Path where to create the project.", undefined)
     .summary("Create a new project from a template.")
     .action(async (options: GenezioCreateInteractiveOptions) => {
@@ -254,10 +252,13 @@ create
         "Create a project with a backend and a frontend in separate repositories.",
         false,
     )
-    .option("--path <path>", "Path where to create the project.", undefined)
     .summary("Create a new project from a backend and a frontend template.")
-    .action(async (options: GenezioCreateFullstackOptions) => {
-        const createOptions = await askCreateOptions({ ...options, type: "fullstack" });
+    .action(async (options: GenezioCreateFullstackOptions, { parent }: { parent: Command }) => {
+        const createOptions = await askCreateOptions({
+            ...parent.opts(),
+            ...options,
+            type: "fullstack",
+        });
 
         const telemetryEvent = GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_CREATE,
@@ -289,10 +290,13 @@ create
             Object.keys(backendTemplates),
         ),
     )
-    .option("--path <path>", "Path where to create the project.", undefined)
     .summary("Create a new project from a backend template.")
-    .action(async (options: GenezioCreateBackendOptions) => {
-        const createOptions = await askCreateOptions({ ...options, type: "backend" });
+    .action(async (options: GenezioCreateBackendOptions, { parent }: { parent: Command }) => {
+        const createOptions = await askCreateOptions({
+            ...parent.opts(),
+            ...options,
+            type: "backend",
+        });
 
         const telemetryEvent = GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_CREATE,
@@ -319,10 +323,13 @@ create
             regions.map((region) => region.value),
         ),
     )
-    .option("--path <path>", "Path where to create the project.", undefined)
     .summary("Create a new Next.js project.")
-    .action(async (options: GenezioCreateNextJsOptions) => {
-        const createOptions = await askCreateOptions({ ...options, type: "nextjs" });
+    .action(async (options: GenezioCreateNextJsOptions, { parent }: { parent: Command }) => {
+        const createOptions = await askCreateOptions({
+            ...parent.opts(),
+            ...options,
+            type: "nextjs",
+        });
 
         const telemetryEvent = GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_CREATE,
@@ -351,8 +358,12 @@ create
     )
     .option("--path <path>", "Path where to create the project.", undefined)
     .summary("Create a new Express.js project.")
-    .action(async (options: GenezioCreateExpressJsOptions) => {
-        const createOptions = await askCreateOptions({ ...options, type: "expressjs" });
+    .action(async (options: GenezioCreateExpressJsOptions, { parent }: { parent: Command }) => {
+        const createOptions = await askCreateOptions({
+            ...parent.opts(),
+            ...options,
+            type: "expressjs",
+        });
 
         const telemetryEvent = GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_CREATE,
@@ -381,8 +392,12 @@ create
     )
     .option("--path <path>", "Path where to create the project.", undefined)
     .summary("Create a new Serverless Function project.")
-    .action(async (options: GenezioCreateExpressJsOptions) => {
-        const createOptions = await askCreateOptions({ ...options, type: "serverless" });
+    .action(async (options: GenezioCreateExpressJsOptions, { parent }: { parent: Command }) => {
+        const createOptions = await askCreateOptions({
+            ...parent.opts(),
+            ...options,
+            type: "serverless",
+        });
 
         const telemetryEvent = GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_CREATE,
