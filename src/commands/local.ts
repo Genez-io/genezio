@@ -664,9 +664,10 @@ async function startServerHttp(
     });
 
     async function handlerFunctionCall(req: Request<{ functionName: string }>, res: Response) {
-        // remove /.functions/:functionName from the url in order to get expected path for the function
-        req.url = "/" + req.url.split("/").slice(3).join("/");
         const reqToFunction = getEventObjectFromRequest(req);
+        // remove /.functions/:functionName from the url in order to get expected path for the function
+        reqToFunction.rawPath = "/" + reqToFunction.rawPath?.split("/").slice(3).join("/");
+        reqToFunction.requestContext.http.path = reqToFunction.rawPath;
 
         const localProcess = processForUnits.get(req.params.functionName);
 
@@ -923,8 +924,10 @@ function sendResponse(res: Response, httpResponse: LambdaResponse) {
     } else {
         if (Buffer.isBuffer(httpResponse.body)) {
             res.end(JSON.stringify(httpResponse.body.toJSON()));
+        } else if (typeof httpResponse.body === "object") {
+            res.end(JSON.stringify(httpResponse.body));
         } else {
-            res.end(httpResponse.body ? httpResponse.body : "");
+            res.end(httpResponse.body ? httpResponse.body.toString() : "");
         }
     }
 }
