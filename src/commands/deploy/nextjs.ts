@@ -63,7 +63,25 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         // Deploy NextJs static assets to S3
         deployStaticAssets(genezioConfig, options.stage),
     ]);
+    const uploadCodePromise = uploadUserCode(
+        genezioConfig.name,
+        genezioConfig.region,
+        options.stage,
+    );
 
+    const [, , cdnUrl] = await Promise.all([
+        // Upload the project code to S3
+        uploadCodePromise,
+        // Set environment variables for the Next.js project
+        setupEnvironmentVariables(deploymentResult, domainName, genezioConfig.region),
+        // Deploy CDN that serves the Next.js app
+        deployCDN(deploymentResult.functions, domainName, genezioConfig, options.stage),
+    ]);
+
+    await waitForCDNDeployment(cdnUrl, domainName);
+}
+
+async function uploadUserCode(name: string, region: string, stage: string): Promise<void> {
     const tmpFolderProject = await createTemporaryFolder();
     debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
     const promiseZip = zipDirectory(process.cwd(), path.join(tmpFolderProject, "projectCode.zip"), [
@@ -114,26 +132,11 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     ]);
 
     await promiseZip;
-    const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(
-        genezioConfig.region,
-        genezioConfig.name,
-        options.stage,
-    );
-    const uploadCodePromise = uploadContentToS3(
+    const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(region, name, stage);
+    return uploadContentToS3(
         presignedUrlForProjectCode,
         path.join(tmpFolderProject, "projectCode.zip"),
     );
-
-    const [, , cdnUrl] = await Promise.all([
-        // Upload the project code to S3
-        uploadCodePromise,
-        // Set environment variables for the Next.js project
-        setupEnvironmentVariables(deploymentResult, domainName, genezioConfig.region),
-        // Deploy CDN that serves the Next.js app
-        deployCDN(deploymentResult.functions, domainName, genezioConfig, options.stage),
-    ]);
-
-    await waitForCDNDeployment(cdnUrl, domainName);
 }
 
 async function waitForCDNDeployment(cdnUrl: string, domainName: string) {
