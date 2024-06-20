@@ -330,7 +330,13 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
 async function writeOpenNextConfig() {
     const OPEN_NEXT_CONFIG = `
     const config = {
-        default: {},
+        default: {
+            override: {
+                queue: "sqs-lite",
+                incrementalCache: "s3-lite",
+                tagCache: "dynamodb-lite",
+            },
+        },
         imageOptimization: {
             arch: "x64",
         },
