@@ -108,20 +108,6 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         await loginCommand("", false);
     }
 
-    // create archive of the project
-    const tmpFolderProject = await createTemporaryFolder();
-    debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
-    const promiseZip = zipDirectory(process.cwd(), path.join(tmpFolderProject, "projectCode.zip"), [
-        "**/node_modules/*",
-        "./node_modules/*",
-        "node_modules/*",
-        "**/node_modules",
-        "./node_modules",
-        "node_modules",
-        "node_modules/**",
-        "**/node_modules/**",
-    ]);
-
     let deployClassesResult;
     backend: if (configuration.backend && !options.frontend) {
         if (configuration.backend.classes?.length === 0) {
@@ -160,17 +146,6 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             commandOptions: JSON.stringify(options),
         });
     }
-
-    await promiseZip;
-    const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(
-        configuration.region,
-        configuration.name,
-        options.stage,
-    );
-    await uploadContentToS3(
-        presignedUrlForProjectCode,
-        path.join(tmpFolderProject, "projectCode.zip"),
-    );
 
     const frontendUrls = [];
     if (configuration.frontend && !options.backend) {
@@ -229,6 +204,31 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             });
         }
     }
+
+    // create archive of the project
+    const tmpFolderProject = await createTemporaryFolder();
+    debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
+    await zipDirectory(process.cwd(), path.join(tmpFolderProject, "projectCode.zip"), [
+        "**/node_modules/*",
+        "./node_modules/*",
+        "node_modules/*",
+        "**/node_modules",
+        "./node_modules",
+        "node_modules",
+        "node_modules/**",
+        "**/node_modules/**",
+    ]);
+
+    const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(
+        configuration.region,
+        configuration.name,
+        options.stage,
+    );
+    await uploadContentToS3(
+        presignedUrlForProjectCode,
+        path.join(tmpFolderProject, "projectCode.zip"),
+    );
+
     if (deployClassesResult) {
         log.info(
             colors.cyan(
