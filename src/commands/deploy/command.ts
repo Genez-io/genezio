@@ -8,15 +8,10 @@ import { nextJsDeploy } from "./nextjs.js";
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
 
-    const configIOController = new YamlConfigurationIOController(options.config, {
-        stage: options.stage,
-    });
-    const configuration = await configIOController.read();
-
     switch (decideDeployType()) {
         case DeployType.Classic:
             debugLogger.debug("Deploying classic genezio app");
-            await genezioDeploy(options, configuration);
+            await genezioDeploy(options);
 
             break;
         case DeployType.NextJS:
