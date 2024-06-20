@@ -76,7 +76,6 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         stage: options.stage,
     });
     const configuration = await configIOController.read();
-
     const backendCwd = configuration.backend?.path || process.cwd();
 
     // We need to check if the user is using an older version of @genezio/types

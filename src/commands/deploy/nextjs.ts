@@ -16,7 +16,11 @@ import { FunctionType, Language } from "../../yamlProjectConfiguration/models.js
 import { getPackageManager, PackageManagerType } from "../../packageManagers/packageManager.js";
 import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
-import { createTemporaryFolder, zipDirectoryToDestinationPath } from "../../utils/file.js";
+import {
+    createTemporaryFolder,
+    zipDirectory,
+    zipDirectoryToDestinationPath,
+} from "../../utils/file.js";
 import { DeployCodeFunctionResponse } from "../../models/deployCodeResponse.js";
 import {
     createFrontendProjectV2,
@@ -33,6 +37,7 @@ import getProjectInfoByName from "../../requests/getProjectInfoByName.js";
 import ora from "ora";
 import { getFrontendStatus } from "../../requests/getFrontendStatus.js";
 import colors from "colors";
+import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     // Check if node_modules exists
@@ -58,8 +63,15 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         // Deploy NextJs static assets to S3
         deployStaticAssets(genezioConfig, options.stage),
     ]);
+    const uploadCodePromise = uploadUserCode(
+        genezioConfig.name,
+        genezioConfig.region,
+        options.stage,
+    );
 
-    const [, cdnUrl] = await Promise.all([
+    const [, , cdnUrl] = await Promise.all([
+        // Upload the project code to S3
+        uploadCodePromise,
         // Set environment variables for the Next.js project
         setupEnvironmentVariables(deploymentResult, domainName, genezioConfig.region),
         // Deploy CDN that serves the Next.js app
@@ -67,6 +79,82 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     ]);
 
     await waitForCDNDeployment(cdnUrl, domainName);
+}
+
+async function uploadUserCode(name: string, region: string, stage: string): Promise<void> {
+    const tmpFolderProject = await createTemporaryFolder();
+    debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
+    const promiseZip = zipDirectory(process.cwd(), path.join(tmpFolderProject, "projectCode.zip"), [
+        "**/node_modules/*",
+        "./node_modules/*",
+        "node_modules/*",
+        "**/node_modules",
+        "./node_modules",
+        "node_modules",
+        "node_modules/**",
+        "**/node_modules/**",
+        // ignore all .git files
+        "**/.git/*",
+        "./.git/*",
+        ".git/*",
+        "**/.git",
+        "./.git",
+        ".git",
+        ".git/**",
+        "**/.git/**",
+        // ignore all .next files
+        "**/.next/*",
+        "./.next/*",
+        ".next/*",
+        "**/.next",
+        "./.next",
+        ".next",
+        ".next/**",
+        "**/.next/**",
+        // ignore all .open-next files
+        "**/.open-next/*",
+        "./.open-next/*",
+        ".open-next/*",
+        "**/.open-next",
+        "./.open-next",
+        ".open-next",
+        ".open-next/**",
+        "**/.open-next/**",
+        // ignore all .vercel files
+        "**/.vercel/*",
+        "./.vercel/*",
+        ".vercel/*",
+        "**/.vercel",
+        "./.vercel",
+        ".vercel",
+        ".vercel/**",
+        "**/.vercel/**",
+        // ignore all .turbo files
+        "**/.turbo/*",
+        "./.turbo/*",
+        ".turbo/*",
+        "**/.turbo",
+        "./.turbo",
+        ".turbo",
+        ".turbo/**",
+        "**/.turbo/**",
+        // ignore all .sst files
+        "**/.sst/*",
+        "./.sst/*",
+        ".sst/*",
+        "**/.sst",
+        "./.sst",
+        ".sst",
+        ".sst/**",
+        "**/.sst/**",
+    ]);
+
+    await promiseZip;
+    const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(region, name, stage);
+    return uploadContentToS3(
+        presignedUrlForProjectCode,
+        path.join(tmpFolderProject, "projectCode.zip"),
+    );
 }
 
 async function waitForCDNDeployment(cdnUrl: string, domainName: string) {
