@@ -815,18 +815,11 @@ function getProjectFunctions(
     port: number,
     projectConfiguration: ProjectConfiguration,
 ): DeployCodeFunctionResponse[] {
-    const functions: DeployCodeFunctionResponse[] = [];
-
-    if (projectConfiguration.functions.length > 0) {
-        projectConfiguration.functions.forEach((f) => {
-            functions.push({
+    return projectConfiguration.functions.map((f) => ({
                 cloudUrl: `http://localhost:${port}/.functions/${f.name}`,
                 id: f.name,
                 name: f.name,
-            });
-        });
-    }
-    return functions;
+            }));
 }
 
 export type LocalEnvCronHandler = {
