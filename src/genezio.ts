@@ -1,12 +1,18 @@
 import { Command, CommanderError, Option } from "commander";
-import { code, debugLogger, logError, setDebuggingLoggerLogLevel } from "./utils/logging.js";
+import {
+    code,
+    debugLogger,
+    doAdaptiveLogAction,
+    logError,
+    setDebuggingLoggerLogLevel,
+} from "./utils/logging.js";
 import { exit } from "process";
 import { PORT_LOCAL_ENVIRONMENT, ENABLE_DEBUG_LOGS_BY_DEFAULT } from "./constants.js";
 import { log } from "./utils/logging.js";
 import { accountCommand } from "./commands/account.js";
 import { addClassCommand } from "./commands/addClass.js";
 import { deleteCommand } from "./commands/delete.js";
-import { deployCommand } from "./commands/deploy.js";
+import { deployCommand } from "./commands/deploy/command.js";
 import { generateSdkCommand } from "./commands/generateSdk.js";
 import { startLocalEnvironment } from "./commands/local.js";
 import { loginCommand } from "./commands/login.js";
@@ -14,9 +20,12 @@ import { logoutCommand } from "./commands/logout.js";
 import { lsCommand } from "./commands/list.js";
 import {
     GenezioBundleOptions,
+    GenezioCloneOptions,
     GenezioCreateBackendOptions,
+    GenezioCreateExpressJsOptions,
     GenezioCreateFullstackOptions,
     GenezioCreateInteractiveOptions,
+    GenezioCreateNextJsOptions,
     GenezioDeleteOptions,
     GenezioDeployOptions,
     GenezioListOptions,
@@ -38,6 +47,8 @@ import { askCreateOptions } from "./commands/create/interactive.js";
 import { regions } from "./utils/configs.js";
 import { backendTemplates, frontendTemplates } from "./commands/create/templates.js";
 import configReader from "./yamlProjectConfiguration/v2.js";
+import { askCloneOptions, cloneCommand } from "./commands/clone.js";
+import { pullCommand } from "./commands/pull.js";
 
 const program = new Command();
 
@@ -92,6 +103,8 @@ program.hook("postAction", async () => {
         debugLogger.error("Could not log outdated version", error);
         exit(0);
     });
+
+    process.stdin.unref();
 });
 
 // program setup - used to display help and version
@@ -240,10 +253,13 @@ create
         "Create a project with a backend and a frontend in separate repositories.",
         false,
     )
-    .option("--path <path>", "Path where to create the project.", undefined)
     .summary("Create a new project from a backend and a frontend template.")
-    .action(async (options: GenezioCreateFullstackOptions) => {
-        const createOptions = await askCreateOptions({ ...options, type: "fullstack" });
+    .action(async (options: GenezioCreateFullstackOptions, { parent }: { parent: Command }) => {
+        const createOptions = await askCreateOptions({
+            ...parent.opts(),
+            ...options,
+            type: "fullstack",
+        });
 
         const telemetryEvent = GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_CREATE,
@@ -275,10 +291,114 @@ create
             Object.keys(backendTemplates),
         ),
     )
-    .option("--path <path>", "Path where to create the project.", undefined)
     .summary("Create a new project from a backend template.")
-    .action(async (options: GenezioCreateBackendOptions) => {
-        const createOptions = await askCreateOptions({ ...options, type: "backend" });
+    .action(async (options: GenezioCreateBackendOptions, { parent }: { parent: Command }) => {
+        const createOptions = await askCreateOptions({
+            ...parent.opts(),
+            ...options,
+            type: "backend",
+        });
+
+        const telemetryEvent = GenezioTelemetry.sendEvent({
+            eventType: TelemetryEventTypes.GENEZIO_CREATE,
+            commandOptions: JSON.stringify(createOptions),
+        });
+
+        await createCommand(createOptions).catch(async (error) => {
+            logError(error);
+            await telemetryEvent;
+            await GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
+                errorTrace: error.message,
+            });
+            exit(1);
+        });
+        await telemetryEvent;
+    });
+
+create
+    .command("nextjs")
+    .option("--name <name>", "Name of the project.")
+    .addOption(
+        new Option("--region <region>", "Region of the project.").choices(
+            regions.map((region) => region.value),
+        ),
+    )
+    .summary("Create a new Next.js project.")
+    .action(async (options: GenezioCreateNextJsOptions, { parent }: { parent: Command }) => {
+        const createOptions = await askCreateOptions({
+            ...parent.opts(),
+            ...options,
+            type: "nextjs",
+        });
+
+        const telemetryEvent = GenezioTelemetry.sendEvent({
+            eventType: TelemetryEventTypes.GENEZIO_CREATE,
+            commandOptions: JSON.stringify(createOptions),
+        });
+
+        await createCommand(createOptions).catch(async (error) => {
+            logError(error);
+            await telemetryEvent;
+            await GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
+                errorTrace: error.message,
+            });
+            exit(1);
+        });
+        await telemetryEvent;
+    });
+
+create
+    .command("expressjs")
+    .option("--name <name>", "Name of the project.")
+    .addOption(
+        new Option("--region <region>", "Region of the project.").choices(
+            regions.map((region) => region.value),
+        ),
+    )
+    .option("--path <path>", "Path where to create the project.", undefined)
+    .summary("Create a new Express.js project.")
+    .action(async (options: GenezioCreateExpressJsOptions, { parent }: { parent: Command }) => {
+        const createOptions = await askCreateOptions({
+            ...parent.opts(),
+            ...options,
+            type: "expressjs",
+        });
+
+        const telemetryEvent = GenezioTelemetry.sendEvent({
+            eventType: TelemetryEventTypes.GENEZIO_CREATE,
+            commandOptions: JSON.stringify(createOptions),
+        });
+
+        await createCommand(createOptions).catch(async (error) => {
+            logError(error);
+            await telemetryEvent;
+            await GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
+                errorTrace: error.message,
+            });
+            exit(1);
+        });
+        await telemetryEvent;
+    });
+
+create
+    .command("serverless")
+    .option("--name <name>", "Name of the project.")
+    .addOption(
+        new Option("--region <region>", "Region of the project.").choices(
+            regions.map((region) => region.value),
+        ),
+    )
+    .option("--path <path>", "Path where to create the project.", undefined)
+    .summary("Create a new Serverless Function project.")
+    .action(async (options: GenezioCreateExpressJsOptions, { parent }: { parent: Command }) => {
+        const createOptions = await askCreateOptions({
+            ...parent.opts(),
+            ...options,
+            type: "serverless",
+        });
 
         const telemetryEvent = GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_CREATE,
@@ -484,6 +604,46 @@ program
             logError(error);
             exit(1);
         });
+    });
+
+program
+    .command("clone")
+    .argument("[path]", "Path where to clone the project.")
+    .option("--name <name>", "Name of the project you want to clone.")
+    .option("--region <region>", "Region of the project.")
+    .option("--stage <stage>", "Stage of the project.")
+    .summary("Clone a project to your local machine.")
+    .action(async (path: string, options: GenezioCloneOptions) => {
+        options = await askCloneOptions(options);
+        if (!path) {
+            path = `./${options.name}`;
+        }
+
+        await doAdaptiveLogAction(`Cloning project ${options.name}...`, async () =>
+            cloneCommand(options.name, options.region, options.stage, path),
+        ).catch((error) => {
+            logError(error);
+            exit(1);
+        });
+
+        log.info(colors.green(`Project ${options.name} cloned to ${path} successfully!`));
+        exit(0);
+    });
+program
+    .command("pull")
+    .option("--stage <stage>", "The stage of the project to pull from.")
+    .summary("Pull the latest changes from the genezio platform of the project.")
+    .action(async (options: { stage: string }) => {
+        if (!options.stage) {
+            options.stage = "prod";
+        }
+        await pullCommand(options.stage).catch((error) => {
+            logError(error);
+            exit(1);
+        });
+        log.info(colors.green(`Project pulled successfully!`));
+
+        exit(0);
     });
 
 export default program;

@@ -60,6 +60,12 @@ export interface GenezioSdkOptions extends BaseOptions {
     tarball: boolean;
 }
 
+export interface GenezioCloneOptions extends BaseOptions {
+    name: string;
+    region: string;
+    stage: string;
+}
+
 export interface GenezioUnlinkOptions extends BaseOptions {
     all: boolean;
 }
@@ -84,10 +90,37 @@ export interface GenezioCreateBackendOptions extends BaseOptions {
     path?: string;
 }
 
+export interface GenezioCreateExpressJsOptions extends BaseOptions {
+    name?: string;
+    region?: string;
+    path?: string;
+}
+
+export interface GenezioCreateNextJsOptions extends BaseOptions {
+    name?: string;
+    region?: string;
+    path?: string;
+}
+
+export interface GenezioCreateServerlessFunctionOptions extends BaseOptions {
+    name?: string;
+    region?: string;
+    path?: string;
+}
+
 export type GenezioCreateOptions =
     | ({ type: "fullstack"; path?: string } & Required<
           Omit<GenezioCreateFullstackOptions, "path" | "logLevel">
       >)
     | ({ type: "backend"; path?: string } & Required<
           Omit<GenezioCreateBackendOptions, "path" | "logLevel">
+      >)
+    | ({ type: "expressjs"; path?: string } & Required<
+          Omit<GenezioCreateExpressJsOptions, "path" | "logLevel">
+      >)
+    | ({ type: "nextjs"; path?: string } & Required<
+          Omit<GenezioCreateNextJsOptions, "path" | "logLevel">
+      >)
+    | ({ type: "serverless"; path?: string } & Required<
+          Omit<GenezioCreateServerlessFunctionOptions, "path" | "logLevel">
       >);

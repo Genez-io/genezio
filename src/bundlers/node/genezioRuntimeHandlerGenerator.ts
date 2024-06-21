@@ -34,7 +34,7 @@ if (!genezioClass) {
                 },
                 id: 0,
             }),
-            headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
+            headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio','Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' }
         };
     };
 } else {
@@ -48,7 +48,7 @@ if (!genezioClass) {
         if (event.http && event.http.method === "OPTIONS") {
             const response = {
                 statusCode: 200,
-                headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
+                headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' },
             };
             return response;
         }
@@ -68,7 +68,7 @@ if (!genezioClass) {
                         },
                         id: 0,
                     }),
-                    headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
+                    headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio','Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' }
                 };
             };
         }
@@ -87,7 +87,7 @@ if (!genezioClass) {
             if (!components[1]) {
                 return {
                     statusCode: 404,
-                    headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' },
+                    headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio', 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*'},
                     body: JSON.stringify({ error: "Method not found" }),
                 };
             }
@@ -97,6 +97,9 @@ if (!genezioClass) {
             const http2CompliantHeaders = {};
             for (const header in event.headers) {
                 http2CompliantHeaders[header.toLowerCase()] = event.headers[header];
+                http2CompliantHeaders['Access-Control-Allow-Origin'.toLowerCase()] = '*';
+                http2CompliantHeaders['Access-Control-Allow-Headers'.toLowerCase()] = '*';
+                http2CompliantHeaders['Access-Control-Allow-Methods'.toLowerCase()] = '*';
             }
 
             const req = {
@@ -111,7 +114,7 @@ if (!genezioClass) {
             if (!object[method]) {
                 return {
                     statusCode: 404,
-                    headers: { "Content-Type": "text/json", 'X-Powered-By': 'genezio' },
+                    headers: { "Content-Type": "text/json", 'X-Powered-By': 'genezio','Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' },
                     body: JSON.stringify({ error: "Method not found" }),
                 };
             }
@@ -142,7 +145,7 @@ if (!genezioClass) {
                 return {
                     statusCode: 500,
                     body: JSON.stringify({ error: error.message }),
-                    headers: { "Content-Type": "application/json", 'X-Powered-By': 'genezio' },
+                    headers: { "Content-Type": "application/json", 'X-Powered-By': 'genezio','Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' },
                 };
             }
         } else {
@@ -154,7 +157,7 @@ if (!genezioClass) {
                         error: { code: -1, message: "Invalid JSON-RPC request" },
                         id: 0,
                     }),
-                    headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
+                    headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio','Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' }
                 };
             }
 
@@ -176,7 +179,7 @@ if (!genezioClass) {
                         error: { code: -1, message: "Invalid Genezio JSON-RPC request" },
                         id: 0,
                     }),
-                    headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
+                    headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio','Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' }
                 };
             }
 
@@ -188,7 +191,7 @@ if (!genezioClass) {
                         error: { code: -1, message: "Method not found!" },
                         id: 0,
                     }),
-                    headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
+                    headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio','Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' }
                 };
             }
 
@@ -205,7 +208,7 @@ if (!genezioClass) {
                             error: prepareForSerialization(err),
                             id: requestId,
                         }),
-                        headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
+                        headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio','Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' }
                     });
                 });
             });
@@ -228,7 +231,7 @@ if (!genezioClass) {
                                 error: null,
                                 id: requestId,
                             }),
-                            headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
+                            headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio','Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' }
                         };
                     })
                     .catch(async (err) => {
@@ -241,7 +244,7 @@ if (!genezioClass) {
                                 error: prepareForSerialization(err),
                                 id: requestId,
                             }),
-                            headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
+                            headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio','Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' }
                         };
                     });
 
@@ -257,7 +260,7 @@ if (!genezioClass) {
                         error: prepareForSerialization(err),
                         id: requestId,
                     }),
-                    headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio' }
+                    headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio','Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' }
                 };
             }
         }

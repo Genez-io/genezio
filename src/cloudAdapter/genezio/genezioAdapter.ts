@@ -21,7 +21,6 @@ import {
 import { YamlFrontend } from "../../yamlProjectConfiguration/v2.js";
 import { createFrontendProject } from "../../requests/createFrontendProject.js";
 import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL.js";
-import { FRONTEND_DOMAIN } from "../../constants.js";
 import { getFileSize } from "../../utils/file.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import { calculateBiggestFiles } from "../../utils/calculateBiggestProjectFiles.js";
@@ -202,7 +201,10 @@ export class GenezioCloudAdapter implements CloudAdapter {
         debugLogger.debug("Creating temporary folder", archivePath);
 
         const frontendPath = path.join(frontend.path, frontend.publish || ".");
-        await zipDirectoryToDestinationPath(frontendPath, finalSubdomain, archivePath);
+        await zipDirectoryToDestinationPath(frontendPath, finalSubdomain, archivePath, [
+            ".git",
+            ".github",
+        ]);
 
         debugLogger.debug("Getting presigned URL...");
         const result = await getFrontendPresignedURL(finalSubdomain, projectName, stage);
@@ -218,16 +220,17 @@ export class GenezioCloudAdapter implements CloudAdapter {
         debugLogger.debug("Content of the folder zipped. Uploading to S3.");
         await uploadContentToS3(result.presignedURL, archivePath, undefined, result.userId);
         debugLogger.debug("Uploaded to S3.");
-        await createFrontendProject(finalSubdomain, projectName, projectRegion, stage);
+        const finalDomain = await createFrontendProject(
+            finalSubdomain,
+            projectName,
+            projectRegion,
+            stage,
+        );
 
         // clean up temporary folder
         await deleteFolder(path.dirname(archivePath));
 
-        if (stage != "" && stage != "prod") {
-            return `https://${finalSubdomain}.${FRONTEND_DOMAIN}`;
-        }
-
-        return `https://${finalSubdomain}.${FRONTEND_DOMAIN}`;
+        return finalDomain;
     }
 }
 

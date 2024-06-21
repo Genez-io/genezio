@@ -102,13 +102,25 @@ export async function getAllFilesFromCurrentPath(
     return getAllFilesFromPath(process.cwd(), recursive);
 }
 
-export async function zipDirectory(sourceDir: string, outPath: string): Promise<void> {
+export async function zipDirectory(
+    sourceDir: string,
+    outPath: string,
+    exclusion?: string[],
+): Promise<void> {
     const archive = archiver("zip", { zlib: { level: 9 } });
     const stream = fs.createWriteStream(outPath);
 
+    if (!exclusion) {
+        exclusion = [];
+    }
+
     return new Promise((resolve, reject) => {
         archive
-            .directory(sourceDir, false)
+            .glob("**/*", {
+                cwd: sourceDir,
+                dot: true,
+                skip: exclusion,
+            })
             .on("error", (err) => reject(err))
             .pipe(stream);
 
@@ -136,15 +148,23 @@ export async function zipDirectoryToDestinationPath(
     sourceDir: string,
     destinationPath: string,
     outPath: string,
+    exclusions: string[] = [],
 ): Promise<void> {
     const archive = archiver("zip", { zlib: { level: 9 } });
     const stream = fs.createWriteStream(outPath);
 
     return new Promise((resolve, reject) => {
-        archive
-            .directory(sourceDir, destinationPath)
-            .on("error", (err) => reject(err))
-            .pipe(stream);
+        archive.on("error", (err) => reject(err)).pipe(stream);
+
+        // Add files to the archive, excluding specified patterns
+        archive.glob(
+            "**/*",
+            {
+                cwd: sourceDir,
+                ignore: exclusions,
+            },
+            { prefix: destinationPath },
+        );
 
         stream.on("close", () => resolve());
         archive.finalize();

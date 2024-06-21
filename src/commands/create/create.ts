@@ -9,13 +9,19 @@ import { platform } from "os";
 import { GenezioCreateOptions } from "../../models/commandOptions.js";
 import { debugLogger, doAdaptiveLogAction } from "../../utils/logging.js";
 import { packageManagers } from "../../packageManagers/packageManager.js";
-import { backendTemplates, frontendTemplates } from "./templates.js";
+import {
+    backendTemplates,
+    expressJsTemplate,
+    frontendTemplates,
+    serverlessFunctionJsTemplate,
+} from "./templates.js";
 import { YamlConfigurationIOController } from "../../yamlProjectConfiguration/v2.js";
 import { YAMLContext, mergeContexts } from "yaml-transmute";
 import _ from "lodash";
 import { UserError } from "../../errors.js";
 import { Language } from "../../yamlProjectConfiguration/models.js";
 import { linkFrontendsToProject } from "../../utils/linkDatabase.js";
+import { $ } from "execa";
 
 type ProjectInfo = {
     name: string;
@@ -74,7 +80,7 @@ export async function createCommand(options: GenezioCreateOptions) {
             // Print success message
             switch (options.multirepo) {
                 case false:
-                    log.info(SUCCESSFULL_CREATE_MONOREPO(projectPath, options.name));
+                    log.info(SUCCESSFULL_CREATE_MONOREPO(projectPath));
                     break;
                 case true:
                     // Genezio link inside the client project
@@ -82,7 +88,7 @@ export async function createCommand(options: GenezioCreateOptions) {
                         // TODO: Use the actual template language instead of always TypeScript
                         { path: path.join(projectPath, "client"), language: Language.ts },
                     ]);
-                    log.info(SUCCESSFULL_CREATE_MULTIREPO(projectPath, options.name));
+                    log.info(SUCCESSFULL_CREATE_MULTIREPO(projectPath));
                     break;
             }
 
@@ -113,10 +119,108 @@ export async function createCommand(options: GenezioCreateOptions) {
             );
 
             // Print success message
-            log.info(SUCCESSFULL_CREATE_BACKEND(projectPath, options.name));
+            log.info(SUCCESSFULL_CREATE_BACKEND(projectPath));
             break;
         }
+        case "nextjs": {
+            log.info("Running npx create-next-app...");
+
+            await $({ stdio: "inherit" })`npx --yes create-next-app ${projectPath}`.catch(() => {
+                throw new UserError("Failed to create a Next.js project using create-next-app.");
+            });
+
+            const yamlIOController = new YamlConfigurationIOController(
+                path.join(projectPath, "genezio.yaml"),
+            );
+            await yamlIOController.write({
+                name: options.name,
+                region: options.region,
+                yamlVersion: 2,
+            });
+
+            log.info(SUCCESSFULL_CREATE_NEXTJS(projectPath));
+            break;
+        }
+        case "expressjs": {
+            await doAdaptiveLogAction("Cloning Express.js starter template", async () => {
+                // Create the new project in a virtual filesystem (memfs)
+                await cloneAndSetupGenezioRepository(expressJsTemplate, fs, options);
+
+                // Copy from memfs to local filesystem
+                copyRecursiveToNativeFs(fs, "/", projectPath, {
+                    keepDotGit: true,
+                    renameReadme: true,
+                });
+            });
+
+            // Install template packages
+            await doAdaptiveLogAction("Installing template dependencies", async () =>
+                installTemplatePackages("npm", projectPath),
+            );
+
+            // Print success message
+            log.info(SUCCESSFULL_CREATE_EXPRESSJS(projectPath));
+            break;
+        }
+        case "serverless": {
+            await doAdaptiveLogAction("Cloning Serverless Function starter template", async () => {
+                // Create the new project in a virtual filesystem (memfs)
+                await cloneAndSetupGenezioRepository(serverlessFunctionJsTemplate, fs, options);
+
+                // Copy from memfs to local filesystem
+                copyRecursiveToNativeFs(fs, "/", projectPath, {
+                    keepDotGit: true,
+                    renameReadme: true,
+                });
+            });
+
+            // Install template packages
+            await doAdaptiveLogAction("Installing template dependencies", async () =>
+                installTemplatePackages("npm", projectPath),
+            );
+
+            // Print success message
+            log.info(SUCCESSFULL_CREATE_SERVERLESS(projectPath));
+            break;
+        }
+        default: {
+            throw new UserError("This project type is not yet supported.");
+        }
     }
+}
+
+/**
+ * Clone a Genezio repository and replace placeholders in the genezio.yaml file.
+ *
+ * @param repositoryUrl - The URL of the repository to clone.
+ * @param fs - The file system module.
+ * @param options - The project information.
+ * @returns A promise that resolves when the project creation is complete.
+ */
+async function cloneAndSetupGenezioRepository(
+    repositoryUrl: string,
+    fs: IFs,
+    options: { name: string; region: string },
+) {
+    await git.clone({ fs, http, url: repositoryUrl, dir: "/" });
+    await fs.promises.rmdir("/.git", { recursive: true });
+
+    await replacePlaceholders(fs, "/", {
+        "(•◡•)project-name(•◡•)": options.name,
+        "(•◡•)region(•◡•)": options.region,
+    });
+
+    // Create git repository
+    await git.init({ fs, dir: "/", defaultBranch: "main" });
+    // Add all files
+    await git.add({ fs, dir: "/", filepath: "." });
+    // Commit
+    await git.commit({
+        fs,
+        dir: "/",
+        author: { name: "Genezio", email: "contact@genez.io" },
+        message: "Initial commit",
+    });
 }
 
 /**
@@ -132,6 +236,8 @@ export function checkProjectName(projectName: string) {
             "Project name must start with a letter and contain only letters, numbers and dashes",
         );
     }
+
+    return true;
 }
 
 export function checkPathIsEmpty(projectPath: string) {
@@ -419,28 +525,24 @@ async function installTemplatePackages(packageManager: string | undefined, path:
     }
 }
 
-const SUCCESSFULL_CREATE_MONOREPO = (
-    projectPath: string,
-    projectName: string,
-) => `Project initialized in ${projectPath}.
+const SUCCESSFULL_CREATE_MONOREPO = (projectPath: string) => `Project initialized in ${projectPath}.
 
     For ${colors.yellow("deployment")} of both frontend and backend, run:
-        cd ${projectName}
+        cd ${path.relative(process.cwd(), projectPath)}
         genezio deploy
 
 
     For ${colors.green("testing")} locally, run:
-        cd ${projectName}
+        cd ${path.relative(process.cwd(), projectPath)}
         genezio local
 `;
 
 const SUCCESSFULL_CREATE_MULTIREPO = (
     projectPath: string,
-    projectName: string,
 ) => `Project initialized in ${projectPath}. Now run:
 
     For ${colors.yellow("deployment")} of both frontend and backend, run:
-        cd ${projectName}
+        cd ${path.relative(process.cwd(), projectPath)}
         ${
             platform() !== "win32"
                 ? "(cd server && genezio deploy)"
@@ -455,26 +557,25 @@ const SUCCESSFULL_CREATE_MULTIREPO = (
 
     For ${colors.green("testing")} locally, run:
       Terminal 1 (start the backend): 
-        cd ${projectName}/server
+        cd ${path.join(path.relative(process.cwd(), projectPath), "server")}
         genezio local
 
       Terminal 2 (start the frontend): 
-        cd ${projectName}/client
+        cd ${path.join(path.relative(process.cwd(), projectPath), "client")}
         genezio local
 `;
 
 const SUCCESSFULL_CREATE_BACKEND = (
     projectPath: string,
-    projectName: string,
 ) => `Project initialized in ${projectPath}. Now run:
 
     For ${colors.yellow("deployment")} of the backend, run:
-        cd ${projectName}
+        cd ${path.relative(process.cwd(), projectPath)}
         genezio deploy
 
 
     For ${colors.green("testing")} locally, run:
-        cd ${projectName}
+        cd ${path.relative(process.cwd(), projectPath)}
         genezio local
 `;
 
@@ -484,4 +585,43 @@ const SUCCESSFULL_CREATE_NO_FRONTEND = (
 
     You chose not to create a frontend from one of our templates.
     If you want to add a frontend later, place the code in the 'client' folder.
+`;
+
+const SUCCESSFULL_CREATE_NEXTJS = (
+    projectPath: string,
+) => `Project initialized in ${projectPath}. Now run:
+
+    For ${colors.yellow("deployment")} of your Next.js application, run:
+        cd ${path.relative(process.cwd(), projectPath)}
+        genezio deploy
+
+    For ${colors.green("testing")} locally, run:
+        cd ${path.relative(process.cwd(), projectPath)}
+        npm run dev
+`;
+
+const SUCCESSFULL_CREATE_EXPRESSJS = (
+    projectPath: string,
+) => `Project initialized in ${projectPath}. Now run:
+
+    For ${colors.yellow("deployment")} of your Express.js application, run:
+        cd ${path.relative(process.cwd(), projectPath)}
+        genezio deploy
+
+    For ${colors.green("testing")} locally, run:
+        cd ${path.relative(process.cwd(), projectPath)}
+        genezio local
+`;
+
+const SUCCESSFULL_CREATE_SERVERLESS = (
+    projectPath: string,
+) => `Project initialized in ${projectPath}. Now run:
+
+    For ${colors.yellow("deployment")} of your serverless function application, run:
+        cd ${path.relative(process.cwd(), projectPath)}
+        genezio deploy
+
+    For ${colors.green("testing")} locally, run:
+        cd ${path.relative(process.cwd(), projectPath)}
+        genezio local
 `;

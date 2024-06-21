@@ -63,25 +63,63 @@ export async function askCreateOptions(
     }
 
     if (createOptions.type === undefined) {
-        const { projectType }: { projectType: "backend" | "fullstack" } = await inquirer.prompt([
-            {
-                type: "list",
-                name: "projectType",
-                message: colors.magenta("What type of project would you like to create?"),
-                choices: [
-                    {
-                        name: "Backend + Frontend (Fullstack)",
-                        value: "fullstack",
-                    },
-                    {
-                        name: "Backend",
-                        value: "backend",
-                    },
-                ],
-            },
-        ]);
+        let type: "nextjs" | "expressjs" | "backend" | "fullstack" | "serverless";
 
-        createOptions.type = projectType;
+        const { projectType }: { projectType: "nextjs" | "expressjs" | "genezio" | "serverless" } =
+            await inquirer.prompt([
+                {
+                    type: "list",
+                    name: "projectType",
+                    message: colors.magenta("What type of project would you like to create?"),
+                    choices: [
+                        {
+                            name: "Next.js",
+                            value: "nextjs",
+                        },
+                        {
+                            name: "Express.js",
+                            value: "expressjs",
+                        },
+                        {
+                            name: "Genezio Typesafe Project",
+                            value: "genezio",
+                        },
+                        {
+                            name: "Serverless Function",
+                            value: "serverless",
+                        },
+                    ],
+                },
+            ]);
+
+        if (projectType === "genezio") {
+            const { genezioProjectType }: { genezioProjectType: "backend" | "fullstack" } =
+                await inquirer.prompt([
+                    {
+                        type: "list",
+                        name: "genezioProjectType",
+                        message: colors.magenta(
+                            "What type of Genezio project would you like to create?",
+                        ),
+                        choices: [
+                            {
+                                name: "Backend + Frontend (Fullstack)",
+                                value: "fullstack",
+                            },
+                            {
+                                name: "Backend",
+                                value: "backend",
+                            },
+                        ],
+                    },
+                ]);
+
+            type = genezioProjectType;
+        } else {
+            type = projectType;
+        }
+
+        createOptions.type = type;
     }
 
     switch (createOptions.type) {
@@ -95,6 +133,10 @@ export async function askCreateOptions(
             createOptions.backend ??= await chooseTemplate("Backend");
             break;
         }
+        case "expressjs":
+        case "nextjs":
+        case "serverless":
+            break;
     }
 
     return createOptions as Required<GenezioCreateOptions>;
@@ -137,7 +179,7 @@ async function chooseTemplate(category: "Backend" | "Frontend"): Promise<string>
  *
  * @returns A Promise that resolves to the closest region value or undefined if no region is available.
  */
-async function getClosestRegion(): Promise<string | undefined> {
+export async function getClosestRegion(): Promise<string | undefined> {
     const pings = regions.map(async (region) => {
         const url = `https://${region.value}.cloud.genez.io/healthcheck`;
 

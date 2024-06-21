@@ -1,40 +1,37 @@
 import axios from "./axios.js";
 import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
-import { GENEZIO_NOT_AUTH_ERROR_MSG, UserError } from "../errors.js";
-import { AxiosResponse } from "axios";
 import version from "../utils/version.js";
+import { AxiosResponse } from "axios";
 import { StatusOk } from "./models.js";
+import { UserError } from "../errors.js";
 
-export async function getFrontendPresignedURL(
-    subdomain: string | undefined,
+export async function getPresignedURLForProjectCodePull(
+    region = "us-east-1",
     projectName: string,
     stage: string,
-    type?: "nextjs",
 ) {
-    const region = "us-east-1";
-    if (!projectName) {
+    if (!region || !projectName) {
         throw new UserError("Missing required parameters");
     }
 
     // Check if user is authenticated
     const authToken = await getAuthToken();
     if (!authToken) {
-        throw new UserError(GENEZIO_NOT_AUTH_ERROR_MSG);
+        throw new UserError(
+            "You are not logged in. Run 'genezio login' before you deploy your function.",
+        );
     }
 
     const json = JSON.stringify({
-        subdomainName: subdomain,
         projectName: projectName,
         region: region,
         stage: stage,
     });
 
-    const response: AxiosResponse<
-        StatusOk<{ userId: string; presignedURL: string; domain: string }>
-    > = await axios({
-        method: "GET",
-        url: `${BACKEND_ENDPOINT}/core/frontend-deployment-url${type ? `?type=${type}` : ""}`,
+    const response: AxiosResponse<StatusOk<{ presignedURL: string | undefined }>> = await axios({
+        method: "POST",
+        url: `${BACKEND_ENDPOINT}/core/get-project-code-url`,
         data: json,
         headers: {
             Authorization: `Bearer ${authToken}`,
@@ -44,5 +41,5 @@ export async function getFrontendPresignedURL(
         maxBodyLength: Infinity,
     });
 
-    return response.data;
+    return response.data.presignedURL;
 }

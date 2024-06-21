@@ -78,6 +78,7 @@ import httpProxy from "http-proxy";
 import * as readline from "readline";
 import { getLinkedFrontendsForProject } from "../utils/linkDatabase.js";
 import fsExtra from "fs-extra/esm";
+import { DeployCodeFunctionResponse } from "../models/deployCodeResponse.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -385,9 +386,9 @@ async function startBackendWatcher(
         // Start HTTP Server
         const server = await startServerHttp(
             options.port,
-            projectConfiguration.astSummary,
             yamlProjectConfiguration.name,
             processForUnits,
+            projectConfiguration,
         );
 
         // Start cron jobs
@@ -591,10 +592,11 @@ function getBundler(classConfiguration: ClassConfiguration): BundlerInterface | 
 
 async function startServerHttp(
     port: number,
-    astSummary: AstSummary,
     projectName: string,
     processForUnits: Map<string, UnitProcess>,
+    projectConfiguration: ProjectConfiguration,
 ): Promise<http.Server> {
+    const astSummary: AstSummary = projectConfiguration.astSummary;
     const app = express();
     const require = createRequire(import.meta.url);
     app.use(cors());
@@ -613,6 +615,16 @@ async function startServerHttp(
     app.get("/get-ast-summary", (_req, res) => {
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify({ ...astSummary, name: projectName }));
+    });
+
+    app.get("/get-functions", (_req, res) => {
+        res.setHeader("Content-Type", "application/json");
+        res.end(
+            JSON.stringify({
+                functions: getProjectFunctions(port, projectConfiguration),
+                name: projectName,
+            }),
+        );
     });
 
     app.all(`/:className`, async (req, res) => {
@@ -665,6 +677,9 @@ async function startServerHttp(
 
     async function handlerFunctionCall(req: Request<{ functionName: string }>, res: Response) {
         const reqToFunction = getEventObjectFromRequest(req);
+        // remove /.functions/:functionName from the url in order to get expected path for the function
+        reqToFunction.rawPath = "/" + reqToFunction.rawPath?.split("/").slice(3).join("/");
+        reqToFunction.requestContext.http.path = reqToFunction.rawPath;
 
         const localProcess = processForUnits.get(req.params.functionName);
 
@@ -797,6 +812,17 @@ async function startServerHttp(
     });
 }
 
+function getProjectFunctions(
+    port: number,
+    projectConfiguration: ProjectConfiguration,
+): DeployCodeFunctionResponse[] {
+    return projectConfiguration.functions.map((f) => ({
+                cloudUrl: `http://localhost:${port}/.functions/${f.name}`,
+                id: f.name,
+                name: f.name,
+            }));
+}
+
 export type LocalEnvCronHandler = {
     className: string;
     methodName: string;
@@ -921,8 +947,10 @@ function sendResponse(res: Response, httpResponse: LambdaResponse) {
     } else {
         if (Buffer.isBuffer(httpResponse.body)) {
             res.end(JSON.stringify(httpResponse.body.toJSON()));
+        } else if (typeof httpResponse.body === "object") {
+            res.end(JSON.stringify(httpResponse.body));
         } else {
-            res.end(httpResponse.body ? httpResponse.body : "");
+            res.end(httpResponse.body ? httpResponse.body.toString() : "");
         }
     }
 }
@@ -1102,6 +1130,7 @@ function reportSuccess(projectConfiguration: ProjectConfiguration, port: number)
         reportSuccessFunctions(
             projectConfiguration.functions.map((f) => ({
                 name: f.name,
+                id: f.name,
                 cloudUrl: `http://localhost:${port}/.functions/${f.name}`,
             })),
         );
