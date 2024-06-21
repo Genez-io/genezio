@@ -51,7 +51,7 @@
         "@babel/preset-react": "^7.24.6",
         "@babel/preset-typescript": "^7.24.6",
         "@babel/traverse": "^7.24.1",
-        "@genezio/test-interface-component": "^1.2.2",
+        "@genezio/test-interface-component": "^1.2.3",
         "@sentry/node": "^7.116.0",
         "@sentry/profiling-node": "~7.117.0",
         "@webcontainer/env": "^1.1.1",
