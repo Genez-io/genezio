@@ -64,8 +64,8 @@ if (environment === "dev") {
     GA_API_SECRET = "f7rYPh9RQQm6OOtolT94Uw";
     GENEZIO_FRONTEND_DEPLOYMENT_BUCKET = "dev-frontend-deployment";
     // This is a key that only lets users call the GET method on the Next.js bucket which is anyway public
-    NEXT_JS_GET_ACCESS_KEY = "TODO";
-    NEXT_JS_GET_SECRET_ACCESS_KEY = "TODO";
+    NEXT_JS_GET_ACCESS_KEY = "AKIAV6MYH4SSK6OGUAVM";
+    NEXT_JS_GET_SECRET_ACCESS_KEY = "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";
 }
 
 export {
