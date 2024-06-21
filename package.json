@@ -135,6 +135,7 @@
         "@types/mustache": "^4.2.5",
         "@types/node": "^20.11.25",
         "@types/node-cron": "^3.0.11",
+        "@types/semver": "^7.5.8",
         "@types/uuid": "^9.0.8",
         "@types/whatwg-mimetype": "~3.0.0",
         "@types/which": "^3.0.3",

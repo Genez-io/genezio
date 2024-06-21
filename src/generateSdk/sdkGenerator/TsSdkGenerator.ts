@@ -300,7 +300,6 @@ class SdkGenerator implements SdkGeneratorInterface {
                         methodDefinition.docString?.replace(/\n+$/, "").split("\n") || [],
                 };
 
-                // @ts-expect-error A refactor need to be performed here to avoid this error
                 methodView.parameters = methodDefinition.params
                     .map((e) => {
                         // GnzContext is a special type used to pass auth token and other information to the remote call
@@ -331,7 +330,6 @@ class SdkGenerator implements SdkGeneratorInterface {
                     })
                     .filter((e) => e !== undefined);
 
-                // @ts-expect-error A refactor need to be performed here to avoid this error
                 methodView.sendParameters = methodDefinition.params
                     .map((e) => {
                         // GnzContext is a special type used to pass auth token and other information to the remote call
