@@ -62,6 +62,7 @@ export interface CloudAdapter {
         input: GenezioCloudInput[],
         projectConfiguration: ProjectConfiguration,
         cloudAdapterOptions: CloudAdapterOptions,
+        stack: string[],
     ): Promise<GenezioCloudOutput>;
     deployFrontend(
         projectName: string,

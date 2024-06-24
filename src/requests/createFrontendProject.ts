@@ -52,6 +52,7 @@ export interface CreateFrontendV2Request {
     domainName: string;
     paths: CreateFrontendV2Path[];
     defaultPath: Omit<CreateFrontendV2Path, "pattern">;
+    stack: string[];
 }
 
 export interface CreateFrontendV2Path {
@@ -76,6 +77,7 @@ export async function createFrontendProjectV2(
     stage: string,
     paths: CreateFrontendV2Path[],
     defaultPath: Omit<CreateFrontendV2Path, "pattern">,
+    stack: string[],
 ) {
     // Check if user is authenticated
     const authToken = await getAuthToken();
@@ -90,6 +92,7 @@ export async function createFrontendProjectV2(
         stage,
         paths,
         defaultPath,
+        stack,
     };
 
     debugLogger.debug(`Sending create frontend request: ${JSON.stringify(body)}`);
