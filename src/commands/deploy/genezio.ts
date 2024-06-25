@@ -455,9 +455,14 @@ export async function deployClasses(
 
     // TODO: Enable cloud adapter setting for every class
     const cloudAdapter = getCloudAdapter(cloudProvider);
-    const result = await cloudAdapter.deploy(cloudAdapterDeployInput, projectConfiguration, {
-        stage: options.stage,
-    });
+    const result = await cloudAdapter.deploy(
+        cloudAdapterDeployInput,
+        projectConfiguration,
+        {
+            stage: options.stage,
+        },
+        [],
+    );
 
     if (
         sdkResponse.generatorResponses.length > 0 &&

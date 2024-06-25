@@ -310,6 +310,7 @@ async function deployCDN(
         /* defaultPath= */ {
             origin: serverOrigin,
         },
+        ["nextjs"],
     );
 
     if (!distributionUrl.startsWith("https://") && !distributionUrl.startsWith("http://")) {
@@ -404,7 +405,9 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
         projectConfiguration.functions.map((f) => functionToCloudInput(f, ".")),
     );
 
-    const result = await cloudAdapter.deploy(cloudInputs, projectConfiguration, { stage });
+    const result = await cloudAdapter.deploy(cloudInputs, projectConfiguration, { stage }, [
+        "nextjs",
+    ]);
     debugLogger.debug(`Deployed functions: ${JSON.stringify(result.functions)}`);
 
     return result;
