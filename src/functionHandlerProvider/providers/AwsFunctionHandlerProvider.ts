@@ -1,10 +1,12 @@
+import { writeToFile } from "../../utils/file.js";
 import { FunctionConfiguration } from "../../models/projectConfiguration.js";
 import { FunctionHandlerProvider } from "../functionHandlerProvider.js";
 
 export class AwsFunctionHandlerProvider implements FunctionHandlerProvider {
     async getHandler(functionConfiguration: FunctionConfiguration): Promise<string> {
         return (
-            `import { ${functionConfiguration.handler} as genezioDeploy } from "./${functionConfiguration.entry}";
+            `import './setupLambdaGlobals.mjs';
+import { ${functionConfiguration.handler} as genezioDeploy } from "./${functionConfiguration.entry}";
 
 function formatTimestamp(timestamp) {
   const date = new Date(timestamp);
@@ -71,7 +73,8 @@ const handler = async function(event) {
     body: event.isBase64Encoded
       ? Buffer.from(event.body, "base64")
       : event.body.toString(),
-    isBase64Encoded: event.isBase64Encoded
+    isBase64Encoded: event.isBase64Encoded,
+    responseStream: event.responseStream,
   };
 
   const result = await genezioDeploy(req).catch(error => {
@@ -87,5 +90,17 @@ const handler = async function(event) {
 
 export { handler };`
         );
+    }
+
+    async writeAdditionalFiles(outPath: string): Promise<void> {
+        const content = `global.awslambda = {
+        streamifyResponse: function (handler) {
+                return async (event, context) => {
+                        await handler(event, event.responseStream, context);
+                }
+        },
+};`;
+
+        await writeToFile(outPath, "setupLambdaGlobals.mjs", content);
     }
 }

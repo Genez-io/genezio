@@ -626,7 +626,8 @@ export async function functionToCloudInput(
         );
         entryFile = `index-${Math.random().toString(36).substring(7)}.mjs`;
     }
-    await writeToFile(path.join(tmpFolderPath), entryFile, handlerContent);
+    await writeToFile(tmpFolderPath, entryFile, handlerContent);
+    await handlerProvider.writeAdditionalFiles(tmpFolderPath);
 
     debugLogger.debug(`Zip the directory ${tmpFolderPath}.`);
 
