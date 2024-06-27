@@ -39,9 +39,11 @@ function decideDeployType(): DeployType {
     }
 
     // Check if "next" package is present in the project dependencies
-    const packageJson = JSON.parse(fs.readFileSync(path.join(cwd, "package.json"), "utf-8"));
-    if (packageJson.dependencies?.next) {
-        return DeployType.NextJS;
+    if (fs.existsSync(path.join(cwd, "package.json"))) {
+        const packageJson = JSON.parse(fs.readFileSync(path.join(cwd, "package.json"), "utf-8"));
+        if (packageJson.dependencies?.next) {
+            return DeployType.NextJS;
+        }
     }
 
     return DeployType.Classic;
