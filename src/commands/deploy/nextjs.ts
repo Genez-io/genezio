@@ -34,8 +34,6 @@ import {
     NEXT_JS_GET_SECRET_ACCESS_KEY,
 } from "../../constants.js";
 import getProjectInfoByName from "../../requests/getProjectInfoByName.js";
-import ora from "ora";
-import { getFrontendStatus } from "../../requests/getFrontendStatus.js";
 import colors from "colors";
 import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
 
@@ -73,7 +71,7 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         deployCDN(deploymentResult.functions, domainName, genezioConfig, options.stage),
     ]);
 
-    await waitForCDNDeployment(cdnUrl, domainName);
+    log.info(`Your Next.js app is now live at: ${colors.cyan(cdnUrl)}`);
 }
 
 async function uploadUserCode(name: string, region: string, stage: string): Promise<void> {
@@ -150,44 +148,6 @@ async function uploadUserCode(name: string, region: string, stage: string): Prom
         presignedUrlForProjectCode,
         path.join(tmpFolderProject, "projectCode.zip"),
     );
-}
-
-async function waitForCDNDeployment(cdnUrl: string, domainName: string) {
-    const spinner = ora(
-        `The app is deployed at ${colors.cyan(cdnUrl)}.\nIt might take a few minutes to be available worldwide. This process will complete when the app is fully up. ${colors.cyan("(Press ANY key to exit and check later)")}`,
-    );
-    spinner.start();
-
-    let interval: NodeJS.Timeout | undefined;
-    await Promise.race([
-        // Check the status of the frontend deployment every 5 seconds until it is deployed
-        new Promise<void>((resolve) => {
-            interval = setInterval(async () => {
-                const status = await getFrontendStatus(domainName);
-
-                if (status === "Deployed") {
-                    clearInterval(interval);
-                    spinner.stop();
-
-                    log.info(`Your Next.js app is now live at: ${colors.cyan(cdnUrl)}`);
-                    resolve();
-                }
-            }, 5000);
-        }),
-        // Wait for a key press to skip the waiting
-        new Promise<void>((resolve) => {
-            process.stdin.on("data", () => {
-                spinner.stop();
-
-                log.info(
-                    `Looks like you are in a hurry! Your app will be live in a few minutes at: ${colors.cyan(cdnUrl)}`,
-                );
-                resolve();
-            });
-        }),
-    ]);
-
-    if (interval) clearInterval(interval);
 }
 
 function checkProjectLimitations() {
