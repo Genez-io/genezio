@@ -71,7 +71,9 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         deployCDN(deploymentResult.functions, domainName, genezioConfig, options.stage),
     ]);
 
-    log.info(`Your Next.js app is now live at: ${colors.cyan(cdnUrl)}`);
+    log.info(
+        `The app is being deployed at ${colors.cyan(cdnUrl)}. It might take a few moments to be available worldwide.`,
+    );
 }
 
 async function uploadUserCode(name: string, region: string, stage: string): Promise<void> {
