@@ -2,9 +2,21 @@ import { writeToFile } from "../../utils/file.js";
 import { FunctionConfiguration } from "../../models/projectConfiguration.js";
 import { FunctionHandlerProvider } from "../functionHandlerProvider.js";
 
+const content = `global.awslambda = {
+        streamifyResponse: function (handler) {
+                return async (event, context) => {
+                        await handler(event, event.responseStream, context);
+                }
+        },
+};`;
+
 export class AwsFunctionHandlerProvider implements FunctionHandlerProvider {
-    async getHandler(functionConfiguration: FunctionConfiguration): Promise<string> {
-        return (
+    async write(
+        outputPath: string,
+        handlerFileName: string,
+        functionConfiguration: FunctionConfiguration,
+    ): Promise<void> {
+        const handlerContent =
             `import './setupLambdaGlobals.mjs';
 import { ${functionConfiguration.handler} as genezioDeploy } from "./${functionConfiguration.entry}";
 
@@ -88,19 +100,9 @@ const handler = async function(event) {
   return result;
 };
 
-export { handler };`
-        );
-    }
+export { handler };`;
 
-    async writeAdditionalFiles(outPath: string): Promise<void> {
-        const content = `global.awslambda = {
-        streamifyResponse: function (handler) {
-                return async (event, context) => {
-                        await handler(event, event.responseStream, context);
-                }
-        },
-};`;
-
-        await writeToFile(outPath, "setupLambdaGlobals.mjs", content);
+        await writeToFile(outputPath, handlerFileName, handlerContent);
+        await writeToFile(outputPath, "setupLambdaGlobals.mjs", content);
     }
 }

@@ -26,7 +26,6 @@ import {
     getBundleFolderSizeLimit,
     readEnvironmentVariablesFile,
     zipFile,
-    writeToFile,
 } from "../../utils/file.js";
 import { printAdaptiveLog, debugLogger, doAdaptiveLogAction } from "../../utils/logging.js";
 import { GenezioCommand, reportSuccess, reportSuccessFunctions } from "../../utils/reporter.js";
@@ -606,8 +605,6 @@ export async function functionToCloudInput(
     }
     const handlerProvider = getFunctionHandlerProvider(functionElement.type);
 
-    const handlerContent = await handlerProvider.getHandler(functionElement);
-
     // create temporary folder
     const tmpFolderPath = await createTemporaryFolder();
     const archivePath = path.join(await createTemporaryFolder(), `genezioDeploy.zip`);
@@ -619,15 +616,15 @@ export async function functionToCloudInput(
 
     // add the handler to the temporary folder
     // check if there already is an index.mjs file in user's code
-    let entryFile = "index.mjs";
-    while (fs.existsSync(path.join(tmpFolderPath, entryFile))) {
+    let entryFileName = "index.mjs";
+    while (fs.existsSync(path.join(tmpFolderPath, entryFileName))) {
         debugLogger.debug(
-            `[FUNCTION ${functionElement.name}] File ${entryFile} already exists in the temporary folder.`,
+            `[FUNCTION ${functionElement.name}] File ${entryFileName} already exists in the temporary folder.`,
         );
-        entryFile = `index-${Math.random().toString(36).substring(7)}.mjs`;
+        entryFileName = `index-${Math.random().toString(36).substring(7)}.mjs`;
     }
-    await writeToFile(tmpFolderPath, entryFile, handlerContent);
-    await handlerProvider.writeAdditionalFiles(tmpFolderPath);
+
+    await handlerProvider.write(tmpFolderPath, entryFileName, functionElement);
 
     debugLogger.debug(`Zip the directory ${tmpFolderPath}.`);
 
@@ -643,7 +640,7 @@ export async function functionToCloudInput(
         name: functionElement.name,
         archivePath: archivePath,
         unzippedBundleSize: unzippedBundleSize,
-        entryFile,
+        entryFile: entryFileName,
     };
 }
 
