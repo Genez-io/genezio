@@ -1,23 +1,24 @@
+import crypto from "crypto";
 import { writeToFile } from "../../utils/file.js";
 import { FunctionConfiguration } from "../../models/projectConfiguration.js";
 import { FunctionHandlerProvider } from "../functionHandlerProvider.js";
 
-const content = `global.awslambda = {
+const streamifyOverrideFileContent = `global.awslambda = {
         streamifyResponse: function (handler) {
                 return async (event, context) => {
                         await handler(event, event.responseStream, context);
                 }
         },
 };`;
-
 export class AwsFunctionHandlerProvider implements FunctionHandlerProvider {
     async write(
         outputPath: string,
         handlerFileName: string,
         functionConfiguration: FunctionConfiguration,
     ): Promise<void> {
+        const randomFileId = crypto.randomBytes(8).toString("hex");
         const handlerContent =
-            `import './setupLambdaGlobals.mjs';
+            `import './setupLambdaGlobals_${randomFileId}.mjs';
 import { ${functionConfiguration.handler} as genezioDeploy } from "./${functionConfiguration.entry}";
 
 function formatTimestamp(timestamp) {
@@ -103,6 +104,10 @@ const handler = async function(event) {
 export { handler };`;
 
         await writeToFile(outputPath, handlerFileName, handlerContent);
-        await writeToFile(outputPath, "setupLambdaGlobals.mjs", content);
+        await writeToFile(
+            outputPath,
+            `setupLambdaGlobals_${randomFileId}.mjs`,
+            streamifyOverrideFileContent,
+        );
     }
 }
