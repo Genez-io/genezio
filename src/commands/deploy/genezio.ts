@@ -305,6 +305,12 @@ export async function deployClasses(
         throw new UserError(GENEZIO_NO_CLASSES_FOUND(backend.language.name));
     }
 
+    const stack = [];
+    if (backend.classes.length > 0) {
+        // append typesafe to the stack if there are classes
+        stack.push("typesafe");
+    }
+
     const sdkLanguages: Language[] = [];
     // Add configuration frontends that contain the SDK field
     sdkLanguages.push(
@@ -460,7 +466,7 @@ export async function deployClasses(
         {
             stage: options.stage,
         },
-        [],
+        stack,
     );
 
     if (
