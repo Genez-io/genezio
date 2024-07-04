@@ -31,6 +31,19 @@ export const log = new Logger({
         errorName: ["bold", "bgRedBright", "whiteBright"],
         errorMessage: ["bold", "red"],
     },
+    overwrite: {
+        transportFormatted: (_logMetaMarkup: string, logArgs: unknown[], logErrors: string[]) => {
+            if (logArgs.length > 0) {
+                // eslint-disable-next-line no-console -- We need to log the args to stdout using console.log
+                console.log(logArgs.join(" "));
+            }
+
+            if (logErrors.length > 0) {
+                // eslint-disable-next-line no-console -- We need to log the errors to stderr using console.error
+                console.error(logErrors.join("\n"));
+            }
+        },
+    },
 });
 
 export function logError(error: Error) {
