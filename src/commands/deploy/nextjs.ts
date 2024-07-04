@@ -36,6 +36,12 @@ import {
 import getProjectInfoByName from "../../requests/getProjectInfoByName.js";
 import colors from "colors";
 import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
+import {
+    uniqueNamesGenerator,
+    adjectives,
+    colors as ungColors,
+    animals,
+} from "unique-names-generator";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     // Check if node_modules exists
@@ -400,21 +406,23 @@ async function writeOpenNextConfig() {
 async function readOrAskConfig(configPath: string): Promise<YamlProjectConfiguration> {
     const configIOController = new YamlConfigurationIOController(configPath);
     if (!existsSync(configPath)) {
-        if (process.env["CI"]) {
-            throw new UserError(
-                "Please provide a genezio.yaml configuration file in the current folder that contains name, region and yamlVersion. https://genezio.com/docs/project-structure/genezio-configuration-file/",
+        const name = await readOrAskProjectName();
+
+        let region = regions[0].value;
+        if (process.env["CI"] !== "true") {
+            ({ region } = await inquirer.prompt([
+                {
+                    type: "list",
+                    name: "region",
+                    message: "Select the Genezio project region:",
+                    choices: regions,
+                },
+            ]));
+        } else {
+            log.info(
+                "Using the default region for the project because no `genezio.yaml` file was found.",
             );
         }
-
-        const name = await readOrAskProjectName();
-        const { region }: { region: string } = await inquirer.prompt([
-            {
-                type: "list",
-                name: "region",
-                message: "Select the Genezio project region:",
-                choices: regions,
-            },
-        ]);
 
         await configIOController.write({ name, region, yamlVersion: 2 });
     }
@@ -442,16 +450,26 @@ async function readOrAskProjectName(): Promise<string> {
             return packageJsonName;
     }
 
-    // Ask for project name
-    const { name }: { name: string } = await inquirer.prompt([
-        {
-            type: "input",
-            name: "name",
-            message: "Enter the Genezio project name:",
-            default: path.basename(process.cwd()),
-            validate: checkProjectName,
-        },
-    ]);
+    let name = uniqueNamesGenerator({
+        dictionaries: [ungColors, adjectives, animals],
+        separator: "-",
+        style: "lowerCase",
+        length: 3,
+    });
+    if (process.env["CI"] !== "true") {
+        // Ask for project name
+        ({ name } = await inquirer.prompt([
+            {
+                type: "input",
+                name: "name",
+                message: "Enter the Genezio project name:",
+                default: path.basename(process.cwd()),
+                validate: checkProjectName,
+            },
+        ]));
+    } else {
+        log.info("Using a random name for the project because no `genezio.yaml` file was found.");
+    }
 
     return name;
 }
