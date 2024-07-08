@@ -12,6 +12,7 @@ export const tsconfig = {
         resolveJsonModule: true,
         allowJs: true,
         types: ["node"],
+        skipLibCheck: true,
     },
     include: ["**/*"],
 };
