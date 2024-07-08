@@ -131,7 +131,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
         );
 
         const promisesDeploy = input.map(async (element) => {
-            handleBigElementSizeError(element, projectConfiguration, BUNDLE_SIZE_LIMIT);
+            await handleBigElementSizeError(element, projectConfiguration, BUNDLE_SIZE_LIMIT);
 
             debugLogger.debug(`Get the presigned URL for ${element.type}: ${element.name}.`);
             const presignedUrl = await getPresignedURL(
