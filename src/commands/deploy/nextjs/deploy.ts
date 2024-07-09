@@ -1,47 +1,49 @@
 import fs, { existsSync, readFileSync } from "fs";
-import { GenezioDeployOptions } from "../../models/commandOptions.js";
-import { YamlConfigurationIOController } from "../../yamlProjectConfiguration/v2.js";
-import { YamlProjectConfiguration } from "../../yamlProjectConfiguration/v2.js";
+import { GenezioDeployOptions } from "../../../models/commandOptions.js";
+import { YamlConfigurationIOController } from "../../../yamlProjectConfiguration/v2.js";
+import { YamlProjectConfiguration } from "../../../yamlProjectConfiguration/v2.js";
 import inquirer from "inquirer";
 import path from "path";
-import { regions } from "../../utils/configs.js";
-import { checkProjectName } from "../create/create.js";
-import { debugLogger, log } from "../../utils/logging.js";
+import { regions } from "../../../utils/configs.js";
+import { checkProjectName } from "../../create/create.js";
+import { debugLogger, log } from "../../../utils/logging.js";
 import { $ } from "execa";
-import { UserError } from "../../errors.js";
-import { getCloudProvider } from "../../requests/getCloudProvider.js";
-import { functionToCloudInput, getCloudAdapter } from "./genezio.js";
-import { ProjectConfiguration } from "../../models/projectConfiguration.js";
-import { FunctionType, Language } from "../../yamlProjectConfiguration/models.js";
-import { getPackageManager, PackageManagerType } from "../../packageManagers/packageManager.js";
-import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL.js";
-import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
+import { UserError } from "../../../errors.js";
+import { getCloudProvider } from "../../../requests/getCloudProvider.js";
+import { functionToCloudInput, getCloudAdapter } from "../genezio.js";
+import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
+import { FunctionType, Language } from "../../../yamlProjectConfiguration/models.js";
+import { getPackageManager, PackageManagerType } from "../../../packageManagers/packageManager.js";
+import { getFrontendPresignedURL } from "../../../requests/getFrontendPresignedURL.js";
+import { uploadContentToS3 } from "../../../requests/uploadContentToS3.js";
 import {
     createTemporaryFolder,
     zipDirectory,
     zipDirectoryToDestinationPath,
-} from "../../utils/file.js";
-import { DeployCodeFunctionResponse } from "../../models/deployCodeResponse.js";
+} from "../../../utils/file.js";
+import { DeployCodeFunctionResponse } from "../../../models/deployCodeResponse.js";
 import {
     createFrontendProjectV2,
     CreateFrontendV2Origin,
-} from "../../requests/createFrontendProject.js";
-import { setEnvironmentVariables } from "../../requests/setEnvironmentVariables.js";
-import { GenezioCloudOutput } from "../../cloudAdapter/cloudAdapter.js";
+} from "../../../requests/createFrontendProject.js";
+import { setEnvironmentVariables } from "../../../requests/setEnvironmentVariables.js";
+import { GenezioCloudOutput } from "../../../cloudAdapter/cloudAdapter.js";
 import {
     GENEZIO_FRONTEND_DEPLOYMENT_BUCKET,
     NEXT_JS_GET_ACCESS_KEY,
     NEXT_JS_GET_SECRET_ACCESS_KEY,
-} from "../../constants.js";
-import getProjectInfoByName from "../../requests/getProjectInfoByName.js";
+} from "../../../constants.js";
+import getProjectInfoByName from "../../../requests/getProjectInfoByName.js";
 import colors from "colors";
-import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
 import {
     uniqueNamesGenerator,
     adjectives,
     colors as ungColors,
     animals,
 } from "unique-names-generator";
+import { getPresignedURLForProjectCodePush } from "../../../requests/getPresignedURLForProjectCodePush.js";
+import { computeAssetsPaths } from "./assets.js";
+import * as Sentry from "@sentry/node";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     // Check if node_modules exists
@@ -217,6 +219,8 @@ async function deployCDN(
     config: YamlProjectConfiguration,
     stage: string,
 ) {
+    const PATH_NUMBER_LIMIT = 200;
+
     const serverOrigin: CreateFrontendV2Origin = {
         domain: {
             id: deployedFunctions.find((f) => f.name === "function-server")?.id ?? "",
@@ -253,20 +257,10 @@ async function deployCDN(
         { origin: imageOptimizationOrigin, pattern: "_next/image*" },
     ];
     const assetsFolder = path.join(process.cwd(), ".open-next", "assets");
-    for (const file of await fs.promises.readdir(assetsFolder)) {
-        const fileStat = await fs.promises.stat(path.join(assetsFolder, file));
+    paths.push(...(await computeAssetsPaths(assetsFolder, s3Origin)));
 
-        if (fileStat.isDirectory()) {
-            paths.push({
-                origin: s3Origin,
-                pattern: `${file}/*`,
-            });
-        } else {
-            paths.push({
-                origin: s3Origin,
-                pattern: file,
-            });
-        }
+    if (paths.length >= PATH_NUMBER_LIMIT) {
+        Sentry.captureException(new Error(`Too many paths for the CDN. Length: ${paths.length}`));
     }
 
     const { domain: distributionUrl } = await createFrontendProjectV2(

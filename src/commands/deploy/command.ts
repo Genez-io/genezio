@@ -3,7 +3,7 @@ import { interruptLocalProcesses } from "../../utils/localInterrupt.js";
 import { debugLogger } from "../../utils/logging.js";
 import { genezioDeploy } from "./genezio.js";
 import fs from "fs";
-import { nextJsDeploy } from "./nextjs.js";
+import { nextJsDeploy } from "./nextjs/deploy.js";
 import path from "path";
 
 export async function deployCommand(options: GenezioDeployOptions) {
