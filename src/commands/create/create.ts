@@ -129,6 +129,10 @@ export async function createCommand(options: GenezioCreateOptions) {
                 throw new UserError("Failed to create a Next.js project using create-next-app.");
             });
 
+            await doAdaptiveLogAction("Finishing things up", () =>
+                transformVercelToGenezio(projectPath),
+            );
+
             const yamlIOController = new YamlConfigurationIOController(
                 path.join(projectPath, "genezio.yaml"),
             );
@@ -189,6 +193,41 @@ export async function createCommand(options: GenezioCreateOptions) {
     }
 }
 
+async function transformVercelToGenezio(projectPath: string) {
+    // Delete the Vercel SVG logo
+    const vercelLogoPath = path.join(projectPath, "public", "vercel.svg");
+    if (nativeFs.existsSync(vercelLogoPath)) {
+        nativeFs.unlinkSync(vercelLogoPath);
+    }
+
+    // Change Vercel favicon to Genezio favicon
+    const faviconPath = path.join(projectPath, "src", "app", "favicon.ico");
+    const genezioFaviconContent = await fetch(
+        "https://raw.githubusercontent.com/Genez-io/graphics/main/favicon/genezio.ico",
+    );
+    const genezioFaviconBuffer = await genezioFaviconContent.arrayBuffer();
+    nativeFs.writeFileSync(faviconPath, Buffer.from(genezioFaviconBuffer));
+
+    // Replace the Vercel links with Genezio links
+    recursiveReplace(nativeFs, projectPath, [
+        // Deletes the "By Vercel" branding
+        [new RegExp('By{" "}\\n\\s*<Image(.|\\n)*?\\/>', "g"), ""],
+        [
+            "Instantly deploy your Next.js site to a shareable URL with Vercel.",
+            "Instantly deploy your Next.js site to a shareable URL with Genezio.",
+        ],
+        [
+            "https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app",
+            "https://app.genez.io/new-project",
+        ],
+        [
+            "https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app",
+            // TODO: Change this link to the Genezio templates page
+            "https://genezio.com",
+        ],
+    ]);
+}
+
 /**
  * Clone a Genezio repository and replace placeholders in the genezio.yaml file.
  *
@@ -205,10 +244,10 @@ async function cloneAndSetupGenezioRepository(
     await git.clone({ fs, http, url: repositoryUrl, dir: "/" });
     await fs.promises.rmdir("/.git", { recursive: true });
 
-    await replacePlaceholders(fs, "/", {
-        "(•◡•)project-name(•◡•)": options.name,
-        "(•◡•)region(•◡•)": options.region,
-    });
+    await recursiveReplace(fs, "/", [
+        ["(•◡•)project-name(•◡•)", options.name],
+        ["(•◡•)region(•◡•)", options.region],
+    ]);
 
     // Create git repository
     await git.init({ fs, dir: "/", defaultBranch: "main" });
@@ -302,10 +341,10 @@ async function createFullstackProject(
         // Create workspace genezio.yaml
         await createWorkspaceYaml(fs, fullstackProjectOpts, "/server", "/client");
         // Replace placeholders in genezio.yaml
-        await replacePlaceholders(fs, "/genezio.yaml", {
-            "(•◡•)project-name(•◡•)": fullstackProjectOpts.name,
-            "(•◡•)region(•◡•)": fullstackProjectOpts.region,
-        });
+        await recursiveReplace(fs, "/genezio.yaml", [
+            ["(•◡•)project-name(•◡•)", fullstackProjectOpts.name],
+            ["(•◡•)region(•◡•)", fullstackProjectOpts.region],
+        ]);
 
         // Create .genezioignore file that ignores the client folder and the .git folder
         fs.writeFileSync("/.genezioignore", "client\n.git\n");
@@ -350,10 +389,10 @@ async function createProject(fs: IFs, projectInfo: ProjectInfo, projectPath = "/
     fs.rmdirSync(path.join(projectPath, ".git"), { recursive: true });
 
     // Replace placeholders
-    await replacePlaceholders(fs, projectPath, {
-        "(•◡•)project-name(•◡•)": projectInfo.name,
-        "(•◡•)region(•◡•)": projectInfo.region,
-    });
+    await recursiveReplace(fs, projectPath, [
+        ["(•◡•)project-name(•◡•)", projectInfo.name],
+        ["(•◡•)region(•◡•)", projectInfo.region],
+    ]);
 
     // Create git repository
     await git.init({ fs, dir: projectPath, defaultBranch: "main" });
@@ -428,36 +467,37 @@ async function createWorkspaceYaml(
 }
 
 /**
- * Replaces placeholders in files with corresponding values.
- * If the given path is a directory, it recursively replaces placeholders in all files within the directory.
- * If the given path is a file, it replaces placeholders in the file content.
+ * Replaces strings and regexes with the given replacements in the specified path.
+ * If the given path is a directory, it recursively replaces strings and regexes in all files within the directory.
+ * If the given path is a file, it replaces strings and regexes in the file content.
  *
  * @param fs - The file system module.
- * @param replacePath - The path to the file or directory where placeholders should be replaced.
- * @param placeholders - An object containing placeholder-value pairs.
+ * @param rootPath - The path to the file or directory where strings/regexes should be replaced.
+ * @param replacements - An object containing the strings/regexes to be replaced and their replacements.
  */
-async function replacePlaceholders(
-    fs: IFs,
-    replacePath: string,
-    placeholders: Record<string, string>,
+async function recursiveReplace(
+    fs: typeof nativeFs | IFs,
+    rootPath: string,
+    replacements: Array<[string | RegExp, string]>,
 ) {
-    const fromStats = fs.statSync(replacePath);
+    const fromStats = fs.statSync(rootPath);
     if (fromStats.isDirectory()) {
-        const files = fs.readdirSync(replacePath) as string[];
+        // @ts-expect-error TypeScript does not infer the function type correctly
+        const files = fs.readdirSync(rootPath) as string[];
         for (const file of files) {
-            replacePlaceholders(fs, path.join(replacePath, file), placeholders);
+            recursiveReplace(fs, path.join(rootPath, file), replacements);
         }
     } else {
-        const fileContent = fs.readFileSync(replacePath, "utf8") as string;
-        if (!fileContent.includes("(•◡•)")) {
-            return;
-        }
+        const fileContent = fs.readFileSync(rootPath, "utf8") as string;
 
-        const newFileContent = Object.entries(placeholders).reduce(
+        const newFileContent = replacements.reduce(
             (acc, [placeholder, value]) => acc.replaceAll(placeholder, value),
             fileContent,
         );
-        fs.writeFileSync(replacePath, newFileContent);
+
+        if (newFileContent !== fileContent) {
+            fs.writeFileSync(rootPath, newFileContent);
+        }
     }
 }
 

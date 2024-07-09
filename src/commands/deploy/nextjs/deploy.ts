@@ -1,43 +1,49 @@
 import fs, { existsSync, readFileSync } from "fs";
-import { GenezioDeployOptions } from "../../models/commandOptions.js";
-import { YamlConfigurationIOController } from "../../yamlProjectConfiguration/v2.js";
-import { YamlProjectConfiguration } from "../../yamlProjectConfiguration/v2.js";
+import { GenezioDeployOptions } from "../../../models/commandOptions.js";
+import { YamlConfigurationIOController } from "../../../yamlProjectConfiguration/v2.js";
+import { YamlProjectConfiguration } from "../../../yamlProjectConfiguration/v2.js";
 import inquirer from "inquirer";
 import path from "path";
-import { regions } from "../../utils/configs.js";
-import { checkProjectName } from "../create/create.js";
-import { debugLogger, log } from "../../utils/logging.js";
+import { regions } from "../../../utils/configs.js";
+import { checkProjectName } from "../../create/create.js";
+import { debugLogger, log } from "../../../utils/logging.js";
 import { $ } from "execa";
-import { UserError } from "../../errors.js";
-import { getCloudProvider } from "../../requests/getCloudProvider.js";
-import { functionToCloudInput, getCloudAdapter } from "./genezio.js";
-import { ProjectConfiguration } from "../../models/projectConfiguration.js";
-import { FunctionType, Language } from "../../yamlProjectConfiguration/models.js";
-import { getPackageManager, PackageManagerType } from "../../packageManagers/packageManager.js";
-import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL.js";
-import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
+import { UserError } from "../../../errors.js";
+import { getCloudProvider } from "../../../requests/getCloudProvider.js";
+import { functionToCloudInput, getCloudAdapter } from "../genezio.js";
+import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
+import { FunctionType, Language } from "../../../yamlProjectConfiguration/models.js";
+import { getPackageManager, PackageManagerType } from "../../../packageManagers/packageManager.js";
+import { getFrontendPresignedURL } from "../../../requests/getFrontendPresignedURL.js";
+import { uploadContentToS3 } from "../../../requests/uploadContentToS3.js";
 import {
     createTemporaryFolder,
     zipDirectory,
     zipDirectoryToDestinationPath,
-} from "../../utils/file.js";
-import { DeployCodeFunctionResponse } from "../../models/deployCodeResponse.js";
+} from "../../../utils/file.js";
+import { DeployCodeFunctionResponse } from "../../../models/deployCodeResponse.js";
 import {
     createFrontendProjectV2,
     CreateFrontendV2Origin,
-} from "../../requests/createFrontendProject.js";
-import { setEnvironmentVariables } from "../../requests/setEnvironmentVariables.js";
-import { GenezioCloudOutput } from "../../cloudAdapter/cloudAdapter.js";
+} from "../../../requests/createFrontendProject.js";
+import { setEnvironmentVariables } from "../../../requests/setEnvironmentVariables.js";
+import { GenezioCloudOutput } from "../../../cloudAdapter/cloudAdapter.js";
 import {
     GENEZIO_FRONTEND_DEPLOYMENT_BUCKET,
     NEXT_JS_GET_ACCESS_KEY,
     NEXT_JS_GET_SECRET_ACCESS_KEY,
-} from "../../constants.js";
-import getProjectInfoByName from "../../requests/getProjectInfoByName.js";
-import ora from "ora";
-import { getFrontendStatus } from "../../requests/getFrontendStatus.js";
+} from "../../../constants.js";
+import getProjectInfoByName from "../../../requests/getProjectInfoByName.js";
 import colors from "colors";
-import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
+import {
+    uniqueNamesGenerator,
+    adjectives,
+    colors as ungColors,
+    animals,
+} from "unique-names-generator";
+import { getPresignedURLForProjectCodePush } from "../../../requests/getPresignedURLForProjectCodePush.js";
+import { computeAssetsPaths } from "./assets.js";
+import * as Sentry from "@sentry/node";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     // Check if node_modules exists
@@ -73,7 +79,9 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         deployCDN(deploymentResult.functions, domainName, genezioConfig, options.stage),
     ]);
 
-    await waitForCDNDeployment(cdnUrl, domainName);
+    log.info(
+        `The app is being deployed at ${colors.cyan(cdnUrl)}. It might take a few moments to be available worldwide.`,
+    );
 }
 
 async function uploadUserCode(name: string, region: string, stage: string): Promise<void> {
@@ -152,44 +160,6 @@ async function uploadUserCode(name: string, region: string, stage: string): Prom
     );
 }
 
-async function waitForCDNDeployment(cdnUrl: string, domainName: string) {
-    const spinner = ora(
-        `The app is deployed at ${colors.cyan(cdnUrl)}.\nIt might take a few minutes to be available worldwide. This process will complete when the app is fully up. ${colors.cyan("(Press ANY key to exit and check later)")}`,
-    );
-    spinner.start();
-
-    let interval: NodeJS.Timeout | undefined;
-    await Promise.race([
-        // Check the status of the frontend deployment every 5 seconds until it is deployed
-        new Promise<void>((resolve) => {
-            interval = setInterval(async () => {
-                const status = await getFrontendStatus(domainName);
-
-                if (status === "Deployed") {
-                    clearInterval(interval);
-                    spinner.stop();
-
-                    log.info(`Your Next.js app is now live at: ${colors.cyan(cdnUrl)}`);
-                    resolve();
-                }
-            }, 5000);
-        }),
-        // Wait for a key press to skip the waiting
-        new Promise<void>((resolve) => {
-            process.stdin.on("data", () => {
-                spinner.stop();
-
-                log.info(
-                    `Looks like you are in a hurry! Your app will be live in a few minutes at: ${colors.cyan(cdnUrl)}`,
-                );
-                resolve();
-            });
-        }),
-    ]);
-
-    if (interval) clearInterval(interval);
-}
-
 function checkProjectLimitations() {
     const assetsPath = path.join(process.cwd(), ".open-next", "assets");
     const fileList = fs.readdirSync(assetsPath);
@@ -249,6 +219,8 @@ async function deployCDN(
     config: YamlProjectConfiguration,
     stage: string,
 ) {
+    const PATH_NUMBER_LIMIT = 200;
+
     const serverOrigin: CreateFrontendV2Origin = {
         domain: {
             id: deployedFunctions.find((f) => f.name === "function-server")?.id ?? "",
@@ -285,20 +257,10 @@ async function deployCDN(
         { origin: imageOptimizationOrigin, pattern: "_next/image*" },
     ];
     const assetsFolder = path.join(process.cwd(), ".open-next", "assets");
-    for (const file of await fs.promises.readdir(assetsFolder)) {
-        const fileStat = await fs.promises.stat(path.join(assetsFolder, file));
+    paths.push(...(await computeAssetsPaths(assetsFolder, s3Origin)));
 
-        if (fileStat.isDirectory()) {
-            paths.push({
-                origin: s3Origin,
-                pattern: `${file}/*`,
-            });
-        } else {
-            paths.push({
-                origin: s3Origin,
-                pattern: file,
-            });
-        }
+    if (paths.length >= PATH_NUMBER_LIMIT) {
+        Sentry.captureException(new Error(`Too many paths for the CDN. Length: ${paths.length}`));
     }
 
     const { domain: distributionUrl } = await createFrontendProjectV2(
@@ -310,6 +272,7 @@ async function deployCDN(
         /* defaultPath= */ {
             origin: serverOrigin,
         },
+        ["nextjs"],
     );
 
     if (!distributionUrl.startsWith("https://") && !distributionUrl.startsWith("http://")) {
@@ -404,7 +367,9 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
         projectConfiguration.functions.map((f) => functionToCloudInput(f, ".")),
     );
 
-    const result = await cloudAdapter.deploy(cloudInputs, projectConfiguration, { stage });
+    const result = await cloudAdapter.deploy(cloudInputs, projectConfiguration, { stage }, [
+        "nextjs",
+    ]);
     debugLogger.debug(`Deployed functions: ${JSON.stringify(result.functions)}`);
 
     return result;
@@ -435,21 +400,23 @@ async function writeOpenNextConfig() {
 async function readOrAskConfig(configPath: string): Promise<YamlProjectConfiguration> {
     const configIOController = new YamlConfigurationIOController(configPath);
     if (!existsSync(configPath)) {
-        if (process.env["CI"]) {
-            throw new UserError(
-                "Please provide a genezio.yaml configuration file in the current folder that contains name, region and yamlVersion. https://genezio.com/docs/project-structure/genezio-configuration-file/",
+        const name = await readOrAskProjectName();
+
+        let region = regions[0].value;
+        if (process.env["CI"] !== "true") {
+            ({ region } = await inquirer.prompt([
+                {
+                    type: "list",
+                    name: "region",
+                    message: "Select the Genezio project region:",
+                    choices: regions,
+                },
+            ]));
+        } else {
+            log.info(
+                "Using the default region for the project because no `genezio.yaml` file was found.",
             );
         }
-
-        const name = await readOrAskProjectName();
-        const { region }: { region: string } = await inquirer.prompt([
-            {
-                type: "list",
-                name: "region",
-                message: "Select the Genezio project region:",
-                choices: regions,
-            },
-        ]);
 
         await configIOController.write({ name, region, yamlVersion: 2 });
     }
@@ -477,16 +444,26 @@ async function readOrAskProjectName(): Promise<string> {
             return packageJsonName;
     }
 
-    // Ask for project name
-    const { name }: { name: string } = await inquirer.prompt([
-        {
-            type: "input",
-            name: "name",
-            message: "Enter the Genezio project name:",
-            default: path.basename(process.cwd()),
-            validate: checkProjectName,
-        },
-    ]);
+    let name = uniqueNamesGenerator({
+        dictionaries: [ungColors, adjectives, animals],
+        separator: "-",
+        style: "lowerCase",
+        length: 3,
+    });
+    if (process.env["CI"] !== "true") {
+        // Ask for project name
+        ({ name } = await inquirer.prompt([
+            {
+                type: "input",
+                name: "name",
+                message: "Enter the Genezio project name:",
+                default: path.basename(process.cwd()),
+                validate: checkProjectName,
+            },
+        ]));
+    } else {
+        log.info("Using a random name for the project because no `genezio.yaml` file was found.");
+    }
 
     return name;
 }

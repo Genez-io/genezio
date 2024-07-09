@@ -115,6 +115,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
         input: GenezioCloudInput[],
         projectConfiguration: ProjectConfiguration,
         cloudAdapterOptions: CloudAdapterOptions,
+        stack: string[] = [],
     ): Promise<GenezioCloudOutput> {
         const stage: string = cloudAdapterOptions.stage || "";
 
@@ -130,7 +131,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
         );
 
         const promisesDeploy = input.map(async (element) => {
-            handleBigElementSizeError(element, projectConfiguration, BUNDLE_SIZE_LIMIT);
+            await handleBigElementSizeError(element, projectConfiguration, BUNDLE_SIZE_LIMIT);
 
             debugLogger.debug(`Get the presigned URL for ${element.type}: ${element.name}.`);
             const presignedUrl = await getPresignedURL(
@@ -164,7 +165,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
         // This can be removed only if we find a way to avoid clearing lines.
         log.info("");
 
-        const response = await deployRequest(projectConfiguration, input, stage);
+        const response = await deployRequest(projectConfiguration, input, stage, stack);
         const classesInfo = response.classes.map((c) => ({
             className: c.name,
             methods: c.methods.map((m) => ({

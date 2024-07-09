@@ -1,10 +1,25 @@
+import crypto from "crypto";
+import { writeToFile } from "../../utils/file.js";
 import { FunctionConfiguration } from "../../models/projectConfiguration.js";
 import { FunctionHandlerProvider } from "../functionHandlerProvider.js";
 
+const streamifyOverrideFileContent = `global.awslambda = {
+        streamifyResponse: function (handler) {
+                return async (event, context) => {
+                        await handler(event, event.responseStream, context);
+                }
+        },
+};`;
 export class AwsFunctionHandlerProvider implements FunctionHandlerProvider {
-    async getHandler(functionConfiguration: FunctionConfiguration): Promise<string> {
-        return (
-            `import { ${functionConfiguration.handler} as genezioDeploy } from "./${functionConfiguration.entry}";
+    async write(
+        outputPath: string,
+        handlerFileName: string,
+        functionConfiguration: FunctionConfiguration,
+    ): Promise<void> {
+        const randomFileId = crypto.randomBytes(8).toString("hex");
+        const handlerContent =
+            `import './setupLambdaGlobals_${randomFileId}.mjs';
+import { ${functionConfiguration.handler} as genezioDeploy } from "./${functionConfiguration.entry}";
 
 function formatTimestamp(timestamp) {
   const date = new Date(timestamp);
@@ -71,7 +86,8 @@ const handler = async function(event) {
     body: event.isBase64Encoded
       ? Buffer.from(event.body, "base64")
       : event.body.toString(),
-    isBase64Encoded: event.isBase64Encoded
+    isBase64Encoded: event.isBase64Encoded,
+    responseStream: event.responseStream,
   };
 
   const result = await genezioDeploy(req).catch(error => {
@@ -85,7 +101,13 @@ const handler = async function(event) {
   return result;
 };
 
-export { handler };`
+export { handler };`;
+
+        await writeToFile(outputPath, handlerFileName, handlerContent);
+        await writeToFile(
+            outputPath,
+            `setupLambdaGlobals_${randomFileId}.mjs`,
+            streamifyOverrideFileContent,
         );
     }
 }

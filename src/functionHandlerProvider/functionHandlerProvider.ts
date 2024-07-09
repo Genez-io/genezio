@@ -1,5 +1,9 @@
 import { FunctionConfiguration } from "../models/projectConfiguration.js";
 
 export interface FunctionHandlerProvider {
-    getHandler(functionConfiguration: FunctionConfiguration): Promise<string>;
+    write(
+        outputPath: string,
+        handlerFileName: string,
+        functionConfiguration: FunctionConfiguration,
+    ): Promise<void>;
 }

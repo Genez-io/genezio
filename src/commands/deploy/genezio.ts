@@ -26,7 +26,6 @@ import {
     getBundleFolderSizeLimit,
     readEnvironmentVariablesFile,
     zipFile,
-    writeToFile,
 } from "../../utils/file.js";
 import { printAdaptiveLog, debugLogger, doAdaptiveLogAction } from "../../utils/logging.js";
 import { GenezioCommand, reportSuccess, reportSuccessFunctions } from "../../utils/reporter.js";
@@ -76,6 +75,11 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         stage: options.stage,
     });
     const configuration = await configIOController.read();
+    if (!configuration.backend && !configuration.frontend) {
+        throw new UserError(
+            "Nothing to deploy. Please add a backend or frontend configuration to your genezio.yaml.",
+        );
+    }
     const backendCwd = configuration.backend?.path || process.cwd();
 
     // We need to check if the user is using an older version of @genezio/types
@@ -301,9 +305,16 @@ export async function deployClasses(
 ) {
     const backend: YAMLBackend = configuration.backend!;
     backend.classes = await scanClassesForDecorators(backend);
+    backend.functions = backend.functions ?? [];
 
     if (backend.classes.length === 0 && backend.functions?.length === 0) {
         throw new UserError(GENEZIO_NO_CLASSES_FOUND(backend.language.name));
+    }
+
+    const stack = [];
+    if (backend.classes.length > 0) {
+        // append typesafe to the stack if there are classes
+        stack.push("typesafe");
     }
 
     const sdkLanguages: Language[] = [];
@@ -455,9 +466,14 @@ export async function deployClasses(
 
     // TODO: Enable cloud adapter setting for every class
     const cloudAdapter = getCloudAdapter(cloudProvider);
-    const result = await cloudAdapter.deploy(cloudAdapterDeployInput, projectConfiguration, {
-        stage: options.stage,
-    });
+    const result = await cloudAdapter.deploy(
+        cloudAdapterDeployInput,
+        projectConfiguration,
+        {
+            stage: options.stage,
+        },
+        stack,
+    );
 
     if (
         sdkResponse.generatorResponses.length > 0 &&
@@ -601,8 +617,6 @@ export async function functionToCloudInput(
     }
     const handlerProvider = getFunctionHandlerProvider(functionElement.type);
 
-    const handlerContent = await handlerProvider.getHandler(functionElement);
-
     // create temporary folder
     const tmpFolderPath = await createTemporaryFolder();
     const archivePath = path.join(await createTemporaryFolder(), `genezioDeploy.zip`);
@@ -614,14 +628,15 @@ export async function functionToCloudInput(
 
     // add the handler to the temporary folder
     // check if there already is an index.mjs file in user's code
-    let entryFile = "index.mjs";
-    while (fs.existsSync(path.join(tmpFolderPath, entryFile))) {
+    let entryFileName = "index.mjs";
+    while (fs.existsSync(path.join(tmpFolderPath, entryFileName))) {
         debugLogger.debug(
-            `[FUNCTION ${functionElement.name}] File ${entryFile} already exists in the temporary folder.`,
+            `[FUNCTION ${functionElement.name}] File ${entryFileName} already exists in the temporary folder.`,
         );
-        entryFile = `index-${Math.random().toString(36).substring(7)}.mjs`;
+        entryFileName = `index-${Math.random().toString(36).substring(7)}.mjs`;
     }
-    await writeToFile(path.join(tmpFolderPath), entryFile, handlerContent);
+
+    await handlerProvider.write(tmpFolderPath, entryFileName, functionElement);
 
     debugLogger.debug(`Zip the directory ${tmpFolderPath}.`);
 
@@ -637,7 +652,7 @@ export async function functionToCloudInput(
         name: functionElement.name,
         archivePath: archivePath,
         unzippedBundleSize: unzippedBundleSize,
-        entryFile,
+        entryFile: entryFileName,
     };
 }
 
