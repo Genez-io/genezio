@@ -114,6 +114,7 @@ export async function prepareLocalBackendEnvironment(
             throw new UserError("No backend component found in the genezio.yaml file.");
         }
         backend.classes = await scanClassesForDecorators(backend);
+        backend.functions = backend.functions ?? [];
 
         if (backend.classes.length === 0 && backend.functions?.length === 0) {
             throw new UserError(GENEZIO_NO_CLASSES_FOUND(backend.language.name));
@@ -817,10 +818,10 @@ function getProjectFunctions(
     projectConfiguration: ProjectConfiguration,
 ): DeployCodeFunctionResponse[] {
     return projectConfiguration.functions.map((f) => ({
-                cloudUrl: `http://localhost:${port}/.functions/${f.name}`,
-                id: f.name,
-                name: f.name,
-            }));
+        cloudUrl: `http://localhost:${port}/.functions/${f.name}`,
+        id: f.name,
+        name: f.name,
+    }));
 }
 
 export type LocalEnvCronHandler = {

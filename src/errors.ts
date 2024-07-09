@@ -15,9 +15,9 @@ export const GENEZIO_NOT_AUTH_ERROR_MSG =
 export const PORT_ALREADY_USED = function (port: number) {
     return `The port ${port} is already in use. Please use a different port by specifying --port <port> to start your local server.`;
 };
-export const GENEZIO_NO_CLASSES_FOUND = (_language: Language) => {
+export const GENEZIO_NO_CLASSES_FOUND = (language: Language) => {
     let decoratorSyntax = "";
-    switch (_language) {
+    switch (language) {
         case Language.ts:
         case Language.js:
             decoratorSyntax = "@GenezioDeploy";
@@ -31,7 +31,7 @@ export const GENEZIO_NO_CLASSES_FOUND = (_language: Language) => {
     let errorMessage: string =
         "You don't have any class or function specified in the genezio.yaml configuration file.";
     if (decoratorSyntax) {
-        errorMessage += `\nYou have to mark at least one class from your backend for deployment with the ${decoratorSyntax} decorator. Check out how to do that here https://genezio.com/docs/features/backend-deployment/#code-structure.`;
+        errorMessage += `\nYou have to mark at least one class from your backend for deployment with the ${decoratorSyntax} decorator, or declare a function in you genezio.yaml. Check out how to do that here https://genezio.com/docs/features/backend-deployment/#code-structure.`;
     }
     return errorMessage;
 };
