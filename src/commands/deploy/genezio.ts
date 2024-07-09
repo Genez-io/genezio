@@ -75,6 +75,11 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         stage: options.stage,
     });
     const configuration = await configIOController.read();
+    if (!configuration.backend && !configuration.frontend) {
+        throw new UserError(
+            "Nothing to deploy. Please add a backend or frontend configuration to your genezio.yaml.",
+        );
+    }
     const backendCwd = configuration.backend?.path || process.cwd();
 
     // We need to check if the user is using an older version of @genezio/types
@@ -300,6 +305,7 @@ export async function deployClasses(
 ) {
     const backend: YAMLBackend = configuration.backend!;
     backend.classes = await scanClassesForDecorators(backend);
+    backend.functions = backend.functions ?? [];
 
     if (backend.classes.length === 0 && backend.functions?.length === 0) {
         throw new UserError(GENEZIO_NO_CLASSES_FOUND(backend.language.name));
