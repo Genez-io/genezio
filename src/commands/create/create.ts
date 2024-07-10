@@ -129,10 +129,6 @@ export async function createCommand(options: GenezioCreateOptions) {
                 throw new UserError("Failed to create a Next.js project using create-next-app.");
             });
 
-            await doAdaptiveLogAction("Finishing things up", () =>
-                transformVercelToGenezio(projectPath),
-            );
-
             const yamlIOController = new YamlConfigurationIOController(
                 path.join(projectPath, "genezio.yaml"),
             );
@@ -141,6 +137,10 @@ export async function createCommand(options: GenezioCreateOptions) {
                 region: options.region,
                 yamlVersion: 2,
             });
+
+            await doAdaptiveLogAction("Finishing things up", () =>
+                transformVercelToGenezio(projectPath),
+            ).catch(() => {}); // Fail silently
 
             log.info(SUCCESSFULL_CREATE_NEXTJS(projectPath));
             break;
@@ -201,12 +201,16 @@ async function transformVercelToGenezio(projectPath: string) {
     }
 
     // Change Vercel favicon to Genezio favicon
-    const faviconPath = path.join(projectPath, "src", "app", "favicon.ico");
-    const genezioFaviconContent = await fetch(
-        "https://raw.githubusercontent.com/Genez-io/graphics/main/favicon/genezio.ico",
-    );
-    const genezioFaviconBuffer = await genezioFaviconContent.arrayBuffer();
-    nativeFs.writeFileSync(faviconPath, Buffer.from(genezioFaviconBuffer));
+    let faviconPath = path.join(projectPath, "src", "app", "favicon.ico");
+    if (!nativeFs.existsSync(faviconPath))
+        faviconPath = path.join(projectPath, "app", "favicon.ico");
+    if (nativeFs.existsSync(faviconPath)) {
+        const genezioFaviconContent = await fetch(
+            "https://raw.githubusercontent.com/Genez-io/graphics/main/favicon/genezio.ico",
+        );
+        const genezioFaviconBuffer = await genezioFaviconContent.arrayBuffer();
+        nativeFs.writeFileSync(faviconPath, Buffer.from(genezioFaviconBuffer));
+    }
 
     // Replace the Vercel links with Genezio links
     recursiveReplace(nativeFs, projectPath, [
