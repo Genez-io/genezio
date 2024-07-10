@@ -213,6 +213,7 @@ export class NodeJsBundler implements BundlerInterface {
             outfile: outputFilePath,
             plugins: [nodeExternalPlugin, supportRequireInESM],
             sourcemap: "inline",
+            sourcesContent: false,
         });
 
         if (output.errors.length > 0) {
