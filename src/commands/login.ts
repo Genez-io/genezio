@@ -8,8 +8,8 @@ import open from "open";
 import { asciiCapybara } from "../utils/strings.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 
-export async function loginCommand(accessToken: string, logSuccesMessage = true) {
-    if (logSuccesMessage) log.info(asciiCapybara);
+export async function loginCommand(accessToken: string, logSuccessMessage = true) {
+    if (logSuccessMessage) log.info(asciiCapybara);
 
     await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_LOGIN,
@@ -18,7 +18,7 @@ export async function loginCommand(accessToken: string, logSuccesMessage = true)
     const promiseHttpServer = new Promise((resolve) => {
         if (accessToken !== "") {
             saveAuthToken(accessToken);
-            if (logSuccesMessage) {
+            if (logSuccessMessage) {
                 loginSuccessMsg();
             }
         } else {
@@ -44,7 +44,7 @@ export async function loginCommand(accessToken: string, logSuccesMessage = true)
                     const token = params.get("/?token")!;
 
                     saveAuthToken(token).then(() => {
-                        if (logSuccesMessage) {
+                        if (logSuccessMessage) {
                             loginSuccessMsg();
                         }
                         res.setHeader("Access-Control-Allow-Origin", "*");
