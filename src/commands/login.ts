@@ -15,18 +15,20 @@ export async function loginCommand(accessToken: string, logSuccesMessage = true)
         eventType: TelemetryEventTypes.GENEZIO_LOGIN,
     });
 
-    // If we are in a CI environment, we don't open the browser because it will hang indefinitely
-    if (process.env["CI"]) {
-        log.error(
-            "CI environment detected. Cannot open browser for authentication. Use `genezio login <token>` instead.",
-        );
-        return;
-    }
-
     const promiseHttpServer = new Promise((resolve) => {
         if (accessToken !== "") {
             saveAuthToken(accessToken);
+            if (logSuccesMessage) {
+                loginSuccessMsg();
+            }
         } else {
+            // If we are in a CI environment, we don't open the browser because it will hang indefinitely
+            if (process.env["CI"]) {
+                log.error(
+                    "CI environment detected. Cannot open browser for authentication. Use `genezio login <token>` instead.",
+                );
+                return;
+            }
             const server = http.createServer((req, res) => {
                 res.setHeader("Access-Control-Allow-Origin", "*");
                 res.setHeader("Access-Control-Allow-Headers", "Content-Type");
