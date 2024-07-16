@@ -27,6 +27,7 @@ export async function loginCommand(accessToken: string, logSuccessMessage = true
                 log.error(
                     "CI environment detected. Cannot open browser for authentication. Use `genezio login <token>` instead.",
                 );
+                resolve(true);
                 return;
             }
             const server = http.createServer((req, res) => {
