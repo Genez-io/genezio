@@ -69,6 +69,8 @@ export class NodeJsBundler implements BundlerInterface {
             return (
                 file.extension !== ".ts" &&
                 file.extension !== ".js" &&
+                file.extension !== ".mjs" &&
+                file.extension !== ".cjs" &&
                 file.extension !== ".tsx" &&
                 file.extension !== ".jsx" &&
                 !file.path.includes("node_modules") &&
