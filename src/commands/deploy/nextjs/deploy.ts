@@ -61,7 +61,7 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
 
     const genezioConfig = await readOrAskConfig(options.config);
 
-    checkProjectLimitations();
+    await checkProjectLimitations();
 
     const [deploymentResult, domainName] = await Promise.all([
         // Deploy NextJs serverless functions
@@ -160,13 +160,13 @@ async function uploadUserCode(name: string, region: string, stage: string): Prom
     );
 }
 
-function checkProjectLimitations() {
+async function checkProjectLimitations() {
     const assetsPath = path.join(process.cwd(), ".open-next", "assets");
-    const fileList = fs.readdirSync(assetsPath);
+    const paths = await computeAssetsPaths(assetsPath, {} as CreateFrontendV2Origin);
 
-    if (fileList.length > 20) {
+    if (paths.length > 195) {
         throw new UserError(
-            "We currently do not support having more than 20 files and folders within the public/ directory at the root level. As a workaround, you can organize some of these files into a subfolder.",
+            "We currently do not support having more than 195 files and folders within the public/ directory at the root level. As a workaround, you can organize some of these files into a subfolder.",
         );
     }
 }
