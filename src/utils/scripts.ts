@@ -4,6 +4,67 @@ import colors from "colors";
 import _ from "lodash";
 import { Logger } from "tslog";
 import { execaCommand } from "execa";
+import { debugLogger, log } from "./logging.js";
+
+export async function expandVariablesFromScript(
+    scripts: string | string[] | undefined,
+    functions:
+        | {
+              name: string;
+              url: string;
+          }[]
+        | undefined,
+): Promise<string | string[] | undefined> {
+    if (!scripts) {
+        return;
+    }
+
+    if (!Array.isArray(scripts)) {
+        scripts = [scripts];
+    }
+
+    const expandedScripts: string[] | string = [];
+
+    for (let script of scripts) {
+        const regex = /\$\{\{[a-zA-Z0-9-]+\}\}/g;
+        const matches = script.match(regex);
+        const prefix = "${{";
+        const suffix = "}}";
+
+        if (matches) {
+            for (const match of matches) {
+                const variableFunctionName = match.slice(prefix.length, -suffix.length);
+
+                if (!variableFunctionName.endsWith("ApiUrl")) {
+                    script = script.replace(match, "");
+                    log.error(
+                        `Invalid variable format: ${match}. Variable format should be \${{functionCamelCaseNameApiUrl}}`,
+                    );
+                    continue;
+                }
+
+                if (!functions) {
+                    script = script.replace(match, "");
+                    log.error("No functions found. Please make sure the functions are deployed.");
+                    continue;
+                }
+                const functionUrl = functions.find((f) => f.name === variableFunctionName)?.url;
+                if (!functionUrl) {
+                    script = script.replace(match, "");
+                    log.error(
+                        `API URL for \${{${variableFunctionName}}} not found. Please make sure the function is deployed.`,
+                    );
+                    continue;
+                }
+                script = script.replace(match, functionUrl);
+            }
+        }
+        expandedScripts.push(script);
+    }
+
+    debugLogger.debug(`expandedScripts: ${expandedScripts}`);
+    return expandedScripts;
+}
 
 export async function runScript(
     scripts: string | string[] | undefined,

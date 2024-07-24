@@ -54,7 +54,7 @@ import {
 } from "../../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../../yamlProjectConfiguration/v2.js";
 import { FunctionType, Language } from "../../yamlProjectConfiguration/models.js";
-import { runScript } from "../../utils/scripts.js";
+import { expandVariablesFromScript, runScript } from "../../utils/scripts.js";
 import { scanClassesForDecorators } from "../../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../../yamlProjectConfiguration/v2.js";
 import { ClusterCloudAdapter } from "../../cloudAdapter/cluster/clusterAdapter.js";
@@ -69,6 +69,7 @@ import { getCloudProvider } from "../../requests/getCloudProvider.js";
 import fs from "fs";
 import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
+import { getProjectEnvFromProjectByName } from "../../requests/getProjectInfoByName.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -675,7 +676,26 @@ export async function deployFrontend(
 
     try {
         await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
-            await runScript(frontend.scripts?.build, frontend.path);
+            debugLogger.debug(
+                `Running build script for frontend ${index + 1}`,
+                frontend.scripts?.build,
+            );
+
+            const projectEnvDetails = await getProjectEnvFromProjectByName(name, stage);
+            if (!projectEnvDetails) {
+                throw new UserError("Project environment not found.");
+            }
+
+            const functions = projectEnvDetails.functions?.map((f) => ({
+                name: f.name.replace(/-([a-z])/g, (g) => g[1].toUpperCase()) + "ApiUrl",
+                url: f.cloudUrl,
+            }));
+
+            const expandedScripts = await expandVariablesFromScript(
+                frontend.scripts?.build,
+                functions,
+            );
+            await runScript(expandedScripts, frontend.path);
         });
     } catch (error) {
         if (error instanceof Error) log.error(new Error(error.message));

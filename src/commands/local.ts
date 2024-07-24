@@ -67,7 +67,7 @@ import {
     checkExperimentalDecorators,
 } from "../utils/jsProjectChecker.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
-import { runScript, runFrontendStartScript } from "../utils/scripts.js";
+import { runScript, runFrontendStartScript, expandVariablesFromScript } from "../utils/scripts.js";
 import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
 import { watchPackage } from "../generateSdk/sdkMonitor.js";
 import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
@@ -224,9 +224,20 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         );
     }
 
+    const functions = yamlProjectConfiguration.backend?.functions?.map((f) => ({
+        name: ("function-" + f.name).replace(/-([a-z])/g, (g) => g[1].toUpperCase()) + "ApiUrl",
+        url: `http://localhost:${options.port}/.functions/function-${f.name}`,
+    }));
+
     await Promise.all([
         startBackendWatcher(yamlProjectConfiguration.backend, options, sdkSynchronizer),
-        startFrontends(yamlProjectConfiguration.frontend, sdkSynchronizer),
+        startFrontends(
+            {
+                functions: functions ?? [],
+            },
+            yamlProjectConfiguration.frontend,
+            sdkSynchronizer,
+        ),
     ]);
 }
 
@@ -238,6 +249,12 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
  * @returns Never returns, because it runs the frontends indefinitely.
  */
 async function startFrontends(
+    functionsConfiguration: {
+        functions: {
+            name: string;
+            url: string;
+        }[];
+    },
     frontendConfiguration: YamlFrontend[] | undefined,
     sdkSynchronizer: Mutex,
 ) {
@@ -248,13 +265,17 @@ async function startFrontends(
 
     await Promise.all(
         frontendConfiguration.map(async (frontend) => {
-            await runFrontendStartScript(frontend.scripts?.start, frontend.path).catch(
-                (e: UserError) =>
-                    log.error(
-                        new Error(
-                            `Failed to start frontend located in \`${frontend.path}\`: ${e.message}`,
-                        ),
+            const expandedScripts = await expandVariablesFromScript(
+                frontend.scripts?.start,
+                functionsConfiguration.functions,
+            );
+
+            await runFrontendStartScript(expandedScripts, frontend.path).catch((e: UserError) =>
+                log.error(
+                    new Error(
+                        `Failed to start frontend located in \`${frontend.path}\`: ${e.message}`,
                     ),
+                ),
             );
         }),
     );

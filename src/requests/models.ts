@@ -48,6 +48,17 @@ export interface ProjectDetailsEnvElement {
     id: string;
     name: string;
     classes: ClassDetails[];
+    functions?: FunctionDetails[];
+}
+
+export interface FunctionDetails {
+    id: string;
+    name: string;
+    projectName: string;
+    status: string;
+    cloudUrl: string;
+    createdAt: number;
+    updatedAt: number;
 }
 
 export interface ClassDetails {
