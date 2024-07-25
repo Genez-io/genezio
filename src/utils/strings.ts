@@ -29,3 +29,13 @@ export const asciiCapybara = `        ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡀
 export const reset = "%s" + "\x1b[0m";
 export const red = "\x1b[31m" + reset;
 export const cyan = "\x1b[36m" + reset;
+
+/**
+ * Converts a kebab-case string to camelCase.
+ *
+ * @param kebab The kebab-case string to convert.
+ * @returns The camelCase string.
+ */
+export function kebabToCamelCase(kebab: string): string {
+    return kebab.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+}
