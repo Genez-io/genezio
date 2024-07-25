@@ -67,7 +67,11 @@ import {
     checkExperimentalDecorators,
 } from "../utils/jsProjectChecker.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
-import { runScript, runFrontendStartScript, expandVariablesFromScript } from "../utils/scripts.js";
+import {
+    runScript,
+    runFrontendStartScript,
+    expandFunctionURLVariablesFromScripts,
+} from "../utils/scripts.js";
 import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
 import { watchPackage } from "../generateSdk/sdkMonitor.js";
 import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
@@ -79,6 +83,7 @@ import * as readline from "readline";
 import { getLinkedFrontendsForProject } from "../utils/linkDatabase.js";
 import fsExtra from "fs-extra/esm";
 import { DeployCodeFunctionResponse } from "../models/deployCodeResponse.js";
+import { kebabToCamelCase } from "../utils/strings.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -224,9 +229,9 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         );
     }
 
-    // Transform function from f.name: hello-world to functionHelloWorldApiUrl: http://localhost:3000/.functions/function-hello-world
+    // Transform function from f.name: hello-world to functionHelloWorldApiUrl
     const functions = yamlProjectConfiguration.backend?.functions?.map((f) => ({
-        name: ("function-" + f.name).replace(/-([a-z])/g, (g) => g[1].toUpperCase()) + "ApiUrl",
+        name: kebabToCamelCase("function-" + f.name) + "ApiUrl",
         url: `http://localhost:${options.port}/.functions/function-${f.name}`,
     }));
 
@@ -266,7 +271,7 @@ async function startFrontends(
 
     await Promise.all(
         frontendConfiguration.map(async (frontend) => {
-            const expandedScripts = await expandVariablesFromScript(
+            const expandedScripts = await expandFunctionURLVariablesFromScripts(
                 frontend.scripts?.start,
                 functionsConfiguration.functions,
             );

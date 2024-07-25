@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { expandVariablesFromScript } from "../src/utils/scripts";
-import { log } from "../src/utils/logging";
+import { expandFunctionURLVariablesFromScripts } from "../../../src/utils/scripts";
+import { log } from "../../../src/utils/logging";
 
 describe("expand functions variables in genezio yaml ", () => {
     beforeEach(() => {
@@ -14,7 +14,7 @@ describe("expand functions variables in genezio yaml ", () => {
         const functions = [
             { name: "functionHelloWorldApiUrl", url: "https://<uuid>.us-east-1.cloud.genez.io" },
         ];
-        const result = await expandVariablesFromScript(scripts, functions);
+        const result = await expandFunctionURLVariablesFromScripts(scripts, functions);
         expect(result).toEqual(["npm run build"]);
     });
 
@@ -23,7 +23,7 @@ describe("expand functions variables in genezio yaml ", () => {
         const functions = [
             { name: "functionHelloWorldApiUrl", url: "https://<uuid>.us-east-1.cloud.genez.io" },
         ];
-        const result = await expandVariablesFromScript(scripts, functions);
+        const result = await expandFunctionURLVariablesFromScripts(scripts, functions);
         expect(result).toEqual(["npm run test", "npm run build"]);
     });
 
@@ -32,7 +32,7 @@ describe("expand functions variables in genezio yaml ", () => {
         const functions = [
             { name: "functionHelloWorldApiUrl", url: "https://<uuid>.us-east-1.cloud.genez.io" },
         ];
-        const result = await expandVariablesFromScript(scripts, functions);
+        const result = await expandFunctionURLVariablesFromScripts(scripts, functions);
         expect(result).toEqual([
             "VITE_HELLO_API_URL=https://<uuid>.us-east-1.cloud.genez.io npm run build",
         ]);
@@ -48,7 +48,7 @@ describe("expand functions variables in genezio yaml ", () => {
                 url: "https://<uuid-2>.us-east-1.cloud.genez.io",
             },
         ];
-        const result = await expandVariablesFromScript(scripts, functions);
+        const result = await expandFunctionURLVariablesFromScripts(scripts, functions);
         expect(result).toEqual([
             "VITE_HELLO_API_URL=https://<uuid-1>.us-east-1.cloud.genez.io VITE_GOODBYE_API_URL=https://<uuid-2>.us-east-1.cloud.genez.io npm run build",
         ]);
@@ -66,7 +66,7 @@ describe("expand functions variables in genezio yaml ", () => {
                 url: "https://<uuid-2>.us-east-1.cloud.genez.io",
             },
         ];
-        const result = await expandVariablesFromScript(scripts, functions);
+        const result = await expandFunctionURLVariablesFromScripts(scripts, functions);
         expect(result).toEqual([
             "VITE_HELLO_API_URL=https://<uuid-1>.us-east-1.cloud.genez.io npm run build",
             "VITE_GOODBYE_API_URL=https://<uuid-2>.us-east-1.cloud.genez.io npm run build",
@@ -81,7 +81,7 @@ describe("expand functions variables in genezio yaml ", () => {
         const functions = [
             { name: "functionHelloWorldApiUrl", url: "https://<uuid>.us-east-1.cloud.genez.io" },
         ];
-        const result = await expandVariablesFromScript(scripts, functions);
+        const result = await expandFunctionURLVariablesFromScripts(scripts, functions);
         expect(result).toEqual([
             "npm run test",
             "VITE_HELLO_API_URL=https://<uuid>.us-east-1.cloud.genez.io npm run build",
@@ -93,14 +93,14 @@ describe("expand functions variables in genezio yaml ", () => {
         const functions = [
             { name: "functionHelloWorldApiUrl", url: "https://<uuid>.us-east-1.cloud.genez.io" },
         ];
-        const result = await expandVariablesFromScript(scripts, functions);
+        const result = await expandFunctionURLVariablesFromScripts(scripts, functions);
         expect(result).toEqual(undefined);
     });
 
     test("error for undefined functions", async () => {
         const scripts = "VITE_HELLO_API_URL=${{functionHelloWorldApiUrl}} npm run build";
         const functions = undefined;
-        const result = await expandVariablesFromScript(scripts, functions);
+        const result = await expandFunctionURLVariablesFromScripts(scripts, functions);
         expect(log.error).toHaveBeenCalledWith(
             "No functions found. Please make sure the functions are deployed.",
         );
@@ -112,14 +112,14 @@ describe("expand functions variables in genezio yaml ", () => {
         const functions = [
             { name: "functionHelloWorldApiUrl", url: "https://<uuid>.us-east-1.cloud.genez.io" },
         ];
-        const result = await expandVariablesFromScript(scripts, functions);
+        const result = await expandFunctionURLVariablesFromScripts(scripts, functions);
         expect(result).toEqual([]);
     });
 
     test("error for empty functions", async () => {
         const scripts = "VITE_HELLO_API_URL=${{functionHelloWorldApiUrl}} npm run build";
         const functions = [];
-        const result = await expandVariablesFromScript(scripts, functions);
+        const result = await expandFunctionURLVariablesFromScripts(scripts, functions);
         expect(log.error).toHaveBeenCalledWith(
             "API URL for ${{functionHelloWorldApiUrl}} not found. Please make sure the function is deployed.",
         );
@@ -131,7 +131,7 @@ describe("expand functions variables in genezio yaml ", () => {
         const functions = [
             { name: "functionHelloWorldApiUrl", url: "https://<uuid>.us-east-1.cloud.genez.io" },
         ];
-        const result = await expandVariablesFromScript(scripts, functions);
+        const result = await expandFunctionURLVariablesFromScripts(scripts, functions);
         expect(log.error).toHaveBeenCalledWith(
             "Invalid variable format: ${{wrongFormat}}. Variable format should be ${{functionCamelCaseNameApiUrl}}",
         );
@@ -146,7 +146,7 @@ describe("expand functions variables in genezio yaml ", () => {
                 url: "https://<uuid>.us-east-1.cloud.genez.io",
             },
         ];
-        const result = await expandVariablesFromScript(scripts, functions);
+        const result = await expandFunctionURLVariablesFromScripts(scripts, functions);
         expect(log.error).toHaveBeenCalledWith(
             "API URL for ${{functionHelloWorldApiUrl}} not found. Please make sure the function is deployed.",
         );

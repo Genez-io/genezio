@@ -54,7 +54,7 @@ import {
 } from "../../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../../yamlProjectConfiguration/v2.js";
 import { FunctionType, Language } from "../../yamlProjectConfiguration/models.js";
-import { expandVariablesFromScript, runScript } from "../../utils/scripts.js";
+import { expandFunctionURLVariablesFromScripts, runScript } from "../../utils/scripts.js";
 import { scanClassesForDecorators } from "../../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../../yamlProjectConfiguration/v2.js";
 import { ClusterCloudAdapter } from "../../cloudAdapter/cluster/clusterAdapter.js";
@@ -70,6 +70,7 @@ import fs from "fs";
 import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import { getProjectEnvFromProjectByName } from "../../requests/getProjectInfoByName.js";
+import { kebabToCamelCase } from "../../utils/strings.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -684,11 +685,11 @@ export async function deployFrontend(
 
             // Transform function name from kebab-case (function-hello-world) to camelCase (functionHelloWorldApiUrl)
             const functions = projectEnvDetails.functions?.map((f) => ({
-                name: f.name.replace(/-([a-z])/g, (g) => g[1].toUpperCase()) + "ApiUrl",
+                name: kebabToCamelCase(f.name) + "ApiUrl",
                 url: f.cloudUrl,
             }));
 
-            const expandedScripts = await expandVariablesFromScript(
+            const expandedScripts = await expandFunctionURLVariablesFromScripts(
                 frontend.scripts?.build,
                 functions,
             );

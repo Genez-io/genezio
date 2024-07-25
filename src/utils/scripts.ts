@@ -6,7 +6,7 @@ import { Logger } from "tslog";
 import { execaCommand } from "execa";
 import { debugLogger, log } from "./logging.js";
 
-export async function expandVariablesFromScript(
+export async function expandFunctionURLVariablesFromScripts(
     scripts: string | string[] | undefined,
     functions:
         | {
@@ -31,33 +31,31 @@ export async function expandVariablesFromScript(
         const prefix = "${{";
         const suffix = "}}";
 
-        if (matches) {
-            for (const match of matches) {
-                const variableFunctionName = match.slice(prefix.length, -suffix.length);
+        for (const match of matches || []) {
+            const variableFunctionName = match.slice(prefix.length, -suffix.length);
 
-                if (!variableFunctionName.endsWith("ApiUrl")) {
-                    script = script.replace(match, "");
-                    log.error(
-                        `Invalid variable format: ${match}. Variable format should be \${{functionCamelCaseNameApiUrl}}`,
-                    );
-                    continue;
-                }
-
-                if (!functions) {
-                    script = script.replace(match, "");
-                    log.error("No functions found. Please make sure the functions are deployed.");
-                    continue;
-                }
-                const functionUrl = functions.find((f) => f.name === variableFunctionName)?.url;
-                if (!functionUrl) {
-                    script = script.replace(match, "");
-                    log.error(
-                        `API URL for \${{${variableFunctionName}}} not found. Please make sure the function is deployed.`,
-                    );
-                    continue;
-                }
-                script = script.replace(match, functionUrl);
+            if (!variableFunctionName.endsWith("ApiUrl")) {
+                script = script.replace(match, "");
+                log.error(
+                    `Invalid variable format: ${match}. Variable format should be \${{functionCamelCaseNameApiUrl}}`,
+                );
+                continue;
             }
+
+            if (!functions) {
+                script = script.replace(match, "");
+                log.error("No functions found. Please make sure the functions are deployed.");
+                continue;
+            }
+            const functionUrl = functions.find((f) => f.name === variableFunctionName)?.url;
+            if (!functionUrl) {
+                script = script.replace(match, "");
+                log.error(
+                    `API URL for \${{${variableFunctionName}}} not found. Please make sure the function is deployed.`,
+                );
+                continue;
+            }
+            script = script.replace(match, functionUrl);
         }
         expandedScripts.push(script);
     }
