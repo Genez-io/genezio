@@ -62,7 +62,7 @@ export async function expandVariablesFromScript(
         expandedScripts.push(script);
     }
 
-    debugLogger.debug(`expandedScripts: ${expandedScripts}`);
+    debugLogger.debug(`The expanded script commands are: ${expandedScripts}`);
     return expandedScripts;
 }
 

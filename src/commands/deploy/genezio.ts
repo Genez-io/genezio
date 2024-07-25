@@ -676,16 +676,13 @@ export async function deployFrontend(
 
     try {
         await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
-            debugLogger.debug(
-                `Running build script for frontend ${index + 1}`,
-                frontend.scripts?.build,
-            );
-
+            // Get project environment details for a specific project/stage
             const projectEnvDetails = await getProjectEnvFromProjectByName(name, stage);
             if (!projectEnvDetails) {
                 throw new UserError("Project environment not found.");
             }
 
+            // Transform function name from kebab-case (function-hello-world) to camelCase (functionHelloWorldApiUrl)
             const functions = projectEnvDetails.functions?.map((f) => ({
                 name: f.name.replace(/-([a-z])/g, (g) => g[1].toUpperCase()) + "ApiUrl",
                 url: f.cloudUrl,

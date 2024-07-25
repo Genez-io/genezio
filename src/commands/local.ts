@@ -224,6 +224,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         );
     }
 
+    // Transform function from f.name: hello-world to functionHelloWorldApiUrl: http://localhost:3000/.functions/function-hello-world
     const functions = yamlProjectConfiguration.backend?.functions?.map((f) => ({
         name: ("function-" + f.name).replace(/-([a-z])/g, (g) => g[1].toUpperCase()) + "ApiUrl",
         url: `http://localhost:${options.port}/.functions/function-${f.name}`,
