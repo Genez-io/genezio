@@ -118,7 +118,15 @@ export async function generateRemoteSdkCommand(projectName: string, options: Gen
     }
 
     if (projectName) {
-        await generateRemoteSdkHandler(language, sdkPath, projectName, stage, region);
+        await generateRemoteSdkHandler(
+            language,
+            sdkPath,
+            projectName,
+            stage,
+            region,
+            options.packageName,
+            options.packageVersion,
+        );
     } else {
         let config = options.config;
         // check if path ends in .genezio.yaml or else append it
@@ -184,7 +192,15 @@ export async function generateRemoteSdkCommand(projectName: string, options: Gen
         const name = configuration.name;
         const configurationRegion = configuration.region;
 
-        await generateRemoteSdkHandler(language, sdkPath, name, stage, configurationRegion);
+        await generateRemoteSdkHandler(
+            language,
+            sdkPath,
+            name,
+            stage,
+            configurationRegion,
+            options.packageName,
+            options.packageVersion,
+        );
     }
 }
 
@@ -194,6 +210,8 @@ async function generateRemoteSdkHandler(
     projectName: string,
     stage: string,
     region: string,
+    packageName?: string,
+    packageVersion?: string,
 ) {
     // get all project classes
     const projects = await listProjects();
@@ -257,8 +275,8 @@ async function generateRemoteSdkHandler(
 
     await writeSdk({
         language,
-        packageName: `@genezio-sdk/${projectName}`,
-        packageVersion: `1.0.0-${stage}`,
+        packageName: packageName || `@genezio-sdk/${projectName}`,
+        packageVersion: packageVersion || `1.0.0-${stage}`,
         sdkResponse: sdkGeneratorResponse,
         classUrls,
         publish: false,
