@@ -95,7 +95,7 @@ export async function scanClassesForDecorators(
                     type: type,
                     methods: methods,
                 });
-            } else {
+            } else if (r && deployDecoratorFound) {
                 overlappingYamlClasses.push(r?.name || "");
             }
         }

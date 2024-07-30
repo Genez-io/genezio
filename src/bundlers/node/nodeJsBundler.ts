@@ -69,6 +69,8 @@ export class NodeJsBundler implements BundlerInterface {
             return (
                 file.extension !== ".ts" &&
                 file.extension !== ".js" &&
+                file.extension !== ".mjs" &&
+                file.extension !== ".cjs" &&
                 file.extension !== ".tsx" &&
                 file.extension !== ".jsx" &&
                 !file.path.includes("node_modules") &&
@@ -213,6 +215,7 @@ export class NodeJsBundler implements BundlerInterface {
             outfile: outputFilePath,
             plugins: [nodeExternalPlugin, supportRequireInESM],
             sourcemap: "inline",
+            sourcesContent: false,
         });
 
         if (output.errors.length > 0) {

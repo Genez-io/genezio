@@ -67,7 +67,11 @@ import {
     checkExperimentalDecorators,
 } from "../utils/jsProjectChecker.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
-import { runScript, runFrontendStartScript } from "../utils/scripts.js";
+import {
+    runScript,
+    runFrontendStartScript,
+    expandFunctionURLVariablesFromScripts,
+} from "../utils/scripts.js";
 import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
 import { watchPackage } from "../generateSdk/sdkMonitor.js";
 import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
@@ -79,6 +83,7 @@ import * as readline from "readline";
 import { getLinkedFrontendsForProject } from "../utils/linkDatabase.js";
 import fsExtra from "fs-extra/esm";
 import { DeployCodeFunctionResponse } from "../models/deployCodeResponse.js";
+import { kebabToCamelCase } from "../utils/strings.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -224,9 +229,21 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         );
     }
 
+    // Transform function from f.name: hello-world to functionHelloWorldApiUrl
+    const functions = yamlProjectConfiguration.backend?.functions?.map((f) => ({
+        name: kebabToCamelCase("function-" + f.name) + "ApiUrl",
+        url: `http://localhost:${options.port}/.functions/function-${f.name}`,
+    }));
+
     await Promise.all([
         startBackendWatcher(yamlProjectConfiguration.backend, options, sdkSynchronizer),
-        startFrontends(yamlProjectConfiguration.frontend, sdkSynchronizer),
+        startFrontends(
+            {
+                functions: functions ?? [],
+            },
+            yamlProjectConfiguration.frontend,
+            sdkSynchronizer,
+        ),
     ]);
 }
 
@@ -238,6 +255,12 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
  * @returns Never returns, because it runs the frontends indefinitely.
  */
 async function startFrontends(
+    functionsConfiguration: {
+        functions: {
+            name: string;
+            url: string;
+        }[];
+    },
     frontendConfiguration: YamlFrontend[] | undefined,
     sdkSynchronizer: Mutex,
 ) {
@@ -248,13 +271,17 @@ async function startFrontends(
 
     await Promise.all(
         frontendConfiguration.map(async (frontend) => {
-            await runFrontendStartScript(frontend.scripts?.start, frontend.path).catch(
-                (e: UserError) =>
-                    log.error(
-                        new Error(
-                            `Failed to start frontend located in \`${frontend.path}\`: ${e.message}`,
-                        ),
+            const expandedScripts = await expandFunctionURLVariablesFromScripts(
+                frontend.scripts?.start,
+                functionsConfiguration.functions,
+            );
+
+            await runFrontendStartScript(expandedScripts, frontend.path).catch((e: UserError) =>
+                log.error(
+                    new Error(
+                        `Failed to start frontend located in \`${frontend.path}\`: ${e.message}`,
                     ),
+                ),
             );
         }),
     );

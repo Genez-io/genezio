@@ -29,6 +29,7 @@ import {
 import { setEnvironmentVariables } from "../../../requests/setEnvironmentVariables.js";
 import { GenezioCloudOutput } from "../../../cloudAdapter/cloudAdapter.js";
 import {
+    ENVIRONMENT,
     GENEZIO_FRONTEND_DEPLOYMENT_BUCKET,
     NEXT_JS_GET_ACCESS_KEY,
     NEXT_JS_GET_SECRET_ACCESS_KEY,
@@ -44,6 +45,7 @@ import {
 import { getPresignedURLForProjectCodePush } from "../../../requests/getPresignedURLForProjectCodePush.js";
 import { computeAssetsPaths } from "./assets.js";
 import * as Sentry from "@sentry/node";
+import { randomUUID } from "crypto";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     // Check if node_modules exists
@@ -53,28 +55,30 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         );
     }
 
-    await writeOpenNextConfig();
+    const genezioConfig = await readOrAskConfig(options.config);
+
+    await writeOpenNextConfig(genezioConfig.region);
     // Build the Next.js project
     await $({ stdio: "inherit" })`npx --yes @genezio/open-next@latest build`.catch(() => {
         throw new UserError("Failed to build the Next.js project. Check the logs above.");
     });
 
-    const genezioConfig = await readOrAskConfig(options.config);
+    await checkProjectLimitations();
 
-    checkProjectLimitations();
+    const cacheToken = randomUUID();
 
     const [deploymentResult, domainName] = await Promise.all([
         // Deploy NextJs serverless functions
         deployFunctions(genezioConfig, options.stage),
         // Deploy NextJs static assets to S3
-        deployStaticAssets(genezioConfig, options.stage),
+        deployStaticAssets(genezioConfig, options.stage, cacheToken),
     ]);
 
     const [, , cdnUrl] = await Promise.all([
         // Upload the project code to S3 for in-browser editing
         uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage),
         // Set environment variables for the Next.js project
-        setupEnvironmentVariables(deploymentResult, domainName, genezioConfig.region),
+        setupEnvironmentVariables(deploymentResult, domainName, genezioConfig.region, cacheToken),
         // Deploy CDN that serves the Next.js app
         deployCDN(deploymentResult.functions, domainName, genezioConfig, options.stage),
     ]);
@@ -160,13 +164,13 @@ async function uploadUserCode(name: string, region: string, stage: string): Prom
     );
 }
 
-function checkProjectLimitations() {
+async function checkProjectLimitations() {
     const assetsPath = path.join(process.cwd(), ".open-next", "assets");
-    const fileList = fs.readdirSync(assetsPath);
+    const paths = await computeAssetsPaths(assetsPath, {} as CreateFrontendV2Origin);
 
-    if (fileList.length > 20) {
+    if (paths.length > 195) {
         throw new UserError(
-            "We currently do not support having more than 20 files and folders within the public/ directory at the root level. As a workaround, you can organize some of these files into a subfolder.",
+            "We currently do not support having more than 195 files and folders within the public/ directory at the root level. As a workaround, you can organize some of these files into a subfolder.",
         );
     }
 }
@@ -175,6 +179,7 @@ async function setupEnvironmentVariables(
     deploymentResult: GenezioCloudOutput,
     domainName: string,
     region: string,
+    cacheToken: string,
 ) {
     debugLogger.debug(`Setting Next.js environment variables, ${JSON.stringify(deploymentResult)}`);
     await setEnvironmentVariables(deploymentResult.projectId, deploymentResult.projectEnvId, [
@@ -187,16 +192,12 @@ async function setupEnvironmentVariables(
             value: GENEZIO_FRONTEND_DEPLOYMENT_BUCKET + "-" + region,
         },
         {
-            name: "CACHE_BUCKET_KEY_PREFIX",
-            value: `${domainName}/_cache`,
+            name: "GENEZIO_CACHE_TOKEN",
+            value: cacheToken,
         },
         {
-            name: "CACHE_BUCKET_NAME",
-            value: GENEZIO_FRONTEND_DEPLOYMENT_BUCKET + "-" + region,
-        },
-        {
-            name: "CACHE_BUCKET_REGION",
-            value: region,
+            name: "GENEZIO_DOMAIN_NAME",
+            value: domainName,
         },
         {
             name: "AWS_ACCESS_KEY_ID",
@@ -282,7 +283,11 @@ async function deployCDN(
     return distributionUrl;
 }
 
-async function deployStaticAssets(config: YamlProjectConfiguration, stage: string) {
+async function deployStaticAssets(
+    config: YamlProjectConfiguration,
+    stage: string,
+    cacheToken: string,
+) {
     const getFrontendPresignedURLPromise = getFrontendPresignedURL(
         /* subdomain= */ undefined,
         /* projectName= */ config.name,
@@ -302,7 +307,7 @@ async function deployStaticAssets(config: YamlProjectConfiguration, stage: strin
         ),
         fs.promises.cp(
             path.join(process.cwd(), ".open-next", "cache"),
-            path.join(temporaryFolder, "next-static", "_cache"),
+            path.join(temporaryFolder, "next-static", cacheToken, "_cache"),
             { recursive: true },
         ),
     ]);
@@ -375,26 +380,55 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
     return result;
 }
 
-async function writeOpenNextConfig() {
+async function writeOpenNextConfig(region: string) {
     const OPEN_NEXT_CONFIG = `
+    import { IncrementalCache, Queue, TagCache } from "@genezio/nextjs-isr-${region}";
+    
+    const deployment = process.env["GENEZIO_DOMAIN_NAME"] || "";
+    const token = (process.env["GENEZIO_CACHE_TOKEN"] || "") + "/_cache/" + (process.env["NEXT_BUILD_ID"] || "");
+
+    const queue = () => ({
+        name: "genezio-queue",
+        send: Queue.send.bind(null, deployment, token),
+    });
+
+    const incrementalCache = () => ({
+        name: "genezio-incremental-cache",
+        get: IncrementalCache.get.bind(null, deployment, token),
+        set: IncrementalCache.set.bind(null, deployment, token),
+        delete: IncrementalCache.delete.bind(null, deployment, token),
+    });
+
+    const tagCache = () => ({
+        name: "genzio-tag-cache",
+        getByTag: TagCache.getByTag.bind(null, deployment, token),
+        getByPath: TagCache.getByPath.bind(null, deployment, token),
+        getLastModified: TagCache.getLastModified.bind(null, deployment, token),
+        writeTags: TagCache.writeTags.bind(null, deployment, token),
+    });
+
     const config = {
         default: {
             override: {
-                queue: "sqs-lite",
-                incrementalCache: "s3-lite",
-                tagCache: "dynamodb-lite",
+                queue,
+                incrementalCache,
+                tagCache,
             },
         },
         imageOptimization: {
             arch: "x64",
         },
-    }
+    };
+
     export default config;`;
 
     // Write the open-next configuration
     // TODO: Check if the file already exists and merge the configurations, instead of overwriting it.
     const openNextConfigPath = path.join(process.cwd(), "open-next.config.ts");
     await fs.promises.writeFile(openNextConfigPath, OPEN_NEXT_CONFIG);
+
+    const tag = ENVIRONMENT === "prod" ? "latest" : "dev";
+    await getPackageManager().install([`@genezio/nextjs-isr-${region}@${tag}`]);
 }
 
 async function readOrAskConfig(configPath: string): Promise<YamlProjectConfiguration> {
