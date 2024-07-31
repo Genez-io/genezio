@@ -253,6 +253,7 @@ create
         "Create a project with a backend and a frontend in separate repositories.",
         false,
     )
+    .option("--path <path>", "Path where to create the project.", undefined)
     .summary("Create a new project from a backend and a frontend template.")
     .action(async (options: GenezioCreateFullstackOptions, { parent }: { parent: Command }) => {
         const createOptions = await askCreateOptions({
@@ -291,6 +292,7 @@ create
             Object.keys(backendTemplates),
         ),
     )
+    .option("--path <path>", "Path where to create the project.", undefined)
     .summary("Create a new project from a backend template.")
     .action(async (options: GenezioCreateBackendOptions, { parent }: { parent: Command }) => {
         const createOptions = await askCreateOptions({
@@ -324,6 +326,7 @@ create
             regions.map((region) => region.value),
         ),
     )
+    .option("--path <path>", "Path where to create the project.", undefined)
     .summary("Create a new Next.js project.")
     .action(async (options: GenezioCreateNextJsOptions, { parent }: { parent: Command }) => {
         const createOptions = await askCreateOptions({
