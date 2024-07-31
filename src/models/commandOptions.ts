@@ -100,6 +100,7 @@ export interface GenezioCreateNextJsOptions extends BaseOptions {
     name?: string;
     region?: string;
     path?: string;
+    default: boolean;
 }
 
 export interface GenezioCreateServerlessFunctionOptions extends BaseOptions {

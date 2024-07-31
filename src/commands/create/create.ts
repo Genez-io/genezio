@@ -124,8 +124,12 @@ export async function createCommand(options: GenezioCreateOptions) {
         }
         case "nextjs": {
             log.info("Running npx create-next-app...");
-
-            await $({ stdio: "inherit" })`npx --yes create-next-app ${projectPath}`.catch(() => {
+            const defaultConfiguration =
+                "--typescript --eslint --tailwind --src-dir --app --no-import-alias";
+            await $({ stdio: "inherit" })(
+                `npx --yes create-next-app ${projectPath}` +
+                    (options.default ? ` ${defaultConfiguration}` : ""),
+            ).catch(() => {
                 throw new UserError("Failed to create a Next.js project using create-next-app.");
             });
 
