@@ -124,8 +124,9 @@ export async function createCommand(options: GenezioCreateOptions) {
         }
         case "nextjs": {
             log.info("Running npx create-next-app...");
+
             const defaultConfiguration =
-                "--typescript --eslint --tailwind --src-dir --app --no-import-alias";
+                "--typescript --eslint --tailwind --no-src-dir --app --no-import-alias";
             await $({ stdio: "inherit" })(
                 `npx --yes create-next-app ${projectPath}` +
                     (options.default ? ` ${defaultConfiguration}` : ""),

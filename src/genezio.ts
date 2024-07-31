@@ -327,7 +327,11 @@ create
         ),
     )
     .option("--path <path>", "Path where to create the project.", undefined)
-    .option("--default", "Skip the interactive questions.", false)
+    .option(
+        "--default",
+        "Skip the Next.js wizard interactive questions and apply default configuration.",
+        false,
+    )
     .summary("Create a new Next.js project.")
     .action(async (options: GenezioCreateNextJsOptions, { parent }: { parent: Command }) => {
         const createOptions = await askCreateOptions({
