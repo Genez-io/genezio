@@ -15,11 +15,11 @@ import {
     frontendTemplates,
     serverlessFunctionJsTemplate,
 } from "./templates.js";
-import { YamlConfigurationIOController } from "../../yamlProjectConfiguration/v2.js";
+import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import { YAMLContext, mergeContexts } from "yaml-transmute";
 import _ from "lodash";
 import { UserError } from "../../errors.js";
-import { Language } from "../../yamlProjectConfiguration/models.js";
+import { Language } from "../../projectConfiguration/yaml/models.js";
 import { linkFrontendsToProject } from "../../utils/linkDatabase.js";
 import { $ } from "execa";
 

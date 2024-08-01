@@ -1,7 +1,7 @@
 import inquirer from "inquirer";
 import { interruptLocalProcesses } from "../utils/localInterrupt.js";
 import { doAdaptiveLogAction, log } from "../utils/logging.js";
-import { YamlConfigurationIOController } from "../yamlProjectConfiguration/v2.js";
+import { YamlConfigurationIOController } from "../projectConfiguration/yaml/v2.js";
 import { exit } from "process";
 import { cloneCommand } from "./clone.js";
 

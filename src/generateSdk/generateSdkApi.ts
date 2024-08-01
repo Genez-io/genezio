@@ -8,9 +8,9 @@ import {
 import { SdkGeneratorResponse, SdkHandlerResponse } from "../models/sdkGeneratorResponse.js";
 import { AstGeneratorInput } from "../models/genezioModels.js";
 import fs from "fs";
-import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
+import { Language, TriggerType } from "../projectConfiguration/yaml/models.js";
 import path from "path";
-import { YamlClass } from "../yamlProjectConfiguration/v2.js";
+import { YamlClass } from "../projectConfiguration/yaml/v2.js";
 import { UserError } from "../errors.js";
 
 /**

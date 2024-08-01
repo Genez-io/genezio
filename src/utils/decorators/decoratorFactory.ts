@@ -1,5 +1,5 @@
 import { UserError } from "../../errors.js";
-import { Language } from "../../yamlProjectConfiguration/models.js";
+import { Language } from "../../projectConfiguration/yaml/models.js";
 import { DecoratorExtractor } from "./baseDecoratorExtractor.js";
 import { GoDecoratorExtractor } from "./goDecorators.js";
 import { JsTsDecoratorExtractor } from "./jsTsDecorators.js";

@@ -1,5 +1,5 @@
 import zod from "zod";
-import { Language } from "./yamlProjectConfiguration/models.js";
+import { Language } from "./projectConfiguration/yaml/models.js";
 import colors from "colors";
 
 export class UserError extends Error {

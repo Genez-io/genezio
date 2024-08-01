@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from "vitest";
 import { fs, fs as memfsFs, vol } from "memfs";
-import { YamlConfigurationIOController } from "../src/yamlProjectConfiguration/v2";
+import { YamlConfigurationIOController } from "../src/projectConfiguration/yaml/v2";
 import yaml from "yaml";
 import { rectifyCronString } from "../src/utils/rectifyCronString";
 

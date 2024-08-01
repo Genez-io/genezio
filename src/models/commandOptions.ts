@@ -1,4 +1,4 @@
-import { Language } from "../yamlProjectConfiguration/models.js";
+import { Language } from "../projectConfiguration/yaml/models.js";
 import { CloudAdapterIdentifier } from "./cloudProviderIdentifier.js";
 
 export interface BaseOptions {

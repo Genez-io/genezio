@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
-import { Language } from "../yamlProjectConfiguration/models.js";
+import { Language } from "../projectConfiguration/yaml/models.js";
 import zod from "zod";
 
 export type LinkedFrontend = {
