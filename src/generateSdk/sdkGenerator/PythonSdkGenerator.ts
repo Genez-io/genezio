@@ -21,7 +21,7 @@ import {
     MethodDefinition,
     ModelView,
 } from "../../models/genezioModels.js";
-import { TriggerType } from "../../yamlProjectConfiguration/models.js";
+import { TriggerType } from "../../projectConfiguration/yaml/models.js";
 import { pythonSdk } from "../templates/pythonSdk.js";
 import path from "path";
 import { UserError } from "../../errors.js";

@@ -10,7 +10,7 @@ import { bundle } from "../bundlers/utils.js";
 import { mkdirSync } from "fs";
 import { writeToFile, zipDirectory } from "../utils/file.js";
 import path from "path";
-import yamlConfigIOController from "../yamlProjectConfiguration/v2.js";
+import yamlConfigIOController from "../projectConfiguration/yaml/v2.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
 import { UserError } from "../errors.js";
 import {

@@ -1,5 +1,5 @@
 import { ProjectConfiguration } from "../../models/projectConfiguration.js";
-import { YamlFrontend } from "../../yamlProjectConfiguration/v2.js";
+import { YamlFrontend } from "../../projectConfiguration/yaml/v2.js";
 import {
     CloudAdapter,
     CloudAdapterOptions,

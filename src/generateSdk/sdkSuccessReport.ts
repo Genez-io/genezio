@@ -4,7 +4,7 @@ import { SdkGeneratorResponse } from "../models/sdkGeneratorResponse.js";
 import colors from "colors";
 import boxen from "boxen";
 import { getPackageManager } from "../packageManagers/packageManager.js";
-import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
+import { Language, TriggerType } from "../projectConfiguration/yaml/models.js";
 import { UserError } from "../errors.js";
 
 export function reportSuccessForSdk(

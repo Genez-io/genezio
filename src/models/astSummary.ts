@@ -1,4 +1,4 @@
-import { TriggerType } from "../yamlProjectConfiguration/models.js";
+import { TriggerType } from "../projectConfiguration/yaml/models.js";
 
 export type AstSummaryParam = {
     name: string;

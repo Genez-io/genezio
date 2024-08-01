@@ -3,7 +3,7 @@ import {
     DeployCodeMethodResponse,
 } from "../models/deployCodeResponse.js";
 import { MethodConfiguration, ProjectConfiguration } from "../models/projectConfiguration.js";
-import { YamlFrontend } from "../yamlProjectConfiguration/v2.js";
+import { YamlFrontend } from "../projectConfiguration/yaml/v2.js";
 import { Dependency } from "../bundlers/bundler.interface.js";
 import FileDetails from "../models/fileDetails.js";
 
