@@ -678,16 +678,22 @@ export async function deployFrontend(
     try {
         await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
             // Get project environment details for a specific project/stage
-            const projectEnvDetails = await getProjectEnvFromProjectByName(name, stage);
-            if (!projectEnvDetails) {
-                throw new UserError("Project environment not found.");
-            }
+            const projectEnvDetails = await getProjectEnvFromProjectByName(name, stage).catch(
+                () => undefined,
+            );
 
-            // Transform function name from kebab-case (function-hello-world) to camelCase (functionHelloWorldApiUrl)
-            const functions = projectEnvDetails.functions?.map((f) => ({
-                name: kebabToCamelCase(f.name) + "ApiUrl",
-                url: f.cloudUrl,
-            }));
+            let functions: Array<{ name: string; url: string }> | undefined;
+            if (projectEnvDetails) {
+                // Transform function name from kebab-case (function-hello-world) to camelCase (functionHelloWorldApiUrl)
+                functions = projectEnvDetails.functions?.map((f) => ({
+                    name: kebabToCamelCase(f.name) + "ApiUrl",
+                    url: f.cloudUrl,
+                }));
+            } else {
+                debugLogger.debug(
+                    `No project environment details found. {projectName: ${name}, stage: ${stage}}`,
+                );
+            }
 
             const expandedScripts = await expandFunctionURLVariablesFromScripts(
                 frontend.scripts?.build,
