@@ -14,6 +14,7 @@ import {
     expressJsTemplate,
     frontendTemplates,
     serverlessFunctionJsTemplate,
+    nitroJsTemplate,
 } from "./templates.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import { YAMLContext, mergeContexts } from "yaml-transmute";
@@ -169,6 +170,27 @@ export async function createCommand(options: GenezioCreateOptions) {
 
             // Print success message
             log.info(SUCCESSFULL_CREATE_EXPRESSJS(projectPath));
+            break;
+        }
+        case "nitrojs": {
+            await doAdaptiveLogAction("Cloning Nitro.js starter template", async () => {
+                // Create the new project in a virtual filesystem (memfs)
+                await cloneAndSetupGenezioRepository(nitroJsTemplate, fs, options);
+
+                // Copy from memfs to local filesystem
+                copyRecursiveToNativeFs(fs, "/", projectPath, {
+                    keepDotGit: true,
+                    renameReadme: true,
+                });
+            });
+
+            // Install template packages
+            await doAdaptiveLogAction("Installing template dependencies", async () =>
+                installTemplatePackages("npm", projectPath),
+            );
+
+            // Print success message
+            log.info(SUCCESSFULL_CREATE_NITROJS(projectPath));
             break;
         }
         case "serverless": {
@@ -654,6 +676,19 @@ const SUCCESSFULL_CREATE_EXPRESSJS = (
 ) => `Project initialized in ${projectPath}. Now run:
 
     For ${colors.yellow("deployment")} of your Express.js application, run:
+        cd ${path.relative(process.cwd(), projectPath)}
+        genezio deploy
+
+    For ${colors.green("testing")} locally, run:
+        cd ${path.relative(process.cwd(), projectPath)}
+        genezio local
+`;
+
+const SUCCESSFULL_CREATE_NITROJS = (
+    projectPath: string,
+) => `Project initialized in ${projectPath}. Now run:
+
+    For ${colors.yellow("deployment")} of your Nitro.js application, run:
         cd ${path.relative(process.cwd(), projectPath)}
         genezio deploy
 
