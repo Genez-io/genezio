@@ -114,7 +114,7 @@
         "genezio": "./build/src/index.js"
     },
     "devDependencies": {
-        "@babel/types": "^7.24.5",
+        "@babel/types": "^7.25.2",
         "@types/archiver": "^6.0.2",
         "@types/babel__core": "^7.20.5",
         "@types/babel__traverse": "^7.20.4",
