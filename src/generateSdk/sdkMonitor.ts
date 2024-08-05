@@ -1,5 +1,5 @@
-import { Language } from "../yamlProjectConfiguration/models.js";
-import { YamlFrontend } from "../yamlProjectConfiguration/v2.js";
+import { Language } from "../projectConfiguration/yaml/models.js";
+import { YamlFrontend } from "../projectConfiguration/yaml/v2.js";
 import { default as fsExtra } from "fs-extra";
 import fsPromises from "fs/promises";
 import fs from "fs";

@@ -2,21 +2,21 @@ import { YAMLContext, parse as parseYaml, stringify as stringifyYaml } from "yam
 import zod from "zod";
 import nativeFs from "fs";
 import { IFs } from "memfs";
-import { legacyRegions } from "../utils/configs.js";
-import { GENEZIO_CONFIGURATION_FILE_NOT_FOUND, UserError, zodFormatError } from "../errors.js";
+import { legacyRegions } from "../../utils/configs.js";
+import { GENEZIO_CONFIGURATION_FILE_NOT_FOUND, UserError, zodFormatError } from "../../errors.js";
 import { FunctionType, Language } from "./models.js";
 import {
     DEFAULT_ARCHITECTURE,
     DEFAULT_NODE_RUNTIME,
     supportedArchitectures,
     supportedNodeRuntimes,
-} from "../models/projectOptions.js";
-import { PackageManagerType } from "../packageManagers/packageManager.js";
+} from "../../models/projectOptions.js";
+import { PackageManagerType } from "../../packageManagers/packageManager.js";
 import { TriggerType } from "./models.js";
 import { isValidCron } from "cron-validator";
 import { tryV2Migration } from "./migration.js";
 import yaml, { YAMLParseError } from "yaml";
-import { DeepRequired } from "../utils/types.js";
+import { DeepRequired } from "../../utils/types.js";
 
 export type RawYamlProjectConfiguration = ReturnType<typeof parseGenezioConfig>;
 export type YAMLBackend = NonNullable<YamlProjectConfiguration["backend"]>;

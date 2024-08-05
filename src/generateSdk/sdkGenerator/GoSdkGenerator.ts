@@ -17,7 +17,7 @@ import {
     PromiseType,
     MapType,
 } from "../../models/genezioModels.js";
-import { TriggerType } from "../../yamlProjectConfiguration/models.js";
+import { TriggerType } from "../../projectConfiguration/yaml/models.js";
 import { goSdk } from "../templates/goSdk.js";
 // const GO_FORBIDDEN_WORDS_REGEX = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 const GO_RESERVED_WORDS = [

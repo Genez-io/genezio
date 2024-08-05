@@ -4,7 +4,7 @@ import { createLocalTempFolder, deleteFolder } from "../../utils/file.js";
 import { ClassUrlMap, replaceUrlsInSdk, writeSdkToDisk } from "../../utils/sdk.js";
 import { getNodeModulePackageJson } from "../templates/packageJson.js";
 import { compileSdk } from "../utils/compileSdk.js";
-import { Language } from "../../yamlProjectConfiguration/models.js";
+import { Language } from "../../projectConfiguration/yaml/models.js";
 import { SdkGeneratorResponse } from "../../models/sdkGeneratorResponse.js";
 import { packageManagers, PackageManagerType } from "../../packageManagers/packageManager.js";
 

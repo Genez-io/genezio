@@ -23,6 +23,7 @@ import {
     GenezioCloneOptions,
     GenezioCreateBackendOptions,
     GenezioCreateExpressJsOptions,
+    GenezioCreateNitroJsOptions,
     GenezioCreateFullstackOptions,
     GenezioCreateInteractiveOptions,
     GenezioCreateNextJsOptions,
@@ -46,7 +47,7 @@ import { bundleCommand } from "./commands/bundle.js";
 import { askCreateOptions } from "./commands/create/interactive.js";
 import { regions } from "./utils/configs.js";
 import { backendTemplates, frontendTemplates } from "./commands/create/templates.js";
-import configReader from "./yamlProjectConfiguration/v2.js";
+import configReader from "./projectConfiguration/yaml/v2.js";
 import { askCloneOptions, cloneCommand } from "./commands/clone.js";
 import { pullCommand } from "./commands/pull.js";
 
@@ -253,6 +254,7 @@ create
         "Create a project with a backend and a frontend in separate repositories.",
         false,
     )
+    .option("--path <path>", "Path where to create the project.", undefined)
     .summary("Create a new project from a backend and a frontend template.")
     .action(async (options: GenezioCreateFullstackOptions, { parent }: { parent: Command }) => {
         const createOptions = await askCreateOptions({
@@ -291,6 +293,7 @@ create
             Object.keys(backendTemplates),
         ),
     )
+    .option("--path <path>", "Path where to create the project.", undefined)
     .summary("Create a new project from a backend template.")
     .action(async (options: GenezioCreateBackendOptions, { parent }: { parent: Command }) => {
         const createOptions = await askCreateOptions({
@@ -323,6 +326,12 @@ create
         new Option("--region <region>", "Region of the project.").choices(
             regions.map((region) => region.value),
         ),
+    )
+    .option("--path <path>", "Path where to create the project.", undefined)
+    .option(
+        "--default",
+        "Skip the Next.js wizard interactive questions and apply default configuration.",
+        false,
     )
     .summary("Create a new Next.js project.")
     .action(async (options: GenezioCreateNextJsOptions, { parent }: { parent: Command }) => {
@@ -364,6 +373,40 @@ create
             ...parent.opts(),
             ...options,
             type: "expressjs",
+        });
+
+        const telemetryEvent = GenezioTelemetry.sendEvent({
+            eventType: TelemetryEventTypes.GENEZIO_CREATE,
+            commandOptions: JSON.stringify(createOptions),
+        });
+
+        await createCommand(createOptions).catch(async (error) => {
+            logError(error);
+            await telemetryEvent;
+            await GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
+                errorTrace: error.message,
+            });
+            exit(1);
+        });
+        await telemetryEvent;
+    });
+
+create
+    .command("nitrojs")
+    .option("--name <name>", "Name of the project.")
+    .addOption(
+        new Option("--region <region>", "Region of the project.").choices(
+            regions.map((region) => region.value),
+        ),
+    )
+    .option("--path <path>", "Path where to create the project.", undefined)
+    .summary("Create a new Nitro.js project.")
+    .action(async (options: GenezioCreateNitroJsOptions, { parent }: { parent: Command }) => {
+        const createOptions = await askCreateOptions({
+            ...parent.opts(),
+            ...options,
+            type: "nitrojs",
         });
 
         const telemetryEvent = GenezioTelemetry.sendEvent({

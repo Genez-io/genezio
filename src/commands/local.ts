@@ -40,13 +40,13 @@ import { GenezioLocalOptions } from "../models/commandOptions.js";
 import { DartBundler } from "../bundlers/dart/localDartBundler.js";
 import axios, { AxiosError, AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
-import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
+import { Language, TriggerType } from "../projectConfiguration/yaml/models.js";
 import {
     YAMLBackend,
     YamlConfigurationIOController,
     YamlFrontend,
     YamlProjectConfiguration,
-} from "../yamlProjectConfiguration/v2.js";
+} from "../projectConfiguration/yaml/v2.js";
 import hash from "hash-it";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import dotenv from "dotenv";

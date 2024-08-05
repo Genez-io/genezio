@@ -11,7 +11,7 @@ import {
     Node,
     MapType,
 } from "../../models/genezioModels.js";
-import { TriggerType } from "../../yamlProjectConfiguration/models.js";
+import { TriggerType } from "../../projectConfiguration/yaml/models.js";
 import { kotlinSdk } from "../templates/kotlinSdk.js";
 import { ArrayType } from "../../models/genezioModels.js";
 import {

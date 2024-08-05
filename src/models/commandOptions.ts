@@ -1,4 +1,4 @@
-import { Language } from "../yamlProjectConfiguration/models.js";
+import { Language } from "../projectConfiguration/yaml/models.js";
 import { CloudAdapterIdentifier } from "./cloudProviderIdentifier.js";
 
 export interface BaseOptions {
@@ -95,11 +95,17 @@ export interface GenezioCreateExpressJsOptions extends BaseOptions {
     region?: string;
     path?: string;
 }
+export interface GenezioCreateNitroJsOptions extends BaseOptions {
+    name?: string;
+    region?: string;
+    path?: string;
+}
 
 export interface GenezioCreateNextJsOptions extends BaseOptions {
     name?: string;
     region?: string;
     path?: string;
+    default: boolean;
 }
 
 export interface GenezioCreateServerlessFunctionOptions extends BaseOptions {
@@ -123,4 +129,7 @@ export type GenezioCreateOptions =
       >)
     | ({ type: "serverless"; path?: string } & Required<
           Omit<GenezioCreateServerlessFunctionOptions, "path" | "logLevel">
+      >)
+    | ({ type: "nitrojs"; path?: string } & Required<
+          Omit<GenezioCreateNitroJsOptions, "path" | "logLevel">
       >);

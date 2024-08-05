@@ -1,7 +1,7 @@
 import { UserError } from "../../errors.js";
 import { SdkGeneratorResponse } from "../../models/sdkGeneratorResponse.js";
 import { ClassUrlMap } from "../../utils/sdk.js";
-import { Language } from "../../yamlProjectConfiguration/models.js";
+import { Language } from "../../projectConfiguration/yaml/models.js";
 import { basicFileWriter } from "./basicFileWriter.js";
 import { writeSdkTs, writeSdkJs } from "./jsSdkWriter.js";
 

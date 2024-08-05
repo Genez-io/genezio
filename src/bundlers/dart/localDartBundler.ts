@@ -12,7 +12,7 @@ import {
 import { template } from "./localDartMain.js";
 import { default as fsExtra } from "fs-extra";
 import { spawnSync } from "child_process";
-import { TriggerType } from "../../yamlProjectConfiguration/models.js";
+import { TriggerType } from "../../projectConfiguration/yaml/models.js";
 import { log } from "../../utils/logging.js";
 import {
     ArrayType,

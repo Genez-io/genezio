@@ -3,10 +3,10 @@ import { YamlProjectConfiguration as v1 } from "./v1.js";
 import { YamlMethod, RawYamlProjectConfiguration as v2 } from "./v2.js";
 import { Language } from "./models.js";
 import path from "path";
-import { scanClassesForDecorators } from "../utils/configuration.js";
+import { scanClassesForDecorators } from "../../utils/configuration.js";
 import _ from "lodash";
-import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
-import { UserError } from "../errors.js";
+import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
+import { UserError } from "../../errors.js";
 
 function compressArray<T>(array: T[] | undefined): T[] | T | undefined {
     if (!array) return undefined;

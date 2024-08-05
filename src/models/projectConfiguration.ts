@@ -4,8 +4,8 @@ import { AstSummary } from "./astSummary.js";
 import { CloudProviderIdentifier } from "./cloudProviderIdentifier.js";
 import { DEFAULT_ARCHITECTURE, DEFAULT_NODE_RUNTIME, NodeOptions } from "./projectOptions.js";
 import { SdkHandlerResponse } from "./sdkGeneratorResponse.js";
-import { FunctionType, TriggerType } from "../yamlProjectConfiguration/models.js";
-import { YamlProjectConfiguration } from "../yamlProjectConfiguration/v2.js";
+import { FunctionType, TriggerType } from "../projectConfiguration/yaml/models.js";
+import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
 import path from "path";
 import { UserError } from "../errors.js";
 export class ParameterType {
