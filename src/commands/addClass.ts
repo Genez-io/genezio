@@ -5,7 +5,7 @@ import { newClassTemplateNode } from "../generateSdk/templates/newProject.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import { fileExists, writeToFile } from "../utils/file.js";
 import { supportedExtensions } from "../utils/languages.js";
-import configIOController, { YamlClass } from "../yamlProjectConfiguration/v2.js";
+import configIOController, { YamlClass } from "../projectConfiguration/yaml/v2.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
 import { UserError } from "../errors.js";
 

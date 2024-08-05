@@ -13,7 +13,7 @@ import {
     SdkFileClass,
     SdkClassConfiguration,
 } from "../../models/genezioModels.js";
-import { TriggerType } from "../../yamlProjectConfiguration/models.js";
+import { TriggerType } from "../../projectConfiguration/yaml/models.js";
 import { dartSdk } from "../templates/dartSdk.js";
 import { ArrayType } from "../../models/genezioModels.js";
 import {
@@ -211,8 +211,9 @@ class SdkGenerator implements SdkGeneratorInterface {
             for (const elem of classInfo.program.body) {
                 if (elem.type === AstNodeType.ClassDefinition) {
                     classDefinition = elem as ClassDefinition;
-                    view.classDocLines = classDefinition.docString?.replace(/\n+$/, "").split("\n") || [],
-                    this.populateViewForMainClass(classDefinition, classConfiguration, view);
+                    (view.classDocLines =
+                        classDefinition.docString?.replace(/\n+$/, "").split("\n") || []),
+                        this.populateViewForMainClass(classDefinition, classConfiguration, view);
                 } else if (elem.type === AstNodeType.StructLiteral) {
                     const structLiteral = elem as StructLiteral;
                     const fromJson = this.generateFromJsonImplementationForClass(structLiteral);

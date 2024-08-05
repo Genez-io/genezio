@@ -1,7 +1,7 @@
 import fs, { existsSync, readFileSync } from "fs";
 import { GenezioDeployOptions } from "../../../models/commandOptions.js";
-import { YamlConfigurationIOController } from "../../../yamlProjectConfiguration/v2.js";
-import { YamlProjectConfiguration } from "../../../yamlProjectConfiguration/v2.js";
+import { YamlConfigurationIOController } from "../../../projectConfiguration/yaml/v2.js";
+import { YamlProjectConfiguration } from "../../../projectConfiguration/yaml/v2.js";
 import inquirer from "inquirer";
 import path from "path";
 import { regions } from "../../../utils/configs.js";
@@ -12,7 +12,7 @@ import { UserError } from "../../../errors.js";
 import { getCloudProvider } from "../../../requests/getCloudProvider.js";
 import { functionToCloudInput, getCloudAdapter } from "../genezio.js";
 import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
-import { FunctionType, Language } from "../../../yamlProjectConfiguration/models.js";
+import { FunctionType, Language } from "../../../projectConfiguration/yaml/models.js";
 import { getPackageManager, PackageManagerType } from "../../../packageManagers/packageManager.js";
 import { getFrontendPresignedURL } from "../../../requests/getFrontendPresignedURL.js";
 import { uploadContentToS3 } from "../../../requests/uploadContentToS3.js";

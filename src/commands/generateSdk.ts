@@ -1,7 +1,7 @@
 import { log } from "../utils/logging.js";
 import { exit } from "process";
 import { languages } from "../utils/languages.js";
-import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
+import { Language, TriggerType } from "../projectConfiguration/yaml/models.js";
 import { getProjectEnvFromProject } from "../requests/getProjectInfo.js";
 import listProjects from "../requests/listProjects.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
@@ -18,7 +18,7 @@ import {
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
 } from "../generateSdk/generateSdkApi.js";
-import { YamlConfigurationIOController } from "../yamlProjectConfiguration/v2.js";
+import { YamlConfigurationIOController } from "../projectConfiguration/yaml/v2.js";
 import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
 import { reportSuccessForSdk } from "../generateSdk/sdkSuccessReport.js";
 import { GenezioCommand } from "../utils/reporter.js";

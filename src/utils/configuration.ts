@@ -1,8 +1,8 @@
 import path from "path";
-import { YAMLBackend, YamlClass, YamlMethod } from "../yamlProjectConfiguration/v2.js";
+import { YAMLBackend, YamlClass, YamlMethod } from "../projectConfiguration/yaml/v2.js";
 import { getAllFilesFromPath } from "./file.js";
 import { debugLogger, log } from "./logging.js";
-import { TriggerType } from "../yamlProjectConfiguration/models.js";
+import { TriggerType } from "../projectConfiguration/yaml/models.js";
 import { GENEZIO_DECORATOR_YAML_OVERLAP, UserError } from "../errors.js";
 import { DecoratorExtractorFactory } from "./decorators/decoratorFactory.js";
 

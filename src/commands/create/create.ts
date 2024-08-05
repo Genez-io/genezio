@@ -14,12 +14,13 @@ import {
     expressJsTemplate,
     frontendTemplates,
     serverlessFunctionJsTemplate,
+    nitroJsTemplate,
 } from "./templates.js";
-import { YamlConfigurationIOController } from "../../yamlProjectConfiguration/v2.js";
+import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import { YAMLContext, mergeContexts } from "yaml-transmute";
 import _ from "lodash";
 import { UserError } from "../../errors.js";
-import { Language } from "../../yamlProjectConfiguration/models.js";
+import { Language } from "../../projectConfiguration/yaml/models.js";
 import { linkFrontendsToProject } from "../../utils/linkDatabase.js";
 import { $ } from "execa";
 
@@ -125,7 +126,12 @@ export async function createCommand(options: GenezioCreateOptions) {
         case "nextjs": {
             log.info("Running npx create-next-app...");
 
-            await $({ stdio: "inherit" })`npx --yes create-next-app ${projectPath}`.catch(() => {
+            const defaultConfiguration =
+                "--typescript --eslint --tailwind --no-src-dir --app --no-import-alias";
+            await $({ stdio: "inherit" })(
+                `npx --yes create-next-app ${projectPath}` +
+                    (options.default ? ` ${defaultConfiguration}` : ""),
+            ).catch(() => {
                 throw new UserError("Failed to create a Next.js project using create-next-app.");
             });
 
@@ -164,6 +170,27 @@ export async function createCommand(options: GenezioCreateOptions) {
 
             // Print success message
             log.info(SUCCESSFULL_CREATE_EXPRESSJS(projectPath));
+            break;
+        }
+        case "nitrojs": {
+            await doAdaptiveLogAction("Cloning Nitro.js starter template", async () => {
+                // Create the new project in a virtual filesystem (memfs)
+                await cloneAndSetupGenezioRepository(nitroJsTemplate, fs, options);
+
+                // Copy from memfs to local filesystem
+                copyRecursiveToNativeFs(fs, "/", projectPath, {
+                    keepDotGit: true,
+                    renameReadme: true,
+                });
+            });
+
+            // Install template packages
+            await doAdaptiveLogAction("Installing template dependencies", async () =>
+                installTemplatePackages("npm", projectPath),
+            );
+
+            // Print success message
+            log.info(SUCCESSFULL_CREATE_NITROJS(projectPath));
             break;
         }
         case "serverless": {
@@ -649,6 +676,19 @@ const SUCCESSFULL_CREATE_EXPRESSJS = (
 ) => `Project initialized in ${projectPath}. Now run:
 
     For ${colors.yellow("deployment")} of your Express.js application, run:
+        cd ${path.relative(process.cwd(), projectPath)}
+        genezio deploy
+
+    For ${colors.green("testing")} locally, run:
+        cd ${path.relative(process.cwd(), projectPath)}
+        genezio local
+`;
+
+const SUCCESSFULL_CREATE_NITROJS = (
+    projectPath: string,
+) => `Project initialized in ${projectPath}. Now run:
+
+    For ${colors.yellow("deployment")} of your Nitro.js application, run:
         cd ${path.relative(process.cwd(), projectPath)}
         genezio deploy
 

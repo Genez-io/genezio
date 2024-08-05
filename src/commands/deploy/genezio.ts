@@ -31,7 +31,7 @@ import { printAdaptiveLog, debugLogger, doAdaptiveLogAction } from "../../utils/
 import { GenezioCommand, reportSuccess, reportSuccessFunctions } from "../../utils/reporter.js";
 import { generateRandomSubdomain } from "../../utils/yaml.js";
 import cliProgress from "cli-progress";
-import { YAMLBackend, YamlProjectConfiguration } from "../../yamlProjectConfiguration/v2.js";
+import { YAMLBackend, YamlProjectConfiguration } from "../../projectConfiguration/yaml/v2.js";
 import { GenezioCloudAdapter } from "../../cloudAdapter/genezio/genezioAdapter.js";
 import {
     CloudAdapter,
@@ -52,11 +52,11 @@ import {
     checkExperimentalDecorators,
     isDependencyVersionCompatible,
 } from "../../utils/jsProjectChecker.js";
-import { YamlConfigurationIOController } from "../../yamlProjectConfiguration/v2.js";
-import { FunctionType, Language } from "../../yamlProjectConfiguration/models.js";
+import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
+import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
 import { expandFunctionURLVariablesFromScripts, runScript } from "../../utils/scripts.js";
 import { scanClassesForDecorators } from "../../utils/configuration.js";
-import configIOController, { YamlFrontend } from "../../yamlProjectConfiguration/v2.js";
+import configIOController, { YamlFrontend } from "../../projectConfiguration/yaml/v2.js";
 import { ClusterCloudAdapter } from "../../cloudAdapter/cluster/clusterAdapter.js";
 import { writeSdk } from "../../generateSdk/sdkWriter/sdkWriter.js";
 import { reportSuccessForSdk } from "../../generateSdk/sdkSuccessReport.js";

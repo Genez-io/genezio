@@ -4,7 +4,7 @@ import path from "path";
 import Mustache from "mustache";
 import { getCompileDartPresignedURL } from "../../requests/getCompileDartPresignedURL.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
-import decompress from "decompress";
+import admZip from "adm-zip";
 import {
     createTemporaryFolder,
     deleteFolder,
@@ -22,7 +22,7 @@ import {
 import { template } from "./dartMain.js";
 import { default as fsExtra } from "fs-extra";
 import { DART_COMPILATION_ENDPOINT } from "../../constants.js";
-import { TriggerType } from "../../yamlProjectConfiguration/models.js";
+import { TriggerType } from "../../projectConfiguration/yaml/models.js";
 import { spawnSync } from "child_process";
 import { log } from "../../utils/logging.js";
 import { runNewProcess } from "../../utils/process.js";
@@ -94,10 +94,15 @@ export class DartBundler implements BundlerInterface {
                 fs.writeFileSync(compiledZip, response.data);
             })
             .then(async () => {
-                await decompress(compiledZip, temporaryFolder);
+                const zip = new admZip(compiledZip);
+                try {
+                    zip.extractAllTo(temporaryFolder, true);
+                } catch (error) {
+                    debugLogger.debug(`Failed to extract files: ${error}`);
+                    throw new Error("Failed to extract files. Please open an issue on GitHub");
+                }
                 fs.unlinkSync(compiledZip);
-            })
-            .catch((err) => console.error(err));
+            });
     }
 
     #castParameterToPropertyType(node: Node, variableName: string): string {

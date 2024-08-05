@@ -9,7 +9,7 @@ import {
     ArrayType,
     PromiseType,
 } from "../../models/genezioModels.js";
-import { TriggerType } from "../../yamlProjectConfiguration/models.js";
+import { TriggerType } from "../../projectConfiguration/yaml/models.js";
 import { swiftSdk } from "../templates/swiftSdk.js";
 
 const SWIFT_RESERVED_WORDS = [

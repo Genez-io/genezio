@@ -63,9 +63,11 @@ export async function askCreateOptions(
     }
 
     if (createOptions.type === undefined) {
-        let type: "nextjs" | "expressjs" | "backend" | "fullstack" | "serverless";
+        let type: "nextjs" | "expressjs" | "nitrojs" | "backend" | "fullstack" | "serverless";
 
-        const { projectType }: { projectType: "nextjs" | "expressjs" | "genezio" | "serverless" } =
+        const {
+            projectType,
+        }: { projectType: "nextjs" | "expressjs" | "nitrojs" | "genezio" | "serverless" } =
             await inquirer.prompt([
                 {
                     type: "list",
@@ -79,6 +81,10 @@ export async function askCreateOptions(
                         {
                             name: "Express.js",
                             value: "expressjs",
+                        },
+                        {
+                            name: "Nitro.js",
+                            value: "nitrojs",
                         },
                         {
                             name: "Genezio Typesafe Project",
@@ -136,6 +142,7 @@ export async function askCreateOptions(
         case "expressjs":
         case "nextjs":
         case "serverless":
+        case "nitrojs":
             break;
     }
 
