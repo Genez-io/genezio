@@ -13,5 +13,5 @@
         "noPropertyAccessFromIndexSignature": true
     },
     "include": ["src/**/*", "package.json"],
-    "exclude": ["test.js"]
+    "exclude": ["test.js", "src/projectConfiguration/ts/resources/**/*"]
 }

@@ -1,0 +1,9 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "target": "ES2019",
+        "moduleResolution": "nodenext",
+        "module": "nodenext",
+        "outDir": "./dist/esm"
+    }
+}
