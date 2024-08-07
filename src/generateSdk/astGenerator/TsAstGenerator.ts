@@ -35,7 +35,6 @@ import { readdirSync } from "fs";
 import path from "path";
 import { statSync } from "fs";
 import { GENEZIO_CLASS_STATIC_METHOD_NOT_SUPPORTED, UserError } from "../../errors.js";
-import { debugLogger } from "../../utils/logging.js";
 
 type Declaration = StructLiteral | TypeAlias | Enum;
 
@@ -131,7 +130,6 @@ export class AstGenerator implements AstGeneratorInterface {
                 );
                 let typeAtLocationPath =
                     typeAtLocation.aliasSymbol?.declarations?.[0].getSourceFile().fileName;
-                debugLogger.debug(JSON.stringify(typeAtLocation));
                 if (typeAtLocationPath?.endsWith(".ts")) {
                     typeAtLocationPath = typeAtLocationPath.slice(0, -3);
                     if (typeAtLocationPath.endsWith(".d")) {
