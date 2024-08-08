@@ -99,6 +99,12 @@ const handler = async function(event) {
     };
   });
 
+  if (result.cookies) {
+    for (const cookie of result.cookies) {
+      result.headers["Set-Cookie"] = cookie;
+    }
+  }
+
   return result;
 };
 
