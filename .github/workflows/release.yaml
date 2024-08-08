@@ -10,16 +10,37 @@ on:
     workflow_dispatch:
 
 jobs:
-    publish:
+    publish-cli:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v4
-            - uses: actions/setup-node@v3
+            - uses: actions/setup-node@v4
               with:
-                  node-version: "18.x"
-                  registry-url: "https://registry.npmjs.org"
+                  node-version: 20
+                  registry-url: https://registry.npmjs.org
             - run: npm ci
             - run: npm run build
-            - run: npm publish
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+            - name: Publish CLI
+              uses: JS-DevTools/npm-publish@v3
+              with:
+                  token: ${{ secrets.NPM_AUTH_TOKEN }}
+    publish-resources-lib:
+        runs-on: ubuntu-latest
+        env:
+            working-directory: src/projectConfiguration/ts/resources
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  registry-url: https://registry.npmjs.org
+            - run: npm ci
+              working-directory: ${{ env.working-directory }}
+            - run: npm run build
+              working-directory: ${{ env.working-directory }}
+            - name: Publish library
+              uses: JS-DevTools/npm-publish@v3
+              with:
+                  token: ${{ secrets.NPM_AUTH_TOKEN }}
+                  package: ${{ env.working-directory }}
+                  access: public
