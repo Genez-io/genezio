@@ -12,7 +12,7 @@
     "scripts": {
         "build:cjs": "tsc -p tsconfig.cjs.json",
         "build:esm": "tsc -p tsconfig.esm.json",
-        "build": "npm run build:cjs && npm run build:esm"
+        "build": "npm run build:esm"
     },
     "author": "Genezio",
     "license": "ISC",

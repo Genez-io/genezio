@@ -3,6 +3,8 @@ import { existsSync } from "fs";
 import path from "path";
 import { UserError } from "../../errors.js";
 import { createTemporaryFolder } from "../../utils/file.js";
+import { debugLogger } from "../../utils/logging.js";
+import { commonjs } from "@hyrious/esbuild-plugin-commonjs";
 
 export async function readGenezioConfigTs(configPath: string = "genezio.config.ts") {
     if (!existsSync(configPath)) {
@@ -18,12 +20,15 @@ export async function readGenezioConfigTs(configPath: string = "genezio.config.t
 async function bundleGenezioConfigTs(configPath: string): Promise<string> {
     const outfile = path.join(await createTemporaryFolder(), "genezio.config.mjs");
 
+    debugLogger.debug(`debug bundling ${configPath} to ${outfile}`);
     await esbuild.build({
         entryPoints: [configPath],
         bundle: true,
         format: "esm",
         platform: "node",
         outfile,
+        // TODO
+        plugins: [commonjs()],
     });
 
     return outfile;

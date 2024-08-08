@@ -2,7 +2,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import FileDetails from "../models/fileDetails.js";
-import glob from "glob";
+import { glob } from "glob";
 import archiver from "archiver";
 import { parse } from "yaml";
 import { exit } from "process";
@@ -63,37 +63,22 @@ export async function getAllFilesFromPath(
 
     genezioIgnore = genezioIgnore.map((p) => ensureRelativePaths(p));
 
-    return new Promise((resolve, reject) => {
-        let pattern;
-        if (recursive) {
-            pattern = `**`;
-        } else {
-            pattern = `*`;
-        }
-        glob(
-            pattern,
-            {
-                dot: true,
-                ignore: genezioIgnore,
-                cwd: inputPath,
-            },
-            (err, files) => {
-                if (err) {
-                    reject(err);
-                }
+    const pattern = recursive ? `**/*` : `*`;
 
-                const fileDetails: FileDetails[] = files.map((file: string) => {
-                    return {
-                        name: path.parse(file).name,
-                        extension: path.parse(file).ext,
-                        path: file,
-                        filename: file,
-                    };
-                });
-                resolve(fileDetails);
-            },
-        );
-    });
+    try {
+        const files = await glob(pattern, { cwd: inputPath, ignore: genezioIgnore, nodir: true });
+        const fileDetails: FileDetails[] = files.map((file: string) => {
+            return {
+                name: path.parse(file).name,
+                extension: path.parse(file).ext,
+                path: file,
+                filename: file,
+            };
+        });
+        return fileDetails;
+    } catch (err) {
+        throw new Error(`Error while getting files from path: ${err}`);
+    }
 }
 
 export async function getAllFilesFromCurrentPath(

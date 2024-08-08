@@ -1,4 +1,21 @@
-import { generateRandomSubdomain } from "../../../../utils/yaml.js";
+import axios from "axios";
+import {createEmptyProject} from "../../../../requests/project.js";
+
+export type CreateEmptyProjectRequest = {
+    projectName: string;
+    region: string;
+    cloudProvider: string;
+    stage: string;
+    stack?: string[];
+}
+
+export type CreateEmptyProjectResponse = {
+    status: string;
+    projectId: string;
+    projectEnvId: string;
+    createdAt: number;
+    updatedAt: number;
+}
 
 export type Region = "us-east-1" | "eu-central-1";
 export type DependsOn = { dependsOn: Resource[] };
@@ -16,7 +33,7 @@ export class Project extends Resource {
     public cloudProvider: "genezio-cloud";
     public environment: Record<string, string>;
 
-    public id: string; /* out */
+    public id: string | undefined; /* out */
 
     constructor(
         resourceName: string,
@@ -34,9 +51,70 @@ export class Project extends Resource {
         this.region = options.region;
         this.cloudProvider = options.cloudProvider ?? "genezio-cloud";
         this.environment = options.environment ?? {};
+    }
 
-        // TODO: Deploy and populate outs
-        this.id = "TODO";
+    // This will work
+    async create(): Promise<CreateEmptyProjectResponse> {
+        const request: CreateEmptyProjectRequest = {
+            projectName: this.name,
+            region: this.region,
+            cloudProvider: this.cloudProvider,
+            stage: "prod",
+        };
+
+        // return await createEmptyProject(request);
+
+        const { projectName, region, cloudProvider = "genezio-cloud", stage = "prod", stack = [] } = request;
+
+        // export an auth token to make this work
+        const authToken = process.env.MY_GENEZIO_AUTH_TOKEN;
+        const headers = {
+            Authorization: `Bearer ${authToken}`,
+            "Accept-Version": `genezio-cli/2.3.1`,
+        };
+
+        const endpoint = "core/deployment";
+        const method = "PUT";
+        const url = `https://dev.api.genez.io/${endpoint}`;
+
+        const data: string = JSON.stringify({
+            projectName: projectName,
+            region: region,
+            cloudProvider: cloudProvider,
+            stage: stage,
+            stack: stack
+        });
+
+        try {
+            const response = await axios({
+                method,
+                url,
+                headers,
+                data,
+            });
+            return response.data;
+        } catch (error) {
+            // eslint-disable-next-line no-console
+            console.log(`An error occurred sending request ${method} on ${url}: ${error}`);
+            throw error;
+        }
+    }
+
+    // This will not work
+    async create2(): Promise<CreateEmptyProjectResponse> {
+        const request: CreateEmptyProjectRequest = {
+            projectName: this.name,
+            region: this.region,
+            cloudProvider: this.cloudProvider,
+            stage: "prod",
+        };
+
+        return await createEmptyProject(request);
+    }
+
+    // This will work
+    async test() {
+        return await axios("https://jsonplaceholder.typicode.com/todos/1")
     }
 }
 
@@ -134,7 +212,7 @@ export class Frontend extends Resource {
         this.path = options.path;
         this.environment = options.environment ?? {};
         this.publish = options.publish;
-        this.subdomain = options.subdomain ?? generateRandomSubdomain();
+        this.subdomain = options.subdomain ?? "random-subdomain";
 
         // TODO: Deploy and populate outs
         this.url = "TODO";

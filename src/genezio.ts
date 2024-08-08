@@ -50,6 +50,9 @@ import { backendTemplates, frontendTemplates } from "./commands/create/templates
 import configReader from "./projectConfiguration/yaml/v2.js";
 import { askCloneOptions, cloneCommand } from "./commands/clone.js";
 import { pullCommand } from "./commands/pull.js";
+import { read } from "fs";
+import { readGenezioConfigTs } from "./projectConfiguration/ts/config.js";
+import { debug } from "console";
 
 const program = new Command();
 
@@ -162,15 +165,19 @@ program
 Use --backend to deploy only the backend application.`,
     )
     .action(async (options: GenezioDeployOptions) => {
-        await deployCommand(options).catch(async (error: Error) => {
-            logError(error);
-            await GenezioTelemetry.sendEvent({
-                eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
-                errorTrace: error.message,
-                commandOptions: JSON.stringify(options),
-            });
-            exit(1);
-        });
+        const config = await readGenezioConfigTs();
+        debugLogger.debug("Config read", JSON.stringify(config));
+
+
+        // await deployCommand(options).catch(async (error: Error) => {
+        //     logError(error);
+        //     await GenezioTelemetry.sendEvent({
+        //         eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
+        //         errorTrace: error.message,
+        //         commandOptions: JSON.stringify(options),
+        //     });
+        //     exit(1);
+        // });
     });
 
 program
