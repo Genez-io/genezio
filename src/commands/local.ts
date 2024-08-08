@@ -673,6 +673,7 @@ async function startServerHttp(
                 headers: {
                     "content-type": "application/json",
                 },
+                cookies: [],
             });
             return;
         }
@@ -698,6 +699,7 @@ async function startServerHttp(
                 headers: {
                     "content-type": "application/json",
                 },
+                cookies: [],
             });
             return;
         }
@@ -720,6 +722,7 @@ async function startServerHttp(
                 headers: {
                     "content-type": "application/json",
                 },
+                cookies: [],
             });
             return;
         }
@@ -741,6 +744,7 @@ async function startServerHttp(
                 headers: {
                     "content-type": "application/json",
                 },
+                cookies: [],
             });
             return;
         }
@@ -786,6 +790,7 @@ async function startServerHttp(
                 headers: {
                     "content-type": "application/json",
                 },
+                cookies: [],
             });
             return;
         }
@@ -964,6 +969,12 @@ function sendResponse(res: Response, httpResponse: LambdaResponse) {
 
     if (!contentTypeHeader) {
         res.setHeader("content-type", "application/json");
+    }
+
+    if (httpResponse.cookies) {
+        for (const cookie of httpResponse.cookies) {
+            res.setHeader("Set-Cookie", cookie);
+        }
     }
 
     if (httpResponse.statusCode) {
