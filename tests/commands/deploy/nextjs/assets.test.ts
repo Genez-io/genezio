@@ -272,4 +272,68 @@ describe("Path Generator", () => {
             "/BUILDID",
         ]);
     });
+
+    test("route entry has a wildcard", () => {
+        const assetsEntry = new Directory(
+            new Map([
+                [
+                    "static",
+                    new Directory(
+                        new Map([
+                            ["dir1", new Directory()],
+                            [
+                                "dir2",
+                                new Directory(
+                                    new Map([
+                                        ["a", new File()],
+                                        ["b", new File()],
+                                    ]),
+                                ),
+                            ],
+                        ]),
+                    ),
+                ],
+                [
+                    "images",
+                    new Directory(
+                        new Map([
+                            [
+                                "dir2",
+                                new Directory(
+                                    new Map([
+                                        ["a", new File()],
+                                        ["b", new File()],
+                                    ]),
+                                ),
+                            ],
+                        ]),
+                    ),
+                ],
+                ["BUILDID", new File()],
+            ]),
+        );
+
+        const routeEntry = new Directory(
+            new Map([
+                [
+                    "[username]",
+                    new Directory(
+                        new Map([
+                            ["dir2", new Directory()],
+                            ["dir3", new Directory()],
+                        ]),
+                    ),
+                ],
+                ["images", new Directory()],
+            ]),
+        );
+
+        expect(recursivePathGenerator(assetsEntry, routeEntry)).toEqual([
+            "/static/dir1/*",
+            "/static/dir2/a",
+            "/static/dir2/b",
+            "/images/dir2/*",
+            "/BUILDID",
+        ]);
+    });
 });

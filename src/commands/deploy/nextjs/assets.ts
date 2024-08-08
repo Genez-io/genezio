@@ -141,13 +141,20 @@ export function recursivePathGenerator(
             continue;
         }
 
-        if (
-            routeEntry.children.has(name) ||
-            [...routeEntry.children.keys()].some((e) => e.startsWith("[") && e.endsWith("]"))
-        ) {
+        const routeWildcard = [...routeEntry.children.keys()].find(
+            (e) => e.startsWith("[") && e.endsWith("]"),
+        );
+        if (routeEntry.children.has(name)) {
             recursivePathGenerator(
                 assetsEntry.children.get(name) as Directory,
                 routeEntry.children.get(name) as Directory,
+                [currentPath, name].join("/"),
+                paths,
+            );
+        } else if (routeWildcard) {
+            recursivePathGenerator(
+                assetsEntry.children.get(name) as Directory,
+                routeEntry.children.get(routeWildcard) as Directory,
                 [currentPath, name].join("/"),
                 paths,
             );
