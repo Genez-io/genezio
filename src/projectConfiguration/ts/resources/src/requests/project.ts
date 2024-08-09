@@ -17,12 +17,15 @@ export interface CreateEmptyProjectResponse {
 }
 
 export interface GetProjectDetailsResponse {
-    id: string;
-    name: string;
-    region: string;
-    createdAt: number;
-    updatedAt: number;
-    projectEnvs: ProjectDetailsEnvElement[];
+    status: string;
+    project: {
+        id: string;
+        name: string;
+        region: string;
+        createdAt: number;
+        updatedAt: number;
+        projectEnvs: ProjectDetailsEnvElement[];
+    };
 }
 
 export interface ProjectDetailsEnvElement {

@@ -9,6 +9,31 @@ export interface CreateDatabaseRequest {
 export interface CreateDatabaseResponse {
     status: string;
     databaseId: string;
+    connectionUrl?: string;
+}
+
+export interface GetDatabaseConnectionUrl {
+    status: string;
+    connectionUrl: string;
+}
+
+export interface GetDatabaseResponse {
+    id: string;
+    name: string;
+    region: string;
+    connectionUrl?: string;
+    type: string;
+}
+
+export interface GetAllDatabasesResponse {
+    status: string;
+    databases: {
+        id: string;
+        name: string;
+        region: string;
+        connectionUrl?: string;
+        type: string;
+    }[];
 }
 
 export interface LinkedDatabaseResponse {
@@ -25,21 +50,51 @@ export async function createDatabase(
 
     const data: string = JSON.stringify({
         name: name,
-        region: region,
+        region: `aws-${region}`,
         type: type,
     });
 
     const databaseResponse = (await sendRequest(
         "POST",
-        "database",
+        "databases",
         data,
     )) as CreateDatabaseResponse;
+
+    // Populate connectionUrl
+    databaseResponse.connectionUrl = (
+        (await sendRequest(
+            "GET",
+            `databases/${databaseResponse.databaseId}`,
+            "",
+        )) as GetDatabaseConnectionUrl
+    ).connectionUrl;
 
     if (linkToStage) {
         await linkDatabaseToEnvironment(projectId, envId, databaseResponse.databaseId);
     }
 
     return databaseResponse;
+}
+
+// TODO: This can be optimized with an endpoint GET /databases/${name}
+export async function getDatabaseByName(name: string): Promise<GetDatabaseResponse | undefined> {
+    const allDatabaseResponse: GetAllDatabasesResponse = await sendRequest("GET", `databases`, "");
+
+    const getDatabaseResponse = allDatabaseResponse.databases.find(
+        (database) => database.name === name,
+    );
+
+    if (getDatabaseResponse) {
+        getDatabaseResponse.connectionUrl = (
+            (await sendRequest(
+                "GET",
+                `databases/${getDatabaseResponse.id}`,
+                "",
+            )) as GetDatabaseConnectionUrl
+        ).connectionUrl;
+    }
+
+    return getDatabaseResponse;
 }
 
 export async function linkDatabaseToEnvironment(
@@ -52,7 +107,7 @@ export async function linkDatabaseToEnvironment(
     }
     return (await sendRequest(
         "POST",
-        `/projects/${projectId}/${envId}/databases/${databaseId}`,
+        `projects/${projectId}/${envId}/databases/${databaseId}`,
         "",
     )) as LinkedDatabaseResponse;
 }

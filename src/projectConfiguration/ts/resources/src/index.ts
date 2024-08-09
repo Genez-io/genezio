@@ -1,8 +1,8 @@
+/* eslint-disable no-console */
 import {
     createEmptyProject,
     CreateEmptyProjectRequest,
     CreateEmptyProjectResponse,
-    getProjectDetailsById,
     getProjectDetailsByName,
     GetProjectDetailsResponse,
 } from "./requests/project.js";
@@ -10,6 +10,8 @@ import {
     createDatabase,
     CreateDatabaseRequest,
     CreateDatabaseResponse,
+    getDatabaseByName,
+    GetDatabaseResponse,
 } from "./requests/database.js";
 import {
     AuthProviderDetails,
@@ -20,6 +22,7 @@ import {
     setAuthProviders,
     SetAuthProvidersRequest,
 } from "./requests/authentication.js";
+import { AxiosError } from "axios";
 
 export type Region = "us-east-1" | "eu-central-1";
 export type DependsOn = { dependsOn: Resource[] };
@@ -57,18 +60,12 @@ export class Project extends Resource {
         this.environment = options.environment ?? {};
     }
 
-    async create(): Promise<CreateEmptyProjectResponse> {
-        // Attempt to get the project from cloud if it alreadt exists
+    async create(): Promise<Project> {
+        // Attempt to get the project from cloud if it already exists
         const projectObject = await this.get();
         if (projectObject) {
-            return {
-                status: "ok",
-                projectId: projectObject.id,
-                projectEnvId:
-                    projectObject.projectEnvs.find((env) => env.name === "prod")?.id ?? "",
-                createdAt: projectObject.createdAt,
-                updatedAt: projectObject.updatedAt,
-            };
+            this.id = projectObject.project.id;
+            return this;
         }
 
         const request: CreateEmptyProjectRequest = {
@@ -81,28 +78,38 @@ export class Project extends Resource {
         const response: CreateEmptyProjectResponse = await createEmptyProject(request);
         this.id = response.projectId;
 
-        return response;
+        return this;
     }
 
-    private async get(): Promise<GetProjectDetailsResponse> {
-        const response: GetProjectDetailsResponse = await getProjectDetailsByName(this.name);
-
-        return response;
+    private async get(): Promise<GetProjectDetailsResponse | undefined> {
+        try {
+            const response = await getProjectDetailsByName(this.name);
+            return response;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (error: any) {
+            if ((error as AxiosError) && error.response?.status === 400) {
+                // eslint-disable-next-line no-console
+                console.log("Project not found - proceeding to create it");
+                return undefined;
+            }
+            throw error;
+        }
     }
 }
 
 export class Database extends Resource {
     public name: string;
-    public project?: { id: string };
+    public project?: { name: string };
     public region: Region;
 
     public id: string | undefined; /* out */
+    public uri: string | undefined; /* out */
 
     constructor(
         resourceName: string,
         options: {
             name: string;
-            project?: { id: string };
+            project?: { name: string };
             region: Region;
         },
         dependsOn?: DependsOn,
@@ -114,7 +121,15 @@ export class Database extends Resource {
         this.region = options.region;
     }
 
-    async create(): Promise<CreateDatabaseResponse> {
+    async create(): Promise<Database> {
+        // Attempt to get the database from cloud if it already exists
+        const databaseObject = await this.get();
+        if (databaseObject) {
+            this.uri = databaseObject.connectionUrl;
+            this.id = databaseObject.id;
+            return this;
+        }
+
         const request: CreateDatabaseRequest = {
             name: this.name,
             region: this.region,
@@ -123,19 +138,32 @@ export class Database extends Resource {
 
         if (!this.project) {
             const response: CreateDatabaseResponse = await createDatabase(request);
+            this.uri = response.connectionUrl;
             this.id = response.databaseId;
-            return response;
+            return this;
         }
 
-        const projectDetails = await getProjectDetailsById(this.project.id);
+        const projectDetails = await getProjectDetailsByName(this.project.name);
+
+        const projectEnv = projectDetails.project.projectEnvs.find((env) => env.name === "prod");
+        if (projectEnv === undefined) {
+            throw new Error("Project environment not found");
+        }
 
         const response: CreateDatabaseResponse = await createDatabase(
             request,
-            projectDetails.id,
-            projectDetails.projectEnvs[0].id,
+            projectDetails.project.id,
+            projectEnv.id,
             true,
         );
 
+        this.uri = response.connectionUrl;
+        this.id = response.databaseId;
+        return this;
+    }
+
+    private async get(): Promise<GetDatabaseResponse | undefined> {
+        const response = await getDatabaseByName(this.name);
         return response;
     }
 }
