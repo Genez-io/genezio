@@ -2,7 +2,9 @@ import esbuild from "esbuild";
 import { existsSync } from "fs";
 import path from "path";
 import { UserError } from "../../errors.js";
-import { createTemporaryFolder } from "../../utils/file.js";
+import { commonjs } from "@hyrious/esbuild-plugin-commonjs";
+import { nodeExternalsPlugin } from "esbuild-node-externals";
+import fs from "fs-extra";
 
 export async function readGenezioConfigTs(configPath: string = "genezio.config.ts") {
     if (!existsSync(configPath)) {
@@ -16,7 +18,24 @@ export async function readGenezioConfigTs(configPath: string = "genezio.config.t
 }
 
 async function bundleGenezioConfigTs(configPath: string): Promise<string> {
-    const outfile = path.join(await createTemporaryFolder(), "genezio.config.mjs");
+    const cwd = process.cwd();
+    const workingDirectory = path.join(cwd, ".genezio");
+
+    // Create a .genezio directory if it doen't exist
+    if (!existsSync(workingDirectory)) {
+        fs.mkdirSync(workingDirectory);
+    }
+
+    const outfile = path.join(workingDirectory, "genezio.config.js");
+
+    let nodeExternalPlugin;
+    if (existsSync(path.join(cwd, "package.json"))) {
+        nodeExternalPlugin = nodeExternalsPlugin({
+            packagePath: path.join(cwd, "package.json"),
+        });
+    } else {
+        nodeExternalPlugin = nodeExternalsPlugin();
+    }
 
     await esbuild.build({
         entryPoints: [configPath],
@@ -24,6 +43,7 @@ async function bundleGenezioConfigTs(configPath: string): Promise<string> {
         format: "esm",
         platform: "node",
         outfile,
+        plugins: [nodeExternalPlugin, commonjs()],
     });
 
     return outfile;
