@@ -5,6 +5,10 @@ import { UserError } from "../../errors.js";
 import { createTemporaryFolder } from "../../utils/file.js";
 import { debugLogger } from "../../utils/logging.js";
 import { commonjs } from "@hyrious/esbuild-plugin-commonjs";
+import { nodeExternalsPlugin } from "esbuild-node-externals";
+import fs from "fs-extra";
+// import { nodeExternalsPlugin } from "esbuild-node-externals";
+// import * as fs from 'fs-extra';
 
 export async function readGenezioConfigTs(configPath: string = "genezio.config.ts") {
     if (!existsSync(configPath)) {
@@ -18,7 +22,40 @@ export async function readGenezioConfigTs(configPath: string = "genezio.config.t
 }
 
 async function bundleGenezioConfigTs(configPath: string): Promise<string> {
-    const outfile = path.join(await createTemporaryFolder(), "genezio.config.mjs");
+    const tempFolder = await createTemporaryFolder();
+    const outfile = path.join(tempFolder, "genezio.config.mjs");
+
+    const cwd = process.cwd();
+
+    // Copy the node_modules directory to the tempFolder
+    const nodeModulesSrc = path.join(cwd, 'node_modules');
+    const nodeModulesDest = path.join(tempFolder, 'node_modules');
+    debugLogger.debug(nodeModulesSrc)
+    debugLogger.debug(nodeModulesDest)
+
+    if (existsSync(nodeModulesSrc)) {
+        await fs.copy(nodeModulesSrc, nodeModulesDest);
+    }
+
+    const packageJsonSrc = path.join(cwd, 'package.json');
+    const packageJsonDest = path.join(tempFolder, 'package.json');
+    debugLogger.debug(nodeModulesSrc)
+    debugLogger.debug(nodeModulesDest)
+
+    if (existsSync(packageJsonSrc)) {
+        await fs.copy(packageJsonSrc, packageJsonDest);
+    }
+
+
+    let nodeExternalPlugin;
+    if (existsSync(path.join(cwd, "package.json"))) {
+        nodeExternalPlugin = nodeExternalsPlugin({
+            packagePath: path.join(cwd, "package.json"),
+        });
+    } else {
+        nodeExternalPlugin = nodeExternalsPlugin();
+    }
+
 
     debugLogger.debug(`debug bundling ${configPath} to ${outfile}`);
     await esbuild.build({
@@ -27,8 +64,7 @@ async function bundleGenezioConfigTs(configPath: string): Promise<string> {
         format: "esm",
         platform: "node",
         outfile,
-        // TODO
-        plugins: [commonjs()],
+        plugins: [nodeExternalPlugin, commonjs()],
     });
 
     return outfile;

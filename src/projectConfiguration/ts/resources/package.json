@@ -3,9 +3,9 @@
     "version": "1.0.0",
     "description": "TypeScript definitions for Genezio TS Config resources",
     "type": "module",
-    "main": "./dist/cjs/projectConfiguration/ts/resources/src/index.js",
-    "module": "./dist/esm/projectConfiguration/ts/resources/src/index.js",
-    "types": "./dist/cjs/projectConfiguration/ts/resources/src/index.d.ts",
+    "main": "./dist/cjs/index.js",
+    "module": "./dist/esm/index.js",
+    "types": "./dist/cjs/index.d.ts",
     "files": [
         "dist"
     ],
@@ -25,6 +25,10 @@
         "printWidth": 100
     },
     "dependencies": {
+        "axios": "^1.7.3",
+        "fs": "^0.0.1-security",
+        "os": "^0.1.2",
+        "path": "^0.12.7",
         "unique-names-generator": "^4.7.1"
     }
 }

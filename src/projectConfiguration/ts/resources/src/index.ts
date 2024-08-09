@@ -1,5 +1,5 @@
 import axios from "axios";
-import {createEmptyProject} from "../../../../requests/project.js";
+import { createEmptyProject } from "./requests/project.js";
 
 export type CreateEmptyProjectRequest = {
     projectName: string;
@@ -55,53 +55,6 @@ export class Project extends Resource {
 
     // This will work
     async create(): Promise<CreateEmptyProjectResponse> {
-        const request: CreateEmptyProjectRequest = {
-            projectName: this.name,
-            region: this.region,
-            cloudProvider: this.cloudProvider,
-            stage: "prod",
-        };
-
-        // return await createEmptyProject(request);
-
-        const { projectName, region, cloudProvider = "genezio-cloud", stage = "prod", stack = [] } = request;
-
-        // export an auth token to make this work
-        const authToken = process.env.MY_GENEZIO_AUTH_TOKEN;
-        const headers = {
-            Authorization: `Bearer ${authToken}`,
-            "Accept-Version": `genezio-cli/2.3.1`,
-        };
-
-        const endpoint = "core/deployment";
-        const method = "PUT";
-        const url = `https://dev.api.genez.io/${endpoint}`;
-
-        const data: string = JSON.stringify({
-            projectName: projectName,
-            region: region,
-            cloudProvider: cloudProvider,
-            stage: stage,
-            stack: stack
-        });
-
-        try {
-            const response = await axios({
-                method,
-                url,
-                headers,
-                data,
-            });
-            return response.data;
-        } catch (error) {
-            // eslint-disable-next-line no-console
-            console.log(`An error occurred sending request ${method} on ${url}: ${error}`);
-            throw error;
-        }
-    }
-
-    // This will not work
-    async create2(): Promise<CreateEmptyProjectResponse> {
         const request: CreateEmptyProjectRequest = {
             projectName: this.name,
             region: this.region,
@@ -183,6 +136,21 @@ export class ServerlessFunction extends Resource {
         // TODO: Deploy and populate outs
         this.id = "TODO";
         this.url = "TODO";
+    }
+
+    async create() {
+        // // TODO Bundle the function code - how to delegate this to the cli
+        // Proposal 1
+        // const archivePath = exec("genezio bundle functionName functionPath")
+        // Proposal 2
+        // => network - cross platform, port might be blocked.
+        // => stream (interface) => in-memory file, genezio/resources writes (stream object vis global), genezio-cli reads.
+
+        // // TODO Upload it to S3 - how to delegate this to the cli
+        // const successStatus = exec("genezio upload archivePath")
+
+        // // TODO Make a request to deploy it - make the request here
+        // const functionId = await createEmptyProject(request);
     }
 }
 
