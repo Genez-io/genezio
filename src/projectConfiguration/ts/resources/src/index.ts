@@ -250,7 +250,7 @@ export class Frontend extends Resource {
 
 export class Authentication extends Resource {
     public project: { name: string };
-    public database: { name: string; region: Region } | { dbUri: string };
+    public database: { uri: string; type?: string };
     public providers?: {
         email?: boolean;
         google?: {
@@ -261,12 +261,13 @@ export class Authentication extends Resource {
     };
 
     public authToken: string | undefined; /* out */
+    public region: string | undefined; /* out */
 
     constructor(
         resourceName: string,
         options: {
             project: { name: string };
-            database: { name: string; region: Region } | { dbUri: string };
+            database: { uri: string; type?: string };
             providers?: {
                 email?: boolean;
                 google?: {
@@ -289,18 +290,22 @@ export class Authentication extends Resource {
         // Create the authentication request
         const setAuthRequest: SetAuthenticationRequest = {
             enabled: true,
-            databaseType: "postgres",
-            databaseUrl: "",
+            databaseType: this.database.type || "postgres",
+            databaseUrl: this.database.uri,
         };
 
+        // Get envId
+        const projectDetails = await getProjectDetailsByName(this.project.name);
+        const projectEnv = projectDetails.project.projectEnvs.find((env) => env.name === "prod");
+        if (projectEnv === undefined) {
+            throw new Error("Project environment not found");
+        }
+
         // Call the setAuthentication method
-        const createAuthenticationResponse = await setAuthentication(
-            this.project.name,
-            setAuthRequest,
-        );
+        const createAuthenticationResponse = await setAuthentication(projectEnv.id, setAuthRequest);
 
         // Call the getAuthProviders method to retrieve the current authentication providers
-        const authProvidersResponse = await getAuthProviders(this.project.name);
+        const authProvidersResponse = await getAuthProviders(projectEnv.id);
 
         const providersDetails: AuthProviderDetails[] = [];
 
@@ -313,7 +318,7 @@ export class Authentication extends Resource {
                                 id: provider.id,
                                 name: provider.name,
                                 enabled: true,
-                                config: {},
+                                config: null,
                             });
                         }
                         break;
@@ -323,7 +328,7 @@ export class Authentication extends Resource {
                                 id: provider.id,
                                 name: provider.name,
                                 enabled: true,
-                                config: {},
+                                config: null,
                             });
                         }
                         break;
@@ -348,7 +353,7 @@ export class Authentication extends Resource {
                 const setAuthProvidersRequest: SetAuthProvidersRequest = {
                     authProviders: providersDetails,
                 };
-                await setAuthProviders(this.project.name, setAuthProvidersRequest);
+                await setAuthProviders(projectEnv.id, setAuthProvidersRequest);
             }
         }
 

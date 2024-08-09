@@ -29,7 +29,7 @@ export interface AuthProviderDetails {
     id: string;
     name: string;
     enabled: boolean;
-    config: { [key: string]: string };
+    config: { [key: string]: string } | null;
 }
 
 export interface GetAuthProvidersResponse {
