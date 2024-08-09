@@ -2,6 +2,12 @@
     "name": "@genezio/resources",
     "version": "1.0.0",
     "description": "TypeScript definitions for Genezio TS Config resources",
+    "repository": {
+        "type": "url",
+        "url": "https://github.com/Genez-io/genezio.git",
+        "directory": "src/projectConfiguration/ts/resources"
+    },
+    "homepage": "https://genezio.com/",
     "type": "module",
     "main": "./dist/cjs/projectConfiguration/ts/resources/src/index.js",
     "module": "./dist/esm/projectConfiguration/ts/resources/src/index.js",
