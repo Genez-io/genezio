@@ -52,6 +52,7 @@
         "@babel/preset-typescript": "^7.24.6",
         "@babel/traverse": "^7.24.1",
         "@genezio/test-interface-component": "^1.2.3",
+        "@hyrious/esbuild-plugin-commonjs": "^0.2.4",
         "@sentry/node": "^7.116.0",
         "@sentry/profiling-node": "~7.118.0",
         "@types/adm-zip": "^0.5.5",

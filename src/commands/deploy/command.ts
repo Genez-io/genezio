@@ -5,11 +5,17 @@ import { genezioDeploy } from "./genezio.js";
 import fs from "fs";
 import { nextJsDeploy } from "./nextjs/deploy.js";
 import path from "path";
+import { readGenezioConfigTs } from "../../projectConfiguration/ts/config.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
 
     switch (decideDeployType()) {
+        case DeployType.GenezioConfigTs:
+            debugLogger.debug("Running genezio.config.ts");
+            await readGenezioConfigTs();
+
+            break;
         case DeployType.Classic:
             debugLogger.debug("Deploying classic genezio app");
             await genezioDeploy(options);
@@ -25,6 +31,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
 enum DeployType {
     Classic,
     NextJS,
+    GenezioConfigTs,
 }
 
 function decideDeployType(): DeployType {
@@ -36,6 +43,11 @@ function decideDeployType(): DeployType {
         fs.existsSync(path.join(cwd, "next.config.mjs"))
     ) {
         return DeployType.NextJS;
+    }
+
+    // Check if genezio.config.ts exists
+    if (fs.existsSync(path.join(cwd, "genezio.config.ts"))) {
+        return DeployType.GenezioConfigTs;
     }
 
     // Check if "next" package is present in the project dependencies
