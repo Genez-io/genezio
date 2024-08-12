@@ -114,6 +114,7 @@ function parseGenezioConfig(config: unknown) {
     const backendSchema = zod.object({
         path: zod.string(),
         language: languageSchema,
+        environment: zod.record(zod.string(), zod.string()).optional(),
         scripts: zod
             .object({
                 deploy: scriptSchema,
