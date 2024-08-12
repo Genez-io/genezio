@@ -129,7 +129,7 @@
         "@types/express": "^4.17.21",
         "@types/fs-extra": "^11.0.4",
         "@types/glob": "^8.0.0",
-        "@types/http-proxy": "^1.17.14",
+        "@types/http-proxy": "^1.17.15",
         "@types/inquirer": "^9.0.7",
         "@types/lodash": "^4.17.6",
         "@types/mime-types": "^2.1.3",
