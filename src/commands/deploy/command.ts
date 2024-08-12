@@ -2,6 +2,7 @@ import { GenezioDeployOptions } from "../../models/commandOptions.js";
 import { interruptLocalProcesses } from "../../utils/localInterrupt.js";
 import { debugLogger } from "../../utils/logging.js";
 import { genezioDeploy } from "./genezio.js";
+import { $ } from "execa";
 import fs from "fs";
 import { nextJsDeploy } from "./nextjs/deploy.js";
 import path from "path";
@@ -15,6 +16,14 @@ export async function deployCommand(options: GenezioDeployOptions) {
             await genezioDeploy(options);
 
             break;
+        //to be changed to genezio when PR approved
+        case DeployType.NuxtJS:
+            debugLogger.debug("Deploying Nuxt.js app");
+            await $({ stdio: "inherit" })`npx nuxi build --preset=aws_lambda`.catch(() => {
+                throw new Error("Failed to build the Nuxt.js project. Check the logs above.");
+            });
+            await genezioDeploy(options);
+            break;
         case DeployType.NextJS:
             debugLogger.debug("Deploying Next.js app");
             await nextJsDeploy(options);
@@ -25,6 +34,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
 enum DeployType {
     Classic,
     NextJS,
+    NuxtJS,
 }
 
 function decideDeployType(): DeployType {
@@ -36,6 +46,10 @@ function decideDeployType(): DeployType {
         fs.existsSync(path.join(cwd, "next.config.mjs"))
     ) {
         return DeployType.NextJS;
+    }
+
+    if (fs.existsSync(path.join(cwd, "nuxt.config.ts"))) {
+        return DeployType.NuxtJS;
     }
 
     // Check if "next" package is present in the project dependencies
