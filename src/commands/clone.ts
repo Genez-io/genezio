@@ -4,7 +4,7 @@ import { createTemporaryFolder } from "../utils/file.js";
 import { debugLogger } from "../utils/logging.js";
 import { loginCommand } from "./login.js";
 import path from "path";
-import decompress from "decompress";
+import admZip from "adm-zip";
 import { getPresignedURLForProjectCodePull } from "../requests/getPresignedURLForProjectCodePull.js";
 import { GenezioCloneOptions } from "../models/commandOptions.js";
 import { regions } from "../utils/configs.js";
@@ -127,12 +127,11 @@ export async function cloneCommand(
 
     // extract the project to the specified path
     debugLogger.debug(`Extracting project to ${projectPath}`);
-    await decompress(path.join(tmpFolder, "projectCode.zip"), projectPath)
-        .then(() => {
-            debugLogger.debug(`Files extracted to ${projectPath}`);
-        })
-        .catch((error) => {
-            debugLogger.debug(`Failed to extract files: ${error}`);
-            throw new Error("Failed to extract files. Please open an issue on GitHub");
-        });
+    const zip = new admZip(path.join(tmpFolder, "projectCode.zip"));
+    try {
+        zip.extractAllTo(projectPath, true);
+    } catch (error) {
+        debugLogger.debug(`Failed to extract files: ${error}`);
+        throw new Error("Failed to extract files. Please open an issue on GitHub");
+    }
 }

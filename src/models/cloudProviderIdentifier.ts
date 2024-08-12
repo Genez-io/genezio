@@ -39,6 +39,7 @@ export interface LambdaResponse {
     isBase64Encoded: boolean;
     body: string;
     headers: OutgoingHttpHeaders;
+    cookies: string[];
 }
 
 export interface AwsApiGatewayRequest extends Request {

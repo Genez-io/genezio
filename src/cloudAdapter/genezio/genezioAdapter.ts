@@ -18,7 +18,7 @@ import {
     deleteFolder,
     zipDirectoryToDestinationPath,
 } from "../../utils/file.js";
-import { YamlFrontend } from "../../yamlProjectConfiguration/v2.js";
+import { YamlFrontend } from "../../projectConfiguration/yaml/v2.js";
 import { createFrontendProject } from "../../requests/createFrontendProject.js";
 import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL.js";
 import { getFileSize } from "../../utils/file.js";

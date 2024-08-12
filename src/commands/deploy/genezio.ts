@@ -31,7 +31,7 @@ import { printAdaptiveLog, debugLogger, doAdaptiveLogAction } from "../../utils/
 import { GenezioCommand, reportSuccess, reportSuccessFunctions } from "../../utils/reporter.js";
 import { generateRandomSubdomain } from "../../utils/yaml.js";
 import cliProgress from "cli-progress";
-import { YAMLBackend, YamlProjectConfiguration } from "../../yamlProjectConfiguration/v2.js";
+import { YAMLBackend, YamlProjectConfiguration } from "../../projectConfiguration/yaml/v2.js";
 import { GenezioCloudAdapter } from "../../cloudAdapter/genezio/genezioAdapter.js";
 import {
     CloudAdapter,
@@ -52,11 +52,11 @@ import {
     checkExperimentalDecorators,
     isDependencyVersionCompatible,
 } from "../../utils/jsProjectChecker.js";
-import { YamlConfigurationIOController } from "../../yamlProjectConfiguration/v2.js";
-import { FunctionType, Language } from "../../yamlProjectConfiguration/models.js";
+import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
+import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
 import { expandFunctionURLVariablesFromScripts, runScript } from "../../utils/scripts.js";
 import { scanClassesForDecorators } from "../../utils/configuration.js";
-import configIOController, { YamlFrontend } from "../../yamlProjectConfiguration/v2.js";
+import configIOController, { YamlFrontend } from "../../projectConfiguration/yaml/v2.js";
 import { ClusterCloudAdapter } from "../../cloudAdapter/cluster/clusterAdapter.js";
 import { writeSdk } from "../../generateSdk/sdkWriter/sdkWriter.js";
 import { reportSuccessForSdk } from "../../generateSdk/sdkSuccessReport.js";
@@ -678,16 +678,22 @@ export async function deployFrontend(
     try {
         await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
             // Get project environment details for a specific project/stage
-            const projectEnvDetails = await getProjectEnvFromProjectByName(name, stage);
-            if (!projectEnvDetails) {
-                throw new UserError("Project environment not found.");
-            }
+            const projectEnvDetails = await getProjectEnvFromProjectByName(name, stage).catch(
+                () => undefined,
+            );
 
-            // Transform function name from kebab-case (function-hello-world) to camelCase (functionHelloWorldApiUrl)
-            const functions = projectEnvDetails.functions?.map((f) => ({
-                name: kebabToCamelCase(f.name) + "ApiUrl",
-                url: f.cloudUrl,
-            }));
+            let functions: Array<{ name: string; url: string }> | undefined;
+            if (projectEnvDetails) {
+                // Transform function name from kebab-case (function-hello-world) to camelCase (functionHelloWorldApiUrl)
+                functions = projectEnvDetails.functions?.map((f) => ({
+                    name: kebabToCamelCase(f.name) + "ApiUrl",
+                    url: f.cloudUrl,
+                }));
+            } else {
+                debugLogger.debug(
+                    `No project environment details found. {projectName: ${name}, stage: ${stage}}`,
+                );
+            }
 
             const expandedScripts = await expandFunctionURLVariablesFromScripts(
                 frontend.scripts?.build,

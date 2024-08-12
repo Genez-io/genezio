@@ -20,6 +20,7 @@ export class AwsFunctionHandlerProvider implements FunctionHandlerProvider {
         const handlerContent =
             `import './setupLambdaGlobals_${randomFileId}.mjs';
 import { ${functionConfiguration.handler} as genezioDeploy } from "./${functionConfiguration.entry}";
+import { isUtf8 } from "buffer";
 
 function formatTimestamp(timestamp) {
   const date = new Date(timestamp);
@@ -58,6 +59,8 @@ const handler = async function(event) {
     http2CompliantHeaders[header.toLowerCase()] = event.headers[header];
   }
 
+  const isBinary = !isUtf8(event.body);
+
   const req = {
     version: "2.0",
     routeKey: "$default",
@@ -83,10 +86,8 @@ const handler = async function(event) {
       time: formatTimestamp(event.requestTimestampMs),
       timeEpoch: event.requestTimestampMs
     },
-    body: event.isBase64Encoded
-      ? Buffer.from(event.body, "base64")
-      : event.body.toString(),
-    isBase64Encoded: event.isBase64Encoded,
+    body: event.body.toString(/* encoding= */ isBinary ? "base64" : "utf8"),
+    isBase64Encoded: isBinary,
     responseStream: event.responseStream,
   };
 
@@ -97,6 +98,12 @@ const handler = async function(event) {
       body: "Internal server error"
     };
   });
+
+  if (result.cookies) {
+    for (const cookie of result.cookies) {
+      result.headers["Set-Cookie"] = cookie;
+    }
+  }
 
   return result;
 };

@@ -1,5 +1,5 @@
 import { createRequire } from "module";
-import { Language } from "../../yamlProjectConfiguration/models.js";
+import { Language } from "../../projectConfiguration/yaml/models.js";
 import path from "path";
 import ts from "typescript";
 import { Worker } from "worker_threads";

@@ -40,13 +40,13 @@ import { GenezioLocalOptions } from "../models/commandOptions.js";
 import { DartBundler } from "../bundlers/dart/localDartBundler.js";
 import axios, { AxiosError, AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
-import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
+import { Language, TriggerType } from "../projectConfiguration/yaml/models.js";
 import {
     YAMLBackend,
     YamlConfigurationIOController,
     YamlFrontend,
     YamlProjectConfiguration,
-} from "../yamlProjectConfiguration/v2.js";
+} from "../projectConfiguration/yaml/v2.js";
 import hash from "hash-it";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import dotenv from "dotenv";
@@ -673,6 +673,7 @@ async function startServerHttp(
                 headers: {
                     "content-type": "application/json",
                 },
+                cookies: [],
             });
             return;
         }
@@ -698,6 +699,7 @@ async function startServerHttp(
                 headers: {
                     "content-type": "application/json",
                 },
+                cookies: [],
             });
             return;
         }
@@ -720,6 +722,7 @@ async function startServerHttp(
                 headers: {
                     "content-type": "application/json",
                 },
+                cookies: [],
             });
             return;
         }
@@ -741,6 +744,7 @@ async function startServerHttp(
                 headers: {
                     "content-type": "application/json",
                 },
+                cookies: [],
             });
             return;
         }
@@ -786,6 +790,7 @@ async function startServerHttp(
                 headers: {
                     "content-type": "application/json",
                 },
+                cookies: [],
             });
             return;
         }
@@ -964,6 +969,12 @@ function sendResponse(res: Response, httpResponse: LambdaResponse) {
 
     if (!contentTypeHeader) {
         res.setHeader("content-type", "application/json");
+    }
+
+    if (httpResponse.cookies) {
+        for (const cookie of httpResponse.cookies) {
+            res.setHeader("Set-Cookie", cookie);
+        }
     }
 
     if (httpResponse.statusCode) {

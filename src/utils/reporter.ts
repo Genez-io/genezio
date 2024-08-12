@@ -1,5 +1,5 @@
 import { log } from "../utils/logging.js";
-import { TriggerType } from "../yamlProjectConfiguration/models.js";
+import { TriggerType } from "../projectConfiguration/yaml/models.js";
 import { GenezioCloudResultClass } from "../cloudAdapter/cloudAdapter.js";
 import colors from "colors";
 import { DeployCodeFunctionResponse } from "../models/deployCodeResponse.js";

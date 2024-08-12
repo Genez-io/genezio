@@ -1,7 +1,7 @@
 import { beforeEach, test, expect, vi } from "vitest";
 import axios from "axios";
 import { getAuthToken } from "../../src/utils/accounts";
-import { Language } from "../../src/yamlProjectConfiguration/models";
+import { Language } from "../../src/projectConfiguration/yaml/models";
 import { deployRequest } from "../../src/requests/deployCode";
 import { ProjectConfiguration, SdkConfiguration } from "../../src/models/projectConfiguration";
 import { CloudProviderIdentifier } from "../../src/models/cloudProviderIdentifier";

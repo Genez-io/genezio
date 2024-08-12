@@ -9,8 +9,8 @@ import {
 import { log } from "../utils/logging.js";
 import yamlConfigIOController, {
     YamlProjectConfiguration,
-} from "../yamlProjectConfiguration/v2.js";
-import { Language } from "../yamlProjectConfiguration/models.js";
+} from "../projectConfiguration/yaml/v2.js";
+import { Language } from "../projectConfiguration/yaml/models.js";
 import zod from "zod";
 
 async function getProjectConfiguration(): Promise<YamlProjectConfiguration> {

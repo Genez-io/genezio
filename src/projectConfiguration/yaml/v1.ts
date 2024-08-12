@@ -1,7 +1,7 @@
 import path from "path";
 import yaml from "yaml";
-import { getFileDetails, writeToFile } from "../utils/file.js";
-import { legacyRegions } from "../utils/configs.js";
+import { getFileDetails, writeToFile } from "../../utils/file.js";
+import { legacyRegions } from "../../utils/configs.js";
 import { isValidCron } from "cron-validator";
 import {
     DEFAULT_ARCHITECTURE,
@@ -9,12 +9,12 @@ import {
     NodeOptions,
     supportedArchitectures,
     supportedNodeRuntimes,
-} from "../models/projectOptions.js";
+} from "../../models/projectOptions.js";
 import zod from "zod";
-import { log } from "../utils/logging.js";
-import { UserError, zodFormatError } from "../errors.js";
+import { log } from "../../utils/logging.js";
+import { UserError, zodFormatError } from "../../errors.js";
 import { Language, TriggerType } from "./models.js";
-import { PackageManagerType } from "../packageManagers/packageManager.js";
+import { PackageManagerType } from "../../packageManagers/packageManager.js";
 
 enum CloudProviderIdentifier {
     // This was depricated in Genezio YAML v2, so we replicated the enum here.

@@ -1,4 +1,4 @@
-import { Language, TriggerType } from "../yamlProjectConfiguration/models.js";
+import { Language, TriggerType } from "../projectConfiguration/yaml/models.js";
 
 export enum GenezioCommandTemplates {
     FULLSTACK = "Fullstack",

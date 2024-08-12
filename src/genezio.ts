@@ -47,7 +47,7 @@ import { bundleCommand } from "./commands/bundle.js";
 import { askCreateOptions } from "./commands/create/interactive.js";
 import { regions } from "./utils/configs.js";
 import { backendTemplates, frontendTemplates } from "./commands/create/templates.js";
-import configReader from "./yamlProjectConfiguration/v2.js";
+import configReader from "./projectConfiguration/yaml/v2.js";
 import { askCloneOptions, cloneCommand } from "./commands/clone.js";
 import { pullCommand } from "./commands/pull.js";
 
