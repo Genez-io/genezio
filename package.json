@@ -61,7 +61,7 @@
         "async-mutex": "^0.5.0",
         "await-exec": "^0.1.2",
         "aws-cron-parser": "^1.1.12",
-        "axios": "^1.6.8",
+        "axios": "^1.7.3",
         "body": "^5.1.0",
         "body-parser": "^1.20.1",
         "boxen": "^7.1.1",
