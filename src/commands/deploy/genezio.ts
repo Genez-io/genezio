@@ -114,28 +114,26 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
     }
 
     const projectName = configuration.name;
-    if (configuration.services) {
-        if (configuration.services.databases) {
-            const databases = configuration.services.databases;
+    if (configuration.services?.databases) {
+        const databases = configuration.services.databases;
 
-            for (const [, database] of databases.entries()) {
-                const { project, projectEnv } = await getOrCreateEmptyProject(
-                    projectName,
-                    configuration.region,
-                    options.stage || "prod",
-                );
+        for (const database of databases) {
+            const { project, projectEnv } = await getOrCreateEmptyProject(
+                projectName,
+                configuration.region,
+                options.stage || "prod",
+            );
 
-                await getOrCreateDatabase(
-                    {
-                        name: database.name,
-                        region: configuration.region,
-                        type: database.type,
-                    },
-                    options.stage || "prod",
-                    project.id,
-                    projectEnv.id,
-                );
-            }
+            await getOrCreateDatabase(
+                {
+                    name: database.name,
+                    region: configuration.region,
+                    type: database.type,
+                },
+                options.stage || "prod",
+                project.id,
+                projectEnv.id,
+            );
         }
     }
 

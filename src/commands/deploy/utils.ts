@@ -21,20 +21,19 @@ export async function getOrCreateEmptyProject(
     const project = await getProjectInfoByName(projectName);
 
     if (!project) {
-        try {
-            await createEmptyProject({
-                projectName: projectName,
-                region: region,
-                cloudProvider: CloudProviderIdentifier.GENEZIO_CLOUD,
-                stage: stage,
-            });
-            debugLogger.debug(
-                `Project ${projectName} in region ${region} on stage ${stage} was created successfully`,
-            );
-        } catch (error) {
+        await createEmptyProject({
+            projectName: projectName,
+            region: region,
+            cloudProvider: CloudProviderIdentifier.GENEZIO_CLOUD,
+            stage: stage,
+        }).catch((error) => {
             debugLogger.debug(`Error creating project ${projectName}: ${error}`);
             throw new UserError(`Failed to create project ${projectName}.`);
-        }
+        });
+
+        debugLogger.debug(
+            `Project ${projectName} in region ${region} on stage ${stage} was created successfully`,
+        );
     }
 
     const projectEnv = project.projectEnvs.find((projectEnv) => projectEnv.name == stage);
@@ -54,41 +53,47 @@ export async function getOrCreateDatabase(
     const database = await getDatabaseByName(createDatabaseReq.name);
     if (database) {
         debugLogger.debug(`Database ${createDatabaseReq.name} is already created.`);
-        try {
-            const linkedDatabase = await findLinkedDatabase(
-                createDatabaseReq.name,
-                projectId,
-                projectEnvId,
-            );
-            if (linkedDatabase) {
-                debugLogger.debug(
-                    `Database ${createDatabaseReq.name} is already linked to stage ${stage}`,
-                );
-                return linkedDatabase;
-            }
-            await linkDatabaseToEnvironment(projectId, projectEnvId, database.id);
+
+        const linkedDatabase = await findLinkedDatabase(
+            createDatabaseReq.name,
+            projectId,
+            projectEnvId,
+        ).catch((error) => {
+            debugLogger.debug(`Error finding linked database ${createDatabaseReq.name}: ${error}`);
+            throw new UserError(`Failed to find linked database ${createDatabaseReq.name}.`);
+        });
+
+        if (linkedDatabase) {
             debugLogger.debug(
-                `Database ${createDatabaseReq.name} was linked successfully to stage ${stage}`,
+                `Database ${createDatabaseReq.name} is already linked to stage ${stage}`,
             );
-        } catch (error) {
+            return linkedDatabase;
+        }
+        await linkDatabaseToEnvironment(projectId, projectEnvId, database.id).catch((error) => {
             debugLogger.debug(`Error linking database ${createDatabaseReq.name}: ${error}`);
             throw new UserError(`Failed to link database ${createDatabaseReq.name}.`);
-        }
+        });
 
+        debugLogger.debug(
+            `Database ${createDatabaseReq.name} was linked successfully to stage ${stage}`,
+        );
         return database;
     }
 
-    try {
-        const database = await createDatabase(createDatabaseReq, projectId, projectEnvId, true);
-        debugLogger.debug(`Database ${createDatabaseReq.name} created successfully`);
-        return {
-            id: database.databaseId,
-            name: createDatabaseReq.name,
-            region: createDatabaseReq.region,
-            type: createDatabaseReq.type || DatabaseType.neon,
-        };
-    } catch (error) {
+    const newDatabase = await createDatabase(
+        createDatabaseReq,
+        projectId,
+        projectEnvId,
+        true,
+    ).catch((error) => {
         debugLogger.debug(`Error creating database ${createDatabaseReq.name}: ${error}`);
         throw new UserError(`Failed to create database ${createDatabaseReq.name}.`);
-    }
+    });
+    debugLogger.debug(`Database ${createDatabaseReq.name} created successfully`);
+    return {
+        id: newDatabase.databaseId,
+        name: createDatabaseReq.name,
+        region: createDatabaseReq.region,
+        type: createDatabaseReq.type || DatabaseType.neon,
+    };
 }
