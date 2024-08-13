@@ -8,6 +8,11 @@ export enum Language {
     go = "go",
 }
 
+export enum AuthenticationDatabaseType {
+    mongo = "mongo",
+    postgres = "postgres",
+}
+
 export enum DatabaseType {
     neon = "postgres-neon",
 }

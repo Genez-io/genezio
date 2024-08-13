@@ -1,7 +1,16 @@
 import path from "path";
 import { UserError } from "../../errors.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
-import { CreateDatabaseRequest, GetDatabaseResponse } from "../../models/requests.js";
+import {
+    AuthDatabaseConfig,
+    AuthenticationProviders,
+    AuthProviderDetails,
+    CreateDatabaseRequest,
+    GetDatabaseResponse,
+    SetAuthenticationRequest,
+    SetAuthProvidersRequest,
+    YourOwnAuthDatabaseConfig,
+} from "../../models/requests.js";
 import { DatabaseType } from "../../projectConfiguration/yaml/models.js";
 import { YamlProjectConfiguration } from "../../projectConfiguration/yaml/v2.js";
 import {
@@ -31,6 +40,11 @@ import {
 } from "../../utils/environmentVariables.js";
 import { EnvironmentVariable } from "../../models/environmentVariables.js";
 import { isCI } from "../../utils/process.js";
+import {
+    getAuthProviders,
+    setAuthentication,
+    setAuthProviders,
+} from "../../requests/authentication.js";
 
 export async function getOrCreateEmptyProject(
     projectName: string,
@@ -123,6 +137,171 @@ export async function getOrCreateDatabase(
         region: createDatabaseReq.region,
         type: createDatabaseReq.type || DatabaseType.neon,
     };
+}
+
+function isYourOwnAuthDatabaseConfig(object: unknown): object is YourOwnAuthDatabaseConfig {
+    return typeof object === "object" && object !== null && "uri" in object && "type" in object;
+}
+
+export async function enableAuthentication(
+    configuration: YamlProjectConfiguration,
+    projectId: string,
+    projectEnvId: string,
+    stage: string,
+    envFile: string | undefined,
+) {
+    const authDatabase = configuration.services?.authentication?.database as AuthDatabaseConfig;
+    if (!authDatabase) {
+        return;
+    }
+
+    const authProviders = configuration.services?.authentication
+        ?.providers as AuthenticationProviders;
+
+    if (isYourOwnAuthDatabaseConfig(authDatabase)) {
+        const databaseUri = await evaluateResource(configuration, authDatabase.uri, stage, envFile);
+
+        await enableAuthenticationHelper(
+            {
+                enabled: true,
+                databaseUri: databaseUri,
+                databaseType: authDatabase.type,
+            },
+            projectEnvId,
+            authProviders,
+        );
+    } else {
+        const database: GetDatabaseResponse = await getOrCreateDatabase(
+            {
+                name: authDatabase.name,
+                region: authDatabase.region,
+                type: authDatabase.type,
+            },
+            stage,
+            projectId,
+            projectEnvId,
+        );
+
+        await enableAuthenticationHelper(
+            {
+                enabled: true,
+                databaseUri: database.connectionUrl || "",
+                databaseType: database.type,
+            },
+            projectEnvId,
+            authProviders,
+        );
+    }
+}
+export async function enableAuthenticationHelper(
+    request: SetAuthenticationRequest,
+    projectEnvId: string,
+    providers?: AuthenticationProviders,
+): Promise<void> {
+    await setAuthentication(projectEnvId, request);
+
+    const authProvidersResponse = await getAuthProviders(projectEnvId);
+
+    const providersDetails: AuthProviderDetails[] = [];
+
+    if (providers) {
+        for (const provider of authProvidersResponse.authProviders) {
+            let enabled = false;
+            switch (provider.name) {
+                case "email":
+                    if (providers.email) {
+                        enabled = true;
+                    }
+                    providersDetails.push({
+                        id: provider.id,
+                        name: provider.name,
+                        enabled: enabled,
+                        config: null,
+                    });
+                    break;
+                case "web3":
+                    if (providers.web3) {
+                        enabled = true;
+                    }
+                    providersDetails.push({
+                        id: provider.id,
+                        name: provider.name,
+                        enabled: enabled,
+                        config: null,
+                    });
+                    break;
+                case "google":
+                    if (providers.google) {
+                        enabled = true;
+                    }
+                    providersDetails.push({
+                        id: provider.id,
+                        name: provider.name,
+                        enabled: enabled,
+                        config: {
+                            GNZ_AUTH_GOOGLE_ID: providers.google?.clientId || "",
+                            GNZ_AUTH_GOOGLE_SECRET: providers.google?.clientSecret || "",
+                        },
+                    });
+                    break;
+            }
+        }
+
+        // If providers details are updated, call the setAuthProviders method
+        if (providersDetails.length > 0) {
+            const setAuthProvidersRequest: SetAuthProvidersRequest = {
+                authProviders: providersDetails,
+            };
+            await setAuthProviders(projectEnvId, setAuthProvidersRequest);
+        }
+    }
+
+    return;
+}
+
+export async function evaluateResource(
+    configuration: YamlProjectConfiguration,
+    resource: string | undefined,
+    stage: string,
+    envFile: string | undefined,
+): Promise<string> {
+    if (!resource) {
+        return "";
+    }
+
+    const resourceRaw = await parseConfigurationVariable(resource);
+
+    if ("path" in resourceRaw && "field" in resourceRaw) {
+        const resourceValue = await resolveConfigurationVariable(
+            configuration,
+            stage,
+            resourceRaw.path,
+            resourceRaw.field,
+        );
+
+        return resourceValue;
+    }
+
+    if ("key" in resourceRaw) {
+        if (!envFile) {
+            throw new UserError(
+                `Environment variable file ${envFile} is missing. Please provide the correct path with genezio deploy --env <envFile>.`,
+            );
+        }
+        const resourceValue = (await readEnvironmentVariablesFile(envFile)).find(
+            (envVar) => envVar.name === resourceRaw.key,
+        )?.value;
+
+        if (!resourceValue) {
+            throw new UserError(
+                `Environment variable ${resourceRaw.key} is missing from the ${envFile} file.`,
+            );
+        }
+
+        return resourceValue;
+    }
+
+    return resourceRaw.value;
 }
 
 export async function processYamlEnvironmentVariables(
