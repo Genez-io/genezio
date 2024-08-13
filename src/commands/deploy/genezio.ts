@@ -675,37 +675,31 @@ export async function deployFrontend(
         return;
     }
 
-    try {
-        await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
-            // Get project environment details for a specific project/stage
-            const projectEnvDetails = await getProjectEnvFromProjectByName(name, stage).catch(
-                () => undefined,
-            );
+    await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
+        // Get project environment details for a specific project/stage
+        const projectEnvDetails = await getProjectEnvFromProjectByName(name, stage).catch(
+            () => undefined,
+        );
 
-            let functions: Array<{ name: string; url: string }> | undefined;
-            if (projectEnvDetails) {
-                // Transform function name from kebab-case (function-hello-world) to camelCase (functionHelloWorldApiUrl)
-                functions = projectEnvDetails.functions?.map((f) => ({
-                    name: kebabToCamelCase(f.name) + "ApiUrl",
-                    url: f.cloudUrl,
-                }));
-            } else {
-                debugLogger.debug(
-                    `No project environment details found. {projectName: ${name}, stage: ${stage}}`,
-                );
-            }
-
-            const expandedScripts = await expandFunctionURLVariablesFromScripts(
-                frontend.scripts?.build,
-                functions,
+        let functions: Array<{ name: string; url: string }> | undefined;
+        if (projectEnvDetails) {
+            // Transform function name from kebab-case (function-hello-world) to camelCase (functionHelloWorldApiUrl)
+            functions = projectEnvDetails.functions?.map((f) => ({
+                name: kebabToCamelCase(f.name) + "ApiUrl",
+                url: f.cloudUrl,
+            }));
+        } else {
+            debugLogger.debug(
+                `No project environment details found. {projectName: ${name}, stage: ${stage}}`,
             );
-            await runScript(expandedScripts, frontend.path);
-        });
-    } catch (error) {
-        if (error instanceof Error) log.error(new Error(error.message));
-        log.info(`Skipping frontend ${index + 1} deployment because the build script failed.`);
-        return;
-    }
+        }
+
+        const expandedScripts = await expandFunctionURLVariablesFromScripts(
+            frontend.scripts?.build,
+            functions,
+        );
+        await runScript(expandedScripts, frontend.path);
+    });
 
     // check if subdomain contains only numbers, letters and hyphens
     if (frontend.subdomain && !frontend.subdomain.match(/^[a-z0-9-]+$/)) {
