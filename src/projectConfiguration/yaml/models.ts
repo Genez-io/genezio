@@ -9,7 +9,7 @@ export enum Language {
 }
 
 export enum DatabaseType {
-    neon = "neon-postgres",
+    neon = "postgres-neon",
 }
 
 export enum TriggerType {

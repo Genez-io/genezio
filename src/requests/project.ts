@@ -1,47 +1,10 @@
-import sendRequest from "./utils.js";
-
-export interface CreateEmptyProjectRequest {
-    projectName: string;
-    region: string;
-    cloudProvider: string;
-    stage: string;
-    stack?: string[];
-}
-
-export interface CreateEmptyProjectResponse {
-    status: string;
-    projectId: string;
-    projectEnvId: string;
-    createdAt: number;
-    updatedAt: number;
-}
-
-export interface GetProjectDetailsResponse {
-    id: string;
-    name: string;
-    region: string;
-    createdAt: number;
-    updatedAt: number;
-    projectEnvs: ProjectDetailsEnvElement[];
-}
-
-export interface ProjectDetailsEnvElement {
-    id: string;
-    name: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    classes: any[];
-    functions?: FunctionDetails[];
-}
-
-export interface FunctionDetails {
-    id: string;
-    name: string;
-    projectName: string;
-    status: string;
-    cloudUrl: string;
-    createdAt: number;
-    updatedAt: number;
-}
+import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
+import {
+    CreateEmptyProjectRequest,
+    CreateEmptyProjectResponse,
+    GetProjectDetailsResponse,
+} from "../models/requests.js";
+import sendRequest from "../utils/requests.js";
 
 export async function createEmptyProject(
     request: CreateEmptyProjectRequest,
@@ -49,7 +12,7 @@ export async function createEmptyProject(
     const {
         projectName,
         region,
-        cloudProvider = "genezio-cloud",
+        cloudProvider = CloudProviderIdentifier.GENEZIO_CLOUD,
         stage = "prod",
         stack = [],
     } = request;

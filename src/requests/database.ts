@@ -1,19 +1,12 @@
-import sendRequest from "./utils.js";
-
-export interface CreateDatabaseRequest {
-    name: string;
-    region: string;
-    type?: string;
-}
-
-export interface CreateDatabaseResponse {
-    status: string;
-    databaseId: string;
-}
-
-export interface LinkedDatabaseResponse {
-    status: string;
-}
+import {
+    CreateDatabaseRequest,
+    CreateDatabaseResponse,
+    GetDatabaseConnectionUrl,
+    GetDatabaseResponse,
+    GetDatabasesResponse,
+    LinkedDatabaseResponse,
+} from "../models/requests.js";
+import sendRequest from "../utils/requests.js";
 
 export async function createDatabase(
     request: CreateDatabaseRequest,
@@ -25,13 +18,13 @@ export async function createDatabase(
 
     const data: string = JSON.stringify({
         name: name,
-        region: region,
+        region: "aws-" + region,
         type: type,
     });
 
     const databaseResponse = (await sendRequest(
         "POST",
-        "database",
+        "databases",
         data,
     )) as CreateDatabaseResponse;
 
@@ -52,7 +45,41 @@ export async function linkDatabaseToEnvironment(
     }
     return (await sendRequest(
         "POST",
-        `/projects/${projectId}/${envId}/databases/${databaseId}`,
+        `projects/${projectId}/${envId}/databases/${databaseId}`,
         "",
     )) as LinkedDatabaseResponse;
+}
+
+export async function getDatabaseByName(name: string): Promise<GetDatabaseResponse | undefined> {
+    const allDatabaseResponse: GetDatabasesResponse = await sendRequest("GET", `databases`, "");
+
+    const getDatabaseResponse = allDatabaseResponse.databases.find(
+        (database) => database.name === name,
+    );
+
+    if (getDatabaseResponse) {
+        getDatabaseResponse.connectionUrl = (
+            (await sendRequest(
+                "GET",
+                `databases/${getDatabaseResponse.id}`,
+                "",
+            )) as GetDatabaseConnectionUrl
+        ).connectionUrl;
+    }
+
+    return getDatabaseResponse;
+}
+
+export async function findLinkedDatabase(
+    name: string,
+    projectId: string,
+    envId: string,
+): Promise<GetDatabaseResponse | undefined> {
+    const response = (await sendRequest(
+        "GET",
+        `projects/${projectId}/${envId}/databases`,
+        "",
+    )) as GetDatabasesResponse;
+
+    return response.databases.find((database) => database.name === name);
 }

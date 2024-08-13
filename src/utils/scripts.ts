@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { spawn } from "child_process";
 import { UserError } from "../errors.js";
 import colors from "colors";
