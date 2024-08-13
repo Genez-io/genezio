@@ -1,4 +1,4 @@
-import sendRequest from "./utils.js";
+import sendRequest from "../utils/requests.js";
 
 export type CreateFunctionRequest = {
     projectName: string;

@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import { execSync, spawn } from "child_process";
+import { spawn } from "child_process";
 import { UserError } from "../errors.js";
 import colors from "colors";
 import _ from "lodash";
@@ -164,18 +164,7 @@ export async function runScript(
     }
 
     for (const script of scripts) {
-<<<<<<< HEAD
         await execaCommand(script, { cwd, shell: true, env: environment });
-=======
-        // await execaCommand(script, { cwd, shell: true });
-        await execSync(script, {
-            cwd,
-            env: {
-                ...process.env,
-                ...environment,
-            },
-        });
->>>>>>> 0b17c035 (YAML- Inject function urls in frontend resource)
     }
 }
 

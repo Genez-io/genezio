@@ -69,6 +69,7 @@ import { getCloudProvider } from "../../requests/getCloudProvider.js";
 import fs from "fs";
 import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
+import { getOrCreateDatabase, getOrCreateEmptyProject } from "./utils.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -110,6 +111,32 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
     if (!(await isLoggedIn())) {
         debugLogger.debug("No auth token found. Starting automatic authentication...");
         await loginCommand("", false);
+    }
+
+    const projectName = configuration.name;
+    if (configuration.services) {
+        if (configuration.services.databases) {
+            const databases = configuration.services.databases;
+
+            for (const [, database] of databases.entries()) {
+                const { project, projectEnv } = await getOrCreateEmptyProject(
+                    projectName,
+                    configuration.region,
+                    options.stage || "prod",
+                );
+
+                await getOrCreateDatabase(
+                    {
+                        name: database.name,
+                        region: configuration.region,
+                        type: database.type,
+                    },
+                    options.stage || "prod",
+                    project.id,
+                    projectEnv.id,
+                );
+            }
+        }
     }
 
     let deployClassesResult;

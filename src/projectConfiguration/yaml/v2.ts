@@ -107,7 +107,7 @@ function parseGenezioConfig(config: unknown) {
     });
 
     const servicesSchema = zod.object({
-        databases: zod.array(databaseSchema).or(databaseSchema).optional(),
+        databases: zod.array(databaseSchema).optional(),
         email: zod.boolean().optional(),
     });
 

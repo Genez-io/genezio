@@ -1,7 +1,8 @@
-import axios from "axios";
-import { getAuthToken } from "../utils/accounts.js";
-import version from "../utils/version.js";
+import axios from "../requests/axios.js";
+import { getAuthToken } from "./accounts.js";
+import version from "./version.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
+import { GENEZIO_NOT_AUTH_ERROR_MSG, UserError } from "../errors.js";
 
 /**
  * Utility function to send HTTP requests using axios.
@@ -14,8 +15,7 @@ import { BACKEND_ENDPOINT } from "../constants.js";
 const sendRequest = async (method: string, endpoint: string, data: string) => {
     const authToken = await getAuthToken();
     if (!authToken) {
-        throw new Error("You are not authenticated");
-        // throw new UserError(GENEZIO_NOT_AUTH_ERROR_MSG);
+        throw new UserError(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
 
     const headers = {
@@ -34,9 +34,7 @@ const sendRequest = async (method: string, endpoint: string, data: string) => {
         });
         return response.data;
     } catch (error) {
-        // eslint-disable-next-line no-console
-        console.log(`An error occurred sending request ${method} on ${url}: ${error}`);
-        throw error;
+        throw new UserError(`An error occurred sending request ${method} on ${url}: ${error}`);
     }
 };
 
