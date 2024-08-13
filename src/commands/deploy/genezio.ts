@@ -127,7 +127,7 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             await getOrCreateDatabase(
                 {
                     name: database.name,
-                    region: configuration.region,
+                    region: database.region,
                     type: database.type,
                 },
                 options.stage || "prod",
