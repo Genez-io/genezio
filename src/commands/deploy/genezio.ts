@@ -675,40 +675,34 @@ export async function deployFrontend(
         return;
     }
 
-    try {
-        await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
-            const environment = frontend.environment;
-            const newEnvObject: Record<string, string> = {};
-            if (environment) {
-                for (const [key, rawValue] of Object.entries(environment)) {
-                    const variable = await parseRawVariable(rawValue);
-                    if (!variable) {
-                        debugLogger.debug(
-                            `The key ${key} with value ${rawValue} does not contain a variable with the format $\{{<variable>}}. The raw value is being set.`,
-                        );
-                        newEnvObject[key] = rawValue;
-                    } else {
-                        const resolvedValue = await resolveConfigurationVariable(
-                            configuration,
-                            options.stage,
-                            variable?.path,
-                            variable?.field,
-                        );
-                        debugLogger.debug(
-                            `The key ${key} with value ${rawValue} contains a variable with the format $\{{<variable>}}. The evaluated value ${resolvedValue} is being set.`,
-                        );
-                        newEnvObject[key] = resolvedValue;
-                    }
+    await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
+        const environment = frontend.environment;
+        const newEnvObject: Record<string, string> = {};
+        if (environment) {
+            for (const [key, rawValue] of Object.entries(environment)) {
+                const variable = await parseRawVariable(rawValue);
+                if (!variable) {
+                    debugLogger.debug(
+                        `The key ${key} with value ${rawValue} does not contain a variable with the format $\{{<variable>}}. The raw value is being set.`,
+                    );
+                    newEnvObject[key] = rawValue;
+                } else {
+                    const resolvedValue = await resolveConfigurationVariable(
+                        configuration,
+                        options.stage,
+                        variable?.path,
+                        variable?.field,
+                    );
+                    debugLogger.debug(
+                        `The key ${key} with value ${rawValue} contains a variable with the format $\{{<variable>}}. The evaluated value ${resolvedValue} is being set.`,
+                    );
+                    newEnvObject[key] = resolvedValue;
                 }
             }
+        }
 
-            await runScript(frontend.scripts?.build, frontend.path, newEnvObject);
-        });
-    } catch (error) {
-        if (error instanceof Error) log.error(new Error(error.message));
-        log.info(`Skipping frontend ${index + 1} deployment because the build script failed.`);
-        return;
-    }
+        await runScript(frontend.scripts?.build, frontend.path, newEnvObject);
+    });
 
     // check if subdomain contains only numbers, letters and hyphens
     if (frontend.subdomain && !frontend.subdomain.match(/^[a-z0-9-]+$/)) {
