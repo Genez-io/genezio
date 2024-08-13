@@ -106,46 +106,14 @@ function parseGenezioConfig(config: unknown) {
             .default("us-east-1"),
     });
 
-    const authenticationSchema = zod.object({
-        database: zod
-            .object({
-                type: zod.nativeEnum(DatabaseType).optional().default(DatabaseType.neon),
-                uri: zod.string(),
-            })
-            .or(
-                zod.object({
-                    name: zod.string(),
-                    region: zod
-                        .enum(databaseRegions.map((r) => r.value) as [string, ...string[]])
-                        .optional()
-                        .default("us-east-1"),
-                }),
-            )
-            .optional(),
-        providers: zod
-            .object({
-                email: zod.boolean().optional(),
-                web3: zod.boolean().optional(),
-                google: zod
-                    .object({
-                        clientId: zod.string(),
-                        clientSecret: zod.string(),
-                    })
-                    .optional(),
-            })
-            .optional(),
-    });
-
     const servicesSchema = zod.object({
         databases: zod.array(databaseSchema).or(databaseSchema).optional(),
         email: zod.boolean().optional(),
-        authentication: authenticationSchema.optional(),
     });
 
     const backendSchema = zod.object({
         path: zod.string(),
         language: languageSchema,
-        environment: zod.record(zod.string(), zod.string()).optional(),
         scripts: zod
             .object({
                 deploy: scriptSchema,

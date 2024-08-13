@@ -67,11 +67,7 @@ import {
     checkExperimentalDecorators,
 } from "../utils/jsProjectChecker.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
-import {
-    runScript,
-    runFrontendStartScript,
-    expandFunctionURLVariablesFromScripts,
-} from "../utils/scripts.js";
+import { runScript, runFrontendStartScript } from "../utils/scripts.js";
 import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
 import { watchPackage } from "../generateSdk/sdkMonitor.js";
 import { NodeJsBundler } from "../bundlers/node/nodeJsBundler.js";
@@ -271,17 +267,13 @@ async function startFrontends(
 
     await Promise.all(
         frontendConfiguration.map(async (frontend) => {
-            const expandedScripts = await expandFunctionURLVariablesFromScripts(
-                frontend.scripts?.start,
-                functionsConfiguration.functions,
-            );
-
-            await runFrontendStartScript(expandedScripts, frontend.path).catch((e: UserError) =>
-                log.error(
-                    new Error(
-                        `Failed to start frontend located in \`${frontend.path}\`: ${e.message}`,
+            await runFrontendStartScript(frontend.scripts?.start, frontend.path).catch(
+                (e: UserError) =>
+                    log.error(
+                        new Error(
+                            `Failed to start frontend located in \`${frontend.path}\`: ${e.message}`,
+                        ),
                     ),
-                ),
             );
         }),
     );

@@ -1,72 +1,108 @@
-import { spawn } from "child_process";
+/* eslint-disable no-console */
+import { execSync, spawn } from "child_process";
 import { UserError } from "../errors.js";
 import colors from "colors";
 import _ from "lodash";
 import { Logger } from "tslog";
-import { execaCommand } from "execa";
-import { debugLogger, log } from "./logging.js";
+import { FunctionConfiguration } from "../models/projectConfiguration.js";
+import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
+import { FunctionType } from "../projectConfiguration/yaml/models.js";
+import getProjectInfoByName from "../requests/getProjectInfoByName.js";
 
-export async function expandFunctionURLVariablesFromScripts(
-    scripts: string | string[] | undefined,
-    functions:
-        | {
-              name: string;
-              url: string;
-          }[]
-        | undefined,
-): Promise<string | string[] | undefined> {
-    if (!scripts) {
-        return;
-    }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isFunctionConfiguration(value: any): value is FunctionConfiguration {
+    return (
+        value instanceof FunctionConfiguration ||
+        (value &&
+            typeof value === "object" &&
+            typeof value.name === "string" &&
+            typeof value.path === "string" &&
+            typeof value.handler === "string" &&
+            typeof value.entry === "string" &&
+            Object.values(FunctionType).includes(value.type))
+    );
+}
 
-    if (!Array.isArray(scripts)) {
-        scripts = [scripts];
-    }
+export async function evaluateVariable(
+    configuration: YamlProjectConfiguration,
+    stage: string,
+    path: string,
+    field: string,
+): Promise<string> {
+    const keys = path.split(".");
 
-    const expandedScripts: string[] | string = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let value: any = configuration;
 
-    for (let script of scripts) {
-        const regex = /\$\{\{[a-zA-Z0-9-]+\}\}/g;
-        const matches = script.match(regex);
-        const prefix = "${{";
-        const suffix = "}}";
+    for (let i = 0; i < keys.length; i++) {
+        const key = keys[i];
 
-        for (const match of matches || []) {
-            const variableFunctionName = match.slice(prefix.length, -suffix.length);
-
-            if (!variableFunctionName.endsWith("ApiUrl")) {
-                script = script.replace(match, "");
-                log.error(
-                    `Invalid variable format: ${match}. Variable format should be \${{functionCamelCaseNameApiUrl}}`,
-                );
-                continue;
-            }
-
-            if (!functions) {
-                script = script.replace(match, "");
-                log.error("No functions found. Please make sure the functions are deployed.");
-                continue;
-            }
-            const functionUrl = functions.find((f) => f.name === variableFunctionName)?.url;
-            if (!functionUrl) {
-                script = script.replace(match, "");
-                log.error(
-                    `API URL for \${{${variableFunctionName}}} not found. Please make sure the function is deployed.`,
-                );
-                continue;
-            }
-            script = script.replace(match, functionUrl);
+        if (Array.isArray(value)) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            value = value.find((item: any) => item.name === key);
+        } else {
+            value = value?.[key as keyof typeof value];
         }
-        expandedScripts.push(script);
+
+        if (value === undefined) {
+            throw new UserError(`The attribute ${key} from ${path} is not supported.`);
+        }
     }
 
-    debugLogger.debug(`The expanded script commands are: ${expandedScripts}`);
-    return expandedScripts;
+    if (isFunctionConfiguration(value)) {
+        const functionObj = value as FunctionConfiguration;
+
+        if (field === "url") {
+            const response = await getProjectInfoByName(configuration.name);
+            const functionUrl = response.projectEnvs
+                .find((env) => env.name === stage)
+                ?.functions?.find((func) => func.name === "function-" + functionObj.name)?.cloudUrl;
+            if (!functionUrl) {
+                throw new UserError(
+                    `The function ${functionObj.name} is not deployed in the stage ${stage}.`,
+                );
+            }
+            return functionUrl;
+        }
+        const inputField = functionObj[field as keyof FunctionConfiguration];
+
+        if (inputField === undefined) {
+            throw new UserError(
+                `The attribute ${field} is not supported for function ${functionObj.name}. You can use one of the following attributes: ${Object.keys(functionObj).join(", ")} and url.`,
+            );
+        }
+        return inputField;
+    }
+
+    throw new UserError(`The path ${path} is not supported.`);
+}
+
+export async function parseVariable(
+    rawValue: string,
+): Promise<{ path: string; field: string } | undefined> {
+    const regex = /\$\{\{[ a-zA-Z0-9-.]+\}\}/;
+    const prefix = "${{";
+    const suffix = "}}";
+    const match = rawValue.match(regex);
+
+    if (match) {
+        // Sanitize the variable
+        const variable = match[0].slice(prefix.length, -suffix.length).replace(/ /g, "");
+
+        // Split the string at the last period
+        const lastDotIndex = variable.lastIndexOf(".");
+        const path = variable.substring(0, lastDotIndex);
+        const field = variable.substring(lastDotIndex + 1);
+        return { path, field };
+    }
+
+    return undefined;
 }
 
 export async function runScript(
     scripts: string | string[] | undefined,
     cwd: string,
+    environment?: Record<string, string>,
 ): Promise<void> {
     if (!scripts) {
         return;
@@ -77,7 +113,14 @@ export async function runScript(
     }
 
     for (const script of scripts) {
-        await execaCommand(script, { cwd, shell: true });
+        // await execaCommand(script, { cwd, shell: true });
+        await execSync(script, {
+            cwd,
+            env: {
+                ...process.env,
+                ...environment,
+            },
+        });
     }
 }
 
