@@ -8,6 +8,10 @@ export enum Language {
     go = "go",
 }
 
+export enum DatabaseType {
+    neon = "neon-postgres",
+}
+
 export enum TriggerType {
     jsonrpc = "jsonrpc",
     cron = "cron",
