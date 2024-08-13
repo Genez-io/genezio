@@ -1,5 +1,4 @@
-/* eslint-disable no-console */
-import { execSync, spawn } from "child_process";
+import { spawn } from "child_process";
 import { UserError } from "../errors.js";
 import colors from "colors";
 import _ from "lodash";
@@ -8,50 +7,90 @@ import { FunctionConfiguration } from "../models/projectConfiguration.js";
 import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
 import { FunctionType } from "../projectConfiguration/yaml/models.js";
 import getProjectInfoByName from "../requests/getProjectInfoByName.js";
+import { execaCommand } from "execa";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function isFunctionConfiguration(value: any): value is FunctionConfiguration {
+/**
+ * Determines whether a given value is a valid `FunctionConfiguration` object.
+ *
+ * This type guard checks whether the provided value is an object that conforms
+ * to the `FunctionConfiguration` interface.
+ *
+ * @param potentialFunctionObject The value to be checked, of an unknown type.
+ * @returns `true` if the value is a `FunctionConfiguration`, otherwise `false`.
+ */
+function isFunctionConfiguration(
+    potentialFunctionObject: unknown,
+): potentialFunctionObject is FunctionConfiguration {
     return (
-        value instanceof FunctionConfiguration ||
-        (value &&
-            typeof value === "object" &&
-            typeof value.name === "string" &&
-            typeof value.path === "string" &&
-            typeof value.handler === "string" &&
-            typeof value.entry === "string" &&
-            Object.values(FunctionType).includes(value.type))
+        typeof potentialFunctionObject === "object" &&
+        potentialFunctionObject !== null &&
+        typeof (potentialFunctionObject as FunctionConfiguration).name === "string" &&
+        typeof (potentialFunctionObject as FunctionConfiguration).path === "string" &&
+        typeof (potentialFunctionObject as FunctionConfiguration).handler === "string" &&
+        typeof (potentialFunctionObject as FunctionConfiguration).entry === "string" &&
+        Object.values(FunctionType).includes(
+            (potentialFunctionObject as FunctionConfiguration).type,
+        )
     );
 }
 
-export async function evaluateVariable(
+/**
+ * Determines whether a given value is an object with a specific field.
+ *
+ * @param obj The object to be checked.
+ * @param key The field to check for.
+ * @returns `true` if the object is not `null` and contains the specified field, otherwise `false`.
+ */
+function assertIsObjectWithField<T extends object>(obj: unknown, key: keyof T): obj is T {
+    return typeof obj === "object" && obj !== null && key in obj;
+}
+
+/**
+ * Resolves and retrieves a specific field value from a hierarchical configuration object.
+ *
+ * The function navigates through the given configuration object based on a dot-separated path
+ * to locate the desired field value. It supports nested structures, including arrays, by
+ * iteratively resolving each segment of the path.
+ *
+ * @param configuration The root configuration object of type `YamlProjectConfiguration`.
+ * @param stage The stage name.
+ * @param path A dot-separated string representing the path to the desired object in the configuration. e.g. "backend.functions.<function-name>""
+ * @param field The specific field to retrieve from the resolved object. e.g. "url"
+ * @returns A promise that resolves to the string value of the requested field.
+ * @throws UserError if the path cannot be resolved, the field is not supported, or a function URL cannot be found.
+ */
+export async function resolveConfigurationVariable(
     configuration: YamlProjectConfiguration,
     stage: string,
-    path: string,
-    field: string,
+    path: string /* e.g. backend.functions.<function-name> */,
+    field: string /* e.g. url */,
 ): Promise<string> {
     const keys = path.split(".");
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let value: any = configuration;
+    // The object or value currently referenced by the path as it is traversed through the configuration
+    let resourceObject: unknown = configuration;
 
+    // Traverse the path to locate the desired object
     for (let i = 0; i < keys.length; i++) {
         const key = keys[i];
 
-        if (Array.isArray(value)) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            value = value.find((item: any) => item.name === key);
+        if (Array.isArray(resourceObject)) {
+            resourceObject = resourceObject.find(
+                (item: { name: string | undefined }) => item.name === key,
+            );
         } else {
-            value = value?.[key as keyof typeof value];
+            resourceObject = resourceObject?.[key as keyof typeof resourceObject];
         }
 
-        if (value === undefined) {
+        if (resourceObject === undefined) {
             throw new UserError(`The attribute ${key} from ${path} is not supported.`);
         }
     }
 
-    if (isFunctionConfiguration(value)) {
-        const functionObj = value as FunctionConfiguration;
+    if (isFunctionConfiguration(resourceObject)) {
+        const functionObj = resourceObject as FunctionConfiguration;
 
+        // Retrieve custom output fields for a function object such as `url`
         if (field === "url") {
             const response = await getProjectInfoByName(configuration.name);
             const functionUrl = response.projectEnvs
@@ -74,10 +113,21 @@ export async function evaluateVariable(
         return inputField;
     }
 
-    throw new UserError(`The path ${path} is not supported.`);
+    if (assertIsObjectWithField<{ [key: string]: unknown }>(resourceObject, field)) {
+        const result = resourceObject[field];
+        if (typeof result === "string") {
+            return result;
+        } else {
+            throw new UserError(`The attribute ${field} is an object and not a string.`);
+        }
+    } else {
+        throw new UserError(
+            `The attribute ${field} is not supported or does not exist in the given resource.`,
+        );
+    }
 }
 
-export async function parseVariable(
+export async function parseRawVariable(
     rawValue: string,
 ): Promise<{ path: string; field: string } | undefined> {
     const regex = /\$\{\{[ a-zA-Z0-9-.]+\}\}/;
@@ -113,14 +163,7 @@ export async function runScript(
     }
 
     for (const script of scripts) {
-        // await execaCommand(script, { cwd, shell: true });
-        await execSync(script, {
-            cwd,
-            env: {
-                ...process.env,
-                ...environment,
-            },
-        });
+        await execaCommand(script, { cwd, shell: true, env: environment });
     }
 }
 

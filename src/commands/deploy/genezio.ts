@@ -54,7 +54,7 @@ import {
 } from "../../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
-import { evaluateVariable, parseVariable, runScript } from "../../utils/scripts.js";
+import { resolveConfigurationVariable, runScript, parseRawVariable } from "../../utils/scripts.js";
 import { scanClassesForDecorators } from "../../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../../projectConfiguration/yaml/v2.js";
 import { ClusterCloudAdapter } from "../../cloudAdapter/cluster/clusterAdapter.js";
@@ -680,29 +680,28 @@ export async function deployFrontend(
             const environment = frontend.environment;
             const newEnvObject: Record<string, string> = {};
             if (environment) {
-                for (const [key, value] of Object.entries(environment)) {
-                    const variable = await parseVariable(value);
+                for (const [key, rawValue] of Object.entries(environment)) {
+                    const variable = await parseRawVariable(rawValue);
                     if (!variable) {
                         debugLogger.debug(
-                            `The value ${value} is not a variable, setting the raw value.`,
+                            `The key ${key} with value ${rawValue} does not contain a variable with the format $\{{<variable>}}. The raw value is being set.`,
                         );
-                        newEnvObject[key] = value;
-                        continue;
+                        newEnvObject[key] = rawValue;
+                    } else {
+                        const resolvedValue = await resolveConfigurationVariable(
+                            configuration,
+                            options.stage,
+                            variable?.path,
+                            variable?.field,
+                        );
+                        debugLogger.debug(
+                            `The key ${key} with value ${rawValue} contains a variable with the format $\{{<variable>}}. The evaluated value ${resolvedValue} is being set.`,
+                        );
+                        newEnvObject[key] = resolvedValue;
                     }
-                    const output = await evaluateVariable(
-                        configuration,
-                        options.stage,
-                        variable?.path,
-                        variable?.field,
-                    );
-                    debugLogger.debug(
-                        `The value ${value} is a variable, setting the evaluated value ${output}.`,
-                    );
-                    newEnvObject[key] = output;
                 }
             }
 
-            debugLogger.debug(`New Environment: ${JSON.stringify(newEnvObject)}`);
             await runScript(frontend.scripts?.build, frontend.path, newEnvObject);
         });
     } catch (error) {
