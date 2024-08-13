@@ -118,7 +118,7 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         const databases = configuration.services.databases;
 
         for (const database of databases) {
-            const { project, projectEnv } = await getOrCreateEmptyProject(
+            const { projectId, projectEnvId } = await getOrCreateEmptyProject(
                 projectName,
                 configuration.region,
                 options.stage || "prod",
@@ -131,8 +131,8 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
                     type: database.type,
                 },
                 options.stage || "prod",
-                project.id,
-                projectEnv.id,
+                projectId,
+                projectEnvId,
             );
         }
     }

@@ -9,7 +9,6 @@ import {
     linkDatabaseToEnvironment,
 } from "../../requests/database.js";
 import getProjectInfoByName from "../../requests/getProjectInfoByName.js";
-import { ProjectDetails, ProjectDetailsEnvElement } from "../../requests/models.js";
 import { createEmptyProject } from "../../requests/project.js";
 import { debugLogger } from "../../utils/logging.js";
 
@@ -17,11 +16,17 @@ export async function getOrCreateEmptyProject(
     projectName: string,
     region: string,
     stage: string = "prod",
-): Promise<{ project: ProjectDetails; projectEnv: ProjectDetailsEnvElement }> {
-    const project = await getProjectInfoByName(projectName);
+): Promise<{ projectId: string; projectEnvId: string }> {
+    const project = await getProjectInfoByName(projectName).catch((error) => {
+        if (error instanceof UserError && error.message.includes("record not found")) {
+            return undefined;
+        }
+        debugLogger.debug(`Error getting project ${projectName}: ${error}`);
+        throw new UserError(`Failed to get project ${projectName}.`);
+    });
 
     if (!project) {
-        await createEmptyProject({
+        const newProject = await createEmptyProject({
             projectName: projectName,
             region: region,
             cloudProvider: CloudProviderIdentifier.GENEZIO_CLOUD,
@@ -34,6 +39,8 @@ export async function getOrCreateEmptyProject(
         debugLogger.debug(
             `Project ${projectName} in region ${region} on stage ${stage} was created successfully`,
         );
+
+        return { projectId: newProject.projectId, projectEnvId: newProject.projectEnvId };
     }
 
     const projectEnv = project.projectEnvs.find((projectEnv) => projectEnv.name == stage);
@@ -41,7 +48,7 @@ export async function getOrCreateEmptyProject(
         throw new UserError(`Stage ${stage} not found in project ${projectName}.`);
     }
 
-    return { project, projectEnv };
+    return { projectId: project.id, projectEnvId: projectEnv.id };
 }
 
 export async function getOrCreateDatabase(
