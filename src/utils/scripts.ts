@@ -164,7 +164,14 @@ export async function runScript(
     }
 
     for (const script of scripts) {
-        await execaCommand(script, { cwd, shell: true, env: environment });
+        await execaCommand(script, {
+            cwd,
+            shell: true,
+            env: {
+                ...process.env,
+                ...environment,
+            },
+        });
     }
 }
 
