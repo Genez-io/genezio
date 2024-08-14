@@ -202,7 +202,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
         debugLogger.debug("Creating temporary folder", archivePath);
 
         const frontendPath = path.join(frontend.path, frontend.publish || ".");
-        await zipDirectoryToDestinationPath(frontendPath, finalSubdomain, archivePath, [
+        await zipDirectoryToDestinationPath(frontendPath, finalSubdomain, archivePath, true, [
             ".git",
             ".github",
         ]);
