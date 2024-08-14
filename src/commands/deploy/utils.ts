@@ -111,6 +111,10 @@ export async function processYamlEnvironmentVariables(
     environment: Record<string, string>,
     configuration: YamlProjectConfiguration,
     stage: string,
+    options?: {
+        isLocal?: boolean;
+        port?: number;
+    },
 ): Promise<Record<string, string>> {
     const newEnvObject: Record<string, string> = {};
 
@@ -128,6 +132,7 @@ export async function processYamlEnvironmentVariables(
                 stage,
                 variable?.path,
                 variable?.field,
+                options,
             );
             debugLogger.debug(
                 `The key ${key} with value ${rawValue} contains a variable with the format $\{{<variable>}}. The evaluated value ${resolvedValue} is being set.`,

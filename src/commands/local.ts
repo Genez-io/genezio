@@ -232,6 +232,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             sdkSynchronizer,
             yamlProjectConfiguration,
             options.stage || "prod",
+            options.port,
         ),
     ]);
 }
@@ -248,6 +249,7 @@ async function startFrontends(
     sdkSynchronizer: Mutex,
     configuration: YamlProjectConfiguration,
     stage: string,
+    port?: number,
 ) {
     if (!frontendConfiguration) return;
 
@@ -263,6 +265,7 @@ async function startFrontends(
                     environment,
                     configuration,
                     stage,
+                    { isLocal: true, port: port },
                 );
             }
 

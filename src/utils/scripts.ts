@@ -9,6 +9,7 @@ import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
 import { FunctionType } from "../projectConfiguration/yaml/models.js";
 import getProjectInfoByName from "../requests/getProjectInfoByName.js";
 import { execaCommand } from "execa";
+import { PORT_LOCAL_ENVIRONMENT } from "../constants.js";
 
 /**
  * Determines whether a given value is a valid `FunctionConfiguration` object.
@@ -65,7 +66,15 @@ export async function resolveConfigurationVariable(
     stage: string,
     path: string /* e.g. backend.functions.<function-name> */,
     field: string /* e.g. url */,
+    options?: {
+        isLocal?: boolean;
+        port?: number;
+    },
 ): Promise<string> {
+    if (options?.isLocal && !options?.port) {
+        options.port = PORT_LOCAL_ENVIRONMENT;
+    }
+
     const keys = path.split(".");
 
     // The object or value currently referenced by the path as it is traversed through the configuration
@@ -93,6 +102,10 @@ export async function resolveConfigurationVariable(
 
         // Retrieve custom output fields for a function object such as `url`
         if (field === "url") {
+            if (options?.isLocal) {
+                return `http://localhost:${options.port}/.functions/function-${functionObj.name}`;
+            }
+
             const response = await getProjectInfoByName(configuration.name);
             const functionUrl = response.projectEnvs
                 .find((env) => env.name === stage)
