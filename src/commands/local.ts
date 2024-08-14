@@ -79,7 +79,7 @@ import * as readline from "readline";
 import { getLinkedFrontendsForProject } from "../utils/linkDatabase.js";
 import fsExtra from "fs-extra/esm";
 import { DeployCodeFunctionResponse } from "../models/deployCodeResponse.js";
-import { kebabToCamelCase } from "../utils/strings.js";
+import { processYamlEnvironmentVariables } from "./deploy/utils.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -225,20 +225,13 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         );
     }
 
-    // Transform function from f.name: hello-world to functionHelloWorldApiUrl
-    const functions = yamlProjectConfiguration.backend?.functions?.map((f) => ({
-        name: kebabToCamelCase("function-" + f.name) + "ApiUrl",
-        url: `http://localhost:${options.port}/.functions/function-${f.name}`,
-    }));
-
     await Promise.all([
         startBackendWatcher(yamlProjectConfiguration.backend, options, sdkSynchronizer),
         startFrontends(
-            {
-                functions: functions ?? [],
-            },
             yamlProjectConfiguration.frontend,
             sdkSynchronizer,
+            yamlProjectConfiguration,
+            options.stage || "prod",
         ),
     ]);
 }
@@ -251,14 +244,10 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
  * @returns Never returns, because it runs the frontends indefinitely.
  */
 async function startFrontends(
-    functionsConfiguration: {
-        functions: {
-            name: string;
-            url: string;
-        }[];
-    },
     frontendConfiguration: YamlFrontend[] | undefined,
     sdkSynchronizer: Mutex,
+    configuration: YamlProjectConfiguration,
+    stage: string,
 ) {
     if (!frontendConfiguration) return;
 
@@ -267,13 +256,26 @@ async function startFrontends(
 
     await Promise.all(
         frontendConfiguration.map(async (frontend) => {
-            await runFrontendStartScript(frontend.scripts?.start, frontend.path).catch(
-                (e: UserError) =>
-                    log.error(
-                        new Error(
-                            `Failed to start frontend located in \`${frontend.path}\`: ${e.message}`,
-                        ),
+            const environment = frontend.environment;
+            let newEnvObject: Record<string, string> | undefined = undefined;
+            if (environment) {
+                newEnvObject = await processYamlEnvironmentVariables(
+                    environment,
+                    configuration,
+                    stage,
+                );
+            }
+
+            await runFrontendStartScript(
+                frontend.scripts?.start,
+                frontend.path,
+                newEnvObject,
+            ).catch((e: UserError) =>
+                log.error(
+                    new Error(
+                        `Failed to start frontend located in \`${frontend.path}\`: ${e.message}`,
                     ),
+                ),
             );
         }),
     );
