@@ -696,8 +696,9 @@ export async function deployFrontend(
         log.info(
             `Skipping frontend deployment for \`${frontend.path}\` because it has no publish folder in the YAML configuration. Check https://genezio.com/docs/project-structure/genezio-configuration-file for more details.`,
         );
-
-        return;
+        throw new UserError(
+            `Frontend named ${name} has no publish folder in the YAML configuration.`,
+        );
     }
 
     await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
