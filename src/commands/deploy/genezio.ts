@@ -692,12 +692,20 @@ export async function deployFrontend(
 ): Promise<string | undefined> {
     const stage: string = options.stage || "";
 
-    if (!frontend.publish) {
+    if (frontend.publish === null || frontend.publish === undefined) {
         log.info(
             `Skipping frontend deployment for \`${frontend.path}\` because it has no publish folder in the YAML configuration. Check https://genezio.com/docs/project-structure/genezio-configuration-file for more details.`,
         );
-
         return;
+    }
+
+    // check if the frontend path exists
+    if (!(await fileExists(frontend.publish))) {
+        throw new UserError(
+            `The frontend path ${colors.cyan(
+                `${frontend.publish}`,
+            )} does not exist. Please make sure the path is correct.`,
+        );
     }
 
     await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
