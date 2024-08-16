@@ -362,7 +362,6 @@ async function deployStaticAssets(
 async function deployFunctions(config: YamlProjectConfiguration, stage?: string) {
     const cloudProvider = await getCloudProvider(config.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
-    // list all folders from .open-next/server-functions in nodejs
 
     const serverSubfolders = await getAllFilesFromPath(".open-next/server-functions", false);
 
