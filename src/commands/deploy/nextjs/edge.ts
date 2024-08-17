@@ -81,16 +81,16 @@ function removeExtension(filePath: string) {
     return path.join(dir, fileName);
 }
 
-export function getEdgeFunctions(): Promise<EdgeFunction[]> {
+function walkDirectoryForEdgeFunctions(dir: string): Promise<EdgeFunction[]> {
     return new Promise((resolve) => {
         const edgeFunctions: EdgeFunction[] = [];
         let counter = 0;
 
-        if (!fs.existsSync("./app/api")) {
+        if (!fs.existsSync(dir)) {
             resolve(edgeFunctions);
         }
 
-        walkDirectory("./app/api", (filePath) => {
+        walkDirectory(dir, (filePath) => {
             const filename = path.basename(filePath);
             if (filename === "route.ts" || filename === "route.js") {
                 const exportedVariables = extractExportedVariables(filePath);
@@ -108,7 +108,14 @@ export function getEdgeFunctions(): Promise<EdgeFunction[]> {
                 }
             }
         });
-
-        resolve(edgeFunctions);
     });
+}
+
+export async function getEdgeFunctions(): Promise<EdgeFunction[]> {
+    const edgeFunctions: EdgeFunction[] = [];
+    const appFolderFunctions = await walkDirectoryForEdgeFunctions("./app/api");
+    const srcAppFolderFunctions = await walkDirectoryForEdgeFunctions("./src/app/api");
+    edgeFunctions.push(...appFolderFunctions, ...srcAppFolderFunctions);
+
+    return edgeFunctions;
 }
