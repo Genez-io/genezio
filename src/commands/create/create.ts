@@ -126,14 +126,24 @@ export async function createCommand(options: GenezioCreateOptions) {
         case "nextjs": {
             log.info("Running npx create-next-app...");
 
-            const defaultConfiguration =
-                "--typescript --eslint --tailwind --no-src-dir --app --no-import-alias";
-            await $({ stdio: "inherit" })(
-                `npx --yes create-next-app ${projectPath}` +
-                    (options.default ? ` ${defaultConfiguration}` : ""),
-            ).catch(() => {
-                throw new UserError("Failed to create a Next.js project using create-next-app.");
-            });
+            const defaultConfiguration = [
+                "--typescript",
+                "--eslint",
+                "--tailwind",
+                "--no-src-dir",
+                "--app",
+                "--no-import-alias",
+            ];
+
+            await $({
+                stdio: "inherit",
+            })`npx --yes create-next-app ${projectPath} ${options.default ? defaultConfiguration : []}`.catch(
+                () => {
+                    throw new UserError(
+                        "Failed to create a Next.js project using create-next-app.",
+                    );
+                },
+            );
 
             const yamlIOController = new YamlConfigurationIOController(
                 path.join(projectPath, "genezio.yaml"),
