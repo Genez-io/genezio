@@ -41,13 +41,33 @@ function extractExportedVariables(filePath: string): ExportedVariable[] {
             node.declarationList.declarations.forEach((declaration) => {
                 if (ts.isIdentifier(declaration.name)) {
                     const variableName = declaration.name.text;
-                    const initializer = declaration.initializer
-                        ? declaration.initializer.getText()
-                        : "undefined";
-                    exportedVariables.push({ name: variableName, value: initializer });
+
+                    if (declaration.initializer) {
+                        // Case 1: If the initializer is an object literal (e.g., `export const config = { runtime: 'edge', preferredRegion: 'lhr1' };`)
+                        if (ts.isObjectLiteralExpression(declaration.initializer)) {
+                            declaration.initializer.properties.forEach((prop) => {
+                                if (ts.isPropertyAssignment(prop) && ts.isIdentifier(prop.name)) {
+                                    const propName = prop.name.text;
+                                    if (ts.isStringLiteral(prop.initializer)) {
+                                        const propValue = prop.initializer.getText(); // Get the text with quotes
+                                        exportedVariables.push({
+                                            name: propName,
+                                            value: propValue,
+                                        });
+                                    }
+                                }
+                            });
+                        }
+                        // Case 2: If it's a direct variable assignment (e.g., `export const runtime = "edge";`)
+                        else if (ts.isStringLiteral(declaration.initializer)) {
+                            const initializerValue = declaration.initializer.getText(); // Get the text with quotes
+                            exportedVariables.push({ name: variableName, value: initializerValue });
+                        }
+                    }
                 }
             });
         }
+
         // Continue traversing the children nodes
         ts.forEachChild(node, extractExports);
     }
@@ -94,10 +114,11 @@ function walkDirectoryForEdgeFunctions(dir: string): Promise<EdgeFunction[]> {
             const filename = path.basename(filePath);
             if (filename === "route.ts" || filename === "route.js") {
                 const exportedVariables = extractExportedVariables(filePath);
-                const runtimeExport = exportedVariables.find(
-                    (variable) => variable.name === "runtime",
+                const edgeRuntimeExport = exportedVariables.find(
+                    (variable) => variable.name === "runtime" && variable.value === "edge",
                 );
-                if (runtimeExport) {
+
+                if (edgeRuntimeExport) {
                     edgeFunctions.push({
                         name: `function-edge${counter++}`,
                         path: removeExtension(filePath),
