@@ -108,6 +108,8 @@ function walkDirectoryForEdgeFunctions(dir: string): Promise<EdgeFunction[]> {
                 }
             }
         });
+
+        resolve(edgeFunctions);
     });
 }
 
