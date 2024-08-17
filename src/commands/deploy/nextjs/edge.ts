@@ -115,7 +115,7 @@ function walkDirectoryForEdgeFunctions(dir: string): Promise<EdgeFunction[]> {
             if (filename === "route.ts" || filename === "route.js") {
                 const exportedVariables = extractExportedVariables(filePath);
                 const edgeRuntimeExport = exportedVariables.find(
-                    (variable) => variable.name === "runtime" && variable.value === "edge",
+                    (variable) => variable.name === "runtime" && variable.value === '"edge"',
                 );
 
                 if (edgeRuntimeExport) {
