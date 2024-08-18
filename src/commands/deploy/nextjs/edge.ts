@@ -101,6 +101,20 @@ function removeExtension(filePath: string) {
     return path.join(dir, fileName);
 }
 
+function getPatternFromPath(filePath: string): string {
+    // Normalize the path for cross-platform compatibility
+    const normalizedPath = path.posix.normalize(filePath);
+
+    // Remove the prefix 'app' or 'src/app' regardless of whether './' is present
+    const cleanedPath = normalizedPath.replace(/^(?:\.\/)?(src\/)?app\//, "");
+
+    // Remove the filename (page.tsx, page.js, route.tsx, route.js, route.ts)
+    const pattern = cleanedPath.replace(/\/(page|route)\.(tsx|js|ts)$/, "");
+
+    // Prepend a slash to the resulting path
+    return `/${pattern}`;
+}
+
 function walkDirectoryForEdgeFunctions(dir: string): Promise<EdgeFunction[]> {
     return new Promise((resolve) => {
         const edgeFunctions: EdgeFunction[] = [];
@@ -112,7 +126,13 @@ function walkDirectoryForEdgeFunctions(dir: string): Promise<EdgeFunction[]> {
 
         walkDirectory(dir, (filePath) => {
             const filename = path.basename(filePath);
-            if (filename === "route.ts" || filename === "route.js") {
+            if (
+                filename === "route.ts" ||
+                filename === "route.js" ||
+                filename === "page.tsx" ||
+                filename === "page.jsx" ||
+                filename === "page.js"
+            ) {
                 const exportedVariables = extractExportedVariables(filePath);
                 const edgeRuntimeExport = exportedVariables.find(
                     (variable) => variable.name === "runtime" && variable.value === '"edge"',
@@ -122,9 +142,7 @@ function walkDirectoryForEdgeFunctions(dir: string): Promise<EdgeFunction[]> {
                     edgeFunctions.push({
                         name: `function-edge${counter++}`,
                         path: removeExtension(filePath),
-                        pattern: filePath
-                            .substring(3)
-                            .substring(0, filePath.substring(3).length - 9),
+                        pattern: getPatternFromPath(filePath),
                     });
                 }
             }
@@ -136,8 +154,14 @@ function walkDirectoryForEdgeFunctions(dir: string): Promise<EdgeFunction[]> {
 
 export async function getEdgeFunctions(): Promise<EdgeFunction[]> {
     const edgeFunctions: EdgeFunction[] = [];
-    const appFolderFunctions = await walkDirectoryForEdgeFunctions("./app/api");
-    const srcAppFolderFunctions = await walkDirectoryForEdgeFunctions("./src/app/api");
+    const pathForAppAbsolute = path.join(process.cwd(), "app");
+    const pathForSrcAbsolute = path.join(process.cwd(), "src", "app");
+
+    const pathForApp = path.relative(process.cwd(), pathForAppAbsolute);
+    const pathForSrc = path.relative(process.cwd(), pathForSrcAbsolute);
+
+    const appFolderFunctions = await walkDirectoryForEdgeFunctions(pathForApp);
+    const srcAppFolderFunctions = await walkDirectoryForEdgeFunctions(pathForSrc);
     edgeFunctions.push(...appFolderFunctions, ...srcAppFolderFunctions);
 
     return edgeFunctions;
