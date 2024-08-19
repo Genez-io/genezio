@@ -60,7 +60,7 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     await writeOpenNextConfig(genezioConfig.region);
     // Build the Next.js project
     await $({ stdio: "inherit" })`npx --yes @genezio/open-next@latest build`.catch(() => {
-        throw new UserError("Failed to build the Nuxt.js project. Check the logs above.");
+        throw new UserError("Failed to build the Next.js project. Check the logs above.");
     });
 
     await checkProjectLimitations();
