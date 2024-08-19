@@ -33,7 +33,9 @@ function decideDeployType(): DeployType {
     // Check if next.config.js exists
     if (
         fs.existsSync(path.join(cwd, "next.config.js")) ||
-        fs.existsSync(path.join(cwd, "next.config.mjs"))
+        fs.existsSync(path.join(cwd, "next.config.mjs")) ||
+        fs.existsSync(path.join(cwd, "next.config.cjs")) ||
+        fs.existsSync(path.join(cwd, "next.config.ts"))
     ) {
         return DeployType.NextJS;
     }
