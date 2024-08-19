@@ -383,10 +383,10 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
 
 function writeNextConfig() {
     const cwd = process.cwd();
-    const extension = ["js", "cjs", "mjs", "ts"].find((ext) =>
+    const configExists = ["js", "cjs", "mjs", "ts"].find((ext) =>
         fs.existsSync(path.join(cwd, `next.config.${ext}`)),
     );
-    if (!extension) {
+    if (!configExists) {
         fs.writeFileSync("next.config.js", ``);
     }
 }
