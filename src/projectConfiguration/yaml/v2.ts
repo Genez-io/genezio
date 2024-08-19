@@ -2,9 +2,9 @@ import { YAMLContext, parse as parseYaml, stringify as stringifyYaml } from "yam
 import zod from "zod";
 import nativeFs from "fs";
 import { IFs } from "memfs";
-import { legacyRegions } from "../../utils/configs.js";
+import { databaseRegions, legacyRegions } from "../../utils/configs.js";
 import { GENEZIO_CONFIGURATION_FILE_NOT_FOUND, UserError, zodFormatError } from "../../errors.js";
-import { FunctionType, Language } from "./models.js";
+import { DatabaseType, FunctionType, Language } from "./models.js";
 import {
     DEFAULT_ARCHITECTURE,
     DEFAULT_NODE_RUNTIME,
@@ -97,6 +97,20 @@ function parseGenezioConfig(config: unknown) {
         type: zod.nativeEnum(FunctionType).default(FunctionType.aws),
     });
 
+    const databaseSchema = zod.object({
+        name: zod.string(),
+        type: zod.nativeEnum(DatabaseType).optional().default(DatabaseType.neon),
+        region: zod
+            .enum(databaseRegions.map((r) => r.value) as [string, ...string[]])
+            .optional()
+            .default("us-east-1"),
+    });
+
+    const servicesSchema = zod.object({
+        databases: zod.array(databaseSchema).optional(),
+        email: zod.boolean().optional(),
+    });
+
     const backendSchema = zod.object({
         path: zod.string(),
         language: languageSchema,
@@ -120,6 +134,7 @@ function parseGenezioConfig(config: unknown) {
             .optional(),
         subdomain: zod.string().optional(),
         publish: zod.string().optional(),
+        environment: zod.record(zod.string(), zod.string()).optional(),
         scripts: zod
             .object({
                 build: scriptSchema,
@@ -137,6 +152,7 @@ function parseGenezioConfig(config: unknown) {
         region: zod.enum(legacyRegions.map((r) => r.value) as [string, ...string[]]).optional(),
         yamlVersion: zod.number(),
         backend: backendSchema.optional(),
+        services: servicesSchema.optional(),
         frontend: zod.array(frontendSchema).or(frontendSchema).optional(),
     });
 

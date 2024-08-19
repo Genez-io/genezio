@@ -54,7 +54,7 @@ import {
 } from "../../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
-import { expandFunctionURLVariablesFromScripts, runScript } from "../../utils/scripts.js";
+import { resolveConfigurationVariable, runScript, parseRawVariable } from "../../utils/scripts.js";
 import { scanClassesForDecorators } from "../../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../../projectConfiguration/yaml/v2.js";
 import { ClusterCloudAdapter } from "../../cloudAdapter/cluster/clusterAdapter.js";
@@ -69,8 +69,7 @@ import { getCloudProvider } from "../../requests/getCloudProvider.js";
 import fs from "fs";
 import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
-import { getProjectEnvFromProjectByName } from "../../requests/getProjectInfoByName.js";
-import { kebabToCamelCase } from "../../utils/strings.js";
+import { getOrCreateDatabase, getOrCreateEmptyProject } from "./utils.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -112,6 +111,30 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
     if (!(await isLoggedIn())) {
         debugLogger.debug("No auth token found. Starting automatic authentication...");
         await loginCommand("", false);
+    }
+
+    const projectName = configuration.name;
+    if (configuration.services?.databases) {
+        const databases = configuration.services.databases;
+
+        for (const database of databases) {
+            const { projectId, projectEnvId } = await getOrCreateEmptyProject(
+                projectName,
+                configuration.region,
+                options.stage || "prod",
+            );
+
+            await getOrCreateDatabase(
+                {
+                    name: database.name,
+                    region: database.region,
+                    type: database.type,
+                },
+                options.stage || "prod",
+                projectId,
+                projectEnvId,
+            );
+        }
     }
 
     let deployClassesResult;
@@ -188,6 +211,7 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
                 frontend,
                 index,
                 options,
+                configuration,
             ).catch(async (error) => {
                 if (error instanceof Error) {
                     if (error.message == "No frontend entry in genezio configuration file.") {
@@ -664,47 +688,53 @@ export async function deployFrontend(
     frontend: YamlFrontend,
     index: number,
     options: GenezioDeployOptions,
+    configuration: YamlProjectConfiguration,
 ): Promise<string | undefined> {
     const stage: string = options.stage || "";
 
-    if (!frontend.publish) {
+    if (frontend.publish === null || frontend.publish === undefined) {
         log.info(
             `Skipping frontend deployment for \`${frontend.path}\` because it has no publish folder in the YAML configuration. Check https://genezio.com/docs/project-structure/genezio-configuration-file for more details.`,
         );
-
         return;
     }
 
-    try {
-        await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
-            // Get project environment details for a specific project/stage
-            const projectEnvDetails = await getProjectEnvFromProjectByName(name, stage).catch(
-                () => undefined,
-            );
-
-            let functions: Array<{ name: string; url: string }> | undefined;
-            if (projectEnvDetails) {
-                // Transform function name from kebab-case (function-hello-world) to camelCase (functionHelloWorldApiUrl)
-                functions = projectEnvDetails.functions?.map((f) => ({
-                    name: kebabToCamelCase(f.name) + "ApiUrl",
-                    url: f.cloudUrl,
-                }));
-            } else {
-                debugLogger.debug(
-                    `No project environment details found. {projectName: ${name}, stage: ${stage}}`,
-                );
+    await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
+        const environment = frontend.environment;
+        const newEnvObject: Record<string, string> = {};
+        if (environment) {
+            for (const [key, rawValue] of Object.entries(environment)) {
+                const variable = await parseRawVariable(rawValue);
+                if (!variable) {
+                    debugLogger.debug(
+                        `The key ${key} with value ${rawValue} does not contain a variable with the format $\{{<variable>}}. The raw value is being set.`,
+                    );
+                    newEnvObject[key] = rawValue;
+                } else {
+                    const resolvedValue = await resolveConfigurationVariable(
+                        configuration,
+                        options.stage,
+                        variable?.path,
+                        variable?.field,
+                    );
+                    debugLogger.debug(
+                        `The key ${key} with value ${rawValue} contains a variable with the format $\{{<variable>}}. The evaluated value ${resolvedValue} is being set.`,
+                    );
+                    newEnvObject[key] = resolvedValue;
+                }
             }
+        }
 
-            const expandedScripts = await expandFunctionURLVariablesFromScripts(
-                frontend.scripts?.build,
-                functions,
-            );
-            await runScript(expandedScripts, frontend.path);
-        });
-    } catch (error) {
-        if (error instanceof Error) log.error(new Error(error.message));
-        log.info(`Skipping frontend ${index + 1} deployment because the build script failed.`);
-        return;
+        await runScript(frontend.scripts?.build, frontend.path, newEnvObject);
+    });
+
+    // check if the frontend publish path exists
+    if (!(await fileExists(path.join(frontend.path, frontend.publish)))) {
+        throw new UserError(
+            `The frontend path ${colors.cyan(
+                `${frontend.publish}`,
+            )} does not exist. Please make sure the path is correct.`,
+        );
     }
 
     // check if subdomain contains only numbers, letters and hyphens

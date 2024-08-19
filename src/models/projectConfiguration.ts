@@ -4,7 +4,7 @@ import { AstSummary } from "./astSummary.js";
 import { CloudProviderIdentifier } from "./cloudProviderIdentifier.js";
 import { DEFAULT_ARCHITECTURE, DEFAULT_NODE_RUNTIME, NodeOptions } from "./projectOptions.js";
 import { SdkHandlerResponse } from "./sdkGeneratorResponse.js";
-import { FunctionType, TriggerType } from "../projectConfiguration/yaml/models.js";
+import { DatabaseType, FunctionType, TriggerType } from "../projectConfiguration/yaml/models.js";
 import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
 import path from "path";
 import { UserError } from "../errors.js";
@@ -99,6 +99,18 @@ export class FunctionConfiguration {
         this.handler = handler;
         this.language = language;
         this.entry = entry;
+        this.type = type;
+    }
+}
+
+export class DatabaseConfiguration {
+    name: string;
+    region?: string;
+    type?: DatabaseType;
+
+    constructor(name: string, region?: string, type?: DatabaseType) {
+        this.name = name;
+        this.region = region;
         this.type = type;
     }
 }

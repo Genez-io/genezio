@@ -127,7 +127,7 @@ export class ClusterCloudAdapter implements CloudAdapter {
         const archivePath = path.join(await createTemporaryFolder(), `${finalSubdomain}.zip`);
         debugLogger.debug("Creating temporary folder", archivePath);
 
-        await zipDirectoryToDestinationPath(frontend.path, finalSubdomain, archivePath);
+        await zipDirectoryToDestinationPath(frontend.path, finalSubdomain, archivePath, /* includeHiddenFiles= */ true);
 
         debugLogger.debug("Getting presigned URL...");
         const result = await getFrontendPresignedURL(finalSubdomain, projectName, stage);

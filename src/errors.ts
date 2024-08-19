@@ -69,6 +69,8 @@ export const GENEZIO_CLASS_STATIC_METHOD_NOT_SUPPORTED =
 export const GENEZIO_PLEASE_REPORT_ISSUE =
     "Three was a problem on our side. Please report this issue at https://github.com/genez-io/genezio/issues.";
 
+export const CTA_GITHUB_ISSUE = `If you would like to see this feature added, please open an issue on our GitHub repository: https://github.com/Genez-io/genezio/issues.`;
+
 function collectIssueMap(e: zod.ZodError, issueMap: Map<string, string[]>) {
     for (const issue of e.issues) {
         if (issue.code === "invalid_union") {
