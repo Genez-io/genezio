@@ -729,7 +729,7 @@ export async function deployFrontend(
     });
 
     // check if the frontend publish path exists
-    if (!(await fileExists(frontend.publish))) {
+    if (!(await fileExists(path.join(frontend.path, frontend.publish)))) {
         throw new UserError(
             `The frontend path ${colors.cyan(
                 `${frontend.publish}`,
