@@ -54,7 +54,7 @@ import {
 } from "../../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
-import { resolveConfigurationVariable, runScript, parseRawVariable } from "../../utils/scripts.js";
+import { runScript } from "../../utils/scripts.js";
 import { scanClassesForDecorators } from "../../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../../projectConfiguration/yaml/v2.js";
 import { ClusterCloudAdapter } from "../../cloudAdapter/cluster/clusterAdapter.js";
@@ -69,7 +69,11 @@ import { getCloudProvider } from "../../requests/getCloudProvider.js";
 import fs from "fs";
 import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
-import { getOrCreateDatabase, getOrCreateEmptyProject } from "./utils.js";
+import {
+    getOrCreateDatabase,
+    getOrCreateEmptyProject,
+    processYamlEnvironmentVariables,
+} from "./utils.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -701,31 +705,16 @@ export async function deployFrontend(
 
     await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
         const environment = frontend.environment;
-        const newEnvObject: Record<string, string> = {};
         if (environment) {
-            for (const [key, rawValue] of Object.entries(environment)) {
-                const variable = await parseRawVariable(rawValue);
-                if (!variable) {
-                    debugLogger.debug(
-                        `The key ${key} with value ${rawValue} does not contain a variable with the format $\{{<variable>}}. The raw value is being set.`,
-                    );
-                    newEnvObject[key] = rawValue;
-                } else {
-                    const resolvedValue = await resolveConfigurationVariable(
-                        configuration,
-                        options.stage,
-                        variable?.path,
-                        variable?.field,
-                    );
-                    debugLogger.debug(
-                        `The key ${key} with value ${rawValue} contains a variable with the format $\{{<variable>}}. The evaluated value ${resolvedValue} is being set.`,
-                    );
-                    newEnvObject[key] = resolvedValue;
-                }
-            }
+            const newEnvObject = await processYamlEnvironmentVariables(
+                environment,
+                configuration,
+                stage,
+            );
+            await runScript(frontend.scripts?.build, frontend.path, newEnvObject);
+        } else {
+            await runScript(frontend.scripts?.build, frontend.path);
         }
-
-        await runScript(frontend.scripts?.build, frontend.path, newEnvObject);
     });
 
     // check if the frontend publish path exists
