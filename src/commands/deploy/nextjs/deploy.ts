@@ -57,6 +57,7 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
 
     const genezioConfig = await readOrAskConfig(options.config);
 
+    writeNextConfig();
     await writeOpenNextConfig(genezioConfig.region);
     // Build the Next.js project
     await $({ stdio: "inherit" })`npx --yes @genezio/open-next@latest build`.catch(() => {
@@ -378,6 +379,16 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
     debugLogger.debug(`Deployed functions: ${JSON.stringify(result.functions)}`);
 
     return result;
+}
+
+function writeNextConfig() {
+    const cwd = process.cwd();
+    const configExists = ["js", "cjs", "mjs", "ts"].find((ext) =>
+        fs.existsSync(path.join(cwd, `next.config.${ext}`)),
+    );
+    if (!configExists) {
+        fs.writeFileSync("next.config.js", ``);
+    }
 }
 
 async function writeOpenNextConfig(region: string) {
