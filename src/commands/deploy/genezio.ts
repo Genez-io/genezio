@@ -699,15 +699,6 @@ export async function deployFrontend(
         return;
     }
 
-    // check if the frontend path exists
-    if (!(await fileExists(frontend.publish))) {
-        throw new UserError(
-            `The frontend path ${colors.cyan(
-                `${frontend.publish}`,
-            )} does not exist. Please make sure the path is correct.`,
-        );
-    }
-
     await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
         const environment = frontend.environment;
         const newEnvObject: Record<string, string> = {};
@@ -736,6 +727,15 @@ export async function deployFrontend(
 
         await runScript(frontend.scripts?.build, frontend.path, newEnvObject);
     });
+
+    // check if the frontend publish path exists
+    if (!(await fileExists(frontend.publish))) {
+        throw new UserError(
+            `The frontend path ${colors.cyan(
+                `${frontend.publish}`,
+            )} does not exist. Please make sure the path is correct.`,
+        );
+    }
 
     // check if subdomain contains only numbers, letters and hyphens
     if (frontend.subdomain && !frontend.subdomain.match(/^[a-z0-9-]+$/)) {
