@@ -54,7 +54,7 @@ import {
 } from "../../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
-import { resolveConfigurationVariable, runScript, parseRawVariable } from "../../utils/scripts.js";
+import { runScript } from "../../utils/scripts.js";
 import { scanClassesForDecorators } from "../../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../../projectConfiguration/yaml/v2.js";
 import { ClusterCloudAdapter } from "../../cloudAdapter/cluster/clusterAdapter.js";
@@ -128,7 +128,7 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             await getOrCreateDatabase(
                 {
                     name: database.name,
-                    region: configuration.region,
+                    region: database.region,
                     type: database.type,
                 },
                 options.stage || "prod",
@@ -703,42 +703,35 @@ export async function deployFrontend(
 ): Promise<string | undefined> {
     const stage: string = options.stage || "";
 
-    if (!frontend.publish) {
+    if (frontend.publish === null || frontend.publish === undefined) {
         log.info(
             `Skipping frontend deployment for \`${frontend.path}\` because it has no publish folder in the YAML configuration. Check https://genezio.com/docs/project-structure/genezio-configuration-file for more details.`,
         );
-
         return;
     }
 
     await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
         const environment = frontend.environment;
-        const newEnvObject: Record<string, string> = {};
         if (environment) {
-            for (const [key, rawValue] of Object.entries(environment)) {
-                const variable = await parseRawVariable(rawValue);
-                if (!variable) {
-                    debugLogger.debug(
-                        `The key ${key} with value ${rawValue} does not contain a variable with the format $\{{<variable>}}. The raw value is being set.`,
-                    );
-                    newEnvObject[key] = rawValue;
-                } else {
-                    const resolvedValue = await resolveConfigurationVariable(
-                        configuration,
-                        options.stage,
-                        variable?.path,
-                        variable?.field,
-                    );
-                    debugLogger.debug(
-                        `The key ${key} with value ${rawValue} contains a variable with the format $\{{<variable>}}. The evaluated value ${resolvedValue} is being set.`,
-                    );
-                    newEnvObject[key] = resolvedValue;
-                }
-            }
+            const newEnvObject = await processYamlEnvironmentVariables(
+                environment,
+                configuration,
+                stage,
+            );
+            await runScript(frontend.scripts?.build, frontend.path, newEnvObject);
+        } else {
+            await runScript(frontend.scripts?.build, frontend.path);
         }
-
-        await runScript(frontend.scripts?.build, frontend.path, newEnvObject);
     });
+
+    // check if the frontend publish path exists
+    if (!(await fileExists(path.join(frontend.path, frontend.publish)))) {
+        throw new UserError(
+            `The frontend path ${colors.cyan(
+                `${frontend.publish}`,
+            )} does not exist. Please make sure the path is correct.`,
+        );
+    }
 
     // check if subdomain contains only numbers, letters and hyphens
     if (frontend.subdomain && !frontend.subdomain.match(/^[a-z0-9-]+$/)) {

@@ -148,6 +148,7 @@ export async function zipDirectoryToDestinationPath(
     sourceDir: string,
     destinationPath: string,
     outPath: string,
+    includeHiddenFiles: boolean = false,
     exclusions: string[] = [],
 ): Promise<void> {
     const archive = archiver("zip", { zlib: { level: 9 } });
@@ -162,6 +163,7 @@ export async function zipDirectoryToDestinationPath(
             {
                 cwd: sourceDir,
                 ignore: exclusions,
+                dot: includeHiddenFiles,
             },
             { prefix: destinationPath },
         );
