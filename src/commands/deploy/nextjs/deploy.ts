@@ -437,7 +437,7 @@ async function writeOpenNextConfig(region: string, edgeFunctionPaths: EdgeFuncti
             const f = edgeFunctionPaths[index];
             functions += `   edge${index}: {
     runtime: 'edge',
-    routes: ["${f.path}"],
+    routes: ['${f.path}'],
     patterns: ['${f.pattern}'],
     },
 `;
