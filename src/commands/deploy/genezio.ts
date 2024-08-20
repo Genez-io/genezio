@@ -51,7 +51,7 @@ import {
 } from "../../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
-import { resolveConfigurationVariable, runScript } from "../../utils/scripts.js";
+import { runScript } from "../../utils/scripts.js";
 import { scanClassesForDecorators } from "../../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../../projectConfiguration/yaml/v2.js";
 import { ClusterCloudAdapter } from "../../cloudAdapter/cluster/clusterAdapter.js";
@@ -66,18 +66,16 @@ import { getCloudProvider } from "../../requests/getCloudProvider.js";
 import fs from "fs";
 import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
-import {
-    detectEnvironmentVariablesFile,
-    getOrCreateDatabase,
-    getOrCreateEmptyProject,
-    getUnsetEnvironmentVariables,
-    promptToConfirmSettingEnvironmentVariables,
-    resolveEnvironmentVariable,
-} from "./utils.js";
+import { getOrCreateDatabase, getOrCreateEmptyProject } from "./utils.js";
 import { EnvironmentVariable } from "../../models/environmentVariables.js";
 import {
+    detectEnvironmentVariablesFile,
+    getUnsetEnvironmentVariables,
     parseConfigurationVariable,
+    promptToConfirmSettingEnvironmentVariables,
     readEnvironmentVariablesFromFile,
+    resolveConfigurationVariable,
+    resolveEnvironmentVariable,
 } from "../../utils/environmentVariables.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
