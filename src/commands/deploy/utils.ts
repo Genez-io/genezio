@@ -11,7 +11,7 @@ import {
 } from "../../requests/database.js";
 import getProjectInfoByName from "../../requests/getProjectInfoByName.js";
 import { createEmptyProject } from "../../requests/project.js";
-import { fileExists, readEnvironmentVariablesFile } from "../../utils/file.js";
+import { fileExists } from "../../utils/file.js";
 import { debugLogger, log } from "../../utils/logging.js";
 import path from "path";
 import { getProjectEnvFromProject } from "../../requests/getProjectInfo.js";
@@ -22,6 +22,7 @@ import { GenezioTelemetry, TelemetryEventTypes } from "../../telemetry/telemetry
 import { AxiosError } from "axios";
 import { setEnvironmentVariables } from "../../requests/setEnvironmentVariables.js";
 import { EnvironmentVariable } from "../../models/environmentVariables.js";
+import { readEnvironmentVariablesFromFile } from "../../utils/environmentVariables.js";
 
 export async function getOrCreateEmptyProject(
     projectName: string,
@@ -121,8 +122,6 @@ export async function setEnvironmentVariablesHelper(
     projectId: string,
     stage: string,
 ) {
-    debugLogger.debug(`Loading environment variables from ${envFile}.`);
-
     if (!(await fileExists(envFile))) {
         // There is no need to exit the process here, as the project has been deployed
         log.error(`File ${envFile} does not exists. Please provide the correct path.`);
@@ -132,7 +131,7 @@ export async function setEnvironmentVariablesHelper(
         });
     } else {
         // Read environment variables from .env file
-        const envVars = (await readEnvironmentVariablesFile(envFile)) as EnvironmentVariable[];
+        const envVars = (await readEnvironmentVariablesFromFile(envFile)) as EnvironmentVariable[];
         const projectEnv = await getProjectEnvFromProject(projectId, stage);
 
         if (!projectEnv) {
@@ -174,7 +173,7 @@ export async function reportMissingEnvironmentVariables(
     projectId: string,
     stage: string,
 ) {
-    const envVars = (await readEnvironmentVariablesFile(envFile)) as EnvironmentVariable[];
+    const envVars = (await readEnvironmentVariablesFromFile(envFile)) as EnvironmentVariable[];
     const projectEnv = await getProjectEnvFromProject(projectId, stage);
     if (!projectEnv) {
         throw new UserError("Project environment not found.");

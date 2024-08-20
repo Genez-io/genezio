@@ -9,7 +9,6 @@ import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
 import { FunctionType } from "../projectConfiguration/yaml/models.js";
 import getProjectInfoByName from "../requests/getProjectInfoByName.js";
 import { execaCommand } from "execa";
-import { debugLogger } from "./logging.js";
 
 /**
  * Determines whether a given value is a valid `FunctionConfiguration` object.
@@ -127,47 +126,6 @@ export async function resolveConfigurationVariable(
             `The attribute ${field} is not supported or does not exist in the given resource.`,
         );
     }
-}
-
-// create enum ConfigurationVariableType to represent the type of the configuration variable
-export enum ConfigVariableType {
-    configVariable = "configVariable", // ${{ backend.functions.<function-name>.name }}
-    environmentVariable = "environmentVariable", // ${{ env.<variable-name> }}
-    // To be implemented
-    // remoteVariable = "remoteVariable", // ${{ remote.<variable-name> }}
-}
-
-export async function parseRawVariable(
-    rawValue: string,
-): Promise<{ path: string; field: string } | { key: string } | { value: string }> {
-    const prefix = "${{";
-    const suffix = "}}";
-
-    const regexEnv = /\$\{\{[ ]*env\.[ a-zA-Z0-9-._]+\}\}/;
-    const matchEnv = rawValue.match(regexEnv);
-    if (matchEnv) {
-        debugLogger.debug("matchEnv", matchEnv);
-        // Sanitize the variable
-        const variable = matchEnv[0].slice(prefix.length, -suffix.length).replace(/ /g, "");
-        // Split the string at the first period
-        const firstDotIndex = variable.indexOf(".");
-        const key = variable.substring(firstDotIndex + 1);
-        return { key };
-    }
-
-    const regex = /\$\{\{[ a-zA-Z0-9-.]+\}\}/;
-    const match = rawValue.match(regex);
-    if (match) {
-        // Sanitize the variable
-        const variable = match[0].slice(prefix.length, -suffix.length).replace(/ /g, "");
-        // Split the string at the last period
-        const lastDotIndex = variable.lastIndexOf(".");
-        const path = variable.substring(0, lastDotIndex);
-        const field = variable.substring(lastDotIndex + 1);
-        return { path, field };
-    }
-
-    return { value: rawValue };
 }
 
 export async function runScript(

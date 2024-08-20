@@ -24,7 +24,6 @@ import {
     directoryContainsHtmlFiles,
     deleteFolder,
     getBundleFolderSizeLimit,
-    readEnvironmentVariablesFile,
     zipFile,
 } from "../../utils/file.js";
 import { printAdaptiveLog, debugLogger, doAdaptiveLogAction } from "../../utils/logging.js";
@@ -54,7 +53,7 @@ import {
 } from "../../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
-import { resolveConfigurationVariable, runScript, parseRawVariable } from "../../utils/scripts.js";
+import { resolveConfigurationVariable, runScript } from "../../utils/scripts.js";
 import { scanClassesForDecorators } from "../../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../../projectConfiguration/yaml/v2.js";
 import { ClusterCloudAdapter } from "../../cloudAdapter/cluster/clusterAdapter.js";
@@ -78,6 +77,10 @@ import {
     setEnvironmentVariablesHelper,
 } from "./utils.js";
 import { EnvironmentVariable } from "../../models/environmentVariables.js";
+import {
+    parseConfigurationVariable,
+    readEnvironmentVariablesFromFile,
+} from "../../utils/environmentVariables.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -563,7 +566,7 @@ export async function deployClasses(
                     "Checking missing environment variable " + environment[envVarKey],
                 );
                 if (environment[envVarKey]) {
-                    const variable = await parseRawVariable(environment[envVarKey]);
+                    const variable = await parseConfigurationVariable(environment[envVarKey]);
                     if ("path" in variable && "field" in variable) {
                         debugLogger.debug(
                             "Resolving configuration variable for environment variable " +
@@ -583,7 +586,7 @@ export async function deployClasses(
                         debugLogger.debug(
                             "Resolving environment variable from .env file for " + envVarKey,
                         );
-                        const envVar = (await readEnvironmentVariablesFile(
+                        const envVar = (await readEnvironmentVariablesFromFile(
                             envFile,
                             /* filterKey */ envVarKey,
                         )) as EnvironmentVariable;
@@ -761,7 +764,7 @@ export async function deployFrontend(
         const newEnvObject: Record<string, string> = {};
         if (environment) {
             for (const [key, rawValue] of Object.entries(environment)) {
-                const variable = await parseRawVariable(rawValue);
+                const variable = await parseConfigurationVariable(rawValue);
                 if ("value" in variable) {
                     debugLogger.debug(
                         `The key ${key} with value ${variable.value} does not contain a variable with the format $\{{<variable>}}. The raw value is being set.`,

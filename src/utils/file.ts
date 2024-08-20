@@ -10,8 +10,6 @@ import awsCronParser from "aws-cron-parser";
 import { log } from "./logging.js";
 import { promises as fsPromises, Dirent } from "fs";
 import { debugLogger } from "./logging.js";
-import { EnvironmentVariable } from "../models/environmentVariables.js";
-import dotenv from "dotenv";
 import fsExtra from "fs-extra";
 import { getPackageManager } from "../packageManagers/packageManager.js";
 import { UserError } from "../errors.js";
@@ -449,32 +447,6 @@ export async function validateYamlFile() {
             }
         }
     }
-}
-
-export async function readEnvironmentVariablesFile(
-    envFilePath: string,
-    filterKey?: string,
-): Promise<EnvironmentVariable[] | EnvironmentVariable> {
-    const envVars = new Array<EnvironmentVariable>();
-
-    // Read environment variables from .env file
-    const dotenvVars = dotenv.config({ path: envFilePath }).parsed;
-    if (!dotenvVars) {
-        log.warn(`No environment variables found in ${envFilePath}.`);
-    }
-
-    if (filterKey) {
-        const value = dotenvVars?.[filterKey];
-        return {
-            name: filterKey,
-            value: value || "",
-        };
-    }
-
-    for (const [key, value] of Object.entries(dotenvVars || {})) {
-        envVars.push({ name: key, value: value });
-    }
-    return envVars;
 }
 
 export async function listFilesWithExtension(
