@@ -48,6 +48,7 @@ import { computeAssetsPaths } from "./assets.js";
 import * as Sentry from "@sentry/node";
 import { randomUUID } from "crypto";
 import { EdgeFunction, getEdgeFunctions } from "./edge.js";
+import { handleEnvVars } from "../utils.js";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     // Check if node_modules exists
@@ -95,6 +96,13 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
 
     log.info(
         `The app is being deployed at ${colors.cyan(cdnUrl)}. It might take a few moments to be available worldwide.`,
+    );
+
+    await handleEnvVars(
+        options.env,
+        deploymentResult.projectId,
+        deploymentResult.projectEnvId,
+        process.cwd(),
     );
 }
 
