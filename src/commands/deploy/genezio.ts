@@ -68,7 +68,7 @@ import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import {
     getOrCreateDatabase,
     getOrCreateEmptyProject,
-    handleEnvVars,
+    uploadEnvVarsFromFile,
     processYamlEnvironmentVariables,
 } from "./utils.js";
 
@@ -324,8 +324,6 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
     for (const frontendUrl of frontendUrls) {
         log.info(colors.cyan(`Frontend URL: ${frontendUrl}`));
     }
-
-    return deployClassesResult;
 }
 
 export async function deployClasses(
@@ -533,7 +531,7 @@ export async function deployClasses(
         const cwd = projectConfiguration.workspace?.backend
             ? path.resolve(projectConfiguration.workspace.backend)
             : process.cwd();
-        handleEnvVars(options.env, projectId, projectEnvId, cwd);
+        await uploadEnvVarsFromFile(options.env, projectId, projectEnvId, cwd);
 
         return {
             projectId: projectId,

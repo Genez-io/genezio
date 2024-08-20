@@ -153,14 +153,14 @@ export async function processYamlEnvironmentVariables(
     return newEnvObject;
 }
 
-export async function handleEnvVars(
-    env: string | undefined,
+export async function uploadEnvVarsFromFile(
+    envPath: string | undefined,
     projectId: string,
     projectEnvId: string,
     cwd: string,
 ) {
-    if (env) {
-        const envFile = path.join(process.cwd(), env);
+    if (envPath) {
+        const envFile = path.join(process.cwd(), envPath);
         debugLogger.debug(`Loading environment variables from ${envFile}.`);
 
         if (!(await fileExists(envFile))) {
