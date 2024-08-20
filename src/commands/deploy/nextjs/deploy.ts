@@ -48,6 +48,7 @@ import { computeAssetsPaths } from "./assets.js";
 import * as Sentry from "@sentry/node";
 import { randomUUID } from "crypto";
 import { EdgeFunction, getEdgeFunctions } from "./edge.js";
+import { uploadEnvVarsFromFile } from "../utils.js";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     // Check if node_modules exists
@@ -90,6 +91,12 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
             genezioConfig,
             options.stage,
             edgeFunctions,
+        ),
+        uploadEnvVarsFromFile(
+            options.env,
+            deploymentResult.projectId,
+            deploymentResult.projectEnvId,
+            process.cwd(),
         ),
     ]);
 
