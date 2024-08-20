@@ -9,6 +9,7 @@ import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
 import { FunctionType } from "../projectConfiguration/yaml/models.js";
 import getProjectInfoByName from "../requests/getProjectInfoByName.js";
 import { execaCommand } from "execa";
+import { PORT_LOCAL_ENVIRONMENT } from "../constants.js";
 
 /**
  * Determines whether a given value is a valid `FunctionConfiguration` object.
@@ -65,7 +66,15 @@ export async function resolveConfigurationVariable(
     stage: string,
     path: string /* e.g. backend.functions.<function-name> */,
     field: string /* e.g. url */,
+    options?: {
+        isLocal?: boolean;
+        port?: number;
+    },
 ): Promise<string> {
+    if (options?.isLocal && !options?.port) {
+        options.port = PORT_LOCAL_ENVIRONMENT;
+    }
+
     const keys = path.split(".");
 
     // The object or value currently referenced by the path as it is traversed through the configuration
@@ -93,6 +102,10 @@ export async function resolveConfigurationVariable(
 
         // Retrieve custom output fields for a function object such as `url`
         if (field === "url") {
+            if (options?.isLocal) {
+                return `http://localhost:${options.port}/.functions/function-${functionObj.name}`;
+            }
+
             const response = await getProjectInfoByName(configuration.name);
             const functionUrl = response.projectEnvs
                 .find((env) => env.name === stage)
@@ -176,6 +189,7 @@ const frontendLogsColors = {
 export async function runFrontendStartScript(
     scripts: string | string[] | undefined,
     cwd: string,
+    environment?: Record<string, string>,
 ): Promise<void> {
     if (!scripts) {
         return;
@@ -220,7 +234,12 @@ export async function runFrontendStartScript(
 
     for (const script of scripts) {
         await new Promise<void>((resolve, reject) => {
-            const child = spawn(script, { cwd, shell: true, stdio: "pipe" });
+            const child = spawn(script, {
+                cwd,
+                shell: true,
+                stdio: "pipe",
+                env: { ...process.env, ...environment },
+            });
 
             child.stderr.on("data", printFrontendLogs);
             child.stdout.on("data", printFrontendLogs);
@@ -231,7 +250,7 @@ export async function runFrontendStartScript(
 
             child.on("exit", (code) => {
                 if (code !== 0 && code !== null) {
-                    reject(`Failed to run script: ${script}`);
+                    reject(`Failed to run script: ${script} - the process exit code is: ${code}`);
                 }
                 resolve();
             });

@@ -60,6 +60,7 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
 
     const edgeFunctions = await getEdgeFunctions();
+    writeNextConfig();
     await writeOpenNextConfig(genezioConfig.region, edgeFunctions);
     // Build the Next.js project
     await $({ stdio: "inherit" })`npx --yes @genezio/open-next@latest build`.catch(() => {
@@ -417,6 +418,16 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
     return result;
 }
 
+function writeNextConfig() {
+    const cwd = process.cwd();
+    const configExists = ["js", "cjs", "mjs", "ts"].find((ext) =>
+        fs.existsSync(path.join(cwd, `next.config.${ext}`)),
+    );
+    if (!configExists) {
+        fs.writeFileSync("next.config.js", ``);
+    }
+}
+
 async function writeOpenNextConfig(region: string, edgeFunctionPaths: EdgeFunction[]) {
     let functions = "";
 
@@ -433,7 +444,6 @@ async function writeOpenNextConfig(region: string, edgeFunctionPaths: EdgeFuncti
         }
         functions += "},";
     }
-
     const OPEN_NEXT_CONFIG = `
     import { IncrementalCache, Queue, TagCache } from "@genezio/nextjs-isr-${region}";
     
