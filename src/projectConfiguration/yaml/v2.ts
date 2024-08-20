@@ -37,6 +37,8 @@ function parseGenezioConfig(config: unknown) {
         packageManager: zod.nativeEnum(PackageManagerType).optional(),
     });
 
+    const environmentSchema = zod.record(zod.string(), zod.string());
+
     const scriptSchema = zod.array(zod.string()).or(zod.string()).optional();
 
     const methodSchema = zod
@@ -114,6 +116,7 @@ function parseGenezioConfig(config: unknown) {
     const backendSchema = zod.object({
         path: zod.string(),
         language: languageSchema,
+        environment: environmentSchema.optional(),
         scripts: zod
             .object({
                 deploy: scriptSchema,
@@ -134,7 +137,7 @@ function parseGenezioConfig(config: unknown) {
             .optional(),
         subdomain: zod.string().optional(),
         publish: zod.string().optional(),
-        environment: zod.record(zod.string(), zod.string()).optional(),
+        environment: environmentSchema.optional(),
         scripts: zod
             .object({
                 build: scriptSchema,

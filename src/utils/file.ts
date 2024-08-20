@@ -453,13 +453,22 @@ export async function validateYamlFile() {
 
 export async function readEnvironmentVariablesFile(
     envFilePath: string,
-): Promise<EnvironmentVariable[]> {
+    filterKey?: string,
+): Promise<EnvironmentVariable[] | EnvironmentVariable> {
     const envVars = new Array<EnvironmentVariable>();
 
     // Read environment variables from .env file
     const dotenvVars = dotenv.config({ path: envFilePath }).parsed;
     if (!dotenvVars) {
         log.warn(`No environment variables found in ${envFilePath}.`);
+    }
+
+    if (filterKey) {
+        const value = dotenvVars?.[filterKey];
+        return {
+            name: filterKey,
+            value: value || "",
+        };
     }
 
     for (const [key, value] of Object.entries(dotenvVars || {})) {
