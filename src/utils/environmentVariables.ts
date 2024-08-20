@@ -275,10 +275,9 @@ export async function getUnsetEnvironmentVariables(
     projectId: string,
     projectEnvId: string,
 ) {
-    const localEnvVars = Object.keys(local);
     const remoteEnvVars = await getEnvironmentVariables(projectId, projectEnvId);
 
-    const missingEnvVars = localEnvVars.filter(
+    const missingEnvVars = local.filter(
         (envVar) => !remoteEnvVars.find((remoteEnvVar) => remoteEnvVar.name === envVar),
     );
 

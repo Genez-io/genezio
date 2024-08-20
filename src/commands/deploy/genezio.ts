@@ -570,7 +570,7 @@ export async function deployClasses(
 
             const environmentVariablesToBePushed: EnvironmentVariable[] = (
                 await Promise.all(
-                    unsetEnvVarKeys.flatMap(async (envVarKey) => {
+                    unsetEnvVarKeys.map(async (envVarKey) => {
                         const variable = await parseConfigurationVariable(environment[envVarKey]);
                         const resolvedVariable = await resolveEnvironmentVariable(
                             configuration,
@@ -595,6 +595,11 @@ export async function deployClasses(
             debugLogger.debug(
                 `Environment variables uploaded to project ${projectId} successfully.`,
             );
+
+            return {
+                projectId: projectId,
+                projectEnvId: projectEnvId,
+            };
         }
 
         // If `--env <envFile>` is not set, proactively check if there is an environment variable file around
