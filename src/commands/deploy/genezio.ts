@@ -74,6 +74,7 @@ import {
     getOrCreateEmptyProject,
     processYamlEnvironmentVariables,
 } from "./utils.js";
+import { enableEmailIntegration } from "../../requests/integration.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -139,6 +140,16 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
                 projectEnvId,
             );
         }
+    }
+
+    if (configuration.services?.email) {
+        const { projectId, projectEnvId } = await getOrCreateEmptyProject(
+            projectName,
+            configuration.region,
+            options.stage || "prod",
+        );
+        await enableEmailIntegration(projectId, projectEnvId);
+        debugLogger.debug("Email integration enabled.");
     }
 
     let deployClassesResult;
