@@ -32,6 +32,7 @@ const frontendLogsColors = {
 export async function runFrontendStartScript(
     scripts: string | string[] | undefined,
     cwd: string,
+    environment?: Record<string, string>,
 ): Promise<void> {
     if (!scripts) {
         return;
@@ -76,7 +77,12 @@ export async function runFrontendStartScript(
 
     for (const script of scripts) {
         await new Promise<void>((resolve, reject) => {
-            const child = spawn(script, { cwd, shell: true, stdio: "pipe" });
+            const child = spawn(script, {
+                cwd,
+                shell: true,
+                stdio: "pipe",
+                env: { ...process.env, ...environment },
+            });
 
             child.stderr.on("data", printFrontendLogs);
             child.stdout.on("data", printFrontendLogs);
@@ -87,7 +93,7 @@ export async function runFrontendStartScript(
 
             child.on("exit", (code) => {
                 if (code !== 0 && code !== null) {
-                    reject(`Failed to run script: ${script}`);
+                    reject(`Failed to run script: ${script} - the process exit code is: ${code}`);
                 }
                 resolve();
             });

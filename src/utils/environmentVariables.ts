@@ -9,6 +9,7 @@ import { FunctionConfiguration } from "../models/projectConfiguration.js";
 import { FunctionType } from "../projectConfiguration/yaml/models.js";
 import { UserError } from "../errors.js";
 import getProjectInfoByName from "../requests/getProjectInfoByName.js";
+import { PORT_LOCAL_ENVIRONMENT } from "../constants.js";
 
 export type ConfigurationVariable =
     | {
@@ -77,7 +78,15 @@ export async function resolveConfigurationVariable(
     stage: string,
     path: string /* e.g. backend.functions.<function-name> */,
     field: string /* e.g. url */,
+    options?: {
+        isLocal?: boolean;
+        port?: number;
+    },
 ): Promise<string> {
+    if (options?.isLocal && !options?.port) {
+        options.port = PORT_LOCAL_ENVIRONMENT;
+    }
+
     const keys = path.split(".");
 
     // The object or value currently referenced by the path as it is traversed through the configuration
@@ -105,6 +114,10 @@ export async function resolveConfigurationVariable(
 
         // Retrieve custom output fields for a function object such as `url`
         if (field === "url") {
+            if (options?.isLocal) {
+                return `http://localhost:${options.port}/.functions/function-${functionObj.name}`;
+            }
+
             const response = await getProjectInfoByName(configuration.name);
             const functionUrl = response.projectEnvs
                 .find((env) => env.name === stage)

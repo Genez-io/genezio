@@ -2,6 +2,7 @@ import { UserError } from "../../errors.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import { CreateDatabaseRequest, GetDatabaseResponse } from "../../models/requests.js";
 import { DatabaseType } from "../../projectConfiguration/yaml/models.js";
+import { YamlProjectConfiguration } from "../../projectConfiguration/yaml/v2.js";
 import {
     createDatabase,
     findLinkedDatabase,
@@ -10,6 +11,10 @@ import {
 } from "../../requests/database.js";
 import getProjectInfoByName from "../../requests/getProjectInfoByName.js";
 import { createEmptyProject } from "../../requests/project.js";
+import {
+    parseConfigurationVariable,
+    resolveConfigurationVariable,
+} from "../../utils/environmentVariables.js";
 import { debugLogger } from "../../utils/logging.js";
 
 export async function getOrCreateEmptyProject(
@@ -103,4 +108,41 @@ export async function getOrCreateDatabase(
         region: createDatabaseReq.region,
         type: createDatabaseReq.type || DatabaseType.neon,
     };
+}
+
+export async function processYamlEnvironmentVariables(
+    environment: Record<string, string>,
+    configuration: YamlProjectConfiguration,
+    stage: string,
+    options?: {
+        isLocal?: boolean;
+        port?: number;
+    },
+): Promise<Record<string, string>> {
+    const newEnvObject: Record<string, string> = {};
+
+    for (const [key, rawValue] of Object.entries(environment)) {
+        const variable = await parseConfigurationVariable(rawValue);
+
+        if ("value" in variable) {
+            debugLogger.debug(
+                `The key ${key} with value ${variable.value} does not contain a variable with the format $\{{<variable>}}. The raw value is being set.`,
+            );
+            newEnvObject[key] = variable.value;
+        } else if ("path" in variable && "field" in variable) {
+            const resolvedValue = await resolveConfigurationVariable(
+                configuration,
+                stage,
+                variable.path,
+                variable.field,
+                options,
+            );
+            debugLogger.debug(
+                `The key ${key} with value ${rawValue} contains a variable with the format $\{{<variable>}}. The evaluated value ${resolvedValue} is being set.`,
+            );
+            newEnvObject[key] = resolvedValue;
+        }
+    }
+
+    return newEnvObject;
 }
