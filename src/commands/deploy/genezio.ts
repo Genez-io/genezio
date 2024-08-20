@@ -43,8 +43,6 @@ import { GenezioDeployOptions } from "../../models/commandOptions.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../../telemetry/telemetry.js";
 import { setEnvironmentVariables } from "../../requests/setEnvironmentVariables.js";
 import colors from "colors";
-import { getEnvironmentVariables } from "../../requests/getEnvironmentVariables.js";
-import { getProjectEnvFromProject } from "../../requests/getProjectInfo.js";
 import { Status } from "../../requests/models.js";
 import { bundle } from "../../bundlers/utils.js";
 import {
@@ -72,9 +70,9 @@ import {
     detectEnvironmentVariablesFile,
     getOrCreateDatabase,
     getOrCreateEmptyProject,
-    promptToSetEnvironmentVariables,
-    reportMissingEnvironmentVariables,
-    setEnvironmentVariablesHelper,
+    getUnsetEnvironmentVariables,
+    promptToConfirmSettingEnvironmentVariables,
+    resolveEnvironmentVariable,
 } from "./utils.js";
 import { EnvironmentVariable } from "../../models/environmentVariables.js";
 import {
@@ -536,151 +534,96 @@ export async function deployClasses(
 
     const projectId = result.projectId;
     const projectEnvId = result.projectEnvId;
-    if (projectId) {
+    if (projectId && projectEnvId) {
         const cwd = projectConfiguration.workspace?.backend
             ? path.resolve(projectConfiguration.workspace.backend)
             : process.cwd();
-        const envFile = path.join(cwd, options.env || "server/.env");
+        // This is best effort, we should encourage the user to use `--env <envFile>` to set the correct env file path.
+        // There are certain cases where this will not work - e.g. classes with decorators, projects with classes and functions.
+        const possibleEnvFilePath =
+            configuration.backend?.functions?.at(0)?.path ||
+            configuration.backend?.classes?.at(0)?.path ||
+            "";
 
-        // If `--env` is set, set the environment variables
+        const envFile = path.join(cwd, options.env || path.join(possibleEnvFilePath, ".env"));
+
+        // If `--env <envFile>` is set, set the environment variables
         if (options.env) {
-            await setEnvironmentVariablesHelper(projectId, projectEnvId, envFile);
+            const environmentVariablesToBePushed = (await readEnvironmentVariablesFromFile(
+                envFile,
+            )) as EnvironmentVariable[];
+            debugLogger.debug(
+                `Uploading environment variables ${JSON.stringify(environmentVariablesToBePushed)} from ${envFile} to project ${projectId}`,
+            );
+            await setEnvironmentVariables(projectId, projectEnvId, environmentVariablesToBePushed);
+            debugLogger.debug(
+                `Environment variables uploaded to project ${projectId} successfully.`,
+            );
         }
 
+        // Resolve environment variables from backend.environment
         const environment = configuration.backend?.environment;
         if (environment) {
-            // Get missing environment variables
-            const envVars = Object.keys(environment);
-            const remoteEnvVars = await getEnvironmentVariables(projectId, projectEnvId);
-
-            const missingEnvVars = envVars.filter(
-                (envVar) => !remoteEnvVars.find((remoteEnvVar) => remoteEnvVar.name === envVar),
+            const unsetEnvVarKeys = await getUnsetEnvironmentVariables(
+                Object.keys(environment),
+                projectId,
+                projectEnvId,
             );
-            debugLogger.debug(`Missing environment variables: ${missingEnvVars}`);
 
-            // Try to populate them from configuration file, process.env or .env
-            const environmentVariables: EnvironmentVariable[] = [];
-            for (const envVarKey of missingEnvVars) {
-                debugLogger.debug("Checking missing environment variable " + envVarKey);
-                debugLogger.debug(
-                    "Checking missing environment variable " + environment[envVarKey],
-                );
-                if (environment[envVarKey]) {
-                    const variable = await parseConfigurationVariable(environment[envVarKey]);
-                    if ("path" in variable && "field" in variable) {
-                        debugLogger.debug(
-                            "Resolving configuration variable for environment variable " +
-                                envVarKey,
-                        );
-                        const resolvedValue = await resolveConfigurationVariable(
+            const environmentVariablesToBePushed: EnvironmentVariable[] = (
+                await Promise.all(
+                    unsetEnvVarKeys.flatMap(async (envVarKey) => {
+                        const variable = await parseConfigurationVariable(environment[envVarKey]);
+                        const resolvedVariable = await resolveEnvironmentVariable(
                             configuration,
-                            options.stage,
-                            variable.path,
-                            variable.field,
-                        );
-                        environmentVariables.push({
-                            name: envVarKey,
-                            value: resolvedValue,
-                        });
-                    } else if ("key" in variable) {
-                        debugLogger.debug(
-                            "Resolving environment variable from .env file for " + envVarKey,
-                        );
-                        const envVar = (await readEnvironmentVariablesFromFile(
+                            variable,
+                            envVarKey,
                             envFile,
-                            /* filterKey */ envVarKey,
-                        )) as EnvironmentVariable;
-                        if (envVar.value !== "") {
-                            environmentVariables.push(envVar);
-                        } else {
-                            log.warn(
-                                `Environment variable ${envVarKey} is missing in the .env file.`,
-                            );
-                        }
-                        // } else if (process.env[envVarKey]) {
-                        //     environmentVariables.push({
-                        //         name: envVarKey,
-                        //         value: process.env[envVarKey],
-                        //     });
-                        // } else {
-                        //     const envVar = await readEnvironmentVariablesFile(envFile, /* filterKey */ envVarKey) as EnvironmentVariable;
-                        //     if (envVar.value !== "") {
-                        //         environmentVariables.push(envVar);
-                        //     }
-                        // }
-                    } else if ("value" in variable) {
-                        debugLogger.debug(
-                            "Resolving environment variable from configuration file for " +
-                                envVarKey,
+                            options.stage || "prod",
                         );
-                        environmentVariables.push({
-                            name: envVarKey,
-                            value: variable.value,
-                        });
-                    }
-                }
-            }
-
-            // Set them
-            const projectEnv = await getProjectEnvFromProject(projectId, options.stage || "prod");
-
-            if (!projectEnv) {
-                throw new UserError("Project environment not found.");
-            }
+                        if (!resolvedVariable) {
+                            log.warn(`Environment variable ${envVarKey} was not found.`);
+                            return undefined;
+                        }
+                        return resolvedVariable;
+                    }),
+                )
+            ).filter((item): item is EnvironmentVariable => item !== undefined);
 
             debugLogger.debug(
-                `Uploading environment variables ${JSON.stringify(environmentVariables)} from ${envFile} to project ${projectId}`,
+                `Uploading environment variables ${JSON.stringify(environmentVariablesToBePushed)} from ${envFile} to project ${projectId}`,
             );
-            await setEnvironmentVariables(projectId, projectEnv.id, environmentVariables)
-                .then(async () => {
-                    debugLogger.debug(
-                        `Environment variables from ${envFile} uploaded to project ${projectId}`,
-                    );
-                    log.info(
-                        `The environment variables were uploaded to the project successfully.`,
-                    );
-                    await GenezioTelemetry.sendEvent({
-                        eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS,
-                    });
-                })
-                .catch(async (error: AxiosError) => {
-                    log.error(`Loading environment variables failed with: ${error.message}`);
-                    log.error(
-                        `Try to set the environment variables using the dashboard ${colors.cyan(
-                            DASHBOARD_URL,
-                        )}`,
-                    );
-                });
+            await setEnvironmentVariables(projectId, projectEnvId, environmentVariablesToBePushed);
+            debugLogger.debug(
+                `Environment variables uploaded to project ${projectId} successfully.`,
+            );
         }
 
-        // If `--env` is not set, proactively check if there is an environment variables file
-        if (!options.env && (await detectEnvironmentVariablesFile(envFile))) {
-            debugLogger.debug(`Environment variables file found at ${cwd}.`);
+        // If `--env <envFile>` is not set, proactively check if there is an environment variable file around
+        if (!process.env["CI"] && !options.env && (await detectEnvironmentVariablesFile(envFile))) {
+            debugLogger.debug(
+                `Attempting to upload environment variables from ${envFile} to project ${projectId}`,
+            );
 
-            // TODO check if the environment variables are already set
+            // Interactively prompt the user to confirm setting environment variables
+            const confirmSettingEnvVars = await promptToConfirmSettingEnvironmentVariables();
 
-            // Check missing environment variables
-            // Trigger an interactive prompt to set environment variables only if CI = false
-            if (!process.env["CI"]) {
-                const confirmSetEnvVars = await promptToSetEnvironmentVariables();
-                if (confirmSetEnvVars) {
-                    await setEnvironmentVariablesHelper(
-                        envFile,
-                        projectId,
-                        options.stage || "prod",
-                    );
-                } else {
-                    log.info(
-                        `The environment variables were not uploaded to the project. You can set them using the dashboard ${colors.cyan(
-                            DASHBOARD_URL,
-                        )}`,
-                    );
-                }
+            if (!confirmSettingEnvVars) {
+                log.info("Skipping environment variables upload.");
             } else {
-                await reportMissingEnvironmentVariables(
+                const environmentVariablesToBePushed = (await readEnvironmentVariablesFromFile(
                     envFile,
+                )) as EnvironmentVariable[];
+                debugLogger.debug(
+                    `Uploading environment variables ${JSON.stringify(environmentVariablesToBePushed)} from ${envFile} to project ${projectId}`,
+                );
+                await setEnvironmentVariables(
                     projectId,
-                    options.stage || "prod",
+                    projectEnvId,
+                    environmentVariablesToBePushed,
+                );
+                debugLogger.debug(
+                    `Environment variables uploaded to project ${projectId} successfully.`,
                 );
             }
         }

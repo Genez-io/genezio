@@ -18,11 +18,13 @@ import { getProjectEnvFromProject } from "../../requests/getProjectInfo.js";
 import { getEnvironmentVariables } from "../../requests/getEnvironmentVariables.js";
 import colors from "colors";
 import { DASHBOARD_URL } from "../../constants.js";
-import { GenezioTelemetry, TelemetryEventTypes } from "../../telemetry/telemetry.js";
-import { AxiosError } from "axios";
-import { setEnvironmentVariables } from "../../requests/setEnvironmentVariables.js";
 import { EnvironmentVariable } from "../../models/environmentVariables.js";
-import { readEnvironmentVariablesFromFile } from "../../utils/environmentVariables.js";
+import {
+    ConfigurationVariable,
+    readEnvironmentVariablesFromFile,
+} from "../../utils/environmentVariables.js";
+import { resolveConfigurationVariable } from "../../utils/scripts.js";
+import { YamlProjectConfiguration } from "../../projectConfiguration/yaml/v2.js";
 
 export async function getOrCreateEmptyProject(
     projectName: string,
@@ -117,55 +119,94 @@ export async function getOrCreateDatabase(
     };
 }
 
-export async function setEnvironmentVariablesHelper(
+export async function resolveEnvironmentVariable(
+    configuration: YamlProjectConfiguration,
+    variable: ConfigurationVariable,
+    envVarKey: string,
     envFile: string,
-    projectId: string,
     stage: string,
-) {
-    if (!(await fileExists(envFile))) {
-        // There is no need to exit the process here, as the project has been deployed
-        log.error(`File ${envFile} does not exists. Please provide the correct path.`);
-        await GenezioTelemetry.sendEvent({
-            eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
-            errorTrace: `File ${envFile} does not exists`,
-        });
-    } else {
-        // Read environment variables from .env file
-        const envVars = (await readEnvironmentVariablesFromFile(envFile)) as EnvironmentVariable[];
-        const projectEnv = await getProjectEnvFromProject(projectId, stage);
-
-        if (!projectEnv) {
-            throw new UserError("Project environment not found.");
-        }
-
+): Promise<EnvironmentVariable | undefined> {
+    if ("path" in variable && "field" in variable) {
         debugLogger.debug(
-            `Here Uploading environment variables ${envVars} from ${envFile} to project ${projectId}`,
+            `Resolving configuration variable for environment variable ${envVarKey} for <path>.<field> format`,
         );
-
-        // Upload environment variables to the project
-        await setEnvironmentVariables(projectId, projectEnv.id, envVars)
-            .then(async () => {
-                debugLogger.debug(
-                    `Environment variables from ${envFile} uploaded to project ${projectId}`,
-                );
-                log.info(`The environment variables were uploaded to the project successfully.`);
-                await GenezioTelemetry.sendEvent({
-                    eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS,
-                });
-            })
-            .catch(async (error: AxiosError) => {
-                log.error(`Loading environment variables failed with: ${error.message}`);
-                log.error(
-                    `Try to set the environment variables using the dashboard ${colors.cyan(
-                        DASHBOARD_URL,
-                    )}`,
-                );
-                await GenezioTelemetry.sendEvent({
-                    eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
-                    errorTrace: error.toString(),
-                });
-            });
+        const resolvedValue = await resolveConfigurationVariable(
+            configuration,
+            stage,
+            variable.path,
+            variable.field,
+        );
+        return {
+            name: envVarKey,
+            value: resolvedValue,
+        };
+    } else if ("key" in variable) {
+        debugLogger.debug(
+            `Resolving environment variable from configuration file for ${envVarKey} for env.<key> format`,
+        );
+        const envVar = (await readEnvironmentVariablesFromFile(
+            envFile,
+            /* filterKey */ envVarKey,
+        )) as EnvironmentVariable;
+        if (envVar.value !== "") {
+            return envVar;
+        } else if (process.env[envVarKey]) {
+            return {
+                name: envVarKey,
+                value: process.env[envVarKey],
+            };
+        } else {
+            log.warn(`Environment variable ${envVarKey} is missing from the ${envFile} file.`);
+        }
+    } else if ("value" in variable) {
+        debugLogger.debug(
+            `Resolving environment variable from configuration file for ${envVarKey} for cleartext`,
+        );
+        return {
+            name: envVarKey,
+            value: variable.value,
+        };
     }
+
+    return undefined;
+}
+
+// export async function setEnvironmentVariablesHelper(
+//     envFile: string,
+//     projectId: string,
+//     stage: string,
+// ) {
+//     if (!(await fileExists(envFile))) {
+//         log.error(`File ${envFile} does not exists. Please provide the correct path.`);
+//     } else {
+//         const envVars = (await readEnvironmentVariablesFromFile(envFile)) as EnvironmentVariable[];
+//         const projectEnv = await getProjectEnvFromProject(projectId, stage);
+
+//         if (!projectEnv) {
+//             throw new UserError("Project environment not found.");
+//         }
+
+//         await setEnvironmentVariables(projectId, projectEnv.id, envVars)
+//     }
+// }
+
+export async function getUnsetEnvironmentVariables(
+    local: string[],
+    projectId: string,
+    projectEnvId: string,
+) {
+    const localEnvVars = Object.keys(local);
+    const remoteEnvVars = await getEnvironmentVariables(projectId, projectEnvId);
+
+    const missingEnvVars = localEnvVars.filter(
+        (envVar) => !remoteEnvVars.find((remoteEnvVar) => remoteEnvVar.name === envVar),
+    );
+
+    debugLogger.debug(
+        `The following environment variables are not set on your project: ${missingEnvVars}`,
+    );
+
+    return missingEnvVars;
 }
 
 export async function reportMissingEnvironmentVariables(
@@ -217,7 +258,7 @@ export async function detectEnvironmentVariablesFile(path: string) {
     return await fileExists(path);
 }
 
-export async function promptToSetEnvironmentVariables() {
+export async function promptToConfirmSettingEnvironmentVariables() {
     const { confirmSetEnvVars }: { confirmSetEnvVars: boolean } = await inquirer.prompt([
         {
             type: "confirm",

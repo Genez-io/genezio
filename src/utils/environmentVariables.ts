@@ -2,6 +2,18 @@ import { EnvironmentVariable } from "../models/environmentVariables.js";
 import { log } from "./logging.js";
 import dotenv from "dotenv";
 
+export type ConfigurationVariable =
+    | {
+          path: string;
+          field: string;
+      }
+    | {
+          key: string;
+      }
+    | {
+          value: string;
+      };
+
 /**
  * Parses a configuration variable string to extract the path and field.
  *
@@ -20,9 +32,7 @@ import dotenv from "dotenv";
  * parseConfigurationVariable("my-value");
  * // Returns { value: "my-value" }
  */
-export async function parseConfigurationVariable(
-    rawValue: string,
-): Promise<{ path: string; field: string } | { key: string } | { value: string }> {
+export async function parseConfigurationVariable(rawValue: string): Promise<ConfigurationVariable> {
     const prefix = "${{";
     const suffix = "}}";
 
