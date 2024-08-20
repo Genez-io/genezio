@@ -69,7 +69,11 @@ import { getCloudProvider } from "../../requests/getCloudProvider.js";
 import fs from "fs";
 import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
-import { getOrCreateDatabase, getOrCreateEmptyProject } from "./utils.js";
+import {
+    getOrCreateDatabase,
+    getOrCreateEmptyProject,
+    processYamlEnvironmentVariables,
+} from "./utils.js";
 import { enableEmailIntegration } from "../../requests/integration.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
