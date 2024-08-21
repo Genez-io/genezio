@@ -21,7 +21,12 @@ import { setEnvironmentVariables } from "../../requests/setEnvironmentVariables.
 import { log } from "../../utils/logging.js";
 import { AxiosError } from "axios";
 import colors from "colors";
-import { getEnvironmentVariables } from "../../requests/getEnvironmentVariables.js";
+import {
+    detectEnvironmentVariablesFile,
+    findAnEnvFile,
+    getUnsetEnvironmentVariables,
+    promptToConfirmSettingEnvironmentVariables,
+} from "../../utils/environmentVariables.js";
 
 export async function getOrCreateEmptyProject(
     projectName: string,
@@ -177,11 +182,8 @@ export async function uploadEnvVarsFromFile(
             // Upload environment variables to the project
             await setEnvironmentVariables(projectId, projectEnvId, envVars)
                 .then(async () => {
-                    debugLogger.debug(
-                        `Environment variables from ${envFile} uploaded to project ${projectId}`,
-                    );
                     log.info(
-                        `The environment variables were uploaded to the project successfully.`,
+                        `The following environment variables ${envVars.join(", ")} were uploaded to the project successfully.`,
                     );
                     await GenezioTelemetry.sendEvent({
                         eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS,
@@ -200,47 +202,66 @@ export async function uploadEnvVarsFromFile(
                     });
                 });
         }
-    } else {
-        const envFile = path.join(cwd, ".env");
-        if (await fileExists(envFile)) {
-            // read envVars from file
-            const envVars = await readEnvironmentVariablesFile(envFile);
+        return;
+    }
 
-            // get remoteEnvVars from project
-            const remoteEnvVars = await getEnvironmentVariables(projectId, projectEnvId);
+    // This is best effort, we should encourage the user to use `--env <envFile>` to set the correct env file path.
+    // Search for possible .env files in the project directory and use the first
+    const envFile = await findAnEnvFile(cwd);
 
-            // check if all envVars from file are in remoteEnvVars
-            const missingEnvVars = envVars.filter(
-                (envVar) =>
-                    !remoteEnvVars.find((remoteEnvVar) => remoteEnvVar.name === envVar.name),
+    if (!envFile) {
+        return;
+    }
+
+    const envVars = await readEnvironmentVariablesFile(envFile);
+    const missingEnvVars = await getUnsetEnvironmentVariables(
+        envVars.map((envVar) => envVar.name),
+        projectId,
+        projectEnvId,
+    );
+
+    if (
+        !process.env["CI"] &&
+        missingEnvVars.length > 0 &&
+        (await detectEnvironmentVariablesFile(envFile))
+    ) {
+        debugLogger.debug(`Attempting to upload ${missingEnvVars.join(", ")} from ${envFile}.`);
+
+        // Interactively prompt the user to confirm setting environment variables
+        const confirmSettingEnvVars =
+            await promptToConfirmSettingEnvironmentVariables(missingEnvVars);
+
+        if (!confirmSettingEnvVars) {
+            log.info("Skipping environment variables upload.");
+        } else {
+            const environmentVariablesToBePushed = envVars.filter((envVar: { name: string }) =>
+                missingEnvVars.includes(envVar.name),
             );
 
-            // Print missing env vars
-            if (missingEnvVars.length > 0) {
+            debugLogger.debug(
+                `Uploading environment variables ${JSON.stringify(environmentVariablesToBePushed)} from ${envFile} to project ${projectId}`,
+            );
+            await setEnvironmentVariables(
+                projectId,
+                projectEnvId,
+                environmentVariablesToBePushed,
+            ).then(async () => {
                 log.info(
-                    `${colors.yellow(
-                        "Warning: The following environment variables are not set on your project: ",
-                    )}`,
+                    `The following environment variables ${envVars.join(", ")} were uploaded to the project successfully.`,
                 );
-                missingEnvVars.forEach((envVar) => {
-                    log.info(`${colors.yellow(envVar.name)}`);
+                await GenezioTelemetry.sendEvent({
+                    eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS,
                 });
-
-                const relativeEnvFilePath = path.join(
-                    ".",
-                    path.relative(path.resolve(process.cwd()), path.resolve(envFile)),
-                );
-
-                log.info("");
-                log.info(
-                    `${colors.yellow("Go to the dashboard ")}${colors.cyan(
-                        DASHBOARD_URL,
-                    )} ${colors.yellow(
-                        "to set your environment variables or run ",
-                    )} ${colors.cyan(`genezio deploy --env ${relativeEnvFilePath}`)}`,
-                );
-                log.info("");
-            }
+            });
+            debugLogger.debug(
+                `Environment variables uploaded to project ${projectId} successfully.`,
+            );
         }
+    } else if (missingEnvVars.length > 0) {
+        log.warn(
+            `Environment variables ${missingEnvVars.join(", ")} are not set remotely. Please set them using the dashboard ${colors.cyan(
+                DASHBOARD_URL,
+            )}`,
+        );
     }
 }
