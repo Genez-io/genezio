@@ -187,8 +187,9 @@ export async function uploadEnvVarsFromFile(
             // Upload environment variables to the project
             await setEnvironmentVariables(projectId, projectEnvId, envVars)
                 .then(async () => {
+                    const envVarKeys = envVars.map((envVar) => envVar.name);
                     log.info(
-                        `The following environment variables ${envVars.join(", ")} were uploaded to the project successfully.`,
+                        `The following environment variables ${envVarKeys.join(", ")} were uploaded to the project successfully.`,
                     );
                     await GenezioTelemetry.sendEvent({
                         eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS,
@@ -207,12 +208,11 @@ export async function uploadEnvVarsFromFile(
                     });
                 });
         }
-        return;
     }
 
     // This is best effort, we should encourage the user to use `--env <envFile>` to set the correct env file path.
     // Search for possible .env files in the project directory and use the first
-    const envFile = envPath ? path.join(envPath, ".env") : await findAnEnvFile(cwd);
+    const envFile = envPath ? path.join(process.cwd(), envPath) : await findAnEnvFile(cwd);
 
     if (!envFile) {
         return;
@@ -293,8 +293,9 @@ export async function uploadEnvVarsFromFile(
                 projectEnvId,
                 environmentVariablesToBePushed,
             ).then(async () => {
+                const envVarKeys = envVars.map((envVar) => envVar.name);
                 log.info(
-                    `The following environment variables ${envVars.join(", ")} were uploaded to the project successfully.`,
+                    `The following environment variables ${envVarKeys.join(", ")} were uploaded to the project successfully.`,
                 );
                 await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS,
