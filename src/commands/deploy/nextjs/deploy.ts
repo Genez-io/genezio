@@ -453,7 +453,7 @@ async function writeOpenNextConfig(region: string, edgeFunctionPaths: EdgeFuncti
     }
     const OPEN_NEXT_CONFIG = `
     import { IncrementalCache, Queue, TagCache } from "@genezio/nextjs-isr-${region}";
-    
+
     const deployment = process.env["GENEZIO_DOMAIN_NAME"] || "";
     const token = (process.env["GENEZIO_CACHE_TOKEN"] || "") + "/_cache/" + (process.env["NEXT_BUILD_ID"] || "");
 
@@ -563,7 +563,15 @@ async function readOrAskProjectName(): Promise<string> {
                 name: "name",
                 message: "Enter the Genezio project name:",
                 default: path.basename(process.cwd()),
-                validate: checkProjectName,
+                validate: (input: string) => {
+                    try {
+                        checkProjectName(input);
+                        return true;
+                    } catch (error) {
+                        if (error instanceof Error) return colors.red(error.message);
+                        return colors.red("Unavailable project name");
+                    }
+                },
             },
         ]));
     } else {
