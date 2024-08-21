@@ -126,10 +126,22 @@ export async function resolveEnvironmentVariable(
     return undefined;
 }
 
+/**
+ * Detects if an environment variables file exists at the given path.
+ * @param path The path to the environment variables file.
+ *
+ * @returns A boolean indicating if the file exists.
+ */
 export async function detectEnvironmentVariablesFile(path: string) {
     return await fileExists(path);
 }
 
+/**
+ * Prompts the user to confirm setting the detected environment variables.
+ *
+ * @param envVars The list of environment variables to set.
+ * @returns A boolean indicating if the user confirmed setting the environment variables.
+ */
 export async function promptToConfirmSettingEnvironmentVariables(envVars: string[]) {
     const { confirmSetEnvVars }: { confirmSetEnvVars: boolean } = await inquirer.prompt([
         {
@@ -147,6 +159,14 @@ export async function promptToConfirmSettingEnvironmentVariables(envVars: string
     return true;
 }
 
+/**
+ * Gets the list of environment variables that were found locally but not set remotely.
+ *
+ * @param local The list of environment variables found locally.
+ * @param projectId The project ID.
+ * @param projectEnvId The project environment ID.
+ * @returns The list of environment variables that were found locally but not set remotely.
+ */
 export async function getUnsetEnvironmentVariables(
     local: string[],
     projectId: string,
@@ -161,7 +181,13 @@ export async function getUnsetEnvironmentVariables(
     return missingEnvVars;
 }
 
+/**
+ * Finds an environment variables file in the given directory.
+ * @param cwd The directory to search for the environment variables file.
+ * @returns The path to the environment variables file.
+ */
 export async function findAnEnvFile(cwd: string): Promise<string | undefined> {
+    // These are the most common locations for the .env file
     const possibleEnvFilePath = ["server/.env", ".env"];
 
     for (const envFilePath of possibleEnvFilePath) {
