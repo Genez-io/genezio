@@ -542,7 +542,14 @@ export async function deployClasses(
         const cwd = projectConfiguration.workspace?.backend
             ? path.resolve(projectConfiguration.workspace.backend)
             : process.cwd();
-        await uploadEnvVarsFromFile(options.env, projectId, projectEnvId, cwd);
+        await uploadEnvVarsFromFile(
+            options.env,
+            projectId,
+            projectEnvId,
+            cwd,
+            options.stage || "prod",
+            configuration,
+        );
 
         return {
             projectId: projectId,

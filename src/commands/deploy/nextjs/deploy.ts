@@ -97,6 +97,8 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
             deploymentResult.projectId,
             deploymentResult.projectEnvId,
             process.cwd(),
+            options.stage || "prod",
+            genezioConfig,
         ),
     ]);
 
@@ -453,7 +455,7 @@ async function writeOpenNextConfig(region: string, edgeFunctionPaths: EdgeFuncti
     }
     const OPEN_NEXT_CONFIG = `
     import { IncrementalCache, Queue, TagCache } from "@genezio/nextjs-isr-${region}";
-    
+
     const deployment = process.env["GENEZIO_DOMAIN_NAME"] || "";
     const token = (process.env["GENEZIO_CACHE_TOKEN"] || "") + "/_cache/" + (process.env["NEXT_BUILD_ID"] || "");
 
