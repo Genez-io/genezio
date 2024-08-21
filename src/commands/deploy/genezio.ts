@@ -1,4 +1,5 @@
 import { AxiosError } from "axios";
+import git from "isomorphic-git";
 import { log } from "../../utils/logging.js";
 import path from "path";
 import { exit } from "process";
@@ -502,6 +503,10 @@ export async function deployClasses(
         };
     });
 
+    const projectGitRepositoryUrl = (await git.listRemotes({ fs, dir: process.cwd() })).find(
+        (r) => r.remote === "origin",
+    )?.url;
+
     // TODO: Enable cloud adapter setting for every class
     const cloudAdapter = getCloudAdapter(cloudProvider);
     const result = await cloudAdapter.deploy(
@@ -511,6 +516,7 @@ export async function deployClasses(
             stage: options.stage,
         },
         stack,
+        /* sourceRepository= */ projectGitRepositoryUrl,
     );
 
     if (

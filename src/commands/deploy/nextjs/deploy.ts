@@ -1,5 +1,6 @@
 import fs, { existsSync, readFileSync } from "fs";
 import { GenezioDeployOptions } from "../../../models/commandOptions.js";
+import git from "isomorphic-git";
 import { YamlConfigurationIOController } from "../../../projectConfiguration/yaml/v2.js";
 import { YamlProjectConfiguration } from "../../../projectConfiguration/yaml/v2.js";
 import inquirer from "inquirer";
@@ -417,9 +418,17 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
         projectConfiguration.functions.map((f) => functionToCloudInput(f, ".")),
     );
 
-    const result = await cloudAdapter.deploy(cloudInputs, projectConfiguration, { stage }, [
-        "nextjs",
-    ]);
+    const projectGitRepositoryUrl = (await git.listRemotes({ fs, dir: process.cwd() })).find(
+        (r) => r.remote === "origin",
+    )?.url;
+
+    const result = await cloudAdapter.deploy(
+        cloudInputs,
+        projectConfiguration,
+        { stage },
+        ["nextjs"],
+        projectGitRepositoryUrl,
+    );
     debugLogger.debug(`Deployed functions: ${JSON.stringify(result.functions)}`);
 
     return result;
