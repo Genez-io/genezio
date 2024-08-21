@@ -43,3 +43,7 @@ export function runNewProcessWithResult(command: string, cwd?: string): Promise<
         });
     });
 }
+
+export function isCI(): boolean {
+    return process.env["CI"] === "true";
+}

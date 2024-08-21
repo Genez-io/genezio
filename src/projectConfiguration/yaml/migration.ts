@@ -7,6 +7,7 @@ import { scanClassesForDecorators } from "../../utils/configuration.js";
 import _ from "lodash";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import { UserError } from "../../errors.js";
+import { isCI } from "../../utils/process.js";
 
 function compressArray<T>(array: T[] | undefined): T[] | T | undefined {
     if (!array) return undefined;
@@ -17,7 +18,7 @@ function compressArray<T>(array: T[] | undefined): T[] | T | undefined {
 }
 
 export async function tryV2Migration(config: unknown): Promise<v2 | undefined> {
-    if (process.env["CI"] === "true")
+    if (isCI())
         throw new UserError(
             `You are using an old version of the YAML configuration file. Please update it to the latest version. For more information, check the migration guide at https://genezio.com/docs/learn-more/upgrading-to-v1`,
         );
