@@ -74,7 +74,6 @@ import {
     getOrCreateEmptyProject,
     processYamlEnvironmentVariables,
 } from "./utils.js";
-import { commit } from "isomorphic-git";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -637,14 +636,6 @@ export async function deployClasses(
     }
 }
 
-function getStringAfterLastOccurrence(str: string, delimiter: string): string {
-    const lastIndex = str.lastIndexOf(delimiter);
-    if (lastIndex === -1) {
-        return str;
-    }
-    return str.substring(lastIndex + delimiter.length);
-}
-
 export async function functionToCloudInput(
     functionElement: FunctionConfiguration,
     backendPath: string,
@@ -669,27 +660,6 @@ export async function functionToCloudInput(
                 dereference: true,
             },
         );
-    }
-    const entries = await fs.promises.readdir(path.join(tmpFolderPath, "node_modules"), {
-        withFileTypes: true,
-    });
-    for (const entry of entries) {
-        const fullPath = path.join(tmpFolderPath, "node_modules", entry.name);
-        const stats = await fs.promises.lstat(fullPath);
-        if (stats.isSymbolicLink()) {
-            const target = await fs.promises.readlink(fullPath);
-            console.log(`${entry.name} is a symbolic link pointing to ${target}`);
-            const final = ".pnpm" + getStringAfterLastOccurrence(target, "node_modules\\.pnpm");
-            const finalString = final.replaceAll("\\", "/");
-            await fs.promises.unlink(fullPath);
-            fs.symlinkSync(finalString, fullPath);
-            const targetFin = await fs.promises.readlink(fullPath);
-            console.log(`${entry.name} is a symbolic link pointing to ${targetFin}`);
-            console.log(`Final path: ${finalString}`);
-            console.log("mama");
-        } else {
-            console.log(`${entry.name} is not a symbolic link`);
-        }
     }
 
     const unzippedBundleSize = await getBundleFolderSizeLimit(tmpFolderPath);
