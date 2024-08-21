@@ -4,6 +4,7 @@ import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js
 import { CreateDatabaseRequest, GetDatabaseResponse } from "../../models/requests.js";
 import { DatabaseType } from "../../projectConfiguration/yaml/models.js";
 import { YamlProjectConfiguration } from "../../projectConfiguration/yaml/v2.js";
+import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import {
     createDatabase,
     findLinkedDatabase,
@@ -27,6 +28,16 @@ import {
     getUnsetEnvironmentVariables,
     promptToConfirmSettingEnvironmentVariables,
 } from "../../utils/environmentVariables.js";
+import inquirer from "inquirer";
+import { existsSync, readFileSync } from "fs";
+import { checkProjectName } from "../create/create.js";
+import {
+    uniqueNamesGenerator,
+    adjectives,
+    colors as ungColors,
+    animals,
+} from "unique-names-generator";
+import { regions } from "../../utils/configs.js";
 
 export async function getOrCreateEmptyProject(
     projectName: string,
@@ -65,6 +76,77 @@ export async function getOrCreateEmptyProject(
     }
 
     return { projectId: project.id, projectEnvId: projectEnv.id };
+}
+
+export async function readOrAskConfig(configPath: string): Promise<YamlProjectConfiguration> {
+    const configIOController = new YamlConfigurationIOController(configPath);
+    if (!existsSync(configPath)) {
+        const name = await readOrAskProjectName();
+
+        let region = regions[0].value;
+        if (process.env["CI"] !== "true") {
+            ({ region } = await inquirer.prompt([
+                {
+                    type: "list",
+                    name: "region",
+                    message: "Select the Genezio project region:",
+                    choices: regions,
+                },
+            ]));
+        } else {
+            log.info(
+                "Using the default region for the project because no `genezio.yaml` file was found.",
+            );
+        }
+
+        await configIOController.write({ name, region, yamlVersion: 2 });
+    }
+
+    return await configIOController.read();
+}
+
+export async function readOrAskProjectName(): Promise<string> {
+    if (existsSync("package.json")) {
+        // Read package.json content
+        const packageJson = readFileSync("package.json", "utf-8");
+        const packageJsonName = JSON.parse(packageJson)["name"];
+
+        const validProjectName: boolean = await (async () => checkProjectName(packageJsonName))()
+            .then(() => true)
+            .catch(() => false);
+
+        const projectExists = await getProjectInfoByName(packageJsonName)
+            .then(() => true)
+            .catch(() => false);
+
+        // We don't want to automatically use the package.json name if the project
+        // exists, because it could overwrite the existing project by accident.
+        if (packageJsonName !== undefined && validProjectName && !projectExists)
+            return packageJsonName;
+    }
+
+    let name = uniqueNamesGenerator({
+        dictionaries: [ungColors, adjectives, animals],
+        separator: "-",
+        style: "lowerCase",
+        length: 3,
+    });
+    if (process.env["CI"] !== "true") {
+        // Ask for project name
+        ({ name } = await inquirer.prompt([
+            {
+                type: "input",
+                name: "name",
+                message: "Enter the Genezio project name:",
+                default: path.basename(process.cwd()),
+                validate: checkProjectName,
+            },
+        ]));
+    } else {
+        log.info("Using a random name for the project because no `genezio.yaml` file was found.");
+    }
+
+    return name;
 }
 
 export async function getOrCreateDatabase(
