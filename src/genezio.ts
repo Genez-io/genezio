@@ -657,7 +657,10 @@ program
     .option("--stage <stage>", "Stage of the project.")
     .summary("Clone a project to your local machine.")
     .action(async (path: string, options: GenezioCloneOptions) => {
-        options = await askCloneOptions(options);
+        options = await askCloneOptions(options).catch((error) => {
+            logError(error);
+            exit(1);
+        });
         if (!path) {
             path = `./${options.name}`;
         }

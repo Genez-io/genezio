@@ -12,6 +12,8 @@ import inquirer from "inquirer";
 import { checkProjectName } from "./create/create.js";
 import colors from "colors";
 import { getClosestRegion } from "./create/interactive.js";
+import getProjectInfoByName from "../requests/getProjectInfoByName.js";
+import { UserError } from "../errors.js";
 
 export async function askCloneOptions(
     options?: Partial<GenezioCloneOptions>,
@@ -75,20 +77,31 @@ export async function askCloneOptions(
                 name: "stage",
                 default: "prod",
                 message: colors.magenta("Please enter the name of the stage:"),
-                validate: (input: string) => {
-                    try {
-                        checkProjectName(input);
-                        return true;
-                    } catch (error) {
-                        if (error instanceof Error) return colors.red(error.message);
-                        return colors.red("Unavailable project name");
-                    }
-                },
             },
         ]);
 
         cloneOptions.stage = stage;
     }
+
+    const stageName = cloneOptions.stage;
+    cloneOptions.stage = "";
+    const projectDetails = await getProjectInfoByName(cloneOptions.name);
+    for (const projectEnv of projectDetails.projectEnvs) {
+        if (projectEnv.name === stageName) {
+            cloneOptions.stage = projectEnv.id;
+            break;
+        }
+    }
+
+    if (cloneOptions.stage === "") {
+        throw new UserError(
+            `Stage ${stageName} not found in project ${cloneOptions.name}. Please run 'genezio deploy --stage ${stageName}' to deploy your project to a new stage.`,
+        );
+    }
+
+    debugLogger.debug(
+        `Cloning project ${cloneOptions.name} in region ${cloneOptions.region} and stage ${cloneOptions.stage}`,
+    );
 
     return cloneOptions as Required<GenezioCloneOptions>;
 }

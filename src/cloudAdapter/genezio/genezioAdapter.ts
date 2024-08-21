@@ -9,6 +9,7 @@ import { deployRequest } from "../../requests/deployCode.js";
 import {
     CloudAdapter,
     CloudAdapterOptions,
+    GenezioCloudFrontendOutput,
     GenezioCloudInput,
     GenezioCloudInputType,
     GenezioCloudOutput,
@@ -202,7 +203,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
         projectRegion: string,
         frontend: YamlFrontend,
         stage: string,
-    ): Promise<string> {
+    ): Promise<GenezioCloudFrontendOutput> {
         const finalStageName = stage != "" && stage != "prod" ? `-${stage}` : "";
         const finalSubdomain = frontend.subdomain + finalStageName;
         const archivePath = path.join(await createTemporaryFolder(), `${finalSubdomain}.zip`);
@@ -231,7 +232,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
         debugLogger.debug("Content of the folder zipped. Uploading to S3.");
         await uploadContentToS3(result.presignedURL, archivePath, undefined, result.userId);
         debugLogger.debug("Uploaded to S3.");
-        const finalDomain = await createFrontendProject(
+        const createFrontendResult = await createFrontendProject(
             finalSubdomain,
             projectName,
             projectRegion,
@@ -241,7 +242,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
         // clean up temporary folder
         await deleteFolder(path.dirname(archivePath));
 
-        return finalDomain;
+        return createFrontendResult;
     }
 }
 
