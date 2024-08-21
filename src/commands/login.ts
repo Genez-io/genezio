@@ -7,6 +7,7 @@ import http from "http";
 import open from "open";
 import { asciiCapybara } from "../utils/strings.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
+import { isCI } from "../utils/process.js";
 
 export async function loginCommand(accessToken: string, logSuccessMessage = true) {
     if (logSuccessMessage) log.info(asciiCapybara);
@@ -23,7 +24,7 @@ export async function loginCommand(accessToken: string, logSuccessMessage = true
             }
         } else {
             // If we are in a CI environment, we don't open the browser because it will hang indefinitely
-            if (process.env["CI"]) {
+            if (isCI()) {
                 log.error(
                     "CI environment detected. Cannot open browser for authentication. Use `genezio login <token>` instead.",
                 );

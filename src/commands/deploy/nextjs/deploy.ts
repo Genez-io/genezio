@@ -50,6 +50,7 @@ import * as Sentry from "@sentry/node";
 import { randomUUID } from "crypto";
 import { EdgeFunction, getEdgeFunctions } from "./edge.js";
 import { uploadEnvVarsFromFile } from "../utils.js";
+import { isCI } from "../../../utils/process.js";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     // Check if node_modules exists
@@ -519,7 +520,7 @@ async function readOrAskConfig(configPath: string): Promise<YamlProjectConfigura
         const name = await readOrAskProjectName();
 
         let region = regions[0].value;
-        if (process.env["CI"] !== "true") {
+        if (!isCI()) {
             ({ region } = await inquirer.prompt([
                 {
                     type: "list",
@@ -566,7 +567,7 @@ async function readOrAskProjectName(): Promise<string> {
         style: "lowerCase",
         length: 3,
     });
-    if (process.env["CI"] !== "true") {
+    if (!isCI()) {
         // Ask for project name
         ({ name } = await inquirer.prompt([
             {

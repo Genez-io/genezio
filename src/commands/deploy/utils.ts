@@ -30,6 +30,7 @@ import {
     resolveEnvironmentVariable,
 } from "../../utils/environmentVariables.js";
 import { EnvironmentVariable } from "../../models/environmentVariables.js";
+import { isCI } from "../../utils/process.js";
 
 export async function getOrCreateEmptyProject(
     projectName: string,
@@ -265,11 +266,7 @@ export async function uploadEnvVarsFromFile(
         return;
     }
 
-    if (
-        !process.env["CI"] &&
-        missingEnvVars.length > 0 &&
-        (await detectEnvironmentVariablesFile(envFile))
-    ) {
+    if (!isCI() && missingEnvVars.length > 0 && (await detectEnvironmentVariablesFile(envFile))) {
         debugLogger.debug(`Attempting to upload ${missingEnvVars.join(", ")} from ${envFile}.`);
 
         // Interactively prompt the user to confirm setting environment variables
