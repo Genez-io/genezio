@@ -98,6 +98,8 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
             deploymentResult.projectId,
             deploymentResult.projectEnvId,
             process.cwd(),
+            options.stage || "prod",
+            genezioConfig,
         ),
     ]);
 
