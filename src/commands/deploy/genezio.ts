@@ -581,6 +581,16 @@ export async function functionToCloudInput(
 
     // copy everything to the temporary folder
     await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath);
+    if (fsExtra.pathExistsSync(path.join(tmpFolderPath, "node_modules", ".pnpm"))) {
+        await fsExtra.remove(path.join(tmpFolderPath, "node_modules", ".pnpm"));
+        await fsExtra.copy(
+            path.join(backendPath, functionElement.path, "node_modules", ".pnpm"),
+            path.join(tmpFolderPath, "node_modules", ".pnpm"),
+            {
+                dereference: true,
+            },
+        );
+    }
 
     const unzippedBundleSize = await getBundleFolderSizeLimit(tmpFolderPath);
 
