@@ -29,6 +29,8 @@ export class ClusterCloudAdapter implements CloudAdapter {
         input: GenezioCloudInput[],
         projectConfiguration: ProjectConfiguration,
         cloudAdapterOptions: CloudAdapterOptions,
+        stack: string[] = [],
+        sourceRepository?: string,
     ): Promise<GenezioCloudOutput> {
         const stage: string = cloudAdapterOptions.stage || "";
 
@@ -95,7 +97,13 @@ export class ClusterCloudAdapter implements CloudAdapter {
 
         await Promise.all(promisesDeploy);
 
-        const response = await deployRequest(projectConfiguration, input, stage);
+        const response = await deployRequest(
+            projectConfiguration,
+            input,
+            stage,
+            stack,
+            sourceRepository,
+        );
         const classesInfo = response.classes.map((c) => ({
             className: c.name,
             methods: c.methods.map((m) => ({
@@ -127,7 +135,12 @@ export class ClusterCloudAdapter implements CloudAdapter {
         const archivePath = path.join(await createTemporaryFolder(), `${finalSubdomain}.zip`);
         debugLogger.debug("Creating temporary folder", archivePath);
 
-        await zipDirectoryToDestinationPath(frontend.path, finalSubdomain, archivePath, /* includeHiddenFiles= */ true);
+        await zipDirectoryToDestinationPath(
+            frontend.path,
+            finalSubdomain,
+            archivePath,
+            /* includeHiddenFiles= */ true,
+        );
 
         debugLogger.debug("Getting presigned URL...");
         const result = await getFrontendPresignedURL(finalSubdomain, projectName, stage);

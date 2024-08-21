@@ -116,6 +116,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
         projectConfiguration: ProjectConfiguration,
         cloudAdapterOptions: CloudAdapterOptions,
         stack: string[] = [],
+        sourceRepository?: string,
     ): Promise<GenezioCloudOutput> {
         const stage: string = cloudAdapterOptions.stage || "";
 
@@ -165,7 +166,13 @@ export class GenezioCloudAdapter implements CloudAdapter {
         // This can be removed only if we find a way to avoid clearing lines.
         log.info("");
 
-        const response = await deployRequest(projectConfiguration, input, stage, stack);
+        const response = await deployRequest(
+            projectConfiguration,
+            input,
+            stage,
+            stack,
+            sourceRepository,
+        );
         const classesInfo = response.classes.map((c) => ({
             className: c.name,
             methods: c.methods.map((m) => ({
@@ -202,10 +209,13 @@ export class GenezioCloudAdapter implements CloudAdapter {
         debugLogger.debug("Creating temporary folder", archivePath);
 
         const frontendPath = path.join(frontend.path, frontend.publish || ".");
-        await zipDirectoryToDestinationPath(frontendPath, finalSubdomain, archivePath, /* includeHiddenFiles= */ true, /* exclusions= */ [
-            ".git",
-            ".github",
-        ]);
+        await zipDirectoryToDestinationPath(
+            frontendPath,
+            finalSubdomain,
+            archivePath,
+            /* includeHiddenFiles= */ true,
+            /* exclusions= */ [".git", ".github"],
+        );
 
         debugLogger.debug("Getting presigned URL...");
         const result = await getFrontendPresignedURL(finalSubdomain, projectName, stage);
