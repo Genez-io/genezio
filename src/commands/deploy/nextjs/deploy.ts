@@ -39,7 +39,11 @@ import * as Sentry from "@sentry/node";
 import { randomUUID } from "crypto";
 import { EdgeFunction, getEdgeFunctions } from "./edge.js";
 import { uploadEnvVarsFromFile } from "../utils.js";
+<<<<<<< HEAD
 import { readOrAskConfig } from "../utils.js";
+=======
+import { isCI } from "../../../utils/process.js";
+>>>>>>> main
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     // Check if node_modules exists
@@ -88,6 +92,8 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
             deploymentResult.projectId,
             deploymentResult.projectEnvId,
             process.cwd(),
+            options.stage || "prod",
+            genezioConfig,
         ),
     ]);
 

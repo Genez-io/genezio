@@ -26,7 +26,9 @@ import {
     detectEnvironmentVariablesFile,
     findAnEnvFile,
     getUnsetEnvironmentVariables,
+    parseConfigurationVariable,
     promptToConfirmSettingEnvironmentVariables,
+    resolveEnvironmentVariable,
 } from "../../utils/environmentVariables.js";
 import inquirer from "inquirer";
 import { existsSync, readFileSync } from "fs";
@@ -38,6 +40,8 @@ import {
     animals,
 } from "unique-names-generator";
 import { regions } from "../../utils/configs.js";
+import { EnvironmentVariable } from "../../models/environmentVariables.js";
+import { isCI } from "../../utils/process.js";
 
 export async function getOrCreateEmptyProject(
     projectName: string,
@@ -245,6 +249,8 @@ export async function uploadEnvVarsFromFile(
     projectId: string,
     projectEnvId: string,
     cwd: string,
+    stage: string,
+    configuration: YamlProjectConfiguration,
 ) {
     if (envPath) {
         const envFile = path.join(process.cwd(), envPath);
@@ -264,8 +270,9 @@ export async function uploadEnvVarsFromFile(
             // Upload environment variables to the project
             await setEnvironmentVariables(projectId, projectEnvId, envVars)
                 .then(async () => {
+                    const envVarKeys = envVars.map((envVar) => envVar.name);
                     log.info(
-                        `The following environment variables ${envVars.join(", ")} were uploaded to the project successfully.`,
+                        `The following environment variables ${envVarKeys.join(", ")} were uploaded to the project successfully.`,
                     );
                     await GenezioTelemetry.sendEvent({
                         eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS,
@@ -284,12 +291,11 @@ export async function uploadEnvVarsFromFile(
                     });
                 });
         }
-        return;
     }
 
     // This is best effort, we should encourage the user to use `--env <envFile>` to set the correct env file path.
     // Search for possible .env files in the project directory and use the first
-    const envFile = await findAnEnvFile(cwd);
+    const envFile = envPath ? path.join(process.cwd(), envPath) : await findAnEnvFile(cwd);
 
     if (!envFile) {
         return;
@@ -302,11 +308,47 @@ export async function uploadEnvVarsFromFile(
         projectEnvId,
     );
 
-    if (
-        !process.env["CI"] &&
-        missingEnvVars.length > 0 &&
-        (await detectEnvironmentVariablesFile(envFile))
-    ) {
+    const environment = configuration.backend?.environment;
+    if (environment) {
+        const unsetEnvVarKeys = await getUnsetEnvironmentVariables(
+            Object.keys(environment),
+            projectId,
+            projectEnvId,
+        );
+
+        const environmentVariablesToBePushed: EnvironmentVariable[] = (
+            await Promise.all(
+                unsetEnvVarKeys.map(async (envVarKey) => {
+                    const variable = await parseConfigurationVariable(environment[envVarKey]);
+                    const resolvedVariable = await resolveEnvironmentVariable(
+                        configuration,
+                        variable,
+                        envVarKey,
+                        envFile,
+                        stage,
+                    );
+                    if (!resolvedVariable) {
+                        return undefined;
+                    }
+                    return resolvedVariable;
+                }),
+            )
+        ).filter((item): item is EnvironmentVariable => item !== undefined);
+
+        if (environmentVariablesToBePushed.length > 0) {
+            debugLogger.debug(
+                `Uploading environment variables ${JSON.stringify(environmentVariablesToBePushed)} from ${envFile} to project ${projectId}`,
+            );
+            await setEnvironmentVariables(projectId, projectEnvId, environmentVariablesToBePushed);
+            debugLogger.debug(
+                `Environment variables uploaded to project ${projectId} successfully.`,
+            );
+        }
+
+        return;
+    }
+
+    if (!isCI() && missingEnvVars.length > 0 && (await detectEnvironmentVariablesFile(envFile))) {
         debugLogger.debug(`Attempting to upload ${missingEnvVars.join(", ")} from ${envFile}.`);
 
         // Interactively prompt the user to confirm setting environment variables
@@ -314,7 +356,9 @@ export async function uploadEnvVarsFromFile(
             await promptToConfirmSettingEnvironmentVariables(missingEnvVars);
 
         if (!confirmSettingEnvVars) {
-            log.info("Skipping environment variables upload.");
+            log.info(
+                `Skipping environment variables upload. You can set them later by navigation to the dashboard ${DASHBOARD_URL}`,
+            );
         } else {
             const environmentVariablesToBePushed = envVars.filter((envVar: { name: string }) =>
                 missingEnvVars.includes(envVar.name),
@@ -328,8 +372,9 @@ export async function uploadEnvVarsFromFile(
                 projectEnvId,
                 environmentVariablesToBePushed,
             ).then(async () => {
+                const envVarKeys = envVars.map((envVar) => envVar.name);
                 log.info(
-                    `The following environment variables ${envVars.join(", ")} were uploaded to the project successfully.`,
+                    `The following environment variables ${envVarKeys.join(", ")} were uploaded to the project successfully.`,
                 );
                 await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS,
