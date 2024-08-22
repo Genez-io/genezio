@@ -135,7 +135,7 @@ export async function readOrAskProjectName(): Promise<string> {
         style: "lowerCase",
         length: 3,
     });
-    if (process.env["CI"] !== "true") {
+    if (!isCI()) {
         // Ask for project name
         ({ name } = await inquirer.prompt([
             {
