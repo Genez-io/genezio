@@ -88,7 +88,7 @@ export async function readOrAskConfig(configPath: string): Promise<YamlProjectCo
         const name = await readOrAskProjectName();
 
         let region = regions[0].value;
-        if (process.env["CI"] !== "true") {
+        if (!isCI()) {
             ({ region } = await inquirer.prompt([
                 {
                     type: "list",
