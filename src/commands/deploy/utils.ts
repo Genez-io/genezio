@@ -143,7 +143,15 @@ export async function readOrAskProjectName(): Promise<string> {
                 name: "name",
                 message: "Enter the Genezio project name:",
                 default: path.basename(process.cwd()),
-                validate: checkProjectName,
+                validate: (input: string) => {
+                    try {
+                        checkProjectName(input);
+                        return true;
+                    } catch (error) {
+                        if (error instanceof Error) return colors.red(error.message);
+                        return colors.red("Unavailable project name");
+                    }
+                },
             },
         ]));
     } else {

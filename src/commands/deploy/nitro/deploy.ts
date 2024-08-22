@@ -11,18 +11,19 @@ import { debugLogger } from "../../../utils/logging.js";
 import { readOrAskConfig } from "../utils.js";
 import { existsSync } from "fs";
 import { getPackageManager } from "../../../packageManagers/packageManager.js";
-export async function nitroJsDeploy(options: GenezioDeployOptions) {
+import path from "path";
+export async function nitroDeploy(options: GenezioDeployOptions) {
     // Check if node_modules exists
     if (!existsSync("node_modules")) {
         throw new UserError(
-            `Please run \`${getPackageManager().command} install\` before deploying your Next.js project. This will install the necessary dependencies.`,
+            `Please run \`${getPackageManager().command} install\` before deploying your Nitro project. This will install the necessary dependencies.`,
         );
     }
     await $({ stdio: "inherit" })`npx nitro build --preset aws_lambda`.catch(() => {
-        throw new UserError("Failed to build the Nitro.js project. Check the logs above.");
+        throw new UserError("Failed to build the Nitro project. Check the logs above.");
     });
     const genezioConfig = await readOrAskConfig(options.config);
-    deployFunctions(genezioConfig, options.stage);
+    await deployFunctions(genezioConfig, options.stage);
 }
 
 async function deployFunctions(config: YamlProjectConfiguration, stage?: string) {
@@ -31,8 +32,8 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
 
     const functions = [
         {
-            path: `./.output/server`,
-            name: "test-nitro",
+            path: path.join(process.cwd(), ".output", "server"),
+            name: "nitro-server",
             entry: "index.mjs",
             handler: "handler",
             type: FunctionType.aws,
@@ -52,9 +53,6 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
             functions,
         },
     };
-    // console.log("mamamam");
-    // console.log(deployConfig);
-    // console.log(JSON.stringify(deployConfig.backend?.functions, null, 2));
 
     const projectConfiguration = new ProjectConfiguration(
         deployConfig,
@@ -69,7 +67,7 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
     );
 
     const result = await cloudAdapter.deploy(cloudInputs, projectConfiguration, { stage }, [
-        "nitrojs",
+        "nitro",
     ]);
     debugLogger.debug(`Deployed functions: ${JSON.stringify(result.functions)}`);
 

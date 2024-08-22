@@ -2,7 +2,7 @@ import { GenezioDeployOptions } from "../../models/commandOptions.js";
 import { interruptLocalProcesses } from "../../utils/localInterrupt.js";
 import { debugLogger } from "../../utils/logging.js";
 import { genezioDeploy } from "./genezio.js";
-import { nitroJsDeploy } from "./nitrojs/deploy.js";
+import { nitroDeploy } from "./nitro/deploy.js";
 import fs from "fs";
 import { nextJsDeploy } from "./nextjs/deploy.js";
 import path from "path";
@@ -20,9 +20,9 @@ export async function deployCommand(options: GenezioDeployOptions) {
             debugLogger.debug("Deploying Next.js app");
             await nextJsDeploy(options);
             break;
-        case DeployType.NitroJS:
-            debugLogger.debug("Deploying Nitro.js app");
-            await nitroJsDeploy(options);
+        case DeployType.Nitro:
+            debugLogger.debug("Deploying Nitro app");
+            await nitroDeploy(options);
             break;
     }
 }
@@ -30,7 +30,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
 enum DeployType {
     Classic,
     NextJS,
-    NitroJS,
+    Nitro,
 }
 
 function decideDeployType(): DeployType {
@@ -53,7 +53,7 @@ function decideDeployType(): DeployType {
         fs.existsSync(path.join(cwd, "nitro.config.cjs")) ||
         fs.existsSync(path.join(cwd, "nitro.config.ts"))
     ) {
-        return DeployType.NitroJS;
+        return DeployType.Nitro;
     }
 
     // Check if "next" package is present in the project dependencies
@@ -61,6 +61,9 @@ function decideDeployType(): DeployType {
         const packageJson = JSON.parse(fs.readFileSync(path.join(cwd, "package.json"), "utf-8"));
         if (packageJson.dependencies?.next) {
             return DeployType.NextJS;
+        }
+        if (packageJson.dependencies?.nitro) {
+            return DeployType.Nitro;
         }
     }
 
