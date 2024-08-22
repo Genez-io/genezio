@@ -63,3 +63,12 @@ export interface GetProjectDetailsResponse {
     updatedAt: number;
     projectEnvs: ProjectDetailsEnvElement[];
 }
+
+export interface EnableIntegrationRequest {
+    integrationName: string;
+    envVars?: string[];
+}
+
+export interface EnableIntegrationResponse {
+    status: string;
+}

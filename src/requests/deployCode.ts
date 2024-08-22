@@ -17,6 +17,7 @@ export async function deployRequest(
     genezioDeployInput: GenezioCloudInput[],
     stage: string,
     stack: string[] = [],
+    sourceRepository?: string,
 ): Promise<DeployCodeResponse> {
     // auth token
     printAdaptiveLog("Checking your credentials", "start");
@@ -49,6 +50,7 @@ export async function deployRequest(
         cloudProvider: projectConfiguration.cloudProvider,
         stage: stage,
         stack: stack,
+        sourceRepository,
     });
 
     debugLogger.debug("Deploy request sent with body:", json);

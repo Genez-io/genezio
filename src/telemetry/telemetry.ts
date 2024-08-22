@@ -8,6 +8,7 @@ import { trackEvent } from "../requests/gaTrackEvent.js";
 import { track, init, Types } from "@amplitude/analytics-node";
 import getUser from "../requests/getUser.js";
 import { UserPayload } from "../requests/models.js";
+import { isCI } from "../utils/process.js";
 
 init(AMPLITUDE_API_KEY, {
     flushQueueSize: 1,
@@ -126,7 +127,7 @@ export class GenezioTelemetry {
             timeZone: timeZone,
             genezioVersion: version,
             commandOptions: eventRequest.commandOptions || "",
-            isCI: process.env["CI"] ? true : false,
+            isCI: isCI() ? true : false,
             nodeVersion: process.version,
         };
         const user = await getCachedUser().catch(() => undefined);

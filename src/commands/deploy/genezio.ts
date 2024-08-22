@@ -1,4 +1,5 @@
 import { AxiosError } from "axios";
+import git from "isomorphic-git";
 import { log } from "../../utils/logging.js";
 import path from "path";
 import { exit } from "process";
@@ -24,7 +25,6 @@ import {
     directoryContainsHtmlFiles,
     deleteFolder,
     getBundleFolderSizeLimit,
-    readEnvironmentVariablesFile,
     zipFile,
 } from "../../utils/file.js";
 import { printAdaptiveLog, debugLogger, doAdaptiveLogAction } from "../../utils/logging.js";
@@ -42,10 +42,7 @@ import {
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import { GenezioDeployOptions } from "../../models/commandOptions.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../../telemetry/telemetry.js";
-import { setEnvironmentVariables } from "../../requests/setEnvironmentVariables.js";
 import colors from "colors";
-import { getEnvironmentVariables } from "../../requests/getEnvironmentVariables.js";
-import { getProjectEnvFromProject } from "../../requests/getProjectInfo.js";
 import { Status } from "../../requests/models.js";
 import { bundle } from "../../bundlers/utils.js";
 import {
@@ -54,7 +51,7 @@ import {
 } from "../../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
-import { resolveConfigurationVariable, runScript, parseRawVariable } from "../../utils/scripts.js";
+import { runScript } from "../../utils/scripts.js";
 import { scanClassesForDecorators } from "../../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../../projectConfiguration/yaml/v2.js";
 import { ClusterCloudAdapter } from "../../cloudAdapter/cluster/clusterAdapter.js";
@@ -69,7 +66,13 @@ import { getCloudProvider } from "../../requests/getCloudProvider.js";
 import fs from "fs";
 import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
-import { getOrCreateDatabase, getOrCreateEmptyProject } from "./utils.js";
+import {
+    getOrCreateDatabase,
+    getOrCreateEmptyProject,
+    uploadEnvVarsFromFile,
+    processYamlEnvironmentVariables,
+} from "./utils.js";
+import { enableEmailIntegration } from "../../requests/integration.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -135,6 +138,16 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
                 projectEnvId,
             );
         }
+    }
+
+    if (configuration.services?.email) {
+        const { projectId, projectEnvId } = await getOrCreateEmptyProject(
+            projectName,
+            configuration.region,
+            options.stage || "prod",
+        );
+        await enableEmailIntegration(projectId, projectEnvId);
+        debugLogger.debug("Email integration enabled.");
     }
 
     let deployClassesResult;
@@ -490,6 +503,10 @@ export async function deployClasses(
         };
     });
 
+    const projectGitRepositoryUrl = (await git.listRemotes({ fs, dir: process.cwd() })).find(
+        (r) => r.remote === "origin",
+    )?.url;
+
     // TODO: Enable cloud adapter setting for every class
     const cloudAdapter = getCloudAdapter(cloudProvider);
     const result = await cloudAdapter.deploy(
@@ -499,6 +516,7 @@ export async function deployClasses(
             stage: options.stage,
         },
         stack,
+        /* sourceRepository= */ projectGitRepositoryUrl,
     );
 
     if (
@@ -526,104 +544,18 @@ export async function deployClasses(
     const projectId = result.projectId;
     const projectEnvId = result.projectEnvId;
     if (projectId) {
-        // Deploy environment variables if --upload-env is true
-        if (options.env) {
-            const envFile = path.join(process.cwd(), options.env);
-            debugLogger.debug(`Loading environment variables from ${envFile}.`);
-
-            if (!(await fileExists(envFile))) {
-                // There is no need to exit the process here, as the project has been deployed
-                log.error(`File ${envFile} does not exists. Please provide the correct path.`);
-                await GenezioTelemetry.sendEvent({
-                    eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
-                    errorTrace: `File ${envFile} does not exists`,
-                });
-            } else {
-                // Read environment variables from .env file
-                const envVars = await readEnvironmentVariablesFile(envFile);
-                const projectEnv = await getProjectEnvFromProject(projectId, options.stage);
-
-                if (!projectEnv) {
-                    throw new UserError("Project environment not found.");
-                }
-
-                // Upload environment variables to the project
-                await setEnvironmentVariables(projectId, projectEnv.id, envVars)
-                    .then(async () => {
-                        debugLogger.debug(
-                            `Environment variables from ${envFile} uploaded to project ${projectId}`,
-                        );
-                        log.info(
-                            `The environment variables were uploaded to the project successfully.`,
-                        );
-                        await GenezioTelemetry.sendEvent({
-                            eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS,
-                        });
-                    })
-                    .catch(async (error: AxiosError) => {
-                        log.error(`Loading environment variables failed with: ${error.message}`);
-                        log.error(
-                            `Try to set the environment variables using the dashboard ${colors.cyan(
-                                DASHBOARD_URL,
-                            )}`,
-                        );
-                        await GenezioTelemetry.sendEvent({
-                            eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
-                            errorTrace: error.toString(),
-                        });
-                    });
-            }
-        } else {
-            const cwd = projectConfiguration.workspace?.backend
-                ? path.resolve(projectConfiguration.workspace.backend)
-                : process.cwd();
-            const envFile = path.join(cwd, ".env");
-            if (await fileExists(envFile)) {
-                // read envVars from file
-                const envVars = await readEnvironmentVariablesFile(envFile);
-                const projectEnv = await getProjectEnvFromProject(projectId, options.stage);
-
-                if (!projectEnv) {
-                    throw new UserError("Project environment not found.");
-                }
-
-                // get remoteEnvVars from project
-                const remoteEnvVars = await getEnvironmentVariables(projectId, projectEnv.id);
-
-                // check if all envVars from file are in remoteEnvVars
-                const missingEnvVars = envVars.filter(
-                    (envVar) =>
-                        !remoteEnvVars.find((remoteEnvVar) => remoteEnvVar.name === envVar.name),
-                );
-
-                // Print missing env vars
-                if (missingEnvVars.length > 0) {
-                    log.info(
-                        `${colors.yellow(
-                            "Warning: The following environment variables are not set on your project: ",
-                        )}`,
-                    );
-                    missingEnvVars.forEach((envVar) => {
-                        log.info(`${colors.yellow(envVar.name)}`);
-                    });
-
-                    const relativeEnvFilePath = path.join(
-                        ".",
-                        path.relative(path.resolve(process.cwd()), path.resolve(envFile)),
-                    );
-
-                    log.info("");
-                    log.info(
-                        `${colors.yellow("Go to the dashboard ")}${colors.cyan(
-                            DASHBOARD_URL,
-                        )} ${colors.yellow(
-                            "to set your environment variables or run ",
-                        )} ${colors.cyan(`genezio deploy --env ${relativeEnvFilePath}`)}`,
-                    );
-                    log.info("");
-                }
-            }
-        }
+        // Deploy environment variables if --env is true
+        const cwd = projectConfiguration.workspace?.backend
+            ? path.resolve(projectConfiguration.workspace.backend)
+            : process.cwd();
+        await uploadEnvVarsFromFile(
+            options.env,
+            projectId,
+            projectEnvId,
+            cwd,
+            options.stage || "prod",
+            configuration,
+        );
 
         return {
             projectId: projectId,
@@ -649,6 +581,16 @@ export async function functionToCloudInput(
 
     // copy everything to the temporary folder
     await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath);
+    if (fsExtra.pathExistsSync(path.join(tmpFolderPath, "node_modules", ".pnpm"))) {
+        await fsExtra.remove(path.join(tmpFolderPath, "node_modules", ".pnpm"));
+        await fsExtra.copy(
+            path.join(backendPath, functionElement.path, "node_modules", ".pnpm"),
+            path.join(tmpFolderPath, "node_modules", ".pnpm"),
+            {
+                dereference: true,
+            },
+        );
+    }
 
     const unzippedBundleSize = await getBundleFolderSizeLimit(tmpFolderPath);
 
@@ -701,31 +643,16 @@ export async function deployFrontend(
 
     await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
         const environment = frontend.environment;
-        const newEnvObject: Record<string, string> = {};
         if (environment) {
-            for (const [key, rawValue] of Object.entries(environment)) {
-                const variable = await parseRawVariable(rawValue);
-                if (!variable) {
-                    debugLogger.debug(
-                        `The key ${key} with value ${rawValue} does not contain a variable with the format $\{{<variable>}}. The raw value is being set.`,
-                    );
-                    newEnvObject[key] = rawValue;
-                } else {
-                    const resolvedValue = await resolveConfigurationVariable(
-                        configuration,
-                        options.stage,
-                        variable?.path,
-                        variable?.field,
-                    );
-                    debugLogger.debug(
-                        `The key ${key} with value ${rawValue} contains a variable with the format $\{{<variable>}}. The evaluated value ${resolvedValue} is being set.`,
-                    );
-                    newEnvObject[key] = resolvedValue;
-                }
-            }
+            const newEnvObject = await processYamlEnvironmentVariables(
+                environment,
+                configuration,
+                stage,
+            );
+            await runScript(frontend.scripts?.build, frontend.path, newEnvObject);
+        } else {
+            await runScript(frontend.scripts?.build, frontend.path);
         }
-
-        await runScript(frontend.scripts?.build, frontend.path, newEnvObject);
     });
 
     // check if the frontend publish path exists
