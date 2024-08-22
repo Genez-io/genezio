@@ -132,4 +132,7 @@ export type GenezioCreateOptions =
       >)
     | ({ type: "nitrojs"; path?: string } & Required<
           Omit<GenezioCreateNitroJsOptions, "path" | "logLevel">
+      >)
+    | ({ type: "nuxt"; path?: string } & Required<
+          Omit<GenezioCreateNitroJsOptions, "path" | "logLevel">
       >);

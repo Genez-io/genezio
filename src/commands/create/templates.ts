@@ -95,3 +95,4 @@ export const frontendTemplates: Record<string, Template | undefined> = {
 export const expressJsTemplate = "https://github.com/Genez-io/expressjs-starter";
 export const serverlessFunctionJsTemplate = "https://github.com/Genez-io/serverlessjs-starter";
 export const nitroJsTemplate = "https://github.com/Genez-io/nitrojs-starter";
+export const nuxtTemplate = "https://github.com/Genez-io/nuxt-starter";
