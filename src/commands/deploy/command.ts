@@ -6,6 +6,7 @@ import { nitroDeploy } from "./nitro/deploy.js";
 import fs from "fs";
 import { nextJsDeploy } from "./nextjs/deploy.js";
 import path from "path";
+import { nuxtDeploy } from "./nuxt/deploy.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -20,6 +21,10 @@ export async function deployCommand(options: GenezioDeployOptions) {
             debugLogger.debug("Deploying Next.js app");
             await nextJsDeploy(options);
             break;
+        case DeployType.Nuxt:
+            debugLogger.debug("Deploying Nuxt app");
+            await nuxtDeploy(options);
+            break;
         case DeployType.Nitro:
             debugLogger.debug("Deploying Nitro app");
             await nitroDeploy(options);
@@ -31,6 +36,7 @@ enum DeployType {
     Classic,
     NextJS,
     Nitro,
+    Nuxt,
 }
 
 function decideDeployType(): DeployType {
@@ -44,6 +50,16 @@ function decideDeployType(): DeployType {
         fs.existsSync(path.join(cwd, "next.config.ts"))
     ) {
         return DeployType.NextJS;
+    }
+
+    // Check if nuxt.config.js exists
+    if (
+        fs.existsSync(path.join(cwd, "nuxt.config.js")) ||
+        fs.existsSync(path.join(cwd, "nuxt.config.mjs")) ||
+        fs.existsSync(path.join(cwd, "nuxt.config.cjs")) ||
+        fs.existsSync(path.join(cwd, "nuxt.config.ts"))
+    ) {
+        return DeployType.Nuxt;
     }
 
     // Check if nitro.config.js exists
@@ -64,6 +80,9 @@ function decideDeployType(): DeployType {
         }
         if (packageJson.devDependencies?.nitropack) {
             return DeployType.Nitro;
+        }
+        if (packageJson.dependencies?.nuxt) {
+            return DeployType.Nuxt;
         }
     }
 
