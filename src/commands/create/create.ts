@@ -15,6 +15,7 @@ import {
     frontendTemplates,
     serverlessFunctionJsTemplate,
     nitroJsTemplate,
+    nuxtTemplate,
 } from "./templates.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import { YAMLContext, mergeContexts } from "yaml-transmute";
@@ -183,7 +184,7 @@ export async function createCommand(options: GenezioCreateOptions) {
             break;
         }
         case "nitrojs": {
-            await doAdaptiveLogAction("Cloning Nitro.js starter template", async () => {
+            await doAdaptiveLogAction("Cloning Nitro starter template", async () => {
                 // Create the new project in a virtual filesystem (memfs)
                 await cloneAndSetupGenezioRepository(nitroJsTemplate, fs, options);
 
@@ -203,6 +204,29 @@ export async function createCommand(options: GenezioCreateOptions) {
             log.info(SUCCESSFULL_CREATE_NITROJS(projectPath));
             break;
         }
+
+        case "nuxt": {
+            await doAdaptiveLogAction("Cloning Nuxt starter template", async () => {
+                // Create the new project in a virtual filesystem (memfs)
+                await cloneAndSetupGenezioRepository(nuxtTemplate, fs, options);
+
+                // Copy from memfs to local filesystem
+                copyRecursiveToNativeFs(fs, "/", projectPath, {
+                    keepDotGit: true,
+                    renameReadme: true,
+                });
+            });
+
+            // Install template packages
+            await doAdaptiveLogAction("Installing template dependencies", async () =>
+                installTemplatePackages("npm", projectPath),
+            );
+
+            // Print success message
+            log.info(SUCCESSFULL_CREATE_NITROJS(projectPath));
+            break;
+        }
+
         case "serverless": {
             await doAdaptiveLogAction("Cloning Serverless Function starter template", async () => {
                 // Create the new project in a virtual filesystem (memfs)
