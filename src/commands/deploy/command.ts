@@ -81,7 +81,7 @@ function decideDeployType(): DeployType {
         if (packageJson.devDependencies?.nitropack) {
             return DeployType.Nitro;
         }
-        if (packageJson.dependencies?.nuxt) {
+        if (packageJson.devDependencies?.nuxt) {
             return DeployType.Nuxt;
         }
     }
