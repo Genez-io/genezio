@@ -62,7 +62,7 @@ function decideDeployType(): DeployType {
         if (packageJson.dependencies?.next) {
             return DeployType.NextJS;
         }
-        if (packageJson.dependencies?.nitro) {
+        if (packageJson.devDependencies?.nitropack) {
             return DeployType.Nitro;
         }
     }
