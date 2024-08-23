@@ -74,7 +74,9 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
     debugLogger.debug(`Deployed functions: ${JSON.stringify(result.functions)}`);
 
     log.info(
-        `The function is being deployed at ${colors.cyan(JSON.stringify(result.functions[0].cloudUrl))}. It might take a few moments to be available worldwide.`,
+        `${colors.cyan(Your backend code was successfully deployed)}
+        
+The server function endpoint is available at ${colors.cyan(result.functions[0].cloudUrl)}`,
     );
     return result;
 }
