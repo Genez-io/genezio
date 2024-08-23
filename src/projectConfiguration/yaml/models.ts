@@ -9,8 +9,8 @@ export enum Language {
 }
 
 export enum AuthenticationDatabaseType {
-    mongo = "mongo",
-    postgres = "postgres",
+    mongo = "mongodb",
+    postgres = "postgresql",
 }
 
 export enum DatabaseType {
