@@ -100,7 +100,7 @@ export interface AuthenticationProviders {
 export interface SetAuthenticationRequest {
     enabled: boolean;
     databaseType: string;
-    databaseUri: string;
+    databaseUrl: string;
 }
 
 export interface SetAuthenticationResponse {
