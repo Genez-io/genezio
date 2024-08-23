@@ -71,6 +71,16 @@ export const GENEZIO_PLEASE_REPORT_ISSUE =
 
 export const CTA_GITHUB_ISSUE = `If you would like to see this feature added, please open an issue on our GitHub repository: https://github.com/Genez-io/genezio/issues.`;
 
+export const ADD_DATABASE_CONFIG = function (name: string, region: string) {
+    return `Database ${name} not found in the genezio.yaml configuration file. Please add it as following:
+\`\`\`yaml
+services:
+  databases:
+    - name: ${name}
+      region: ${region}
+\`\`\` `;
+};
+
 function collectIssueMap(e: zod.ZodError, issueMap: Map<string, string[]>) {
     for (const issue of e.issues) {
         if (issue.code === "invalid_union") {

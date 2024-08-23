@@ -4,12 +4,7 @@ import nativeFs from "fs";
 import { IFs } from "memfs";
 import { databaseRegions, legacyRegions } from "../../utils/configs.js";
 import { GENEZIO_CONFIGURATION_FILE_NOT_FOUND, UserError, zodFormatError } from "../../errors.js";
-import {
-    AuthenticationDatabaseType,
-    DatabaseType,
-    FunctionType,
-    Language,
-} from "./models.js";
+import { AuthenticationDatabaseType, DatabaseType, FunctionType, Language } from "./models.js";
 import {
     DEFAULT_ARCHITECTURE,
     DEFAULT_NODE_RUNTIME,
@@ -119,7 +114,7 @@ function parseGenezioConfig(config: unknown) {
                 type: zod.nativeEnum(AuthenticationDatabaseType),
                 uri: zod.string(),
             })
-            .or(databaseSchema),
+            .or(zod.object({ name: zod.string() })),
         providers: zod
             .object({
                 email: zod.boolean().optional(),
