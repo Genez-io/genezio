@@ -74,7 +74,7 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
     debugLogger.debug(`Deployed functions: ${JSON.stringify(result.functions)}`);
 
     log.info(
-        `${colors.cyan(Your backend code was successfully deployed)}
+        `${colors.cyan("Your backend code was successfully deployed")}
         
 The server function endpoint is available at ${colors.cyan(result.functions[0].cloudUrl)}`,
     );

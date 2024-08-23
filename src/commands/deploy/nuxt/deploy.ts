@@ -74,7 +74,7 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
     debugLogger.debug(`Deployed functions: ${JSON.stringify(result.functions)}`);
 
     log.info(
-        `${colors.cyan(Your Nuxt code was successfully deployed)}
+        `${colors.cyan("Your Nuxt code was successfully deployed")}
         
 Your Nuxt app is available at ${colors.cyan(result.functions[0].cloudUrl)}`,
     );
