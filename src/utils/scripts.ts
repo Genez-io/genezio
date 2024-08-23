@@ -4,12 +4,13 @@ import { UserError } from "../errors.js";
 import colors from "colors";
 import _ from "lodash";
 import { Logger } from "tslog";
-import { FunctionConfiguration } from "../models/projectConfiguration.js";
+import { DatabaseConfiguration, FunctionConfiguration } from "../models/projectConfiguration.js";
 import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
 import { FunctionType } from "../projectConfiguration/yaml/models.js";
 import getProjectInfoByName from "../requests/getProjectInfoByName.js";
 import { execaCommand } from "execa";
 import { PORT_LOCAL_ENVIRONMENT } from "../constants.js";
+import { getDatabaseByName } from "../requests/database.js";
 
 /**
  * Determines whether a given value is a valid `FunctionConfiguration` object.
@@ -33,6 +34,26 @@ function isFunctionConfiguration(
         Object.values(FunctionType).includes(
             (potentialFunctionObject as FunctionConfiguration).type,
         )
+    );
+}
+
+/**
+ * Determines whether a given value is a valid `DatabaseConfiguration` object.
+ *
+ * This type guard checks whether the provided value is an instance of
+ * `DatabaseConfiguration` and whether it conforms to the expected structure.
+ *
+ * @param potentialDatabaseObject The value to be checked, of an unknown type.
+ * @returns `true` if the value is a `DatabaseConfiguration`, otherwise `false`.
+ */
+function isDatabaseObject(
+    potentialDatabaseObject: unknown,
+): potentialDatabaseObject is DatabaseConfiguration {
+    return (
+        typeof potentialDatabaseObject === "object" &&
+        potentialDatabaseObject !== null &&
+        typeof (potentialDatabaseObject as DatabaseConfiguration).name === "string" &&
+        typeof (potentialDatabaseObject as DatabaseConfiguration).region === "string"
     );
 }
 
@@ -97,7 +118,7 @@ export async function resolveConfigurationVariable(
         }
     }
 
-    if (isFunctionConfiguration(resourceObject)) {
+    if (isFunctionConfiguration(resourceObject) && path.startsWith("backend.functions")) {
         const functionObj = resourceObject as FunctionConfiguration;
 
         // Retrieve custom output fields for a function object such as `url`
@@ -122,6 +143,30 @@ export async function resolveConfigurationVariable(
         if (inputField === undefined) {
             throw new UserError(
                 `The attribute ${field} is not supported for function ${functionObj.name}. You can use one of the following attributes: ${Object.keys(functionObj).join(", ")} and url.`,
+            );
+        }
+        return inputField;
+    }
+
+    if (isDatabaseObject(resourceObject) && path.startsWith("services.databases")) {
+        const databaseObj = resourceObject as DatabaseConfiguration;
+        if (field === "uri") {
+            const databaseName = databaseObj.name;
+            const databaseResponse = await getDatabaseByName(databaseName);
+            if (!databaseResponse?.connectionUrl) {
+                throw new UserError(
+                    `Cannot retrieve the connection URL for the database ${databaseObj.name}.`,
+                );
+            }
+
+            return databaseResponse?.connectionUrl;
+        }
+
+        const inputField = databaseObj[field as keyof DatabaseConfiguration];
+
+        if (inputField === undefined) {
+            throw new UserError(
+                `The attribute ${field} is not supported for database ${databaseObj.name}. You can use one of the following attributes: ${Object.keys(databaseObj).join(", ")} and url.`,
             );
         }
         return inputField;

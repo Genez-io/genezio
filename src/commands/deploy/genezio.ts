@@ -71,8 +71,10 @@ import {
     getOrCreateEmptyProject,
     uploadEnvVarsFromFile,
     processYamlEnvironmentVariables,
+    enableAuthentication,
 } from "./utils.js";
 import { enableEmailIntegration } from "../../requests/integration.js";
+import { findAnEnvFile } from "../../utils/environmentVariables.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -148,6 +150,24 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         );
         await enableEmailIntegration(projectId, projectEnvId);
         debugLogger.debug("Email integration enabled.");
+    }
+
+    if (configuration.services?.authentication) {
+        const { projectId, projectEnvId } = await getOrCreateEmptyProject(
+            projectName,
+            configuration.region,
+            options.stage || "prod",
+        );
+
+        const envFile = options.env || (await findAnEnvFile(process.cwd()));
+        await enableAuthentication(
+            configuration,
+            projectId,
+            projectEnvId,
+            options.stage || "prod",
+            envFile,
+        );
+        debugLogger.debug("Authentication enabled.");
     }
 
     let deployClassesResult;

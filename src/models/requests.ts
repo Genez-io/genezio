@@ -64,6 +64,19 @@ export interface GetProjectDetailsResponse {
     projectEnvs: ProjectDetailsEnvElement[];
 }
 
+export type YourOwnAuthDatabaseConfig = {
+    uri: string;
+    type: string;
+};
+
+export type NativeAuthDatabaseConfig = {
+    name: string;
+    region: string;
+    type: string;
+};
+
+export type AuthDatabaseConfig = YourOwnAuthDatabaseConfig | NativeAuthDatabaseConfig;
+
 export interface EnableIntegrationRequest {
     integrationName: string;
     envVars?: string[];
@@ -71,4 +84,58 @@ export interface EnableIntegrationRequest {
 
 export interface EnableIntegrationResponse {
     status: string;
+}
+
+export interface GoogleProvider {
+    clientId: string;
+    clientSecret: string;
+}
+
+export interface AuthenticationProviders {
+    email?: boolean;
+    web3?: boolean;
+    google?: GoogleProvider;
+}
+
+export interface SetAuthenticationRequest {
+    enabled: boolean;
+    databaseType: string;
+    databaseUri: string;
+}
+
+export interface SetAuthenticationResponse {
+    enabled: boolean;
+    databaseType: string;
+    databaseUrl: string;
+    region: string;
+    token: string;
+}
+
+export interface AuthProviderDetails {
+    id: string;
+    name: string;
+    enabled: boolean;
+    config: { [key: string]: string } | null;
+}
+
+export interface GetAuthProvidersResponse {
+    status: string;
+    authProviders: AuthProviderDetails[];
+}
+
+export interface SetAuthProvidersRequest {
+    authProviders: AuthProviderDetails[];
+}
+
+export interface SetAuthProvidersResponse {
+    status: string;
+    authProviders: AuthProviderDetails[];
+}
+
+export interface GetAuthenticationResponse {
+    enabled: boolean;
+    databaseUrl: string;
+    databaseType: string;
+    token: string;
+    region: string;
 }
