@@ -7,11 +7,13 @@ import { getCloudProvider } from "../../../requests/getCloudProvider.js";
 import { FunctionType, Language } from "../../../projectConfiguration/yaml/models.js";
 import { PackageManagerType } from "../../../packageManagers/packageManager.js";
 import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
-import { debugLogger } from "../../../utils/logging.js";
+import { debugLogger, log } from "../../../utils/logging.js";
 import { readOrAskConfig } from "../utils.js";
 import { existsSync } from "fs";
 import { getPackageManager } from "../../../packageManagers/packageManager.js";
 import path from "path";
+import colors from "colors";
+
 export async function nuxtDeploy(options: GenezioDeployOptions) {
     // Check if node_modules exists
     if (!existsSync("node_modules")) {
@@ -70,6 +72,12 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
         "nuxt",
     ]);
     debugLogger.debug(`Deployed functions: ${JSON.stringify(result.functions)}`);
+
+    log.info(
+        `${colors.cyan("Your Nuxt code was successfully deployed")}
+        
+Your Nuxt app is available at ${colors.cyan(result.functions[0].cloudUrl)}`,
+    );
 
     return result;
 }
