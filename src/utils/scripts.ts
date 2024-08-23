@@ -4,13 +4,18 @@ import { UserError } from "../errors.js";
 import colors from "colors";
 import _ from "lodash";
 import { Logger } from "tslog";
-import { DatabaseConfiguration, FunctionConfiguration } from "../models/projectConfiguration.js";
+import {
+    AuthenticationConfiguration,
+    DatabaseConfiguration,
+    FunctionConfiguration,
+} from "../models/projectConfiguration.js";
 import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
 import { FunctionType } from "../projectConfiguration/yaml/models.js";
 import getProjectInfoByName from "../requests/getProjectInfoByName.js";
 import { execaCommand } from "execa";
 import { PORT_LOCAL_ENVIRONMENT } from "../constants.js";
 import { getDatabaseByName } from "../requests/database.js";
+import { getAuthentication } from "../requests/authentication.js";
 
 /**
  * Determines whether a given value is a valid `FunctionConfiguration` object.
@@ -54,6 +59,18 @@ function isDatabaseObject(
         potentialDatabaseObject !== null &&
         typeof (potentialDatabaseObject as DatabaseConfiguration).name === "string" &&
         typeof (potentialDatabaseObject as DatabaseConfiguration).region === "string"
+    );
+}
+
+function isAuthenticationObject(
+    potentialAuthenticationObject: unknown,
+): potentialAuthenticationObject is AuthenticationConfiguration {
+    return (
+        typeof potentialAuthenticationObject === "object" &&
+        potentialAuthenticationObject !== null &&
+        typeof (potentialAuthenticationObject as AuthenticationConfiguration).database ===
+            "object" &&
+        (potentialAuthenticationObject as AuthenticationConfiguration).database !== null
     );
 }
 
@@ -170,6 +187,40 @@ export async function resolveConfigurationVariable(
             );
         }
         return inputField;
+    }
+
+    if (isAuthenticationObject(resourceObject) && path.startsWith("services.authentication")) {
+        const authenticationObj = resourceObject as AuthenticationConfiguration;
+
+        if (field === "token") {
+            const response = await getProjectInfoByName(configuration.name);
+            const projectEnv = response.projectEnvs.find((env) => env.name === stage);
+            if (!projectEnv) {
+                throw new UserError(`The stage ${stage} is not found in the project.`);
+            }
+            const authenticationResponse = await getAuthentication(projectEnv?.id);
+
+            return authenticationResponse?.token;
+        }
+
+        if (field === "region") {
+            const response = await getProjectInfoByName(configuration.name);
+            const projectEnv = response.projectEnvs.find((env) => env.name === stage);
+            if (!projectEnv) {
+                throw new UserError(`The stage ${stage} is not found in the project.`);
+            }
+            const authenticationResponse = await getAuthentication(projectEnv?.id);
+
+            return authenticationResponse?.region;
+        }
+
+        const inputField = authenticationObj[field as keyof AuthenticationConfiguration];
+
+        if (inputField === undefined) {
+            throw new UserError(
+                `The attribute ${field} is not supported for authentication. You can use one of the following attributes: ${Object.keys(authenticationObj).join(", ")} and url.`,
+            );
+        }
     }
 
     if (assertIsObjectWithField<{ [key: string]: unknown }>(resourceObject, field)) {

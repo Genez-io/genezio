@@ -115,6 +115,32 @@ export class DatabaseConfiguration {
     }
 }
 
+export class AuthenticationConfiguration {
+    database: NativeAuthDatabaseConfiguration | YourOwnAuthDatabaseConfiguration;
+
+    constructor(database: NativeAuthDatabaseConfiguration | YourOwnAuthDatabaseConfiguration) {
+        this.database = database;
+    }
+}
+
+export class NativeAuthDatabaseConfiguration {
+    name: string;
+
+    constructor(name: string) {
+        this.name = name;
+    }
+}
+
+export class YourOwnAuthDatabaseConfiguration {
+    type: string;
+    uri: string;
+
+    constructor(type: string, uri: string) {
+        this.type = type;
+        this.uri = uri;
+    }
+}
+
 export class SdkConfiguration {
     language: string;
     path?: string;
