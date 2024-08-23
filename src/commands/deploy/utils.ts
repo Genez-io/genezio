@@ -11,7 +11,10 @@ import {
     SetAuthProvidersRequest,
     YourOwnAuthDatabaseConfig,
 } from "../../models/requests.js";
-import { DatabaseType } from "../../projectConfiguration/yaml/models.js";
+import {
+    AuthenticationDatabaseType,
+    DatabaseType,
+} from "../../projectConfiguration/yaml/models.js";
 import { YamlProjectConfiguration } from "../../projectConfiguration/yaml/v2.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import {
@@ -284,7 +287,7 @@ export async function enableAuthentication(
             {
                 enabled: true,
                 databaseUrl: database.connectionUrl || "",
-                databaseType: database.type,
+                databaseType: AuthenticationDatabaseType.postgres,
             },
             projectEnvId,
             authProviders,

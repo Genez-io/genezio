@@ -1,3 +1,4 @@
+import { AuthenticationDatabaseType } from "../projectConfiguration/yaml/models.js";
 import { ProjectDetailsEnvElement } from "../requests/models.js";
 
 export interface CreateDatabaseRequest {
@@ -66,7 +67,7 @@ export interface GetProjectDetailsResponse {
 
 export type YourOwnAuthDatabaseConfig = {
     uri: string;
-    type: string;
+    type: AuthenticationDatabaseType;
 };
 
 export type NativeAuthDatabaseConfig = {
@@ -97,7 +98,7 @@ export interface AuthenticationProviders {
 
 export interface SetAuthenticationRequest {
     enabled: boolean;
-    databaseType: string;
+    databaseType: AuthenticationDatabaseType;
     databaseUrl: string;
 }
 
@@ -137,3 +138,40 @@ export interface GetAuthenticationResponse {
     token: string;
     region: string;
 }
+
+export interface AuthenticationSettings {
+    passwordReset?: {
+        redirectUrl: string;
+    };
+    emailVerification?: {
+        redirectUrl: string;
+    };
+}
+
+export type SetEmailTemplatesRequest = {
+    templates: {
+        type: string;
+        template: {
+            senderName: string;
+            senderEmail: string;
+            subject: string;
+            message: string;
+            redirectUrl: string;
+        };
+        variables: string[];
+    };
+};
+
+export type setEmailTemplatesResponse = {
+    templates: {
+        type: string;
+        template: {
+            senderName: string;
+            senderEmail: string;
+            subject: string;
+            message: string;
+            redirectUrl: string;
+        };
+        variables: string[];
+    };
+};
