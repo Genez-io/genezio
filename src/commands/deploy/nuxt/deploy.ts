@@ -32,7 +32,7 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
 
     const functions = [
         {
-            path: path.join(process.cwd(), ".output", "server"),
+            path: path.join(".output", "server"),
             name: "nuxt-server",
             entry: "index.mjs",
             handler: "handler",
@@ -43,7 +43,7 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
     const deployConfig: YamlProjectConfiguration = {
         ...config,
         backend: {
-            path: "",
+            path: ".",
             language: {
                 name: Language.js,
                 runtime: "nodejs20.x",
