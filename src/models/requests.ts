@@ -71,8 +71,6 @@ export type YourOwnAuthDatabaseConfig = {
 
 export type NativeAuthDatabaseConfig = {
     name: string;
-    region: string;
-    type: string;
 };
 
 export type AuthDatabaseConfig = YourOwnAuthDatabaseConfig | NativeAuthDatabaseConfig;

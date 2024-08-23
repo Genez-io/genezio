@@ -1,5 +1,5 @@
 import path from "path";
-import { UserError } from "../../errors.js";
+import { ADD_DATABASE_CONFIG, UserError } from "../../errors.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import {
     AuthDatabaseConfig,
@@ -262,11 +262,18 @@ export async function enableAuthentication(
         );
         debugLogger.debug(`Authentication enabled with a ${authDatabase.type} database.`);
     } else {
+        const configDatabase = configuration.services?.databases?.find(
+            (database) => database.name === authDatabase.name,
+        );
+        if (!configDatabase) {
+            throw new UserError(ADD_DATABASE_CONFIG(authDatabase.name, configuration.region));
+        }
+
         const database: GetDatabaseResponse = await getOrCreateDatabase(
             {
-                name: authDatabase.name,
-                region: authDatabase.region,
-                type: authDatabase.type,
+                name: configDatabase.name,
+                region: configDatabase.region,
+                type: configDatabase.type,
             },
             stage,
             projectId,
