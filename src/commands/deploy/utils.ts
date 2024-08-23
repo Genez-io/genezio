@@ -254,12 +254,13 @@ export async function enableAuthentication(
         await enableAuthenticationHelper(
             {
                 enabled: true,
-                databaseUri: databaseUri,
+                databaseUrl: databaseUri,
                 databaseType: authDatabase.type,
             },
             projectEnvId,
             authProviders,
         );
+        debugLogger.debug(`Authentication enabled with a ${authDatabase.type} database.`);
     } else {
         const database: GetDatabaseResponse = await getOrCreateDatabase(
             {
@@ -275,12 +276,14 @@ export async function enableAuthentication(
         await enableAuthenticationHelper(
             {
                 enabled: true,
-                databaseUri: database.connectionUrl || "",
+                databaseUrl: database.connectionUrl || "",
                 databaseType: database.type,
             },
             projectEnvId,
             authProviders,
         );
+
+        debugLogger.debug(`Authentication enabled with database ${authDatabase.name}.`);
     }
 }
 export async function enableAuthenticationHelper(
@@ -343,6 +346,9 @@ export async function enableAuthenticationHelper(
                 authProviders: providersDetails,
             };
             await setAuthProviders(projectEnvId, setAuthProvidersRequest);
+            debugLogger.debug(
+                `Authentication providers: ${providersDetails.map((provider) => (provider.enabled ? provider.name : "")).join(", ")} enabled successfully.`,
+            );
         }
     }
 
