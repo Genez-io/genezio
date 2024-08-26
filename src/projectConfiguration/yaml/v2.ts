@@ -110,7 +110,7 @@ function parseGenezioConfig(config: unknown) {
 
     const redirectUrlSchema = zod.string();
 
-    const emailSettings = zod.object({
+    const authEmailSettings = zod.object({
         passwordReset: zod
             .object({
                 redirectUrl: redirectUrlSchema,
@@ -142,7 +142,7 @@ function parseGenezioConfig(config: unknown) {
                     .optional(),
             })
             .optional(),
-        settings: emailSettings.optional(),
+        settings: authEmailSettings.optional(),
     });
 
     const servicesSchema = zod.object({
