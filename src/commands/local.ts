@@ -85,6 +85,7 @@ import {
     processYamlEnvironmentVariables,
 } from "./deploy/utils.js";
 import { GetDatabaseResponse } from "../models/requests.js";
+import { displayHint } from "../utils/strings.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -121,6 +122,7 @@ export async function prepareLocalBackendEnvironment(
         if (databases) {
             const projectName = yamlProjectConfiguration.name;
             const region = yamlProjectConfiguration.region;
+
             // Get connection URL and expose it as an environment variable only for the server process
             for (const database of databases) {
                 const { projectId, projectEnvId } = await getOrCreateEmptyProject(
@@ -146,6 +148,12 @@ export async function prepareLocalBackendEnvironment(
                 configurationEnvVars = {
                     [databaseConnectionUrlKey]: remoteDatabase.connectionUrl,
                 };
+
+                log.info(
+                    displayHint(
+                        `You can use \`process.env["${databaseConnectionUrlKey}"]\` to connect to the remote database \`${remoteDatabase.name}\`.`,
+                    ),
+                );
             }
         }
 
