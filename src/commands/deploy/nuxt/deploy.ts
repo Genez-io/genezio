@@ -9,10 +9,12 @@ import { PackageManagerType } from "../../../packageManagers/packageManager.js";
 import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
 import { debugLogger, log } from "../../../utils/logging.js";
 import { readOrAskConfig } from "../utils.js";
-import { existsSync } from "fs";
 import { getPackageManager } from "../../../packageManagers/packageManager.js";
+import { existsSync } from "fs";
 import path from "path";
 import colors from "colors";
+import semver from "semver";
+import fs from "fs";
 
 export async function nuxtDeploy(options: GenezioDeployOptions) {
     // Check if node_modules exists
@@ -21,13 +23,56 @@ export async function nuxtDeploy(options: GenezioDeployOptions) {
             `Please run \`${getPackageManager().command} install\` before deploying your Nuxt project. This will install the necessary dependencies.`,
         );
     }
-    await $({ stdio: "inherit" })`npx nuxi build --preset=aws_lambda`.catch(() => {
-        throw new UserError("Failed to build the Nuxt project. Check the logs above.");
-    });
+
+    const packageJsonPath = path.join(process.cwd(), "package.json");
+    const packageBuffer = fs.readFileSync(packageJsonPath);
+
+    const nuxtConfig = JSON.parse(packageBuffer.toString("utf8"));
+    const nuxtVersion = nuxtConfig.devDependencies["nuxt"].slice(1);
+
+    if (semver.lt(nuxtVersion, "3.7.0")) {
+        await configureOlderNuxtVersions();
+    } else {
+        await $({ stdio: "inherit" })`npx nuxi build --preset=aws_lambda`.catch(() => {
+            throw new UserError("Failed to build the Nuxt project. Check the logs above.");
+        });
+    }
     const genezioConfig = await readOrAskConfig(options.config);
     await deployFunctions(genezioConfig, options.stage);
 }
 
+async function configureOlderNuxtVersions() {
+    const nuxtConfigPath = path.join(process.cwd(), "nuxt.config.ts");
+    let nuxtConfigContent = fs.readFileSync(nuxtConfigPath, "utf8");
+
+    //check that preset doesnt exist
+    if (!nuxtConfigContent.includes("preset")) {
+        let textToInsert = `
+    nitro: {
+        preset: "aws_lambda",
+    },`;
+
+        // Makes sure that the config file is formatted correctly(has a comma at the end of the last object)
+        const lastIndexColumn = nuxtConfigContent.lastIndexOf("}");
+        const secondToLastIndex = nuxtConfigContent.lastIndexOf("}", lastIndexColumn - 1);
+        const lastIndexComma = nuxtConfigContent.lastIndexOf(",");
+        if (secondToLastIndex > lastIndexComma) {
+            textToInsert = "," + textToInsert;
+        }
+        if (lastIndexColumn !== -1) {
+            nuxtConfigContent =
+                nuxtConfigContent.slice(0, lastIndexColumn) +
+                textToInsert +
+                nuxtConfigContent.slice(lastIndexColumn);
+        }
+
+        // Write the updated content back to the file
+        fs.writeFileSync(nuxtConfigPath, nuxtConfigContent, "utf8");
+    }
+    await $({ stdio: "inherit" })`npx nuxi build`.catch(() => {
+        throw new UserError("Failed to build the Nuxt project. Check the logs above.");
+    });
+}
 async function deployFunctions(config: YamlProjectConfiguration, stage?: string) {
     const cloudProvider = await getCloudProvider(config.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
