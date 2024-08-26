@@ -13,6 +13,7 @@ import {
 } from "../../models/requests.js";
 import {
     AuthenticationDatabaseType,
+    AuthenticationEmailTemplateType,
     DatabaseType,
 } from "../../projectConfiguration/yaml/models.js";
 import { YamlProjectConfiguration } from "../../projectConfiguration/yaml/v2.js";
@@ -58,6 +59,7 @@ import {
     getAuthProviders,
     setAuthentication,
     setAuthProviders,
+    setEmailTemplates,
 } from "../../requests/authentication.js";
 
 export async function getOrCreateEmptyProject(
@@ -295,6 +297,25 @@ export async function enableAuthentication(
 
         debugLogger.debug(`Authentication enabled with database ${authDatabase.name}.`);
     }
+
+    const settings = configuration.services?.authentication?.settings;
+    if (settings?.emailVerification) {
+        await setAuthenticationEmailTemplates(
+            configuration,
+            settings.emailVerification.redirectUrl,
+            stage,
+            projectEnvId,
+        );
+    }
+
+    if (settings?.passwordReset) {
+        await setAuthenticationEmailTemplates(
+            configuration,
+            settings.passwordReset.redirectUrl,
+            stage,
+            projectEnvId,
+        );
+    }
 }
 export async function enableAuthenticationHelper(
     request: SetAuthenticationRequest,
@@ -363,6 +384,42 @@ export async function enableAuthenticationHelper(
     }
 
     return;
+}
+
+export async function setAuthenticationEmailTemplates(
+    configuration: YamlProjectConfiguration,
+    redirectUrlRaw: string,
+    stage: string,
+    projectEnvId: string,
+) {
+    const redirectUrlValue = await evaluateResource(
+        configuration,
+        redirectUrlRaw,
+        stage,
+        undefined,
+    );
+    debugLogger.debug(`Redirect URL evaluated to ${redirectUrlValue}.`);
+
+    // Replace ${{<any alphanumeric value>}} with the evaluated value
+    const redirectUrl = redirectUrlRaw.replace(/\${{[\w\s/.-]+}}/, redirectUrlValue);
+    debugLogger.debug(`Redirect URL replaced to ${redirectUrl}.`);
+
+    await setEmailTemplates(projectEnvId, {
+        templates: [
+            {
+                type: AuthenticationEmailTemplateType.passwordReset,
+                template: {
+                    senderEmail: "",
+                    senderName: "",
+                    subject: "",
+                    message: "",
+                    redirectUrl: redirectUrl,
+                },
+                variables: [],
+            },
+        ],
+    });
+    debugLogger.debug(`Redirect URL updated to ${redirectUrl}.`);
 }
 
 export async function evaluateResource(
