@@ -4,7 +4,6 @@ import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js
 import {
     AuthDatabaseConfig,
     AuthenticationProviders,
-    AuthenticationSettings,
     AuthProviderDetails,
     CreateDatabaseRequest,
     GetDatabaseResponse,
@@ -298,12 +297,30 @@ export async function enableAuthentication(
 
         debugLogger.debug(`Authentication enabled with database ${authDatabase.name}.`);
     }
+
+    const settings = configuration.services?.authentication?.settings;
+    if (settings?.emailVerification) {
+        await setAuthenticationEmailTemplates(
+            configuration,
+            settings.emailVerification.redirectUrl,
+            stage,
+            projectEnvId,
+        );
+    }
+
+    if (settings?.passwordReset) {
+        await setAuthenticationEmailTemplates(
+            configuration,
+            settings.passwordReset.redirectUrl,
+            stage,
+            projectEnvId,
+        );
+    }
 }
 export async function enableAuthenticationHelper(
     request: SetAuthenticationRequest,
     projectEnvId: string,
     providers?: AuthenticationProviders,
-    settings?: AuthenticationSettings,
 ): Promise<void> {
     await setAuthentication(projectEnvId, request);
 
@@ -366,37 +383,43 @@ export async function enableAuthenticationHelper(
         }
     }
 
-    if (settings?.passwordReset) {
-        await setEmailTemplates(projectEnvId, {
-            templates: {
-                type: AuthenticationEmailTemplateType.passwordReset,
-                template: {
-                    redirectUrl: settings.passwordReset.redirectUrl,
-                },
-                variables: [],
-            },
-        });
-        debugLogger.debug(
-            `Password reset redirect URL updated to ${settings.passwordReset.redirectUrl}.`,
-        );
-    }
-
-    if (settings?.emailVerification) {
-        await setEmailTemplates(projectEnvId, {
-            templates: {
-                type: AuthenticationEmailTemplateType.passwordReset,
-                template: {
-                    redirectUrl: settings.emailVerification.redirectUrl,
-                },
-                variables: [],
-            },
-        });
-        debugLogger.debug(
-            `Verification email redirect URL updated to ${settings.emailVerification.redirectUrl}.`,
-        );
-    }
-
     return;
+}
+
+export async function setAuthenticationEmailTemplates(
+    configuration: YamlProjectConfiguration,
+    redirectUrlRaw: string,
+    stage: string,
+    projectEnvId: string,
+) {
+    const redirectUrlValue = await evaluateResource(
+        configuration,
+        redirectUrlRaw,
+        stage,
+        undefined,
+    );
+    debugLogger.debug(`Redirect URL evaluated to ${redirectUrlValue}.`);
+
+    // Replace ${{<any alphanumeric value>}} with the evaluated value
+    const redirectUrl = redirectUrlRaw.replace(/\${{[\w\s/.-]+}}/, redirectUrlValue);
+    debugLogger.debug(`Redirect URL replaced to ${redirectUrl}.`);
+
+    await setEmailTemplates(projectEnvId, {
+        templates: [
+            {
+                type: AuthenticationEmailTemplateType.passwordReset,
+                template: {
+                    senderEmail: "",
+                    senderName: "",
+                    subject: "",
+                    message: "",
+                    redirectUrl: redirectUrl,
+                },
+                variables: [],
+            },
+        ],
+    });
+    debugLogger.debug(`Redirect URL updated to ${redirectUrl}.`);
 }
 
 export async function evaluateResource(

@@ -108,7 +108,7 @@ function parseGenezioConfig(config: unknown) {
             .default("us-east-1"),
     });
 
-    const redirectUrlSchema = zod.string().optional();
+    const redirectUrlSchema = zod.string();
 
     const emailSettings = zod.object({
         passwordReset: zod

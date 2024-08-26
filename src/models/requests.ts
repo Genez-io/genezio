@@ -155,14 +155,14 @@ export type SetEmailTemplatesRequest = {
     templates: {
         type: AuthenticationEmailTemplateType;
         template: {
-            senderName?: string;
-            senderEmail?: string;
-            subject?: string;
-            message?: string;
+            senderName: string;
+            senderEmail: string;
+            subject: string;
+            message: string;
             redirectUrl?: string;
         };
         variables?: string[];
-    };
+    }[];
 };
 
 export type setEmailTemplatesResponse = {
