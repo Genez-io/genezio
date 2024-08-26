@@ -283,6 +283,7 @@ export async function enableAuthentication(
     projectEnvId: string,
     stage: string,
     envFile: string | undefined,
+    ask: boolean = false,
 ) {
     const authDatabase = configuration.services?.authentication?.database as AuthDatabaseConfig;
     if (!authDatabase) {
@@ -303,6 +304,7 @@ export async function enableAuthentication(
             },
             projectEnvId,
             authProviders,
+            /* ask= */ ask,
         );
         debugLogger.debug(`Authentication enabled with a ${authDatabase.type} database.`);
     } else {
@@ -332,6 +334,7 @@ export async function enableAuthentication(
             },
             projectEnvId,
             authProviders,
+            /* ask= */ ask,
         );
 
         debugLogger.debug(`Authentication enabled with database ${authDatabase.name}.`);
@@ -341,7 +344,25 @@ export async function enableAuthenticationHelper(
     request: SetAuthenticationRequest,
     projectEnvId: string,
     providers?: AuthenticationProviders,
+    ask: boolean = false,
 ): Promise<void> {
+    if (ask) {
+        const { enableAuthentication } = await inquirer.prompt([
+            {
+                type: "confirm",
+                name: "enableAuthentication",
+                message: "Do you want to enable authentication?",
+                default: false,
+            },
+        ]);
+
+        log.info(`Enabling authentication...`);
+        if (!enableAuthentication) {
+            log.warn("Authentication was not enabled.");
+            return;
+        }
+    }
+
     await setAuthentication(projectEnvId, request);
 
     const authProvidersResponse = await getAuthProviders(projectEnvId);

@@ -80,12 +80,15 @@ import { getLinkedFrontendsForProject } from "../utils/linkDatabase.js";
 import fsExtra from "fs-extra/esm";
 import { DeployCodeFunctionResponse } from "../models/deployCodeResponse.js";
 import {
+    enableAuthentication,
     getOrCreateDatabase,
     getOrCreateEmptyProject,
     processYamlEnvironmentVariables,
 } from "./deploy/utils.js";
 import { GetDatabaseResponse } from "../models/requests.js";
 import { displayHint } from "../utils/strings.js";
+import { enableEmailIntegration } from "../requests/integration.js";
+import { findAnEnvFile } from "../utils/environmentVariables.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -115,14 +118,16 @@ export async function prepareLocalBackendEnvironment(
 ): Promise<LocalUnitProcessSpawnResponse> {
     try {
         const databases = yamlProjectConfiguration.services?.databases;
+        const authentication = yamlProjectConfiguration.services?.authentication;
+        const email = yamlProjectConfiguration.services?.email;
         const backend = yamlProjectConfiguration.backend;
         const frontend = yamlProjectConfiguration.frontend;
 
+        const projectName = yamlProjectConfiguration.name;
+        const region = yamlProjectConfiguration.region;
+
         let configurationEnvVars: { [key: string]: string | undefined } = {};
         if (databases) {
-            const projectName = yamlProjectConfiguration.name;
-            const region = yamlProjectConfiguration.region;
-
             // Get connection URL and expose it as an environment variable only for the server process
             for (const database of databases) {
                 const { projectId, projectEnvId } = await getOrCreateEmptyProject(
@@ -155,6 +160,40 @@ export async function prepareLocalBackendEnvironment(
                     ),
                 );
             }
+        }
+
+        if (authentication) {
+            const { projectId, projectEnvId } = await getOrCreateEmptyProject(
+                projectName,
+                region,
+                options.stage || "prod",
+                /* ask */ true,
+            );
+
+            const envFile = options.env || (await findAnEnvFile(process.cwd()));
+            await enableAuthentication(
+                yamlProjectConfiguration,
+                projectId,
+                projectEnvId,
+                options.stage || "prod",
+                envFile,
+                /* ask */ true,
+            );
+
+            log.info(colors.green("Authentication enabled successfully."));
+        }
+
+        if (email) {
+            const { projectId, projectEnvId } = await getOrCreateEmptyProject(
+                projectName,
+                region,
+                options.stage || "prod",
+            );
+            await enableEmailIntegration(projectId, projectEnvId);
+            log.info("Email integration enabled successfully.");
+            log.info(
+                displayHint(`You can use \`process.env[EMAIL_SERVICE_TOKEN]\` to send emails.`),
+            );
         }
 
         if (!backend) {
