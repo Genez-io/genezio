@@ -12,6 +12,8 @@ import inquirer from "inquirer";
 import { checkProjectName } from "./create/create.js";
 import colors from "colors";
 import { getClosestRegion } from "./create/interactive.js";
+import getProjectInfoByName from "../requests/getProjectInfoByName.js";
+import { UserError } from "../errors.js";
 
 export async function askCloneOptions(
     options?: Partial<GenezioCloneOptions>,
@@ -80,6 +82,26 @@ export async function askCloneOptions(
 
         cloneOptions.stage = stage;
     }
+
+    const stageName = cloneOptions.stage;
+    cloneOptions.stage = "";
+    const projectDetails = await getProjectInfoByName(cloneOptions.name);
+    for (const projectEnv of projectDetails.projectEnvs) {
+        if (projectEnv.name === stageName) {
+            cloneOptions.stage = projectEnv.id;
+            break;
+        }
+    }
+
+    if (cloneOptions.stage === "") {
+        throw new UserError(
+            `Stage ${stageName} not found in project ${cloneOptions.name}. Please run 'genezio deploy --stage ${stageName}' to deploy your project to a new stage.`,
+        );
+    }
+
+    debugLogger.debug(
+        `Cloning project ${cloneOptions.name} in region ${cloneOptions.region} and stage ${cloneOptions.stage}`,
+    );
 
     return cloneOptions as Required<GenezioCloneOptions>;
 }

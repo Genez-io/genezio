@@ -6,13 +6,14 @@ import version from "../utils/version.js";
 import { AxiosResponse } from "axios";
 import { StatusOk } from "./models.js";
 import { debugLogger } from "../utils/logging.js";
+import { GenezioCloudFrontendOutput } from "../cloudAdapter/cloudAdapter.js";
 
 export async function createFrontendProject(
     genezioDomain: string,
     projectName: string,
     region: string,
     stage: string,
-): Promise<string> {
+): Promise<GenezioCloudFrontendOutput> {
     // Check if user is authenticated
     const authToken = await getAuthToken();
     if (!authToken) {
@@ -26,7 +27,7 @@ export async function createFrontendProject(
         stage,
     });
 
-    const response: AxiosResponse<StatusOk<{ domain: string }>> = await axios({
+    const response: AxiosResponse<StatusOk<{ domain: string; envId: string }>> = await axios({
         method: "PUT",
         url: `${BACKEND_ENDPOINT}/frontend`,
         data: json,
@@ -38,11 +39,11 @@ export async function createFrontendProject(
         maxBodyLength: Infinity,
     });
 
-    if (!response.data.domain) {
+    if (!response.data.domain || !response.data.envId) {
         throw new UserError("Could not create frontend project");
     }
 
-    return response.data.domain;
+    return { domain: response.data.domain, envId: response.data.envId };
 }
 
 export interface CreateFrontendV2Request {

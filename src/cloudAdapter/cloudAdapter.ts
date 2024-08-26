@@ -53,6 +53,11 @@ export type GenezioCloudOutput = {
     functions: DeployCodeFunctionResponse[];
 };
 
+export type GenezioCloudFrontendOutput = {
+    domain: string;
+    envId: string;
+};
+
 export type CloudAdapterOptions = {
     stage?: string;
 };
@@ -70,5 +75,5 @@ export interface CloudAdapter {
         projectRegion: string,
         frontend: YamlFrontend,
         stage: string,
-    ): Promise<string>;
+    ): Promise<GenezioCloudFrontendOutput>;
 }
