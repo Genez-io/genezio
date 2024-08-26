@@ -13,7 +13,7 @@ import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
 import { FunctionType } from "../projectConfiguration/yaml/models.js";
 import getProjectInfoByName from "../requests/getProjectInfoByName.js";
 import { execaCommand } from "execa";
-import { PORT_LOCAL_ENVIRONMENT } from "../constants.js";
+import { ENVIRONMENT, PORT_LOCAL_ENVIRONMENT } from "../constants.js";
 import { getDatabaseByName } from "../requests/database.js";
 import { getAuthentication } from "../requests/authentication.js";
 
@@ -208,6 +208,9 @@ export async function resolveConfigurationVariable(
             const projectEnv = response.projectEnvs.find((env) => env.name === stage);
             if (!projectEnv) {
                 throw new UserError(`The stage ${stage} is not found in the project.`);
+            }
+            if (ENVIRONMENT === "dev") {
+                return "dev-fkt";
             }
             const authenticationResponse = await getAuthentication(projectEnv?.id);
 
