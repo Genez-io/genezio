@@ -79,7 +79,12 @@ import * as readline from "readline";
 import { getLinkedFrontendsForProject } from "../utils/linkDatabase.js";
 import fsExtra from "fs-extra/esm";
 import { DeployCodeFunctionResponse } from "../models/deployCodeResponse.js";
-import { processYamlEnvironmentVariables } from "./deploy/utils.js";
+import {
+    getOrCreateDatabase,
+    getOrCreateEmptyProject,
+    processYamlEnvironmentVariables,
+} from "./deploy/utils.js";
+import { GetDatabaseResponse } from "../models/requests.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -108,8 +113,41 @@ export async function prepareLocalBackendEnvironment(
     options: GenezioLocalOptions,
 ): Promise<LocalUnitProcessSpawnResponse> {
     try {
+        const databases = yamlProjectConfiguration.services?.databases;
         const backend = yamlProjectConfiguration.backend;
         const frontend = yamlProjectConfiguration.frontend;
+
+        let configurationEnvVars: { [key: string]: string | undefined } = {};
+        if (databases) {
+            const projectName = yamlProjectConfiguration.name;
+            const region = yamlProjectConfiguration.region;
+            // Get connection URL and expose it as an environment variable only for the server process
+            for (const database of databases) {
+                const { projectId, projectEnvId } = await getOrCreateEmptyProject(
+                    projectName,
+                    region,
+                    options.stage || "prod",
+                    /* ask */ true,
+                );
+
+                const remoteDatabase: GetDatabaseResponse = await getOrCreateDatabase(
+                    {
+                        name: database.name,
+                        region: database.region,
+                        type: database.type,
+                    },
+                    options.stage || "prod",
+                    projectId,
+                    projectEnvId,
+                    /* ask */ true,
+                );
+
+                const databaseConnectionUrlKey = `${remoteDatabase.name.replace(/-/g, "_").toUpperCase()}_DATABASE_URL`;
+                configurationEnvVars = {
+                    [databaseConnectionUrlKey]: remoteDatabase.connectionUrl,
+                };
+            }
+        }
 
         if (!backend) {
             throw new UserError("No backend component found in the genezio.yaml file.");
@@ -164,6 +202,7 @@ export async function prepareLocalBackendEnvironment(
             projectConfiguration,
             sdkResponse,
             options,
+            configurationEnvVars,
         );
         return await new Promise<LocalUnitProcessSpawnResponse>((resolve) => {
             resolve({
@@ -469,6 +508,7 @@ async function startProcesses(
     projectConfiguration: ProjectConfiguration,
     sdk: SdkHandlerResponse,
     options: GenezioLocalOptions,
+    configurationEnvVars?: { [key: string]: string | undefined },
 ): Promise<Map<string, UnitProcess>> {
     const classes = projectConfiguration.classes;
     const processForLocalUnits = new Map<string, UnitProcess>();
@@ -572,6 +612,7 @@ async function startProcesses(
             envVars,
             extra.type || "class",
             projectConfiguration.workspace?.backend,
+            configurationEnvVars,
         );
     }
 
@@ -1247,6 +1288,7 @@ async function startLocalUnitProcess(
     envVars: dotenv.DotenvPopulateInput = {},
     type: "class" | "function",
     cwd?: string,
+    configurationEnvVars?: { [key: string]: string | undefined },
 ) {
     const availablePort = await findAvailablePort();
     debugLogger.debug(`[START_Unit_PROCESS] Starting ${localUnitName} on port ${availablePort}`);
@@ -1258,6 +1300,7 @@ async function startLocalUnitProcess(
         env: {
             ...process.env,
             ...envVars,
+            ...configurationEnvVars,
             NODE_OPTIONS: "--enable-source-maps",
         },
         cwd,

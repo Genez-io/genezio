@@ -64,6 +64,7 @@ export async function getOrCreateEmptyProject(
     projectName: string,
     region: string,
     stage: string = "prod",
+    ask: boolean = false,
 ): Promise<{ projectId: string; projectEnvId: string }> {
     const project = await getProjectInfoByName(projectName).catch((error) => {
         if (error instanceof UserError && error.message.includes("record not found")) {
@@ -74,6 +75,20 @@ export async function getOrCreateEmptyProject(
     });
 
     if (!project) {
+        if (!isCI() && ask) {
+            const { createProject } = await inquirer.prompt([
+                {
+                    type: "confirm",
+                    name: "createProject",
+                    message: `Project ${projectName} not found. Do you want to create it?`,
+                    default: true,
+                },
+            ]);
+
+            if (!createProject) {
+                throw new UserError(`Project ${projectName} not found.`);
+            }
+        }
         const newProject = await createEmptyProject({
             projectName: projectName,
             region: region,
@@ -183,6 +198,7 @@ export async function getOrCreateDatabase(
     stage: string,
     projectId: string,
     projectEnvId: string,
+    ask: boolean = false,
 ): Promise<GetDatabaseResponse> {
     const database = await getDatabaseByName(createDatabaseReq.name);
     if (database) {
@@ -212,6 +228,21 @@ export async function getOrCreateDatabase(
             `Database ${createDatabaseReq.name} was linked successfully to stage ${stage}`,
         );
         return database;
+    }
+
+    if (!isCI() && ask) {
+        const { createDatabase } = await inquirer.prompt([
+            {
+                type: "confirm",
+                name: "createDatabase",
+                message: `Database ${createDatabaseReq.name} not found. Do you want to create it?`,
+                default: true,
+            },
+        ]);
+
+        if (!createDatabase) {
+            throw new UserError(`Database ${createDatabaseReq.name} not found.`);
+        }
     }
 
     const newDatabase = await createDatabase(
