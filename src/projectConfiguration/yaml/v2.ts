@@ -108,6 +108,21 @@ function parseGenezioConfig(config: unknown) {
             .default("us-east-1"),
     });
 
+    const redirectUrlSchema = zod.string().optional();
+
+    const emailSettings = zod.object({
+        passwordReset: zod
+            .object({
+                redirectUrl: redirectUrlSchema,
+            })
+            .optional(),
+        emailVerification: zod
+            .object({
+                redirectUrl: redirectUrlSchema,
+            })
+            .optional(),
+    });
+
     const authenticationSchema = zod.object({
         database: zod
             .object({
@@ -127,6 +142,7 @@ function parseGenezioConfig(config: unknown) {
                     .optional(),
             })
             .optional(),
+        settings: emailSettings.optional(),
     });
 
     const servicesSchema = zod.object({

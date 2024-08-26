@@ -4,6 +4,7 @@ import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js
 import {
     AuthDatabaseConfig,
     AuthenticationProviders,
+    AuthenticationSettings,
     AuthProviderDetails,
     CreateDatabaseRequest,
     GetDatabaseResponse,
@@ -300,6 +301,7 @@ export async function enableAuthenticationHelper(
     request: SetAuthenticationRequest,
     projectEnvId: string,
     providers?: AuthenticationProviders,
+    settings?: AuthenticationSettings,
 ): Promise<void> {
     await setAuthentication(projectEnvId, request);
 
@@ -360,6 +362,18 @@ export async function enableAuthenticationHelper(
                 `Authentication providers: ${providersDetails.map((provider) => (provider.enabled ? provider.name : "")).join(", ")} enabled successfully.`,
             );
         }
+    }
+
+    if (settings?.passwordReset) {
+        await setEmailTemplates(projectEnvId, {
+            passwordReset: {
+                redirectUrl: "https://example.com/reset-password",
+            },
+        });
+    }
+
+    if (settings?.emailVerification) {
+        debugLogger.debug(`Password reset enabled.`);
     }
 
     return;
