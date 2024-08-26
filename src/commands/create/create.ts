@@ -223,7 +223,7 @@ export async function createCommand(options: GenezioCreateOptions) {
             );
 
             // Print success message
-            log.info(SUCCESSFULL_CREATE_NITROJS(projectPath));
+            log.info(SUCCESSFULL_CREATE_NUXT(projectPath));
             break;
         }
 
@@ -728,7 +728,20 @@ const SUCCESSFULL_CREATE_NITROJS = (
 
     For ${colors.green("testing")} locally, run:
         cd ${path.relative(process.cwd(), projectPath)}
-        genezio local
+        npm run dev
+`;
+
+const SUCCESSFULL_CREATE_NUXT = (
+    projectPath: string,
+) => `Project initialized in ${projectPath}. Now run:
+
+    For ${colors.yellow("deployment")} of your Nuxt application, run:
+        cd ${path.relative(process.cwd(), projectPath)}
+        genezio deploy
+
+    For ${colors.green("testing")} locally, run:
+        cd ${path.relative(process.cwd(), projectPath)}
+        npm run dev
 `;
 
 const SUCCESSFULL_CREATE_SERVERLESS = (

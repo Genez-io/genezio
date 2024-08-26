@@ -63,11 +63,18 @@ export async function askCreateOptions(
     }
 
     if (createOptions.type === undefined) {
-        let type: "nextjs" | "expressjs" | "nitrojs" | "backend" | "fullstack" | "serverless";
+        let type:
+            | "nextjs"
+            | "expressjs"
+            | "nitrojs"
+            | "nuxt"
+            | "backend"
+            | "fullstack"
+            | "serverless";
 
         const {
             projectType,
-        }: { projectType: "nextjs" | "expressjs" | "nitrojs" | "genezio" | "serverless" } =
+        }: { projectType: "nextjs" | "expressjs" | "nitrojs" | "nuxt" | "genezio" | "serverless" } =
             await inquirer.prompt([
                 {
                     type: "list",
@@ -86,6 +93,7 @@ export async function askCreateOptions(
                             name: "Nitro.js",
                             value: "nitrojs",
                         },
+                        { name: "Nuxt", value: "nuxt" },
                         {
                             name: "Genezio Typesafe Project",
                             value: "genezio",
@@ -143,6 +151,7 @@ export async function askCreateOptions(
         case "nextjs":
         case "serverless":
         case "nitrojs":
+        case "nuxt":
             break;
     }
 
