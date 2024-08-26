@@ -14,6 +14,7 @@ import {
 } from "../../models/requests.js";
 import {
     AuthenticationDatabaseType,
+    AuthenticationEmailTemplateType,
     DatabaseType,
 } from "../../projectConfiguration/yaml/models.js";
 import { YamlProjectConfiguration } from "../../projectConfiguration/yaml/v2.js";
@@ -59,6 +60,7 @@ import {
     getAuthProviders,
     setAuthentication,
     setAuthProviders,
+    setEmailTemplates,
 } from "../../requests/authentication.js";
 
 export async function getOrCreateEmptyProject(
@@ -366,14 +368,32 @@ export async function enableAuthenticationHelper(
 
     if (settings?.passwordReset) {
         await setEmailTemplates(projectEnvId, {
-            passwordReset: {
-                redirectUrl: "https://example.com/reset-password",
+            templates: {
+                type: AuthenticationEmailTemplateType.passwordReset,
+                template: {
+                    redirectUrl: settings.passwordReset.redirectUrl,
+                },
+                variables: [],
             },
         });
+        debugLogger.debug(
+            `Password reset redirect URL updated to ${settings.passwordReset.redirectUrl}.`,
+        );
     }
 
     if (settings?.emailVerification) {
-        debugLogger.debug(`Password reset enabled.`);
+        await setEmailTemplates(projectEnvId, {
+            templates: {
+                type: AuthenticationEmailTemplateType.passwordReset,
+                template: {
+                    redirectUrl: settings.emailVerification.redirectUrl,
+                },
+                variables: [],
+            },
+        });
+        debugLogger.debug(
+            `Verification email redirect URL updated to ${settings.emailVerification.redirectUrl}.`,
+        );
     }
 
     return;
