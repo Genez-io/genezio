@@ -3,7 +3,7 @@ import { interruptLocalProcesses } from "../utils/localInterrupt.js";
 import { doAdaptiveLogAction, log } from "../utils/logging.js";
 import { YamlConfigurationIOController } from "../projectConfiguration/yaml/v2.js";
 import { exit } from "process";
-import { askCloneOptions, cloneCommand } from "./clone.js";
+import { cloneCommand } from "./clone.js";
 
 export async function pullCommand(stage: string) {
     await interruptLocalProcesses();
@@ -27,13 +27,7 @@ export async function pullCommand(stage: string) {
         exit(0);
     }
 
-    const options = await askCloneOptions({
-        name: configuration.name,
-        region: configuration.region,
-        stage: stage,
-    });
-
     await doAdaptiveLogAction("Pulling the latest changes from the cloud...", async () =>
-        cloneCommand(options.name, options.region, options.stage, "."),
+        cloneCommand(configuration.name, configuration.region, stage, "."),
     );
 }

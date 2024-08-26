@@ -3,7 +3,6 @@ import { YamlFrontend } from "../../projectConfiguration/yaml/v2.js";
 import {
     CloudAdapter,
     CloudAdapterOptions,
-    GenezioCloudFrontendOutput,
     GenezioCloudInput,
     GenezioCloudOutput,
 } from "../cloudAdapter.js";
@@ -130,7 +129,7 @@ export class ClusterCloudAdapter implements CloudAdapter {
         projectRegion: string,
         frontend: YamlFrontend,
         stage: string,
-    ): Promise<GenezioCloudFrontendOutput> {
+    ): Promise<string> {
         const finalStageName = stage != "" && stage != "prod" ? `-${stage}` : "";
         const finalSubdomain = frontend.subdomain + finalStageName;
         const archivePath = path.join(await createTemporaryFolder(), `${finalSubdomain}.zip`);
@@ -157,7 +156,7 @@ export class ClusterCloudAdapter implements CloudAdapter {
         debugLogger.debug("Content of the folder zipped. Uploading to S3.");
         await uploadContentToS3(result.presignedURL, archivePath, undefined, result.userId);
         debugLogger.debug("Uploaded to S3.");
-        const createFrontendResult = await createFrontendProject(
+        const finalDomain = await createFrontendProject(
             finalSubdomain,
             projectName,
             projectRegion,
@@ -167,7 +166,7 @@ export class ClusterCloudAdapter implements CloudAdapter {
         // clean up temporary folder
         await deleteFolder(path.dirname(archivePath));
 
-        return createFrontendResult;
+        return finalDomain;
     }
 }
 

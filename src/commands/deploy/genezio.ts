@@ -35,7 +35,6 @@ import { YAMLBackend, YamlProjectConfiguration } from "../../projectConfiguratio
 import { GenezioCloudAdapter } from "../../cloudAdapter/genezio/genezioAdapter.js";
 import {
     CloudAdapter,
-    GenezioCloudFrontendOutput,
     GenezioCloudInput,
     GenezioCloudInputType,
     GenezioCloudOutput,
@@ -190,7 +189,6 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         });
     }
 
-    let stageId: string | undefined;
     const frontendUrls = [];
     if (configuration.frontend && !options.backend) {
         const frontends = configuration.frontend;
@@ -220,7 +218,7 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             });
 
             log.info("Deploying your frontend to the genezio infrastructure...");
-            const deployResult = await deployFrontend(
+            const frontendUrl = await deployFrontend(
                 configuration.name,
                 configuration.region,
                 frontend,
@@ -241,10 +239,7 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
                     throw error;
                 }
             });
-            if (deployResult) {
-                frontendUrls.push(deployResult.domain);
-                stageId = deployResult.envId;
-            }
+            if (frontendUrl) frontendUrls.push(frontendUrl);
 
             await GenezioTelemetry.sendEvent({
                 eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_END,
@@ -321,8 +316,17 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         "**/.sst/**",
     ]);
 
+    const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(
+        configuration.region,
+        configuration.name,
+        options.stage,
+    );
+    await uploadContentToS3(
+        presignedUrlForProjectCode,
+        path.join(tmpFolderProject, "projectCode.zip"),
+    );
+
     if (deployClassesResult) {
-        stageId = deployClassesResult.projectEnvId;
         log.info(
             colors.cyan(
                 `App Dashboard URL: ${DASHBOARD_URL}/project/${deployClassesResult.projectId}/${deployClassesResult.projectEnvId}`,
@@ -332,20 +336,6 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
     for (const frontendUrl of frontendUrls) {
         log.info(colors.cyan(`Frontend URL: ${frontendUrl}`));
     }
-
-    if (!stageId) {
-        throw new UserError("Could not get environment ID. Please try again.");
-    }
-
-    const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(
-        configuration.region,
-        configuration.name,
-        stageId,
-    );
-    await uploadContentToS3(
-        presignedUrlForProjectCode,
-        path.join(tmpFolderProject, "projectCode.zip"),
-    );
 }
 
 export async function deployClasses(
@@ -641,7 +631,7 @@ export async function deployFrontend(
     index: number,
     options: GenezioDeployOptions,
     configuration: YamlProjectConfiguration,
-): Promise<GenezioCloudFrontendOutput | undefined> {
+): Promise<string | undefined> {
     const stage: string = options.stage || "";
 
     if (frontend.publish === null || frontend.publish === undefined) {
@@ -735,8 +725,8 @@ export async function deployFrontend(
     frontend.subdomain = options.subdomain || frontend.subdomain;
 
     const cloudAdapter = getCloudAdapter(CloudProviderIdentifier.GENEZIO_CLOUD);
-    const deployResult = await cloudAdapter.deployFrontend(name, region, frontend, stage);
-    return deployResult;
+    const url = await cloudAdapter.deployFrontend(name, region, frontend, stage);
+    return url;
 }
 
 async function handleSdk(
