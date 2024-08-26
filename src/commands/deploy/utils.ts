@@ -66,6 +66,7 @@ export async function getOrCreateEmptyProject(
     projectName: string,
     region: string,
     stage: string = "prod",
+    ask: boolean = false,
 ): Promise<{ projectId: string; projectEnvId: string }> {
     const project = await getProjectInfoByName(projectName).catch((error) => {
         if (error instanceof UserError && error.message.includes("record not found")) {
@@ -76,6 +77,22 @@ export async function getOrCreateEmptyProject(
     });
 
     if (!project) {
+        if (ask) {
+            const { createProject } = await inquirer.prompt([
+                {
+                    type: "confirm",
+                    name: "createProject",
+                    message: `Project ${projectName} not found. Do you want to create it?`,
+                    default: false,
+                },
+            ]);
+
+            log.info(`Creating project ${projectName} in region ${region} on stage ${stage}.`);
+
+            if (!createProject) {
+                throw new UserError(`Project ${projectName} not found.`);
+            }
+        }
         const newProject = await createEmptyProject({
             projectName: projectName,
             region: region,
@@ -86,8 +103,10 @@ export async function getOrCreateEmptyProject(
             throw new UserError(`Failed to create project ${projectName}.`);
         });
 
-        debugLogger.debug(
-            `Project ${projectName} in region ${region} on stage ${stage} was created successfully`,
+        log.info(
+            colors.green(
+                `Project ${projectName} in region ${region} on stage ${stage} was created successfully`,
+            ),
         );
 
         return { projectId: newProject.projectId, projectEnvId: newProject.projectEnvId };
@@ -185,6 +204,7 @@ export async function getOrCreateDatabase(
     stage: string,
     projectId: string,
     projectEnvId: string,
+    ask: boolean = false,
 ): Promise<GetDatabaseResponse> {
     const database = await getDatabaseByName(createDatabaseReq.name);
     if (database) {
@@ -210,10 +230,31 @@ export async function getOrCreateDatabase(
             throw new UserError(`Failed to link database ${createDatabaseReq.name}.`);
         });
 
-        debugLogger.debug(
-            `Database ${createDatabaseReq.name} was linked successfully to stage ${stage}`,
+        log.info(
+            colors.green(
+                `Database ${createDatabaseReq.name} was linked successfully to stage ${stage}`,
+            ),
         );
+
         return database;
+    }
+
+    if (ask) {
+        const { createDatabase } = await inquirer.prompt([
+            {
+                type: "confirm",
+                name: "createDatabase",
+                message: `Database ${createDatabaseReq.name} not found. Do you want to create it?`,
+                default: false,
+            },
+        ]);
+
+        log.info(
+            `Creating database ${createDatabaseReq.name} in region ${createDatabaseReq.region}.`,
+        );
+        if (!createDatabase) {
+            throw new UserError(`Database ${createDatabaseReq.name} not found.`);
+        }
     }
 
     const newDatabase = await createDatabase(
@@ -225,7 +266,7 @@ export async function getOrCreateDatabase(
         debugLogger.debug(`Error creating database ${createDatabaseReq.name}: ${error}`);
         throw new UserError(`Failed to create database ${createDatabaseReq.name}.`);
     });
-    debugLogger.debug(`Database ${createDatabaseReq.name} created successfully`);
+    log.info(colors.green(`Database ${createDatabaseReq.name} created successfully.`));
     return {
         id: newDatabase.databaseId,
         name: createDatabaseReq.name,
@@ -244,6 +285,7 @@ export async function enableAuthentication(
     projectEnvId: string,
     stage: string,
     envFile: string | undefined,
+    ask: boolean = false,
 ) {
     const authDatabase = configuration.services?.authentication?.database as AuthDatabaseConfig;
     if (!authDatabase) {
@@ -264,6 +306,7 @@ export async function enableAuthentication(
             },
             projectEnvId,
             authProviders,
+            /* ask= */ ask,
         );
         debugLogger.debug(`Authentication enabled with a ${authDatabase.type} database.`);
     } else {
@@ -293,6 +336,7 @@ export async function enableAuthentication(
             },
             projectEnvId,
             authProviders,
+            /* ask= */ ask,
         );
 
         debugLogger.debug(`Authentication enabled with database ${authDatabase.name}.`);
@@ -321,7 +365,25 @@ export async function enableAuthenticationHelper(
     request: SetAuthenticationRequest,
     projectEnvId: string,
     providers?: AuthenticationProviders,
+    ask: boolean = false,
 ): Promise<void> {
+    if (ask) {
+        const { enableAuthentication } = await inquirer.prompt([
+            {
+                type: "confirm",
+                name: "enableAuthentication",
+                message: "Do you want to enable authentication?",
+                default: false,
+            },
+        ]);
+
+        log.info(`Enabling authentication...`);
+        if (!enableAuthentication) {
+            log.warn("Authentication was not enabled.");
+            return;
+        }
+    }
+
     await setAuthentication(projectEnvId, request);
 
     const authProvidersResponse = await getAuthProviders(projectEnvId);
