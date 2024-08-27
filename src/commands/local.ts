@@ -198,12 +198,10 @@ export async function prepareLocalBackendEnvironment(
                         projectDetails.projectEnvId,
                     );
                     log.info("Email integration enabled successfully.");
-                    log.info(
-                        displayHint(
-                            `You can use \`process.env[EMAIL_SERVICE_TOKEN]\` to send emails.`,
-                        ),
-                    );
                 }
+                log.info(
+                    displayHint(`You can use \`process.env[EMAIL_SERVICE_TOKEN]\` to send emails.`),
+                );
             }
         }
 
