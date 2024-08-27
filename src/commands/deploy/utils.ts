@@ -639,17 +639,6 @@ export async function uploadEnvVarsFromFile(
     // Search for possible .env files in the project directory and use the first
     const envFile = envPath ? path.join(process.cwd(), envPath) : await findAnEnvFile(cwd);
 
-    if (!envFile) {
-        return;
-    }
-
-    const envVars = await readEnvironmentVariablesFile(envFile);
-    const missingEnvVars = await getUnsetEnvironmentVariables(
-        envVars.map((envVar) => envVar.name),
-        projectId,
-        projectEnvId,
-    );
-
     const environment = configuration.backend?.environment;
     if (environment) {
         const unsetEnvVarKeys = await getUnsetEnvironmentVariables(
@@ -679,7 +668,7 @@ export async function uploadEnvVarsFromFile(
 
         if (environmentVariablesToBePushed.length > 0) {
             debugLogger.debug(
-                `Uploading environment variables ${JSON.stringify(environmentVariablesToBePushed)} from ${envFile} to project ${projectId}`,
+                `Uploading environment variables ${JSON.stringify(environmentVariablesToBePushed)} to project ${projectId}`,
             );
             await setEnvironmentVariables(projectId, projectEnvId, environmentVariablesToBePushed);
             debugLogger.debug(
@@ -689,6 +678,17 @@ export async function uploadEnvVarsFromFile(
 
         return;
     }
+
+    if (!envFile) {
+        return;
+    }
+
+    const envVars = await readEnvironmentVariablesFile(envFile);
+    const missingEnvVars = await getUnsetEnvironmentVariables(
+        envVars.map((envVar) => envVar.name),
+        projectId,
+        projectEnvId,
+    );
 
     if (!isCI() && missingEnvVars.length > 0 && (await detectEnvironmentVariablesFile(envFile))) {
         debugLogger.debug(`Attempting to upload ${missingEnvVars.join(", ")} from ${envFile}.`);
