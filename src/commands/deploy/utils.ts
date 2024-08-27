@@ -317,6 +317,32 @@ export async function enableAuthentication(
         return;
     }
 
+    if (authProviders.google) {
+        const clientId = await evaluateResource(
+            configuration,
+            authProviders.google?.clientId,
+            stage,
+            envFile,
+        );
+        const clientSecret = await evaluateResource(
+            configuration,
+            authProviders.google.clientSecret,
+            stage,
+            envFile,
+        );
+
+        if (!clientId || !clientSecret) {
+            throw new UserError(
+                "Google authentication is enabled but the client ID or client secret is missing.",
+            );
+        }
+
+        authProviders.google = {
+            clientId,
+            clientSecret,
+        };
+    }
+
     if (isYourOwnAuthDatabaseConfig(authDatabase)) {
         const databaseUri = await evaluateResource(configuration, authDatabase.uri, stage, envFile);
 
@@ -401,7 +427,7 @@ export async function enableAuthenticationHelper(
         for (const provider of authProvidersResponse.authProviders) {
             let enabled = false;
             switch (provider.name) {
-                case "email":
+                case "email": {
                     if (providers.email) {
                         enabled = true;
                     }
@@ -412,7 +438,8 @@ export async function enableAuthenticationHelper(
                         config: null,
                     });
                     break;
-                case "web3":
+                }
+                case "web3": {
                     if (providers.web3) {
                         enabled = true;
                     }
@@ -423,10 +450,12 @@ export async function enableAuthenticationHelper(
                         config: null,
                     });
                     break;
-                case "google":
+                }
+                case "google": {
                     if (providers.google) {
                         enabled = true;
                     }
+
                     providersDetails.push({
                         id: provider.id,
                         name: provider.name,
@@ -437,6 +466,7 @@ export async function enableAuthenticationHelper(
                         },
                     });
                     break;
+                }
             }
         }
 
