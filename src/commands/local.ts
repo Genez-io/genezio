@@ -179,6 +179,10 @@ export async function prepareLocalBackendEnvironment(
                 envFile,
                 /* ask */ true,
             );
+
+            log.info(
+                displayHint(`You can reference authentication token and region using \${{services.authentication.token}} and \${{services.authentication.region}}.`),
+            );
         }
 
         if (email) {

@@ -56,6 +56,7 @@ import { regions } from "../../utils/configs.js";
 import { EnvironmentVariable } from "../../models/environmentVariables.js";
 import { isCI } from "../../utils/process.js";
 import {
+    getAuthentication,
     getAuthProviders,
     setAuthentication,
     setAuthProviders,
@@ -275,7 +276,11 @@ export async function getOrCreateDatabase(
         throw new UserError(`Failed to create database ${createDatabaseReq.name}.`);
     });
     log.info(colors.green(`Database ${createDatabaseReq.name} created successfully.`));
-    log.info(displayHint(`You can reference the connection URI in your \`genezio.yaml\` file using \${{services.database.${createDatabaseReq.name}.uri}}`));
+    log.info(
+        displayHint(
+            `You can reference the connection URI in your \`genezio.yaml\` file using \${{services.database.${createDatabaseReq.name}.uri}}`,
+        ),
+    );
     return {
         id: newDatabase.databaseId,
         name: createDatabaseReq.name,
@@ -303,6 +308,12 @@ export async function enableAuthentication(
 
     const authProviders = configuration.services?.authentication
         ?.providers as AuthenticationProviders;
+
+    const authenticationStatus = await getAuthentication(projectEnvId);
+    if (authenticationStatus.enabled) {
+        debugLogger.debug("Authentication is already enabled.");
+        return;
+    }
 
     if (isYourOwnAuthDatabaseConfig(authDatabase)) {
         const databaseUri = await evaluateResource(configuration, authDatabase.uri, stage, envFile);
