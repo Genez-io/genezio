@@ -11,7 +11,7 @@
 <br>
 
 <div align="center">
-<h2>The easiest way to write and host a serverless application</h2>
+<h2>Deploy on the fastest full-stack cloud</h2>
 <h3>Check out a <u><a href="https://awesome-purple-capybara.app.genez.io/">live demo deployed with genezio here</a></u> </h3>
 </div>
 
