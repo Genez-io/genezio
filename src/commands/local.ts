@@ -86,7 +86,7 @@ import {
     processYamlEnvironmentVariables,
 } from "./deploy/utils.js";
 import { displayHint } from "../utils/strings.js";
-import { enableEmailIntegration } from "../requests/integration.js";
+import { enableEmailIntegration, getProjectIntegrations } from "../requests/integration.js";
 import { findAnEnvFile } from "../utils/environmentVariables.js";
 
 type UnitProcess = {
@@ -126,48 +126,7 @@ export async function prepareLocalBackendEnvironment(
         const region = yamlProjectConfiguration.region;
 
         let configurationEnvVars: { [key: string]: string | undefined } = {};
-        if (databases) {
-            // Get connection URL and expose it as an environment variable only for the server process
-            for (const database of databases) {
-                const projectDetails = await getOrCreateEmptyProject(
-                    projectName,
-                    region,
-                    options.stage || "prod",
-                    /* ask */ true,
-                );
-                if (!projectDetails) {
-                    break;
-                }
-                const remoteDatabase = await getOrCreateDatabase(
-                    {
-                        name: database.name,
-                        region: database.region,
-                        type: database.type,
-                    },
-                    options.stage || "prod",
-                    projectDetails.projectId,
-                    projectDetails.projectEnvId,
-                    /* ask */ true,
-                );
-
-                if (!remoteDatabase) {
-                    break;
-                }
-
-                const databaseConnectionUrlKey = `${remoteDatabase.name.replace(/-/g, "_").toUpperCase()}_DATABASE_URL`;
-                configurationEnvVars = {
-                    [databaseConnectionUrlKey]: remoteDatabase.connectionUrl,
-                };
-
-                log.info(
-                    displayHint(
-                        `You can use \`process.env["${databaseConnectionUrlKey}"]\` to connect to the remote database \`${remoteDatabase.name}\`.`,
-                    ),
-                );
-            }
-        }
-
-        if (authentication) {
+        if (yamlProjectConfiguration.services) {
             const projectDetails = await getOrCreateEmptyProject(
                 projectName,
                 region,
@@ -175,7 +134,39 @@ export async function prepareLocalBackendEnvironment(
                 /* ask */ true,
             );
 
-            if (projectDetails) {
+            if (databases && projectDetails) {
+                // Get connection URL and expose it as an environment variable only for the server process
+                for (const database of databases) {
+                    const remoteDatabase = await getOrCreateDatabase(
+                        {
+                            name: database.name,
+                            region: database.region,
+                            type: database.type,
+                        },
+                        options.stage || "prod",
+                        projectDetails.projectId,
+                        projectDetails.projectEnvId,
+                        /* ask */ true,
+                    );
+
+                    if (!remoteDatabase) {
+                        break;
+                    }
+
+                    const databaseConnectionUrlKey = `${remoteDatabase.name.replace(/-/g, "_").toUpperCase()}_DATABASE_URL`;
+                    configurationEnvVars = {
+                        [databaseConnectionUrlKey]: remoteDatabase.connectionUrl,
+                    };
+
+                    log.info(
+                        displayHint(
+                            `You can use \`process.env["${databaseConnectionUrlKey}"]\` to connect to the remote database \`${remoteDatabase.name}\`.`,
+                        ),
+                    );
+                }
+            }
+
+            if (authentication && projectDetails) {
                 const envFile = options.env || (await findAnEnvFile(process.cwd()));
                 await enableAuthentication(
                     yamlProjectConfiguration,
@@ -192,20 +183,27 @@ export async function prepareLocalBackendEnvironment(
                     ),
                 );
             }
-        }
 
-        if (email) {
-            const projectDetails = await getOrCreateEmptyProject(
-                projectName,
-                region,
-                options.stage || "prod",
-            );
-            if (projectDetails) {
-                await enableEmailIntegration(projectDetails.projectId, projectDetails.projectEnvId);
-                log.info("Email integration enabled successfully.");
-                log.info(
-                    displayHint(`You can use \`process.env[EMAIL_SERVICE_TOKEN]\` to send emails.`),
-                );
+            if (email && projectDetails) {
+                const isEnabled = (
+                    await getProjectIntegrations(
+                        projectDetails.projectId,
+                        projectDetails.projectEnvId,
+                    )
+                ).integrations.find((integration) => integration === "EMAIL-SERVICE");
+
+                if (!isEnabled) {
+                    await enableEmailIntegration(
+                        projectDetails.projectId,
+                        projectDetails.projectEnvId,
+                    );
+                    log.info("Email integration enabled successfully.");
+                    log.info(
+                        displayHint(
+                            `You can use \`process.env[EMAIL_SERVICE_TOKEN]\` to send emails.`,
+                        ),
+                    );
+                }
             }
         }
 

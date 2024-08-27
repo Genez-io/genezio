@@ -123,74 +123,62 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
     }
 
     const projectName = configuration.name;
-    if (configuration.services?.databases) {
-        const databases = configuration.services.databases;
 
-        for (const database of databases) {
-            const projectDetails = await getOrCreateEmptyProject(
-                projectName,
-                configuration.region,
-                options.stage || "prod",
-            );
+    if (configuration.services) {
+        const projectDetails = await getOrCreateEmptyProject(
+            projectName,
+            configuration.region,
+            options.stage || "prod",
+        );
 
-            if (!projectDetails) {
-                throw new UserError("Could not create project.");
+        if (!projectDetails) {
+            throw new UserError("Could not create project.");
+        }
+
+        if (configuration.services?.databases) {
+            const databases = configuration.services.databases;
+
+            for (const database of databases) {
+                await getOrCreateDatabase(
+                    {
+                        name: database.name,
+                        region: database.region,
+                        type: database.type,
+                    },
+                    options.stage || "prod",
+                    projectDetails.projectId,
+                    projectDetails.projectEnvId,
+                );
             }
+        }
 
-            await getOrCreateDatabase(
-                {
-                    name: database.name,
-                    region: database.region,
-                    type: database.type,
-                },
-                options.stage || "prod",
+        if (configuration.services?.email !== undefined) {
+            const isEnabled = (
+                await getProjectIntegrations(projectDetails.projectId, projectDetails.projectEnvId)
+            ).integrations.find((integration) => integration === "EMAIL-SERVICE");
+
+            if (configuration.services?.email && !isEnabled) {
+                await enableEmailIntegration(projectDetails.projectId, projectDetails.projectEnvId);
+                log.info("Email integration enabled successfully.");
+            } else if (configuration.services?.email === false && isEnabled) {
+                await disableEmailIntegration(
+                    projectDetails.projectId,
+                    projectDetails.projectEnvId,
+                );
+                log.info("Email integration disabled successfully.");
+            }
+        }
+
+        if (configuration.services?.authentication) {
+            const envFile = options.env || (await findAnEnvFile(process.cwd()));
+            await enableAuthentication(
+                configuration,
                 projectDetails.projectId,
                 projectDetails.projectEnvId,
+                options.stage || "prod",
+                envFile,
             );
         }
-    }
-
-    if (configuration.services?.email !== undefined) {
-        const projectDetails = await getOrCreateEmptyProject(
-            projectName,
-            configuration.region,
-            options.stage || "prod",
-        );
-        if (!projectDetails) {
-            throw new UserError("Could not create project.");
-        }
-
-        const isEnabled = (
-            await getProjectIntegrations(projectDetails.projectId, projectDetails.projectEnvId)
-        ).integrations.find((integration) => integration === "EMAIL-SERVICE");
-
-        if (configuration.services?.email && !isEnabled) {
-            await enableEmailIntegration(projectDetails.projectId, projectDetails.projectEnvId);
-            log.info("Email integration enabled successfully.");
-        } else if (configuration.services?.email === false && isEnabled) {
-            await disableEmailIntegration(projectDetails.projectId, projectDetails.projectEnvId);
-            log.info("Email integration disabled successfully.");
-        }
-    }
-
-    if (configuration.services?.authentication) {
-        const projectDetails = await getOrCreateEmptyProject(
-            projectName,
-            configuration.region,
-            options.stage || "prod",
-        );
-
-        if (!projectDetails) {
-            throw new UserError("Could not create project.");
-        }
-        const envFile = options.env || (await findAnEnvFile(process.cwd()));
-        await enableAuthentication(
-            configuration,
-            projectDetails.projectId,
-            projectDetails.projectEnvId,
-            options.stage || "prod",
-            envFile,
-        );
     }
 
     let deployClassesResult;
