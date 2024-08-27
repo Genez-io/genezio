@@ -61,6 +61,7 @@ import {
     setAuthProviders,
     setEmailTemplates,
 } from "../../requests/authentication.js";
+import { displayHint } from "../../utils/strings.js";
 
 export async function getOrCreateEmptyProject(
     projectName: string,
@@ -86,12 +87,11 @@ export async function getOrCreateEmptyProject(
                     default: false,
                 },
             ]);
-
-            log.info(`Creating project ${projectName} in region ${region} on stage ${stage}.`);
-
             if (!createProject) {
                 throw new UserError(`Project ${projectName} not found.`);
             }
+
+            log.info(`Creating project ${projectName} in region ${region} on stage ${stage}...`);
         }
         const newProject = await createEmptyProject({
             projectName: projectName,
@@ -209,7 +209,14 @@ export async function getOrCreateDatabase(
     const database = await getDatabaseByName(createDatabaseReq.name);
     if (database) {
         debugLogger.debug(`Database ${createDatabaseReq.name} is already created.`);
-
+        if (database.region.replace("aws-", "") !== createDatabaseReq.region) {
+            log.warn(
+                `Database ${createDatabaseReq.name} is created in a different region ${database.region}.`,
+            );
+            log.warn(
+                `To change the region, you need to delete the database and create a new one at ${colors.cyan(`https://app.genez.io/databases`)}`,
+            );
+        }
         const linkedDatabase = await findLinkedDatabase(
             createDatabaseReq.name,
             projectId,
@@ -249,12 +256,13 @@ export async function getOrCreateDatabase(
             },
         ]);
 
-        log.info(
-            `Creating database ${createDatabaseReq.name} in region ${createDatabaseReq.region}.`,
-        );
         if (!createDatabase) {
             throw new UserError(`Database ${createDatabaseReq.name} not found.`);
         }
+
+        log.info(
+            `Creating database ${createDatabaseReq.name} in region ${createDatabaseReq.region}...`,
+        );
     }
 
     const newDatabase = await createDatabase(
@@ -267,6 +275,7 @@ export async function getOrCreateDatabase(
         throw new UserError(`Failed to create database ${createDatabaseReq.name}.`);
     });
     log.info(colors.green(`Database ${createDatabaseReq.name} created successfully.`));
+    log.info(displayHint(`You can reference the connection URI in your \`genezio.yaml\` file using \${{services.database.${createDatabaseReq.name}.uri}}`));
     return {
         id: newDatabase.databaseId,
         name: createDatabaseReq.name,
@@ -308,7 +317,7 @@ export async function enableAuthentication(
             authProviders,
             /* ask= */ ask,
         );
-        debugLogger.debug(`Authentication enabled with a ${authDatabase.type} database.`);
+        log.info(colors.green(`Authentication enabled with a ${authDatabase.type} database.`));
     } else {
         const configDatabase = configuration.services?.databases?.find(
             (database) => database.name === authDatabase.name,
@@ -339,7 +348,7 @@ export async function enableAuthentication(
             /* ask= */ ask,
         );
 
-        debugLogger.debug(`Authentication enabled with database ${authDatabase.name}.`);
+        log.info(colors.green(`Authentication enabled with database ${authDatabase.name}.`));
     }
 
     const settings = configuration.services?.authentication?.settings;
@@ -377,11 +386,10 @@ export async function enableAuthenticationHelper(
             },
         ]);
 
-        log.info(`Enabling authentication...`);
         if (!enableAuthentication) {
-            log.warn("Authentication was not enabled.");
-            return;
+            throw new UserError("Authentication is not enabled.");
         }
+        log.info(`Enabling authentication...`);
     }
 
     await setAuthentication(projectEnvId, request);
@@ -439,8 +447,9 @@ export async function enableAuthenticationHelper(
                 authProviders: providersDetails,
             };
             await setAuthProviders(projectEnvId, setAuthProvidersRequest);
+
             debugLogger.debug(
-                `Authentication providers: ${providersDetails.map((provider) => (provider.enabled ? provider.name : "")).join(", ")} enabled successfully.`,
+                `Authentication providers: ${JSON.stringify(providersDetails)} set successfully.`,
             );
         }
     }

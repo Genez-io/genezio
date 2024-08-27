@@ -149,7 +149,7 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             options.stage || "prod",
         );
         await enableEmailIntegration(projectId, projectEnvId);
-        debugLogger.debug("Email integration enabled.");
+        log.info(colors.green("Email integration enabled."));
     }
 
     if (configuration.services?.authentication) {
@@ -167,7 +167,6 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             options.stage || "prod",
             envFile,
         );
-        debugLogger.debug("Authentication enabled.");
     }
 
     let deployClassesResult;

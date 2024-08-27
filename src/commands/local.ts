@@ -179,8 +179,6 @@ export async function prepareLocalBackendEnvironment(
                 envFile,
                 /* ask */ true,
             );
-
-            log.info(colors.green("Authentication enabled successfully."));
         }
 
         if (email) {
