@@ -33,6 +33,7 @@ import {
     GenezioLocalOptions,
     GenezioSdkOptions,
     GenezioUnlinkOptions,
+    GenezioBundleFunctionOptions,
 } from "./models/commandOptions.js";
 import currentGenezioVersion, {
     checkNodeMinimumVersion,
@@ -50,6 +51,7 @@ import { backendTemplates, frontendTemplates } from "./commands/create/templates
 import configReader from "./projectConfiguration/yaml/v2.js";
 import { askCloneOptions, cloneCommand } from "./commands/clone.js";
 import { pullCommand } from "./commands/pull.js";
+import { CloudProviderIdentifier } from "./models/cloudProviderIdentifier.js";
 
 const program = new Command();
 
@@ -657,6 +659,22 @@ program
         false,
     )
     .action(async (options: GenezioBundleOptions) => {
+        await bundleCommand(options).catch(async (error) => {
+            logError(error);
+            exit(1);
+        });
+    });
+
+program
+    .command("bundleFunction", { hidden: true })
+    .option("--functionName <functionName>", "The name of the function that needs to be bundled.")
+    .option(
+        "--cloudAdapter <cloudAdapter>",
+        "The cloud adapter that will be used.",
+        CloudProviderIdentifier.GENEZIO_CLOUD,
+    )
+    .option("--output <output>", "The output path of the bundled class.")
+    .action(async (options: GenezioBundleFunctionOptions) => {
         await bundleCommand(options).catch(async (error) => {
             logError(error);
             exit(1);
