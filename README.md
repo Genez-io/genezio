@@ -41,7 +41,7 @@
 
 </div>
 
-# What is [genezio](https://genezio.com)?
+# What is [Genezio](https://genezio.com)?
 
 [genezio](https://genezio.com/) is a developer platform for full-stack developers or teams who need to build, run and maintain web, mobile or enterprise apps with a typesafe backend that scales automatically.
 
