@@ -72,6 +72,7 @@ import {
     uploadEnvVarsFromFile,
     processYamlEnvironmentVariables,
     enableAuthentication,
+    setDefaultPasswordRedirectUrl,
 } from "./utils.js";
 import { enableEmailIntegration } from "../../requests/integration.js";
 import { findAnEnvFile } from "../../utils/environmentVariables.js";
@@ -750,6 +751,11 @@ export async function deployFrontend(
     }
 
     frontend.subdomain = options.subdomain || frontend.subdomain;
+
+    // If authentication is enabled in the project - attempt to set a default password reset URL
+    if (configuration.services?.authentication) {
+        await setDefaultPasswordRedirectUrl(name, stage, frontend.subdomain || "");
+    }
 
     const cloudAdapter = getCloudAdapter(CloudProviderIdentifier.GENEZIO_CLOUD);
     const url = await cloudAdapter.deployFrontend(name, region, frontend, stage);

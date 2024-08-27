@@ -159,10 +159,10 @@ export type SetEmailTemplatesRequest = {
             redirectUrl: string;
         };
         variables: string[];
-    };
+    }[];
 };
 
-export type setEmailTemplatesResponse = {
+export type EmailTemplatesResponse = {
     templates: {
         type: string;
         template: {
@@ -173,5 +173,5 @@ export type setEmailTemplatesResponse = {
             redirectUrl: string;
         };
         variables: string[];
-    };
+    }[];
 };

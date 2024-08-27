@@ -13,6 +13,7 @@ import {
 } from "../../models/requests.js";
 import {
     AuthenticationDatabaseType,
+    AuthenticationEmailTemplateType,
     DatabaseType,
 } from "../../projectConfiguration/yaml/models.js";
 import { YamlProjectConfiguration } from "../../projectConfiguration/yaml/v2.js";
@@ -24,7 +25,9 @@ import {
     linkDatabaseToEnvironment,
 } from "../../requests/database.js";
 import { DASHBOARD_URL } from "../../constants.js";
-import getProjectInfoByName from "../../requests/getProjectInfoByName.js";
+import getProjectInfoByName, {
+    getProjectEnvFromProjectByName,
+} from "../../requests/getProjectInfoByName.js";
 import { createEmptyProject } from "../../requests/project.js";
 import { debugLogger } from "../../utils/logging.js";
 import { parseRawVariable, resolveConfigurationVariable } from "../../utils/scripts.js";
@@ -56,9 +59,12 @@ import { EnvironmentVariable } from "../../models/environmentVariables.js";
 import { isCI } from "../../utils/process.js";
 import {
     getAuthProviders,
+    getEmailTemplates,
     setAuthentication,
     setAuthProviders,
+    setEmailTemplates,
 } from "../../requests/authentication.js";
+import getAuthStatus from "../../requests/getAuthStatus.js";
 
 export async function getOrCreateEmptyProject(
     projectName: string,
@@ -654,6 +660,50 @@ export async function uploadEnvVarsFromFile(
             `Environment variables ${missingEnvVars.join(", ")} are not set remotely. Please set them using the dashboard ${colors.cyan(
                 DASHBOARD_URL,
             )}`,
+        );
+    }
+}
+
+export async function setDefaultPasswordRedirectUrl(
+    name: string,
+    stage: string,
+    subdomain: string,
+) {
+    const projectEnv = await getProjectEnvFromProjectByName(name, stage);
+    if (!projectEnv) {
+        throw new UserError(`Could not find environment ${stage} in project ${name}.`);
+    }
+
+    const isAuth = await getAuthStatus(projectEnv.id);
+    if (!isAuth.enabled) {
+        return;
+    }
+    const passwordResetTemplate = (await getEmailTemplates(projectEnv.id)).templates.find(
+        (template) => template.type === AuthenticationEmailTemplateType.passwordReset,
+    );
+
+    if (passwordResetTemplate?.template.redirectUrl === "") {
+        log.info(
+            "Authentication is enabled in the project. Attempting to set a default password reset redirect URL...",
+        );
+        const passwordResetRedirectUrl = `https://${subdomain}.app.genez.io/auth/resetPassword`;
+        await setEmailTemplates(projectEnv.id, {
+            templates: [
+                {
+                    type: AuthenticationEmailTemplateType.passwordReset,
+                    template: {
+                        senderEmail: "",
+                        senderName: "",
+                        subject: "",
+                        message: "",
+                        redirectUrl: passwordResetRedirectUrl,
+                    },
+                    variables: [],
+                },
+            ],
+        });
+        log.info(
+            `Redirect URL is set to: ${passwordResetRedirectUrl}. You can change it in the dashboard ${colors.cyan(DASHBOARD_URL)}`,
         );
     }
 }

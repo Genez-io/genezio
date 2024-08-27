@@ -22,6 +22,10 @@ export enum TriggerType {
     cron = "cron",
     http = "http",
 }
+export enum AuthenticationEmailTemplateType {
+    passwordReset = "PASS_RESET",
+    verification = "VERIFICATION",
+}
 
 export enum FunctionType {
     aws = "aws",
