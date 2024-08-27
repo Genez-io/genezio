@@ -85,7 +85,6 @@ import {
     getOrCreateEmptyProject,
     processYamlEnvironmentVariables,
 } from "./deploy/utils.js";
-import { GetDatabaseResponse } from "../models/requests.js";
 import { displayHint } from "../utils/strings.js";
 import { enableEmailIntegration } from "../requests/integration.js";
 import { findAnEnvFile } from "../utils/environmentVariables.js";
@@ -130,24 +129,30 @@ export async function prepareLocalBackendEnvironment(
         if (databases) {
             // Get connection URL and expose it as an environment variable only for the server process
             for (const database of databases) {
-                const { projectId, projectEnvId } = await getOrCreateEmptyProject(
+                const projectDetails = await getOrCreateEmptyProject(
                     projectName,
                     region,
                     options.stage || "prod",
                     /* ask */ true,
                 );
-
-                const remoteDatabase: GetDatabaseResponse = await getOrCreateDatabase(
+                if (!projectDetails) {
+                    break;
+                }
+                const remoteDatabase = await getOrCreateDatabase(
                     {
                         name: database.name,
                         region: database.region,
                         type: database.type,
                     },
                     options.stage || "prod",
-                    projectId,
-                    projectEnvId,
+                    projectDetails.projectId,
+                    projectDetails.projectEnvId,
                     /* ask */ true,
                 );
+
+                if (!remoteDatabase) {
+                    break;
+                }
 
                 const databaseConnectionUrlKey = `${remoteDatabase.name.replace(/-/g, "_").toUpperCase()}_DATABASE_URL`;
                 configurationEnvVars = {
@@ -163,39 +168,45 @@ export async function prepareLocalBackendEnvironment(
         }
 
         if (authentication) {
-            const { projectId, projectEnvId } = await getOrCreateEmptyProject(
+            const projectDetails = await getOrCreateEmptyProject(
                 projectName,
                 region,
                 options.stage || "prod",
                 /* ask */ true,
             );
 
-            const envFile = options.env || (await findAnEnvFile(process.cwd()));
-            await enableAuthentication(
-                yamlProjectConfiguration,
-                projectId,
-                projectEnvId,
-                options.stage || "prod",
-                envFile,
-                /* ask */ true,
-            );
+            if (projectDetails) {
+                const envFile = options.env || (await findAnEnvFile(process.cwd()));
+                await enableAuthentication(
+                    yamlProjectConfiguration,
+                    projectDetails.projectId,
+                    projectDetails.projectEnvId,
+                    options.stage || "prod",
+                    envFile,
+                    /* ask */ true,
+                );
 
-            log.info(
-                displayHint(`You can reference authentication token and region using \${{services.authentication.token}} and \${{services.authentication.region}}.`),
-            );
+                log.info(
+                    displayHint(
+                        `You can reference authentication token and region using \${{services.authentication.token}} and \${{services.authentication.region}}.`,
+                    ),
+                );
+            }
         }
 
         if (email) {
-            const { projectId, projectEnvId } = await getOrCreateEmptyProject(
+            const projectDetails = await getOrCreateEmptyProject(
                 projectName,
                 region,
                 options.stage || "prod",
             );
-            await enableEmailIntegration(projectId, projectEnvId);
-            log.info("Email integration enabled successfully.");
-            log.info(
-                displayHint(`You can use \`process.env[EMAIL_SERVICE_TOKEN]\` to send emails.`),
-            );
+            if (projectDetails) {
+                await enableEmailIntegration(projectDetails.projectId, projectDetails.projectEnvId);
+                log.info("Email integration enabled successfully.");
+                log.info(
+                    displayHint(`You can use \`process.env[EMAIL_SERVICE_TOKEN]\` to send emails.`),
+                );
+            }
         }
 
         if (!backend) {

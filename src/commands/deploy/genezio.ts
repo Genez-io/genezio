@@ -127,11 +127,15 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         const databases = configuration.services.databases;
 
         for (const database of databases) {
-            const { projectId, projectEnvId } = await getOrCreateEmptyProject(
+            const projectDetails = await getOrCreateEmptyProject(
                 projectName,
                 configuration.region,
                 options.stage || "prod",
             );
+
+            if (!projectDetails) {
+                throw new UserError("Could not create project.");
+            }
 
             await getOrCreateDatabase(
                 {
@@ -140,43 +144,50 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
                     type: database.type,
                 },
                 options.stage || "prod",
-                projectId,
-                projectEnvId,
+                projectDetails.projectId,
+                projectDetails.projectEnvId,
             );
         }
     }
 
     if (configuration.services?.email !== undefined) {
-        const { projectId, projectEnvId } = await getOrCreateEmptyProject(
+        const projectDetails = await getOrCreateEmptyProject(
             projectName,
             configuration.region,
             options.stage || "prod",
         );
-        const isEnabled = (await getProjectIntegrations(projectId, projectEnvId)).integrations.find(
-            (integration) => integration === "EMAIL-SERVICE",
-        );
+        if (!projectDetails) {
+            throw new UserError("Could not create project.");
+        }
+
+        const isEnabled = (
+            await getProjectIntegrations(projectDetails.projectId, projectDetails.projectEnvId)
+        ).integrations.find((integration) => integration === "EMAIL-SERVICE");
 
         if (configuration.services?.email && !isEnabled) {
-            await enableEmailIntegration(projectId, projectEnvId);
+            await enableEmailIntegration(projectDetails.projectId, projectDetails.projectEnvId);
             log.info("Email integration enabled successfully.");
         } else if (configuration.services?.email === false && isEnabled) {
-            await disableEmailIntegration(projectId, projectEnvId);
+            await disableEmailIntegration(projectDetails.projectId, projectDetails.projectEnvId);
             log.info("Email integration disabled successfully.");
         }
     }
 
     if (configuration.services?.authentication) {
-        const { projectId, projectEnvId } = await getOrCreateEmptyProject(
+        const projectDetails = await getOrCreateEmptyProject(
             projectName,
             configuration.region,
             options.stage || "prod",
         );
 
+        if (!projectDetails) {
+            throw new UserError("Could not create project.");
+        }
         const envFile = options.env || (await findAnEnvFile(process.cwd()));
         await enableAuthentication(
             configuration,
-            projectId,
-            projectEnvId,
+            projectDetails.projectId,
+            projectDetails.projectEnvId,
             options.stage || "prod",
             envFile,
         );
