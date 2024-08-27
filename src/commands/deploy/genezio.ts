@@ -73,7 +73,11 @@ import {
     processYamlEnvironmentVariables,
     enableAuthentication,
 } from "./utils.js";
-import { enableEmailIntegration } from "../../requests/integration.js";
+import {
+    disableEmailIntegration,
+    enableEmailIntegration,
+    getProjectIntegrations,
+} from "../../requests/integration.js";
 import { findAnEnvFile } from "../../utils/environmentVariables.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
@@ -142,14 +146,23 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         }
     }
 
-    if (configuration.services?.email) {
+    if (configuration.services?.email !== undefined) {
         const { projectId, projectEnvId } = await getOrCreateEmptyProject(
             projectName,
             configuration.region,
             options.stage || "prod",
         );
-        await enableEmailIntegration(projectId, projectEnvId);
-        log.info(colors.green("Email integration enabled."));
+        const isEnabled = (await getProjectIntegrations(projectId, projectEnvId)).integrations.find(
+            (integration) => integration === "EMAIL-SERVICE",
+        );
+
+        if (configuration.services?.email && !isEnabled) {
+            await enableEmailIntegration(projectId, projectEnvId);
+            log.info("Email integration enabled successfully.");
+        } else if (configuration.services?.email === false && isEnabled) {
+            await disableEmailIntegration(projectId, projectEnvId);
+            log.info("Email integration disabled successfully.");
+        }
     }
 
     if (configuration.services?.authentication) {
