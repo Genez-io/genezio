@@ -12,6 +12,12 @@ export interface GenezioBundleOptions extends BaseOptions {
     cloudAdapter?: CloudAdapterIdentifier;
 }
 
+export interface GenezioBundleFunctionOptions extends BaseOptions {
+    functionName: string;
+    output: string;
+    cloudAdapter?: CloudAdapterIdentifier;
+}
+
 export interface GenezioLocalOptions extends BaseOptions {
     port: number;
     installDeps: boolean;

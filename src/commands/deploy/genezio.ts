@@ -63,7 +63,7 @@ import { AwsFunctionHandlerProvider } from "../../functionHandlerProvider/provid
 import fsExtra from "fs-extra/esm";
 import { getLinkedFrontendsForProject } from "../../utils/linkDatabase.js";
 import { getCloudProvider } from "../../requests/getCloudProvider.js";
-import fs from "fs";
+import fs, { mkdirSync } from "fs";
 import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import {
@@ -587,6 +587,7 @@ export async function deployClasses(
 export async function functionToCloudInput(
     functionElement: FunctionConfiguration,
     backendPath: string,
+    outputDir?: string,
 ): Promise<GenezioCloudInput> {
     if (functionElement.language !== "js" && functionElement.language !== "ts") {
         throw new UserError(
@@ -595,9 +596,15 @@ export async function functionToCloudInput(
     }
     const handlerProvider = getFunctionHandlerProvider(functionElement.type);
 
-    // create temporary folder
+    if (outputDir && !fs.existsSync(outputDir)) {
+        debugLogger.debug(`Creating output directory ${outputDir}`);
+        mkdirSync(outputDir, { recursive: true });
+    }
     const tmpFolderPath = await createTemporaryFolder();
-    const archivePath = path.join(await createTemporaryFolder(), `genezioDeploy.zip`);
+    const archivePath = path.join(
+        outputDir || (await createTemporaryFolder()),
+        `genezioDeploy.zip`,
+    );
 
     // copy everything to the temporary folder
     await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath);
