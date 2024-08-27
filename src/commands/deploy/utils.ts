@@ -13,6 +13,7 @@ import {
 } from "../../models/requests.js";
 import {
     AuthenticationDatabaseType,
+    AuthenticationEmailTemplateType,
     DatabaseType,
 } from "../../projectConfiguration/yaml/models.js";
 import { YamlProjectConfiguration } from "../../projectConfiguration/yaml/v2.js";
@@ -59,6 +60,7 @@ import {
     getAuthProviders,
     setAuthentication,
     setAuthProviders,
+    setEmailTemplates,
 } from "../../requests/authentication.js";
 import { displayHint } from "../../utils/strings.js";
 
@@ -368,6 +370,7 @@ export async function enableAuthentication(
         log.info(colors.green(`Authentication enabled with database ${authDatabase.name}.`));
     }
 }
+
 export async function enableAuthenticationHelper(
     request: SetAuthenticationRequest,
     projectEnvId: string,
@@ -454,6 +457,40 @@ export async function enableAuthenticationHelper(
     }
 
     return;
+}
+
+export async function setAuthenticationEmailTemplates(
+    configuration: YamlProjectConfiguration,
+    redirectUrlRaw: string,
+    type: AuthenticationEmailTemplateType,
+    stage: string,
+    projectEnvId: string,
+) {
+    const redirectUrlValue = await evaluateResource(
+        configuration,
+        redirectUrlRaw,
+        stage,
+        undefined,
+    );
+
+    // Replace ${{<any alphanumeric value>}} with the evaluated value
+    const redirectUrl = redirectUrlRaw.replace(/\${{[\w\s/.-]+}}/, redirectUrlValue);
+    debugLogger.debug(`Resolving redirectUrl for ${type} to ${redirectUrl}.`);
+
+    await setEmailTemplates(projectEnvId, {
+        templates: [
+            {
+                type: type,
+                template: {
+                    redirectUrl: redirectUrl,
+                },
+            },
+        ],
+    });
+
+    type === AuthenticationEmailTemplateType.verification
+        ? log.info(colors.green(`Email verification field set successfully.`))
+        : log.info(colors.green(`Password reset field set successfully.`));
 }
 
 export async function evaluateResource(

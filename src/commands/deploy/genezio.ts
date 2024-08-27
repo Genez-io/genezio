@@ -50,7 +50,11 @@ import {
     isDependencyVersionCompatible,
 } from "../../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
-import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
+import {
+    AuthenticationEmailTemplateType,
+    FunctionType,
+    Language,
+} from "../../projectConfiguration/yaml/models.js";
 import { runScript } from "../../utils/scripts.js";
 import { scanClassesForDecorators } from "../../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../../projectConfiguration/yaml/v2.js";
@@ -72,6 +76,7 @@ import {
     uploadEnvVarsFromFile,
     processYamlEnvironmentVariables,
     enableAuthentication,
+    setAuthenticationEmailTemplates,
 } from "./utils.js";
 import {
     disableEmailIntegration,
@@ -79,6 +84,7 @@ import {
     getProjectIntegrations,
 } from "../../requests/integration.js";
 import { findAnEnvFile } from "../../utils/environmentVariables.js";
+import { getProjectEnvFromProjectByName } from "../../requests/getProjectInfoByName.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -276,6 +282,37 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
                 eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_END,
                 commandOptions: JSON.stringify(options),
             });
+        }
+    }
+
+    const settings = configuration.services?.authentication?.settings;
+    if (settings) {
+        const stage = options.stage || "prod";
+        const projectEnv = await getProjectEnvFromProjectByName(projectName, stage);
+        if (!projectEnv) {
+            throw new UserError(
+                `Stage ${stage} not found in project ${projectName}. Please run 'genezio deploy --stage ${stage}' to deploy your project to a new stage.`,
+            );
+        }
+
+        if (settings?.resetPassword) {
+            await setAuthenticationEmailTemplates(
+                configuration,
+                settings.resetPassword.redirectUrl,
+                AuthenticationEmailTemplateType.passwordReset,
+                stage,
+                projectEnv?.id,
+            );
+        }
+
+        if (settings.emailVerification) {
+            await setAuthenticationEmailTemplates(
+                configuration,
+                settings.emailVerification.redirectUrl,
+                AuthenticationEmailTemplateType.verification,
+                stage,
+                projectEnv?.id,
+            );
         }
     }
 
