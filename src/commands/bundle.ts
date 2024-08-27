@@ -1,11 +1,11 @@
-import { log } from "../utils/logging.js";
+import { debugLogger, log } from "../utils/logging.js";
 import {
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
 } from "../generateSdk/generateSdkApi.js";
 import { GenezioBundleFunctionOptions, GenezioBundleOptions } from "../models/commandOptions.js";
 import { SdkHandlerResponse } from "../models/sdkGeneratorResponse.js";
-import { ProjectConfiguration } from "../models/projectConfiguration.js";
+import { FunctionConfiguration, ProjectConfiguration } from "../models/projectConfiguration.js";
 import { bundle } from "../bundlers/utils.js";
 import { mkdirSync } from "fs";
 import { writeToFile, zipDirectory } from "../utils/file.js";
@@ -18,8 +18,34 @@ import {
     CloudProviderIdentifier,
 } from "../models/cloudProviderIdentifier.js";
 import { functionToCloudInput } from "./deploy/genezio.js";
+import { FunctionType, Language } from "../projectConfiguration/yaml/models.js";
 
 export async function bundleCommand(options: GenezioBundleOptions | GenezioBundleFunctionOptions) {
+    if (
+        "functionName" in options &&
+        "handler" in options &&
+        "entry" in options &&
+        "functionPath" in options &&
+        options.functionPath &&
+        options.handler &&
+        options.entry
+    ) {
+        const functionElement = new FunctionConfiguration(
+            options.functionName,
+            options.functionPath,
+            options.handler,
+            Language.js,
+            options.entry,
+            FunctionType.aws,
+        );
+
+        if (options.backendPath) {
+            await functionToCloudInput(functionElement, options.backendPath, options.output);
+        } else {
+            await functionToCloudInput(functionElement, ".", options.output);
+        }
+        return;
+    }
     const yamlProjectConfiguration = await yamlConfigIOController.read();
     const backendConfiguration = yamlProjectConfiguration.backend;
     if (!backendConfiguration) {
@@ -92,11 +118,13 @@ export async function bundleCommand(options: GenezioBundleOptions | GenezioBundl
         writeToFile(options.output, "bundle.ast", JSON.stringify(result.configuration));
     } else {
         const element = projectConfiguration.functions.find(
-            (functionInfo) => functionInfo.name == options.functionName,
+            (functionInfo) => functionInfo.name == `function-${options.functionName}`,
         );
         if (!element) {
             throw new UserError(`Function ${options.functionName} not found.`);
         }
+        debugLogger.debug("Function found", JSON.stringify(element, null, 2));
+        debugLogger.debug("Backend path", backendConfiguration.path);
 
         await functionToCloudInput(element, backendConfiguration.path, options.output);
     }

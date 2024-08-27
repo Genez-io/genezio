@@ -668,6 +668,10 @@ program
 program
     .command("bundleFunction", { hidden: true })
     .option("--functionName <functionName>", "The name of the function that needs to be bundled.")
+    .option("--handler <handler>", "The name of handler of the function.")
+    .option("--entry <entry>", "The entry file of the function.")
+    .option("--functionPath <functionPath>", "The path of the folder containing the function.")
+    .option("--backendPath <backendPath>", "The path of the backend folder.", ".")
     .option(
         "--cloudAdapter <cloudAdapter>",
         "The cloud adapter that will be used.",
