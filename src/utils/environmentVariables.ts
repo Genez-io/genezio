@@ -7,6 +7,7 @@ import { debugLogger, log } from "./logging.js";
 import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
 import { EnvironmentVariable } from "../models/environmentVariables.js";
 import colors from "colors";
+import { DASHBOARD_URL } from "../constants.js";
 
 export type ConfigurationVariable =
     | {
@@ -98,7 +99,7 @@ export async function resolveEnvironmentVariable(
         if (!envFile) {
             log.warn(`Could not find an .env file to resolve ${envVarKey}.`);
             log.warn(
-                `Please use \`genezio deploy --env <envPath>\` or set ${envVarKey} manually at ${colors.cyan(`https://app.genez.io`)}.`,
+                `Please use \`genezio deploy --env <envPath>\` or set ${envVarKey} manually at ${colors.cyan(`${DASHBOARD_URL}`)}.`,
             );
             return undefined;
         }

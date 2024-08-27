@@ -215,7 +215,7 @@ export async function getOrCreateDatabase(
                 `Database ${createDatabaseReq.name} is created in a different region ${database.region}.`,
             );
             log.warn(
-                `To change the region, you need to delete the database and create a new one at ${colors.cyan(`https://app.genez.io/databases`)}`,
+                `To change the region, you need to delete the database and create a new one at ${colors.cyan(`${DASHBOARD_URL}/databases`)}`,
             );
         }
         const linkedDatabase = await findLinkedDatabase(
