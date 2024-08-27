@@ -183,7 +183,7 @@ export async function resolveConfigurationVariable(
 
         if (inputField === undefined) {
             throw new UserError(
-                `The attribute ${field} is not supported for database ${databaseObj.name}. You can use one of the following attributes: ${Object.keys(databaseObj).join(", ")} and url.`,
+                `The attribute ${field} is not supported for database ${databaseObj.name}. You can use one of the following attributes: ${Object.keys(databaseObj).join(", ")} and uri.`,
             );
         }
         return inputField;
@@ -221,7 +221,7 @@ export async function resolveConfigurationVariable(
 
         if (inputField === undefined) {
             throw new UserError(
-                `The attribute ${field} is not supported for authentication. You can use one of the following attributes: ${Object.keys(authenticationObj).join(", ")} and url.`,
+                `The attribute ${field} is not supported for authentication. You can use one of the following attributes: ${Object.keys(authenticationObj).join(", ")}, token and region.`,
             );
         }
     }

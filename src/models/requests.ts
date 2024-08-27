@@ -81,8 +81,13 @@ export interface EnableIntegrationRequest {
     envVars?: string[];
 }
 
-export interface EnableIntegrationResponse {
+export interface IntegrationResponse {
     status: string;
+}
+
+export interface GetIntegrationResponse {
+    status: string;
+    integrations: string[];
 }
 
 export interface GoogleProvider {

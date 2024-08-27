@@ -180,7 +180,9 @@ export async function prepareLocalBackendEnvironment(
                 /* ask */ true,
             );
 
-            log.info(colors.green("Authentication enabled successfully."));
+            log.info(
+                displayHint(`You can reference authentication token and region using \${{services.authentication.token}} and \${{services.authentication.region}}.`),
+            );
         }
 
         if (email) {
