@@ -1,4 +1,4 @@
-import { debugLogger, log } from "../utils/logging.js";
+import { log } from "../utils/logging.js";
 import {
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
@@ -123,8 +123,6 @@ export async function bundleCommand(options: GenezioBundleOptions | GenezioBundl
         if (!element) {
             throw new UserError(`Function ${options.functionName} not found.`);
         }
-        debugLogger.debug("Function found", JSON.stringify(element, null, 2));
-        debugLogger.debug("Backend path", backendConfiguration.path);
 
         await functionToCloudInput(element, backendConfiguration.path, options.output);
     }
