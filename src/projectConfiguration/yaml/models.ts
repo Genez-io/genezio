@@ -23,11 +23,6 @@ export enum TriggerType {
     http = "http",
 }
 
-export enum AuthenticationEmailTemplateType {
-    verification = "VERIFICATION",
-    passwordReset = "PASS_RESET",
-}
-
 export enum FunctionType {
     aws = "aws",
     // TODO: not implemented

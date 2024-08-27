@@ -1,7 +1,4 @@
-import {
-    AuthenticationDatabaseType,
-    AuthenticationEmailTemplateType,
-} from "../projectConfiguration/yaml/models.js";
+import { AuthenticationDatabaseType } from "../projectConfiguration/yaml/models.js";
 import { ProjectDetailsEnvElement } from "../requests/models.js";
 
 export interface CreateDatabaseRequest {
@@ -153,16 +150,16 @@ export interface AuthenticationSettings {
 
 export type SetEmailTemplatesRequest = {
     templates: {
-        type: AuthenticationEmailTemplateType;
+        type: string;
         template: {
             senderName: string;
             senderEmail: string;
             subject: string;
             message: string;
-            redirectUrl?: string;
+            redirectUrl: string;
         };
-        variables?: string[];
-    }[];
+        variables: string[];
+    };
 };
 
 export type setEmailTemplatesResponse = {
