@@ -47,7 +47,7 @@ async function configureOlderNuxtVersions() {
 
     //check that preset doesnt exist
     if (!nuxtConfigContent.includes("preset")) {
-        let textToInsert = `
+        const textToInsert = `
     nitro: {
         preset: "aws_lambda",
     },`;
@@ -56,14 +56,15 @@ async function configureOlderNuxtVersions() {
         const lastIndexColumn = nuxtConfigContent.lastIndexOf("}");
         const secondToLastIndex = nuxtConfigContent.lastIndexOf("}", lastIndexColumn - 1);
         const lastIndexComma = nuxtConfigContent.lastIndexOf(",");
-        if (secondToLastIndex > lastIndexComma) {
-            textToInsert = "," + textToInsert;
-        }
+        const formattedTextToInsert =
+            (secondToLastIndex > lastIndexComma ? "," : "") + textToInsert;
+
         if (lastIndexColumn !== -1) {
-            nuxtConfigContent =
-                nuxtConfigContent.slice(0, lastIndexColumn) +
-                textToInsert +
-                nuxtConfigContent.slice(lastIndexColumn);
+            nuxtConfigContent = [
+                nuxtConfigContent.slice(0, lastIndexColumn),
+                formattedTextToInsert,
+                nuxtConfigContent.slice(lastIndexColumn),
+            ].join("");
         }
 
         // Write the updated content back to the file
