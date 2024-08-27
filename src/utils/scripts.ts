@@ -124,16 +124,7 @@ export async function resolveConfigurationVariable(
 
         if (Array.isArray(resourceObject)) {
             resourceObject = resourceObject.find(
-                (item: { name: string | undefined; subdomain: string | undefined }) => {
-                    // For backend functions, we need to check the name field
-                    if (item.name) {
-                        return item.name === key;
-                    }
-                    // For frontend, we need to check the subdomain field
-                    if (item.subdomain) {
-                        return item.subdomain === key;
-                    }
-                },
+                (item: { name: string | undefined }) => item.name === key,
             );
         } else {
             resourceObject = resourceObject?.[key as keyof typeof resourceObject];
