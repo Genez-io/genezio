@@ -67,7 +67,7 @@ export async function getOrCreateEmptyProject(
     region: string,
     stage: string = "prod",
     ask: boolean = false,
-): Promise<{ projectId: string; projectEnvId: string }> {
+): Promise<{ projectId: string; projectEnvId: string } | undefined> {
     const project = await getProjectInfoByName(projectName).catch((error) => {
         if (error instanceof UserError && error.message.includes("record not found")) {
             return undefined;
@@ -87,7 +87,8 @@ export async function getOrCreateEmptyProject(
                 },
             ]);
             if (!createProject) {
-                throw new UserError(`Project ${projectName} not found.`);
+                log.warn(`Project ${projectName} not found and you chose not to create it.`);
+                return undefined;
             }
 
             log.info(`Creating project ${projectName} in region ${region} on stage ${stage}...`);
@@ -204,7 +205,7 @@ export async function getOrCreateDatabase(
     projectId: string,
     projectEnvId: string,
     ask: boolean = false,
-): Promise<GetDatabaseResponse> {
+): Promise<GetDatabaseResponse | undefined> {
     const database = await getDatabaseByName(createDatabaseReq.name);
     if (database) {
         debugLogger.debug(`Database ${createDatabaseReq.name} is already created.`);
@@ -256,7 +257,10 @@ export async function getOrCreateDatabase(
         ]);
 
         if (!createDatabase) {
-            throw new UserError(`Database ${createDatabaseReq.name} not found.`);
+            log.warn(
+                `Database ${createDatabaseReq.name} not found and you chose not to create it.`,
+            );
+            return undefined;
         }
 
         log.info(
@@ -335,7 +339,7 @@ export async function enableAuthentication(
             throw new UserError(ADD_DATABASE_CONFIG(authDatabase.name, configuration.region));
         }
 
-        const database: GetDatabaseResponse = await getOrCreateDatabase(
+        const database: GetDatabaseResponse | undefined = await getOrCreateDatabase(
             {
                 name: configDatabase.name,
                 region: configDatabase.region,
@@ -345,6 +349,10 @@ export async function enableAuthentication(
             projectId,
             projectEnvId,
         );
+
+        if (!database) {
+            return;
+        }
 
         await enableAuthenticationHelper(
             {
@@ -371,13 +379,14 @@ export async function enableAuthenticationHelper(
             {
                 type: "confirm",
                 name: "enableAuthentication",
-                message: "Do you want to enable authentication?",
+                message: "Authentication is not enabled. Do you want to enable it?",
                 default: false,
             },
         ]);
 
         if (!enableAuthentication) {
-            throw new UserError("Authentication is not enabled.");
+            log.warn("Authentication is not enabled.");
+            return;
         }
         log.info(`Enabling authentication...`);
     }
