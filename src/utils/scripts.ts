@@ -131,7 +131,9 @@ export async function resolveConfigurationVariable(
         }
 
         if (resourceObject === undefined) {
-            throw new UserError(`The attribute ${key} from ${path} is not supported.`);
+            throw new UserError(
+                `The attribute ${key} from ${path} is not supported or does not exist in the given resource.`,
+            );
         }
     }
 

@@ -5,6 +5,8 @@ import {
     SetAuthenticationResponse,
     SetAuthProvidersRequest,
     SetAuthProvidersResponse,
+    EmailTemplatesRequest,
+    SetEmailTemplatesResponse,
 } from "../models/requests.js";
 import sendRequest from "../utils/requests.js";
 
@@ -54,6 +56,28 @@ export async function setAuthProviders(
         `core/auth/providers/${envId}`,
         data,
     )) as SetAuthProvidersResponse;
+
+    return response;
+}
+
+export async function getEmailTemplates(envId: string) {
+    const response = (await sendRequest(
+        "GET",
+        `core/auth/email-templates/${envId}`,
+        "",
+    )) as SetEmailTemplatesResponse;
+
+    return response;
+}
+
+export async function setEmailTemplates(envId: string, request: EmailTemplatesRequest) {
+    const data: string = JSON.stringify(request);
+
+    const response = (await sendRequest(
+        "PUT",
+        `core/auth/email-templates/${envId}`,
+        data,
+    )) as SetEmailTemplatesResponse;
 
     return response;
 }
