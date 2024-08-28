@@ -306,13 +306,25 @@ export async function enableAuthentication(
         return;
     }
 
-    const authProviders = configuration.services?.authentication
-        ?.providers as AuthenticationProviders;
+    // If authentication.providers is not set, all auth providers are disabled by default
+    const authProviders = configuration.services?.authentication?.providers
+        ? (configuration.services?.authentication?.providers as AuthenticationProviders)
+        : {
+              email: false,
+              google: undefined,
+              web3: false,
+          };
 
     const authenticationStatus = await getAuthentication(projectEnvId);
+
     if (authenticationStatus.enabled) {
-        debugLogger.debug("Authentication is already enabled.");
-        return;
+        const remoteAuthProviders = await getAuthProviders(projectEnvId);
+
+        if (!haveAuthProvidersChanged(remoteAuthProviders.authProviders, authProviders)) {
+            log.info("Authentication is already enabled.");
+            log.info("The corresponding auth providers are already set.");
+            return;
+        }
     }
 
     if (authProviders.google) {
@@ -483,6 +495,33 @@ export async function enableAuthenticationHelper(
     }
 
     return;
+}
+
+function haveAuthProvidersChanged(
+    remoteAuthProviders: AuthProviderDetails[],
+    authProviders: AuthenticationProviders,
+): boolean {
+    for (const provider of remoteAuthProviders) {
+        switch (provider.name) {
+            case "email":
+                if (!!authProviders.email !== provider.enabled) {
+                    return true;
+                }
+                break;
+            case "web3":
+                if (!!authProviders.web3 !== provider.enabled) {
+                    return true;
+                }
+                break;
+            case "google":
+                if (!!authProviders.google !== provider.enabled) {
+                    return true;
+                }
+                break;
+        }
+    }
+
+    return false;
 }
 
 export async function setAuthenticationEmailTemplates(
