@@ -68,15 +68,14 @@ import fsExtra from "fs-extra/esm";
 import { getLinkedFrontendsForProject } from "../../utils/linkDatabase.js";
 import { getCloudProvider } from "../../requests/getCloudProvider.js";
 import fs, { mkdirSync } from "fs";
-import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
-import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import {
     getOrCreateDatabase,
     getOrCreateEmptyProject,
     uploadEnvVarsFromFile,
     enableAuthentication,
-    setAuthenticationEmailTemplates,
+    uploadUserCode,
     evaluateResource,
+    setAuthenticationEmailTemplates,
 } from "./utils.js";
 import {
     disableEmailIntegration,
@@ -285,6 +284,8 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         }
     }
 
+    await uploadUserCode(configuration.name, configuration.region, options.stage);
+
     const settings = configuration.services?.authentication?.settings;
     if (settings) {
         const stage = options.stage || "prod";
@@ -315,84 +316,6 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             );
         }
     }
-
-    // create archive of the project
-    const tmpFolderProject = await createTemporaryFolder();
-    debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
-    await zipDirectory(process.cwd(), path.join(tmpFolderProject, "projectCode.zip"), [
-        "**/node_modules/*",
-        "./node_modules/*",
-        "node_modules/*",
-        "**/node_modules",
-        "./node_modules",
-        "node_modules",
-        "node_modules/**",
-        "**/node_modules/**",
-        // ignore all .git files
-        "**/.git/*",
-        "./.git/*",
-        ".git/*",
-        "**/.git",
-        "./.git",
-        ".git",
-        ".git/**",
-        "**/.git/**",
-        // ignore all .next files
-        "**/.next/*",
-        "./.next/*",
-        ".next/*",
-        "**/.next",
-        "./.next",
-        ".next",
-        ".next/**",
-        "**/.next/**",
-        // ignore all .open-next files
-        "**/.open-next/*",
-        "./.open-next/*",
-        ".open-next/*",
-        "**/.open-next",
-        "./.open-next",
-        ".open-next",
-        ".open-next/**",
-        "**/.open-next/**",
-        // ignore all .vercel files
-        "**/.vercel/*",
-        "./.vercel/*",
-        ".vercel/*",
-        "**/.vercel",
-        "./.vercel",
-        ".vercel",
-        ".vercel/**",
-        "**/.vercel/**",
-        // ignore all .turbo files
-        "**/.turbo/*",
-        "./.turbo/*",
-        ".turbo/*",
-        "**/.turbo",
-        "./.turbo",
-        ".turbo",
-        ".turbo/**",
-        "**/.turbo/**",
-        // ignore all .sst files
-        "**/.sst/*",
-        "./.sst/*",
-        ".sst/*",
-        "**/.sst",
-        "./.sst",
-        ".sst",
-        ".sst/**",
-        "**/.sst/**",
-    ]);
-
-    const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(
-        configuration.region,
-        configuration.name,
-        options.stage,
-    );
-    await uploadContentToS3(
-        presignedUrlForProjectCode,
-        path.join(tmpFolderProject, "projectCode.zip"),
-    );
 
     if (deployClassesResult) {
         log.info(
@@ -522,7 +445,7 @@ export async function deployClasses(
             if (element.language === "go") {
                 await zipFile(path.join(output.path, "bootstrap"), archivePath);
             } else {
-                await zipDirectory(output.path, archivePath, [".git", ".github"]);
+                await zipDirectory(output.path, archivePath, true, [".git", ".github"]);
             }
 
             await deleteFolder(output.path);
@@ -684,7 +607,7 @@ export async function functionToCloudInput(
     debugLogger.debug(`Zip the directory ${tmpFolderPath}.`);
 
     // zip the temporary folder
-    await zipDirectory(tmpFolderPath, archivePath, [".git", ".github"]);
+    await zipDirectory(tmpFolderPath, archivePath, true, [".git", ".github"]);
 
     debugLogger.debug(`Zip created at path: ${archivePath}.`);
 
