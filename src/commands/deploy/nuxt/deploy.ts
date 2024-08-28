@@ -32,9 +32,13 @@ export async function nuxtDeploy(options: GenezioDeployOptions) {
             `Please run \`${getPackageManager().command} install\` before deploying your Nuxt project. This will install the necessary dependencies.`,
         );
     }
-    await $({ stdio: "inherit" })`npx nuxi build --preset=aws_lambda`.catch(() => {
+    await $({
+        stdio: "inherit",
+        env: { NITRO_PRESET: "aws_lambda" },
+    })`npx nuxi build --preset=aws_lambda`.catch(() => {
         throw new UserError("Failed to build the Nuxt project. Check the logs above.");
     });
+
     const genezioConfig = await readOrAskConfig(options.config);
     const [cloudResult, domain] = await Promise.all([
         deployFunction(genezioConfig, options),

@@ -13,7 +13,6 @@ import {
 } from "../../models/requests.js";
 import {
     AuthenticationDatabaseType,
-    AuthenticationEmailTemplateType,
     DatabaseType,
 } from "../../projectConfiguration/yaml/models.js";
 import { YamlProjectConfiguration } from "../../projectConfiguration/yaml/v2.js";
@@ -61,20 +60,21 @@ import { regions } from "../../utils/configs.js";
 import { EnvironmentVariable } from "../../models/environmentVariables.js";
 import { isCI } from "../../utils/process.js";
 import {
+    getAuthentication,
     getAuthProviders,
     setAuthentication,
     setAuthProviders,
-    setEmailTemplates,
 } from "../../requests/authentication.js";
 import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
+import { displayHint } from "../../utils/strings.js";
 
 export async function getOrCreateEmptyProject(
     projectName: string,
     region: string,
     stage: string = "prod",
     ask: boolean = false,
-): Promise<{ projectId: string; projectEnvId: string }> {
+): Promise<{ projectId: string; projectEnvId: string } | undefined> {
     const project = await getProjectInfoByName(projectName).catch((error) => {
         if (error instanceof UserError && error.message.includes("record not found")) {
             return undefined;
@@ -93,12 +93,12 @@ export async function getOrCreateEmptyProject(
                     default: false,
                 },
             ]);
-
-            log.info(`Creating project ${projectName} in region ${region} on stage ${stage}.`);
-
             if (!createProject) {
-                throw new UserError(`Project ${projectName} not found.`);
+                log.warn(`Project ${projectName} not found and you chose not to create it.`);
+                return undefined;
             }
+
+            log.info(`Creating project ${projectName} in region ${region} on stage ${stage}...`);
         }
         const newProject = await createEmptyProject({
             projectName: projectName,
@@ -212,11 +212,18 @@ export async function getOrCreateDatabase(
     projectId: string,
     projectEnvId: string,
     ask: boolean = false,
-): Promise<GetDatabaseResponse> {
+): Promise<GetDatabaseResponse | undefined> {
     const database = await getDatabaseByName(createDatabaseReq.name);
     if (database) {
         debugLogger.debug(`Database ${createDatabaseReq.name} is already created.`);
-
+        if (database.region.replace("aws-", "") !== createDatabaseReq.region) {
+            log.warn(
+                `Database ${createDatabaseReq.name} is created in a different region ${database.region}.`,
+            );
+            log.warn(
+                `To change the region, you need to delete the database and create a new one at ${colors.cyan(`${DASHBOARD_URL}/databases`)}`,
+            );
+        }
         const linkedDatabase = await findLinkedDatabase(
             createDatabaseReq.name,
             projectId,
@@ -256,12 +263,16 @@ export async function getOrCreateDatabase(
             },
         ]);
 
-        log.info(
-            `Creating database ${createDatabaseReq.name} in region ${createDatabaseReq.region}.`,
-        );
         if (!createDatabase) {
-            throw new UserError(`Database ${createDatabaseReq.name} not found.`);
+            log.warn(
+                `Database ${createDatabaseReq.name} not found and you chose not to create it.`,
+            );
+            return undefined;
         }
+
+        log.info(
+            `Creating database ${createDatabaseReq.name} in region ${createDatabaseReq.region}...`,
+        );
     }
 
     const newDatabase = await createDatabase(
@@ -274,6 +285,11 @@ export async function getOrCreateDatabase(
         throw new UserError(`Failed to create database ${createDatabaseReq.name}.`);
     });
     log.info(colors.green(`Database ${createDatabaseReq.name} created successfully.`));
+    log.info(
+        displayHint(
+            `You can reference the connection URI in your \`genezio.yaml\` file using \${{services.database.${createDatabaseReq.name}.uri}}`,
+        ),
+    );
     return {
         id: newDatabase.databaseId,
         name: createDatabaseReq.name,
@@ -302,6 +318,38 @@ export async function enableAuthentication(
     const authProviders = configuration.services?.authentication
         ?.providers as AuthenticationProviders;
 
+    const authenticationStatus = await getAuthentication(projectEnvId);
+    if (authenticationStatus.enabled) {
+        debugLogger.debug("Authentication is already enabled.");
+        return;
+    }
+
+    if (authProviders.google) {
+        const clientId = await evaluateResource(
+            configuration,
+            authProviders.google?.clientId,
+            stage,
+            envFile,
+        );
+        const clientSecret = await evaluateResource(
+            configuration,
+            authProviders.google.clientSecret,
+            stage,
+            envFile,
+        );
+
+        if (!clientId || !clientSecret) {
+            throw new UserError(
+                "Google authentication is enabled but the client ID or client secret is missing.",
+            );
+        }
+
+        authProviders.google = {
+            clientId,
+            clientSecret,
+        };
+    }
+
     if (isYourOwnAuthDatabaseConfig(authDatabase)) {
         const databaseUri = await evaluateResource(configuration, authDatabase.uri, stage, envFile);
 
@@ -315,7 +363,7 @@ export async function enableAuthentication(
             authProviders,
             /* ask= */ ask,
         );
-        debugLogger.debug(`Authentication enabled with a ${authDatabase.type} database.`);
+        log.info(colors.green(`Authentication enabled with a ${authDatabase.type} database.`));
     } else {
         const configDatabase = configuration.services?.databases?.find(
             (database) => database.name === authDatabase.name,
@@ -324,7 +372,7 @@ export async function enableAuthentication(
             throw new UserError(ADD_DATABASE_CONFIG(authDatabase.name, configuration.region));
         }
 
-        const database: GetDatabaseResponse = await getOrCreateDatabase(
+        const database: GetDatabaseResponse | undefined = await getOrCreateDatabase(
             {
                 name: configDatabase.name,
                 region: configDatabase.region,
@@ -334,6 +382,10 @@ export async function enableAuthentication(
             projectId,
             projectEnvId,
         );
+
+        if (!database) {
+            return;
+        }
 
         await enableAuthenticationHelper(
             {
@@ -346,26 +398,7 @@ export async function enableAuthentication(
             /* ask= */ ask,
         );
 
-        debugLogger.debug(`Authentication enabled with database ${authDatabase.name}.`);
-    }
-
-    const settings = configuration.services?.authentication?.settings;
-    if (settings?.emailVerification) {
-        await setAuthenticationEmailTemplates(
-            configuration,
-            settings.emailVerification.redirectUrl,
-            stage,
-            projectEnvId,
-        );
-    }
-
-    if (settings?.passwordReset) {
-        await setAuthenticationEmailTemplates(
-            configuration,
-            settings.passwordReset.redirectUrl,
-            stage,
-            projectEnvId,
-        );
+        log.info(colors.green(`Authentication enabled with database ${authDatabase.name}.`));
     }
 }
 export async function enableAuthenticationHelper(
@@ -379,16 +412,16 @@ export async function enableAuthenticationHelper(
             {
                 type: "confirm",
                 name: "enableAuthentication",
-                message: "Do you want to enable authentication?",
+                message: "Authentication is not enabled. Do you want to enable it?",
                 default: false,
             },
         ]);
 
-        log.info(`Enabling authentication...`);
         if (!enableAuthentication) {
-            log.warn("Authentication was not enabled.");
+            log.warn("Authentication is not enabled.");
             return;
         }
+        log.info(`Enabling authentication...`);
     }
 
     await setAuthentication(projectEnvId, request);
@@ -401,7 +434,7 @@ export async function enableAuthenticationHelper(
         for (const provider of authProvidersResponse.authProviders) {
             let enabled = false;
             switch (provider.name) {
-                case "email":
+                case "email": {
                     if (providers.email) {
                         enabled = true;
                     }
@@ -412,7 +445,8 @@ export async function enableAuthenticationHelper(
                         config: null,
                     });
                     break;
-                case "web3":
+                }
+                case "web3": {
                     if (providers.web3) {
                         enabled = true;
                     }
@@ -423,10 +457,12 @@ export async function enableAuthenticationHelper(
                         config: null,
                     });
                     break;
-                case "google":
+                }
+                case "google": {
                     if (providers.google) {
                         enabled = true;
                     }
+
                     providersDetails.push({
                         id: provider.id,
                         name: provider.name,
@@ -437,6 +473,7 @@ export async function enableAuthenticationHelper(
                         },
                     });
                     break;
+                }
             }
         }
 
@@ -446,49 +483,14 @@ export async function enableAuthenticationHelper(
                 authProviders: providersDetails,
             };
             await setAuthProviders(projectEnvId, setAuthProvidersRequest);
+
             debugLogger.debug(
-                `Authentication providers: ${providersDetails.map((provider) => (provider.enabled ? provider.name : "")).join(", ")} enabled successfully.`,
+                `Authentication providers: ${JSON.stringify(providersDetails)} set successfully.`,
             );
         }
     }
 
     return;
-}
-
-export async function setAuthenticationEmailTemplates(
-    configuration: YamlProjectConfiguration,
-    redirectUrlRaw: string,
-    stage: string,
-    projectEnvId: string,
-) {
-    const redirectUrlValue = await evaluateResource(
-        configuration,
-        redirectUrlRaw,
-        stage,
-        undefined,
-    );
-    debugLogger.debug(`Redirect URL evaluated to ${redirectUrlValue}.`);
-
-    // Replace ${{<any alphanumeric value>}} with the evaluated value
-    const redirectUrl = redirectUrlRaw.replace(/\${{[\w\s/.-]+}}/, redirectUrlValue);
-    debugLogger.debug(`Redirect URL replaced to ${redirectUrl}.`);
-
-    await setEmailTemplates(projectEnvId, {
-        templates: [
-            {
-                type: AuthenticationEmailTemplateType.passwordReset,
-                template: {
-                    senderEmail: "",
-                    senderName: "",
-                    subject: "",
-                    message: "",
-                    redirectUrl: redirectUrl,
-                },
-                variables: [],
-            },
-        ],
-    });
-    debugLogger.debug(`Redirect URL updated to ${redirectUrl}.`);
 }
 
 export async function evaluateResource(
@@ -626,17 +628,6 @@ export async function uploadEnvVarsFromFile(
     // Search for possible .env files in the project directory and use the first
     const envFile = envPath ? path.join(process.cwd(), envPath) : await findAnEnvFile(cwd);
 
-    if (!envFile) {
-        return;
-    }
-
-    const envVars = await readEnvironmentVariablesFile(envFile);
-    const missingEnvVars = await getUnsetEnvironmentVariables(
-        envVars.map((envVar) => envVar.name),
-        projectId,
-        projectEnvId,
-    );
-
     const environment = configuration.backend?.environment;
     if (environment) {
         const unsetEnvVarKeys = await getUnsetEnvironmentVariables(
@@ -666,7 +657,7 @@ export async function uploadEnvVarsFromFile(
 
         if (environmentVariablesToBePushed.length > 0) {
             debugLogger.debug(
-                `Uploading environment variables ${JSON.stringify(environmentVariablesToBePushed)} from ${envFile} to project ${projectId}`,
+                `Uploading environment variables ${JSON.stringify(environmentVariablesToBePushed)} to project ${projectId}`,
             );
             await setEnvironmentVariables(projectId, projectEnvId, environmentVariablesToBePushed);
             debugLogger.debug(
@@ -676,6 +667,17 @@ export async function uploadEnvVarsFromFile(
 
         return;
     }
+
+    if (!envFile) {
+        return;
+    }
+
+    const envVars = await readEnvironmentVariablesFile(envFile);
+    const missingEnvVars = await getUnsetEnvironmentVariables(
+        envVars.map((envVar) => envVar.name),
+        projectId,
+        projectEnvId,
+    );
 
     if (!isCI() && missingEnvVars.length > 0 && (await detectEnvironmentVariablesFile(envFile))) {
         debugLogger.debug(`Attempting to upload ${missingEnvVars.join(", ")} from ${envFile}.`);

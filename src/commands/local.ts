@@ -85,9 +85,8 @@ import {
     getOrCreateEmptyProject,
     processYamlEnvironmentVariables,
 } from "./deploy/utils.js";
-import { GetDatabaseResponse } from "../models/requests.js";
 import { displayHint } from "../utils/strings.js";
-import { enableEmailIntegration } from "../requests/integration.js";
+import { enableEmailIntegration, getProjectIntegrations } from "../requests/integration.js";
 import { findAnEnvFile } from "../utils/environmentVariables.js";
 
 type UnitProcess = {
@@ -127,73 +126,83 @@ export async function prepareLocalBackendEnvironment(
         const region = yamlProjectConfiguration.region;
 
         let configurationEnvVars: { [key: string]: string | undefined } = {};
-        if (databases) {
-            // Get connection URL and expose it as an environment variable only for the server process
-            for (const database of databases) {
-                const { projectId, projectEnvId } = await getOrCreateEmptyProject(
-                    projectName,
-                    region,
+        if (yamlProjectConfiguration.services) {
+            const projectDetails = await getOrCreateEmptyProject(
+                projectName,
+                region,
+                options.stage || "prod",
+                /* ask */ true,
+            );
+
+            if (databases && projectDetails) {
+                // Get connection URL and expose it as an environment variable only for the server process
+                for (const database of databases) {
+                    const remoteDatabase = await getOrCreateDatabase(
+                        {
+                            name: database.name,
+                            region: database.region,
+                            type: database.type,
+                        },
+                        options.stage || "prod",
+                        projectDetails.projectId,
+                        projectDetails.projectEnvId,
+                        /* ask */ true,
+                    );
+
+                    if (!remoteDatabase) {
+                        break;
+                    }
+
+                    const databaseConnectionUrlKey = `${remoteDatabase.name.replace(/-/g, "_").toUpperCase()}_DATABASE_URL`;
+                    configurationEnvVars = {
+                        [databaseConnectionUrlKey]: remoteDatabase.connectionUrl,
+                    };
+
+                    log.info(
+                        displayHint(
+                            `You can use \`process.env["${databaseConnectionUrlKey}"]\` to connect to the remote database \`${remoteDatabase.name}\`.`,
+                        ),
+                    );
+                }
+            }
+
+            if (authentication && projectDetails) {
+                const envFile = options.env || (await findAnEnvFile(process.cwd()));
+                await enableAuthentication(
+                    yamlProjectConfiguration,
+                    projectDetails.projectId,
+                    projectDetails.projectEnvId,
                     options.stage || "prod",
+                    envFile,
                     /* ask */ true,
                 );
-
-                const remoteDatabase: GetDatabaseResponse = await getOrCreateDatabase(
-                    {
-                        name: database.name,
-                        region: database.region,
-                        type: database.type,
-                    },
-                    options.stage || "prod",
-                    projectId,
-                    projectEnvId,
-                    /* ask */ true,
-                );
-
-                const databaseConnectionUrlKey = `${remoteDatabase.name.replace(/-/g, "_").toUpperCase()}_DATABASE_URL`;
-                configurationEnvVars = {
-                    [databaseConnectionUrlKey]: remoteDatabase.connectionUrl,
-                };
 
                 log.info(
                     displayHint(
-                        `You can use \`process.env["${databaseConnectionUrlKey}"]\` to connect to the remote database \`${remoteDatabase.name}\`.`,
+                        `You can reference authentication token and region using \${{services.authentication.token}} and \${{services.authentication.region}}.`,
                     ),
                 );
             }
-        }
 
-        if (authentication) {
-            const { projectId, projectEnvId } = await getOrCreateEmptyProject(
-                projectName,
-                region,
-                options.stage || "prod",
-                /* ask */ true,
-            );
+            if (email && projectDetails) {
+                const isEnabled = (
+                    await getProjectIntegrations(
+                        projectDetails.projectId,
+                        projectDetails.projectEnvId,
+                    )
+                ).integrations.find((integration) => integration === "EMAIL-SERVICE");
 
-            const envFile = options.env || (await findAnEnvFile(process.cwd()));
-            await enableAuthentication(
-                yamlProjectConfiguration,
-                projectId,
-                projectEnvId,
-                options.stage || "prod",
-                envFile,
-                /* ask */ true,
-            );
-
-            log.info(colors.green("Authentication enabled successfully."));
-        }
-
-        if (email) {
-            const { projectId, projectEnvId } = await getOrCreateEmptyProject(
-                projectName,
-                region,
-                options.stage || "prod",
-            );
-            await enableEmailIntegration(projectId, projectEnvId);
-            log.info("Email integration enabled successfully.");
-            log.info(
-                displayHint(`You can use \`process.env[EMAIL_SERVICE_TOKEN]\` to send emails.`),
-            );
+                if (!isEnabled) {
+                    await enableEmailIntegration(
+                        projectDetails.projectId,
+                        projectDetails.projectEnvId,
+                    );
+                    log.info("Email integration enabled successfully.");
+                }
+                log.info(
+                    displayHint(`You can use \`process.env[EMAIL_SERVICE_TOKEN]\` to send emails.`),
+                );
+            }
         }
 
         if (!backend) {
