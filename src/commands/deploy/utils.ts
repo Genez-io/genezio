@@ -13,6 +13,7 @@ import {
 } from "../../models/requests.js";
 import {
     AuthenticationDatabaseType,
+    AuthenticationEmailTemplateType,
     DatabaseType,
 } from "../../projectConfiguration/yaml/models.js";
 import { YamlProjectConfiguration } from "../../projectConfiguration/yaml/v2.js";
@@ -27,13 +28,13 @@ import { DASHBOARD_URL } from "../../constants.js";
 import getProjectInfoByName from "../../requests/getProjectInfoByName.js";
 import { createEmptyProject } from "../../requests/project.js";
 import { debugLogger } from "../../utils/logging.js";
-import { parseRawVariable, resolveConfigurationVariable } from "../../utils/scripts.js";
 import {
     createTemporaryFolder,
     fileExists,
     readEnvironmentVariablesFile,
     zipDirectory,
 } from "../../utils/file.js";
+import { resolveConfigurationVariable } from "../../utils/scripts.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../../telemetry/telemetry.js";
 import { setEnvironmentVariables } from "../../requests/setEnvironmentVariables.js";
 import { log } from "../../utils/logging.js";
@@ -64,6 +65,7 @@ import {
     getAuthProviders,
     setAuthentication,
     setAuthProviders,
+    setEmailTemplates,
 } from "../../requests/authentication.js";
 import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
@@ -83,13 +85,14 @@ export async function getOrCreateEmptyProject(
         throw new UserError(`Failed to get project ${projectName}.`);
     });
 
-    if (!project) {
+    const projectEnv = project?.projectEnvs.find((projectEnv) => projectEnv.name == stage);
+    if (!project || !projectEnv) {
         if (ask) {
             const { createProject } = await inquirer.prompt([
                 {
                     type: "confirm",
                     name: "createProject",
-                    message: `Project ${projectName} not found. Do you want to create it?`,
+                    message: `Project ${projectName} not found remotely. Do you want to create it?`,
                     default: false,
                 },
             ]);
@@ -117,11 +120,6 @@ export async function getOrCreateEmptyProject(
         );
 
         return { projectId: newProject.projectId, projectEnvId: newProject.projectEnvId };
-    }
-
-    const projectEnv = project.projectEnvs.find((projectEnv) => projectEnv.name == stage);
-    if (!projectEnv) {
-        throw new UserError(`Stage ${stage} not found in project ${projectName}.`);
     }
 
     return { projectId: project.id, projectEnvId: projectEnv.id };
@@ -224,6 +222,7 @@ export async function getOrCreateDatabase(
                 `To change the region, you need to delete the database and create a new one at ${colors.cyan(`${DASHBOARD_URL}/databases`)}`,
             );
         }
+
         const linkedDatabase = await findLinkedDatabase(
             createDatabaseReq.name,
             projectId,
@@ -239,6 +238,25 @@ export async function getOrCreateDatabase(
             );
             return linkedDatabase;
         }
+
+        if (ask) {
+            const { linkDatabase } = await inquirer.prompt([
+                {
+                    type: "confirm",
+                    name: "linkDatabase",
+                    message: `Database ${createDatabaseReq.name} is not linked. Do you want to link it to stage ${stage}?`,
+                    default: false,
+                },
+            ]);
+
+            if (!linkDatabase) {
+                log.warn(
+                    `Database ${createDatabaseReq.name} is not linked and you chose not to link it.`,
+                );
+                return undefined;
+            }
+        }
+
         await linkDatabaseToEnvironment(projectId, projectEnvId, database.id).catch((error) => {
             debugLogger.debug(`Error linking database ${createDatabaseReq.name}: ${error}`);
             throw new UserError(`Failed to link database ${createDatabaseReq.name}.`);
@@ -258,7 +276,7 @@ export async function getOrCreateDatabase(
             {
                 type: "confirm",
                 name: "createDatabase",
-                message: `Database ${createDatabaseReq.name} not found. Do you want to create it?`,
+                message: `Database ${createDatabaseReq.name} not found remotely. Do you want to create it?`,
                 default: false,
             },
         ]);
@@ -315,13 +333,25 @@ export async function enableAuthentication(
         return;
     }
 
-    const authProviders = configuration.services?.authentication
-        ?.providers as AuthenticationProviders;
+    // If authentication.providers is not set, all auth providers are disabled by default
+    const authProviders = configuration.services?.authentication?.providers
+        ? (configuration.services?.authentication?.providers as AuthenticationProviders)
+        : {
+              email: false,
+              google: undefined,
+              web3: false,
+          };
 
     const authenticationStatus = await getAuthentication(projectEnvId);
+
     if (authenticationStatus.enabled) {
-        debugLogger.debug("Authentication is already enabled.");
-        return;
+        const remoteAuthProviders = await getAuthProviders(projectEnvId);
+
+        if (!haveAuthProvidersChanged(remoteAuthProviders.authProviders, authProviders)) {
+            log.info("Authentication is already enabled.");
+            log.info("The corresponding auth providers are already set.");
+            return;
+        }
     }
 
     if (authProviders.google) {
@@ -363,7 +393,6 @@ export async function enableAuthentication(
             authProviders,
             /* ask= */ ask,
         );
-        log.info(colors.green(`Authentication enabled with a ${authDatabase.type} database.`));
     } else {
         const configDatabase = configuration.services?.databases?.find(
             (database) => database.name === authDatabase.name,
@@ -397,10 +426,9 @@ export async function enableAuthentication(
             authProviders,
             /* ask= */ ask,
         );
-
-        log.info(colors.green(`Authentication enabled with database ${authDatabase.name}.`));
     }
 }
+
 export async function enableAuthenticationHelper(
     request: SetAuthenticationRequest,
     projectEnvId: string,
@@ -412,7 +440,8 @@ export async function enableAuthenticationHelper(
             {
                 type: "confirm",
                 name: "enableAuthentication",
-                message: "Authentication is not enabled. Do you want to enable it?",
+                message:
+                    "Authentication is not enabled or providers are not updated. Do you want to update this service?",
                 default: false,
             },
         ]);
@@ -490,7 +519,60 @@ export async function enableAuthenticationHelper(
         }
     }
 
+    log.info(colors.green(`Authentication enabled successfully.`));
     return;
+}
+
+function haveAuthProvidersChanged(
+    remoteAuthProviders: AuthProviderDetails[],
+    authProviders: AuthenticationProviders,
+): boolean {
+    for (const provider of remoteAuthProviders) {
+        switch (provider.name) {
+            case "email":
+                if (!!authProviders.email !== provider.enabled) {
+                    return true;
+                }
+                break;
+            case "web3":
+                if (!!authProviders.web3 !== provider.enabled) {
+                    return true;
+                }
+                break;
+            case "google":
+                if (!!authProviders.google !== provider.enabled) {
+                    return true;
+                }
+                break;
+        }
+    }
+
+    return false;
+}
+
+export async function setAuthenticationEmailTemplates(
+    configuration: YamlProjectConfiguration,
+    redirectUrlRaw: string,
+    type: AuthenticationEmailTemplateType,
+    stage: string,
+    projectEnvId: string,
+) {
+    const redirectUrl = await evaluateResource(configuration, redirectUrlRaw, stage, undefined);
+
+    await setEmailTemplates(projectEnvId, {
+        templates: [
+            {
+                type: type,
+                template: {
+                    redirectUrl: redirectUrl,
+                },
+            },
+        ],
+    });
+
+    type === AuthenticationEmailTemplateType.verification
+        ? log.info(colors.green(`Email verification field set successfully.`))
+        : log.info(colors.green(`Password reset field set successfully.`));
 }
 
 export async function evaluateResource(
@@ -498,6 +580,10 @@ export async function evaluateResource(
     resource: string | undefined,
     stage: string,
     envFile: string | undefined,
+    options?: {
+        isLocal?: boolean;
+        port?: number;
+    },
 ): Promise<string> {
     if (!resource) {
         return "";
@@ -511,9 +597,13 @@ export async function evaluateResource(
             stage,
             resourceRaw.path,
             resourceRaw.field,
+            options,
         );
 
-        return resourceValue;
+        // If `resource` contains other clear text, keep it and replace just ${{<variable>}}
+        const resourceString = resource.replace(/\${{[\w\s/.-]+}}/, resourceValue);
+
+        return resourceString;
     }
 
     if ("key" in resourceRaw) {
@@ -532,47 +622,12 @@ export async function evaluateResource(
             );
         }
 
-        return resourceValue;
+        // If `resource` contains other clear text, keep it and replace just ${{<variable>}}
+        const resourceString = resource.replace(/\${{[\w\s/.-]+}}/, resourceValue);
+        return resourceString;
     }
 
     return resourceRaw.value;
-}
-
-export async function processYamlEnvironmentVariables(
-    environment: Record<string, string>,
-    configuration: YamlProjectConfiguration,
-    stage: string,
-    options?: {
-        isLocal?: boolean;
-        port?: number;
-    },
-): Promise<Record<string, string>> {
-    const newEnvObject: Record<string, string> = {};
-
-    for (const [key, rawValue] of Object.entries(environment)) {
-        const variable = await parseRawVariable(rawValue);
-
-        if (!variable) {
-            debugLogger.debug(
-                `The key ${key} with value ${rawValue} does not contain a variable with the format $\{{<variable>}}. The raw value is being set.`,
-            );
-            newEnvObject[key] = rawValue;
-        } else {
-            const resolvedValue = await resolveConfigurationVariable(
-                configuration,
-                stage,
-                variable?.path,
-                variable?.field,
-                options,
-            );
-            debugLogger.debug(
-                `The key ${key} with value ${rawValue} contains a variable with the format $\{{<variable>}}. The evaluated value ${resolvedValue} is being set.`,
-            );
-            newEnvObject[key] = resolvedValue;
-        }
-    }
-
-    return newEnvObject;
 }
 
 export async function uploadEnvVarsFromFile(

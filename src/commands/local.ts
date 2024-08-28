@@ -81,9 +81,9 @@ import fsExtra from "fs-extra/esm";
 import { DeployCodeFunctionResponse } from "../models/deployCodeResponse.js";
 import {
     enableAuthentication,
+    evaluateResource,
     getOrCreateDatabase,
     getOrCreateEmptyProject,
-    processYamlEnvironmentVariables,
 } from "./deploy/utils.js";
 import { displayHint } from "../utils/strings.js";
 import { enableEmailIntegration, getProjectIntegrations } from "../requests/integration.js";
@@ -354,14 +354,22 @@ async function startFrontends(
     await Promise.all(
         frontendConfiguration.map(async (frontend) => {
             const environment = frontend.environment;
-            let newEnvObject: Record<string, string> | undefined = undefined;
+            const newEnvObject: Record<string, string> = {};
             if (environment) {
-                newEnvObject = await processYamlEnvironmentVariables(
-                    environment,
-                    configuration,
-                    stage,
-                    { isLocal: true, port: port },
-                );
+                Object.keys(environment).forEach(async (key) => {
+                    const resolvedValue = await evaluateResource(
+                        configuration,
+                        environment[key],
+                        stage,
+                        /* envFile */ undefined,
+                        {
+                            isLocal: true,
+                            port,
+                        },
+                    );
+
+                    newEnvObject[key] = resolvedValue;
+                });
             }
 
             await runFrontendStartScript(

@@ -50,7 +50,11 @@ import {
     isDependencyVersionCompatible,
 } from "../../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
-import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
+import {
+    AuthenticationEmailTemplateType,
+    FunctionType,
+    Language,
+} from "../../projectConfiguration/yaml/models.js";
 import { runScript } from "../../utils/scripts.js";
 import { scanClassesForDecorators } from "../../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../../projectConfiguration/yaml/v2.js";
@@ -68,9 +72,10 @@ import {
     getOrCreateDatabase,
     getOrCreateEmptyProject,
     uploadEnvVarsFromFile,
-    processYamlEnvironmentVariables,
     enableAuthentication,
     uploadUserCode,
+    evaluateResource,
+    setAuthenticationEmailTemplates,
 } from "./utils.js";
 import {
     disableEmailIntegration,
@@ -78,6 +83,7 @@ import {
     getProjectIntegrations,
 } from "../../requests/integration.js";
 import { findAnEnvFile } from "../../utils/environmentVariables.js";
+import { getProjectEnvFromProjectByName } from "../../requests/getProjectInfoByName.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -279,6 +285,37 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
     }
 
     await uploadUserCode(configuration.name, configuration.region, options.stage);
+
+    const settings = configuration.services?.authentication?.settings;
+    if (settings) {
+        const stage = options.stage || "prod";
+        const projectEnv = await getProjectEnvFromProjectByName(projectName, stage);
+        if (!projectEnv) {
+            throw new UserError(
+                `Stage ${stage} not found in project ${projectName}. Please run 'genezio deploy --stage ${stage}' to deploy your project to a new stage.`,
+            );
+        }
+
+        if (settings?.resetPassword) {
+            await setAuthenticationEmailTemplates(
+                configuration,
+                settings.resetPassword.redirectUrl,
+                AuthenticationEmailTemplateType.passwordReset,
+                stage,
+                projectEnv?.id,
+            );
+        }
+
+        if (settings.emailVerification) {
+            await setAuthenticationEmailTemplates(
+                configuration,
+                settings.emailVerification.redirectUrl,
+                AuthenticationEmailTemplateType.verification,
+                stage,
+                projectEnv?.id,
+            );
+        }
+    }
 
     if (deployClassesResult) {
         log.info(
@@ -605,10 +642,18 @@ export async function deployFrontend(
     await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
         const environment = frontend.environment;
         if (environment) {
-            const newEnvObject = await processYamlEnvironmentVariables(
-                environment,
-                configuration,
-                stage,
+            const newEnvObject: Record<string, string> = {};
+
+            await Promise.all(
+                Object.keys(environment).map(async (key) => {
+                    const resolvedValue = await evaluateResource(
+                        configuration,
+                        environment[key],
+                        stage,
+                        /* envFile */ undefined,
+                    );
+                    newEnvObject[key] = resolvedValue;
+                }),
             );
             await runScript(frontend.scripts?.build, frontend.path, newEnvObject);
         } else {
