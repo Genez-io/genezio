@@ -74,9 +74,9 @@ import {
     getOrCreateDatabase,
     getOrCreateEmptyProject,
     uploadEnvVarsFromFile,
-    processYamlEnvironmentVariables,
     enableAuthentication,
     setAuthenticationEmailTemplates,
+    evaluateResource,
 } from "./utils.js";
 import {
     disableEmailIntegration,
@@ -719,10 +719,18 @@ export async function deployFrontend(
     await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
         const environment = frontend.environment;
         if (environment) {
-            const newEnvObject = await processYamlEnvironmentVariables(
-                environment,
-                configuration,
-                stage,
+            const newEnvObject: Record<string, string> = {};
+
+            await Promise.all(
+                Object.keys(environment).map(async (key) => {
+                    const resolvedValue = await evaluateResource(
+                        configuration,
+                        environment[key],
+                        stage,
+                        /* envFile */ undefined,
+                    );
+                    newEnvObject[key] = resolvedValue;
+                }),
             );
             await runScript(frontend.scripts?.build, frontend.path, newEnvObject);
         } else {
