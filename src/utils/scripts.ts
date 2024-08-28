@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { spawn } from "child_process";
 import { UserError } from "../errors.js";
 import colors from "colors";
@@ -252,28 +251,6 @@ export async function resolveConfigurationVariable(
             `The attribute ${field} is not supported or does not exist in the given resource.`,
         );
     }
-}
-
-export async function parseRawVariable(
-    rawValue: string,
-): Promise<{ path: string; field: string } | undefined> {
-    const regex = /\$\{\{[ a-zA-Z0-9-.]+\}\}/;
-    const prefix = "${{";
-    const suffix = "}}";
-    const match = rawValue.match(regex);
-
-    if (match) {
-        // Sanitize the variable
-        const variable = match[0].slice(prefix.length, -suffix.length).replace(/ /g, "");
-
-        // Split the string at the last period
-        const lastDotIndex = variable.lastIndexOf(".");
-        const path = variable.substring(0, lastDotIndex);
-        const field = variable.substring(lastDotIndex + 1);
-        return { path, field };
-    }
-
-    return undefined;
 }
 
 export async function runScript(

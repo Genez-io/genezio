@@ -28,7 +28,7 @@ import { DASHBOARD_URL } from "../../constants.js";
 import getProjectInfoByName from "../../requests/getProjectInfoByName.js";
 import { createEmptyProject } from "../../requests/project.js";
 import { debugLogger } from "../../utils/logging.js";
-import { parseRawVariable, resolveConfigurationVariable } from "../../utils/scripts.js";
+import { resolveConfigurationVariable } from "../../utils/scripts.js";
 import { fileExists, readEnvironmentVariablesFile } from "../../utils/file.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../../telemetry/telemetry.js";
 import { setEnvironmentVariables } from "../../requests/setEnvironmentVariables.js";
@@ -216,6 +216,22 @@ export async function getOrCreateDatabase(
             );
         }
 
+        const linkedDatabase = await findLinkedDatabase(
+            createDatabaseReq.name,
+            projectId,
+            projectEnvId,
+        ).catch((error) => {
+            debugLogger.debug(`Error finding linked database ${createDatabaseReq.name}: ${error}`);
+            throw new UserError(`Failed to find linked database ${createDatabaseReq.name}.`);
+        });
+
+        if (linkedDatabase) {
+            debugLogger.debug(
+                `Database ${createDatabaseReq.name} is already linked to stage ${stage}`,
+            );
+            return linkedDatabase;
+        }
+
         if (ask) {
             const { linkDatabase } = await inquirer.prompt([
                 {
@@ -233,21 +249,7 @@ export async function getOrCreateDatabase(
                 return undefined;
             }
         }
-        const linkedDatabase = await findLinkedDatabase(
-            createDatabaseReq.name,
-            projectId,
-            projectEnvId,
-        ).catch((error) => {
-            debugLogger.debug(`Error finding linked database ${createDatabaseReq.name}: ${error}`);
-            throw new UserError(`Failed to find linked database ${createDatabaseReq.name}.`);
-        });
 
-        if (linkedDatabase) {
-            debugLogger.debug(
-                `Database ${createDatabaseReq.name} is already linked to stage ${stage}`,
-            );
-            return linkedDatabase;
-        }
         await linkDatabaseToEnvironment(projectId, projectEnvId, database.id).catch((error) => {
             debugLogger.debug(`Error linking database ${createDatabaseReq.name}: ${error}`);
             throw new UserError(`Failed to link database ${createDatabaseReq.name}.`);
@@ -548,16 +550,7 @@ export async function setAuthenticationEmailTemplates(
     stage: string,
     projectEnvId: string,
 ) {
-    const redirectUrlValue = await evaluateResource(
-        configuration,
-        redirectUrlRaw,
-        stage,
-        undefined,
-    );
-
-    // Replace ${{<any alphanumeric value>}} with the evaluated value
-    const redirectUrl = redirectUrlRaw.replace(/\${{[\w\s/.-]+}}/, redirectUrlValue);
-    debugLogger.debug(`Resolving redirectUrl for ${type} to ${redirectUrl}.`);
+    const redirectUrl = await evaluateResource(configuration, redirectUrlRaw, stage, undefined);
 
     await setEmailTemplates(projectEnvId, {
         templates: [
@@ -580,6 +573,10 @@ export async function evaluateResource(
     resource: string | undefined,
     stage: string,
     envFile: string | undefined,
+    options?: {
+        isLocal?: boolean;
+        port?: number;
+    },
 ): Promise<string> {
     if (!resource) {
         return "";
@@ -593,9 +590,13 @@ export async function evaluateResource(
             stage,
             resourceRaw.path,
             resourceRaw.field,
+            options,
         );
 
-        return resourceValue;
+        // If `resource` contains other clear text, keep it and replace just ${{<variable>}}
+        const resourceString = resource.replace(/\${{[\w\s/.-]+}}/, resourceValue);
+
+        return resourceString;
     }
 
     if ("key" in resourceRaw) {
@@ -614,47 +615,12 @@ export async function evaluateResource(
             );
         }
 
-        return resourceValue;
+        // If `resource` contains other clear text, keep it and replace just ${{<variable>}}
+        const resourceString = resource.replace(/\${{[\w\s/.-]+}}/, resourceValue);
+        return resourceString;
     }
 
     return resourceRaw.value;
-}
-
-export async function processYamlEnvironmentVariables(
-    environment: Record<string, string>,
-    configuration: YamlProjectConfiguration,
-    stage: string,
-    options?: {
-        isLocal?: boolean;
-        port?: number;
-    },
-): Promise<Record<string, string>> {
-    const newEnvObject: Record<string, string> = {};
-
-    for (const [key, rawValue] of Object.entries(environment)) {
-        const variable = await parseRawVariable(rawValue);
-
-        if (!variable) {
-            debugLogger.debug(
-                `The key ${key} with value ${rawValue} does not contain a variable with the format $\{{<variable>}}. The raw value is being set.`,
-            );
-            newEnvObject[key] = rawValue;
-        } else {
-            const resolvedValue = await resolveConfigurationVariable(
-                configuration,
-                stage,
-                variable?.path,
-                variable?.field,
-                options,
-            );
-            debugLogger.debug(
-                `The key ${key} with value ${rawValue} contains a variable with the format $\{{<variable>}}. The evaluated value ${resolvedValue} is being set.`,
-            );
-            newEnvObject[key] = resolvedValue;
-        }
-    }
-
-    return newEnvObject;
 }
 
 export async function uploadEnvVarsFromFile(
