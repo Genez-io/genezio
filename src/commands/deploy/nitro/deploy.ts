@@ -33,9 +33,9 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
 
     const functions = [
         {
-            path: path.join(".output", "server"),
+            path: ".output",
             name: "nitro-server",
-            entry: "index.mjs",
+            entry: path.join("server", "index.mjs"),
             handler: "handler",
             type: FunctionType.aws,
         },

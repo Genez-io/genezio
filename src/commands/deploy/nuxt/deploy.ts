@@ -1,4 +1,5 @@
 import { $ } from "execa";
+import glob from "glob";
 import { GenezioDeployOptions } from "../../../models/commandOptions.js";
 import { UserError } from "../../../errors.js";
 import { YamlProjectConfiguration } from "../../../projectConfiguration/yaml/v2.js";
@@ -13,6 +14,16 @@ import { existsSync } from "fs";
 import { getPackageManager } from "../../../packageManagers/packageManager.js";
 import path from "path";
 import colors from "colors";
+import { getFrontendPresignedURL } from "../../../requests/getFrontendPresignedURL.js";
+import { createTemporaryFolder, zipDirectoryToDestinationPath } from "../../../utils/file.js";
+import fs from "fs";
+import { uploadContentToS3 } from "../../../requests/uploadContentToS3.js";
+import {
+    createFrontendProjectV2,
+    CreateFrontendV2Origin,
+    CreateFrontendV2Path,
+} from "../../../requests/createFrontendProject.js";
+import { DeployCodeFunctionResponse } from "../../../models/deployCodeResponse.js";
 
 export async function nuxtDeploy(options: GenezioDeployOptions) {
     // Check if node_modules exists
@@ -25,18 +36,18 @@ export async function nuxtDeploy(options: GenezioDeployOptions) {
         throw new UserError("Failed to build the Nuxt project. Check the logs above.");
     });
     const genezioConfig = await readOrAskConfig(options.config);
-    await deployFunctions(genezioConfig, options.stage);
+    await deployFunctions(options, genezioConfig);
 }
 
-async function deployFunctions(config: YamlProjectConfiguration, stage?: string) {
+async function deployFunctions(options: GenezioDeployOptions, config: YamlProjectConfiguration) {
     const cloudProvider = await getCloudProvider(config.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
 
     const functions = [
         {
-            path: path.join(".output", "server"),
+            path: ".output",
             name: "nuxt-server",
-            entry: "index.mjs",
+            entry: path.join("server", "index.mjs"),
             handler: "handler",
             type: FunctionType.aws,
         },
@@ -68,16 +79,131 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
         projectConfiguration.functions.map((f) => functionToCloudInput(f, ".")),
     );
 
-    const result = await cloudAdapter.deploy(cloudInputs, projectConfiguration, { stage }, [
-        "nuxt",
-    ]);
+    const result = await cloudAdapter.deploy(
+        cloudInputs,
+        projectConfiguration,
+        { stage: options.stage },
+        ["nuxt"],
+    );
+
+    const domain = await deployStaticAssets(config, options.stage);
+
+    const cdnUrl = await deployCDN(result.functions, domain, config, options.stage);
+
     debugLogger.debug(`Deployed functions: ${JSON.stringify(result.functions)}`);
 
     log.info(
-        `${colors.cyan("Your Nuxt code was successfully deployed")}
-        
-Your Nuxt app is available at ${colors.cyan(result.functions[0].cloudUrl)}`,
+        `The app is being deployed at ${colors.cyan(cdnUrl)}. It might take a few moments to be available worldwide.`,
     );
 
     return result;
+}
+
+async function deployCDN(
+    deployedFunctions: DeployCodeFunctionResponse[],
+    domainName: string,
+    config: YamlProjectConfiguration,
+    stage: string,
+) {
+    const serverOrigin: CreateFrontendV2Origin = {
+        domain: {
+            id: deployedFunctions[0].id,
+            type: "function",
+        },
+        path: undefined,
+        methods: ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        cachePolicy: "custom-function-cache",
+    };
+
+    const s3Origin: CreateFrontendV2Origin = {
+        domain: {
+            id: "frontendHosting",
+            type: "s3",
+        },
+        path: undefined,
+        methods: ["GET", "HEAD", "OPTIONS"],
+        cachePolicy: "caching-optimized",
+    };
+
+    const paths: CreateFrontendV2Path[] = [...(await computeAssetsPaths(s3Origin))];
+
+    const { domain: distributionUrl } = await createFrontendProjectV2(
+        domainName,
+        config.name,
+        config.region,
+        stage,
+        paths,
+        /* defaultPath= */ {
+            origin: serverOrigin,
+        },
+        ["nuxt"],
+    );
+
+    if (!distributionUrl.startsWith("https://") && !distributionUrl.startsWith("http://")) {
+        return `https://${distributionUrl}`;
+    }
+
+    return distributionUrl;
+}
+
+async function deployStaticAssets(config: YamlProjectConfiguration, stage: string) {
+    const getFrontendPresignedURLPromise = getFrontendPresignedURL(
+        /* subdomain= */ undefined,
+        /* projectName= */ config.name,
+        stage,
+        /* type= */ "nextjs",
+    );
+
+    const temporaryFolder = await createTemporaryFolder();
+    const archivePath = path.join(temporaryFolder, "nuxt-static.zip");
+
+    await fs.promises.mkdir(path.join(temporaryFolder, "nuxt-static"));
+    await fs.promises.cp(
+        path.join(process.cwd(), ".output", "public"),
+        path.join(temporaryFolder, "nuxt-static"),
+        { recursive: true },
+    );
+
+    const { presignedURL, userId, domain } = await getFrontendPresignedURLPromise;
+    debugLogger.debug(`Generated presigned URL for Next.js static files. Domain: ${domain}`);
+
+    await zipDirectoryToDestinationPath(
+        path.join(temporaryFolder, "nuxt-static"),
+        domain,
+        archivePath,
+    );
+
+    await uploadContentToS3(presignedURL, archivePath, undefined, userId);
+    debugLogger.debug("Uploaded Nuxt static files to S3.");
+
+    return domain;
+}
+
+async function computeAssetsPaths(
+    s3Origin: CreateFrontendV2Origin,
+): Promise<CreateFrontendV2Path[]> {
+    const folder = path.join(process.cwd(), ".output", "public");
+    return new Promise((resolve, reject) => {
+        glob(
+            "*",
+            {
+                dot: true,
+                cwd: folder,
+            },
+            (err, files) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                const paths: CreateFrontendV2Path[] = files.map((file) => ({
+                    origin: s3Origin,
+                    pattern: fs.lstatSync(path.join(folder, file)).isDirectory()
+                        ? `${file}/*`
+                        : file,
+                }));
+                resolve(paths);
+            },
+        );
+    });
 }
