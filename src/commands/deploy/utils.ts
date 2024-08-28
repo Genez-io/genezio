@@ -76,7 +76,8 @@ export async function getOrCreateEmptyProject(
         throw new UserError(`Failed to get project ${projectName}.`);
     });
 
-    if (!project) {
+    const projectEnv = project?.projectEnvs.find((projectEnv) => projectEnv.name == stage);
+    if (!project || !projectEnv) {
         if (ask) {
             const { createProject } = await inquirer.prompt([
                 {
@@ -110,11 +111,6 @@ export async function getOrCreateEmptyProject(
         );
 
         return { projectId: newProject.projectId, projectEnvId: newProject.projectEnvId };
-    }
-
-    const projectEnv = project.projectEnvs.find((projectEnv) => projectEnv.name == stage);
-    if (!projectEnv) {
-        throw new UserError(`Stage ${stage} not found in project ${projectName}.`);
     }
 
     return { projectId: project.id, projectEnvId: projectEnv.id };
