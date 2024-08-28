@@ -114,7 +114,7 @@ export async function bundleCommand(options: GenezioBundleOptions | GenezioBundl
             options.disableOptimization,
         );
         mkdirSync(options.output, { recursive: true });
-        await zipDirectory(result.path, path.join(options.output, "bundle.zip"));
+        await zipDirectory(result.path, path.join(options.output, "bundle.zip"), true);
         writeToFile(options.output, "bundle.ast", JSON.stringify(result.configuration));
     } else {
         const element = projectConfiguration.functions.find(

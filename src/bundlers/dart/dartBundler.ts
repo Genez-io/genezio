@@ -211,7 +211,7 @@ export class DartBundler implements BundlerInterface {
         const archivePath = path.join(archiveDirectoryOutput, archiveName);
 
         try {
-            await zipDirectory(userCodeFolderPath, archivePath);
+            await zipDirectory(userCodeFolderPath, archivePath, true);
             await uploadContentToS3(presignedUrl, archivePath);
         } finally {
             // remove temporary folder
