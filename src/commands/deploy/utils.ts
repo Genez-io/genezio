@@ -85,7 +85,7 @@ export async function getOrCreateEmptyProject(
                 {
                     type: "confirm",
                     name: "createProject",
-                    message: `Project ${projectName} not found. Do you want to create it?`,
+                    message: `Project ${projectName} not found remotely. Do you want to create it?`,
                     default: false,
                 },
             ]);
@@ -215,6 +215,24 @@ export async function getOrCreateDatabase(
                 `To change the region, you need to delete the database and create a new one at ${colors.cyan(`${DASHBOARD_URL}/databases`)}`,
             );
         }
+
+        if (ask) {
+            const { linkDatabase } = await inquirer.prompt([
+                {
+                    type: "confirm",
+                    name: "linkDatabase",
+                    message: `Database ${createDatabaseReq.name} is not linked. Do you want to link it to stage ${stage}?`,
+                    default: false,
+                },
+            ]);
+
+            if (!linkDatabase) {
+                log.warn(
+                    `Database ${createDatabaseReq.name} is not linked and you chose not to link it.`,
+                );
+                return undefined;
+            }
+        }
         const linkedDatabase = await findLinkedDatabase(
             createDatabaseReq.name,
             projectId,
@@ -249,7 +267,7 @@ export async function getOrCreateDatabase(
             {
                 type: "confirm",
                 name: "createDatabase",
-                message: `Database ${createDatabaseReq.name} not found. Do you want to create it?`,
+                message: `Database ${createDatabaseReq.name} not found remotely. Do you want to create it?`,
                 default: false,
             },
         ]);
@@ -366,7 +384,6 @@ export async function enableAuthentication(
             authProviders,
             /* ask= */ ask,
         );
-        log.info(colors.green(`Authentication enabled with a ${authDatabase.type} database.`));
     } else {
         const configDatabase = configuration.services?.databases?.find(
             (database) => database.name === authDatabase.name,
@@ -400,8 +417,6 @@ export async function enableAuthentication(
             authProviders,
             /* ask= */ ask,
         );
-
-        log.info(colors.green(`Authentication enabled with database ${authDatabase.name}.`));
     }
 }
 
@@ -416,7 +431,8 @@ export async function enableAuthenticationHelper(
             {
                 type: "confirm",
                 name: "enableAuthentication",
-                message: "Authentication is not enabled. Do you want to enable it?",
+                message:
+                    "Authentication is not enabled or providers are not updated. Do you want to update this service?",
                 default: false,
             },
         ]);
@@ -494,6 +510,7 @@ export async function enableAuthenticationHelper(
         }
     }
 
+    log.info(colors.green(`Authentication enabled successfully.`));
     return;
 }
 

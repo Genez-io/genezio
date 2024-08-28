@@ -146,7 +146,11 @@ export async function resolveConfigurationVariable(
                 return `http://localhost:${options.port}/.functions/function-${functionObj.name}`;
             }
 
-            const response = await getProjectInfoByName(configuration.name);
+            const response = await getProjectInfoByName(configuration.name).catch((error) => {
+                throw new UserError(
+                    `Failed to retrieve the project ${configuration.name} with error: ${error}. You cannot use the url attribute.`,
+                );
+            });
             const functionUrl = response.projectEnvs
                 .find((env) => env.name === stage)
                 ?.functions?.find((func) => func.name === "function-" + functionObj.name)?.cloudUrl;
@@ -195,7 +199,11 @@ export async function resolveConfigurationVariable(
         const authenticationObj = resourceObject as AuthenticationConfiguration;
 
         if (field === "token") {
-            const response = await getProjectInfoByName(configuration.name);
+            const response = await getProjectInfoByName(configuration.name).catch(() => {
+                throw new UserError(
+                    `Failed to retrieve the project ${configuration.name}. You cannot use the token attribute.`,
+                );
+            });
             const projectEnv = response.projectEnvs.find((env) => env.name === stage);
             if (!projectEnv) {
                 throw new UserError(`The stage ${stage} is not found in the project.`);
@@ -206,7 +214,11 @@ export async function resolveConfigurationVariable(
         }
 
         if (field === "region") {
-            const response = await getProjectInfoByName(configuration.name);
+            const response = await getProjectInfoByName(configuration.name).catch(() => {
+                throw new UserError(
+                    `Failed to retrieve the project ${configuration.name}. You cannot use the region attribute.`,
+                );
+            });
             const projectEnv = response.projectEnvs.find((env) => env.name === stage);
             if (!projectEnv) {
                 throw new UserError(`The stage ${stage} is not found in the project.`);
