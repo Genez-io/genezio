@@ -16,7 +16,6 @@ import { uploadContentToS3 } from "../../../requests/uploadContentToS3.js";
 import {
     createTemporaryFolder,
     getAllFilesFromPath,
-    zipDirectory,
     zipDirectoryToDestinationPath,
 } from "../../../utils/file.js";
 import { DeployCodeFunctionResponse } from "../../../models/deployCodeResponse.js";
@@ -33,12 +32,11 @@ import {
     NEXT_JS_GET_SECRET_ACCESS_KEY,
 } from "../../../constants.js";
 import colors from "colors";
-import { getPresignedURLForProjectCodePush } from "../../../requests/getPresignedURLForProjectCodePush.js";
 import { computeAssetsPaths } from "./assets.js";
 import * as Sentry from "@sentry/node";
 import { randomUUID } from "crypto";
 import { EdgeFunction, getEdgeFunctions } from "./edge.js";
-import { uploadEnvVarsFromFile } from "../utils.js";
+import { uploadEnvVarsFromFile, uploadUserCode } from "../utils.js";
 import { readOrAskConfig } from "../utils.js";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
@@ -95,82 +93,6 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
 
     log.info(
         `The app is being deployed at ${colors.cyan(cdnUrl)}. It might take a few moments to be available worldwide.`,
-    );
-}
-
-async function uploadUserCode(name: string, region: string, stage: string): Promise<void> {
-    const tmpFolderProject = await createTemporaryFolder();
-    debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
-    const promiseZip = zipDirectory(process.cwd(), path.join(tmpFolderProject, "projectCode.zip"), [
-        "**/node_modules/*",
-        "./node_modules/*",
-        "node_modules/*",
-        "**/node_modules",
-        "./node_modules",
-        "node_modules",
-        "node_modules/**",
-        "**/node_modules/**",
-        // ignore all .git files
-        "**/.git/*",
-        "./.git/*",
-        ".git/*",
-        "**/.git",
-        "./.git",
-        ".git",
-        ".git/**",
-        "**/.git/**",
-        // ignore all .next files
-        "**/.next/*",
-        "./.next/*",
-        ".next/*",
-        "**/.next",
-        "./.next",
-        ".next",
-        ".next/**",
-        "**/.next/**",
-        // ignore all .open-next files
-        "**/.open-next/*",
-        "./.open-next/*",
-        ".open-next/*",
-        "**/.open-next",
-        "./.open-next",
-        ".open-next",
-        ".open-next/**",
-        "**/.open-next/**",
-        // ignore all .vercel files
-        "**/.vercel/*",
-        "./.vercel/*",
-        ".vercel/*",
-        "**/.vercel",
-        "./.vercel",
-        ".vercel",
-        ".vercel/**",
-        "**/.vercel/**",
-        // ignore all .turbo files
-        "**/.turbo/*",
-        "./.turbo/*",
-        ".turbo/*",
-        "**/.turbo",
-        "./.turbo",
-        ".turbo",
-        ".turbo/**",
-        "**/.turbo/**",
-        // ignore all .sst files
-        "**/.sst/*",
-        "./.sst/*",
-        ".sst/*",
-        "**/.sst",
-        "./.sst",
-        ".sst",
-        ".sst/**",
-        "**/.sst/**",
-    ]);
-
-    await promiseZip;
-    const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(region, name, stage);
-    return uploadContentToS3(
-        presignedUrlForProjectCode,
-        path.join(tmpFolderProject, "projectCode.zip"),
     );
 }
 

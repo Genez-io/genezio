@@ -105,6 +105,7 @@ export async function getAllFilesFromCurrentPath(
 export async function zipDirectory(
     sourceDir: string,
     outPath: string,
+    includeHiddenFiles: boolean = false,
     exclusion?: string[],
 ): Promise<void> {
     const archive = archiver("zip", { zlib: { level: 9 } });
@@ -118,7 +119,7 @@ export async function zipDirectory(
         archive
             .glob("**/*", {
                 cwd: sourceDir,
-                dot: true,
+                dot: includeHiddenFiles,
                 skip: exclusion,
             })
             .on("error", (err) => reject(err))

@@ -9,7 +9,7 @@ import { FunctionType, Language } from "../../../projectConfiguration/yaml/model
 import { PackageManagerType } from "../../../packageManagers/packageManager.js";
 import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
 import { debugLogger, log } from "../../../utils/logging.js";
-import { readOrAskConfig } from "../utils.js";
+import { readOrAskConfig, uploadUserCode } from "../utils.js";
 import { existsSync } from "fs";
 import { getPackageManager } from "../../../packageManagers/packageManager.js";
 import path from "path";
@@ -36,10 +36,24 @@ export async function nuxtDeploy(options: GenezioDeployOptions) {
         throw new UserError("Failed to build the Nuxt project. Check the logs above.");
     });
     const genezioConfig = await readOrAskConfig(options.config);
-    await deployFunctions(options, genezioConfig);
+    const [cloudResult, domain] = await Promise.all([
+        deployFunction(genezioConfig, options),
+        deployStaticAssets(genezioConfig, options.stage),
+    ]);
+
+    const [cdnUrl] = await Promise.all([
+        deployCDN(cloudResult.functions, domain, genezioConfig, options.stage),
+        uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage),
+    ]);
+
+    debugLogger.debug(`Deployed functions: ${JSON.stringify(cloudResult.functions)}`);
+
+    log.info(
+        `The app is being deployed at ${colors.cyan(cdnUrl)}. It might take a few moments to be available worldwide.`,
+    );
 }
 
-async function deployFunctions(options: GenezioDeployOptions, config: YamlProjectConfiguration) {
+async function deployFunction(config: YamlProjectConfiguration, options: GenezioDeployOptions) {
     const cloudProvider = await getCloudProvider(config.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
 
@@ -84,16 +98,6 @@ async function deployFunctions(options: GenezioDeployOptions, config: YamlProjec
         projectConfiguration,
         { stage: options.stage },
         ["nuxt"],
-    );
-
-    const domain = await deployStaticAssets(config, options.stage);
-
-    const cdnUrl = await deployCDN(result.functions, domain, config, options.stage);
-
-    debugLogger.debug(`Deployed functions: ${JSON.stringify(result.functions)}`);
-
-    log.info(
-        `The app is being deployed at ${colors.cyan(cdnUrl)}. It might take a few moments to be available worldwide.`,
     );
 
     return result;

@@ -29,7 +29,12 @@ import getProjectInfoByName from "../../requests/getProjectInfoByName.js";
 import { createEmptyProject } from "../../requests/project.js";
 import { debugLogger } from "../../utils/logging.js";
 import { parseRawVariable, resolveConfigurationVariable } from "../../utils/scripts.js";
-import { fileExists, readEnvironmentVariablesFile } from "../../utils/file.js";
+import {
+    createTemporaryFolder,
+    fileExists,
+    readEnvironmentVariablesFile,
+    zipDirectory,
+} from "../../utils/file.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../../telemetry/telemetry.js";
 import { setEnvironmentVariables } from "../../requests/setEnvironmentVariables.js";
 import { log } from "../../utils/logging.js";
@@ -61,6 +66,8 @@ import {
     setAuthProviders,
     setEmailTemplates,
 } from "../../requests/authentication.js";
+import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
+import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 
 export async function getOrCreateEmptyProject(
     projectName: string,
@@ -713,4 +720,32 @@ export async function uploadEnvVarsFromFile(
             )}`,
         );
     }
+}
+
+// Upload the project code to S3 for in-browser editing
+export async function uploadUserCode(name: string, region: string, stage: string): Promise<void> {
+    const tmpFolderProject = await createTemporaryFolder();
+    debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
+    const promiseZip = zipDirectory(
+        process.cwd(),
+        path.join(tmpFolderProject, "projectCode.zip"),
+        false,
+        [
+            "**/node_modules/*",
+            "./node_modules/*",
+            "node_modules/*",
+            "**/node_modules",
+            "./node_modules",
+            "node_modules",
+            "node_modules/**",
+            "**/node_modules/**",
+        ],
+    );
+
+    await promiseZip;
+    const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(region, name, stage);
+    return uploadContentToS3(
+        presignedUrlForProjectCode,
+        path.join(tmpFolderProject, "projectCode.zip"),
+    );
 }
