@@ -68,7 +68,7 @@ async function deployFunction(config: YamlProjectConfiguration, options: Genezio
         {
             path: ".output",
             name: "nuxt-server",
-            entry: path.join("server", "index.mjs"),
+            entry: "server/index.mjs",
             handler: "handler",
             type: FunctionType.aws,
         },
