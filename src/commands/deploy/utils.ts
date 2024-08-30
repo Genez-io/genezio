@@ -69,7 +69,7 @@ import {
 } from "../../requests/authentication.js";
 import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
-import { displayHint } from "../../utils/strings.js";
+import { displayHint, replaceExpression } from "../../utils/strings.js";
 
 export async function getOrCreateEmptyProject(
     projectName: string,
@@ -600,13 +600,16 @@ export async function evaluateResource(
             options,
         );
 
-        // If `resource` contains other clear text, keep it and replace just ${{<variable>}}
-        const resourceString = resource.replace(/\${{[\w\s/.-]+}}/, resourceValue);
-
-        return resourceString;
+        return replaceExpression(resource, resourceValue);
     }
 
     if ("key" in resourceRaw) {
+        // search for the environment variable in process.env
+        const resourceFromProcessValue = process.env[resourceRaw.key];
+        if (resourceFromProcessValue) {
+            return replaceExpression(resource, resourceFromProcessValue);
+        }
+
         if (!envFile) {
             throw new UserError(
                 `Environment variable file ${envFile} is missing. Please provide the correct path with genezio deploy --env <envFile>.`,
@@ -622,9 +625,7 @@ export async function evaluateResource(
             );
         }
 
-        // If `resource` contains other clear text, keep it and replace just ${{<variable>}}
-        const resourceString = resource.replace(/\${{[\w\s/.-]+}}/, resourceValue);
-        return resourceString;
+        return replaceExpression(resource, resourceValue);
     }
 
     return resourceRaw.value;
