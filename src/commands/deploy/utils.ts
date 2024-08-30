@@ -607,6 +607,14 @@ export async function evaluateResource(
     }
 
     if ("key" in resourceRaw) {
+        // search resourceRaw.key in process.env
+        const resourceFromProcessValue = process.env[resourceRaw.key];
+        if (resourceFromProcessValue) {
+            // If `resource` contains other clear text, keep it and replace just ${{<variable>}}
+            const resourceString = resource.replace(/\${{[\w\s/.-]+}}/, resourceFromProcessValue);
+            return resourceString;
+        }
+
         if (!envFile) {
             throw new UserError(
                 `Environment variable file ${envFile} is missing. Please provide the correct path with genezio deploy --env <envFile>.`,
