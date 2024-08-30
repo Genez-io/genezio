@@ -1,12 +1,8 @@
-import fs, { existsSync, readFileSync } from "fs";
+import fs, { existsSync } from "fs";
 import { GenezioDeployOptions } from "../../../models/commandOptions.js";
 import git from "isomorphic-git";
-import { YamlConfigurationIOController } from "../../../projectConfiguration/yaml/v2.js";
 import { YamlProjectConfiguration } from "../../../projectConfiguration/yaml/v2.js";
-import inquirer from "inquirer";
 import path from "path";
-import { regions } from "../../../utils/configs.js";
-import { checkProjectName } from "../../create/create.js";
 import { debugLogger, log } from "../../../utils/logging.js";
 import { $ } from "execa";
 import { UserError } from "../../../errors.js";
@@ -15,12 +11,14 @@ import { functionToCloudInput, getCloudAdapter } from "../genezio.js";
 import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
 import { FunctionType, Language } from "../../../projectConfiguration/yaml/models.js";
 import { getPackageManager, PackageManagerType } from "../../../packageManagers/packageManager.js";
-import { getFrontendPresignedURL } from "../../../requests/getFrontendPresignedURL.js";
+import {
+    FrontendPresignedURLAppType,
+    getFrontendPresignedURL,
+} from "../../../requests/getFrontendPresignedURL.js";
 import { uploadContentToS3 } from "../../../requests/uploadContentToS3.js";
 import {
     createTemporaryFolder,
     getAllFilesFromPath,
-    zipDirectory,
     zipDirectoryToDestinationPath,
 } from "../../../utils/file.js";
 import { DeployCodeFunctionResponse } from "../../../models/deployCodeResponse.js";
@@ -36,21 +34,13 @@ import {
     NEXT_JS_GET_ACCESS_KEY,
     NEXT_JS_GET_SECRET_ACCESS_KEY,
 } from "../../../constants.js";
-import getProjectInfoByName from "../../../requests/getProjectInfoByName.js";
 import colors from "colors";
-import {
-    uniqueNamesGenerator,
-    adjectives,
-    colors as ungColors,
-    animals,
-} from "unique-names-generator";
-import { getPresignedURLForProjectCodePush } from "../../../requests/getPresignedURLForProjectCodePush.js";
 import { computeAssetsPaths } from "./assets.js";
 import * as Sentry from "@sentry/node";
 import { randomUUID } from "crypto";
 import { EdgeFunction, getEdgeFunctions } from "./edge.js";
-import { uploadEnvVarsFromFile } from "../utils.js";
-import { isCI } from "../../../utils/process.js";
+import { uploadEnvVarsFromFile, uploadUserCode } from "../utils.js";
+import { readOrAskConfig } from "../utils.js";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     // Check if node_modules exists
@@ -106,82 +96,6 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
 
     log.info(
         `The app is being deployed at ${colors.cyan(cdnUrl)}. It might take a few moments to be available worldwide.`,
-    );
-}
-
-async function uploadUserCode(name: string, region: string, stage: string): Promise<void> {
-    const tmpFolderProject = await createTemporaryFolder();
-    debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
-    const promiseZip = zipDirectory(process.cwd(), path.join(tmpFolderProject, "projectCode.zip"), [
-        "**/node_modules/*",
-        "./node_modules/*",
-        "node_modules/*",
-        "**/node_modules",
-        "./node_modules",
-        "node_modules",
-        "node_modules/**",
-        "**/node_modules/**",
-        // ignore all .git files
-        "**/.git/*",
-        "./.git/*",
-        ".git/*",
-        "**/.git",
-        "./.git",
-        ".git",
-        ".git/**",
-        "**/.git/**",
-        // ignore all .next files
-        "**/.next/*",
-        "./.next/*",
-        ".next/*",
-        "**/.next",
-        "./.next",
-        ".next",
-        ".next/**",
-        "**/.next/**",
-        // ignore all .open-next files
-        "**/.open-next/*",
-        "./.open-next/*",
-        ".open-next/*",
-        "**/.open-next",
-        "./.open-next",
-        ".open-next",
-        ".open-next/**",
-        "**/.open-next/**",
-        // ignore all .vercel files
-        "**/.vercel/*",
-        "./.vercel/*",
-        ".vercel/*",
-        "**/.vercel",
-        "./.vercel",
-        ".vercel",
-        ".vercel/**",
-        "**/.vercel/**",
-        // ignore all .turbo files
-        "**/.turbo/*",
-        "./.turbo/*",
-        ".turbo/*",
-        "**/.turbo",
-        "./.turbo",
-        ".turbo",
-        ".turbo/**",
-        "**/.turbo/**",
-        // ignore all .sst files
-        "**/.sst/*",
-        "./.sst/*",
-        ".sst/*",
-        "**/.sst",
-        "./.sst",
-        ".sst",
-        ".sst/**",
-        "**/.sst/**",
-    ]);
-
-    await promiseZip;
-    const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(region, name, stage);
-    return uploadContentToS3(
-        presignedUrlForProjectCode,
-        path.join(tmpFolderProject, "projectCode.zip"),
     );
 }
 
@@ -336,7 +250,7 @@ async function deployStaticAssets(
         /* subdomain= */ undefined,
         /* projectName= */ config.name,
         stage,
-        /* type= */ "nextjs",
+        /* type= */ FrontendPresignedURLAppType.AutoGenerateDomain,
     );
 
     const temporaryFolder = await createTemporaryFolder();
@@ -512,83 +426,4 @@ async function writeOpenNextConfig(region: string, edgeFunctionPaths: EdgeFuncti
 
     const tag = ENVIRONMENT === "prod" ? "latest" : "dev";
     await getPackageManager().install([`@genezio/nextjs-isr-${region}@${tag}`]);
-}
-
-async function readOrAskConfig(configPath: string): Promise<YamlProjectConfiguration> {
-    const configIOController = new YamlConfigurationIOController(configPath);
-    if (!existsSync(configPath)) {
-        const name = await readOrAskProjectName();
-
-        let region = regions[0].value;
-        if (!isCI()) {
-            ({ region } = await inquirer.prompt([
-                {
-                    type: "list",
-                    name: "region",
-                    message: "Select the Genezio project region:",
-                    choices: regions,
-                },
-            ]));
-        } else {
-            log.info(
-                "Using the default region for the project because no `genezio.yaml` file was found.",
-            );
-        }
-
-        await configIOController.write({ name, region, yamlVersion: 2 });
-    }
-
-    return await configIOController.read();
-}
-
-async function readOrAskProjectName(): Promise<string> {
-    if (existsSync("package.json")) {
-        // Read package.json content
-        const packageJson = readFileSync("package.json", "utf-8");
-        const packageJsonName = JSON.parse(packageJson)["name"];
-
-        const validProjectName: boolean = await (async () => checkProjectName(packageJsonName))()
-            .then(() => true)
-            .catch(() => false);
-
-        const projectExists = await getProjectInfoByName(packageJsonName)
-            .then(() => true)
-            .catch(() => false);
-
-        // We don't want to automatically use the package.json name if the project
-        // exists, because it could overwrite the existing project by accident.
-        if (packageJsonName !== undefined && validProjectName && !projectExists)
-            return packageJsonName;
-    }
-
-    let name = uniqueNamesGenerator({
-        dictionaries: [ungColors, adjectives, animals],
-        separator: "-",
-        style: "lowerCase",
-        length: 3,
-    });
-    if (!isCI()) {
-        // Ask for project name
-        ({ name } = await inquirer.prompt([
-            {
-                type: "input",
-                name: "name",
-                message: "Enter the Genezio project name:",
-                default: path.basename(process.cwd()),
-                validate: (input: string) => {
-                    try {
-                        checkProjectName(input);
-                        return true;
-                    } catch (error) {
-                        if (error instanceof Error) return colors.red(error.message);
-                        return colors.red("Unavailable project name");
-                    }
-                },
-            },
-        ]));
-    } else {
-        log.info("Using a random name for the project because no `genezio.yaml` file was found.");
-    }
-
-    return name;
 }

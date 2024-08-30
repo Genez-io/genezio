@@ -4,7 +4,7 @@ import nativeFs from "fs";
 import { IFs } from "memfs";
 import { databaseRegions, legacyRegions } from "../../utils/configs.js";
 import { GENEZIO_CONFIGURATION_FILE_NOT_FOUND, UserError, zodFormatError } from "../../errors.js";
-import { DatabaseType, FunctionType, Language } from "./models.js";
+import { AuthenticationDatabaseType, DatabaseType, FunctionType, Language } from "./models.js";
 import {
     DEFAULT_ARCHITECTURE,
     DEFAULT_NODE_RUNTIME,
@@ -108,9 +108,47 @@ function parseGenezioConfig(config: unknown) {
             .default("us-east-1"),
     });
 
+    const redirectUrlSchema = zod.string();
+
+    const authEmailSettings = zod.object({
+        resetPassword: zod
+            .object({
+                redirectUrl: redirectUrlSchema,
+            })
+            .optional(),
+        emailVerification: zod
+            .object({
+                redirectUrl: redirectUrlSchema,
+            })
+            .optional(),
+    });
+
+    const authenticationSchema = zod.object({
+        database: zod
+            .object({
+                type: zod.nativeEnum(AuthenticationDatabaseType),
+                uri: zod.string(),
+            })
+            .or(zod.object({ name: zod.string() })),
+        providers: zod
+            .object({
+                email: zod.boolean().optional(),
+                web3: zod.boolean().optional(),
+                google: zod
+                    .object({
+                        clientId: zod.string(),
+                        clientSecret: zod.string(),
+                    })
+                    .optional(),
+            })
+            .optional(),
+        settings: authEmailSettings.optional(),
+    });
+
     const servicesSchema = zod.object({
         databases: zod.array(databaseSchema).optional(),
         email: zod.boolean().optional(),
+        authentication: authenticationSchema.optional(),
     });
 
     const backendSchema = zod.object({
@@ -128,6 +166,7 @@ function parseGenezioConfig(config: unknown) {
     });
 
     const frontendSchema = zod.object({
+        name: zod.string().optional(),
         path: zod.string(),
         sdk: zod
             .object({

@@ -50,7 +50,11 @@ import {
     isDependencyVersionCompatible,
 } from "../../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
-import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
+import {
+    AuthenticationEmailTemplateType,
+    FunctionType,
+    Language,
+} from "../../projectConfiguration/yaml/models.js";
 import { runScript } from "../../utils/scripts.js";
 import { scanClassesForDecorators } from "../../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../../projectConfiguration/yaml/v2.js";
@@ -63,16 +67,23 @@ import { AwsFunctionHandlerProvider } from "../../functionHandlerProvider/provid
 import fsExtra from "fs-extra/esm";
 import { getLinkedFrontendsForProject } from "../../utils/linkDatabase.js";
 import { getCloudProvider } from "../../requests/getCloudProvider.js";
-import fs from "fs";
-import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
-import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
+import fs, { mkdirSync } from "fs";
 import {
     getOrCreateDatabase,
     getOrCreateEmptyProject,
     uploadEnvVarsFromFile,
-    processYamlEnvironmentVariables,
+    enableAuthentication,
+    uploadUserCode,
+    evaluateResource,
+    setAuthenticationEmailTemplates,
 } from "./utils.js";
-import { enableEmailIntegration } from "../../requests/integration.js";
+import {
+    disableEmailIntegration,
+    enableEmailIntegration,
+    getProjectIntegrations,
+} from "../../requests/integration.js";
+import { findAnEnvFile } from "../../utils/environmentVariables.js";
+import { getProjectEnvFromProjectByName } from "../../requests/getProjectInfoByName.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -117,37 +128,62 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
     }
 
     const projectName = configuration.name;
-    if (configuration.services?.databases) {
-        const databases = configuration.services.databases;
 
-        for (const database of databases) {
-            const { projectId, projectEnvId } = await getOrCreateEmptyProject(
-                projectName,
-                configuration.region,
-                options.stage || "prod",
-            );
-
-            await getOrCreateDatabase(
-                {
-                    name: database.name,
-                    region: database.region,
-                    type: database.type,
-                },
-                options.stage || "prod",
-                projectId,
-                projectEnvId,
-            );
-        }
-    }
-
-    if (configuration.services?.email) {
-        const { projectId, projectEnvId } = await getOrCreateEmptyProject(
+    if (configuration.services) {
+        const projectDetails = await getOrCreateEmptyProject(
             projectName,
             configuration.region,
             options.stage || "prod",
         );
-        await enableEmailIntegration(projectId, projectEnvId);
-        debugLogger.debug("Email integration enabled.");
+
+        if (!projectDetails) {
+            throw new UserError("Could not create project.");
+        }
+
+        if (configuration.services?.databases) {
+            const databases = configuration.services.databases;
+
+            for (const database of databases) {
+                await getOrCreateDatabase(
+                    {
+                        name: database.name,
+                        region: database.region,
+                        type: database.type,
+                    },
+                    options.stage || "prod",
+                    projectDetails.projectId,
+                    projectDetails.projectEnvId,
+                );
+            }
+        }
+
+        if (configuration.services?.email !== undefined) {
+            const isEnabled = (
+                await getProjectIntegrations(projectDetails.projectId, projectDetails.projectEnvId)
+            ).integrations.find((integration) => integration === "EMAIL-SERVICE");
+
+            if (configuration.services?.email && !isEnabled) {
+                await enableEmailIntegration(projectDetails.projectId, projectDetails.projectEnvId);
+                log.info("Email integration enabled successfully.");
+            } else if (configuration.services?.email === false && isEnabled) {
+                await disableEmailIntegration(
+                    projectDetails.projectId,
+                    projectDetails.projectEnvId,
+                );
+                log.info("Email integration disabled successfully.");
+            }
+        }
+
+        if (configuration.services?.authentication) {
+            const envFile = options.env || (await findAnEnvFile(process.cwd()));
+            await enableAuthentication(
+                configuration,
+                projectDetails.projectId,
+                projectDetails.projectEnvId,
+                options.stage || "prod",
+                envFile,
+            );
+        }
     }
 
     let deployClassesResult;
@@ -248,83 +284,38 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         }
     }
 
-    // create archive of the project
-    const tmpFolderProject = await createTemporaryFolder();
-    debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
-    await zipDirectory(process.cwd(), path.join(tmpFolderProject, "projectCode.zip"), [
-        "**/node_modules/*",
-        "./node_modules/*",
-        "node_modules/*",
-        "**/node_modules",
-        "./node_modules",
-        "node_modules",
-        "node_modules/**",
-        "**/node_modules/**",
-        // ignore all .git files
-        "**/.git/*",
-        "./.git/*",
-        ".git/*",
-        "**/.git",
-        "./.git",
-        ".git",
-        ".git/**",
-        "**/.git/**",
-        // ignore all .next files
-        "**/.next/*",
-        "./.next/*",
-        ".next/*",
-        "**/.next",
-        "./.next",
-        ".next",
-        ".next/**",
-        "**/.next/**",
-        // ignore all .open-next files
-        "**/.open-next/*",
-        "./.open-next/*",
-        ".open-next/*",
-        "**/.open-next",
-        "./.open-next",
-        ".open-next",
-        ".open-next/**",
-        "**/.open-next/**",
-        // ignore all .vercel files
-        "**/.vercel/*",
-        "./.vercel/*",
-        ".vercel/*",
-        "**/.vercel",
-        "./.vercel",
-        ".vercel",
-        ".vercel/**",
-        "**/.vercel/**",
-        // ignore all .turbo files
-        "**/.turbo/*",
-        "./.turbo/*",
-        ".turbo/*",
-        "**/.turbo",
-        "./.turbo",
-        ".turbo",
-        ".turbo/**",
-        "**/.turbo/**",
-        // ignore all .sst files
-        "**/.sst/*",
-        "./.sst/*",
-        ".sst/*",
-        "**/.sst",
-        "./.sst",
-        ".sst",
-        ".sst/**",
-        "**/.sst/**",
-    ]);
+    await uploadUserCode(configuration.name, configuration.region, options.stage);
 
-    const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(
-        configuration.region,
-        configuration.name,
-        options.stage,
-    );
-    await uploadContentToS3(
-        presignedUrlForProjectCode,
-        path.join(tmpFolderProject, "projectCode.zip"),
-    );
+    const settings = configuration.services?.authentication?.settings;
+    if (settings) {
+        const stage = options.stage || "prod";
+        const projectEnv = await getProjectEnvFromProjectByName(projectName, stage);
+        if (!projectEnv) {
+            throw new UserError(
+                `Stage ${stage} not found in project ${projectName}. Please run 'genezio deploy --stage ${stage}' to deploy your project to a new stage.`,
+            );
+        }
+
+        if (settings?.resetPassword) {
+            await setAuthenticationEmailTemplates(
+                configuration,
+                settings.resetPassword.redirectUrl,
+                AuthenticationEmailTemplateType.passwordReset,
+                stage,
+                projectEnv?.id,
+            );
+        }
+
+        if (settings.emailVerification) {
+            await setAuthenticationEmailTemplates(
+                configuration,
+                settings.emailVerification.redirectUrl,
+                AuthenticationEmailTemplateType.verification,
+                stage,
+                projectEnv?.id,
+            );
+        }
+    }
 
     if (deployClassesResult) {
         log.info(
@@ -454,7 +445,7 @@ export async function deployClasses(
             if (element.language === "go") {
                 await zipFile(path.join(output.path, "bootstrap"), archivePath);
             } else {
-                await zipDirectory(output.path, archivePath, [".git", ".github"]);
+                await zipDirectory(output.path, archivePath, true, [".git", ".github"]);
             }
 
             await deleteFolder(output.path);
@@ -567,6 +558,7 @@ export async function deployClasses(
 export async function functionToCloudInput(
     functionElement: FunctionConfiguration,
     backendPath: string,
+    outputDir?: string,
 ): Promise<GenezioCloudInput> {
     if (functionElement.language !== "js" && functionElement.language !== "ts") {
         throw new UserError(
@@ -575,9 +567,15 @@ export async function functionToCloudInput(
     }
     const handlerProvider = getFunctionHandlerProvider(functionElement.type);
 
-    // create temporary folder
+    if (outputDir && !fs.existsSync(outputDir)) {
+        debugLogger.debug(`Creating output directory ${outputDir}`);
+        mkdirSync(outputDir, { recursive: true });
+    }
     const tmpFolderPath = await createTemporaryFolder();
-    const archivePath = path.join(await createTemporaryFolder(), `genezioDeploy.zip`);
+    const archivePath = path.join(
+        outputDir || (await createTemporaryFolder()),
+        `genezioDeploy.zip`,
+    );
 
     // copy everything to the temporary folder
     await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath);
@@ -609,7 +607,7 @@ export async function functionToCloudInput(
     debugLogger.debug(`Zip the directory ${tmpFolderPath}.`);
 
     // zip the temporary folder
-    await zipDirectory(tmpFolderPath, archivePath, [".git", ".github"]);
+    await zipDirectory(tmpFolderPath, archivePath, true, [".git", ".github"]);
 
     debugLogger.debug(`Zip created at path: ${archivePath}.`);
 
@@ -644,10 +642,18 @@ export async function deployFrontend(
     await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
         const environment = frontend.environment;
         if (environment) {
-            const newEnvObject = await processYamlEnvironmentVariables(
-                environment,
-                configuration,
-                stage,
+            const newEnvObject: Record<string, string> = {};
+
+            await Promise.all(
+                Object.keys(environment).map(async (key) => {
+                    const resolvedValue = await evaluateResource(
+                        configuration,
+                        environment[key],
+                        stage,
+                        /* envFile */ undefined,
+                    );
+                    newEnvObject[key] = resolvedValue;
+                }),
             );
             await runScript(frontend.scripts?.build, frontend.path, newEnvObject);
         } else {

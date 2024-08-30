@@ -8,6 +8,11 @@ export enum Language {
     go = "go",
 }
 
+export enum AuthenticationDatabaseType {
+    mongo = "mongodb",
+    postgres = "postgresql",
+}
+
 export enum DatabaseType {
     neon = "postgres-neon",
 }
@@ -16,6 +21,11 @@ export enum TriggerType {
     jsonrpc = "jsonrpc",
     cron = "cron",
     http = "http",
+}
+
+export enum AuthenticationEmailTemplateType {
+    verification = "VERIFICATION",
+    passwordReset = "PASS_RESET",
 }
 
 export enum FunctionType {

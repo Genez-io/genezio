@@ -33,6 +33,7 @@ import {
     GenezioLocalOptions,
     GenezioSdkOptions,
     GenezioUnlinkOptions,
+    GenezioBundleFunctionOptions,
 } from "./models/commandOptions.js";
 import currentGenezioVersion, {
     checkNodeMinimumVersion,
@@ -50,6 +51,7 @@ import { backendTemplates, frontendTemplates } from "./commands/create/templates
 import configReader from "./projectConfiguration/yaml/v2.js";
 import { askCloneOptions, cloneCommand } from "./commands/clone.js";
 import { pullCommand } from "./commands/pull.js";
+import { CloudProviderIdentifier } from "./models/cloudProviderIdentifier.js";
 
 const program = new Command();
 
@@ -427,6 +429,40 @@ create
     });
 
 create
+    .command("nuxt")
+    .option("--name <name>", "Name of the project.")
+    .addOption(
+        new Option("--region <region>", "Region of the project.").choices(
+            regions.map((region) => region.value),
+        ),
+    )
+    .option("--path <path>", "Path where to create the project.", undefined)
+    .summary("Create a new Nuxt project.")
+    .action(async (options: GenezioCreateNitroJsOptions, { parent }: { parent: Command }) => {
+        const createOptions = await askCreateOptions({
+            ...parent.opts(),
+            ...options,
+            type: "nuxt",
+        });
+
+        const telemetryEvent = GenezioTelemetry.sendEvent({
+            eventType: TelemetryEventTypes.GENEZIO_CREATE,
+            commandOptions: JSON.stringify(createOptions),
+        });
+
+        await createCommand(createOptions).catch(async (error) => {
+            logError(error);
+            await telemetryEvent;
+            await GenezioTelemetry.sendEvent({
+                eventType: TelemetryEventTypes.GENEZIO_CREATE_ERROR,
+                errorTrace: error.message,
+            });
+            exit(1);
+        });
+        await telemetryEvent;
+    });
+
+create
     .command("serverless")
     .option("--name <name>", "Name of the project.")
     .addOption(
@@ -623,6 +659,26 @@ program
         false,
     )
     .action(async (options: GenezioBundleOptions) => {
+        await bundleCommand(options).catch(async (error) => {
+            logError(error);
+            exit(1);
+        });
+    });
+
+program
+    .command("bundleFunction", { hidden: true })
+    .option("--functionName <functionName>", "The name of the function that needs to be bundled.")
+    .option("--handler <handler>", "The name of handler of the function.")
+    .option("--entry <entry>", "The entry file of the function.")
+    .option("--functionPath <functionPath>", "The path of the folder containing the function.")
+    .option("--backendPath <backendPath>", "The path of the backend folder.", ".")
+    .option(
+        "--cloudAdapter <cloudAdapter>",
+        "The cloud adapter that will be used.",
+        CloudProviderIdentifier.GENEZIO_CLOUD,
+    )
+    .option("--output <output>", "The output path of the bundled class.")
+    .action(async (options: GenezioBundleFunctionOptions) => {
         await bundleCommand(options).catch(async (error) => {
             logError(error);
             exit(1);

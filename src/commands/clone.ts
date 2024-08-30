@@ -75,15 +75,6 @@ export async function askCloneOptions(
                 name: "stage",
                 default: "prod",
                 message: colors.magenta("Please enter the name of the stage:"),
-                validate: (input: string) => {
-                    try {
-                        checkProjectName(input);
-                        return true;
-                    } catch (error) {
-                        if (error instanceof Error) return colors.red(error.message);
-                        return colors.red("Unavailable project name");
-                    }
-                },
             },
         ]);
 

@@ -79,7 +79,15 @@ import * as readline from "readline";
 import { getLinkedFrontendsForProject } from "../utils/linkDatabase.js";
 import fsExtra from "fs-extra/esm";
 import { DeployCodeFunctionResponse } from "../models/deployCodeResponse.js";
-import { processYamlEnvironmentVariables } from "./deploy/utils.js";
+import {
+    enableAuthentication,
+    evaluateResource,
+    getOrCreateDatabase,
+    getOrCreateEmptyProject,
+} from "./deploy/utils.js";
+import { displayHint } from "../utils/strings.js";
+import { enableEmailIntegration, getProjectIntegrations } from "../requests/integration.js";
+import { findAnEnvFile } from "../utils/environmentVariables.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -108,8 +116,94 @@ export async function prepareLocalBackendEnvironment(
     options: GenezioLocalOptions,
 ): Promise<LocalUnitProcessSpawnResponse> {
     try {
+        const databases = yamlProjectConfiguration.services?.databases;
+        const authentication = yamlProjectConfiguration.services?.authentication;
+        const email = yamlProjectConfiguration.services?.email;
         const backend = yamlProjectConfiguration.backend;
         const frontend = yamlProjectConfiguration.frontend;
+
+        const projectName = yamlProjectConfiguration.name;
+        const region = yamlProjectConfiguration.region;
+
+        let configurationEnvVars: { [key: string]: string | undefined } = {};
+        if (yamlProjectConfiguration.services) {
+            const projectDetails = await getOrCreateEmptyProject(
+                projectName,
+                region,
+                options.stage || "prod",
+                /* ask */ true,
+            );
+
+            if (databases && projectDetails) {
+                // Get connection URL and expose it as an environment variable only for the server process
+                for (const database of databases) {
+                    const remoteDatabase = await getOrCreateDatabase(
+                        {
+                            name: database.name,
+                            region: database.region,
+                            type: database.type,
+                        },
+                        options.stage || "prod",
+                        projectDetails.projectId,
+                        projectDetails.projectEnvId,
+                        /* ask */ true,
+                    );
+
+                    if (!remoteDatabase) {
+                        break;
+                    }
+
+                    const databaseConnectionUrlKey = `${remoteDatabase.name.replace(/-/g, "_").toUpperCase()}_DATABASE_URL`;
+                    configurationEnvVars = {
+                        [databaseConnectionUrlKey]: remoteDatabase.connectionUrl,
+                    };
+
+                    log.info(
+                        displayHint(
+                            `You can use \`process.env["${databaseConnectionUrlKey}"]\` to connect to the remote database \`${remoteDatabase.name}\`.`,
+                        ),
+                    );
+                }
+            }
+
+            if (authentication && projectDetails) {
+                const envFile = options.env || (await findAnEnvFile(process.cwd()));
+                await enableAuthentication(
+                    yamlProjectConfiguration,
+                    projectDetails.projectId,
+                    projectDetails.projectEnvId,
+                    options.stage || "prod",
+                    envFile,
+                    /* ask */ true,
+                );
+
+                log.info(
+                    displayHint(
+                        `You can reference authentication token and region using \${{services.authentication.token}} and \${{services.authentication.region}}.`,
+                    ),
+                );
+            }
+
+            if (email && projectDetails) {
+                const isEnabled = (
+                    await getProjectIntegrations(
+                        projectDetails.projectId,
+                        projectDetails.projectEnvId,
+                    )
+                ).integrations.find((integration) => integration === "EMAIL-SERVICE");
+
+                if (!isEnabled) {
+                    await enableEmailIntegration(
+                        projectDetails.projectId,
+                        projectDetails.projectEnvId,
+                    );
+                    log.info("Email integration enabled successfully.");
+                }
+                log.info(
+                    displayHint(`You can use \`process.env[EMAIL_SERVICE_TOKEN]\` to send emails.`),
+                );
+            }
+        }
 
         if (!backend) {
             throw new UserError("No backend component found in the genezio.yaml file.");
@@ -164,6 +258,7 @@ export async function prepareLocalBackendEnvironment(
             projectConfiguration,
             sdkResponse,
             options,
+            configurationEnvVars,
         );
         return await new Promise<LocalUnitProcessSpawnResponse>((resolve) => {
             resolve({
@@ -259,14 +354,22 @@ async function startFrontends(
     await Promise.all(
         frontendConfiguration.map(async (frontend) => {
             const environment = frontend.environment;
-            let newEnvObject: Record<string, string> | undefined = undefined;
+            const newEnvObject: Record<string, string> = {};
             if (environment) {
-                newEnvObject = await processYamlEnvironmentVariables(
-                    environment,
-                    configuration,
-                    stage,
-                    { isLocal: true, port: port },
-                );
+                Object.keys(environment).forEach(async (key) => {
+                    const resolvedValue = await evaluateResource(
+                        configuration,
+                        environment[key],
+                        stage,
+                        /* envFile */ undefined,
+                        {
+                            isLocal: true,
+                            port,
+                        },
+                    );
+
+                    newEnvObject[key] = resolvedValue;
+                });
             }
 
             await runFrontendStartScript(
@@ -469,6 +572,7 @@ async function startProcesses(
     projectConfiguration: ProjectConfiguration,
     sdk: SdkHandlerResponse,
     options: GenezioLocalOptions,
+    configurationEnvVars?: { [key: string]: string | undefined },
 ): Promise<Map<string, UnitProcess>> {
     const classes = projectConfiguration.classes;
     const processForLocalUnits = new Map<string, UnitProcess>();
@@ -572,6 +676,7 @@ async function startProcesses(
             envVars,
             extra.type || "class",
             projectConfiguration.workspace?.backend,
+            configurationEnvVars,
         );
     }
 
@@ -1247,6 +1352,7 @@ async function startLocalUnitProcess(
     envVars: dotenv.DotenvPopulateInput = {},
     type: "class" | "function",
     cwd?: string,
+    configurationEnvVars?: { [key: string]: string | undefined },
 ) {
     const availablePort = await findAvailablePort();
     debugLogger.debug(`[START_Unit_PROCESS] Starting ${localUnitName} on port ${availablePort}`);
@@ -1258,6 +1364,7 @@ async function startLocalUnitProcess(
         env: {
             ...process.env,
             ...envVars,
+            ...configurationEnvVars,
             NODE_OPTIONS: "--enable-source-maps",
         },
         cwd,

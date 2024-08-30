@@ -1,15 +1,20 @@
-/* eslint-disable no-console */
 import { spawn } from "child_process";
 import { UserError } from "../errors.js";
 import colors from "colors";
 import _ from "lodash";
 import { Logger } from "tslog";
-import { FunctionConfiguration } from "../models/projectConfiguration.js";
+import {
+    AuthenticationConfiguration,
+    DatabaseConfiguration,
+    FunctionConfiguration,
+} from "../models/projectConfiguration.js";
 import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
 import { FunctionType } from "../projectConfiguration/yaml/models.js";
 import getProjectInfoByName from "../requests/getProjectInfoByName.js";
 import { execaCommand } from "execa";
-import { PORT_LOCAL_ENVIRONMENT } from "../constants.js";
+import { ENVIRONMENT, PORT_LOCAL_ENVIRONMENT } from "../constants.js";
+import { getDatabaseByName } from "../requests/database.js";
+import { getAuthentication } from "../requests/authentication.js";
 
 /**
  * Determines whether a given value is a valid `FunctionConfiguration` object.
@@ -33,6 +38,38 @@ function isFunctionConfiguration(
         Object.values(FunctionType).includes(
             (potentialFunctionObject as FunctionConfiguration).type,
         )
+    );
+}
+
+/**
+ * Determines whether a given value is a valid `DatabaseConfiguration` object.
+ *
+ * This type guard checks whether the provided value is an instance of
+ * `DatabaseConfiguration` and whether it conforms to the expected structure.
+ *
+ * @param potentialDatabaseObject The value to be checked, of an unknown type.
+ * @returns `true` if the value is a `DatabaseConfiguration`, otherwise `false`.
+ */
+function isDatabaseObject(
+    potentialDatabaseObject: unknown,
+): potentialDatabaseObject is DatabaseConfiguration {
+    return (
+        typeof potentialDatabaseObject === "object" &&
+        potentialDatabaseObject !== null &&
+        typeof (potentialDatabaseObject as DatabaseConfiguration).name === "string" &&
+        typeof (potentialDatabaseObject as DatabaseConfiguration).region === "string"
+    );
+}
+
+function isAuthenticationObject(
+    potentialAuthenticationObject: unknown,
+): potentialAuthenticationObject is AuthenticationConfiguration {
+    return (
+        typeof potentialAuthenticationObject === "object" &&
+        potentialAuthenticationObject !== null &&
+        typeof (potentialAuthenticationObject as AuthenticationConfiguration).database ===
+            "object" &&
+        (potentialAuthenticationObject as AuthenticationConfiguration).database !== null
     );
 }
 
@@ -93,11 +130,13 @@ export async function resolveConfigurationVariable(
         }
 
         if (resourceObject === undefined) {
-            throw new UserError(`The attribute ${key} from ${path} is not supported.`);
+            throw new UserError(
+                `The attribute ${key} from ${path} is not supported or does not exist in the given resource.`,
+            );
         }
     }
 
-    if (isFunctionConfiguration(resourceObject)) {
+    if (isFunctionConfiguration(resourceObject) && path.startsWith("backend.functions")) {
         const functionObj = resourceObject as FunctionConfiguration;
 
         // Retrieve custom output fields for a function object such as `url`
@@ -106,7 +145,11 @@ export async function resolveConfigurationVariable(
                 return `http://localhost:${options.port}/.functions/function-${functionObj.name}`;
             }
 
-            const response = await getProjectInfoByName(configuration.name);
+            const response = await getProjectInfoByName(configuration.name).catch((error) => {
+                throw new UserError(
+                    `Failed to retrieve the project ${configuration.name} with error: ${error}. You cannot use the url attribute.`,
+                );
+            });
             const functionUrl = response.projectEnvs
                 .find((env) => env.name === stage)
                 ?.functions?.find((func) => func.name === "function-" + functionObj.name)?.cloudUrl;
@@ -127,6 +170,75 @@ export async function resolveConfigurationVariable(
         return inputField;
     }
 
+    if (isDatabaseObject(resourceObject) && path.startsWith("services.databases")) {
+        const databaseObj = resourceObject as DatabaseConfiguration;
+        if (field === "uri") {
+            const databaseName = databaseObj.name;
+            const databaseResponse = await getDatabaseByName(databaseName);
+            if (!databaseResponse?.connectionUrl) {
+                throw new UserError(
+                    `Cannot retrieve the connection URL for the database ${databaseObj.name}.`,
+                );
+            }
+
+            return databaseResponse?.connectionUrl;
+        }
+
+        const inputField = databaseObj[field as keyof DatabaseConfiguration];
+
+        if (inputField === undefined) {
+            throw new UserError(
+                `The attribute ${field} is not supported for database ${databaseObj.name}. You can use one of the following attributes: ${Object.keys(databaseObj).join(", ")} and uri.`,
+            );
+        }
+        return inputField;
+    }
+
+    if (isAuthenticationObject(resourceObject) && path.startsWith("services.authentication")) {
+        const authenticationObj = resourceObject as AuthenticationConfiguration;
+
+        if (field === "token") {
+            const response = await getProjectInfoByName(configuration.name).catch(() => {
+                throw new UserError(
+                    `Failed to retrieve the project ${configuration.name}. You cannot use the token attribute.`,
+                );
+            });
+            const projectEnv = response.projectEnvs.find((env) => env.name === stage);
+            if (!projectEnv) {
+                throw new UserError(`The stage ${stage} is not found in the project.`);
+            }
+            const authenticationResponse = await getAuthentication(projectEnv?.id);
+
+            return authenticationResponse?.token;
+        }
+
+        if (field === "region") {
+            const response = await getProjectInfoByName(configuration.name).catch(() => {
+                throw new UserError(
+                    `Failed to retrieve the project ${configuration.name}. You cannot use the region attribute.`,
+                );
+            });
+            const projectEnv = response.projectEnvs.find((env) => env.name === stage);
+            if (!projectEnv) {
+                throw new UserError(`The stage ${stage} is not found in the project.`);
+            }
+            if (ENVIRONMENT === "dev") {
+                return "dev-fkt";
+            }
+            const authenticationResponse = await getAuthentication(projectEnv?.id);
+
+            return authenticationResponse?.region;
+        }
+
+        const inputField = authenticationObj[field as keyof AuthenticationConfiguration];
+
+        if (inputField === undefined) {
+            throw new UserError(
+                `The attribute ${field} is not supported for authentication. You can use one of the following attributes: ${Object.keys(authenticationObj).join(", ")}, token and region.`,
+            );
+        }
+    }
+
     if (assertIsObjectWithField<{ [key: string]: unknown }>(resourceObject, field)) {
         const result = resourceObject[field];
         if (typeof result === "string") {
@@ -139,28 +251,6 @@ export async function resolveConfigurationVariable(
             `The attribute ${field} is not supported or does not exist in the given resource.`,
         );
     }
-}
-
-export async function parseRawVariable(
-    rawValue: string,
-): Promise<{ path: string; field: string } | undefined> {
-    const regex = /\$\{\{[ a-zA-Z0-9-.]+\}\}/;
-    const prefix = "${{";
-    const suffix = "}}";
-    const match = rawValue.match(regex);
-
-    if (match) {
-        // Sanitize the variable
-        const variable = match[0].slice(prefix.length, -suffix.length).replace(/ /g, "");
-
-        // Split the string at the last period
-        const lastDotIndex = variable.lastIndexOf(".");
-        const path = variable.substring(0, lastDotIndex);
-        const field = variable.substring(lastDotIndex + 1);
-        return { path, field };
-    }
-
-    return undefined;
 }
 
 export async function runScript(

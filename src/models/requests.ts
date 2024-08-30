@@ -1,3 +1,7 @@
+import {
+    AuthenticationDatabaseType,
+    AuthenticationEmailTemplateType,
+} from "../projectConfiguration/yaml/models.js";
 import { ProjectDetailsEnvElement } from "../requests/models.js";
 
 export interface CreateDatabaseRequest {
@@ -64,11 +68,118 @@ export interface GetProjectDetailsResponse {
     projectEnvs: ProjectDetailsEnvElement[];
 }
 
+export type YourOwnAuthDatabaseConfig = {
+    uri: string;
+    type: AuthenticationDatabaseType;
+};
+
+export type NativeAuthDatabaseConfig = {
+    name: string;
+};
+
+export type AuthDatabaseConfig = YourOwnAuthDatabaseConfig | NativeAuthDatabaseConfig;
+
 export interface EnableIntegrationRequest {
     integrationName: string;
     envVars?: string[];
 }
 
-export interface EnableIntegrationResponse {
+export interface IntegrationResponse {
     status: string;
 }
+
+export interface GetIntegrationResponse {
+    status: string;
+    integrations: string[];
+}
+
+export interface GoogleProvider {
+    clientId: string;
+    clientSecret: string;
+}
+
+export interface AuthenticationProviders {
+    email?: boolean;
+    web3?: boolean;
+    google?: GoogleProvider;
+}
+
+export interface SetAuthenticationRequest {
+    enabled: boolean;
+    databaseType: AuthenticationDatabaseType;
+    databaseUrl: string;
+}
+
+export interface SetAuthenticationResponse {
+    enabled: boolean;
+    databaseType: string;
+    databaseUrl: string;
+    region: string;
+    token: string;
+}
+
+export interface AuthProviderDetails {
+    id: string;
+    name: string;
+    enabled: boolean;
+    config: { [key: string]: string } | null;
+}
+
+export interface GetAuthProvidersResponse {
+    status: string;
+    authProviders: AuthProviderDetails[];
+}
+
+export interface SetAuthProvidersRequest {
+    authProviders: AuthProviderDetails[];
+}
+
+export interface SetAuthProvidersResponse {
+    status: string;
+    authProviders: AuthProviderDetails[];
+}
+
+export interface GetAuthenticationResponse {
+    enabled: boolean;
+    databaseUrl: string;
+    databaseType: string;
+    token: string;
+    region: string;
+}
+
+export interface AuthenticationSettings {
+    passwordReset?: {
+        redirectUrl: string;
+    };
+    emailVerification?: {
+        redirectUrl: string;
+    };
+}
+
+export type EmailTemplatesRequest = {
+    templates: {
+        type: AuthenticationEmailTemplateType;
+        template: {
+            senderName?: string;
+            senderEmail?: string;
+            subject?: string;
+            message?: string;
+            redirectUrl?: string;
+        };
+        variables?: string[];
+    }[];
+};
+
+export type SetEmailTemplatesResponse = {
+    templates: {
+        type: string;
+        template: {
+            senderName: string;
+            senderEmail: string;
+            subject: string;
+            message: string;
+            redirectUrl: string;
+        };
+        variables: string[];
+    }[];
+};
