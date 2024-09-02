@@ -164,7 +164,7 @@
         "@rollup/rollup-linux-x64-musl": "4.21.0",
         "@rollup/rollup-win32-arm64-msvc": "4.21.2",
         "@rollup/rollup-win32-ia32-msvc": "4.18.0",
-        "@rollup/rollup-win32-x64-msvc": "4.21.0"
+        "@rollup/rollup-win32-x64-msvc": "4.21.2"
     },
     "prettier": {
         "tabWidth": 4,
