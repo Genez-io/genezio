@@ -501,6 +501,8 @@ class SdkGenerator implements SdkGeneratorInterface {
                 return (elem as CustomAstNodeType).rawValue;
             case AstNodeType.StringLiteral:
                 return "string";
+            case AstNodeType.BigIntLiteral:
+                return "bigint";
             case AstNodeType.IntegerLiteral:
             case AstNodeType.FloatLiteral:
             case AstNodeType.DoubleLiteral:

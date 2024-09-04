@@ -9,6 +9,17 @@ import {  ${className.replace(/["]/g, "")} as genezioClass } from "./module.mjs"
 
 var handler = undefined;
 
+const replacer = (key, value) =>
+  typeof value === "bigint" ? { $bigint: value.toString() } : value;
+
+const reviver = (key, value) =>
+  value !== null &&
+  typeof value === "object" &&
+  "$bigint" in value &&
+  typeof value.$bigint === "string"
+    ? BigInt(value.$bigint)
+    : value;
+
 function prepareForSerialization(e) {
     if (e instanceof Error) {
         const object = { message: e.message, stack: e.stack, info: e.info, code: e.code } 
@@ -76,7 +87,7 @@ if (!genezioClass) {
         let body = event.body;
         let invalidBody = false;
         try {
-            body = JSON.parse(event.body);
+            body = JSON.parse(event.body, reviver);
         } catch (error) {
             invalidBody = true;
         }
@@ -135,7 +146,7 @@ if (!genezioClass) {
                     };
                 } else if (response.body instanceof Object) {
                     try {
-                        response.body = JSON.stringify(response.body);
+                        response.body = JSON.stringify(response.body, replacer);
                     } catch (error) { }
                 }
 
@@ -230,7 +241,7 @@ if (!genezioClass) {
                                 result: result,
                                 error: null,
                                 id: requestId,
-                            }),
+                            }, replacer),
                             headers: { 'Content-Type': 'application/json', 'X-Powered-By': 'genezio','Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' }
                         };
                     })
