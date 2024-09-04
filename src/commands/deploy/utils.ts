@@ -82,7 +82,7 @@ export async function getOrCreateEmptyProject(
             return undefined;
         }
         debugLogger.debug(`Error getting project ${projectName}: ${error}`);
-        throw new UserError(`Failed to get project ${projectName}.`);
+        throw new UserError(`Failed to get project ${projectName}: ${error}`);
     });
 
     const projectEnv = project?.projectEnvs.find((projectEnv) => projectEnv.name == stage);
