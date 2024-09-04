@@ -3,16 +3,29 @@
  * if new genezio commands are executed.
  */
 
+const replacer = (_: string, value: any) =>
+    typeof value === "bigint" ? { $bigint: value.toString() } : value;
+
+const reviver = (_: string, value: any) =>
+    value !== null &&
+    typeof value === "object" &&
+    "$bigint" in value &&
+    typeof value.$bigint === "string"
+        ? BigInt(value.$bigint)
+        : value;
+
 async function makeRequestBrowser(request: any, url: any) {
     const response = await fetch(url, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
         },
-        body: JSON.stringify(request),
+        body: JSON.stringify(request, replacer),
     });
 
-    return response.json();
+    const textBody = await response.text();
+
+    return JSON.parse(textBody, reviver);
 }
 
 /**
