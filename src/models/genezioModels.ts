@@ -63,6 +63,7 @@ export enum AstNodeType {
     FloatLiteral = "FloatLiteral",
     NullLiteral = "NullLiteral",
     DoubleLiteral = "DoubleLiteral",
+    BigIntLiteral = "BigIntLiteral",
     VoidLiteral = "VoidLiteral",
     AnyLiteral = "AnyLiteral",
     ArrayType = "ArrayType",
@@ -136,6 +137,10 @@ export interface IntegerType extends Node {
     type: AstNodeType.IntegerLiteral;
 }
 
+export interface BigIntType extends Node {
+    type: AstNodeType.BigIntLiteral;
+}
+
 export interface BooleanType extends Node {
     type: AstNodeType.BooleanLiteral;
 }
@@ -203,6 +208,7 @@ export interface PropertyDefinition {
     type:
         | DoubleType
         | IntegerType
+        | BigIntType
         | StringType
         | BooleanType
         | FloatType
@@ -235,6 +241,7 @@ export interface TypeAlias extends Node {
     aliasType:
         | DoubleType
         | IntegerType
+        | BigIntType
         | StringType
         | BooleanType
         | FloatType
@@ -262,6 +269,7 @@ export interface ParameterDefinition extends Node {
     paramType:
         | DoubleType
         | IntegerType
+        | BigIntType
         | StringType
         | BooleanType
         | FloatType
@@ -293,6 +301,7 @@ export interface MethodDefinition extends Node {
     returnType:
         | DoubleType
         | IntegerType
+        | BigIntType
         | StringType
         | BooleanType
         | FloatType

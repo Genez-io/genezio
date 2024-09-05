@@ -28,6 +28,7 @@ import {
     EnumType,
     DateType,
     MapType,
+    BigIntType,
 } from "../../models/genezioModels.js";
 
 import typescript from "typescript";
@@ -49,6 +50,7 @@ export class AstGenerator implements AstGeneratorInterface {
         | DoubleType
         | IntegerType
         | StringType
+        | BigIntType
         | BooleanType
         | FloatType
         | AnyType
@@ -70,6 +72,8 @@ export class AstGenerator implements AstGeneratorInterface {
                     rawValue: literalType.literal.getText(),
                 };
             }
+            case typescript.SyntaxKind.BigIntKeyword:
+                return { type: AstNodeType.BigIntLiteral };
             case typescript.SyntaxKind.StringKeyword:
                 return { type: AstNodeType.StringLiteral };
             case typescript.SyntaxKind.NumberKeyword:
