@@ -56,7 +56,7 @@
         "@sentry/profiling-node": "~7.118.0",
         "@types/adm-zip": "^0.5.5",
         "@webcontainer/env": "^1.1.1",
-        "adm-zip": "^0.5.14",
+        "adm-zip": "^0.5.16",
         "archiver": "^7.0.1",
         "async-mutex": "^0.5.0",
         "await-exec": "^0.1.2",
