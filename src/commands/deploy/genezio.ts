@@ -234,6 +234,30 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
                 await doAdaptiveLogAction(
                     `Running frontend ${index + 1} deploy script`,
                     async () => {
+                        const environment = frontend.environment;
+                        if (environment) {
+                            const newEnvObject: Record<string, string> = {};
+
+                            await Promise.all(
+                                Object.keys(environment).map(async (key) => {
+                                    const resolvedValue = await evaluateResource(
+                                        configuration,
+                                        environment[key],
+                                        options.stage,
+                                        /* envFile */ undefined,
+                                    );
+                                    newEnvObject[key] = resolvedValue;
+                                }),
+                            );
+                            debugLogger.debug(
+                                `Environment variables: ${JSON.stringify(newEnvObject)}`,
+                            );
+                            return await runScript(
+                                frontend.scripts?.deploy,
+                                frontend.path || process.cwd(),
+                                newEnvObject,
+                            );
+                        }
                         return await runScript(
                             frontend.scripts?.deploy,
                             frontend.path || process.cwd(),
@@ -654,6 +678,9 @@ export async function deployFrontend(
                     );
                     newEnvObject[key] = resolvedValue;
                 }),
+            );
+            debugLogger.debug(
+                `Environment variables for variables: ${JSON.stringify(newEnvObject)}`,
             );
             await runScript(frontend.scripts?.build, frontend.path, newEnvObject);
         } else {
