@@ -401,6 +401,9 @@ export async function enableAuthentication(
             throw new UserError(ADD_DATABASE_CONFIG(authDatabase.name, configuration.region));
         }
 
+        if (!configDatabase.region) {
+            configDatabase.region = configuration.region;
+        }
         const database: GetDatabaseResponse | undefined = await getOrCreateDatabase(
             {
                 name: configDatabase.name,

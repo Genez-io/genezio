@@ -144,6 +144,9 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             const databases = configuration.services.databases;
 
             for (const database of databases) {
+                if (!database.region) {
+                    database.region = configuration.region;
+                }
                 await getOrCreateDatabase(
                     {
                         name: database.name,

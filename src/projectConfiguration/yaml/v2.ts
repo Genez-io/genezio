@@ -102,10 +102,7 @@ function parseGenezioConfig(config: unknown) {
     const databaseSchema = zod.object({
         name: zod.string(),
         type: zod.nativeEnum(DatabaseType).optional().default(DatabaseType.neon),
-        region: zod
-            .enum(databaseRegions.map((r) => r.value) as [string, ...string[]])
-            .optional()
-            .default("us-east-1"),
+        region: zod.enum(databaseRegions.map((r) => r.value) as [string, ...string[]]).optional(),
     });
 
     const redirectUrlSchema = zod.string();

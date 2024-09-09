@@ -137,6 +137,9 @@ export async function prepareLocalBackendEnvironment(
             if (databases && projectDetails) {
                 // Get connection URL and expose it as an environment variable only for the server process
                 for (const database of databases) {
+                    if (!database.region) {
+                        database.region = region;
+                    }
                     const remoteDatabase = await getOrCreateDatabase(
                         {
                             name: database.name,
