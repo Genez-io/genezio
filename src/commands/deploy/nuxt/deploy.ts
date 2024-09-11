@@ -27,20 +27,31 @@ import {
     CreateFrontendV2Path,
 } from "../../../requests/createFrontendProject.js";
 import { DeployCodeFunctionResponse } from "../../../models/deployCodeResponse.js";
+import { DeployType } from "../command.js";
 
-export async function nuxtDeploy(options: GenezioDeployOptions) {
+export async function nuxtNitroDeploy(options: GenezioDeployOptions, deployType: DeployType) {
     // Check if node_modules exists
     if (!existsSync("node_modules")) {
         throw new UserError(
             `Please run \`${getPackageManager().command} install\` before deploying your Nuxt project. This will install the necessary dependencies.`,
         );
     }
-    await $({
-        stdio: "inherit",
-        env: { NITRO_PRESET: "aws_lambda" },
-    })`npx nuxi build --preset=aws_lambda`.catch(() => {
-        throw new UserError("Failed to build the Nuxt project. Check the logs above.");
-    });
+
+    if (deployType === DeployType.Nuxt) {
+        await $({
+            stdio: "inherit",
+            env: { NITRO_PRESET: "aws_lambda" },
+        })`npx nuxi build --preset=aws_lambda`.catch(() => {
+            throw new UserError("Failed to build the Nuxt project. Check the logs above.");
+        });
+    } else {
+        await $({
+            stdio: "inherit",
+            env: { NITRO_PRESET: "aws_lambda" },
+        })`npx nitro build --preset=aws_lambda`.catch(() => {
+            throw new UserError("Failed to build the Nuxt project. Check the logs above.");
+        });
+    }
 
     const genezioConfig = await readOrAskConfig(options.config);
     const [cloudResult, domain] = await Promise.all([
