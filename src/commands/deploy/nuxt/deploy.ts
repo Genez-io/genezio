@@ -29,7 +29,10 @@ import {
 import { DeployCodeFunctionResponse } from "../../../models/deployCodeResponse.js";
 import { DeployType } from "../command.js";
 
-export async function nuxtNitroDeploy(options: GenezioDeployOptions, deployType: DeployType) {
+export async function nuxtNitroDeploy(
+    options: GenezioDeployOptions,
+    deployType: DeployType.Nuxt | DeployType.Nitro,
+) {
     // Check if node_modules exists
     if (!existsSync("node_modules")) {
         throw new UserError(
@@ -37,20 +40,25 @@ export async function nuxtNitroDeploy(options: GenezioDeployOptions, deployType:
         );
     }
 
-    if (deployType === DeployType.Nuxt) {
-        await $({
-            stdio: "inherit",
-            env: { NITRO_PRESET: "aws_lambda" },
-        })`npx nuxi build --preset=aws_lambda`.catch(() => {
-            throw new UserError("Failed to build the Nuxt project. Check the logs above.");
-        });
-    } else {
-        await $({
-            stdio: "inherit",
-            env: { NITRO_PRESET: "aws_lambda" },
-        })`npx nitro build --preset=aws_lambda`.catch(() => {
-            throw new UserError("Failed to build the Nuxt project. Check the logs above.");
-        });
+    switch (deployType) {
+        case DeployType.Nuxt:
+            await $({
+                stdio: "inherit",
+                env: { NITRO_PRESET: "aws_lambda" },
+            })`npx nuxi build --preset=aws_lambda`.catch(() => {
+                throw new UserError("Failed to build the Nuxt project. Check the logs above.");
+            });
+            break;
+        case DeployType.Nitro:
+            await $({
+                stdio: "inherit",
+                env: { NITRO_PRESET: "aws_lambda" },
+            })`npx nitro build --preset=aws_lambda`.catch(() => {
+                throw new UserError("Failed to build the Nuxt project. Check the logs above.");
+            });
+            break;
+        default:
+            throw new Error(`Incorrect deployment type ${deployType}`);
     }
 
     const genezioConfig = await readOrAskConfig(options.config);
