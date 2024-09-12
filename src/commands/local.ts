@@ -373,6 +373,10 @@ async function startFrontends(
 
                     newEnvObject[key] = resolvedValue;
                 });
+                debugLogger.debug(
+                    `Environment variables for frontend ${frontend.name}:`,
+                    JSON.stringify(newEnvObject),
+                );
             }
 
             await runFrontendStartScript(
