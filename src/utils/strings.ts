@@ -49,6 +49,6 @@ export const displayHint = function (message: string) {
  */
 export function replaceExpression(expression: string, value: string) {
     // ${{<variable>}} can be any alphanumeric string with special characters
-    const placeholderPattern = /\${{[\w\s/.-_]+}}/;
+    const placeholderPattern = /\${{[A-Za-z0-9\s/.\-_]+}}/;
     return expression.replace(placeholderPattern, value);
 }

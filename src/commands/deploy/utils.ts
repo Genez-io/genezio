@@ -82,7 +82,7 @@ export async function getOrCreateEmptyProject(
             return undefined;
         }
         debugLogger.debug(`Error getting project ${projectName}: ${error}`);
-        throw new UserError(`Failed to get project ${projectName}.`);
+        throw new UserError(`Failed to get project ${projectName}: ${error}`);
     });
 
     const projectEnv = project?.projectEnvs.find((projectEnv) => projectEnv.name == stage);
@@ -401,6 +401,9 @@ export async function enableAuthentication(
             throw new UserError(ADD_DATABASE_CONFIG(authDatabase.name, configuration.region));
         }
 
+        if (!configDatabase.region) {
+            configDatabase.region = configuration.region;
+        }
         const database: GetDatabaseResponse | undefined = await getOrCreateDatabase(
             {
                 name: configDatabase.name,

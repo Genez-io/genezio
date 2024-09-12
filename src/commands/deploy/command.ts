@@ -2,16 +2,16 @@ import { GenezioDeployOptions } from "../../models/commandOptions.js";
 import { interruptLocalProcesses } from "../../utils/localInterrupt.js";
 import { debugLogger } from "../../utils/logging.js";
 import { genezioDeploy } from "./genezio.js";
-import { nitroDeploy } from "./nitro/deploy.js";
 import fs from "fs";
 import { nextJsDeploy } from "./nextjs/deploy.js";
 import path from "path";
-import { nuxtDeploy } from "./nuxt/deploy.js";
+import { nuxtNitroDeploy } from "./nuxt/deploy.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
+    const type = decideDeployType();
 
-    switch (decideDeployType()) {
+    switch (type) {
         case DeployType.Classic:
             debugLogger.debug("Deploying classic genezio app");
             await genezioDeploy(options);
@@ -22,17 +22,14 @@ export async function deployCommand(options: GenezioDeployOptions) {
             await nextJsDeploy(options);
             break;
         case DeployType.Nuxt:
-            debugLogger.debug("Deploying Nuxt app");
-            await nuxtDeploy(options);
-            break;
         case DeployType.Nitro:
-            debugLogger.debug("Deploying Nitro app");
-            await nitroDeploy(options);
+            debugLogger.debug("Deploying Nuxt app");
+            await nuxtNitroDeploy(options, type);
             break;
     }
 }
 
-enum DeployType {
+export enum DeployType {
     Classic,
     NextJS,
     Nitro,
@@ -78,11 +75,11 @@ function decideDeployType(): DeployType {
         if (packageJson.dependencies?.next) {
             return DeployType.NextJS;
         }
-        if (packageJson.devDependencies?.nitropack) {
-            return DeployType.Nitro;
-        }
-        if (packageJson.devDependencies?.nuxt) {
+        if (packageJson.dependencies?.nuxt || packageJson.devDependencies?.nuxt) {
             return DeployType.Nuxt;
+        }
+        if (packageJson.dependencies?.nitropack || packageJson.devDependencies?.nitropack) {
+            return DeployType.Nitro;
         }
     }
 
