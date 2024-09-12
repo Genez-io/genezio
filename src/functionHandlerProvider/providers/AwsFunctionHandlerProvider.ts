@@ -3,12 +3,33 @@ import { writeToFile } from "../../utils/file.js";
 import { FunctionConfiguration } from "../../models/projectConfiguration.js";
 import { FunctionHandlerProvider } from "../functionHandlerProvider.js";
 
-const streamifyOverrideFileContent = `global.awslambda = {
+const streamifyOverrideFileContent = `
+const METADATA_PRELUDE_CONTENT_TYPE = 'application/vnd.awslambda.http-integration-response';
+const DELIMITER_LEN = 8;
+
+global.awslambda = {
         streamifyResponse: function (handler) {
                 return async (event, context) => {
                         await handler(event, event.responseStream, context);
                 }
         },
+        HttpResponseStream: {
+            from: function (underlyingStream, prelude) {
+                underlyingStream.setContentType(METADATA_PRELUDE_CONTENT_TYPE);
+
+                // JSON.stringify is required. NULL byte is not allowed in metadataPrelude.
+                const metadataPrelude = JSON.stringify(prelude);
+
+                underlyingStream._onBeforeFirstWrite = (write) => {
+                    write(metadataPrelude);
+
+                    // Write 8 null bytes after the JSON prelude.
+                    write(new Uint8Array(DELIMITER_LEN));
+                };
+
+                return underlyingStream;
+            }
+        }
 };`;
 export class AwsFunctionHandlerProvider implements FunctionHandlerProvider {
     async write(
