@@ -11,7 +11,7 @@
 <br>
 
 <div align="center">
-<h2>The easiest way to write and host a serverless application</h2>
+<h2>Deploy on the fastest full-stack cloud</h2>
 <h3>Check out a <u><a href="https://awesome-purple-capybara.app.genez.io/">live demo deployed with genezio here</a></u> </h3>
 </div>
 
@@ -41,9 +41,9 @@
 
 </div>
 
-# What is [genezio](https://genezio.com)?
+# What is [Genezio](https://genezio.com)?
 
-[genezio](https://genezio.com/) is a developer platform for full-stack developers or teams who need to build, run and maintain web, mobile or enterprise apps with a typesafe backend that scales automatically.
+[Genezio](https://genezio.com/) is a developer platform for full-stack developers or teams who need to build, run and maintain web, mobile or enterprise apps with a typesafe backend that scales automatically.
 
 For more details on how to use `genezio`, you can check out the official [documentation](https://genezio.com/docs).
 
