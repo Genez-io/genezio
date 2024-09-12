@@ -680,7 +680,7 @@ export async function deployFrontend(
                 }),
             );
             debugLogger.debug(
-                `Environment variables for variables: ${JSON.stringify(newEnvObject)}`,
+                `Environment variables for frontend: ${JSON.stringify(newEnvObject)}`,
             );
             await runScript(frontend.scripts?.build, frontend.path, newEnvObject);
         } else {
