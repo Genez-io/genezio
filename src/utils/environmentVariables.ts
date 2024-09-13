@@ -8,6 +8,7 @@ import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
 import { EnvironmentVariable } from "../models/environmentVariables.js";
 import colors from "colors";
 import { DASHBOARD_URL } from "../constants.js";
+import { evaluateResource } from "../commands/deploy/utils.js";
 
 export type ConfigurationVariable =
     | {
@@ -71,6 +72,29 @@ export async function parseConfigurationVariable(rawValue: string): Promise<Conf
     }
 
     return { value: rawValue };
+}
+
+export async function expandEnvironmentVariables(
+    environment: Record<string, string> | undefined,
+    configuration: YamlProjectConfiguration,
+    stage: string,
+    port?: number,
+): Promise<Record<string, string>> {
+    if (!environment) {
+        return {};
+    }
+
+    const resolveValue = (key: string) =>
+        evaluateResource(configuration, environment[key], stage, /* envFile */ undefined, {
+            isLocal: true,
+            port,
+        });
+
+    const entries = await Promise.all(
+        Object.entries(environment).map(async ([key]) => [key, await resolveValue(key)]),
+    );
+
+    return Object.fromEntries(entries);
 }
 
 export async function resolveEnvironmentVariable(

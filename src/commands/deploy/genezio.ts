@@ -74,7 +74,6 @@ import {
     uploadEnvVarsFromFile,
     enableAuthentication,
     uploadUserCode,
-    evaluateResource,
     setAuthenticationEmailTemplates,
 } from "./utils.js";
 import {
@@ -82,7 +81,7 @@ import {
     enableEmailIntegration,
     getProjectIntegrations,
 } from "../../requests/integration.js";
-import { findAnEnvFile } from "../../utils/environmentVariables.js";
+import { expandEnvironmentVariables, findAnEnvFile } from "../../utils/environmentVariables.js";
 import { getProjectEnvFromProjectByName } from "../../requests/getProjectInfoByName.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
@@ -237,33 +236,21 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
                 await doAdaptiveLogAction(
                     `Running frontend ${index + 1} deploy script`,
                     async () => {
-                        const environment = frontend.environment;
-                        if (environment) {
-                            const newEnvObject: Record<string, string> = {};
+                        const newEnvObject = await expandEnvironmentVariables(
+                            frontend.environment,
+                            configuration,
+                            options.stage,
+                            undefined,
+                        );
 
-                            await Promise.all(
-                                Object.keys(environment).map(async (key) => {
-                                    const resolvedValue = await evaluateResource(
-                                        configuration,
-                                        environment[key],
-                                        options.stage,
-                                        /* envFile */ undefined,
-                                    );
-                                    newEnvObject[key] = resolvedValue;
-                                }),
-                            );
-                            debugLogger.debug(
-                                `Environment variables: ${JSON.stringify(newEnvObject)}`,
-                            );
-                            return await runScript(
-                                frontend.scripts?.deploy,
-                                frontend.path || process.cwd(),
-                                newEnvObject,
-                            );
-                        }
+                        debugLogger.debug(
+                            `Environment variables injected for frontend.scripts.deploy:`,
+                            JSON.stringify(newEnvObject),
+                        );
                         return await runScript(
                             frontend.scripts?.deploy,
                             frontend.path || process.cwd(),
+                            newEnvObject,
                         );
                     },
                 );
@@ -667,28 +654,19 @@ export async function deployFrontend(
     }
 
     await doAdaptiveLogAction(`Building frontend ${index + 1}`, async () => {
-        const environment = frontend.environment;
-        if (environment) {
-            const newEnvObject: Record<string, string> = {};
+        const newEnvObject = await expandEnvironmentVariables(
+            frontend.environment,
+            configuration,
+            options.stage,
+            undefined,
+        );
 
-            await Promise.all(
-                Object.keys(environment).map(async (key) => {
-                    const resolvedValue = await evaluateResource(
-                        configuration,
-                        environment[key],
-                        stage,
-                        /* envFile */ undefined,
-                    );
-                    newEnvObject[key] = resolvedValue;
-                }),
-            );
-            debugLogger.debug(
-                `Environment variables for frontend: ${JSON.stringify(newEnvObject)}`,
-            );
-            await runScript(frontend.scripts?.build, frontend.path, newEnvObject);
-        } else {
-            await runScript(frontend.scripts?.build, frontend.path);
-        }
+        debugLogger.debug(
+            `Environment variables injected for frontend.scripts.build:`,
+            JSON.stringify(newEnvObject),
+        );
+
+        await runScript(frontend.scripts?.build, frontend.path, newEnvObject);
     });
 
     // check if the frontend publish path exists
