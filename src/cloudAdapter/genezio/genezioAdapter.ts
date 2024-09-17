@@ -204,7 +204,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
         stage: string,
     ): Promise<string> {
         const finalStageName =
-            stage != "" && stage != "prod" ? `-${stage.replaceAll(/[/_]/gm, "-")}` : "";
+            stage != "" && stage != "prod" ? `-${stage.replaceAll(/[/_.]/gm, "-")}` : "";
         const finalSubdomain = frontend.subdomain + finalStageName;
         const archivePath = path.join(await createTemporaryFolder(), `${finalSubdomain}.zip`);
         debugLogger.debug("Creating temporary folder", archivePath);
