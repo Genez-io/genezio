@@ -46,7 +46,8 @@ export async function nuxtNitroDeploy(
                 stdio: "inherit",
                 env: { NITRO_PRESET: "aws_lambda" },
             })`npx nuxi build --preset=aws_lambda`.catch(() => {
-                throw new UserError("Failed to build the Nuxt project. Check the logs above.");
+                throw new UserError(`Failed to build the Nuxt project. Check the logs above.
+Note: If your Nuxt project was not migrated to Nuxt 3, please visit https://v2.nuxt.com/lts for guidance on migrating your project. Genezio supports only Nuxt 3 projects.`);
             });
             break;
         case DeployType.Nitro:
