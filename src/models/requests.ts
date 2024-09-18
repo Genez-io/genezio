@@ -1,13 +1,14 @@
 import {
     AuthenticationDatabaseType,
     AuthenticationEmailTemplateType,
+    DatabaseType,
 } from "../projectConfiguration/yaml/models.js";
 import { ProjectDetailsEnvElement } from "../requests/models.js";
 
 export interface CreateDatabaseRequest {
     name: string;
     region: string;
-    type?: string;
+    type: DatabaseType;
 }
 
 export interface CreateDatabaseResponse {

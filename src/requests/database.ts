@@ -14,11 +14,16 @@ export async function createDatabase(
     envId?: string,
     linkToStage: boolean = false,
 ): Promise<CreateDatabaseResponse> {
-    const { name, region, type = "postgres-neon" } = request;
+    const { name, type } = request;
+    let { region } = request;
+
+    if (type === "postgres-neon") {
+        region = `aws-${region}`;
+    }
 
     const data: string = JSON.stringify({
         name: name,
-        region: "aws-" + region,
+        region: region,
         type: type,
     });
 

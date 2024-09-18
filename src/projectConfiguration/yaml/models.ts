@@ -15,6 +15,7 @@ export enum AuthenticationDatabaseType {
 
 export enum DatabaseType {
     neon = "postgres-neon",
+    mongo = "mongo-atlas",
 }
 
 export enum TriggerType {
