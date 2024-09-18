@@ -240,7 +240,8 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
                             frontend.environment,
                             configuration,
                             options.stage,
-                            undefined,
+                            /* envFile */ undefined,
+                            /* options */ undefined,
                         );
 
                         debugLogger.debug(
@@ -658,7 +659,8 @@ export async function deployFrontend(
             frontend.environment,
             configuration,
             options.stage,
-            undefined,
+            /* envFile */ undefined,
+            /* options */ undefined,
         );
 
         debugLogger.debug(

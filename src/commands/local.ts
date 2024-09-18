@@ -359,7 +359,11 @@ async function startFrontends(
                 frontend.environment,
                 configuration,
                 stage,
-                port,
+                /* envFile */ undefined,
+                {
+                    isLocal: true,
+                    port: port,
+                },
             );
 
             debugLogger.debug(
