@@ -2,7 +2,7 @@ import { YAMLContext, parse as parseYaml, stringify as stringifyYaml } from "yam
 import zod from "zod";
 import nativeFs from "fs";
 import { IFs } from "memfs";
-import { databaseRegions, legacyRegions } from "../../utils/configs.js";
+import { neonDatabaseRegions, legacyRegions, mongoDatabaseRegions } from "../../utils/configs.js";
 import { GENEZIO_CONFIGURATION_FILE_NOT_FOUND, UserError, zodFormatError } from "../../errors.js";
 import { AuthenticationDatabaseType, DatabaseType, FunctionType, Language } from "./models.js";
 import {
@@ -28,6 +28,9 @@ type YamlScripts = NonNullable<YAMLBackend["scripts"]> | NonNullable<YamlFronten
 export type YamlScript = YamlScripts[keyof YamlScripts];
 
 export type YamlProjectConfiguration = ReturnType<typeof fillDefaultGenezioConfig>;
+export type YamlDatabase = NonNullable<
+    NonNullable<YamlProjectConfiguration["services"]>["databases"]
+>[number];
 
 function parseGenezioConfig(config: unknown) {
     const languageSchema = zod.object({
@@ -99,11 +102,23 @@ function parseGenezioConfig(config: unknown) {
         type: zod.nativeEnum(FunctionType).default(FunctionType.aws),
     });
 
-    const databaseSchema = zod.object({
-        name: zod.string(),
-        type: zod.nativeEnum(DatabaseType).optional().default(DatabaseType.neon),
-        region: zod.enum(databaseRegions.map((r) => r.value) as [string, ...string[]]).optional(),
-    });
+    const databaseSchema = zod
+        .object({
+            name: zod.string(),
+            type: zod.literal(DatabaseType.neon),
+            region: zod
+                .enum(neonDatabaseRegions.map((r) => r.value) as [string, ...string[]])
+                .optional(),
+        })
+        .or(
+            zod.object({
+                name: zod.string(),
+                type: zod.literal(DatabaseType.mongo),
+                region: zod
+                    .enum(mongoDatabaseRegions.map((r) => r.value) as [string, ...string[]])
+                    .optional(),
+            }),
+        );
 
     const redirectUrlSchema = zod.string();
 
