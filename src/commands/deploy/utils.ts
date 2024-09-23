@@ -304,7 +304,7 @@ export async function getOrCreateDatabase(
     log.info(colors.green(`Database ${createDatabaseReq.name} created successfully.`));
     log.info(
         displayHint(
-            `You can reference the connection URI in your \`genezio.yaml\` file using \${{services.database.${createDatabaseReq.name}.uri}}`,
+            `You can reference the connection URI in your \`genezio.yaml\` file using \${{services.databases.${createDatabaseReq.name}.uri}}`,
         ),
     );
     return {
