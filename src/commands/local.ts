@@ -157,6 +157,7 @@ export async function prepareLocalBackendEnvironment(
 
                     const databaseConnectionUrlKey = `${remoteDatabase.name.replace(/-/g, "_").toUpperCase()}_DATABASE_URL`;
                     configurationEnvVars = {
+                        ...configurationEnvVars,
                         [databaseConnectionUrlKey]: remoteDatabase.connectionUrl,
                     };
 
