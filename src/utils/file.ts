@@ -16,6 +16,7 @@ import fsExtra from "fs-extra";
 import { getPackageManager } from "../packageManagers/packageManager.js";
 import { UserError } from "../errors.js";
 
+
 export async function getAllFilesRecursively(folderPath: string): Promise<string[]> {
     let files: string[] = [];
     const items = await fsPromises.readdir(folderPath, { withFileTypes: true });
@@ -481,3 +482,4 @@ export async function listFilesWithExtension(
             .map((dirent: Dirent) => path.join(folderPath, dirent.name));
     });
 }
+

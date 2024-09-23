@@ -17,6 +17,7 @@ export type GenezioCloudInput =
           type: GenezioCloudInputType.CLASS;
           name: string;
           archivePath: string;
+          archiveName?: string;
           filePath: string;
           methods: MethodConfiguration[];
           dependenciesInfo?: Dependency[];
@@ -28,6 +29,7 @@ export type GenezioCloudInput =
           type: GenezioCloudInputType.FUNCTION;
           name: string;
           archivePath: string;
+          archiveName?: string;
           entryFile: string;
           unzippedBundleSize: number;
       };

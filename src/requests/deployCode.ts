@@ -42,6 +42,8 @@ export async function deployRequest(
             projectConfiguration.functions?.map((func) => ({
                 name: func.name,
                 language: func.language,
+                fileName: 
+                    genezioDeployInput.find((input) => input.name === func.name)?.archiveName ?? "genezioDeploy.zip",
                 entryFile:
                     genezioDeployInput.find((input) => input.name === func.name)?.entryFile ?? "",
             })) ?? [],

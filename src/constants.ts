@@ -24,7 +24,7 @@ const NODE_MINIMUM_VERSION: string = "18.2.0";
 
 if (environment === "dev") {
     DASHBOARD_URL = "https://dev.app.genez.io";
-    BACKEND_ENDPOINT = "https://dev.api.genez.io";
+    BACKEND_ENDPOINT = "http://127.0.0.1:8081";
     LOCAL_TEST_INTERFACE_URL = "https://dev.app.genez.io/test-interface/local";
     PORT_LOCAL_ENVIRONMENT = 8083;
     ENABLE_DEBUG_LOGS_BY_DEFAULT = true;
