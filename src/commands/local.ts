@@ -81,13 +81,12 @@ import fsExtra from "fs-extra/esm";
 import { DeployCodeFunctionResponse } from "../models/deployCodeResponse.js";
 import {
     enableAuthentication,
-    evaluateResource,
     getOrCreateDatabase,
     getOrCreateEmptyProject,
 } from "./deploy/utils.js";
 import { displayHint } from "../utils/strings.js";
 import { enableEmailIntegration, getProjectIntegrations } from "../requests/integration.js";
-import { findAnEnvFile } from "../utils/environmentVariables.js";
+import { expandEnvironmentVariables, findAnEnvFile } from "../utils/environmentVariables.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -158,6 +157,7 @@ export async function prepareLocalBackendEnvironment(
 
                     const databaseConnectionUrlKey = `${remoteDatabase.name.replace(/-/g, "_").toUpperCase()}_DATABASE_URL`;
                     configurationEnvVars = {
+                        ...configurationEnvVars,
                         [databaseConnectionUrlKey]: remoteDatabase.connectionUrl,
                     };
 
@@ -356,28 +356,21 @@ async function startFrontends(
 
     await Promise.all(
         frontendConfiguration.map(async (frontend) => {
-            const environment = frontend.environment;
-            const newEnvObject: Record<string, string> = {};
-            if (environment) {
-                Object.keys(environment).forEach(async (key) => {
-                    const resolvedValue = await evaluateResource(
-                        configuration,
-                        environment[key],
-                        stage,
-                        /* envFile */ undefined,
-                        {
-                            isLocal: true,
-                            port,
-                        },
-                    );
+            const newEnvObject = await expandEnvironmentVariables(
+                frontend.environment,
+                configuration,
+                stage,
+                /* envFile */ undefined,
+                {
+                    isLocal: true,
+                    port: port,
+                },
+            );
 
-                    newEnvObject[key] = resolvedValue;
-                });
-                debugLogger.debug(
-                    `Environment variables for frontend ${frontend.name}:`,
-                    JSON.stringify(newEnvObject),
-                );
-            }
+            debugLogger.debug(
+                `Environment variables injected for frontend.scripts.local:`,
+                JSON.stringify(newEnvObject),
+            );
 
             await runFrontendStartScript(
                 frontend.scripts?.start,

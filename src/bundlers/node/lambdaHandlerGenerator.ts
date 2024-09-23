@@ -71,7 +71,7 @@ if (!genezioClass) {
         handler = async function (event, context) {
             await sendSentryError(error);
             return {
-                statusCode: 500,
+                statusCode: 400,
                 body: JSON.stringify({
                     jsonrpc: "2.0",
                     error: {
@@ -170,7 +170,7 @@ if (!genezioClass) {
             } catch (error) {
                 console.error(error);
                 return {
-                    statusCode: 500,
+                    statusCode: 400,
                     body: JSON.stringify({ error: error.message }),
                     headers: { "Content-Type": "application/json", 'X-Powered-By': 'genezio' },
                 };
@@ -237,7 +237,7 @@ if (!genezioClass) {
                     console.error(err);
                     await sendSentryError(err);
                     resolve({
-                        statusCode: 200,
+                        statusCode: 400,
                         body: JSON.stringify({
                             jsonrpc: "2.0",
                             error: prepareForSerialization(err),
@@ -270,7 +270,7 @@ if (!genezioClass) {
                         console.error(err);
                         await sendSentryError(err);
                         return {
-                            statusCode: 200,
+                            statusCode: 400,
                             body: JSON.stringify({
                                 jsonrpc: "2.0",
                                 error: prepareForSerialization(err),
@@ -286,7 +286,7 @@ if (!genezioClass) {
                 console.error(err);
                 await sendSentryError(err);
                 return {
-                    statusCode: 200,
+                    statusCode: 400,
                     body: JSON.stringify({
                         jsonrpc: "2.0",
                         error: prepareForSerialization(err),

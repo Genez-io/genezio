@@ -1,13 +1,9 @@
 import inquirer from "inquirer";
-import { fileExists, readEnvironmentVariablesFile } from "./file.js";
+import { fileExists } from "./file.js";
 import { getEnvironmentVariables } from "../requests/getEnvironmentVariables.js";
 import path from "path";
-import { resolveConfigurationVariable } from "./scripts.js";
-import { debugLogger, log } from "./logging.js";
 import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
-import { EnvironmentVariable } from "../models/environmentVariables.js";
-import colors from "colors";
-import { DASHBOARD_URL } from "../constants.js";
+import { evaluateResource } from "../commands/deploy/utils.js";
 
 export type ConfigurationVariable =
     | {
@@ -73,63 +69,28 @@ export async function parseConfigurationVariable(rawValue: string): Promise<Conf
     return { value: rawValue };
 }
 
-export async function resolveEnvironmentVariable(
+export async function expandEnvironmentVariables(
+    environment: Record<string, string> | undefined,
     configuration: YamlProjectConfiguration,
-    variable: ConfigurationVariable,
-    envVarKey: string,
-    envFile: string | undefined,
     stage: string,
-): Promise<EnvironmentVariable | undefined> {
-    if ("path" in variable && "field" in variable) {
-        const resolvedValue = await resolveConfigurationVariable(
-            configuration,
-            stage,
-            variable.path,
-            variable.field,
-        );
-        debugLogger.debug(
-            `Resolving ${envVarKey} to ${resolvedValue} using ${variable.path}.${variable.field}`,
-        );
-        return {
-            name: envVarKey,
-            value: resolvedValue,
-        };
-    } else if ("key" in variable) {
-        debugLogger.debug(`Resolving ${envVarKey} to ${variable.key} format`);
-        if (!envFile) {
-            log.warn(`Could not find an .env file to resolve ${envVarKey}.`);
-            log.warn(
-                `Please use \`genezio deploy --env <envPath>\` or set ${envVarKey} manually at ${colors.cyan(`${DASHBOARD_URL}`)}.`,
-            );
-            return undefined;
-        }
-
-        const envVar = (await readEnvironmentVariablesFile(envFile)).find(
-            (envVar) => envVar.name === variable.key,
-        );
-        if (envVar) {
-            return {
-                name: envVarKey,
-                value: envVar.value,
-            };
-        }
-
-        if (process.env[envVarKey]) {
-            return {
-                name: envVarKey,
-                value: process.env[envVarKey],
-            };
-        }
-
-        log.warn(`Environment variable ${envVarKey} is missing from the ${envFile} file.`);
-    } else if ("value" in variable) {
-        debugLogger.debug(`Resolving ${envVarKey} to ${variable.value}`);
-        return {
-            name: envVarKey,
-            value: variable.value,
-        };
+    envFile?: string,
+    options?: {
+        isLocal?: boolean;
+        port?: number;
+    },
+): Promise<Record<string, string>> {
+    if (!environment) {
+        return {};
     }
-    return undefined;
+
+    const resolveValue = (key: string) =>
+        evaluateResource(configuration, environment[key], stage, envFile, options);
+
+    const entries = await Promise.all(
+        Object.entries(environment).map(async ([key]) => [key, await resolveValue(key)]),
+    );
+
+    return Object.fromEntries(entries);
 }
 
 /**

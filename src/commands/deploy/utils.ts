@@ -46,7 +46,6 @@ import {
     getUnsetEnvironmentVariables,
     parseConfigurationVariable,
     promptToConfirmSettingEnvironmentVariables,
-    resolveEnvironmentVariable,
 } from "../../utils/environmentVariables.js";
 import inquirer from "inquirer";
 import { existsSync, readFileSync } from "fs";
@@ -305,7 +304,7 @@ export async function getOrCreateDatabase(
     log.info(colors.green(`Database ${createDatabaseReq.name} created successfully.`));
     log.info(
         displayHint(
-            `You can reference the connection URI in your \`genezio.yaml\` file using \${{services.database.${createDatabaseReq.name}.uri}}`,
+            `You can reference the connection URI in your \`genezio.yaml\` file using \${{services.databases.${createDatabaseReq.name}.uri}}`,
         ),
     );
     return {
@@ -698,21 +697,16 @@ export async function uploadEnvVarsFromFile(
         const environmentVariablesToBePushed: EnvironmentVariable[] = (
             await Promise.all(
                 unsetEnvVarKeys.map(async (envVarKey) => {
-                    const variable = await parseConfigurationVariable(environment[envVarKey]);
-                    const resolvedVariable = await resolveEnvironmentVariable(
+                    const value = await evaluateResource(
                         configuration,
-                        variable,
-                        envVarKey,
-                        envFile,
+                        environment[envVarKey],
                         stage,
+                        envFile,
                     );
-                    if (!resolvedVariable) {
-                        return undefined;
-                    }
-                    return resolvedVariable;
+                    return value ? { name: envVarKey, value } : undefined;
                 }),
             )
-        ).filter((item): item is EnvironmentVariable => item !== undefined);
+        ).filter(Boolean) as EnvironmentVariable[];
 
         if (environmentVariablesToBePushed.length > 0) {
             debugLogger.debug(
