@@ -10,7 +10,7 @@ import version from "../utils/version.js";
 import { AxiosResponse } from "axios";
 import { StatusOk } from "./models.js";
 import { UserError } from "../errors.js";
-import { GenezioCloudInput } from "../cloudAdapter/cloudAdapter.js";
+import { GenezioCloudInput, GenezioCloudInputType } from "../cloudAdapter/cloudAdapter.js";
 
 export async function deployRequest(
     projectConfiguration: ProjectConfiguration,
@@ -39,14 +39,19 @@ export async function deployRequest(
                 "",
         })),
         functions:
-            projectConfiguration.functions?.map((func) => ({
-                name: func.name,
-                language: func.language,
-                fileName: 
-                    genezioDeployInput.find((input) => input.name === func.name)?.archiveName ?? "genezioDeploy.zip",
-                entryFile:
-                    genezioDeployInput.find((input) => input.name === func.name)?.entryFile ?? "",
-            })) ?? [],
+            projectConfiguration.functions?.map((func) => {
+                const input = genezioDeployInput.find((input) => input.name === func.name);
+                return {
+                    name: func.name,
+                    language: func.language,
+                    metadata:
+                        input?.type === GenezioCloudInputType.FUNCTION
+                            ? input?.metadata
+                            : undefined,
+                    fileName: input?.archiveName ?? "genezioDeploy.zip",
+                    entryFile: input?.entryFile ?? "",
+                };
+            }) ?? [],
         projectName: projectConfiguration.name,
         region: projectConfiguration.region,
         cloudProvider: projectConfiguration.cloudProvider,

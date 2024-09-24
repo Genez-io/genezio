@@ -12,6 +12,12 @@ export enum GenezioCloudInputType {
     FUNCTION = "function",
 }
 
+export type GenezioFunctionMetadata = {
+    cwd: string;
+    cmd: string;
+    http_port: string;
+};
+
 export type GenezioCloudInput =
     | {
           type: GenezioCloudInputType.CLASS;
@@ -32,6 +38,7 @@ export type GenezioCloudInput =
           archiveName?: string;
           entryFile: string;
           unzippedBundleSize: number;
+          metadata?: GenezioFunctionMetadata;
       };
 
 export type GenezioCloudResultClass = {

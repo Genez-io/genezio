@@ -10,7 +10,7 @@ import { dockerDeploy } from "./docker/deploy.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
-    const type = decideDeployType(options.config);
+    const type = decideDeployType();
 
     switch (type) {
         case DeployType.Classic:
@@ -42,7 +42,7 @@ export enum DeployType {
     Docker,
 }
 
-function decideDeployType(configPath: string): DeployType {
+function decideDeployType(): DeployType {
     const cwd = process.cwd();
 
     // Check if next.config.js exists
