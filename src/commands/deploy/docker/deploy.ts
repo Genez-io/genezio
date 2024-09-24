@@ -13,6 +13,8 @@ import { getCloudAdapter } from "../genezio.js";
 import { GenezioCloudInputType } from "../../../cloudAdapter/cloudAdapter.js";
 import { setEnvironmentVariables } from "../../../requests/setEnvironmentVariables.js";
 import { FunctionType } from "../../../projectConfiguration/yaml/models.js";
+import { createTemporaryFolder } from "../../../utils/file.js";
+import path from "path";
 
 export async function dockerDeploy(options: GenezioDeployOptions) {
     const config = await readOrAskConfig(options.config);
@@ -47,12 +49,14 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
         },
     );
     const containerId = await extractContainerId(stdout);
+    const tempFolder = await createTemporaryFolder();
+    const archivePath = path.join(tempFolder, `genezio-${config.name}.tar`);
 
     log.info("Exporting the container...");
     await $({
         stdio: "inherit",
         shell: true,
-    })`docker export genezio-${config.name} > genezio-${config.name}.tar`.catch((err) => {
+    })`docker export genezio-${config.name} > ${archivePath}`.catch((err) => {
         debugLogger.error(err);
         throw new UserError("Failed to export the container.");
     });
@@ -102,7 +106,7 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
             {
                 type: GenezioCloudInputType.FUNCTION,
                 name: "docker-container",
-                archivePath: `genezio-${config.name}.tar`,
+                archivePath,
                 archiveName: `genezio-${config.name}.tar`,
                 entryFile: cmdEntryFile,
                 unzippedBundleSize: 100,
