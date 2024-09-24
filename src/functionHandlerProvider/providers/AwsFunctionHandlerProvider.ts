@@ -112,13 +112,7 @@ const handler = async function(event) {
     responseStream: event.responseStream,
   };
 
-  const result = await genezioDeploy(req).catch(error => {
-    console.error(error);
-    return {
-      statusCode: 500,
-      body: "Internal server error"
-    };
-  });
+  const result = await genezioDeploy(req)
 
   if (result.cookies) {
     for (const cookie of result.cookies) {
