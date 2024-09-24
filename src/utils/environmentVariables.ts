@@ -73,17 +73,18 @@ export async function expandEnvironmentVariables(
     environment: Record<string, string> | undefined,
     configuration: YamlProjectConfiguration,
     stage: string,
-    port?: number,
+    envFile?: string,
+    options?: {
+        isLocal?: boolean;
+        port?: number;
+    },
 ): Promise<Record<string, string>> {
     if (!environment) {
         return {};
     }
 
     const resolveValue = (key: string) =>
-        evaluateResource(configuration, environment[key], stage, /* envFile */ undefined, {
-            isLocal: true,
-            port,
-        });
+        evaluateResource(configuration, environment[key], stage, envFile, options);
 
     const entries = await Promise.all(
         Object.entries(environment).map(async ([key]) => [key, await resolveValue(key)]),

@@ -42,11 +42,16 @@ export const regions = [
     { name: "Europe (Frankfurt)", value: "eu-central-1" },
 ];
 
-export const databaseRegions = [
+export const neonDatabaseRegions = [
     { name: "US East (N. Virginia)", value: "us-east-1" },
     { name: "US East (Ohio)", value: "us-east-2" },
     { name: "US West (Oregon)", value: "us-west-2" },
     { name: "Asia Pacific (Singapore)", value: "ap-southeast-1" },
     { name: "Asia Pacific (Sydney)", value: "ap-southeast-2" },
+    { name: "Europe (Frankfurt)", value: "eu-central-1" },
+];
+
+export const mongoDatabaseRegions = [
+    { name: "US East (N. Virginia)", value: "us-east-1" },
     { name: "Europe (Frankfurt)", value: "eu-central-1" },
 ];
