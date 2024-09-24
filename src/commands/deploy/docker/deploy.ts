@@ -46,7 +46,6 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
             throw new UserError("Failed to create the container.");
         },
     );
-    log.info(stdout);
     const containerId = await extractContainerId(stdout);
 
     log.info("Exporting the container...");
