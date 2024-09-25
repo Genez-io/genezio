@@ -77,7 +77,9 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
     const cmd = inspectResult[0].Config.Cmd;
     const cwd = inspectResult[0].Config.WorkingDir;
     const entrypoint = inspectResult[0].Config.Entrypoint;
+    const exposedPorts = inspectResult[0].Config.ExposedPorts;
     let cmdEntryFile = "";
+    const port = getPort(exposedPorts);
 
     if (entrypoint) {
         cmdEntryFile += entrypoint.join(" ");
@@ -114,7 +116,7 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
                 metadata: {
                     cmd: cmdEntryFile,
                     cwd: cwd,
-                    http_port: "8080",
+                    http_port: port,
                 },
             },
         ],
@@ -138,6 +140,22 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
     await setEnvironmentVariables(result.projectId, result.projectEnvId, envVars);
 
     reportSuccessFunctions(result.functions);
+}
+
+function getPort(exposedPort: { [id: string]: string }): string {
+    let port = "8080";
+
+    if (Object.keys(exposedPort).length >= 2) {
+        throw new UserError("Only one port can be exposed.");
+    } else if (Object.keys(exposedPort).length === 1) {
+        port = Object.keys(exposedPort)[0].split("/")[0];
+        const protocol = Object.keys(exposedPort)[0].split("/")[1];
+        if (protocol !== "tcp") {
+            throw new UserError("Only TCP protocol is supported.");
+        }
+    }
+
+    return port;
 }
 
 async function extractContainerId(stdout: string): Promise<string> {
