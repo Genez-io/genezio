@@ -15,6 +15,7 @@ import { setEnvironmentVariables } from "../../../requests/setEnvironmentVariabl
 import { FunctionType } from "../../../projectConfiguration/yaml/models.js";
 import { createTemporaryFolder } from "../../../utils/file.js";
 import path from "path";
+import { reportSuccessFunctions } from "../../../utils/reporter.js";
 
 export async function dockerDeploy(options: GenezioDeployOptions) {
     const config = await readOrAskConfig(options.config);
@@ -135,6 +136,8 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
     });
 
     await setEnvironmentVariables(result.projectId, result.projectEnvId, envVars);
+
+    reportSuccessFunctions(result.functions);
 }
 
 async function extractContainerId(stdout: string): Promise<string> {
