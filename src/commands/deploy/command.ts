@@ -6,6 +6,7 @@ import fs from "fs";
 import { nextJsDeploy } from "./nextjs/deploy.js";
 import path from "path";
 import { nuxtNitroDeploy } from "./nuxt/deploy.js";
+import { dockerDeploy } from "./docker/deploy.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
@@ -26,6 +27,10 @@ export async function deployCommand(options: GenezioDeployOptions) {
             debugLogger.debug("Deploying Nuxt app");
             await nuxtNitroDeploy(options, type);
             break;
+        case DeployType.Docker:
+            debugLogger.debug("Deploying Docker app");
+            await dockerDeploy(options);
+            break;
     }
 }
 
@@ -34,6 +39,7 @@ export enum DeployType {
     NextJS,
     Nitro,
     Nuxt,
+    Docker,
 }
 
 function decideDeployType(): DeployType {
@@ -81,6 +87,10 @@ function decideDeployType(): DeployType {
         if (packageJson.dependencies?.nitropack || packageJson.devDependencies?.nitropack) {
             return DeployType.Nitro;
         }
+    }
+
+    if (fs.existsSync("Dockerfile")) {
+        return DeployType.Docker;
     }
 
     return DeployType.Classic;
