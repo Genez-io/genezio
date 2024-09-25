@@ -37,7 +37,7 @@ async function handleBigElementSizeError(
     const size = await getFileSize(element.archivePath);
     if (size > BUNDLE_SIZE_LIMIT) {
         throw new UserError(
-            `Your class ${element.name} is too big: ${size} bytes. The maximum size is 250MB. Try to reduce the size of your class.`,
+            `Your ${element.type} ${element.name} is too big: ${size} bytes. The maximum size is 250MB. Try to reduce the size of your ${element.type}.`,
         );
     }
 
@@ -64,7 +64,7 @@ async function handleBigElementSizeError(
     // Throw this error if bundle size is too big and the user is not using js or ts files.
     if (!dependenciesInfo || !allNonJsFilesPaths) {
         throw new UserError(
-            `Your class ${element.name} is too big: ${element.unzippedBundleSize} bytes. The maximum size is 250MB. Try to reduce the size of your class.`,
+            `Your ${element.type} ${element.name} is too big: ${element.unzippedBundleSize} bytes. The maximum size is 250MB. Try to reduce the size of your class.`,
         );
     }
 
@@ -134,10 +134,12 @@ export class GenezioCloudAdapter implements CloudAdapter {
         const promisesDeploy = input.map(async (element) => {
             await handleBigElementSizeError(element, projectConfiguration, BUNDLE_SIZE_LIMIT);
 
-            debugLogger.debug(`Get the presigned URL for ${element.type}: ${element.name} ${element.archiveName}.`);
+            debugLogger.debug(
+                `Get the presigned URL for ${element.type}: ${element.name} ${element.archiveName}.`,
+            );
             const presignedUrl = await getPresignedURL(
                 projectConfiguration.region,
-                element.archiveName ??  "genezioDeploy.zip",
+                element.archiveName ?? "genezioDeploy.zip",
                 projectConfiguration.name,
                 element.name,
             );
