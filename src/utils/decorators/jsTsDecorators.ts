@@ -83,7 +83,7 @@ export class JsTsDecoratorExtractor extends DecoratorExtractor {
                         if (path.node.decorators) {
                             const classDeclarationNode = path.context.parentPath.parentPath?.node;
                             const className = isClassDeclaration(classDeclarationNode)
-                                ? classDeclarationNode.id?.name ?? "defaultClass"
+                                ? (classDeclarationNode.id?.name ?? "defaultClass")
                                 : "defaultClass";
 
                             const methodIdentifierNode = path.node.key;
@@ -187,7 +187,7 @@ export class JsTsDecoratorExtractor extends DecoratorExtractor {
                     ClassMethod(path: NodePath<ClassMethod>) {
                         const classDeclarationNode = path.context.parentPath.parentPath?.node;
                         const className = isClassDeclaration(classDeclarationNode)
-                            ? classDeclarationNode.id?.name ?? "defaultClass"
+                            ? (classDeclarationNode.id?.name ?? "defaultClass")
                             : "defaultClass";
 
                         const methodIdentifierNode = path.node.key;
