@@ -27,7 +27,7 @@ import { calculateBiggestFiles } from "../../utils/calculateBiggestProjectFiles.
 import Table from "cli-table";
 import { UserError } from "../../errors.js";
 import { stdout } from "process";
-import { randomString } from "../../utils/strings.js";
+import { createHash } from "../../utils/strings.js";
 
 const BUNDLE_SIZE_LIMIT = 256901120;
 async function handleBigElementSizeError(
@@ -211,7 +211,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
         let finalSubdomain = frontend.subdomain + finalStageName;
         if (finalSubdomain.length > 63) {
             debugLogger.debug("Subdomain is too long. Generating random subdomain.");
-            finalSubdomain = frontend.subdomain?.substring(0, 56) + "-" + randomString(6);
+            finalSubdomain = frontend.subdomain?.substring(0, 55) + "-" + createHash(stage, 4);
         }
         const archivePath = path.join(await createTemporaryFolder(), `${finalSubdomain}.zip`);
         debugLogger.debug("Creating temporary folder", archivePath);

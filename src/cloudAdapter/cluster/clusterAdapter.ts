@@ -23,7 +23,7 @@ import { getFrontendPresignedURL } from "../../requests/getFrontendPresignedURL.
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import { createFrontendProject } from "../../requests/createFrontendProject.js";
 import { UserError } from "../../errors.js";
-import { randomString } from "../../utils/strings.js";
+import { createHash } from "../../utils/strings.js";
 
 export class ClusterCloudAdapter implements CloudAdapter {
     async deploy(
@@ -137,7 +137,7 @@ export class ClusterCloudAdapter implements CloudAdapter {
         debugLogger.debug("Subdomain:", finalSubdomain);
         if (finalSubdomain.length > 63) {
             debugLogger.debug("Subdomain is too long. Generating random subdomain.");
-            finalSubdomain = frontend.subdomain + "-" + randomString(6);
+            finalSubdomain = frontend.subdomain?.substring(0, 55) + "-" + createHash(stage, 4);
         }
         const archivePath = path.join(await createTemporaryFolder(), `${finalSubdomain}.zip`);
         debugLogger.debug("Creating temporary folder", archivePath);
