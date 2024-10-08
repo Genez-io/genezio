@@ -196,6 +196,22 @@ function parseGenezioConfig(config: unknown) {
                 deploy: scriptSchema,
             })
             .optional(),
+        redirects: zod
+            .object({
+                from: zod.string(),
+                to: zod.string(),
+                status: zod.number().optional(),
+            })
+            .array()
+            .optional(),
+        rewrites: zod
+            .object({
+                from: zod.string(),
+                to: zod.string(),
+                status: zod.number().optional(),
+            })
+            .array()
+            .optional(),
     });
 
     const v2Schema = zod.object({
