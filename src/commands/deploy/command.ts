@@ -10,7 +10,7 @@ import { dockerDeploy } from "./docker/deploy.js";
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
-    const type = decideDeployType();
+    const type = decideDeployType(options);
 
     switch (type) {
         case DeployType.Classic:
@@ -42,8 +42,12 @@ export enum DeployType {
     Docker,
 }
 
-function decideDeployType(): DeployType {
+function decideDeployType(options: GenezioDeployOptions): DeployType {
     const cwd = process.cwd();
+
+    if (options.image) {
+        return DeployType.Docker;
+    }
 
     // Check if next.config.js exists
     if (
@@ -87,10 +91,6 @@ function decideDeployType(): DeployType {
         if (packageJson.dependencies?.nitropack || packageJson.devDependencies?.nitropack) {
             return DeployType.Nitro;
         }
-    }
-
-    if (fs.existsSync("Dockerfile")) {
-        return DeployType.Docker;
     }
 
     return DeployType.Classic;

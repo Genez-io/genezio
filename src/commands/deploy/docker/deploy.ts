@@ -37,10 +37,12 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
     log.info("Building image...");
     await $({
         stdio: "inherit",
-    })`docker buildx build --platform=linux/amd64 -t ${config.name} .`.catch((err) => {
-        debugLogger.error(err);
-        throw new UserError("Failed to build Docker image.");
-    });
+    })`docker buildx build --platform=linux/amd64 -t ${config.name} -f ${options.image!} .`.catch(
+        (err) => {
+            debugLogger.error(err);
+            throw new UserError("Failed to build Docker image.");
+        },
+    );
 
     log.info("Creating the container...");
     const { stdout } = await $`docker create --name genezio-${config.name} ${config.name}`.catch(
