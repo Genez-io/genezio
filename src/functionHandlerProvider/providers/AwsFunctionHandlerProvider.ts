@@ -31,6 +31,36 @@ global.awslambda = {
             }
         }
 };`;
+const streamifyOverrideFileContentPython = `
+import json
+
+METADATA_PRELUDE_CONTENT_TYPE = 'application/vnd.awslambda.http-integration-response'
+DELIMITER_LEN = 8
+
+class AwsLambda:
+    @staticmethod
+    async def streamify_response(handler):
+        async def wrapper(event, context):
+            await handler(event, event['response_stream'], context)
+        return wrapper
+
+    class HttpResponseStream:
+        @staticmethod
+        def from_stream(underlying_stream, prelude):
+            underlying_stream.set_content_type(METADATA_PRELUDE_CONTENT_TYPE)
+
+            metadata_prelude = json.dumps(prelude)
+
+            def on_before_first_write(write):
+                write(metadata_prelude)
+
+                write(bytearray(DELIMITER_LEN))
+
+            underlying_stream._on_before_first_write = on_before_first_write
+
+            return underlying_stream
+`;
+
 export class AwsFunctionHandlerProvider implements FunctionHandlerProvider {
     async write(
         outputPath: string,
@@ -130,6 +160,73 @@ export { handler };`;
             outputPath,
             `setupLambdaGlobals_${randomFileId}.mjs`,
             streamifyOverrideFileContent,
+        );
+    }
+}
+
+export class AwsPythonFunctionHandlerProvider implements FunctionHandlerProvider {
+    async write(
+        outputPath: string,
+        handlerFileName: string,
+        functionConfiguration: FunctionConfiguration,
+    ): Promise<void> {
+        const randomFileId = crypto.randomBytes(8).toString("hex");
+
+        const handlerContent = `
+import './setupLambdaGlobals_${randomFileId}.py'
+from ${functionConfiguration.entry} import ${functionConfiguration.handler} as genezioDeploy
+
+def format_timestamp(timestamp):
+    from datetime import datetime
+    return datetime.utcfromtimestamp(timestamp / 1000).strftime('%d/%b/%Y:%H:%M:%S +0000')
+
+async def handler(event):
+    http2_compliant_headers = {header.lower(): value for header, value in event['headers'].items()}
+
+    is_binary = not is_utf8(event['body'])  # Function to check if the body is UTF-8
+
+    req = {
+        "version": "2.0",
+        "routeKey": "$default",
+        "rawPath": event['url']['pathname'],
+        "rawQueryString": event['url']['search'],
+        "headers": http2_compliant_headers,
+        "queryStringParameters": dict(event['url']['searchParams']),
+        "requestContext": {
+            "accountId": "anonymous",
+            "apiId": event['headers']['Host'].split('.')[0],
+            "domainName": event['headers']['Host'],
+            "domainPrefix": event['headers']['Host'].split('.')[0],
+            "http": {
+                "method": event['http']['method'],
+                "path": event['http']['path'],
+                "protocol": event['http']['protocol'],
+                "sourceIp": event['http']['sourceIp'],
+                "userAgent": event['http']['userAgent']
+            },
+            "requestId": "undefined",
+            "routeKey": "$default",
+            "stage": "$default",
+            "time": format_timestamp(event['requestTimestampMs']),
+            "timeEpoch": event['requestTimestampMs']
+        },
+        "body": event['body'].decode('utf-8') if not is_binary else event['body'].decode('latin-1'),
+        "isBase64Encoded": is_binary,
+        "response_stream": event['response_stream'],
+    }
+
+    result = await genezioDeploy(req)
+
+    if 'cookies' in result:
+        result['headers']['Set-Cookie'] = result['cookies']
+
+    return result`;
+
+        await writeToFile(outputPath, handlerFileName, handlerContent);
+        await writeToFile(
+            outputPath,
+            `setupLambdaGlobals_${randomFileId}.py`,
+            streamifyOverrideFileContentPython,
         );
     }
 }

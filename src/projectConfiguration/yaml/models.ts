@@ -35,3 +35,13 @@ export enum FunctionType {
     // azure = "azure",
     // gcp = "gcp",
 }
+
+export const entryFileFunctionMap = {
+    js: "index.mjs",
+    ts: "index.mjs",
+    swift: "main.swift",
+    python: "main.py",
+    dart: "main.dart",
+    kt: "main.kt",
+    go: "main.go",
+};

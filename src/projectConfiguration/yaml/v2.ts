@@ -8,8 +8,10 @@ import { AuthenticationDatabaseType, DatabaseType, FunctionType, Language } from
 import {
     DEFAULT_ARCHITECTURE,
     DEFAULT_NODE_RUNTIME,
+    DEFAULT_PYTHON_RUNTIME,
     supportedArchitectures,
     supportedNodeRuntimes,
+    supportedPythonRuntimes,
 } from "../../models/projectOptions.js";
 import { PackageManagerType } from "../../packageManagers/packageManager.js";
 import { TriggerType } from "./models.js";
@@ -35,7 +37,7 @@ export type YamlDatabase = NonNullable<
 function parseGenezioConfig(config: unknown) {
     const languageSchema = zod.object({
         name: zod.nativeEnum(Language),
-        runtime: zod.enum(supportedNodeRuntimes).optional(),
+        runtime: zod.enum([...supportedNodeRuntimes, ...supportedPythonRuntimes]).optional(),
         architecture: zod.enum(supportedArchitectures).optional(),
         packageManager: zod.nativeEnum(PackageManagerType).optional(),
     });
@@ -96,9 +98,10 @@ function parseGenezioConfig(config: unknown) {
         handler: zod.string(),
         entry: zod.string().refine((value) => {
             return (
-                value.split(".").length === 2 && ["js", "mjs", "cjs"].includes(value.split(".")[1])
+                value.split(".").length === 2 &&
+                ["js", "mjs", "cjs", "py"].includes(value.split(".")[1])
             );
-        }, "The handler should be in the format 'file.extension'. example: index.js / index.mjs / index.cjs"),
+        }, "The handler should be in the format 'file.extension'. example: index.js / index.mjs / index.cjs / index.py"),
         type: zod.nativeEnum(FunctionType).default(FunctionType.aws),
     });
 
@@ -226,6 +229,12 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
                 defaultConfig.backend.language.packageManager ??= PackageManagerType.npm;
                 defaultConfig.backend.language.runtime ??= DEFAULT_NODE_RUNTIME;
                 defaultConfig.backend.language.architecture ??= DEFAULT_ARCHITECTURE;
+                break;
+            case Language.python:
+                defaultConfig.backend.language.packageManager ??= PackageManagerType.pip;
+                defaultConfig.backend.language.runtime ??= DEFAULT_PYTHON_RUNTIME;
+                defaultConfig.backend.language.architecture ??= DEFAULT_ARCHITECTURE;
+                break;
         }
     }
 
