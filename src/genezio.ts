@@ -149,6 +149,11 @@ program
     .option("--env <envFile>", "Load environment variables from a given file", undefined)
     .option("--stage <stage>", "Set the environment name to deploy to", "prod")
     .option(
+        "--image <image>",
+        "Path to the container image file. If this option is set, it indicates a container-based deployment.",
+        undefined,
+    )
+    .option(
         "--subdomain <subdomain>",
         "Set a subdomain for your frontend. If not set, the subdomain will be randomly generated.",
         undefined,
