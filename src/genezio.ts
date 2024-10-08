@@ -150,7 +150,7 @@ program
     .option("--stage <stage>", "Set the environment name to deploy to", "prod")
     .option(
         "--image <image>",
-        "Path to the container image file. If this option is set, it indicates a container-based deployment.",
+        "Path to the container Dockerfile. If this option is set, it indicates a container-based deployment.",
         undefined,
     )
     .option(
