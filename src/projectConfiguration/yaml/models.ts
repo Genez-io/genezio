@@ -39,9 +39,9 @@ export enum FunctionType {
 export const entryFileFunctionMap = {
     js: "index.mjs",
     ts: "index.mjs",
-    swift: "main.swift",
-    python: "main.py",
-    dart: "main.dart",
-    kt: "main.kt",
-    go: "main.go",
+    swift: "index.swift",
+    python: "index.py",
+    dart: "index.dart",
+    kt: "index.kt",
+    go: "index.go",
 };
