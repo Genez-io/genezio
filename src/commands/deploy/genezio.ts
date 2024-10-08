@@ -602,8 +602,8 @@ export async function functionToCloudInput(
     );
 
     // copy everything to the temporary folder
+    await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath);
     if (functionElement.language === "js" || functionElement.language === "ts") {
-        await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath);
         if (fsExtra.pathExistsSync(path.join(tmpFolderPath, "node_modules", ".pnpm"))) {
             await fsExtra.remove(path.join(tmpFolderPath, "node_modules", ".pnpm"));
             await fsExtra.copy(

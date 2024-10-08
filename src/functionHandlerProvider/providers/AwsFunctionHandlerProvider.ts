@@ -173,8 +173,8 @@ export class AwsPythonFunctionHandlerProvider implements FunctionHandlerProvider
         const randomFileId = crypto.randomBytes(8).toString("hex");
 
         const handlerContent = `
-import './setupLambdaGlobals_${randomFileId}.py'
-from ${functionConfiguration.entry} import ${functionConfiguration.handler} as genezioDeploy
+from setupLambdaGlobals_${randomFileId} import AwsLambda
+from ${functionConfiguration.entry.split(".")[0]} import ${functionConfiguration.handler} as genezio_deploy
 
 def format_timestamp(timestamp):
     from datetime import datetime
@@ -183,7 +183,7 @@ def format_timestamp(timestamp):
 async def handler(event):
     http2_compliant_headers = {header.lower(): value for header, value in event['headers'].items()}
 
-    is_binary = not is_utf8(event['body'])  # Function to check if the body is UTF-8
+    is_binary = not is_utf8(event['body']) 
 
     req = {
         "version": "2.0",
@@ -215,7 +215,7 @@ async def handler(event):
         "response_stream": event['response_stream'],
     }
 
-    result = await genezioDeploy(req)
+    result = await genezio_deploy(req)
 
     if 'cookies' in result:
         result['headers']['Set-Cookie'] = result['cookies']
