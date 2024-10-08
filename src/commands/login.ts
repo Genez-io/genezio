@@ -10,7 +10,7 @@ import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js
 import { isCI } from "../utils/process.js";
 
 export async function loginCommand(accessToken: string, logSuccessMessage = true) {
-    if (logSuccessMessage) log.info(asciiCapybara);
+    if (!isCI() && logSuccessMessage) log.info(asciiCapybara);
 
     await GenezioTelemetry.sendEvent({
         eventType: TelemetryEventTypes.GENEZIO_LOGIN,

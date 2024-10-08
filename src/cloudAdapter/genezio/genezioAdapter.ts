@@ -27,6 +27,7 @@ import { calculateBiggestFiles } from "../../utils/calculateBiggestProjectFiles.
 import Table from "cli-table";
 import { UserError } from "../../errors.js";
 import { stdout } from "process";
+import { createHash } from "../../utils/strings.js";
 
 const BUNDLE_SIZE_LIMIT = 256901120;
 async function handleBigElementSizeError(
@@ -37,7 +38,7 @@ async function handleBigElementSizeError(
     const size = await getFileSize(element.archivePath);
     if (size > BUNDLE_SIZE_LIMIT) {
         throw new UserError(
-            `Your class ${element.name} is too big: ${size} bytes. The maximum size is 250MB. Try to reduce the size of your class.`,
+            `Your ${element.type} ${element.name} is too big: ${size} bytes. The maximum size is 250MB. Try to reduce the size of your ${element.type}.`,
         );
     }
 
@@ -64,7 +65,7 @@ async function handleBigElementSizeError(
     // Throw this error if bundle size is too big and the user is not using js or ts files.
     if (!dependenciesInfo || !allNonJsFilesPaths) {
         throw new UserError(
-            `Your class ${element.name} is too big: ${element.unzippedBundleSize} bytes. The maximum size is 250MB. Try to reduce the size of your class.`,
+            `Your ${element.type} ${element.name} is too big: ${element.unzippedBundleSize} bytes. The maximum size is 250MB. Try to reduce the size of your class.`,
         );
     }
 
@@ -134,10 +135,12 @@ export class GenezioCloudAdapter implements CloudAdapter {
         const promisesDeploy = input.map(async (element) => {
             await handleBigElementSizeError(element, projectConfiguration, BUNDLE_SIZE_LIMIT);
 
-            debugLogger.debug(`Get the presigned URL for ${element.type}: ${element.name}.`);
+            debugLogger.debug(
+                `Get the presigned URL for ${element.type}: ${element.name} ${element.archiveName}.`,
+            );
             const presignedUrl = await getPresignedURL(
                 projectConfiguration.region,
-                "genezioDeploy.zip",
+                element.archiveName ?? "genezioDeploy.zip",
                 projectConfiguration.name,
                 element.name,
             );
@@ -205,7 +208,11 @@ export class GenezioCloudAdapter implements CloudAdapter {
     ): Promise<string> {
         const finalStageName =
             stage != "" && stage != "prod" ? `-${stage.replaceAll(/[/_.]/gm, "-")}` : "";
-        const finalSubdomain = frontend.subdomain + finalStageName;
+        let finalSubdomain = frontend.subdomain + finalStageName;
+        if (finalSubdomain.length > 63) {
+            debugLogger.debug("Subdomain is too long. Generating random subdomain.");
+            finalSubdomain = frontend.subdomain?.substring(0, 55) + "-" + createHash(stage, 4);
+        }
         const archivePath = path.join(await createTemporaryFolder(), `${finalSubdomain}.zip`);
         debugLogger.debug("Creating temporary folder", archivePath);
 
