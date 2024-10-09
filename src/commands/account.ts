@@ -7,10 +7,7 @@ import { loginCommand } from "./login.js";
 export async function accountCommand() {
     if (!(await isLoggedIn())) {
         debugLogger.debug("No auth token found. Starting automatic authentication...");
-        await loginCommand("", false).catch((error) => {
-            log.error(error);
-            process.exit(1);
-        });
+        await loginCommand("", false);
     }
 
     const user = await getUser();

@@ -16,10 +16,7 @@ export async function lsCommand(identifier: string, options: GenezioListOptions)
     // check if user is logged in
     if (!(await isLoggedIn())) {
         debugLogger.debug("No auth token found. Starting automatic authentication...");
-        await loginCommand("", false).catch((error) => {
-            log.error(error);
-            process.exit(1);
-        });
+        await loginCommand("", false);
     }
 
     await lsHandler(identifier, options.longListed);

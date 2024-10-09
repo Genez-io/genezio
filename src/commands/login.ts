@@ -28,9 +28,10 @@ export async function loginCommand(accessToken: string, logSuccessMessage = true
             if (isCI()) {
                 reject(
                     new UserError(
-                        "CI environment detected. Authentication must be done using `genezio login <token>`",
+                        "CI environment detected. Authentication must be done using `genezio login <token> or set a valid GENEZIO_TOKEN=<token>",
                     ),
                 );
+                return;
             }
             const server = http.createServer((req, res) => {
                 res.setHeader("Access-Control-Allow-Origin", "*");

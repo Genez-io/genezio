@@ -1,7 +1,7 @@
 import { isLoggedIn } from "../utils/accounts.js";
 import { downloadProject } from "../utils/downloadProject.js";
 import { createTemporaryFolder } from "../utils/file.js";
-import { debugLogger, log } from "../utils/logging.js";
+import { debugLogger } from "../utils/logging.js";
 import { loginCommand } from "./login.js";
 import path from "path";
 import admZip from "adm-zip";
@@ -93,10 +93,7 @@ export async function cloneCommand(
     // check if user is logged in
     if (!(await isLoggedIn())) {
         debugLogger.debug("No auth token found. Starting automatic authentication...");
-        await loginCommand("", false).catch((error) => {
-            log.error(error);
-            process.exit(1);
-        });
+        await loginCommand("", false);
     }
 
     // get the project presigned url
