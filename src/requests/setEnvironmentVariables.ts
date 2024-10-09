@@ -3,7 +3,7 @@ import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
 import { EnvironmentVariable } from "../models/environmentVariables.js";
-import { UserError } from "../errors.js";
+import { GENEZIO_NOT_AUTH_ERROR_MSG, UserError } from "../errors.js";
 
 export async function setEnvironmentVariables(
     projectId: string,
@@ -18,9 +18,7 @@ export async function setEnvironmentVariables(
     // Check if user is authenticated
     const authToken = await getAuthToken();
     if (!authToken) {
-        throw new UserError(
-            "You are not logged in. Run 'genezio login' before you deploy your function.",
-        );
+        throw new UserError(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
 
     const data = JSON.stringify({
