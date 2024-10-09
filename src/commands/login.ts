@@ -8,6 +8,7 @@ import open from "open";
 import { asciiCapybara } from "../utils/strings.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import { isCI } from "../utils/process.js";
+import { UserError } from "../errors.js";
 
 export async function loginCommand(accessToken: string, logSuccessMessage = true) {
     if (!isCI() && logSuccessMessage) log.info(asciiCapybara);
@@ -16,7 +17,7 @@ export async function loginCommand(accessToken: string, logSuccessMessage = true
         eventType: TelemetryEventTypes.GENEZIO_LOGIN,
     });
 
-    const promiseHttpServer = new Promise((resolve) => {
+    const promiseHttpServer = new Promise((resolve, reject) => {
         if (accessToken !== "") {
             saveAuthToken(accessToken);
             if (logSuccessMessage) {
@@ -25,11 +26,11 @@ export async function loginCommand(accessToken: string, logSuccessMessage = true
         } else {
             // If we are in a CI environment, we don't open the browser because it will hang indefinitely
             if (isCI()) {
-                log.error(
-                    "CI environment detected. Cannot open browser for authentication. Use `genezio login <token>` instead.",
+                reject(
+                    new UserError(
+                        "CI environment detected. Authentication must be done using `genezio login <token>`",
+                    ),
                 );
-                resolve(true);
-                return;
             }
             const server = http.createServer((req, res) => {
                 res.setHeader("Access-Control-Allow-Origin", "*");

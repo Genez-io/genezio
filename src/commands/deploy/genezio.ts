@@ -123,7 +123,10 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
     // check if user is logged in
     if (!(await isLoggedIn())) {
         debugLogger.debug("No auth token found. Starting automatic authentication...");
-        await loginCommand("", false);
+        await loginCommand("", false).catch((error) => {
+            log.error(error);
+            process.exit(1);
+        });
     }
 
     const projectName = configuration.name;
