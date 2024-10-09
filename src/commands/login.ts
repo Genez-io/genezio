@@ -63,11 +63,21 @@ export async function loginCommand(accessToken: string, logSuccessMessage = true
                         // We close the server and all connections after sending the update to the browser
                         server.closeAllConnections();
                         server.close();
+                        clearTimeout(timeout);
 
                         resolve(true);
                     });
                 });
             });
+
+            // Set the server to timeout after 5 minutes
+            const TIMEOUT_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+            const timeout = setTimeout(() => {
+                server.close(() => {
+                    log.info("Server closed due to timeout.");
+                });
+                reject(new UserError("Authentication timed out after 5 minutes."));
+            }, TIMEOUT_DURATION);
 
             server.listen(0, "localhost", () => {
                 log.info("Redirecting to browser to complete authentication...");
