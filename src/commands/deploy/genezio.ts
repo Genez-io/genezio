@@ -619,7 +619,6 @@ export async function functionToCloudInput(
     const unzippedBundleSize = await getBundleFolderSizeLimit(tmpFolderPath);
 
     // add the handler to the temporary folder
-    // check if there already is an index.mjs file in user's code
     let entryFileName = entryFileFunctionMap[functionElement.language as Language];
     while (fs.existsSync(path.join(tmpFolderPath, entryFileName))) {
         debugLogger.debug(

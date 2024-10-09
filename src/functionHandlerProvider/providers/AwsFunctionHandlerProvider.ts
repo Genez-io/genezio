@@ -175,47 +175,58 @@ export class AwsPythonFunctionHandlerProvider implements FunctionHandlerProvider
         const handlerContent = `
 from setupLambdaGlobals_${randomFileId} import AwsLambda
 from ${functionConfiguration.entry.split(".")[0]} import ${functionConfiguration.handler} as genezio_deploy
+import codecs
 
 def format_timestamp(timestamp):
     from datetime import datetime
     return datetime.utcfromtimestamp(timestamp / 1000).strftime('%d/%b/%Y:%H:%M:%S +0000')
 
-async def handler(event):
-    http2_compliant_headers = {header.lower(): value for header, value in event['headers'].items()}
+def is_utf8(data):
+    try:
+        if isinstance(data, bytes):
+            codecs.decode(data, 'utf-8')
+        return True
+    except UnicodeDecodeError:
+        return False
 
-    is_binary = not is_utf8(event['body']) 
+def handler(event):
+    headers = event.get('headers', {})
+    http2_compliant_headers = {header.lower(): value for header, value in headers.items()}
+
+    body = event.get('body', None)
+    is_binary = body is not None and not is_utf8(body)
 
     req = {
         "version": "2.0",
         "routeKey": "$default",
-        "rawPath": event['url']['pathname'],
-        "rawQueryString": event['url']['search'],
+        "rawPath": event.get('url', {}).get('pathname', '/'),
+        "rawQueryString": event.get('url', {}).get('search', ''),
         "headers": http2_compliant_headers,
-        "queryStringParameters": dict(event['url']['searchParams']),
+        "queryStringParameters": dict(event.get('url', {}).get('searchParams', {})),
         "requestContext": {
             "accountId": "anonymous",
-            "apiId": event['headers']['Host'].split('.')[0],
-            "domainName": event['headers']['Host'],
-            "domainPrefix": event['headers']['Host'].split('.')[0],
+            "apiId": headers.get('Host', '').split('.')[0],
+            "domainName": headers.get('Host', ''),
+            "domainPrefix": headers.get('Host', '').split('.')[0],
             "http": {
-                "method": event['http']['method'],
-                "path": event['http']['path'],
-                "protocol": event['http']['protocol'],
-                "sourceIp": event['http']['sourceIp'],
-                "userAgent": event['http']['userAgent']
+                "method": event.get('http', {}).get('method', 'GET'),
+                "path": event.get('http', {}).get('path', '/'),
+                "protocol": event.get('http', {}).get('protocol', '1.1'),
+                "sourceIp": event.get('http', {}).get('sourceIp', '0.0.0.0'),
+                "userAgent": event.get('http', {}).get('userAgent', 'unknown')
             },
             "requestId": "undefined",
             "routeKey": "$default",
             "stage": "$default",
-            "time": format_timestamp(event['requestTimestampMs']),
-            "timeEpoch": event['requestTimestampMs']
+            "time": format_timestamp(event.get('requestTimestampMs', 0)),
+            "timeEpoch": event.get('requestTimestampMs', 0)
         },
-        "body": event['body'].decode('utf-8') if not is_binary else event['body'].decode('latin-1'),
+        "body": (body if isinstance(body, str) else body.decode('utf-8') if body else None) if not is_binary else (body.decode('latin-1') if body else None),
         "isBase64Encoded": is_binary,
-        "response_stream": event['response_stream'],
+        "response_stream": event.get('response_stream', None),
     }
 
-    result = await genezio_deploy(req)
+    result = genezio_deploy(req)
 
     if 'cookies' in result:
         result['headers']['Set-Cookie'] = result['cookies']
