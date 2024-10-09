@@ -211,6 +211,25 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             throw error;
         });
 
+        // Handle Python requirements.txt file
+        if (configuration.backend.language.name === Language.python) {
+            const requirementsPath = path.join(backendCwd, "requirements.txt");
+
+            if (fs.existsSync(requirementsPath)) {
+                const requirementsContent = fs.readFileSync(requirementsPath, "utf-8").trim();
+                if (requirementsContent) {
+                    await fsExtra.mkdirp(path.join(backendCwd, "packages"));
+                    const pythonPackagesPath = path.join(backendCwd, "packages");
+                    const pipInstallCommand = `pip install -r requirements.txt -t ${pythonPackagesPath}`;
+                    await runScript(pipInstallCommand, backendCwd);
+                } else {
+                    debugLogger.warn(
+                        "The requirements.txt file is empty. Skipping the pip install command.",
+                    );
+                }
+            }
+        }
+
         await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_START,
             commandOptions: JSON.stringify(options),
@@ -603,6 +622,8 @@ export async function functionToCloudInput(
 
     // copy everything to the temporary folder
     await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath);
+
+    // Handle JS/TS functions with pnpm
     if (functionElement.language === "js" || functionElement.language === "ts") {
         if (fsExtra.pathExistsSync(path.join(tmpFolderPath, "node_modules", ".pnpm"))) {
             await fsExtra.remove(path.join(tmpFolderPath, "node_modules", ".pnpm"));
