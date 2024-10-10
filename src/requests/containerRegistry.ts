@@ -3,6 +3,7 @@ import { getAuthToken } from "../utils/accounts.js";
 import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
 import { AxiosResponse } from "axios";
+import { GENEZIO_NOT_AUTH_ERROR_MSG, UserError } from "../errors.js";
 
 interface ContainerRegistry {
     status: string;
@@ -19,9 +20,7 @@ export async function getContainerRegistry() {
     // Check if user is authenticated
     const authToken = await getAuthToken();
     if (!authToken) {
-        throw new Error(
-            "You are not logged in. Run 'genezio login' before you deploy your function.",
-        );
+        throw new UserError(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
 
     const response: AxiosResponse<ContainerRegistry> = await axios({
@@ -47,9 +46,7 @@ export async function getContainerRegistry() {
 export async function getContainerRegistryCredentials() {
     const authToken = await getAuthToken();
     if (!authToken) {
-        throw new Error(
-            "You are not logged in. Run 'genezio login' before you deploy your function.",
-        );
+        throw new UserError(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
 
     const response: AxiosResponse<ContainerRegistryCreds> = await axios({

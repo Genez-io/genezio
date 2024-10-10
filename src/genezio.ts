@@ -52,6 +52,7 @@ import configReader from "./projectConfiguration/yaml/v2.js";
 import { askCloneOptions, cloneCommand } from "./commands/clone.js";
 import { pullCommand } from "./commands/pull.js";
 import { CloudProviderIdentifier } from "./models/cloudProviderIdentifier.js";
+import { isCI } from "./utils/process.js";
 
 const program = new Command();
 
@@ -102,10 +103,12 @@ program
         setDebuggingLoggerLogLevel(thisCommand.opts()["logLevel"]);
     });
 program.hook("postAction", async () => {
-    await logOutdatedVersion().catch((error) => {
-        debugLogger.error("Could not log outdated version", error);
-        exit(0);
-    });
+    if (!isCI()) {
+        await logOutdatedVersion().catch((error) => {
+            debugLogger.error("Could not log outdated version", error);
+            exit(0);
+        });
+    }
 
     process.stdin.unref();
 });

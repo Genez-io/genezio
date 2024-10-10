@@ -2,7 +2,7 @@ import fs from "fs";
 import { getAuthToken } from "../utils/accounts.js";
 import https from "https";
 import { OutgoingHttpHeaders } from "http";
-import { UserError } from "../errors.js";
+import { GENEZIO_NOT_AUTH_ERROR_MSG, UserError } from "../errors.js";
 
 export async function uploadContentToS3(
     presignedURL: string | undefined,
@@ -21,9 +21,7 @@ export async function uploadContentToS3(
     // Check if user is authenticated
     const authToken = await getAuthToken();
     if (!authToken) {
-        throw new UserError(
-            "You are not logged in. Run 'genezio login' before you deploy your function.",
-        );
+        throw new UserError(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
     const url = new URL(presignedURL);
 
