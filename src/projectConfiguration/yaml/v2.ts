@@ -93,7 +93,8 @@ function parseGenezioConfig(config: unknown) {
             return nameRegex.test(value);
         }, "Must start with a letter and contain only letters, numbers and dashes."),
         path: zod.string(),
-        handler: zod.string(),
+        // handler is mandatory only if type is AWS
+        handler: zod.string().default("handler"),
         entry: zod.string().refine((value) => {
             return (
                 value.split(".").length === 2 && ["js", "mjs", "cjs"].includes(value.split(".")[1])
