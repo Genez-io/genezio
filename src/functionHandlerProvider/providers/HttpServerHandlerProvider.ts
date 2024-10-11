@@ -50,7 +50,6 @@ const app = await import("./${functionConfiguration.entry}");
 
 
 async function getData(event) {
-console.log('event', event);
   return new Promise((resolve) => {
     const headers = {};
     let statusCode = 200;
