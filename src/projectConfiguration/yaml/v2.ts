@@ -87,20 +87,27 @@ function parseGenezioConfig(config: unknown) {
         methods: zod.array(methodSchema).optional(),
     });
 
-    const functionsSchema = zod.object({
-        name: zod.string().refine((value) => {
-            const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
-            return nameRegex.test(value);
-        }, "Must start with a letter and contain only letters, numbers and dashes."),
-        path: zod.string(),
-        handler: zod.string(),
-        entry: zod.string().refine((value) => {
-            return (
-                value.split(".").length === 2 && ["js", "mjs", "cjs"].includes(value.split(".")[1])
-            );
-        }, "The handler should be in the format 'file.extension'. example: index.js / index.mjs / index.cjs"),
-        type: zod.nativeEnum(FunctionType).default(FunctionType.aws),
-    });
+    const functionsSchema = zod
+        .object({
+            name: zod.string().refine((value) => {
+                const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
+                return nameRegex.test(value);
+            }, "Must start with a letter and contain only letters, numbers and dashes."),
+            path: zod.string(),
+            // handler is mandatory only if type is AWS
+            handler: zod.string().optional(),
+            entry: zod.string().refine((value) => {
+                return (
+                    value.split(".").length === 2 &&
+                    ["js", "mjs", "cjs"].includes(value.split(".")[1])
+                );
+            }, "The handler should be in the format 'file.extension'. example: index.js / index.mjs / index.cjs"),
+            type: zod.nativeEnum(FunctionType).default(FunctionType.aws),
+        })
+        .refine(
+            ({ type, handler }) => !(type === FunctionType.aws && !handler),
+            "The handler is mandatory for type aws functions.",
+        );
 
     const databaseSchema = zod
         .object({

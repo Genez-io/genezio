@@ -31,6 +31,7 @@ export enum AuthenticationEmailTemplateType {
 
 export enum FunctionType {
     aws = "aws",
+    httpServer = "httpServer",
     // TODO: not implemented
     // azure = "azure",
     // gcp = "gcp",
