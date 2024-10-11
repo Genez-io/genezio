@@ -27,11 +27,10 @@ http.createServer = function(requestListener) {
     reqDomain.on("error", err => {
       console.error(err);
       try {
-      console.log('Sending 500 response');
         res.statusCode = 500;
         res.end("Internal Server Error");
       } catch (err) {
-        console.error("Error sending 500 response:", err);
+        console.error("Error:", err);
       }
     });
 
@@ -104,29 +103,15 @@ async function getData(event) {
 
 const handler = async function(event) {
 
-  const timeStartBefore = new Date();
 
-  try {
-    const response = await getData(event);
+  const response = await getData(event);
 
-    const timeEndAfter = new Date();
-
-
-    // Return the appropriate response in the AWS Lambda format
-    return {
-      statusCode: response.statusCode,
-      headers: response.headers,
-      body: response.body,
-    };
-  } catch (error) {
-    // Handle errors
-    console.error(error);
-    return {
-      statusCode: 500,
-      headers: {},
-      body: error.message,
-    };
-  }
+  // Return the appropriate response in the AWS Lambda format
+  return {
+    statusCode: response.statusCode,
+    headers: response.headers,
+    body: response.body,
+  };
   
 };
 
