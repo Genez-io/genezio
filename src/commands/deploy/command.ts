@@ -7,6 +7,21 @@ import { nextJsDeploy } from "./nextjs/deploy.js";
 import path from "path";
 import { nuxtNitroDeploy } from "./nuxt/deploy.js";
 import { dockerDeploy } from "./docker/deploy.js";
+import { PackageManagerType } from "../../packageManagers/packageManager.js";
+
+export type SSRFrameworkComponent = {
+    path: string;
+    packageManager: PackageManagerType;
+    scripts?: {
+        deploy: string;
+        build?: string;
+        start?: string;
+    };
+    environment?: {
+        [key: string]: string;
+    };
+    subdomain?: string;
+};
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
