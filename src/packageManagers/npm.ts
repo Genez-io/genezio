@@ -5,8 +5,12 @@ export default class NpmPackageManager implements PackageManager {
     readonly command = "npm";
     private version: string | undefined;
 
-    async install(packages: string[] = [], cwd?: string) {
-        await $({ cwd })`npm install ${packages}`;
+    async install(packages: string[] = [], cwd?: string, args: string[] = []) {
+        await $({ cwd })`npm install ${args} ${packages}`;
+    }
+
+    async cleanInstall(cwd?: string, args: string[] = []) {
+        await $({ cwd })`npm ci ${args}`;
     }
 
     installSync(packages: string[] = [], cwd?: string) {

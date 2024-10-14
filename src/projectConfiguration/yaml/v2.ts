@@ -8,8 +8,10 @@ import { AuthenticationDatabaseType, DatabaseType, FunctionType, Language } from
 import {
     DEFAULT_ARCHITECTURE,
     DEFAULT_NODE_RUNTIME,
+    DEFAULT_PYTHON_RUNTIME,
     supportedArchitectures,
     supportedNodeRuntimes,
+    supportedPythonRuntimes,
 } from "../../models/projectOptions.js";
 import { PackageManagerType } from "../../packageManagers/packageManager.js";
 import { TriggerType } from "./models.js";
@@ -35,7 +37,7 @@ export type YamlDatabase = NonNullable<
 function parseGenezioConfig(config: unknown) {
     const languageSchema = zod.object({
         name: zod.nativeEnum(Language),
-        runtime: zod.enum(supportedNodeRuntimes).optional(),
+        runtime: zod.enum([...supportedNodeRuntimes, ...supportedPythonRuntimes]).optional(),
         architecture: zod.enum(supportedArchitectures).optional(),
         packageManager: zod.nativeEnum(PackageManagerType).optional(),
     });
@@ -99,9 +101,9 @@ function parseGenezioConfig(config: unknown) {
             entry: zod.string().refine((value) => {
                 return (
                     value.split(".").length === 2 &&
-                    ["js", "mjs", "cjs"].includes(value.split(".")[1])
+                    ["js", "mjs", "cjs", "py"].includes(value.split(".")[1])
                 );
-            }, "The handler should be in the format 'file.extension'. example: index.js / index.mjs / index.cjs"),
+            }, "The handler should be in the format 'file.extension'. example: index.js / index.mjs / index.cjs / index.py"),
             type: zod.nativeEnum(FunctionType).default(FunctionType.aws),
         })
         .refine(
@@ -205,6 +207,21 @@ function parseGenezioConfig(config: unknown) {
             .optional(),
     });
 
+    // Define SSR frameworks schema
+    const ssrFrameworkSchema = zod.object({
+        path: zod.string(),
+        packageManager: zod.nativeEnum(PackageManagerType).optional(),
+        scripts: zod
+            .object({
+                deploy: scriptSchema,
+                build: scriptSchema,
+                start: scriptSchema,
+            })
+            .optional(),
+        environment: environmentSchema.optional(),
+        subdomain: zod.string().optional(),
+    });
+
     const v2Schema = zod.object({
         name: zod.string().refine((value) => {
             const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
@@ -215,6 +232,9 @@ function parseGenezioConfig(config: unknown) {
         backend: backendSchema.optional(),
         services: servicesSchema.optional(),
         frontend: zod.array(frontendSchema).or(frontendSchema).optional(),
+        nextjs: ssrFrameworkSchema.optional(),
+        nuxt: ssrFrameworkSchema.optional(),
+        nitro: ssrFrameworkSchema.optional(),
     });
 
     const parsedConfig = v2Schema.parse(config);
@@ -233,6 +253,12 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
                 defaultConfig.backend.language.packageManager ??= PackageManagerType.npm;
                 defaultConfig.backend.language.runtime ??= DEFAULT_NODE_RUNTIME;
                 defaultConfig.backend.language.architecture ??= DEFAULT_ARCHITECTURE;
+                break;
+            case Language.python:
+                defaultConfig.backend.language.packageManager ??= PackageManagerType.pip;
+                defaultConfig.backend.language.runtime ??= DEFAULT_PYTHON_RUNTIME;
+                defaultConfig.backend.language.architecture ??= DEFAULT_ARCHITECTURE;
+                break;
         }
     }
 

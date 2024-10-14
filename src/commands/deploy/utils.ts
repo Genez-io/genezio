@@ -69,6 +69,12 @@ import {
 import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import { displayHint, replaceExpression } from "../../utils/strings.js";
+import { getPackageManager } from "../../packageManagers/packageManager.js";
+
+type DependenciesInstallResult = {
+    command: string;
+    args: string[];
+};
 
 export async function getOrCreateEmptyProject(
     projectName: string,
@@ -122,6 +128,70 @@ export async function getOrCreateEmptyProject(
     }
 
     return { projectId: project.id, projectEnvId: projectEnv.id };
+}
+
+export async function attemptToInstallDependencies(
+    args: string[] = [],
+    currentPath: string,
+): Promise<DependenciesInstallResult> {
+    const packageManager = getPackageManager();
+    debugLogger.debug(
+        `Attempting to install dependencies with ${packageManager.command} ${args.join(" ")}`,
+    );
+
+    try {
+        await packageManager.install([], currentPath, args);
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+
+        if (errorMessage.includes("code EJSONPARSE")) {
+            throw new UserError(
+                `Failed to install dependencies due to an invalid package.json file. Please fix your package.json file.`,
+            );
+        }
+
+        if (errorMessage.includes("code E404")) {
+            const extractPackageName = getMissingPackage(errorMessage);
+            throw new UserError(
+                `Failed to install dependencies due to a missing package: ${extractPackageName}. Please fix your package.json file`,
+            );
+        }
+
+        if (errorMessage.includes("code ETARGET")) {
+            const noTargetPackage = getNoTargetPackage(errorMessage);
+            throw new UserError(
+                `Failed to install dependencies due to a non-existent package version: ${noTargetPackage}. Please fix your package.json file`,
+            );
+        }
+
+        if (errorMessage.includes("code ERESOLVE") && !args.includes("--legacy-peer-deps")) {
+            return attemptToInstallDependencies([...args, "--legacy-peer-deps"], currentPath);
+        }
+
+        throw new UserError(`Failed to install dependencies: ${errorMessage}`);
+    }
+
+    const command = `${packageManager.command} install${args.length ? ` ${args.join(" ")}` : ""}`;
+
+    log.info(`Dependencies installed successfully with command: ${command}`);
+
+    return {
+        command: command,
+        args: args,
+    };
+}
+
+function getMissingPackage(errorMessage: string): string | null {
+    const missingPackageRegex = /'([^@]+@[^']+)' is not in this registry/;
+    const match = errorMessage.match(missingPackageRegex);
+
+    return match ? match[1] : null;
+}
+
+function getNoTargetPackage(errorMessage: string): string | null {
+    const noTargetPackageRegex = /No matching version found for ([^@]+@[^.]+)/;
+    const match = errorMessage.match(noTargetPackageRegex);
+    return match ? match[1] : null;
 }
 
 export async function readOrAskConfig(configPath: string): Promise<YamlProjectConfiguration> {

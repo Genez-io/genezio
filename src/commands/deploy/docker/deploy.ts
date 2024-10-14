@@ -86,7 +86,7 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
     if (entrypoint) {
         cmdEntryFile += entrypoint.join(" ");
     } else {
-        cmdEntryFile += "/bin/sh -c";
+        cmdEntryFile += "/bin/sh -c ";
     }
 
     if (cmd) {
