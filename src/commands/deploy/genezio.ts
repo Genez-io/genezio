@@ -489,7 +489,7 @@ export async function deployClasses(
             functionToCloudInput(
                 f,
                 backend.path,
-                undefined,
+                /* outputDir */ undefined,
                 configuration.backend?.language.packageManager,
             ),
     );
