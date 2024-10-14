@@ -110,6 +110,7 @@ function parseGenezioConfig(config: unknown) {
             ({ type, handler }) => !(type === FunctionType.aws && !handler),
             "The handler is mandatory for type aws functions.",
         );
+
     const databaseSchema = zod
         .object({
             name: zod.string(),

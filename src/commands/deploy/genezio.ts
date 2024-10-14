@@ -883,7 +883,7 @@ export function getFunctionHandlerProvider(
             return new HttpServerHandlerProvider();
         default:
             throw new UserError(
-                `Unsupported function type: ${functionType}. Supported providers are: aws.`,
+                `Unsupported function type: ${functionType}. Supported providers are: aws, httpServer.`,
             );
     }
 }
