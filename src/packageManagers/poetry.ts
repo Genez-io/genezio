@@ -5,12 +5,16 @@ export default class PoetryPackageManager implements PackageManager {
     readonly command = "poetry";
     private version: string | undefined;
 
-    async install(packages: string[] = [], cwd?: string) {
+    async install(packages: string[] = [], cwd?: string, _args?: string[]) {
         if (packages.length > 0) {
             await $({ cwd })`poetry add ${packages.join(" ")}`;
         } else {
             await $({ cwd })`poetry install`;
         }
+    }
+
+    async cleanInstall(cwd?: string, args?: string[]): Promise<void> {
+        await $({ cwd })`poetry install ${args ?? []}`;
     }
 
     installSync(packages: string[] = [], cwd?: string) {
