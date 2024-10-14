@@ -212,25 +212,6 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             throw error;
         });
 
-        // Handle Python requirements.txt file
-        if (configuration.backend.language.name === Language.python) {
-            const requirementsPath = path.join(backendCwd, "requirements.txt");
-
-            if (fs.existsSync(requirementsPath)) {
-                const requirementsContent = fs.readFileSync(requirementsPath, "utf-8").trim();
-                if (requirementsContent) {
-                    await fsExtra.mkdirp(path.join(backendCwd, "packages"));
-                    const pythonPackagesPath = path.join(backendCwd, "packages");
-                    const pipInstallCommand = `pip install -r requirements.txt -t ${pythonPackagesPath}`;
-                    await runScript(pipInstallCommand, backendCwd);
-                } else {
-                    debugLogger.warn(
-                        "The requirements.txt file is empty. Skipping the pip install command.",
-                    );
-                }
-            }
-        }
-
         await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_START,
             commandOptions: JSON.stringify(options),
@@ -638,15 +619,32 @@ export async function functionToCloudInput(
         }
     }
 
+    // Handle Python projects dependencies
+    if (functionElement.language === "python") {
+        const requirementsPath = path.join(backendPath, functionElement.path, "requirements.txt");
+        if (fs.existsSync(requirementsPath)) {
+            const requirementsOutputPath = path.join(tmpFolderPath, "requirements.txt");
+            await fsExtra.copy(requirementsPath, requirementsOutputPath);
+            const requirementsContent = fs.readFileSync(requirementsOutputPath, "utf8").trim();
+            if (requirementsContent) {
+                const pipInstallCommand = `pip install -r ${requirementsOutputPath} -t ${tmpFolderPath}`;
+                await runScript(pipInstallCommand, tmpFolderPath);
+            } else {
+                debugLogger.debug("No requirements.txt file found.");
+            }
+        }
+    }
+
     const unzippedBundleSize = await getBundleFolderSizeLimit(tmpFolderPath);
 
     // add the handler to the temporary folder
-    let entryFileName = entryFileFunctionMap[functionElement.language as Language];
+    let entryFileName =
+        entryFileFunctionMap[functionElement.language as keyof typeof entryFileFunctionMap];
     while (fs.existsSync(path.join(tmpFolderPath, entryFileName))) {
         debugLogger.debug(
             `[FUNCTION ${functionElement.name}] File ${entryFileName} already exists in the temporary folder.`,
         );
-        entryFileName = `index-${Math.random().toString(36).substring(7)}.${entryFileFunctionMap[functionElement.language as Language].split(".")[1]}`;
+        entryFileName = `index-${Math.random().toString(36).substring(7)}.${entryFileFunctionMap[functionElement.language as keyof typeof entryFileFunctionMap].split(".")[1]}`;
     }
 
     await handlerProvider.write(tmpFolderPath, entryFileName, functionElement);
@@ -852,7 +850,7 @@ export function getCloudAdapter(provider: CloudProviderIdentifier): CloudAdapter
 export function getFunctionHandlerProvider(
     functionType: FunctionType,
     language: Language,
-): AwsFunctionHandlerProvider {
+): AwsFunctionHandlerProvider | HttpServerHandlerProvider {
     switch (functionType) {
         case FunctionType.aws: {
             const providerMap: { [key: string]: AwsFunctionHandlerProvider } = {

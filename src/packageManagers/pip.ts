@@ -4,6 +4,25 @@ import { $ } from "execa";
 export default class PipPackageManager implements PackageManager {
     readonly command = "pip";
     private version: string | undefined;
+    private pythonCommand: string = "python"; // Default command
+
+    constructor() {
+        this.detectPythonCommand();
+    }
+
+    private async detectPythonCommand() {
+        try {
+            await $`python --version`;
+            this.pythonCommand = "python";
+        } catch {
+            try {
+                await $`python3 --version`;
+                this.pythonCommand = "python3";
+            } catch {
+                throw new Error("Neither 'python' nor 'python3' is available on this system.");
+            }
+        }
+    }
 
     async install(packages: string[] = [], cwd?: string) {
         await $({ cwd })`pip install ${packages.join(" ")}`;
@@ -18,13 +37,12 @@ export default class PipPackageManager implements PackageManager {
     }
 
     async publish(cwd?: string) {
-        // For Python, publishing usually involves using `twine` to upload to PyPI
-        await $({ cwd })`python setup.py sdist bdist_wheel`;
+        // Use the detected python command (either `python` or `python3`)
+        await $({ cwd })`${this.pythonCommand} setup.py sdist bdist_wheel`;
         await $({ cwd })`twine upload dist/*`;
     }
 
     async addScopedRegistry(url: string, authToken?: string) {
-        // PIP usually does not handle scoped registries like npm, but we can handle custom indices
         await $`pip config set global.index-url ${url}`;
         if (authToken) {
             await $`pip config set global.extra-index-url ${url}`;
@@ -32,24 +50,22 @@ export default class PipPackageManager implements PackageManager {
     }
 
     async removeScopedRegistry(): Promise<void> {
-        // Remove custom registries
         await $`pip config unset global.index-url`;
     }
 
     async getVersion(): Promise<string> {
-        // Check if the version is already cached
         if (this.version !== undefined) {
             return this.version;
         }
 
         const { stdout } = await $`pip --version`;
-        // Output is something like 'pip X.X.X from ... (python Y.Y)'
         this.version = stdout.split(" ")[1].trim();
         return this.version;
     }
 
     async pack(cwd: string, destination: string): Promise<string> {
-        await $({ cwd })`python setup.py sdist --dist-dir ${destination}`;
+        // Use the detected python command (either `python` or `python3`)
+        await $({ cwd })`${this.pythonCommand} setup.py sdist --dist-dir ${destination}`;
         const { stdout } = await $({ cwd })`ls ${destination}`;
         return stdout.trim();
     }
