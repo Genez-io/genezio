@@ -35,7 +35,11 @@ http.createServer = function(options, requestListener) {
       console.error(err);
       try {
         res.statusCode = 500;
-        res.end(err.toString());
+        if (process.env.GENEZIO_DEBUG_MODE === "true") {
+            res.end(err.toString());
+        } else {
+            res.end("Internal Server Error");
+        }
       } catch (err) {
         console.error("Error:", err);
       }
