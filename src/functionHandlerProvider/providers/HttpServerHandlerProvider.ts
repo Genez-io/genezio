@@ -35,7 +35,11 @@ http.createServer = function(options, requestListener) {
       console.error(err);
       try {
         res.statusCode = 500;
-        res.end("Internal Server Error");
+        if (process.env.GENEZIO_DEBUG_MODE === "true") {
+            res.end(err.toString());
+        } else {
+            res.end("Internal Server Error");
+        }
       } catch (err) {
         console.error("Error:", err);
       }
@@ -56,54 +60,10 @@ const app = await import("./${functionConfiguration.entry}");
 
 
 async function getData(event) {
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
     const headers = {};
     let statusCode = 200;
     let body = '';
-    const res = new http.ServerResponse(event);
-
-    res.writeHead = (status, headersLocal) => {
-    console.log('res.writeHead', status, headersLocal)
-      statusCode = status;
-      for (const key in headersLocal) {
-        headers[key] = headersLocal[key];
-      }
-    }
-
-    res.write = data => {
-    console.log('res.write', data)
-      body += data;
-    }
-
-    res.end = data => {
-    console.log('res.end', data)
-      if (data) {
-        body += data;
-      }
-      resolve({ statusCode, headers, body });
-    }
-
-    res.status = status => {
-    console.log('res.status', status)
-      statusCode = status;
-    }
-
-    res.setHeader = (name, value) => {
-    console.log('res.setHeader', name, value)
-      headers[name] = value;
-    }
-
-    res.send = data => {
-    console.log('res.send', statusCode, headers, body)
-      body = data;
-      resolve({ statusCode, headers, body });
-    }
-
-    // handler res error
-    res.on("error", err => {
-      console.error("Response error:", err);
-      resolve({ statusCode: 500, headers, body: "Internal server error" });
-    });
 
     const req = new http.IncomingMessage();
     req.method = event.http.method;
@@ -111,7 +71,39 @@ async function getData(event) {
     req.headers = event.headers;
     req.body = event.body.toString();
 
-    myHandler(req, res);
+    const res = new http.ServerResponse(req);
+
+    res.writeHead = (status, headersLocal) => {
+        event.responseStream.writeHead(status, headersLocal);
+    }
+
+    res.write = data => {
+        event.responseStream.write(data);
+        console.log('res.write', data)
+    }
+
+    res.end = data => {
+        event.responseStream.end(data);
+        console.log('res.end', data)
+    }
+
+    res.status = status => {
+        event.responseStream.status(status);
+        console.log('res.status', status)
+    }
+
+    res.setHeader = (name, value) => {
+        console.log('res.setHeader', name, value)
+        event.responseStream.setHeader(name, value);
+    }
+
+    res.send = data => {
+        console.log('res.send', statusCode, headers, body)
+        event.responseStream.send(data);
+    }
+
+
+    await myHandler(req, res);
   }).catch((error) => {
     console.error(error);
     throw error;
@@ -119,17 +111,7 @@ async function getData(event) {
 }
 
 const handler = async function(event) {
-
-
-  const response = await getData(event);
-
-  // Return the appropriate response in the AWS Lambda format
-  return {
-    statusCode: response.statusCode,
-    headers: response.headers,
-    body: response.body,
-  };
-  
+  await getData(event);
 };
 
 export { handler };`;
