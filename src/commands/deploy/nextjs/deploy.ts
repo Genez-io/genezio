@@ -1,10 +1,7 @@
 import fs from "fs";
 import { GenezioDeployOptions } from "../../../models/commandOptions.js";
 import git from "isomorphic-git";
-import {
-    YamlConfigurationIOController,
-    YamlProjectConfiguration,
-} from "../../../projectConfiguration/yaml/v2.js";
+import { YamlProjectConfiguration } from "../../../projectConfiguration/yaml/v2.js";
 import path from "path";
 import { debugLogger, log } from "../../../utils/logging.js";
 import { $ } from "execa";
@@ -42,9 +39,14 @@ import { computeAssetsPaths } from "./assets.js";
 import * as Sentry from "@sentry/node";
 import { randomUUID } from "crypto";
 import { EdgeFunction, getEdgeFunctions } from "./edge.js";
-import { attemptToInstallDependencies, uploadEnvVarsFromFile, uploadUserCode } from "../utils.js";
+import {
+    addComponentToConfig,
+    attemptToInstallDependencies,
+    uploadEnvVarsFromFile,
+    uploadUserCode,
+} from "../utils.js";
 import { readOrAskConfig } from "../utils.js";
-import { SSRFrameworkComponent } from "../command.js";
+import { SSRFrameworkComponentType } from "../../../models/projectOptions.js";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     const cwd = process.cwd();
@@ -55,13 +57,18 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     const installDependenciesCommand = await attemptToInstallDependencies([], cwd);
 
     // Add nextjs component
-    await addNextjsComponentToConfig(options.config, genezioConfig, {
-        path: cwd,
-        packageManager: getPackageManager().command as PackageManagerType,
-        scripts: {
-            deploy: installDependenciesCommand.command,
+    await addComponentToConfig(
+        options.config,
+        genezioConfig,
+        {
+            path: cwd,
+            packageManager: getPackageManager().command as PackageManagerType,
+            scripts: {
+                deploy: installDependenciesCommand.command,
+            },
         },
-    });
+        SSRFrameworkComponentType.next,
+    );
 
     const edgeFunctions = await getEdgeFunctions();
     writeNextConfig();
@@ -108,22 +115,6 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     log.info(
         `The app is being deployed at ${colors.cyan(cdnUrl)}. It might take a few moments to be available worldwide.`,
     );
-}
-
-async function addNextjsComponentToConfig(
-    configPath: string,
-    config: YamlProjectConfiguration,
-    nextjs: SSRFrameworkComponent,
-) {
-    const configIOController = new YamlConfigurationIOController(configPath);
-    const relativePath = path.relative(process.cwd(), nextjs.path) || ".";
-
-    config.nextjs = {
-        path: relativePath,
-        packageManager: nextjs.packageManager,
-        scripts: nextjs.scripts,
-    };
-    await configIOController.write(config);
 }
 
 async function checkProjectLimitations() {
