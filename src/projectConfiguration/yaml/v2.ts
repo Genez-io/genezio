@@ -207,6 +207,21 @@ function parseGenezioConfig(config: unknown) {
             .optional(),
     });
 
+    // Define SSR frameworks schema
+    const ssrFrameworkSchema = zod.object({
+        path: zod.string(),
+        packageManager: zod.nativeEnum(PackageManagerType).optional(),
+        scripts: zod
+            .object({
+                deploy: scriptSchema,
+                build: scriptSchema,
+                start: scriptSchema,
+            })
+            .optional(),
+        environment: environmentSchema.optional(),
+        subdomain: zod.string().optional(),
+    });
+
     const v2Schema = zod.object({
         name: zod.string().refine((value) => {
             const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
@@ -217,6 +232,9 @@ function parseGenezioConfig(config: unknown) {
         backend: backendSchema.optional(),
         services: servicesSchema.optional(),
         frontend: zod.array(frontendSchema).or(frontendSchema).optional(),
+        nextjs: ssrFrameworkSchema.optional(),
+        nuxt: ssrFrameworkSchema.optional(),
+        nitro: ssrFrameworkSchema.optional(),
     });
 
     const parsedConfig = v2Schema.parse(config);
