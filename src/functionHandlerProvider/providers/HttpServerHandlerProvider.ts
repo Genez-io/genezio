@@ -17,7 +17,14 @@ const http = require('http')
 const originalCreateServer = http.createServer;
 let myHandler;
 
-http.createServer = function(requestListener) {
+http.createServer = function(options, requestListener) {
+    if (typeof options === 'function') {
+      requestListener = options;
+      options = {};
+    }
+
+    // If options is not an object, set it to an empty object
+    options = options || {};
   // Wrap the request listener (Express app handler) in a domain
   const customHandler = (req, res) => {
     const operationId = process.domain ? process.domain.operationId : "unknown";
@@ -55,29 +62,39 @@ async function getData(event) {
     let body = '';
     const res = new http.ServerResponse(event);
 
-    res.writeHead = (status, headers) => {
+    res.writeHead = (status, headersLocal) => {
+    console.log('res.writeHead', status, headersLocal)
       statusCode = status;
-      headers = headers;
+      for (const key in headersLocal) {
+        headers[key] = headersLocal[key];
+      }
     }
 
     res.write = data => {
+    console.log('res.write', data)
       body += data;
     }
 
     res.end = data => {
-      body += data;
+    console.log('res.end', data)
+      if (data) {
+        body += data;
+      }
       resolve({ statusCode, headers, body });
     }
 
     res.status = status => {
+    console.log('res.status', status)
       statusCode = status;
     }
 
     res.setHeader = (name, value) => {
+    console.log('res.setHeader', name, value)
       headers[name] = value;
     }
 
     res.send = data => {
+    console.log('res.send', statusCode, headers, body)
       body = data;
       resolve({ statusCode, headers, body });
     }
