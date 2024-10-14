@@ -51,7 +51,7 @@ import hash from "hash-it";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import dotenv from "dotenv";
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
-import { DEFAULT_NODE_RUNTIME } from "../models/projectOptions.js";
+import { DEFAULT_NODE_RUNTIME, NodeOptions, PythonOptions } from "../models/projectOptions.js";
 import { exit } from "process";
 import { log } from "../utils/logging.js";
 import { interruptLocalPath } from "../utils/localInterrupt.js";
@@ -540,6 +540,15 @@ async function startBackendWatcher(
             backendConfiguration.language.name === Language.ts ||
             backendConfiguration.language.name === Language.js
         ) {
+            const isNodeOptions = (
+                options: NodeOptions | PythonOptions | undefined,
+            ): options is NodeOptions => {
+                return (options as NodeOptions).nodeRuntime !== undefined;
+            };
+            if (!isNodeOptions(projectConfiguration.options)) {
+                throw new UserError("Invalid node options");
+            }
+
             reportDifferentNodeRuntime(projectConfiguration.options?.nodeRuntime);
         }
 

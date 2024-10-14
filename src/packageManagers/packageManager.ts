@@ -1,6 +1,8 @@
 import NpmPackageManager from "./npm.js";
 import PnpmPackageManager from "./pnpm.js";
 import YarnPackageManager from "./yarn.js";
+import PipPackageManager from "./pip.js";
+import PoetryPackageManager from "./poetry.js";
 
 /*
  * An interface that describes the methods that a package manager must implement.
@@ -21,6 +23,8 @@ export enum PackageManagerType {
     npm = "npm",
     yarn = "yarn",
     pnpm = "pnpm",
+    pip = "pip",
+    poetry = "poetry",
 }
 
 /*
@@ -35,6 +39,8 @@ export const packageManagers: {
     npm: new NpmPackageManager(),
     yarn: new YarnPackageManager(),
     pnpm: new PnpmPackageManager(),
+    pip: new PipPackageManager(),
+    poetry: new PoetryPackageManager(),
 };
 
 /*

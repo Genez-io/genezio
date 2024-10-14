@@ -25,7 +25,8 @@ import { generateNodeContainerManifest } from "./containerManifest.js";
 import { clusterWrapperCode } from "./clusterHandler.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import { clusterHandlerGenerator } from "./clusterHandlerGenerator.js";
-import { DEFAULT_NODE_RUNTIME } from "../../models/projectOptions.js";
+import { DEFAULT_NODE_RUNTIME, PythonOptions } from "../../models/projectOptions.js";
+import { NodeOptions } from "../../models/projectOptions.js";
 
 export class NodeJsBundler implements BundlerInterface {
     async #copyDependencies(
@@ -456,6 +457,16 @@ export class NodeJsBundler implements BundlerInterface {
         );
 
         const isDeployedToCluster = input.projectConfiguration.cloudProvider === "cluster";
+
+        const isNodeOptions = (
+            options: NodeOptions | PythonOptions | undefined,
+        ): options is NodeOptions => {
+            return (options as NodeOptions).nodeRuntime !== undefined;
+        };
+        if (!isNodeOptions(input.projectConfiguration.options)) {
+            throw new UserError("Invalid node options");
+        }
+
         const nodeVersion = input.projectConfiguration.options?.nodeRuntime || DEFAULT_NODE_RUNTIME;
 
         // 2. Copy non js files and node_modules and write index.mjs file

@@ -52,6 +52,7 @@ import {
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import {
     AuthenticationEmailTemplateType,
+    entryFileFunctionMap,
     FunctionType,
     Language,
 } from "../../projectConfiguration/yaml/models.js";
@@ -63,7 +64,10 @@ import { writeSdk } from "../../generateSdk/sdkWriter/sdkWriter.js";
 import { reportSuccessForSdk } from "../../generateSdk/sdkSuccessReport.js";
 import { isLoggedIn } from "../../utils/accounts.js";
 import { loginCommand } from "../login.js";
-import { AwsFunctionHandlerProvider } from "../../functionHandlerProvider/providers/AwsFunctionHandlerProvider.js";
+import {
+    AwsFunctionHandlerProvider,
+    AwsPythonFunctionHandlerProvider,
+} from "../../functionHandlerProvider/providers/AwsFunctionHandlerProvider.js";
 import fsExtra from "fs-extra/esm";
 import { getLinkedFrontendsForProject } from "../../utils/linkDatabase.js";
 import { getCloudProvider } from "../../requests/getCloudProvider.js";
@@ -481,7 +485,13 @@ export async function deployClasses(
     );
 
     const functionsResultArray: Promise<GenezioCloudInput>[] = projectConfiguration.functions.map(
-        (f) => functionToCloudInput(f, backend.path),
+        (f) =>
+            functionToCloudInput(
+                f,
+                backend.path,
+                /* outputDir */ undefined,
+                configuration.backend?.language.packageManager,
+            ),
     );
 
     const cloudAdapterDeployInput = await Promise.all([
@@ -575,13 +585,19 @@ export async function functionToCloudInput(
     functionElement: FunctionConfiguration,
     backendPath: string,
     outputDir?: string,
+    packageManager?: string,
 ): Promise<GenezioCloudInput> {
-    if (functionElement.language !== "js" && functionElement.language !== "ts") {
+    const supportedFunctionLanguages = ["js", "ts", "python"];
+
+    if (!supportedFunctionLanguages.includes(functionElement.language)) {
         throw new UserError(
-            `The language ${functionElement.language} is not supported for functions. Only JavaScript and TypeScript are supported.`,
+            `The language ${functionElement.language} is not supported for functions. Supported languages are: ${supportedFunctionLanguages.join(", ")}`,
         );
     }
-    const handlerProvider = getFunctionHandlerProvider(functionElement.type);
+    const handlerProvider = getFunctionHandlerProvider(
+        functionElement.type,
+        functionElement.language as Language,
+    );
 
     if (outputDir && !fs.existsSync(outputDir)) {
         debugLogger.debug(`Creating output directory ${outputDir}`);
@@ -595,27 +611,49 @@ export async function functionToCloudInput(
 
     // copy everything to the temporary folder
     await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath);
-    if (fsExtra.pathExistsSync(path.join(tmpFolderPath, "node_modules", ".pnpm"))) {
-        await fsExtra.remove(path.join(tmpFolderPath, "node_modules", ".pnpm"));
-        await fsExtra.copy(
-            path.join(backendPath, functionElement.path, "node_modules", ".pnpm"),
-            path.join(tmpFolderPath, "node_modules", ".pnpm"),
-            {
-                dereference: true,
-            },
-        );
+
+    // Handle JS/TS functions with pnpm
+    if (functionElement.language === "js" || functionElement.language === "ts") {
+        if (fsExtra.pathExistsSync(path.join(tmpFolderPath, "node_modules", ".pnpm"))) {
+            await fsExtra.remove(path.join(tmpFolderPath, "node_modules", ".pnpm"));
+            await fsExtra.copy(
+                path.join(backendPath, functionElement.path, "node_modules", ".pnpm"),
+                path.join(tmpFolderPath, "node_modules", ".pnpm"),
+                {
+                    dereference: true,
+                },
+            );
+        }
+    }
+
+    // Handle Python projects dependencies
+    if (functionElement.language === "python") {
+        const requirementsPath = path.join(backendPath, functionElement.path, "requirements.txt");
+        if (fs.existsSync(requirementsPath)) {
+            const requirementsOutputPath = path.join(tmpFolderPath, "requirements.txt");
+            await fsExtra.copy(requirementsPath, requirementsOutputPath);
+            const requirementsContent = fs.readFileSync(requirementsOutputPath, "utf8").trim();
+            if (requirementsContent) {
+                const installCommand = packageManager
+                    ? `${packageManager.toLowerCase()} install -r ${requirementsOutputPath} -t ${tmpFolderPath}`
+                    : `pip install ${requirementsOutputPath} -t ${tmpFolderPath}`;
+                await runScript(installCommand, tmpFolderPath);
+            } else {
+                debugLogger.debug("No requirements.txt file found.");
+            }
+        }
     }
 
     const unzippedBundleSize = await getBundleFolderSizeLimit(tmpFolderPath);
 
     // add the handler to the temporary folder
-    // check if there already is an index.mjs file in user's code
-    let entryFileName = "index.mjs";
+    let entryFileName =
+        entryFileFunctionMap[functionElement.language as keyof typeof entryFileFunctionMap];
     while (fs.existsSync(path.join(tmpFolderPath, entryFileName))) {
         debugLogger.debug(
             `[FUNCTION ${functionElement.name}] File ${entryFileName} already exists in the temporary folder.`,
         );
-        entryFileName = `index-${Math.random().toString(36).substring(7)}.mjs`;
+        entryFileName = `index-${Math.random().toString(36).substring(7)}.${entryFileFunctionMap[functionElement.language as keyof typeof entryFileFunctionMap].split(".")[1]}`;
     }
 
     await handlerProvider.write(tmpFolderPath, entryFileName, functionElement);
@@ -818,15 +856,34 @@ export function getCloudAdapter(provider: CloudProviderIdentifier): CloudAdapter
     }
 }
 
-export function getFunctionHandlerProvider(functionType: FunctionType): AwsFunctionHandlerProvider {
+export function getFunctionHandlerProvider(
+    functionType: FunctionType,
+    language: Language,
+): AwsFunctionHandlerProvider | HttpServerHandlerProvider {
     switch (functionType) {
-        case FunctionType.aws:
-            return new AwsFunctionHandlerProvider();
+        case FunctionType.aws: {
+            const providerMap: { [key: string]: AwsFunctionHandlerProvider } = {
+                [`${FunctionType.aws}-${Language.python}`]: new AwsPythonFunctionHandlerProvider(),
+                [`${FunctionType.aws}-${Language.js}`]: new AwsFunctionHandlerProvider(),
+                [`${FunctionType.aws}-${Language.ts}`]: new AwsFunctionHandlerProvider(),
+            };
+
+            const key = `${functionType}-${language}`;
+            const provider = providerMap[key];
+
+            if (provider) {
+                return provider;
+            } else {
+                throw new UserError(
+                    `Unsupported language: ${language} for AWS function. Supported languages are: python, js, ts.`,
+                );
+            }
+        }
         case FunctionType.httpServer:
             return new HttpServerHandlerProvider();
         default:
             throw new UserError(
-                `Unsupported function type: ${functionType}. Supported providers are: aws`,
+                `Unsupported function type: ${functionType}. Supported providers are: aws, httpServer.`,
             );
     }
 }
