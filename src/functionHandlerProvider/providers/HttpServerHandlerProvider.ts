@@ -55,12 +55,19 @@ http.createServer = function(options, requestListener) {
 const app = await import("./${functionConfiguration.entry}");
 
 
-async function getData(event, responseStream) {
+async function getData(event) {
   return new Promise(async (resolve) => {
     const headers = {};
     let statusCode = 200;
     let body = '';
-    const res = new http.ServerResponse(event);
+
+    const req = new http.IncomingMessage();
+    req.method = event.http.method;
+    req.url = \`\${event.http.path}\${event.url.search}\`;
+    req.headers = event.headers;
+    req.body = event.body.toString();
+
+    const res = new http.ServerResponse(req);
 
     res.writeHead = (status, headersLocal) => {
         event.responseStream.writeHead(status, headersLocal);
@@ -91,11 +98,6 @@ async function getData(event, responseStream) {
         event.responseStream.send(data);
     }
 
-    const req = new http.IncomingMessage();
-    req.method = event.http.method;
-    req.url = \`\${event.http.path}\${event.url.search}\`;
-    req.headers = event.headers;
-    req.body = event.body.toString();
 
     await myHandler(req, res);
   }).catch((error) => {
