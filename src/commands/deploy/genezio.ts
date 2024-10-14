@@ -485,7 +485,13 @@ export async function deployClasses(
     );
 
     const functionsResultArray: Promise<GenezioCloudInput>[] = projectConfiguration.functions.map(
-        (f) => functionToCloudInput(f, backend.path),
+        (f) =>
+            functionToCloudInput(
+                f,
+                backend.path,
+                undefined,
+                configuration.backend?.language.packageManager,
+            ),
     );
 
     const cloudAdapterDeployInput = await Promise.all([
@@ -579,6 +585,7 @@ export async function functionToCloudInput(
     functionElement: FunctionConfiguration,
     backendPath: string,
     outputDir?: string,
+    packageManager?: string,
 ): Promise<GenezioCloudInput> {
     const supportedFunctionLanguages = ["js", "ts", "python"];
 
@@ -627,8 +634,10 @@ export async function functionToCloudInput(
             await fsExtra.copy(requirementsPath, requirementsOutputPath);
             const requirementsContent = fs.readFileSync(requirementsOutputPath, "utf8").trim();
             if (requirementsContent) {
-                const pipInstallCommand = `pip install -r ${requirementsOutputPath} -t ${tmpFolderPath}`;
-                await runScript(pipInstallCommand, tmpFolderPath);
+                const installCommand = packageManager
+                    ? `${packageManager.toLowerCase()} install -r ${requirementsOutputPath} -t ${tmpFolderPath}`
+                    : `pip install ${requirementsOutputPath} -t ${tmpFolderPath}`;
+                await runScript(installCommand, tmpFolderPath);
             } else {
                 debugLogger.debug("No requirements.txt file found.");
             }

@@ -19,7 +19,7 @@ export default class PipPackageManager implements PackageManager {
                 await $`python3 --version`;
                 this.pythonCommand = "python3";
             } catch {
-                throw new Error("Neither 'python' nor 'python3' is available on this system.");
+                return;
             }
         }
     }
