@@ -87,6 +87,7 @@ import {
 } from "../../requests/integration.js";
 import { expandEnvironmentVariables, findAnEnvFile } from "../../utils/environmentVariables.js";
 import { getProjectEnvFromProjectByName } from "../../requests/getProjectInfoByName.js";
+import { HttpServerHandlerProvider } from "../../functionHandlerProvider/providers/HttpServerHandlerProvider.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -871,6 +872,8 @@ export function getFunctionHandlerProvider(
                 );
             }
         }
+        case FunctionType.httpServer:
+            return new HttpServerHandlerProvider();
         default:
             throw new UserError(
                 `Unsupported function type: ${functionType}. Supported providers are: aws.`,

@@ -8,6 +8,7 @@ import open from "open";
 import { asciiCapybara } from "../utils/strings.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import { isCI } from "../utils/process.js";
+import { UserError } from "../errors.js";
 
 export async function loginCommand(accessToken: string, logSuccessMessage = true) {
     if (!isCI() && logSuccessMessage) log.info(asciiCapybara);
@@ -16,7 +17,7 @@ export async function loginCommand(accessToken: string, logSuccessMessage = true
         eventType: TelemetryEventTypes.GENEZIO_LOGIN,
     });
 
-    const promiseHttpServer = new Promise((resolve) => {
+    const promiseHttpServer = new Promise((resolve, reject) => {
         if (accessToken !== "") {
             saveAuthToken(accessToken);
             if (logSuccessMessage) {
@@ -25,10 +26,11 @@ export async function loginCommand(accessToken: string, logSuccessMessage = true
         } else {
             // If we are in a CI environment, we don't open the browser because it will hang indefinitely
             if (isCI()) {
-                log.error(
-                    "CI environment detected. Cannot open browser for authentication. Use `genezio login <token>` instead.",
+                reject(
+                    new UserError(
+                        "CI environment detected. Authentication must be done using `genezio login <token> or set a valid GENEZIO_TOKEN=<token>",
+                    ),
                 );
-                resolve(true);
                 return;
             }
             const server = http.createServer((req, res) => {
@@ -61,11 +63,21 @@ export async function loginCommand(accessToken: string, logSuccessMessage = true
                         // We close the server and all connections after sending the update to the browser
                         server.closeAllConnections();
                         server.close();
+                        clearTimeout(timeout);
 
                         resolve(true);
                     });
                 });
             });
+
+            // Set the server to timeout after 5 minutes
+            const TIMEOUT_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
+            const timeout = setTimeout(() => {
+                server.close(() => {
+                    log.info("Server closed due to timeout.");
+                });
+                reject(new UserError("Authentication timed out after 5 minutes."));
+            }, TIMEOUT_DURATION);
 
             server.listen(0, "localhost", () => {
                 log.info("Redirecting to browser to complete authentication...");
@@ -80,32 +92,4 @@ export async function loginCommand(accessToken: string, logSuccessMessage = true
 
 function loginSuccessMsg() {
     log.info(`Welcome! You can now start using genezio.`);
-
-    // next steps message
-    // log.info(`\n${colors.bold(`${colors.green("Next steps to get started: ")}`)}`);
-    // log.info(
-    //     `\n${colors.green(
-    //         "1. Create a new project:",
-    //     )} You can create a new project by running the command ${colors.cyan("genezio")}`,
-    // );
-    // log.info(
-    //     `\n${colors.green(
-    //         "2. Add a new class:",
-    //     )} Once your project is created, you can add a new class by running the command ${colors.cyan(
-    //         "genezio addClass [filename]",
-    //     )}`,
-    // );
-    // log.info(
-    //     `\n${colors.green(
-    //         "3. Test your project locally:",
-    //     )} Test your project locally by running the command ${colors.cyan("genezio local")}`,
-    // );
-    // log.info(
-    //     `\n${colors.green(
-    //         "4. Deploy your project:",
-    //     )} When your project is ready, you can deploy it to the genezio infrastructure by running the command ${colors.cyan(
-    //         "genezio deploy",
-    //     )}`,
-    // );
-    // log.info(`\n${colors.green("5. Documentation:")} ${colors.magenta("https://docs.genezio.com")}`);
 }

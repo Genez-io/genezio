@@ -6,11 +6,14 @@ import { debugLogger } from "./logging.js";
 import { GENEZIO_REGISTRY } from "../constants.js";
 import { packageManagers } from "../packageManagers/packageManager.js";
 import getUser from "../requests/getUser.js";
+import { UserError } from "../errors.js";
 
 export async function getAuthToken(): Promise<string | undefined> {
     // Check if GENEZIO_TOKEN is set
     if (process.env["GENEZIO_TOKEN"]) {
-        debugLogger.debug("Using GENEZIO_TOKEN because it's defined");
+        debugLogger.debug(
+            "Using GENEZIO_TOKEN to authenticate because it's defined in this environment",
+        );
         const result = process.env["GENEZIO_TOKEN"].trim();
         return result;
     }
@@ -30,6 +33,9 @@ export async function isLoggedIn(): Promise<boolean> {
         await getUser();
         return true;
     } catch (error) {
+        if (process.env["GENEZIO_TOKEN"]) {
+            throw new UserError("GENEZIO_TOKEN is set but it's invalid. Please check your token.");
+        }
         return false;
     }
 }

@@ -9,7 +9,7 @@ import { AbortController } from "node-abort-controller";
 import version from "../utils/version.js";
 import { AxiosResponse } from "axios";
 import { StatusOk } from "./models.js";
-import { UserError } from "../errors.js";
+import { GENEZIO_NOT_AUTH_ERROR_MSG, UserError } from "../errors.js";
 import { GenezioCloudInput, GenezioCloudInputType } from "../cloudAdapter/cloudAdapter.js";
 
 export async function deployRequest(
@@ -23,10 +23,7 @@ export async function deployRequest(
     printAdaptiveLog("Checking your credentials", "start");
     const authToken = await getAuthToken();
     if (!authToken) {
-        printAdaptiveLog("Checking your credentials", "error");
-        throw new UserError(
-            "You are not logged in. Run 'genezio login' before you deploy your function.",
-        );
+        throw new UserError(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
     printAdaptiveLog("Checking your credentials", "end");
 

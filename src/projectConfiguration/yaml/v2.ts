@@ -103,8 +103,12 @@ function parseGenezioConfig(config: unknown) {
             );
         }, "The handler should be in the format 'file.extension'. example: index.js / index.mjs / index.cjs / index.py"),
         type: zod.nativeEnum(FunctionType).default(FunctionType.aws),
-    });
-
+    })
+    .refine(
+            ({ type, handler }) => !(type === FunctionType.aws && !handler),
+            "The handler is mandatory for type aws functions.",
+        );
+  
     const databaseSchema = zod
         .object({
             name: zod.string(),

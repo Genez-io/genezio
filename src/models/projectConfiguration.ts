@@ -267,7 +267,7 @@ export class ProjectConfiguration {
                     name: `function-${f.name}`,
                     path: f.path,
                     language: yamlConfiguration.backend?.language.name || "ts",
-                    handler: f.handler,
+                    handler: f.handler || "handler",
                     entry: f.entry,
                     type: f.type || FunctionType.aws,
                 };

@@ -5,15 +5,12 @@ import version from "../utils/version.js";
 import { AuthStatus } from "./models.js";
 import { AxiosResponse } from "axios";
 import { CloudProviderIdentifier } from "../models/cloudProviderIdentifier.js";
-import { UserError } from "../errors.js";
+import { GENEZIO_NOT_AUTH_ERROR_MSG, UserError } from "../errors.js";
 
 export default async function getAuthStatus(envId: string): Promise<AuthStatus> {
     const authToken = await getAuthToken();
-
     if (!authToken) {
-        throw new UserError(
-            "You are not logged in. Run 'genezio login' before you deploy your function.",
-        );
+        throw new UserError(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
 
     const response: AxiosResponse<AuthStatus> = await axios({
