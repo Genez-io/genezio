@@ -9,7 +9,8 @@ import PoetryPackageManager from "./poetry.js";
  */
 export interface PackageManager {
     command: string;
-    install(packages: string[], cwd?: string): Promise<void>;
+    install(packages: string[], cwd?: string, args?: string[]): Promise<void>;
+    cleanInstall(cwd?: string, args?: string[]): Promise<void>;
     installSync(packages: string[], cwd?: string): void;
     link(packages: string[], cwd?: string): Promise<void>;
     publish(cwd?: string): Promise<void>;

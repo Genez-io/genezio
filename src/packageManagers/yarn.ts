@@ -7,16 +7,20 @@ export default class YarnPackageManager implements PackageManager {
     readonly command = "yarn";
     private version: string | undefined;
 
-    async install(packages: string[] = [], cwd?: string) {
+    async install(packages: string[] = [], cwd?: string, args: string[] = []) {
         // Yarn has two different commands for installing packages:
         // - `yarn install` will install all packages from the lockfile
         // - `yarn add` will install the specified packages and update the lockfile
         if (packages.length === 0) {
-            await $({ cwd })`yarn install`;
+            await $({ cwd })`yarn install ${args}`;
             return;
         }
 
-        await $({ cwd })`yarn add ${packages}`;
+        await $({ cwd })`yarn add ${args} ${packages}`;
+    }
+
+    async cleanInstall(cwd?: string, args: string[] = []) {
+        await $({ cwd })`yarn install --frozen-lockfile ${args}`;
     }
 
     installSync(packages: string[] = [], cwd?: string) {
