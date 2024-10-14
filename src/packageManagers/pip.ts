@@ -24,8 +24,12 @@ export default class PipPackageManager implements PackageManager {
         }
     }
 
-    async install(packages: string[] = [], cwd?: string) {
+    async install(packages: string[] = [], cwd?: string, _args?: string[]) {
         await $({ cwd })`pip install ${packages.join(" ")}`;
+    }
+
+    async cleanInstall(cwd?: string, args?: string[]): Promise<void> {
+        await $({ cwd })`pip install ${args ?? []}`;
     }
 
     installSync(packages: string[] = [], cwd?: string) {
