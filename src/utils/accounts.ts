@@ -4,11 +4,7 @@ import path from "path";
 import fs from "fs";
 import { debugLogger } from "./logging.js";
 import { GENEZIO_REGISTRY } from "../constants.js";
-import {
-    packageManagers,
-    PackageManagerType,
-    supportedRegistryPackageManagers,
-} from "../packageManagers/packageManager.js";
+import { packageManagers } from "../packageManagers/packageManager.js";
 import getUser from "../requests/getUser.js";
 import { UserError } from "../errors.js";
 
@@ -46,11 +42,9 @@ export async function isLoggedIn(): Promise<boolean> {
 
 export async function setupScopedRepositoryAuth(token: string) {
     const packageManagerList = Object.values(packageManagers);
-    const addScopedRegistriesPromises = packageManagerList
-        .filter((packageManager) =>
-            supportedRegistryPackageManagers.includes(packageManager.command as PackageManagerType),
-        )
-        .map((packageManager) => packageManager.addScopedRegistry(GENEZIO_REGISTRY, token));
+    const addScopedRegistriesPromises = packageManagerList.map((packageManager) =>
+        packageManager.addScopedRegistry("genezio-sdk", `https://${GENEZIO_REGISTRY}/npm`, token),
+    );
 
     await Promise.allSettled(addScopedRegistriesPromises).then((results) => {
         results.forEach((result, i) => {

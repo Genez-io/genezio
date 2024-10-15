@@ -46,15 +46,14 @@ export default class PipPackageManager implements PackageManager {
         await $({ cwd })`twine upload dist/*`;
     }
 
+    // TODO Implement addScopedRegistry and removeScopedRegistry when we support it
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async addScopedRegistry(url: string, authToken?: string) {
-        await $`pip config set global.index-url ${url}`;
-        if (authToken) {
-            await $`pip config set global.extra-index-url ${url}`;
-        }
+        return;
     }
 
     async removeScopedRegistry(): Promise<void> {
-        await $`pip config unset global.index-url`;
+        return;
     }
 
     async getVersion(): Promise<string> {

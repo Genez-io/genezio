@@ -35,15 +35,14 @@ export default class PoetryPackageManager implements PackageManager {
         await $({ cwd })`poetry publish --build`;
     }
 
+    // TODO Implement addScopedRegistry and removeScopedRegistry when we support it
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async addScopedRegistry(url: string, authToken?: string) {
-        await $`poetry config repositories.custom ${url}`;
-        if (authToken) {
-            await $`poetry config http-basic.custom ${authToken}`;
-        }
+        return;
     }
 
     async removeScopedRegistry(): Promise<void> {
-        await $`poetry config --unset repositories.custom`;
+        return;
     }
 
     async getVersion(): Promise<string> {
