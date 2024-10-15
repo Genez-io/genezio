@@ -634,9 +634,10 @@ export async function functionToCloudInput(
             await fsExtra.copy(requirementsPath, requirementsOutputPath);
             const requirementsContent = fs.readFileSync(requirementsOutputPath, "utf8").trim();
             if (requirementsContent) {
+                const pathForDependencies = path.join(tmpFolderPath, "packages");
                 const installCommand = packageManager
-                    ? `${packageManager.toLowerCase()} install -r ${requirementsOutputPath} -t ${tmpFolderPath}`
-                    : `pip install ${requirementsOutputPath} -t ${tmpFolderPath}`;
+                    ? `${packageManager.toLowerCase()} install -r ${requirementsOutputPath} -t ${pathForDependencies}`
+                    : `pip install ${requirementsOutputPath} -t ${pathForDependencies}`;
                 await runScript(installCommand, tmpFolderPath);
             } else {
                 debugLogger.debug("No requirements.txt file found.");
