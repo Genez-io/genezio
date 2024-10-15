@@ -59,3 +59,9 @@ export function getPackageManager(): PackageManager {
 export function setPackageManager(packageManagerType: PackageManagerType) {
     packageManager = packageManagers[packageManagerType] ?? packageManagers.npm;
 }
+
+export const supportedRegistryPackageManagers = [
+    PackageManagerType.npm,
+    PackageManagerType.yarn,
+    PackageManagerType.pnpm,
+];
