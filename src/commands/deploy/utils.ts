@@ -508,11 +508,22 @@ export async function enableAuthentication(
             return;
         }
 
+        let databaseType;
+        switch (database.type) {
+            case DatabaseType.neon:
+                databaseType = AuthenticationDatabaseType.postgres;
+                break;
+            case DatabaseType.mongo:
+                databaseType = AuthenticationDatabaseType.mongo;
+                break;
+            default:
+                throw new UserError(`Database type ${database.type} is not supported.`);
+        }
         await enableAuthenticationHelper(
             {
                 enabled: true,
                 databaseUrl: database.connectionUrl || "",
-                databaseType: AuthenticationDatabaseType.postgres,
+                databaseType,
             },
             projectEnvId,
             authProviders,
