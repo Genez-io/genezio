@@ -15,6 +15,7 @@ import { createTemporaryFolder } from "../utils/file.js";
 import { ProjectConfiguration } from "../models/projectConfiguration.js";
 import { Program } from "../models/genezioModels.js";
 import { UserError } from "../errors.js";
+import { Language } from "../projectConfiguration/yaml/models.js";
 
 export async function bundle(
     projectConfiguration: ProjectConfiguration,
@@ -88,10 +89,10 @@ export async function bundle(
     return output;
 }
 
-export function getLocalFunctionWrapperCode(handler: string, entry: string, language: string) {
+export function getLocalFunctionWrapperCode(handler: string, entry: string, language: Language) {
     switch (language) {
-        case "js":
-        case "ts":
+        case Language.js:
+        case Language.ts:
             return `import { ${handler} as userHandler } from "./${entry}";
 
 import http from "http";
@@ -161,6 +162,6 @@ if __name__ == "__main__":
     run()
 `;
         default:
-            return ``;
+            throw new Error(`${language} is not supported yet for testing locally`);
     }
 }

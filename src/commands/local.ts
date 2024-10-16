@@ -90,6 +90,7 @@ import { displayHint } from "../utils/strings.js";
 import { enableEmailIntegration, getProjectIntegrations } from "../requests/integration.js";
 import { expandEnvironmentVariables, findAnEnvFile } from "../utils/environmentVariables.js";
 import { getLocalFunctionWrapperCode } from "../bundlers/utils.js";
+import { getFunctionEntryFilename } from "../utils/getFunctionEntryFilename.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -632,11 +633,14 @@ async function startProcesses(
 
             await writeToFile(
                 path.join(tmpFolder),
-                `local_function_wrapper.${entryFileFunctionMap[functionInfo.language as keyof typeof entryFileFunctionMap].split(".")[1]}`,
+                getFunctionEntryFilename(
+                    functionInfo.language as Language,
+                    "local_function_wrapper",
+                ),
                 getLocalFunctionWrapperCode(
                     functionInfo.handler,
                     functionInfo.entry,
-                    functionInfo.language,
+                    functionInfo.language as Language,
                 ),
             );
 
