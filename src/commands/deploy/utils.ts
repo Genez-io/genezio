@@ -16,7 +16,10 @@ import {
     AuthenticationEmailTemplateType,
     DatabaseType,
 } from "../../projectConfiguration/yaml/models.js";
-import { YamlProjectConfiguration } from "../../projectConfiguration/yaml/v2.js";
+import {
+    RawYamlProjectConfiguration,
+    YamlProjectConfiguration,
+} from "../../projectConfiguration/yaml/v2.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import {
     createDatabase,
@@ -198,7 +201,7 @@ function getNoTargetPackage(errorMessage: string): string | null {
 
 export async function addComponentToConfig(
     configPath: string,
-    config: YamlProjectConfiguration,
+    config: YamlProjectConfiguration | RawYamlProjectConfiguration,
     component: SSRFrameworkComponent,
     componentType: SSRFrameworkComponentType,
 ) {
