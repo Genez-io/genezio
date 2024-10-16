@@ -199,19 +199,21 @@ def handler(event):
     req = {
         "version": "2.0",
         "routeKey": "$default",
-        "rawPath": event.get('url', {}).get('pathname', '/'),
-        "rawQueryString": event.get('url', {}).get('search', ''),
+        "rawPath": event.get('path', '/'),
+        "rawQueryString": event.get('query', ''),
         "headers": http2_compliant_headers,
-        "queryStringParameters": dict(event.get('url', {}).get('searchParams', {})),
+        "queryStringParameters": {
+            key: value for key, value in [param.split('=') for param in event.get('query', '').split('&') if '=' in param]
+        },
         "requestContext": {
             "accountId": "anonymous",
-            "apiId": headers.get('Host', '').split('.')[0],
-            "domainName": headers.get('Host', ''),
-            "domainPrefix": headers.get('Host', '').split('.')[0],
+            "apiId": headers.get('host', '').split('.')[0],
+            "domainName": headers.get('host', ''),
+            "domainPrefix": headers.get('host', '').split('.')[0],
             "http": {
                 "method": event.get('http', {}).get('method', 'GET'),
-                "path": event.get('http', {}).get('path', '/'),
-                "protocol": event.get('http', {}).get('protocol', '1.1'),
+                "path": event.get('path', '/'),
+                "protocol": f"HTTP/{event.get('http', {}).get('protocol', ['1', '1'])[0]}.{event.get('http', {}).get('protocol', ['1', '1'])[1]}",
                 "sourceIp": event.get('http', {}).get('sourceIp', '0.0.0.0'),
                 "userAgent": event.get('http', {}).get('userAgent', 'unknown')
             },
@@ -223,7 +225,7 @@ def handler(event):
         },
         "body": (body if isinstance(body, str) else body.decode('utf-8') if body else None) if not is_binary else (body.decode('latin-1') if body else None),
         "isBase64Encoded": is_binary,
-        "response_stream": event.get('response_stream', None),
+        "response_stream": event.get('responseStream', None),
     }
 
     result = genezio_deploy(req)
