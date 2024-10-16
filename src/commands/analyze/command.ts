@@ -9,19 +9,17 @@ import {
     isReactComponent,
     isViteComponent,
 } from "./frameworks.js";
-import { addComponentToConfig, readOrAskConfig } from "../deploy/utils.js";
+import { addSSRComponentToConfig, readOrAskConfig } from "../deploy/utils.js";
 import { getPackageManager, PackageManagerType } from "../../packageManagers/packageManager.js";
 import { SSRFrameworkComponentType } from "../../models/projectOptions.js";
-import {
-    RawYamlProjectConfiguration,
-    YamlConfigurationIOController,
-} from "../../projectConfiguration/yaml/v2.js";
+import { RawYamlProjectConfiguration } from "../../projectConfiguration/yaml/v2.js";
 import { UserError } from "../../errors.js";
+import { SSRFrameworkComponent } from "../deploy/command.js";
+import { addFrontendComponentToConfig } from "./utils.js";
 
 export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     const configPath = options.config;
     const cwd = process.cwd();
-    const configIOController = new YamlConfigurationIOController(configPath);
     const rootDirectory = process.cwd();
 
     // Check if a package.json file exists in the current root directory
@@ -41,10 +39,10 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         const file = path.join(rootDirectory, "package.json");
         const componentPath = path.relative(cwd, path.dirname(file)) || ".";
 
-        debugLogger.debug(`package.json found`);
+        debugLogger.debug(`Found package.json.`);
 
         if (await isNextjsComponent(file)) {
-            await addComponentToConfig(
+            await addSSRComponentToConfig(
                 options.config,
                 genezioConfig,
                 {
@@ -60,7 +58,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isNuxtComponent(file)) {
-            await addComponentToConfig(
+            await addSSRComponentToConfig(
                 options.config,
                 genezioConfig,
                 {
@@ -76,7 +74,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isNitroComponent(file)) {
-            await addComponentToConfig(
+            await addSSRComponentToConfig(
                 options.config,
                 genezioConfig,
                 {
@@ -92,32 +90,31 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isViteComponent(file)) {
-            genezioConfig.frontend = {
-                path: componentPath,
-                publish: path.join(componentPath, "dist"),
-                scripts: {
-                    deploy: `${getPackageManager().command} install`,
-                    build: `${getPackageManager().command} run build`,
-                },
-            };
-            break component;
-        }
-
-        if (await isReactComponent(file)) {
-            genezioConfig.frontend = {
+            addFrontendComponentToConfig(configPath, genezioConfig, {
                 path: componentPath,
                 publish: path.join(componentPath, "build"),
                 scripts: {
                     deploy: `${getPackageManager().command} install`,
                     build: `${getPackageManager().command} run build`,
                 },
-            };
+            });
+            break component;
+        }
+
+        if (await isReactComponent(file)) {
+            addFrontendComponentToConfig(configPath, genezioConfig, {
+                path: componentPath,
+                publish: path.join(componentPath, "build"),
+                scripts: {
+                    deploy: `${getPackageManager().command} install`,
+                    build: `${getPackageManager().command} run build`,
+                },
+            });
             break component;
         }
     }
 
-    log.info("Analyzed the current directory");
-    await configIOController.write(genezioConfig);
+    prettyLogGenezioConfig(genezioConfig);
 }
 
 // Method to check if a package.json file exists in the directory
@@ -129,4 +126,68 @@ async function existsPackageJson(directory: string): Promise<boolean> {
     } catch (error) {
         return false;
     }
+}
+
+// This is a nice-to-have feature that logs the detected configuration in a pretty way
+function prettyLogGenezioConfig(config: RawYamlProjectConfiguration): void {
+    const name = config.name ? `Application Name: ${config.name}` : "";
+    const region = config.region ? `Region: ${config.region}` : "";
+
+    const component = (
+        initialDecription: string,
+        componentName: string,
+        componentConfig: SSRFrameworkComponent,
+    ) => {
+        const path = componentConfig.path
+            ? `Path to ${componentName}: ${componentConfig.path}`
+            : "";
+        const packageManager = componentConfig.packageManager
+            ? `Package manager used: ${componentConfig.packageManager}`
+            : "";
+        const deployScript = componentConfig.scripts?.deploy
+            ? `Scripts run before building: ${componentConfig.scripts.deploy}`
+            : "";
+        const buildScript = componentConfig.scripts?.build
+            ? `Scripts run to build the project: ${componentConfig.scripts.build}`
+            : "";
+        const startScript = componentConfig.scripts?.start
+            ? `Scripts run to start a local environment: ${componentConfig.scripts.start}`
+            : "";
+        return [initialDecription, path, packageManager, deployScript, buildScript, startScript]
+            .filter(Boolean)
+            .join("\n  ");
+    };
+
+    const components = [
+        config.nextjs
+            ? component(
+                  "We found a Next.js component in your project:",
+                  "Next.js",
+                  config.nextjs as SSRFrameworkComponent,
+              )
+            : "",
+        config.nuxt
+            ? component(
+                  "We found a Nuxt component in your project:",
+                  "Nuxt",
+                  config.nuxt as SSRFrameworkComponent,
+              )
+            : "",
+        config.nitro
+            ? component(
+                  "We found a Nitro component in your project:",
+                  "Nitro",
+                  config.nitro as SSRFrameworkComponent,
+              )
+            : "",
+    ]
+        .filter(Boolean)
+        .join("\n\n");
+
+    // TODO: Improve this message (VITE or CRA, multiple frontend frameworks)
+    const frontend = config.frontend ? `We found a React component in your project` : ``;
+
+    const result = [name, region, components, frontend].filter(Boolean).join("\n");
+
+    log.info(result);
 }

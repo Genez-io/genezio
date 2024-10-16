@@ -199,7 +199,7 @@ function getNoTargetPackage(errorMessage: string): string | null {
     return match ? match[1] : null;
 }
 
-export async function addComponentToConfig(
+export async function addSSRComponentToConfig(
     configPath: string,
     config: YamlProjectConfiguration | RawYamlProjectConfiguration,
     component: SSRFrameworkComponent,

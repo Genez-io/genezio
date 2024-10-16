@@ -40,7 +40,7 @@ import * as Sentry from "@sentry/node";
 import { randomUUID } from "crypto";
 import { EdgeFunction, getEdgeFunctions } from "./edge.js";
 import {
-    addComponentToConfig,
+    addSSRComponentToConfig,
     attemptToInstallDependencies,
     uploadEnvVarsFromFile,
     uploadUserCode,
@@ -57,7 +57,7 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     const installDependenciesCommand = await attemptToInstallDependencies([], cwd);
 
     // Add nextjs component
-    await addComponentToConfig(
+    await addSSRComponentToConfig(
         options.config,
         genezioConfig,
         {
