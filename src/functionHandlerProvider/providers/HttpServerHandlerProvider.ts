@@ -79,6 +79,8 @@ async function sendRequest(event) {
 
     reqDomain.run(() => {
       server.emit("request", req, res);
+      req.emit("data", req.body);
+      req.emit("end");
     });
   }).catch((error) => {
     console.error(error);
