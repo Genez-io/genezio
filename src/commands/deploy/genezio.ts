@@ -88,6 +88,7 @@ import {
 import { expandEnvironmentVariables, findAnEnvFile } from "../../utils/environmentVariables.js";
 import { getProjectEnvFromProjectByName } from "../../requests/getProjectInfoByName.js";
 import { HttpServerHandlerProvider } from "../../functionHandlerProvider/providers/HttpServerHandlerProvider.js";
+import { getFunctionEntryFilename } from "../../utils/getFunctionEntryFilename.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -654,7 +655,10 @@ export async function functionToCloudInput(
         debugLogger.debug(
             `[FUNCTION ${functionElement.name}] File ${entryFileName} already exists in the temporary folder.`,
         );
-        entryFileName = `index-${Math.random().toString(36).substring(7)}.${entryFileFunctionMap[functionElement.language as keyof typeof entryFileFunctionMap].split(".")[1]}`;
+        entryFileName = getFunctionEntryFilename(
+            functionElement.language as Language,
+            `index-${Math.random().toString(36).substring(7)}`,
+        );
     }
 
     await handlerProvider.write(tmpFolderPath, entryFileName, functionElement);

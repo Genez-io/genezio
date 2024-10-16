@@ -43,3 +43,10 @@ export const entryFileFunctionMap = {
     python: "index.py",
     go: "main.go",
 };
+
+export const startingCommandMap = {
+    js: "node",
+    ts: "node",
+    python: "python",
+    go: "go",
+};
