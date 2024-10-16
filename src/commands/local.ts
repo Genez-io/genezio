@@ -20,10 +20,7 @@ import {
 } from "../generateSdk/generateSdkApi.js";
 import { AstSummary } from "../models/astSummary.js";
 import { BundlerInterface } from "../bundlers/bundler.interface.js";
-import {
-    NodeJsLocalBundler,
-    getLocalFunctionWrapperCode,
-} from "../bundlers/node/nodeJsLocalBundler.js";
+import { NodeJsLocalBundler } from "../bundlers/node/nodeJsLocalBundler.js";
 import { BundlerComposer } from "../bundlers/bundlerComposer.js";
 import { genezioRequestParser } from "../utils/genezioRequestParser.js";
 import { debugLogger, doAdaptiveLogAction } from "../utils/logging.js";
@@ -87,6 +84,8 @@ import {
 import { displayHint } from "../utils/strings.js";
 import { enableEmailIntegration, getProjectIntegrations } from "../requests/integration.js";
 import { expandEnvironmentVariables, findAnEnvFile } from "../utils/environmentVariables.js";
+import { getFunctionHandlerProvider } from "../utils/getFunctionHandlerProvider.js";
+import { HttpServerHandlerProvider } from "../functionHandlerProvider/providers/HttpServerHandlerProvider.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -627,10 +626,24 @@ async function startProcesses(
 
             await fsExtra.copy(path.join(backend.path, functionInfo.path), tmpFolder);
 
+            const handlerProvider = getFunctionHandlerProvider(
+                functionInfo.type,
+                functionInfo.language as Language,
+            );
+
+            // if handlerProvider is Http
+            if (handlerProvider instanceof HttpServerHandlerProvider) {
+                log.error("We recommend to run the HTTP server with `node` or `npm start`.");
+                process.exit(1);
+            }
+
             await writeToFile(
                 path.join(tmpFolder),
                 "local_function_wrapper.mjs",
-                getLocalFunctionWrapperCode(functionInfo.handler, functionInfo.entry),
+                await handlerProvider.getLocalFunctionWrapperCode(
+                    functionInfo.handler,
+                    functionInfo.entry,
+                ),
             );
 
             return {

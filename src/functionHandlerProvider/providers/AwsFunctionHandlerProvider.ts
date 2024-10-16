@@ -162,6 +162,66 @@ export { handler };`;
             streamifyOverrideFileContent,
         );
     }
+
+    async getLocalFunctionWrapperCode(handler: string, entry: string): Promise<string> {
+        return `import { ${handler} as userHandler } from "./${entry}";
+
+
+
+import http from "http";
+
+
+
+const port = process.argv[2];
+
+
+
+const server = http.createServer((req, res) => {
+
+    if (req.method === 'POST') {
+
+    let body = '';
+
+    req.on('data', chunk => {
+
+        body += chunk.toString();
+
+    });
+
+    req.on('end', () => {
+
+        res.writeHead(200, {'Content-Type': 'text/plain'});
+
+        const jsonParsedBody = JSON.parse(body);
+
+
+
+        userHandler(jsonParsedBody).then((response) => {
+
+        res.end(JSON.stringify(response));
+
+    })
+
+    });
+
+    } else {
+
+    res.writeHead(404, {'Content-Type': 'text/plain'});
+
+    res.end('404 Not Found');
+
+    }
+
+});
+
+
+
+server.listen(port, () => {
+
+});
+
+`;
+    }
 }
 
 export class AwsPythonFunctionHandlerProvider implements FunctionHandlerProvider {
@@ -241,5 +301,10 @@ def handler(event):
             `setupLambdaGlobals_${randomFileId}.py`,
             streamifyOverrideFileContentPython,
         );
+    }
+
+    // TODO: Implement this method for python genezio local
+    async getLocalFunctionWrapperCode(handler: string, entry: string): Promise<string> {
+        return `${handler} ${entry}`;
     }
 }

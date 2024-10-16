@@ -53,7 +53,6 @@ import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v
 import {
     AuthenticationEmailTemplateType,
     entryFileFunctionMap,
-    FunctionType,
     Language,
 } from "../../projectConfiguration/yaml/models.js";
 import { runScript } from "../../utils/scripts.js";
@@ -64,10 +63,6 @@ import { writeSdk } from "../../generateSdk/sdkWriter/sdkWriter.js";
 import { reportSuccessForSdk } from "../../generateSdk/sdkSuccessReport.js";
 import { isLoggedIn } from "../../utils/accounts.js";
 import { loginCommand } from "../login.js";
-import {
-    AwsFunctionHandlerProvider,
-    AwsPythonFunctionHandlerProvider,
-} from "../../functionHandlerProvider/providers/AwsFunctionHandlerProvider.js";
 import fsExtra from "fs-extra/esm";
 import { getLinkedFrontendsForProject } from "../../utils/linkDatabase.js";
 import { getCloudProvider } from "../../requests/getCloudProvider.js";
@@ -87,7 +82,7 @@ import {
 } from "../../requests/integration.js";
 import { expandEnvironmentVariables, findAnEnvFile } from "../../utils/environmentVariables.js";
 import { getProjectEnvFromProjectByName } from "../../requests/getProjectInfoByName.js";
-import { HttpServerHandlerProvider } from "../../functionHandlerProvider/providers/HttpServerHandlerProvider.js";
+import { getFunctionHandlerProvider } from "../../utils/getFunctionHandlerProvider.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -854,37 +849,5 @@ export function getCloudAdapter(provider: CloudProviderIdentifier): CloudAdapter
             return new ClusterCloudAdapter();
         default:
             throw new UserError(`Unsupported cloud provider: ${provider}`);
-    }
-}
-
-export function getFunctionHandlerProvider(
-    functionType: FunctionType,
-    language: Language,
-): AwsFunctionHandlerProvider | HttpServerHandlerProvider {
-    switch (functionType) {
-        case FunctionType.aws: {
-            const providerMap: { [key: string]: AwsFunctionHandlerProvider } = {
-                [`${FunctionType.aws}-${Language.python}`]: new AwsPythonFunctionHandlerProvider(),
-                [`${FunctionType.aws}-${Language.js}`]: new AwsFunctionHandlerProvider(),
-                [`${FunctionType.aws}-${Language.ts}`]: new AwsFunctionHandlerProvider(),
-            };
-
-            const key = `${functionType}-${language}`;
-            const provider = providerMap[key];
-
-            if (provider) {
-                return provider;
-            } else {
-                throw new UserError(
-                    `Unsupported language: ${language} for AWS function. Supported languages are: python, js, ts.`,
-                );
-            }
-        }
-        case FunctionType.httpServer:
-            return new HttpServerHandlerProvider();
-        default:
-            throw new UserError(
-                `Unsupported function type: ${functionType}. Supported providers are: aws, httpServer.`,
-            );
     }
 }
