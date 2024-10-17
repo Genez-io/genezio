@@ -12,12 +12,12 @@ export default class PipPackageManager implements PackageManager {
 
     private async detectPythonCommand() {
         try {
-            await $`python --version`;
-            this.pythonCommand = "python";
+            await $`python3 --version`;
+            this.pythonCommand = "python3";
         } catch {
             try {
-                await $`python3 --version`;
-                this.pythonCommand = "python3";
+                await $`python --version`;
+                this.pythonCommand = "python";
             } catch {
                 return;
             }
