@@ -725,7 +725,7 @@ export async function deployFrontend(
     }
 
     // check if subdomain contains only numbers, letters and hyphens
-    if (frontend.subdomain && !frontend.subdomain.match(/^[a-z0-9-]+$/)) {
+    if (frontend.subdomain && !frontend.subdomain.match(/^[a-zA-z][a-zA-Z0-9-]{0,62}$/)) {
         throw new UserError(`The subdomain can only contain letters, numbers and hyphens.`);
     }
 
