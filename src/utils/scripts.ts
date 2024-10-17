@@ -33,7 +33,6 @@ function isFunctionConfiguration(
         potentialFunctionObject !== null &&
         typeof (potentialFunctionObject as FunctionConfiguration).name === "string" &&
         typeof (potentialFunctionObject as FunctionConfiguration).path === "string" &&
-        typeof (potentialFunctionObject as FunctionConfiguration).handler === "string" &&
         typeof (potentialFunctionObject as FunctionConfiguration).entry === "string" &&
         Object.values(FunctionType).includes(
             (potentialFunctionObject as FunctionConfiguration).type,
