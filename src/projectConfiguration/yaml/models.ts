@@ -1,3 +1,5 @@
+import { detectPythonCommand } from "../../utils/detectPythonCommand.js";
+
 export enum Language {
     js = "js",
     ts = "ts",
@@ -47,6 +49,6 @@ export const entryFileFunctionMap = {
 export const startingCommandMap = {
     js: "node",
     ts: "node",
-    python: "python",
+    python: await detectPythonCommand(),
     go: "go",
 };

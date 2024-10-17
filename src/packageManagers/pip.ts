@@ -6,24 +6,6 @@ export default class PipPackageManager implements PackageManager {
     private version: string | undefined;
     private pythonCommand: string = "python"; // Default command
 
-    constructor() {
-        this.detectPythonCommand();
-    }
-
-    private async detectPythonCommand() {
-        try {
-            await $`python --version`;
-            this.pythonCommand = "python";
-        } catch {
-            try {
-                await $`python3 --version`;
-                this.pythonCommand = "python3";
-            } catch {
-                return;
-            }
-        }
-    }
-
     async install(packages: string[] = [], cwd?: string, _args?: string[]) {
         await $({ cwd })`pip install ${packages.join(" ")}`;
     }
@@ -40,10 +22,10 @@ export default class PipPackageManager implements PackageManager {
         await $({ cwd })`pip install -e ${packages.join(" ")}`;
     }
 
+    // TODO Implement publish when we support it
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async publish(cwd?: string) {
-        // Use the detected python command (either `python` or `python3`)
-        await $({ cwd })`${this.pythonCommand} setup.py sdist bdist_wheel`;
-        await $({ cwd })`twine upload dist/*`;
+        return;
     }
 
     // TODO Implement addScopedRegistry and removeScopedRegistry when we support it
