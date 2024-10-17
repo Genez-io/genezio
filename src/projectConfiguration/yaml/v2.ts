@@ -354,7 +354,7 @@ export class YamlConfigurationIOController {
      * Set it to false if you want to read the real configuration just to write it back slightly modified.
      * This way you can avoid saving the default values in the file.
      * @param cache - Whether to cache the configuration. Default is true. Subsequent reads will not
-     * impact performance if the configuration is not externaly changed. The cache is invalidated when
+     * impact performance if the configuration is not externally changed. The cache is invalidated when
      * the file is externally modified.
      * @returns A Promise that resolves to the parsed YAML project configuration.
      */
@@ -366,7 +366,7 @@ export class YamlConfigurationIOController {
      * Set it to false if you want to read the real configuration just to write it back slightly modified.
      * This way you can avoid saving the default values in the file.
      * @param cache - Whether to cache the configuration. Default is true. Subsequent reads will not
-     * impact performance if the configuration is not externaly changed. The cache is invalidated when
+     * impact performance if the configuration is not externally changed. The cache is invalidated when
      * the file is externally modified.
      * @returns A Promise that resolves to the parsed YAML project configuration.
      */

@@ -661,11 +661,11 @@ const SUCCESSFULL_CREATE_MULTIREPO = (
 
 
     For ${colors.green("testing")} locally, run:
-      Terminal 1 (start the backend): 
+      Terminal 1 (start the backend):
         cd ${path.join(path.relative(process.cwd(), projectPath), "server")}
         genezio local
 
-      Terminal 2 (start the frontend): 
+      Terminal 2 (start the frontend):
         cd ${path.join(path.relative(process.cwd(), projectPath), "client")}
         genezio local
 `;

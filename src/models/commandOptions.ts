@@ -32,6 +32,10 @@ export interface GenezioLocalOptions extends BaseOptions {
     stage: string;
 }
 
+export interface GenezioAnalyzeOptions extends BaseOptions {
+    config: string;
+}
+
 export interface GenezioDeployOptions extends BaseOptions {
     backend: boolean;
     frontend: boolean;
