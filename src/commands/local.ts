@@ -91,6 +91,7 @@ import { enableEmailIntegration, getProjectIntegrations } from "../requests/inte
 import { expandEnvironmentVariables, findAnEnvFile } from "../utils/environmentVariables.js";
 import { getFunctionHandlerProvider } from "../utils/getFunctionHandlerProvider.js";
 import { HttpServerHandlerProvider } from "../functionHandlerProvider/providers/HttpServerHandlerProvider.js";
+import { getFunctionEntryFilename } from "../utils/getFunctionEntryFilename.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -644,7 +645,10 @@ async function startProcesses(
 
             await writeToFile(
                 path.join(tmpFolder),
-                "local_function_wrapper.mjs",
+                getFunctionEntryFilename(
+                    functionInfo.language as Language,
+                    "local_function_wrapper",
+                ),
                 await handlerProvider.getLocalFunctionWrapperCode(
                     functionInfo.handler,
                     functionInfo.entry,
