@@ -305,6 +305,22 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         }
     }
 
+    // Add backend environment variables for backend deployments
+    // At this point the project and environment should be available in deployClassesResult
+    if (configuration.backend && !options.frontend && deployClassesResult) {
+        const cwd = configuration.backend.path
+            ? path.resolve(configuration.backend.path)
+            : process.cwd();
+        await uploadEnvVarsFromFile(
+            options.env,
+            deployClassesResult.projectId,
+            deployClassesResult.projectEnvId,
+            cwd,
+            options.stage || "prod",
+            configuration,
+        );
+    }
+
     await uploadUserCode(configuration.name, configuration.region, options.stage);
 
     const settings = configuration.services?.authentication?.settings;
@@ -562,19 +578,6 @@ export async function deployClasses(
     const projectId = result.projectId;
     const projectEnvId = result.projectEnvId;
     if (projectId) {
-        // Deploy environment variables if --env is true
-        const cwd = projectConfiguration.workspace?.backend
-            ? path.resolve(projectConfiguration.workspace.backend)
-            : process.cwd();
-        await uploadEnvVarsFromFile(
-            options.env,
-            projectId,
-            projectEnvId,
-            cwd,
-            options.stage || "prod",
-            configuration,
-        );
-
         return {
             projectId: projectId,
             projectEnvId: projectEnvId,
