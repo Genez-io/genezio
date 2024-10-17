@@ -31,8 +31,10 @@ export default class PoetryPackageManager implements PackageManager {
         }
     }
 
+    // TODO Implement publish when we support it
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async publish(cwd?: string) {
-        await $({ cwd })`poetry publish --build`;
+        return;
     }
 
     // TODO Implement addScopedRegistry and removeScopedRegistry when we support it
