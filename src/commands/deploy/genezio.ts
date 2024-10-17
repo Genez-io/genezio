@@ -83,6 +83,7 @@ import {
 import { expandEnvironmentVariables, findAnEnvFile } from "../../utils/environmentVariables.js";
 import { getProjectEnvFromProjectByName } from "../../requests/getProjectInfoByName.js";
 import { getFunctionHandlerProvider } from "../../utils/getFunctionHandlerProvider.js";
+import { getFunctionEntryFilename } from "../../utils/getFunctionEntryFilename.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {

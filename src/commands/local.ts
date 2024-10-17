@@ -92,7 +92,6 @@ import { expandEnvironmentVariables, findAnEnvFile } from "../utils/environmentV
 import { getFunctionHandlerProvider } from "../utils/getFunctionHandlerProvider.js";
 import { HttpServerHandlerProvider } from "../functionHandlerProvider/providers/HttpServerHandlerProvider.js";
 
-
 type UnitProcess = {
     process: ChildProcess;
     startingCommand: string;
@@ -646,7 +645,6 @@ async function startProcesses(
             await writeToFile(
                 path.join(tmpFolder),
                 "local_function_wrapper.mjs",
-                getLocalFunctionWrapperCode(functionInfo.handler, functionInfo.entry),
                 await handlerProvider.getLocalFunctionWrapperCode(
                     functionInfo.handler,
                     functionInfo.entry,
