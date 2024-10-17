@@ -37,7 +37,12 @@ import { GenezioLocalOptions } from "../models/commandOptions.js";
 import { DartBundler } from "../bundlers/dart/localDartBundler.js";
 import axios, { AxiosError, AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
-import { Language, TriggerType } from "../projectConfiguration/yaml/models.js";
+import {
+    entryFileFunctionMap,
+    Language,
+    startingCommandMap,
+    TriggerType,
+} from "../projectConfiguration/yaml/models.js";
 import {
     YAMLBackend,
     YamlConfigurationIOController,
@@ -86,6 +91,7 @@ import { enableEmailIntegration, getProjectIntegrations } from "../requests/inte
 import { expandEnvironmentVariables, findAnEnvFile } from "../utils/environmentVariables.js";
 import { getFunctionHandlerProvider } from "../utils/getFunctionHandlerProvider.js";
 import { HttpServerHandlerProvider } from "../functionHandlerProvider/providers/HttpServerHandlerProvider.js";
+
 
 type UnitProcess = {
     process: ChildProcess;
@@ -640,6 +646,7 @@ async function startProcesses(
             await writeToFile(
                 path.join(tmpFolder),
                 "local_function_wrapper.mjs",
+                getLocalFunctionWrapperCode(functionInfo.handler, functionInfo.entry),
                 await handlerProvider.getLocalFunctionWrapperCode(
                     functionInfo.handler,
                     functionInfo.entry,
@@ -650,8 +657,16 @@ async function startProcesses(
                 configuration: functionInfo,
                 extra: {
                     type: "function" as const,
-                    startingCommand: "node",
-                    commandParameters: [path.resolve(tmpFolder, "local_function_wrapper.mjs")],
+                    startingCommand:
+                        startingCommandMap[
+                            functionInfo.language as keyof typeof startingCommandMap
+                        ],
+                    commandParameters: [
+                        path.resolve(
+                            tmpFolder,
+                            `local_function_wrapper.${entryFileFunctionMap[functionInfo.language as keyof typeof entryFileFunctionMap].split(".")[1]}`,
+                        ),
+                    ],
                 },
             };
         },

@@ -649,7 +649,10 @@ export async function functionToCloudInput(
         debugLogger.debug(
             `[FUNCTION ${functionElement.name}] File ${entryFileName} already exists in the temporary folder.`,
         );
-        entryFileName = `index-${Math.random().toString(36).substring(7)}.${entryFileFunctionMap[functionElement.language as keyof typeof entryFileFunctionMap].split(".")[1]}`;
+        entryFileName = getFunctionEntryFilename(
+            functionElement.language as Language,
+            `index-${Math.random().toString(36).substring(7)}`,
+        );
     }
 
     await handlerProvider.write(tmpFolderPath, entryFileName, functionElement);
@@ -716,7 +719,7 @@ export async function deployFrontend(
     }
 
     // check if subdomain contains only numbers, letters and hyphens
-    if (frontend.subdomain && !frontend.subdomain.match(/^[a-z0-9-]+$/)) {
+    if (frontend.subdomain && !frontend.subdomain.match(/^[a-zA-z][a-zA-Z0-9-]{0,62}$/)) {
         throw new UserError(`The subdomain can only contain letters, numbers and hyphens.`);
     }
 
