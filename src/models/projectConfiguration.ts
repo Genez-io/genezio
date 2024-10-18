@@ -205,8 +205,6 @@ export class ProjectConfiguration {
                         yamlConfiguration.backend.language.architecture || DEFAULT_ARCHITECTURE,
                 } as PythonOptions;
                 break;
-            default:
-                throw new Error(`Unsupported language ${yamlConfiguration.backend?.language.name}`);
         }
         this.cloudProvider = cloudProvider || CloudProviderIdentifier.GENEZIO_CLOUD;
         this.workspace = new Workspace(yamlConfiguration.backend?.path || process.cwd());

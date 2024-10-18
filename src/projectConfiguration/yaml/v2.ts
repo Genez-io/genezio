@@ -26,6 +26,7 @@ export type YamlClass = NonNullable<YAMLBackend["classes"]>[number];
 export type YamlFunction = NonNullable<YAMLBackend["functions"]>[number];
 export type YamlMethod = NonNullable<YamlClass["methods"]>[number];
 export type YamlFrontend = NonNullable<YamlProjectConfiguration["frontend"]>[number];
+export type YamlContainer = NonNullable<YamlProjectConfiguration["container"]>;
 type YamlScripts = NonNullable<YAMLBackend["scripts"]> | NonNullable<YamlFrontend["scripts"]>;
 export type YamlScript = YamlScripts[keyof YamlScripts];
 
@@ -222,6 +223,11 @@ function parseGenezioConfig(config: unknown) {
         subdomain: zod.string().optional(),
     });
 
+    // Define container schema
+    const containerSchema = zod.object({
+        path: zod.string(),
+    });
+
     const v2Schema = zod.object({
         name: zod.string().refine((value) => {
             const nameRegex = new RegExp("^[a-zA-Z][-a-zA-Z0-9]*$");
@@ -235,6 +241,7 @@ function parseGenezioConfig(config: unknown) {
         nextjs: ssrFrameworkSchema.optional(),
         nuxt: ssrFrameworkSchema.optional(),
         nitro: ssrFrameworkSchema.optional(),
+        container: containerSchema.optional(),
     });
 
     const parsedConfig = v2Schema.parse(config);
@@ -354,7 +361,7 @@ export class YamlConfigurationIOController {
      * Set it to false if you want to read the real configuration just to write it back slightly modified.
      * This way you can avoid saving the default values in the file.
      * @param cache - Whether to cache the configuration. Default is true. Subsequent reads will not
-     * impact performance if the configuration is not externally changed. The cache is invalidated when
+     * impact performance if the configuration is not externaly changed. The cache is invalidated when
      * the file is externally modified.
      * @returns A Promise that resolves to the parsed YAML project configuration.
      */
@@ -366,7 +373,7 @@ export class YamlConfigurationIOController {
      * Set it to false if you want to read the real configuration just to write it back slightly modified.
      * This way you can avoid saving the default values in the file.
      * @param cache - Whether to cache the configuration. Default is true. Subsequent reads will not
-     * impact performance if the configuration is not externally changed. The cache is invalidated when
+     * impact performance if the configuration is not externaly changed. The cache is invalidated when
      * the file is externally modified.
      * @returns A Promise that resolves to the parsed YAML project configuration.
      */

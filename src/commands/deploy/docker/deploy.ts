@@ -16,9 +16,19 @@ import { FunctionType } from "../../../projectConfiguration/yaml/models.js";
 import { createTemporaryFolder } from "../../../utils/file.js";
 import path from "path";
 import { reportSuccessFunctions } from "../../../utils/reporter.js";
+import { addContainerComponentToConfig } from "./utils.js";
 
 export async function dockerDeploy(options: GenezioDeployOptions) {
     const config = await readOrAskConfig(options.config);
+
+    if (!config.container) {
+        const relativePath = path.relative(process.cwd(), options.image || process.cwd()) || ".";
+
+        await addContainerComponentToConfig(options.config, config, {
+            path: relativePath,
+        });
+    }
+
     const projectConfiguration = new ProjectConfiguration(
         config,
         CloudProviderIdentifier.GENEZIO_CLOUD,
@@ -27,6 +37,8 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
             classesInfo: [],
         },
     );
+
+    const cwd = config.container?.path || process.cwd();
 
     log.info("Check docker version...");
     await $({ stdio: "inherit" })`docker --version`.catch((err) => {
@@ -37,12 +49,11 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
     log.info("Building image...");
     await $({
         stdio: "inherit",
-    })`docker buildx build --platform=linux/amd64 -t ${config.name} -f ${options.image!} .`.catch(
-        (err) => {
-            debugLogger.error(err);
-            throw new UserError("Failed to build Docker image.");
-        },
-    );
+        cwd,
+    })`docker buildx build --platform=linux/amd64 -t ${config.name} .`.catch((err) => {
+        debugLogger.error(err);
+        throw new UserError("Failed to build Docker image.");
+    });
 
     log.info("Creating the container...");
     const { stdout } = await $`docker create --name genezio-${config.name} ${config.name}`.catch(
@@ -59,6 +70,7 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
     await $({
         stdio: "inherit",
         shell: true,
+        cwd,
     })`docker export genezio-${config.name} > ${archivePath}`.catch((err) => {
         debugLogger.error(err);
         throw new UserError("Failed to export the container.");
@@ -77,7 +89,7 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
     const inspectResult = JSON.parse(stdoutInspect);
     const envs = inspectResult[0].Config.Env;
     const cmd = inspectResult[0].Config.Cmd;
-    const cwd = inspectResult[0].Config.WorkingDir;
+    const dockerWorkingDir = inspectResult[0].Config.WorkingDir;
     const entrypoint = inspectResult[0].Config.Entrypoint;
     const exposedPorts = inspectResult[0].Config.ExposedPorts;
     let cmdEntryFile = "";
@@ -117,7 +129,7 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
                 unzippedBundleSize: 100,
                 metadata: {
                     cmd: cmdEntryFile,
-                    cwd: cwd,
+                    cwd: dockerWorkingDir,
                     http_port: port,
                 },
             },
