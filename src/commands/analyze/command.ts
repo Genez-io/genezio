@@ -39,9 +39,13 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         const file = path.join(rootDirectory, "package.json");
         const componentPath = path.relative(cwd, path.dirname(file)) || ".";
 
-        debugLogger.debug(`Found package.json.`);
+        // Retrieve the package.json contents
+        const packageJsonContent = await retrieveFileContent(file);
+        const contents: Record<string, string> = { "package.json": packageJsonContent };
 
-        if (await isNextjsComponent(file)) {
+        debugLogger.debug(`Found package.json: ${contents["package.json"]}`);
+
+        if (await isNextjsComponent(contents)) {
             await addSSRComponentToConfig(
                 options.config,
                 genezioConfig,
@@ -57,7 +61,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             break component;
         }
 
-        if (await isNuxtComponent(file)) {
+        if (await isNuxtComponent(contents)) {
             await addSSRComponentToConfig(
                 options.config,
                 genezioConfig,
@@ -73,7 +77,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             break component;
         }
 
-        if (await isNitroComponent(file)) {
+        if (await isNitroComponent(contents)) {
             await addSSRComponentToConfig(
                 options.config,
                 genezioConfig,
@@ -89,7 +93,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             break component;
         }
 
-        if (await isViteComponent(file)) {
+        if (await isViteComponent(contents)) {
             addFrontendComponentToConfig(configPath, genezioConfig, {
                 path: componentPath,
                 publish: path.join(componentPath, "build"),
@@ -101,7 +105,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             break component;
         }
 
-        if (await isReactComponent(file)) {
+        if (await isReactComponent(contents)) {
             addFrontendComponentToConfig(configPath, genezioConfig, {
                 path: componentPath,
                 publish: path.join(componentPath, "build"),
@@ -125,6 +129,17 @@ async function existsPackageJson(directory: string): Promise<boolean> {
         return true;
     } catch (error) {
         return false;
+    }
+}
+
+// Method to read the contents of a file
+async function retrieveFileContent(filePath: string): Promise<string> {
+    try {
+        const fileContent = await fs.readFile(filePath, "utf-8");
+        return fileContent;
+    } catch (error) {
+        log.error("Error reading package.json:", error);
+        return "";
     }
 }
 
