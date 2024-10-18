@@ -10,7 +10,7 @@ import { PackageManagerType } from "../../../packageManagers/packageManager.js";
 import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
 import { debugLogger, log } from "../../../utils/logging.js";
 import {
-    addComponentToConfig,
+    addSSRComponentToConfig,
     attemptToInstallDependencies,
     readOrAskConfig,
     uploadUserCode,
@@ -55,7 +55,7 @@ Note: If your Nuxt project was not migrated to Nuxt 3, please visit https://v2.n
             });
 
             // Add nuxt component
-            await addComponentToConfig(
+            await addSSRComponentToConfig(
                 options.config,
                 genezioConfig,
                 {
@@ -78,7 +78,7 @@ Note: If your Nuxt project was not migrated to Nuxt 3, please visit https://v2.n
             });
 
             // Add nitro component
-            await addComponentToConfig(
+            await addSSRComponentToConfig(
                 options.config,
                 genezioConfig,
                 {
