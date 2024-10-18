@@ -89,7 +89,8 @@ import {
 import { displayHint } from "../utils/strings.js";
 import { enableEmailIntegration, getProjectIntegrations } from "../requests/integration.js";
 import { expandEnvironmentVariables, findAnEnvFile } from "../utils/environmentVariables.js";
-import { getLocalFunctionWrapperCode } from "../bundlers/utils.js";
+import { getFunctionHandlerProvider } from "../utils/getFunctionHandlerProvider.js";
+import { HttpServerHandlerProvider } from "../functionHandlerProvider/providers/HttpServerHandlerProvider.js";
 import { getFunctionEntryFilename } from "../utils/getFunctionEntryFilename.js";
 
 type UnitProcess = {
@@ -631,16 +632,26 @@ async function startProcesses(
 
             await fsExtra.copy(path.join(backend.path, functionInfo.path), tmpFolder);
 
+            const handlerProvider = getFunctionHandlerProvider(
+                functionInfo.type,
+                functionInfo.language as Language,
+            );
+
+            // if handlerProvider is Http
+            if (handlerProvider instanceof HttpServerHandlerProvider) {
+                log.error("We recommend to run the HTTP server with `node` or `npm start`.");
+                process.exit(1);
+            }
+
             await writeToFile(
                 path.join(tmpFolder),
                 getFunctionEntryFilename(
                     functionInfo.language as Language,
                     "local_function_wrapper",
                 ),
-                getLocalFunctionWrapperCode(
+                await handlerProvider.getLocalFunctionWrapperCode(
                     functionInfo.handler,
                     functionInfo.entry,
-                    functionInfo.language as Language,
                 ),
             );
 

@@ -96,4 +96,9 @@ export { handler };`;
 
         await writeToFile(outputPath, handlerFileName, handlerContent);
     }
+
+    // NOT USED
+    async getLocalFunctionWrapperCode(handler: string, entry: string): Promise<string> {
+        return `${handler} ${entry}`;
+    }
 }
