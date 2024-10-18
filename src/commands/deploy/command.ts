@@ -8,6 +8,7 @@ import path from "path";
 import { nuxtNitroDeploy } from "./nuxt/deploy.js";
 import { dockerDeploy } from "./docker/deploy.js";
 import { PackageManagerType } from "../../packageManagers/packageManager.js";
+import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 
 export type SSRFrameworkComponent = {
     path: string;
@@ -25,7 +26,7 @@ export type SSRFrameworkComponent = {
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
-    const type = decideDeployType(options);
+    const type = await decideDeployType(options);
 
     switch (type) {
         case DeployType.Classic:
@@ -57,11 +58,21 @@ export enum DeployType {
     Docker,
 }
 
-function decideDeployType(options: GenezioDeployOptions): DeployType {
+async function decideDeployType(options: GenezioDeployOptions): Promise<DeployType> {
     const cwd = process.cwd();
 
     if (options.image) {
         return DeployType.Docker;
+    }
+
+    // Check if it's a genezio-containerized project
+    if (fs.existsSync(path.join(cwd, "genezio.yaml"))) {
+        const configIOController = new YamlConfigurationIOController(options.config);
+        const config = await configIOController.read();
+
+        if (config.container) {
+            return DeployType.Docker;
+        }
     }
 
     // Check if next.config.js exists
@@ -106,6 +117,14 @@ function decideDeployType(options: GenezioDeployOptions): DeployType {
         if (packageJson.dependencies?.nitropack || packageJson.devDependencies?.nitropack) {
             return DeployType.Nitro;
         }
+    }
+
+    // Check if a Dockerfile exists in non-genezio project
+    if (
+        !fs.existsSync(path.join(cwd, "genezio.yaml")) &&
+        fs.existsSync(path.join(cwd, "Dockerfile"))
+    ) {
+        return DeployType.Docker;
     }
 
     return DeployType.Classic;
