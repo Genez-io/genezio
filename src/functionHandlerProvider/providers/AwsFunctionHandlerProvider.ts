@@ -303,8 +303,44 @@ def handler(event):
         );
     }
 
-    // TODO: Implement this method for python genezio local
     async getLocalFunctionWrapperCode(handler: string, entry: string): Promise<string> {
-        return `${handler} ${entry}`;
+        return `
+import sys
+import json
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from ${entry.split(".")[0]} import ${handler} as userHandler
+
+class RequestHandler(BaseHTTPRequestHandler):
+
+    def do_POST(self):
+        content_length = int(self.headers['Content-Length'])
+        post_data = self.rfile.read(content_length)
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+
+        try:
+            jsonParsedBody = json.loads(post_data)
+            response = userHandler(jsonParsedBody)
+            self.wfile.write(json.dumps(response).encode('utf-8'))
+            sys.stdout.flush()
+        except Exception as e:
+            self.send_response(500)
+            self.wfile.write(f"Error: {str(e)}".encode('utf-8'))
+            sys.stdout.flush()
+
+def run():
+    port = int(sys.argv[1])
+    server_address = ('', port)
+    httpd = HTTPServer(server_address, RequestHandler)
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        sys.stdout.flush()  
+        httpd.server_close()
+
+if __name__ == "__main__":
+    run()
+`;
     }
 }
