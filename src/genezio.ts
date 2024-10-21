@@ -34,6 +34,7 @@ import {
     GenezioSdkOptions,
     GenezioUnlinkOptions,
     GenezioBundleFunctionOptions,
+    GenezioAnalyzeOptions,
 } from "./models/commandOptions.js";
 import currentGenezioVersion, {
     checkNodeMinimumVersion,
@@ -52,6 +53,8 @@ import configReader from "./projectConfiguration/yaml/v2.js";
 import { askCloneOptions, cloneCommand } from "./commands/clone.js";
 import { pullCommand } from "./commands/pull.js";
 import { CloudProviderIdentifier } from "./models/cloudProviderIdentifier.js";
+import { isCI } from "./utils/process.js";
+import { analyzeCommand } from "./commands/analyze/command.js";
 
 const program = new Command();
 
@@ -102,10 +105,12 @@ program
         setDebuggingLoggerLogLevel(thisCommand.opts()["logLevel"]);
     });
 program.hook("postAction", async () => {
-    await logOutdatedVersion().catch((error) => {
-        debugLogger.error("Could not log outdated version", error);
-        exit(0);
-    });
+    if (!isCI()) {
+        await logOutdatedVersion().catch((error) => {
+            debugLogger.error("Could not log outdated version", error);
+            exit(0);
+        });
+    }
 
     process.stdin.unref();
 });
@@ -137,6 +142,24 @@ program
     );
 
 program
+    .command("analyze")
+    .option(
+        "--config <config>",
+        "Use a specific `genezio.yaml` to update the detected setup",
+        "./genezio.yaml",
+    )
+    .summary("Analyze the current directory to determine the infrastructure setup.")
+    .description(
+        "Analyze the current directory to determine the infrastructure setup. This command will create a genezio.yaml file in the current directory with the detected setup.",
+    )
+    .action(async (options: GenezioAnalyzeOptions) => {
+        await analyzeCommand(options).catch(async (error: Error) => {
+            logError(error);
+            exit(1);
+        });
+    });
+
+program
     .command("deploy")
     .option("--backend", "Deploy only the backend application.", false)
     .option("--frontend", "Deploy only the frontend application.", false)
@@ -146,13 +169,13 @@ program
         "Set this flag to true to disable dependency optimization.",
         false,
     )
-    .option("--env <envFile>", "Load environment variables from a given file", undefined)
-    .option("--stage <stage>", "Set the environment name to deploy to", "prod")
     .option(
         "--image <image>",
         "Path to the container Dockerfile. If this option is set, it indicates a container-based deployment.",
         undefined,
     )
+    .option("--env <envFile>", "Load environment variables from a given file", undefined)
+    .option("--stage <stage>", "Set the environment name to deploy to", "prod")
     .option(
         "--subdomain <subdomain>",
         "Set a subdomain for your frontend. If not set, the subdomain will be randomly generated.",

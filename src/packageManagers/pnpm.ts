@@ -5,16 +5,20 @@ export default class PnpmPackageManager implements PackageManager {
     readonly command = "pnpm";
     private version: string | undefined;
 
-    async install(packages: string[] = [], cwd?: string) {
+    async install(packages: string[] = [], cwd?: string, args: string[] = []) {
         // Pnpm has two different commands for installing packages:
         // - `pnpm install` will install all packages from the lockfile
         // - `pnpm add` will install the specified packages and update the lockfile
         if (packages.length === 0) {
-            await $({ cwd })`pnpm install`;
+            await $({ cwd })`pnpm install ${args}`;
             return;
         }
 
-        await $({ cwd })`pnpm add ${packages}`;
+        await $({ cwd })`pnpm add ${args} ${packages}`;
+    }
+
+    async cleanInstall(cwd?: string, args: string[] = []) {
+        await $({ cwd })`pnpm install --frozen-lockfile ${args}`;
     }
 
     installSync(packages: string[] = [], cwd?: string) {

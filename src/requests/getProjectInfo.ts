@@ -4,15 +4,12 @@ import { BACKEND_ENDPOINT } from "../constants.js";
 import version from "../utils/version.js";
 import { ProjectDetails, StatusOk } from "./models.js";
 import { AxiosResponse } from "axios";
-import { UserError } from "../errors.js";
+import { GENEZIO_NOT_AUTH_ERROR_MSG, UserError } from "../errors.js";
 
 export default async function getProjectInfo(projectId: string): Promise<ProjectDetails> {
     const authToken = await getAuthToken();
-
     if (!authToken) {
-        throw new UserError(
-            "You are not logged in. Run 'genezio login' before you deploy your function.",
-        );
+        throw new UserError(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
 
     const response: AxiosResponse<StatusOk<{ project: ProjectDetails }>> = await axios({

@@ -20,10 +20,7 @@ import {
 } from "../generateSdk/generateSdkApi.js";
 import { AstSummary } from "../models/astSummary.js";
 import { BundlerInterface } from "../bundlers/bundler.interface.js";
-import {
-    NodeJsLocalBundler,
-    getLocalFunctionWrapperCode,
-} from "../bundlers/node/nodeJsLocalBundler.js";
+import { NodeJsLocalBundler } from "../bundlers/node/nodeJsLocalBundler.js";
 import { BundlerComposer } from "../bundlers/bundlerComposer.js";
 import { genezioRequestParser } from "../utils/genezioRequestParser.js";
 import { debugLogger, doAdaptiveLogAction } from "../utils/logging.js";
@@ -40,7 +37,12 @@ import { GenezioLocalOptions } from "../models/commandOptions.js";
 import { DartBundler } from "../bundlers/dart/localDartBundler.js";
 import axios, { AxiosError, AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
-import { Language, TriggerType } from "../projectConfiguration/yaml/models.js";
+import {
+    entryFileFunctionMap,
+    Language,
+    startingCommandMap,
+    TriggerType,
+} from "../projectConfiguration/yaml/models.js";
 import {
     YAMLBackend,
     YamlConfigurationIOController,
@@ -51,7 +53,7 @@ import hash from "hash-it";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import dotenv from "dotenv";
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
-import { DEFAULT_NODE_RUNTIME } from "../models/projectOptions.js";
+import { DEFAULT_NODE_RUNTIME, NodeOptions, PythonOptions } from "../models/projectOptions.js";
 import { exit } from "process";
 import { log } from "../utils/logging.js";
 import { interruptLocalPath } from "../utils/localInterrupt.js";
@@ -87,6 +89,9 @@ import {
 import { displayHint } from "../utils/strings.js";
 import { enableEmailIntegration, getProjectIntegrations } from "../requests/integration.js";
 import { expandEnvironmentVariables, findAnEnvFile } from "../utils/environmentVariables.js";
+import { getFunctionHandlerProvider } from "../utils/getFunctionHandlerProvider.js";
+import { HttpServerHandlerProvider } from "../functionHandlerProvider/providers/HttpServerHandlerProvider.js";
+import { getFunctionEntryFilename } from "../utils/getFunctionEntryFilename.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -540,6 +545,15 @@ async function startBackendWatcher(
             backendConfiguration.language.name === Language.ts ||
             backendConfiguration.language.name === Language.js
         ) {
+            const isNodeOptions = (
+                options: NodeOptions | PythonOptions | undefined,
+            ): options is NodeOptions => {
+                return (options as NodeOptions).nodeRuntime !== undefined;
+            };
+            if (!isNodeOptions(projectConfiguration.options)) {
+                throw new UserError("Invalid node options");
+            }
+
             reportDifferentNodeRuntime(projectConfiguration.options?.nodeRuntime);
         }
 
@@ -618,18 +632,43 @@ async function startProcesses(
 
             await fsExtra.copy(path.join(backend.path, functionInfo.path), tmpFolder);
 
+            const handlerProvider = getFunctionHandlerProvider(
+                functionInfo.type,
+                functionInfo.language as Language,
+            );
+
+            // if handlerProvider is Http
+            if (handlerProvider instanceof HttpServerHandlerProvider) {
+                log.error("We recommend to run the HTTP server with `node` or `npm start`.");
+                process.exit(1);
+            }
+
             await writeToFile(
                 path.join(tmpFolder),
-                "local_function_wrapper.mjs",
-                getLocalFunctionWrapperCode(functionInfo.handler, functionInfo.entry),
+                getFunctionEntryFilename(
+                    functionInfo.language as Language,
+                    "local_function_wrapper",
+                ),
+                await handlerProvider.getLocalFunctionWrapperCode(
+                    functionInfo.handler,
+                    functionInfo.entry,
+                ),
             );
 
             return {
                 configuration: functionInfo,
                 extra: {
                     type: "function" as const,
-                    startingCommand: "node",
-                    commandParameters: [path.resolve(tmpFolder, "local_function_wrapper.mjs")],
+                    startingCommand:
+                        startingCommandMap[
+                            functionInfo.language as keyof typeof startingCommandMap
+                        ],
+                    commandParameters: [
+                        path.resolve(
+                            tmpFolder,
+                            `local_function_wrapper.${entryFileFunctionMap[functionInfo.language as keyof typeof entryFileFunctionMap].split(".")[1]}`,
+                        ),
+                    ],
                 },
             };
         },

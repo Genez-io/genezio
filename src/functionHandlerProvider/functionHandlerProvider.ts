@@ -6,4 +6,6 @@ export interface FunctionHandlerProvider {
         handlerFileName: string,
         functionConfiguration: FunctionConfiguration,
     ): Promise<void>;
+
+    getLocalFunctionWrapperCode(handler: string, entry: string): Promise<string>;
 }

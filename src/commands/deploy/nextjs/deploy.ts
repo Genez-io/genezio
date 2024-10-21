@@ -1,4 +1,4 @@
-import fs, { existsSync } from "fs";
+import fs from "fs";
 import { GenezioDeployOptions } from "../../../models/commandOptions.js";
 import git from "isomorphic-git";
 import { YamlProjectConfiguration } from "../../../projectConfiguration/yaml/v2.js";
@@ -39,22 +39,40 @@ import { computeAssetsPaths } from "./assets.js";
 import * as Sentry from "@sentry/node";
 import { randomUUID } from "crypto";
 import { EdgeFunction, getEdgeFunctions } from "./edge.js";
-import { uploadEnvVarsFromFile, uploadUserCode } from "../utils.js";
+import {
+    addSSRComponentToConfig,
+    attemptToInstallDependencies,
+    uploadEnvVarsFromFile,
+    uploadUserCode,
+} from "../utils.js";
 import { readOrAskConfig } from "../utils.js";
+import { SSRFrameworkComponentType } from "../../../models/projectOptions.js";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
-    // Check if node_modules exists
-    if (!existsSync("node_modules")) {
-        throw new UserError(
-            `Please run \`${getPackageManager().command} install\` before deploying your Next.js project. This will install the necessary dependencies.`,
-        );
-    }
+    const cwd = process.cwd();
 
     const genezioConfig = await readOrAskConfig(options.config);
 
+    // Install dependencies
+    const installDependenciesCommand = await attemptToInstallDependencies([], cwd);
+
+    // Add nextjs component
+    await addSSRComponentToConfig(
+        options.config,
+        genezioConfig,
+        {
+            path: cwd,
+            packageManager: getPackageManager().command as PackageManagerType,
+            scripts: {
+                deploy: installDependenciesCommand.command,
+            },
+        },
+        SSRFrameworkComponentType.next,
+    );
+
     const edgeFunctions = await getEdgeFunctions();
     writeNextConfig();
-    await writeOpenNextConfig(genezioConfig.region, edgeFunctions);
+    await writeOpenNextConfig(genezioConfig.region, edgeFunctions, installDependenciesCommand.args);
     // Build the Next.js project
     await $({ stdio: "inherit" })`npx --yes @genezio/open-next@latest build`.catch(() => {
         throw new UserError("Failed to build the Next.js project. Check the logs above.");
@@ -361,7 +379,11 @@ function writeNextConfig() {
     }
 }
 
-async function writeOpenNextConfig(region: string, edgeFunctionPaths: EdgeFunction[]) {
+async function writeOpenNextConfig(
+    region: string,
+    edgeFunctionPaths: EdgeFunction[],
+    installArgs: string[] = [],
+) {
     let functions = "";
 
     if (edgeFunctionPaths.length > 0) {
@@ -425,5 +447,9 @@ async function writeOpenNextConfig(region: string, edgeFunctionPaths: EdgeFuncti
     await fs.promises.writeFile(openNextConfigPath, OPEN_NEXT_CONFIG);
 
     const tag = ENVIRONMENT === "prod" ? "latest" : "dev";
-    await getPackageManager().install([`@genezio/nextjs-isr-${region}@${tag}`]);
+    await getPackageManager().install(
+        [`@genezio/nextjs-isr-${region}@${tag}`],
+        /* cwd */ undefined,
+        installArgs,
+    );
 }

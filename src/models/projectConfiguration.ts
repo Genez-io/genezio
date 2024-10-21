@@ -2,9 +2,20 @@
 import { getAstSummary } from "../generateSdk/utils/getAstSummary.js";
 import { AstSummary } from "./astSummary.js";
 import { CloudProviderIdentifier } from "./cloudProviderIdentifier.js";
-import { DEFAULT_ARCHITECTURE, DEFAULT_NODE_RUNTIME, NodeOptions } from "./projectOptions.js";
+import {
+    DEFAULT_ARCHITECTURE,
+    DEFAULT_NODE_RUNTIME,
+    DEFAULT_PYTHON_RUNTIME,
+    NodeOptions,
+    PythonOptions,
+} from "./projectOptions.js";
 import { SdkHandlerResponse } from "./sdkGeneratorResponse.js";
-import { DatabaseType, FunctionType, TriggerType } from "../projectConfiguration/yaml/models.js";
+import {
+    DatabaseType,
+    FunctionType,
+    Language,
+    TriggerType,
+} from "../projectConfiguration/yaml/models.js";
 import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
 import path from "path";
 import { UserError } from "../errors.js";
@@ -163,7 +174,7 @@ export class Workspace {
 export class ProjectConfiguration {
     name: string;
     region: string;
-    options?: NodeOptions;
+    options?: NodeOptions | PythonOptions;
     cloudProvider: CloudProviderIdentifier;
     astSummary: AstSummary;
     classes: ClassConfiguration[];
@@ -177,10 +188,24 @@ export class ProjectConfiguration {
     ) {
         this.name = yamlConfiguration.name;
         this.region = yamlConfiguration.region;
-        this.options = {
-            nodeRuntime: yamlConfiguration.backend?.language.runtime || DEFAULT_NODE_RUNTIME,
-            architecture: yamlConfiguration.backend?.language.architecture || DEFAULT_ARCHITECTURE,
-        };
+        switch (yamlConfiguration.backend?.language.name) {
+            case Language.ts:
+            case Language.js:
+                this.options = {
+                    nodeRuntime: yamlConfiguration.backend.language.runtime || DEFAULT_NODE_RUNTIME,
+                    architecture:
+                        yamlConfiguration.backend.language.architecture || DEFAULT_ARCHITECTURE,
+                } as NodeOptions;
+                break;
+            case Language.python:
+                this.options = {
+                    pythonRuntime:
+                        yamlConfiguration.backend.language.runtime || DEFAULT_PYTHON_RUNTIME,
+                    architecture:
+                        yamlConfiguration.backend.language.architecture || DEFAULT_ARCHITECTURE,
+                } as PythonOptions;
+                break;
+        }
         this.cloudProvider = cloudProvider || CloudProviderIdentifier.GENEZIO_CLOUD;
         this.workspace = new Workspace(yamlConfiguration.backend?.path || process.cwd());
         // Generate AST Summary
@@ -240,7 +265,7 @@ export class ProjectConfiguration {
                     name: `function-${f.name}`,
                     path: f.path,
                     language: yamlConfiguration.backend?.language.name || "ts",
-                    handler: f.handler,
+                    handler: f.handler || "handler",
                     entry: f.entry,
                     type: f.type || FunctionType.aws,
                 };

@@ -1,3 +1,5 @@
+import { detectPythonCommand } from "../../utils/detectPythonCommand.js";
+
 export enum Language {
     js = "js",
     ts = "ts",
@@ -31,7 +33,22 @@ export enum AuthenticationEmailTemplateType {
 
 export enum FunctionType {
     aws = "aws",
+    httpServer = "httpServer",
     // TODO: not implemented
     // azure = "azure",
     // gcp = "gcp",
 }
+
+export const entryFileFunctionMap = {
+    js: "index.mjs",
+    ts: "index.mjs",
+    python: "index.py",
+    go: "main.go",
+};
+
+export const startingCommandMap = {
+    js: "node",
+    ts: "node",
+    python: await detectPythonCommand(),
+    go: "go",
+};
