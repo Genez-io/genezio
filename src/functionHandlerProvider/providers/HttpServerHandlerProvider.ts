@@ -116,32 +116,29 @@ from ${functionConfiguration.entry.split(".")[0]} import app as application
 
 def handler(event):
     try:
-        print("Received event:", event)
-
-        # Verificare pentru 'path' fie în 'http', fie direct în 'event'
         http_info = event.get('http', {})
         path = event.get('path', http_info.get('path', '/'))
 
-        # Crearea variabilelor de mediu WSGI
+        # Create WSGI environment
         environ = {
             'REQUEST_METHOD': http_info.get('method', 'GET'),
             'PATH_INFO': path,
             'QUERY_STRING': event.get('query', ''),
             'REMOTE_ADDR': http_info.get('sourceIp', ''),
-            'wsgi.input': BytesIO(event.get('body', '').encode() if isinstance(event.get('body', ''), str) else event['body']),
-            'wsgi.errors': BytesIO(),
             'CONTENT_TYPE': event.get('headers', {}).get('Content-Type', ''),
             'CONTENT_LENGTH': str(len(event.get('body', ''))),
+            'wsgi.input': BytesIO(event.get('body', '').encode() if isinstance(event.get('body', ''), str) else event['body']),
+            'wsgi.errors': BytesIO(),
             'wsgi.url_scheme': 'http',
         }
 
-        # Adăugarea headerelor HTTP în environ
+        # Add headers to WSGI environment
         for header, value in event.get('headers', {}).items():
             environ[f"HTTP_{header.upper().replace('-', '_')}"] = value
 
         response_buffer = BytesIO()
 
-        # Funcția 'start_response'
+        # Define start_response function for response handling
         def start_response(status, headers, exc_info=None):
             status_code = int(status.split()[0] if status else '500')
             headers_dict = {key: value for key, value in headers}
@@ -151,7 +148,6 @@ def handler(event):
             }
             return response_buffer.write
 
-        # Apelarea aplicației WSGI
         app_response = application.wsgi_app(environ, start_response)
         response_body = b''.join(app_response)
 
