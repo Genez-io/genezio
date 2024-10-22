@@ -96,7 +96,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         if (await isViteComponent(contents)) {
             addFrontendComponentToConfig(configPath, genezioConfig, {
                 path: componentPath,
-                publish: path.join(componentPath, "build"),
+                publish: path.join(componentPath, "dist"),
                 scripts: {
                     deploy: `${getPackageManager().command} install`,
                     build: `${getPackageManager().command} run build`,
