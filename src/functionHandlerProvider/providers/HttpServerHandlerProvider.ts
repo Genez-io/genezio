@@ -51,12 +51,29 @@ async function sendRequest(event) {
         event.responseStream.end(data);
     }
 
-    res.status = status => {
-        event.responseStream.status(status);
+    res.setHeader = (name, value) => {
+    console.trace("Setting header", name, value);
+        event.responseStream.setHeader(name, value);
     }
 
-    res.setHeader = (name, value) => {
-        event.responseStream.setHeader(name, value);
+    res.getHeader = name => {
+        return event.responseStream.getHeader(name);
+    }
+
+    res.getHeaderNames = () => {
+        return event.responseStream.getHeaderNames();
+    }
+
+    res.removeHeader = name => {
+        event.responseStream.removeHeader(name);
+    }
+        
+    res.headersToMap = () => {
+        return event.responseStream.headers;
+    }
+
+    res.setContentType = type => {
+        event.responseStream.setHeader("Content-Type", type);
     }
 
     const operationId = process.domain ? process.domain.operationId : "unknown";
