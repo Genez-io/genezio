@@ -102,3 +102,68 @@ export { handler };`;
         return `${handler} ${entry}`;
     }
 }
+
+export class HttpServerPythonHandlerProvider implements FunctionHandlerProvider {
+    async write(
+        outputPath: string,
+        handlerFileName: string,
+        functionConfiguration: FunctionConfiguration,
+    ): Promise<void> {
+        const handlerContent = `
+import os
+from importlib import import_module
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import threading
+import asyncio
+
+# Import the original app.py, but it will automatically start the server
+app = import_module("${functionConfiguration.entry.split(".")[0]}")
+
+server = None
+original_create_server = HTTPServer
+
+# Override the HTTP server creation to store the reference to the server
+def create_server(*args, **kwargs):
+    global server
+    server = original_create_server(*args, **kwargs)
+    return server
+
+class CustomHTTPRequestHandler(BaseHTTPRequestHandler):
+    def handle_request(self, event):
+        try:
+            self.command = event['http']['method']
+            self.path = f"{event['http']['path']}{event['url'].get('search', '')}"
+            self.headers = event.get('headers', {})
+            self.rfile = event['body'].encode() if isinstance(event['body'], str) else event['body']
+            self.client_address = (event['http']['sourceIp'], 0)
+            
+            # Emit the request to the server
+            server.process_request(self, None)
+        
+        except Exception as e:
+            self.send_response(500)
+            if os.getenv('GENEZIO_DEBUG_MODE') == 'true':
+                self.end_headers()
+                self.wfile.write(str(e).encode())
+            else:
+                self.end_headers()
+                self.wfile.write(b"Internal Server Error")
+
+# Function to send the request
+async def send_request(event):
+    handler = CustomHTTPRequestHandler(request=None, client_address=(event['http']['sourceIp'], 0), server=server)
+    handler.handle_request(event)
+
+# Async handler function
+def handler(event):
+    asyncio.run(send_request(event))
+`;
+
+        await writeToFile(outputPath, handlerFileName, handlerContent);
+    }
+
+    // NOT USED
+    async getLocalFunctionWrapperCode(handler: string, entry: string): Promise<string> {
+        return `${handler} ${entry}`;
+    }
+}
