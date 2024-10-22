@@ -3,19 +3,24 @@ import path from "path";
 import { GenezioAnalyzeOptions } from "../../models/commandOptions.js";
 import { debugLogger, log } from "../../utils/logging.js";
 import {
+    isExpressBackend,
+    isFastifyBackend,
     isNextjsComponent,
     isNitroComponent,
     isNuxtComponent,
     isReactComponent,
     isViteComponent,
+    isServerlessHttpBackend,
+    getEntryfile,
 } from "./frameworks.js";
 import { addSSRComponentToConfig, readOrAskConfig } from "../deploy/utils.js";
 import { getPackageManager, PackageManagerType } from "../../packageManagers/packageManager.js";
 import { SSRFrameworkComponentType } from "../../models/projectOptions.js";
-import { RawYamlProjectConfiguration } from "../../projectConfiguration/yaml/v2.js";
+import { RawYamlProjectConfiguration, YAMLLanguage } from "../../projectConfiguration/yaml/v2.js";
 import { UserError } from "../../errors.js";
 import { SSRFrameworkComponent } from "../deploy/command.js";
-import { addFrontendComponentToConfig } from "./utils.js";
+import { addBackendComponentToConfig, addFrontendComponentToConfig } from "./utils.js";
+import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
 
 export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     const configPath = options.config;
@@ -41,9 +46,98 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
 
         // Retrieve the package.json contents
         const packageJsonContent = await retrieveFileContent(file);
-        const contents: Record<string, string> = { "package.json": packageJsonContent };
+        const tsconfigJsonContent = await retrieveFileContent(
+            path.join(rootDirectory, "tsconfig.json"),
+        );
+        const contents: Record<string, string> = {
+            "package.json": packageJsonContent,
+            "tsconfig.json": tsconfigJsonContent,
+        };
 
         debugLogger.debug(`Found package.json: ${contents["package.json"]}`);
+
+        if (await isServerlessHttpBackend(contents)) {
+            const entryfile = await getEntryfile(contents);
+            // TODO: Add support for detecting and building typescript backends
+            // const isTypescriptFlag = await isTypescript(contents);
+
+            await addBackendComponentToConfig(configPath, genezioConfig, {
+                path: componentPath,
+                language: {
+                    // TODO: Add support for detecting and building typescript backends
+                    name: Language.js,
+                } as YAMLLanguage,
+                scripts: {
+                    deploy: [`${getPackageManager().command} install`],
+                    local: [`${getPackageManager().command} install`],
+                },
+                functions: [
+                    {
+                        name: "aws-compatible",
+                        path: ".",
+                        // TODO: This is hardcoded because there are great chances that this indeed called `handler`
+                        handler: "handler",
+                        entry: entryfile,
+                        type: FunctionType.aws,
+                    },
+                ],
+            });
+            break component;
+        }
+
+        if (await isExpressBackend(contents)) {
+            const entryfile = await getEntryfile(contents);
+            // TODO: Add support for detecting and building typescript backends
+            // const isTypescriptFlag = await isTypescript(contents);
+
+            await addBackendComponentToConfig(configPath, genezioConfig, {
+                path: componentPath,
+                language: {
+                    // TODO: Add support for detecting and building typescript backends
+                    name: Language.js,
+                } as YAMLLanguage,
+                scripts: {
+                    deploy: [`${getPackageManager().command} install`],
+                    local: [`${getPackageManager().command} install`],
+                },
+                functions: [
+                    {
+                        name: "express",
+                        path: ".",
+                        entry: entryfile,
+                        type: FunctionType.httpServer,
+                    },
+                ],
+            });
+            break component;
+        }
+
+        if (await isFastifyBackend(contents)) {
+            const entryfile = await getEntryfile(contents);
+            // TODO: Add support for detecting and building typescript backends
+            // const isTypescriptFlag = await isTypescript(contents);
+
+            await addBackendComponentToConfig(configPath, genezioConfig, {
+                path: componentPath,
+                language: {
+                    // TODO: Add support for detecting and building typescript backends
+                    name: Language.js,
+                } as YAMLLanguage,
+                scripts: {
+                    deploy: [`${getPackageManager().command} install`],
+                    local: [`${getPackageManager().command} install`],
+                },
+                functions: [
+                    {
+                        name: "fastify",
+                        path: ".",
+                        entry: entryfile,
+                        type: FunctionType.httpServer,
+                    },
+                ],
+            });
+            break component;
+        }
 
         if (await isNextjsComponent(contents)) {
             await addSSRComponentToConfig(
