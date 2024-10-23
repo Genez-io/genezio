@@ -56,6 +56,7 @@ async function sendRequest(event) {
 
     res.end = data => {
         event.responseStream.end(data);
+        resolve();
     }
 
     res.setHeader = (name, value) => {
