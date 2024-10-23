@@ -5,7 +5,7 @@ import {
 } from "../functionHandlerProvider/providers/AwsFunctionHandlerProvider.js";
 import {
     HttpServerHandlerProvider,
-    HttpServerPythonHandlerProvider, // adăugăm aici
+    HttpServerPythonHandlerProvider, 
 } from "../functionHandlerProvider/providers/HttpServerHandlerProvider.js";
 import { FunctionType, Language } from "../projectConfiguration/yaml/models.js";
 
