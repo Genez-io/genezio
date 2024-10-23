@@ -109,11 +109,15 @@ export class HttpServerPythonHandlerProvider implements FunctionHandlerProvider 
         handlerFileName: string,
         functionConfiguration: FunctionConfiguration,
     ): Promise<void> {
+        const nameModule =
+            `${functionConfiguration.path?.replace(/\//g, ".") ?? ""}.${functionConfiguration.entry?.split(".")[0] ?? ""}`
+                .replace(/^\.+/, "")
+                .replace(/\.+/g, ".");
         const handlerContent = `
 from io import BytesIO
 import traceback
 import base64
-from ${functionConfiguration.entry.split(".")[0]} import app as application
+from ${nameModule} import ${functionConfiguration.handler} as application
 
 def handler(event):
     try:
@@ -137,7 +141,7 @@ def handler(event):
             return response_buffer.write
 
         # Call the WSGI application and build the response
-        app_response = application.wsgi_app(environ, start_response)
+        app_response = application(environ, start_response)
         response_body = b''.join(app_response)
 
         # Return the formatted response based on content type
