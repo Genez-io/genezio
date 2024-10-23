@@ -31,7 +31,14 @@ async function sendRequest(event) {
     const req = new http.IncomingMessage();
     req.method = event.http.method;
     req.url = \`\${event.http.path}\${event.url.search}\`;
-    req.headers = event.headers;
+
+    const http2CompliantHeaders = {};
+    for (const header in event.headers) {
+      http2CompliantHeaders[header.toLowerCase()] = event.headers[header];
+    }
+
+    req.headers = http2CompliantHeaders;
+
     req.body = event.body.toString();
     req.connection = {
         remoteAddress: event.http.sourceIp
@@ -52,7 +59,6 @@ async function sendRequest(event) {
     }
 
     res.setHeader = (name, value) => {
-    console.trace("Setting header", name, value);
         event.responseStream.setHeader(name, value);
     }
 
