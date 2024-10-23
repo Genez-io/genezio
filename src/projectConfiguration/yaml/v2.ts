@@ -206,6 +206,32 @@ function parseGenezioConfig(config: unknown) {
                 deploy: scriptSchema,
             })
             .optional(),
+        redirects: zod
+            .object({
+                from: zod.string(),
+                to: zod.string(),
+                status: zod
+                    .number()
+                    .default(301)
+                    .refine(
+                        (status) =>
+                            status === 301 ||
+                            status === 302 ||
+                            status === 303 ||
+                            status === 307 ||
+                            status === 308,
+                        "The redirect status code should be 301, 302, 303, 307 or 308.",
+                    ),
+            })
+            .array()
+            .optional(),
+        rewrites: zod
+            .object({
+                from: zod.string(),
+                to: zod.string(),
+            })
+            .array()
+            .optional(),
     });
 
     // Define SSR frameworks schema
