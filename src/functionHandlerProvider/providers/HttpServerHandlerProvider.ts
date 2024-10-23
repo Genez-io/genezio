@@ -39,7 +39,7 @@ async function sendRequest(event) {
 
     req.headers = http2CompliantHeaders;
 
-    req.body = event.body.toString();
+    req.body = event.body;
     req.connection = {
         remoteAddress: event.http.sourceIp
     }
