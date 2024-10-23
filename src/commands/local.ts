@@ -83,6 +83,7 @@ import fsExtra from "fs-extra/esm";
 import { DeployCodeFunctionResponse } from "../models/deployCodeResponse.js";
 import {
     enableAuthentication,
+    evaluateResource,
     getOrCreateDatabase,
     getOrCreateEmptyProject,
 } from "./deploy/utils.js";
@@ -525,7 +526,12 @@ async function startBackendWatcher(
         );
 
         // Start cron jobs
-        const crons = startCronJobs(projectConfiguration, processForUnits);
+        const crons = await startCronJobs(
+            projectConfiguration,
+            processForUnits,
+            yamlProjectConfiguration,
+            options.port,
+        );
         log.info(
             "\x1b[36m%s\x1b[0m",
             "Your local server is running and the SDK was successfully generated!",
@@ -998,40 +1004,38 @@ function getProjectFunctions(
 }
 
 export type LocalEnvCronHandler = {
-    className: string;
-    methodName: string;
     cronString: string;
     cronObject: cron.ScheduledTask | null;
-    process: UnitProcess;
 };
 
-function startCronJobs(
+async function startCronJobs(
     projectConfiguration: ProjectConfiguration,
     processForUnits: Map<string, UnitProcess>,
-): LocalEnvCronHandler[] {
+    yamlProjectConfiguration: YamlProjectConfiguration,
+    port?: number,
+): Promise<LocalEnvCronHandler[]> {
     const cronHandlers: LocalEnvCronHandler[] = [];
     for (const classElement of projectConfiguration.classes) {
         const methods = classElement.methods;
         for (const method of methods) {
             if (method.type === TriggerType.cron && method.cronString) {
                 const cronHandler: LocalEnvCronHandler = {
-                    className: classElement.name,
-                    methodName: method.name,
                     cronString: rectifyCronString(method.cronString),
                     cronObject: null,
-                    process: processForUnits.get(classElement.name)!,
                 };
+
+                const process = processForUnits.get(classElement.name)!;
 
                 cronHandler.cronObject = cron.schedule(cronHandler.cronString, () => {
                     const reqToFunction = {
                         genezioEventType: "cron",
-                        methodName: cronHandler.methodName,
+                        methodName: method.name,
                         cronString: cronHandler.cronString,
                     };
 
                     void communicateWithProcess(
-                        cronHandler.process,
-                        cronHandler.className,
+                        process,
+                        classElement.name,
                         reqToFunction,
                         processForUnits,
                     );
@@ -1040,6 +1044,43 @@ function startCronJobs(
                 cronHandler.cronObject.start();
                 cronHandlers.push(cronHandler);
             }
+        }
+    }
+
+    if (yamlProjectConfiguration.services && yamlProjectConfiguration.services.crons) {
+        for (const cronService of yamlProjectConfiguration.services.crons) {
+            const baseURL = await evaluateResource(
+                yamlProjectConfiguration,
+                cronService.url,
+                "local",
+                undefined,
+                {
+                    isLocal: true,
+                    port: port,
+                },
+            );
+            const endpoint = cronService.endpoint?.replace(/^\//, "");
+            const cronString = cronService.cronString;
+            let url: string;
+            if (endpoint) {
+                url = `${baseURL}/${endpoint}`;
+            } else {
+                url = baseURL;
+            }
+
+            const cronHandler: LocalEnvCronHandler = {
+                cronString: rectifyCronString(cronString),
+                cronObject: null,
+            };
+
+            cronHandler.cronObject = cron.schedule(cronHandler.cronString, async () => {
+                log.info("DEBUG: trigger cron: " + cronHandler.cronString + " on URL " + url);
+                return await axios.post(url);
+            });
+
+            cronHandler.cronObject.start();
+
+            cronHandlers.push(cronHandler);
         }
     }
 

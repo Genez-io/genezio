@@ -130,6 +130,28 @@ function parseGenezioConfig(config: unknown) {
             }),
         );
 
+    const cronSchema = zod
+        .object({
+            url: zod.string(),
+            cronString: zod.string(),
+            endpoint: zod.string().optional(),
+        })
+        .refine(({ cronString }) => {
+            if (cronString && !isValidCron(cronString)) {
+                return false;
+            }
+
+            return true;
+        }, "The cronString is not valid. Check https://crontab.guru/ for more information.")
+        .refine(({ cronString }) => {
+            const cronParts = cronString?.split(" ");
+            if (cronParts && cronParts[2] != "*" && cronParts[4] != "*") {
+                return false;
+            }
+
+            return true;
+        }, "The day of the month and day of the week cannot be specified at the same time.");
+
     const redirectUrlSchema = zod.string();
 
     const authEmailSettings = zod.object({
@@ -171,6 +193,7 @@ function parseGenezioConfig(config: unknown) {
         databases: zod.array(databaseSchema).optional(),
         email: zod.boolean().optional(),
         authentication: authenticationSchema.optional(),
+        crons: zod.array(cronSchema).optional(),
     });
 
     const backendSchema = zod.object({
