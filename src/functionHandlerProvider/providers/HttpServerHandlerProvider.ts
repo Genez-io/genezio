@@ -31,8 +31,15 @@ async function sendRequest(event) {
     const req = new http.IncomingMessage();
     req.method = event.http.method;
     req.url = \`\${event.http.path}\${event.url.search}\`;
-    req.headers = event.headers;
-    req.body = event.body.toString();
+
+    const http2CompliantHeaders = {};
+    for (const header in event.headers) {
+      http2CompliantHeaders[header.toLowerCase()] = event.headers[header];
+    }
+
+    req.headers = http2CompliantHeaders;
+
+    req.body = event.body;
     req.connection = {
         remoteAddress: event.http.sourceIp
     }
@@ -49,14 +56,23 @@ async function sendRequest(event) {
 
     res.end = data => {
         event.responseStream.end(data);
-    }
-
-    res.status = status => {
-        event.responseStream.status(status);
+        resolve();
     }
 
     res.setHeader = (name, value) => {
         event.responseStream.setHeader(name, value);
+    }
+
+    res.getHeader = name => {
+        return event.responseStream.getHeader(name);
+    }
+
+    res.getHeaderNames = () => {
+        return event.responseStream.getHeaderNames();
+    }
+
+    res.removeHeader = name => {
+        event.responseStream.removeHeader(name);
     }
 
     const operationId = process.domain ? process.domain.operationId : "unknown";

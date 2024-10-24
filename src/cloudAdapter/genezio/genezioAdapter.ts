@@ -244,6 +244,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
             projectName,
             projectRegion,
             stage,
+            [...(frontend.redirects || []), ...(frontend.rewrites || [])],
         );
 
         // clean up temporary folder
