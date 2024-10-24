@@ -153,7 +153,7 @@ def handler(event):
         return {
             "statusCode": 500,
             "body": "Internal Server Error",
-            "headers": {"Content-Type": "text/plain"},
+            "headers": {"CONTENT-TYPE": "text/plain"},
             "error": str(e)
         }
 
@@ -166,7 +166,7 @@ def create_wsgi_environ(event, http_info, path):
         'PATH_INFO': path,
         'QUERY_STRING': event.get('query', ''),
         'REMOTE_ADDR': http_info.get('sourceIp', ''),
-        'CONTENT_TYPE': event.get('headers', {}).get('Content-Type', ''),
+        'CONTENT_TYPE': event.get('headers', {}).get('CONTENT-TYPE', ''),
         'CONTENT_LENGTH': str(len(event.get('body', ''))),
         'wsgi.input': BytesIO(event.get('body', '').encode() if isinstance(event.get('body', ''), str) else event['body']),
         'wsgi.errors': BytesIO(),
@@ -188,18 +188,15 @@ def format_response(response_body, headers, status_code):
     """
     Formats the response to return, ensuring the content type is handled appropriately.
     """
-    content_type = headers.get('Content-Type', 'text/html')
+    content_type = headers.get('CONTENT-TYPE', 'text/html')
 
-    # Depending on the content type, either decode as text or encode as base64
     if 'text' in content_type or 'json' in content_type:
         try:
-            body = response_body.decode('utf-8')  # Assume it's text
+            body = response_body.decode('utf-8')
         except UnicodeDecodeError:
-            # If it's not valid UTF-8, treat it as binary
             print("Warning: Response body is not valid UTF-8. Encoding as base64.")
             body = base64.b64encode(response_body).decode('utf-8')
     else:
-        # For non-textual (binary) content, encode as base64
         body = base64.b64encode(response_body).decode('utf-8')
 
     return {
