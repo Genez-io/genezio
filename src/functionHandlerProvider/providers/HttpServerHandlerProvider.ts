@@ -74,14 +74,6 @@ async function sendRequest(event) {
     res.removeHeader = name => {
         event.responseStream.removeHeader(name);
     }
-        
-    res.headersToMap = () => {
-        return event.responseStream.headers;
-    }
-
-    res.setContentType = type => {
-        event.responseStream.setHeader("Content-Type", type);
-    }
 
     const operationId = process.domain ? process.domain.operationId : "unknown";
     const reqDomain = domain.create();
