@@ -608,9 +608,12 @@ export async function functionToCloudInput(
         `genezioDeploy.zip`,
     );
 
-    // copy everything to the temporary folder
-    await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath);
-
+    if (functionElement.language === "python") {
+        await fsExtra.copy(path.join(backendPath), tmpFolderPath);
+    } else {
+        // copy everything to the temporary folder
+        await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath);
+    }
     // Handle JS/TS functions with pnpm
     if (functionElement.language === "js" || functionElement.language === "ts") {
         if (fsExtra.pathExistsSync(path.join(tmpFolderPath, "node_modules", ".pnpm"))) {
@@ -627,10 +630,10 @@ export async function functionToCloudInput(
 
     // Handle Python projects dependencies
     if (functionElement.language === "python") {
-        const requirementsPath = path.join(backendPath, functionElement.path, "requirements.txt");
+        // Requirements file must be in the root of the backend folder
+        const requirementsPath = path.join(backendPath, "requirements.txt");
         if (fs.existsSync(requirementsPath)) {
             const requirementsOutputPath = path.join(tmpFolderPath, "requirements.txt");
-            await fsExtra.copy(requirementsPath, requirementsOutputPath);
             const requirementsContent = fs.readFileSync(requirementsOutputPath, "utf8").trim();
             if (requirementsContent) {
                 const pathForDependencies = path.join(tmpFolderPath, "packages");
