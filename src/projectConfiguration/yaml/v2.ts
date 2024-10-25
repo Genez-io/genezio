@@ -132,6 +132,7 @@ function parseGenezioConfig(config: unknown) {
 
     const cronSchema = zod
         .object({
+            name: zod.string(),
             url: zod.string(),
             cronString: zod.string(),
             endpoint: zod.string().optional(),
