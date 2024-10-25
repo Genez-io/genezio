@@ -47,14 +47,17 @@ async function sendRequest(event) {
     const res = new http.ServerResponse(req);
 
     res.writeHead = (status, headersLocal) => {
+        event.responseStream.statusCode = res.statusCode;
         event.responseStream.writeHead(status, headersLocal);
     }
 
     res.write = data => {
+        event.responseStream.statusCode = res.statusCode;
         event.responseStream.write(data);
     }
 
     res.end = data => {
+        event.responseStream.statusCode = res.statusCode;
         event.responseStream.end(data);
         resolve();
     }
