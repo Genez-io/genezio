@@ -84,6 +84,7 @@ import { expandEnvironmentVariables, findAnEnvFile } from "../../utils/environme
 import { getProjectEnvFromProjectByName } from "../../requests/getProjectInfoByName.js";
 import { getFunctionHandlerProvider } from "../../utils/getFunctionHandlerProvider.js";
 import { getFunctionEntryFilename } from "../../utils/getFunctionEntryFilename.js";
+import { getPackageManager } from "../../packageManagers/packageManager.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -497,13 +498,7 @@ export async function deployClasses(
     );
 
     const functionsResultArray: Promise<GenezioCloudInput>[] = projectConfiguration.functions.map(
-        (f) =>
-            functionToCloudInput(
-                f,
-                backend.path,
-                /* outputDir */ undefined,
-                configuration.backend?.language.packageManager,
-            ),
+        (f) => functionToCloudInput(f, backend.path, /* outputDir */ undefined),
     );
 
     const cloudAdapterDeployInput = await Promise.all([
@@ -584,7 +579,6 @@ export async function functionToCloudInput(
     functionElement: FunctionConfiguration,
     backendPath: string,
     outputDir?: string,
-    packageManager?: string,
 ): Promise<GenezioCloudInput> {
     const supportedFunctionLanguages = ["js", "ts", "python"];
 
@@ -637,9 +631,8 @@ export async function functionToCloudInput(
             const requirementsContent = fs.readFileSync(requirementsOutputPath, "utf8").trim();
             if (requirementsContent) {
                 const pathForDependencies = path.join(tmpFolderPath, "packages");
-                const installCommand = packageManager
-                    ? `${packageManager.toLowerCase()} install -r ${requirementsOutputPath} -t ${pathForDependencies}`
-                    : `pip install ${requirementsOutputPath} -t ${pathForDependencies}`;
+                const installCommand = `${getPackageManager().command} install -r ${requirementsOutputPath} -t ${pathForDependencies}`;
+                debugLogger.debug(`Installing dependencies using command: ${installCommand}`);
                 await runScript(installCommand, tmpFolderPath);
             } else {
                 debugLogger.debug("No requirements.txt file found.");
