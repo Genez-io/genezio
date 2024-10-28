@@ -13,3 +13,17 @@ export async function detectPythonCommand() {
         }
     }
 }
+
+export async function detectPipCommand() {
+    try {
+        await $`pip3 --version`;
+        return "pip3";
+    } catch {
+        try {
+            await $`pip --version`;
+            return "pip";
+        } catch {
+            return;
+        }
+    }
+}
