@@ -102,7 +102,7 @@
         "unique-names-generator": "^4.7.1",
         "uuid": "^10.0.0",
         "whatwg-mimetype": "~3.0.0",
-        "which": "^4.0.0",
+        "which": "^5.0.0",
         "yaml": "^2.5.0",
         "yaml-transmute": "^0.0.7",
         "zod": "^3.23.8"
