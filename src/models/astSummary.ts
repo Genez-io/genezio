@@ -34,6 +34,7 @@ export type AstSummary = {
 
 export type AstSummaryClassResponse = {
     name: string;
+    path: string;
     types: any[];
     methods: AstSummaryMethod[];
     version: string;
