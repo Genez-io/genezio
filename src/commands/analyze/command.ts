@@ -192,8 +192,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 path: componentPath,
                 publish: path.join(componentPath, "dist"),
                 scripts: {
-                    deploy: `${getPackageManager().command} install`,
-                    build: `${getPackageManager().command} run build`,
+                    deploy: [`${getPackageManager().command} install`],
+                    build: [`${getPackageManager().command} run build`],
                 },
             });
             break component;
@@ -204,8 +204,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 path: componentPath,
                 publish: path.join(componentPath, "build"),
                 scripts: {
-                    deploy: `${getPackageManager().command} install`,
-                    build: `${getPackageManager().command} run build`,
+                    deploy: [`${getPackageManager().command} install`],
+                    build: [`${getPackageManager().command} run build`],
                 },
             });
             break component;
