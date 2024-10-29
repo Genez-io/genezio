@@ -1,4 +1,4 @@
-import { TriggerType } from "../projectConfiguration/yaml/models.js";
+import { InstanceSize, TriggerType } from "../projectConfiguration/yaml/models.js";
 
 export type AstSummaryParam = {
     name: string;
@@ -21,6 +21,10 @@ export type AstSummaryClass = {
     types: any[];
     methods: AstSummaryMethod[];
     docString?: string;
+    timeout?: number;
+    storageSize?: number;
+    instanceSize?: InstanceSize;
+    maxConcurrentRequestsPerInstance?: number;
 };
 
 export type AstSummary = {
@@ -30,7 +34,6 @@ export type AstSummary = {
 
 export type AstSummaryClassResponse = {
     name: string;
-    path: string;
     types: any[];
     methods: AstSummaryMethod[];
     version: string;

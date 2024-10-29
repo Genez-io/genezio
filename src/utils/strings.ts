@@ -48,10 +48,10 @@ export const displayHint = function (message: string) {
  * @param {string} value - The value to replace the placeholder with.
  * @returns {string} - The updated string with the placeholder replaced.
  */
-export function replaceExpression(expression: string, value: string): string {
+export function replaceExpression(expression: string, value: string|number): string {
     // ${{<variable>}} can be any alphanumeric string with special characters
     const placeholderPattern = /\${{[A-Za-z0-9\s/.\-_]+}}/;
-    return expression.replace(placeholderPattern, value);
+    return expression.replace(placeholderPattern, value.toString());
 }
 
 /**

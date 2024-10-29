@@ -493,6 +493,10 @@ export async function deployClasses(
                 allNonJsFilesPaths: output.extra.allNonJsFilesPaths,
                 unzippedBundleSize: unzippedBundleSize,
                 entryFile: output.extra.entryFile ?? "",
+                timeout: element.timeout,
+                storageSize: element.storageSize,
+                instanceSize: element.instanceSize,
+                maxConcurrentRequestsPerInstance: element.maxConcurrentRequestsPerInstance,
             };
         },
     );
@@ -672,6 +676,10 @@ export async function functionToCloudInput(
         archivePath: archivePath,
         unzippedBundleSize: unzippedBundleSize,
         entryFile: entryFileName,
+        timeout: functionElement.timeout,
+        instanceSize: functionElement.instanceSize,
+        storageSize: functionElement.storageSize,
+        maxConcurrentRequestsPerInstance: functionElement.maxConcurrentRequestsPerInstance,
     };
 }
 

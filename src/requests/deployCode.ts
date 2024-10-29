@@ -47,6 +47,10 @@ export async function deployRequest(
                             : undefined,
                     fileName: input?.archiveName ?? "genezioDeploy.zip",
                     entryFile: input?.entryFile ?? "",
+                    timeout: input?.timeout,
+                    storageSize: input?.storageSize,
+                    instanceSize: input?.instanceSize,
+                    maxConcurrentRequestsPerInstance: input?.maxConcurrentRequestsPerInstance,
                 };
             }) ?? [],
         projectName: projectConfiguration.name,

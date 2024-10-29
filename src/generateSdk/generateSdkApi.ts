@@ -97,6 +97,10 @@ export function mapYamlClassToSdkClassConfiguration(
             language,
             type: yamlClass.type || TriggerType.jsonrpc,
             methods: (yamlClass.methods || []).map((m) => ({ name: m.name, type: m.type })),
+            timeout: yamlClass.timeout,
+            storageSize: yamlClass.storageSize,
+            instanceSize: yamlClass.instanceSize,
+            maxConcurrentRequestsPerInstance: yamlClass.maxConcurrentRequestsPerInstance,
         };
     });
 }

@@ -4,7 +4,7 @@ import nativeFs from "fs";
 import { IFs } from "memfs";
 import { neonDatabaseRegions, legacyRegions, mongoDatabaseRegions } from "../../utils/configs.js";
 import { GENEZIO_CONFIGURATION_FILE_NOT_FOUND, UserError, zodFormatError } from "../../errors.js";
-import { AuthenticationDatabaseType, DatabaseType, FunctionType, Language } from "./models.js";
+import { AuthenticationDatabaseType, DatabaseType, FunctionType, InstanceSize, Language } from "./models.js";
 import {
     DEFAULT_ARCHITECTURE,
     DEFAULT_NODE_RUNTIME,
@@ -89,6 +89,10 @@ function parseGenezioConfig(config: unknown) {
         path: zod.string(),
         type: zod.nativeEnum(TriggerType).optional(),
         methods: zod.array(methodSchema).optional(),
+        timeout: zod.number().optional(),
+        storageSize: zod.number().optional(),
+        instanceSize: zod.nativeEnum(InstanceSize).optional(),
+        maxConcurrentRequestsPerInstance: zod.number().optional(),
     });
 
     const functionsSchema = zod
@@ -107,6 +111,10 @@ function parseGenezioConfig(config: unknown) {
                 );
             }, "The handler should be in the format 'file.extension'. example: index.js / index.mjs / index.cjs / index.py"),
             type: zod.nativeEnum(FunctionType).default(FunctionType.aws),
+            timeout: zod.number().optional(),
+            storageSize: zod.number().optional(),
+            instanceSize: zod.nativeEnum(InstanceSize).optional(),
+            maxConcurrentRequestsPerInstance: zod.number().optional(),
         })
         .refine(
             ({ type, handler }) => !(type === FunctionType.aws && !handler),
