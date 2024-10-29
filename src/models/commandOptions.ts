@@ -34,6 +34,7 @@ export interface GenezioLocalOptions extends BaseOptions {
 
 export interface GenezioAnalyzeOptions extends BaseOptions {
     config: string;
+    format?: string;
 }
 
 export interface GenezioDeployOptions extends BaseOptions {
