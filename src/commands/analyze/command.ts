@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { GenezioAnalyzeOptions } from "../../models/commandOptions.js";
-import { debugLogger, log } from "../../utils/logging.js";
+import { log } from "../../utils/logging.js";
 import {
     isExpressBackend,
     isFastifyBackend,
@@ -18,11 +18,39 @@ import { getPackageManager, PackageManagerType } from "../../packageManagers/pac
 import { SSRFrameworkComponentType } from "../../models/projectOptions.js";
 import { RawYamlProjectConfiguration, YAMLLanguage } from "../../projectConfiguration/yaml/v2.js";
 import { UserError } from "../../errors.js";
-import { SSRFrameworkComponent } from "../deploy/command.js";
 import { addBackendComponentToConfig, addFrontendComponentToConfig } from "./utils.js";
 import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
+import { report } from "./outputUtils.js";
+import { isCI } from "../../utils/process.js";
 
+// backend javascript: aws-compatible functions, serverless-http functions, express, fastify
+// backend typescript: aws-compatible functions, serverless-http functions, express, fastify
+// backend python: aws-compatible functions, flask, django
+// frontend: react, vite
+// ssr: next, nuxt, nitro
+// containers
+// services: databases, authentication, crons, cache/redis, queues
+export type FrameworkReport = {
+    backend?: string[];
+    frontend?: string[];
+    ssr?: string[];
+};
+
+export enum SUPPORTED_FORMATS {
+    JSON = "json",
+    LIST = "list",
+    MARKDOWN = "markdown",
+    TEXT = "text",
+}
+
+const DEFAULT_FORMAT = SUPPORTED_FORMATS.TEXT;
+const DEFAULT_CI_FORMAT = SUPPORTED_FORMATS.JSON;
+
+// The analyze command has 2 side effects:
+// 1. It creates a new yaml with the detected components
+// 2. Reports the detected components to stdout
 export async function analyzeCommand(options: GenezioAnalyzeOptions) {
+    const frameworksDetected: FrameworkReport = {};
     const configPath = options.config;
     const cwd = process.cwd();
     const rootDirectory = process.cwd();
@@ -46,15 +74,13 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
 
         // Retrieve the package.json contents
         const packageJsonContent = await retrieveFileContent(file);
-        const tsconfigJsonContent = await retrieveFileContent(
-            path.join(rootDirectory, "tsconfig.json"),
-        );
+        // const tsconfigJsonContent = await retrieveFileContent(
+        //     path.join(rootDirectory, "tsconfig.json"),
+        // );
         const contents: Record<string, string> = {
             "package.json": packageJsonContent,
-            "tsconfig.json": tsconfigJsonContent,
+            // "tsconfig.json": tsconfigJsonContent,
         };
-
-        debugLogger.debug(`Found package.json: ${contents["package.json"]}`);
 
         if (await isServerlessHttpBackend(contents)) {
             const entryfile = await getEntryfile(contents);
@@ -82,6 +108,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     },
                 ],
             });
+            frameworksDetected.backend = frameworksDetected.backend || [];
+            frameworksDetected.backend.push("serverless-http");
             break component;
         }
 
@@ -109,6 +137,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     },
                 ],
             });
+            frameworksDetected.backend = frameworksDetected.backend || [];
+            frameworksDetected.backend.push("express");
             break component;
         }
 
@@ -136,6 +166,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     },
                 ],
             });
+            frameworksDetected.backend = frameworksDetected.backend || [];
+            frameworksDetected.backend.push("fastify");
             break component;
         }
 
@@ -152,6 +184,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 },
                 SSRFrameworkComponentType.next,
             );
+            frameworksDetected.ssr = frameworksDetected.ssr || [];
+            frameworksDetected.ssr.push("next");
             break component;
         }
 
@@ -168,6 +202,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 },
                 SSRFrameworkComponentType.nuxt,
             );
+            frameworksDetected.ssr = frameworksDetected.ssr || [];
+            frameworksDetected.ssr.push("nuxt");
             break component;
         }
 
@@ -184,6 +220,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 },
                 SSRFrameworkComponentType.nitro,
             );
+            frameworksDetected.ssr = frameworksDetected.ssr || [];
+            frameworksDetected.ssr.push("nitro");
             break component;
         }
 
@@ -196,6 +234,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     build: [`${getPackageManager().command} run build`],
                 },
             });
+            frameworksDetected.frontend = frameworksDetected.frontend || [];
+            frameworksDetected.frontend.push("vite");
             break component;
         }
 
@@ -208,11 +248,21 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     build: [`${getPackageManager().command} run build`],
                 },
             });
+            frameworksDetected.frontend = frameworksDetected.frontend || [];
+            frameworksDetected.frontend.push("react");
             break component;
         }
     }
 
-    prettyLogGenezioConfig(genezioConfig);
+    // Report the detected frameworks at stdout
+    if (isCI()) {
+        const result = report(DEFAULT_CI_FORMAT, frameworksDetected, genezioConfig);
+        log.info(result);
+        return;
+    }
+
+    const result = report(DEFAULT_FORMAT, frameworksDetected, genezioConfig);
+    log.info(result);
 }
 
 // Method to check if a package.json file exists in the directory
@@ -228,6 +278,8 @@ async function existsPackageJson(directory: string): Promise<boolean> {
 
 // Method to read the contents of a file
 async function retrieveFileContent(filePath: string): Promise<string> {
+    // check if file exists
+
     try {
         const fileContent = await fs.readFile(filePath, "utf-8");
         return fileContent;
@@ -235,68 +287,4 @@ async function retrieveFileContent(filePath: string): Promise<string> {
         log.error("Error reading package.json:", error);
         return "";
     }
-}
-
-// This is a nice-to-have feature that logs the detected configuration in a pretty way
-function prettyLogGenezioConfig(config: RawYamlProjectConfiguration): void {
-    const name = config.name ? `Application Name: ${config.name}` : "";
-    const region = config.region ? `Region: ${config.region}` : "";
-
-    const component = (
-        initialDecription: string,
-        componentName: string,
-        componentConfig: SSRFrameworkComponent,
-    ) => {
-        const path = componentConfig.path
-            ? `Path to ${componentName}: ${componentConfig.path}`
-            : "";
-        const packageManager = componentConfig.packageManager
-            ? `Package manager used: ${componentConfig.packageManager}`
-            : "";
-        const deployScript = componentConfig.scripts?.deploy
-            ? `Scripts run before building: ${componentConfig.scripts.deploy}`
-            : "";
-        const buildScript = componentConfig.scripts?.build
-            ? `Scripts run to build the project: ${componentConfig.scripts.build}`
-            : "";
-        const startScript = componentConfig.scripts?.start
-            ? `Scripts run to start a local environment: ${componentConfig.scripts.start}`
-            : "";
-        return [initialDecription, path, packageManager, deployScript, buildScript, startScript]
-            .filter(Boolean)
-            .join("\n  ");
-    };
-
-    const components = [
-        config.nextjs
-            ? component(
-                  "We found a Next.js component in your project:",
-                  "Next.js",
-                  config.nextjs as SSRFrameworkComponent,
-              )
-            : "",
-        config.nuxt
-            ? component(
-                  "We found a Nuxt component in your project:",
-                  "Nuxt",
-                  config.nuxt as SSRFrameworkComponent,
-              )
-            : "",
-        config.nitro
-            ? component(
-                  "We found a Nitro component in your project:",
-                  "Nitro",
-                  config.nitro as SSRFrameworkComponent,
-              )
-            : "",
-    ]
-        .filter(Boolean)
-        .join("\n\n");
-
-    // TODO: Improve this message (VITE or CRA, multiple frontend frameworks)
-    const frontend = config.frontend ? `We found a React component in your project` : ``;
-
-    const result = [name, region, components, frontend].filter(Boolean).join("\n");
-
-    log.info(result);
 }
