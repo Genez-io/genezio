@@ -889,11 +889,16 @@ export async function uploadEnvVarsFromFile(
 }
 
 // Upload the project code to S3 for in-browser editing
-export async function uploadUserCode(name: string, region: string, stage: string): Promise<void> {
+export async function uploadUserCode(
+    name: string,
+    region: string,
+    stage: string,
+    cwd?: string,
+): Promise<void> {
     const tmpFolderProject = await createTemporaryFolder();
     debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
     const promiseZip = zipDirectory(
-        process.cwd(),
+        cwd || process.cwd(),
         path.join(tmpFolderProject, "projectCode.zip"),
         false,
         [

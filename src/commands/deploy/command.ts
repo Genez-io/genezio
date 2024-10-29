@@ -73,6 +73,15 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         if (config.container) {
             return DeployType.Docker;
         }
+        if (config.nextjs) {
+            return DeployType.NextJS;
+        }
+        if (config.nuxt) {
+            return DeployType.Nuxt;
+        }
+        if (config.nitro) {
+            return DeployType.Nitro;
+        }
     }
 
     // Check if next.config.js exists

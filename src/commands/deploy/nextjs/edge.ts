@@ -152,13 +152,13 @@ function walkDirectoryForEdgeFunctions(dir: string): Promise<EdgeFunction[]> {
     });
 }
 
-export async function getEdgeFunctions(): Promise<EdgeFunction[]> {
+export async function getEdgeFunctions(cwd?: string): Promise<EdgeFunction[]> {
     const edgeFunctions: EdgeFunction[] = [];
-    const pathForAppAbsolute = path.join(process.cwd(), "app");
-    const pathForSrcAbsolute = path.join(process.cwd(), "src", "app");
+    const pathForAppAbsolute = path.join(cwd || process.cwd(), "app");
+    const pathForSrcAbsolute = path.join(cwd || process.cwd(), "src", "app");
 
-    const pathForApp = path.relative(process.cwd(), pathForAppAbsolute);
-    const pathForSrc = path.relative(process.cwd(), pathForSrcAbsolute);
+    const pathForApp = path.relative(cwd || process.cwd(), pathForAppAbsolute);
+    const pathForSrc = path.relative(cwd || process.cwd(), pathForSrcAbsolute);
 
     const appFolderFunctions = await walkDirectoryForEdgeFunctions(pathForApp);
     const srcAppFolderFunctions = await walkDirectoryForEdgeFunctions(pathForSrc);
