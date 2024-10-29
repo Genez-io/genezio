@@ -43,8 +43,8 @@ export enum SUPPORTED_FORMATS {
     TEXT = "text",
 }
 
-const DEFAULT_FORMAT = SUPPORTED_FORMATS.TEXT;
-const DEFAULT_CI_FORMAT = SUPPORTED_FORMATS.JSON;
+export const DEFAULT_FORMAT = SUPPORTED_FORMATS.TEXT;
+export const DEFAULT_CI_FORMAT = SUPPORTED_FORMATS.JSON;
 
 // The analyze command has 2 side effects:
 // 1. It creates a new yaml with the detected components
@@ -255,13 +255,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     }
 
     // Report the detected frameworks at stdout
-    if (isCI()) {
-        const result = report(DEFAULT_CI_FORMAT, frameworksDetected, genezioConfig);
-        log.info(result);
-        return;
-    }
-
-    const result = report(DEFAULT_FORMAT, frameworksDetected, genezioConfig);
+    const format = isCI() ? options.format || DEFAULT_CI_FORMAT : options.format || DEFAULT_FORMAT;
+    const result = report(format, frameworksDetected, genezioConfig);
     log.info(result);
 }
 
