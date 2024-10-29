@@ -6,6 +6,7 @@ import { MethodConfiguration, ProjectConfiguration } from "../models/projectConf
 import { YamlFrontend } from "../projectConfiguration/yaml/v2.js";
 import { Dependency } from "../bundlers/bundler.interface.js";
 import FileDetails from "../models/fileDetails.js";
+import { InstanceSize } from "../projectConfiguration/yaml/models.js";
 
 export enum GenezioCloudInputType {
     CLASS = "class",
@@ -30,6 +31,10 @@ export type GenezioCloudInput =
           allNonJsFilesPaths?: FileDetails[];
           unzippedBundleSize: number;
           entryFile: string;
+          timeout?: number;
+          storageSize?: number;
+          instanceSize?: InstanceSize;
+          maxConcurrentRequestsPerInstance?: number;
       }
     | {
           type: GenezioCloudInputType.FUNCTION;
@@ -39,6 +44,10 @@ export type GenezioCloudInput =
           entryFile: string;
           unzippedBundleSize: number;
           metadata?: GenezioFunctionMetadata;
+          timeout?: number;
+          storageSize?: number;
+          instanceSize?: InstanceSize;
+          maxConcurrentRequestsPerInstance?: number;
       };
 
 export type GenezioCloudResultClass = {
