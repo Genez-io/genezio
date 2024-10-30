@@ -16,10 +16,7 @@ import {
     AuthenticationEmailTemplateType,
     DatabaseType,
 } from "../../projectConfiguration/yaml/models.js";
-import {
-    RawYamlProjectConfiguration,
-    YamlProjectConfiguration,
-} from "../../projectConfiguration/yaml/v2.js";
+import { YamlProjectConfiguration } from "../../projectConfiguration/yaml/v2.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import {
     createDatabase,
@@ -201,17 +198,37 @@ function getNoTargetPackage(errorMessage: string): string | null {
 
 export async function addSSRComponentToConfig(
     configPath: string,
-    config: YamlProjectConfiguration | RawYamlProjectConfiguration,
     component: SSRFrameworkComponent,
     componentType: SSRFrameworkComponentType,
 ) {
     const configIOController = new YamlConfigurationIOController(configPath);
+    // We have to read the config here with fillDefaults=false
+    // to be able to edit it in the least intrusive way
+    const config = await configIOController.read(/* fillDefaults= */ false);
+
     const relativePath = path.relative(process.cwd(), component.path) || ".";
 
+    // Ensure each script field is an array
+    // It's easier to use arrays consistently instead of
+    // having to check if it's a string or an array
+    const scripts = component.scripts;
+    if (scripts) {
+        if (scripts.deploy && typeof scripts.deploy === "string") {
+            scripts.deploy = [scripts.deploy];
+        }
+        if (scripts.build && typeof scripts.build === "string") {
+            scripts.build = [scripts.build];
+        }
+        if (scripts.start && typeof scripts.start === "string") {
+            scripts.start = [scripts.start];
+        }
+    }
+
     config[componentType] = {
-        path: relativePath,
-        packageManager: component.packageManager,
-        scripts: component.scripts,
+        ...config[componentType],
+        path: config[componentType]?.path || relativePath,
+        packageManager: config[componentType]?.packageManager || component.packageManager,
+        scripts: config[componentType]?.scripts || component.scripts,
     };
 
     await configIOController.write(config);

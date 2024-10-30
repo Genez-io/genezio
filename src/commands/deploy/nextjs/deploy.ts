@@ -62,12 +62,11 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     // Add nextjs component
     await addSSRComponentToConfig(
         options.config,
-        genezioConfig,
         {
             path: componentPath,
             packageManager: getPackageManager().command as PackageManagerType,
             scripts: {
-                deploy: installDependenciesCommand.command,
+                deploy: [`${installDependenciesCommand.command}`],
             },
         },
         SSRFrameworkComponentType.next,

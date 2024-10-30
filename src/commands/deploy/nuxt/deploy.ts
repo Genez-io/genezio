@@ -82,7 +82,6 @@ Note: If your Nuxt project was not migrated to Nuxt 3, please visit https://v2.n
     // Add component in genezio config file
     await addSSRComponentToConfig(
         options.config,
-        genezioConfig,
         {
             path: componentPath,
             packageManager: getPackageManager().command as PackageManagerType,

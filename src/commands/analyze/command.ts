@@ -87,7 +87,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             // TODO: Add support for detecting and building typescript backends
             // const isTypescriptFlag = await isTypescript(contents);
 
-            await addBackendComponentToConfig(configPath, genezioConfig, {
+            await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 language: {
                     // TODO: Add support for detecting and building typescript backends
@@ -118,7 +118,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             // TODO: Add support for detecting and building typescript backends
             // const isTypescriptFlag = await isTypescript(contents);
 
-            await addBackendComponentToConfig(configPath, genezioConfig, {
+            await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 language: {
                     // TODO: Add support for detecting and building typescript backends
@@ -147,7 +147,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             // TODO: Add support for detecting and building typescript backends
             // const isTypescriptFlag = await isTypescript(contents);
 
-            await addBackendComponentToConfig(configPath, genezioConfig, {
+            await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 language: {
                     // TODO: Add support for detecting and building typescript backends
@@ -174,12 +174,11 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         if (await isNextjsComponent(contents)) {
             await addSSRComponentToConfig(
                 options.config,
-                genezioConfig,
                 {
                     path: componentPath,
                     packageManager: getPackageManager().command as PackageManagerType,
                     scripts: {
-                        deploy: getPackageManager().command + " install",
+                        deploy: [`${getPackageManager().command} install`],
                     },
                 },
                 SSRFrameworkComponentType.next,
@@ -192,12 +191,11 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         if (await isNuxtComponent(contents)) {
             await addSSRComponentToConfig(
                 options.config,
-                genezioConfig,
                 {
                     path: componentPath,
                     packageManager: getPackageManager().command as PackageManagerType,
                     scripts: {
-                        deploy: getPackageManager().command + " install",
+                        deploy: [`${getPackageManager().command} install`],
                     },
                 },
                 SSRFrameworkComponentType.nuxt,
@@ -210,12 +208,11 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         if (await isNitroComponent(contents)) {
             await addSSRComponentToConfig(
                 options.config,
-                genezioConfig,
                 {
                     path: componentPath,
                     packageManager: getPackageManager().command as PackageManagerType,
                     scripts: {
-                        deploy: getPackageManager().command + " install",
+                        deploy: [`${getPackageManager().command} install`],
                     },
                 },
                 SSRFrameworkComponentType.nitro,
@@ -226,7 +223,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isViteComponent(contents)) {
-            addFrontendComponentToConfig(configPath, genezioConfig, {
+            addFrontendComponentToConfig(configPath, {
                 path: componentPath,
                 publish: path.join(componentPath, "dist"),
                 scripts: {
@@ -240,7 +237,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isReactComponent(contents)) {
-            addFrontendComponentToConfig(configPath, genezioConfig, {
+            addFrontendComponentToConfig(configPath, {
                 path: componentPath,
                 publish: path.join(componentPath, "build"),
                 scripts: {
