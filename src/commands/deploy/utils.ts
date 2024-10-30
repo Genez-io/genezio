@@ -232,10 +232,6 @@ export async function readOrAskConfig(configPath: string): Promise<YamlProjectCo
                     choices: regions,
                 },
             ]));
-        } else {
-            log.info(
-                "Using the default region for the project because no `genezio.yaml` file was found.",
-            );
         }
 
         await configIOController.write({ name, region, yamlVersion: 2 });
