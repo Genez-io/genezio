@@ -74,7 +74,7 @@ import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import { displayHint, replaceExpression } from "../../utils/strings.js";
 import { getPackageManager } from "../../packageManagers/packageManager.js";
 import { SSRFrameworkComponent } from "./command.js";
-import { SSRFrameworkComponentType } from "../../models/projectOptions.js";
+import { ContainerComponentType, SSRFrameworkComponentType } from "../../models/projectOptions.js";
 
 type DependenciesInstallResult = {
     command: string;
@@ -740,6 +740,7 @@ export async function uploadEnvVarsFromFile(
     cwd: string,
     stage: string,
     configuration: YamlProjectConfiguration,
+    componentType: SSRFrameworkComponentType | ContainerComponentType | "backend" = "backend",
 ) {
     if (envPath) {
         const envFile = path.join(process.cwd(), envPath);
@@ -786,7 +787,17 @@ export async function uploadEnvVarsFromFile(
     // Search for possible .env files in the project directory and use the first
     const envFile = envPath ? path.join(process.cwd(), envPath) : await findAnEnvFile(cwd);
 
-    const environment = configuration.backend?.environment;
+    // Select the enviroment object based on the component type (nuxt, nitro, nextjs, container, backend)
+    // "backend" is the default component type
+    const environment =
+        {
+            [ContainerComponentType.container]: configuration.container?.environment,
+            [SSRFrameworkComponentType.next]: configuration.nextjs?.environment,
+            [SSRFrameworkComponentType.nuxt]: configuration.nitro?.environment,
+            [SSRFrameworkComponentType.nitro]: configuration.nuxt?.environment,
+            backend: configuration.backend?.environment,
+        }[componentType] ?? configuration.backend?.environment;
+
     if (environment) {
         const unsetEnvVarKeys = await getUnsetEnvironmentVariables(
             Object.keys(environment),
