@@ -1,7 +1,7 @@
 import { $ } from "execa";
 import { UserError } from "../../../errors.js";
 import { debugLogger, log } from "../../../utils/logging.js";
-import { readOrAskConfig } from "../utils.js";
+import { readOrAskConfig, uploadEnvVarsFromFile } from "../utils.js";
 import { GenezioDeployOptions } from "../../../models/commandOptions.js";
 import {
     FunctionConfiguration,
@@ -165,7 +165,15 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
 
     await setEnvironmentVariables(result.projectId, result.projectEnvId, envVars);
 
-    reportSuccessFunctions(result.functions);
+    await uploadEnvVarsFromFile(
+        options.env,
+        result.projectId,
+        result.projectEnvId,
+        process.cwd(),
+        options.stage || "prod",
+        config,
+    ),
+        reportSuccessFunctions(result.functions);
 }
 
 function getPort(exposedPort: { [id: string]: string }): string {
