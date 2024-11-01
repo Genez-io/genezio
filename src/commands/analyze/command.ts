@@ -92,10 +92,9 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     for (const [relativeFilePath, filename] of componentFiles.entries()) {
         const componentPath = path.dirname(relativeFilePath);
 
-        // Retrieve the file contents
-        const filenameContent = await retrieveFileContent(relativeFilePath);
+        const fileContent = await retrieveFileContent(relativeFilePath);
         const contents: Record<string, string> = {
-            [filename]: filenameContent,
+            [filename]: fileContent,
         };
 
         if (await isServerlessHttpBackend(contents)) {
@@ -115,7 +114,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 },
                 functions: [
                     {
-                        name: "aws-compatible",
+                        name: "serverless",
                         path: ".",
                         // TODO: This is hardcoded because there are great chances that this indeed called `handler`
                         handler: "handler",
@@ -277,7 +276,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             });
             frameworksDetected.frontend = frameworksDetected.frontend || [];
             frameworksDetected.frontend.push("vue");
-            break component;
+            continue;
         }
 
         if (await isAngularComponent(contents)) {
