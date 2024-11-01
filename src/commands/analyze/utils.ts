@@ -1,6 +1,6 @@
 import path from "path";
 import { SSRFrameworkComponentType } from "../../models/projectOptions.js";
-import { YamlFrontend, YAMLBackend } from "../../projectConfiguration/yaml/v2.js";
+import { YamlFrontend, YAMLBackend, YamlContainer } from "../../projectConfiguration/yaml/v2.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import { SSRFrameworkComponent } from "../deploy/command.js";
 
@@ -97,6 +97,22 @@ export async function addSSRComponentToConfig(
         path: config[componentType]?.path || relativePath,
         packageManager: config[componentType]?.packageManager || component.packageManager,
         scripts: config[componentType]?.scripts || component.scripts,
+    };
+
+    await configIOController.write(config);
+}
+
+export async function addContainerComponentToConfig(configPath: string, component: YamlContainer) {
+    const configIOController = new YamlConfigurationIOController(configPath);
+    // We have to read the config here with fillDefaults=false
+    // to be able to edit it in the least intrusive way
+    const config = await configIOController.read(/* fillDefaults= */ false);
+
+    const relativePath = path.relative(process.cwd(), component.path) || ".";
+
+    config.container = {
+        ...config.container,
+        path: config.container?.path || relativePath,
     };
 
     await configIOController.write(config);
