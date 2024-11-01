@@ -893,25 +893,20 @@ export async function uploadUserCode(
     name: string,
     region: string,
     stage: string,
-    cwd?: string,
+    cwd: string,
 ): Promise<void> {
     const tmpFolderProject = await createTemporaryFolder();
     debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
-    const promiseZip = zipDirectory(
-        cwd || process.cwd(),
-        path.join(tmpFolderProject, "projectCode.zip"),
-        false,
-        [
-            "**/node_modules/*",
-            "./node_modules/*",
-            "node_modules/*",
-            "**/node_modules",
-            "./node_modules",
-            "node_modules",
-            "node_modules/**",
-            "**/node_modules/**",
-        ],
-    );
+    const promiseZip = zipDirectory(cwd, path.join(tmpFolderProject, "projectCode.zip"), false, [
+        "**/node_modules/*",
+        "./node_modules/*",
+        "node_modules/*",
+        "**/node_modules",
+        "./node_modules",
+        "node_modules",
+        "node_modules/**",
+        "**/node_modules/**",
+    ]);
 
     await promiseZip;
     const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(region, name, stage);

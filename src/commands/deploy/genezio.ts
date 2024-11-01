@@ -317,7 +317,7 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         );
     }
 
-    await uploadUserCode(configuration.name, configuration.region, options.stage);
+    await uploadUserCode(configuration.name, configuration.region, options.stage, process.cwd());
 
     const settings = configuration.services?.authentication?.settings;
     if (settings) {

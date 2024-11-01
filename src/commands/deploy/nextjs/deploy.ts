@@ -56,7 +56,6 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         ? path.resolve(cwd, genezioConfig.nextjs.path)
         : cwd;
 
-    debugLogger.debug(`Deploying Next.js app from ${componentPath}`);
     // Install dependencies
     const installDependenciesCommand = await attemptToInstallDependencies([], componentPath);
 
@@ -96,7 +95,7 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
 
     const [deploymentResult, domainName] = await Promise.all([
         // Deploy NextJs serverless functions
-        deployFunctions(genezioConfig, options.stage, componentPath),
+        deployFunctions(genezioConfig, componentPath, options.stage),
         // Deploy NextJs static assets to S3
         deployStaticAssets(genezioConfig, options.stage, cacheToken, componentPath),
     ]);
@@ -131,8 +130,8 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     );
 }
 
-async function checkProjectLimitations(cwd?: string) {
-    const assetsPath = path.join(cwd || process.cwd(), ".open-next", "assets");
+async function checkProjectLimitations(cwd: string) {
+    const assetsPath = path.join(cwd, ".open-next", "assets");
     const paths = await computeAssetsPaths(assetsPath, {} as CreateFrontendV2Origin);
 
     if (paths.length > 195) {
@@ -187,7 +186,7 @@ async function deployCDN(
     config: YamlProjectConfiguration,
     stage: string,
     edgeFunctions: EdgeFunction[] = [],
-    cwd?: string,
+    cwd: string,
 ) {
     const PATH_NUMBER_LIMIT = 200;
 
@@ -248,7 +247,7 @@ async function deployCDN(
         { origin: imageOptimizationOrigin, pattern: "_next/image*" },
     ];
 
-    const assetsFolder = path.join(cwd || process.cwd(), ".open-next", "assets");
+    const assetsFolder = path.join(cwd, ".open-next", "assets");
     paths.push(...(await computeAssetsPaths(assetsFolder, s3Origin)));
 
     if (paths.length >= PATH_NUMBER_LIMIT) {
@@ -278,7 +277,7 @@ async function deployStaticAssets(
     config: YamlProjectConfiguration,
     stage: string,
     cacheToken: string,
-    cwd?: string,
+    cwd: string,
 ) {
     const getFrontendPresignedURLPromise = getFrontendPresignedURL(
         /* subdomain= */ undefined,
@@ -293,12 +292,12 @@ async function deployStaticAssets(
     await fs.promises.mkdir(path.join(temporaryFolder, "next-static"));
     await Promise.all([
         fs.promises.cp(
-            path.join(cwd || process.cwd(), ".open-next", "assets"),
+            path.join(cwd, ".open-next", "assets"),
             path.join(temporaryFolder, "next-static", "_assets"),
             { recursive: true },
         ),
         fs.promises.cp(
-            path.join(cwd || process.cwd(), ".open-next", "cache"),
+            path.join(cwd, ".open-next", "cache"),
             path.join(temporaryFolder, "next-static", cacheToken, "_cache"),
             { recursive: true },
         ),
@@ -319,17 +318,17 @@ async function deployStaticAssets(
     return domain;
 }
 
-async function deployFunctions(config: YamlProjectConfiguration, stage?: string, cwd?: string) {
+async function deployFunctions(config: YamlProjectConfiguration, cwd: string, stage?: string) {
     const cloudProvider = await getCloudProvider(config.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
 
-    const cwdRelative = path.relative(process.cwd(), cwd || process.cwd());
-    const basePath = path.join(cwdRelative || ".", ".open-next", "server-functions");
+    const cwdRelative = path.relative(process.cwd(), cwd) || ".";
+    const basePath = path.join(cwdRelative, ".open-next", "server-functions");
     const serverSubfolders = await getAllFilesFromPath(basePath, false);
 
     const functions = serverSubfolders.map((folder) => {
         return {
-            path: path.join(cwdRelative || ".", ".open-next", "server-functions", folder.name),
+            path: path.join(cwdRelative, ".open-next", "server-functions", folder.name),
             name: folder.name,
             entry: "index.mjs",
             handler: "handler",
@@ -338,7 +337,7 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string,
     });
 
     functions.push({
-        path: path.join(cwdRelative || ".", ".open-next", "image-optimization-function"),
+        path: path.join(cwdRelative, ".open-next", "image-optimization-function"),
         name: "image-optimization",
         entry: "index.mjs",
         handler: "handler",
@@ -387,9 +386,9 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string,
     return result;
 }
 
-function writeNextConfig(cwd?: string) {
+function writeNextConfig(cwd: string) {
     const configExists = ["js", "cjs", "mjs", "ts"].find((ext) =>
-        fs.existsSync(path.join(cwd || process.cwd(), `next.config.${ext}`)),
+        fs.existsSync(path.join(cwd, `next.config.${ext}`)),
     );
     if (!configExists) {
         fs.writeFileSync("next.config.js", ``);
@@ -400,7 +399,7 @@ async function writeOpenNextConfig(
     region: string,
     edgeFunctionPaths: EdgeFunction[],
     installArgs: string[] = [],
-    cwd?: string,
+    cwd: string,
 ) {
     let functions = "";
 
@@ -461,13 +460,9 @@ async function writeOpenNextConfig(
 
     // Write the open-next configuration
     // TODO: Check if the file already exists and merge the configurations, instead of overwriting it.
-    const openNextConfigPath = path.join(cwd || process.cwd(), "open-next.config.ts");
+    const openNextConfigPath = path.join(cwd, "open-next.config.ts");
     await fs.promises.writeFile(openNextConfigPath, OPEN_NEXT_CONFIG);
 
     const tag = ENVIRONMENT === "prod" ? "latest" : "dev";
-    await getPackageManager().install(
-        [`@genezio/nextjs-isr-${region}@${tag}`],
-        /* cwd */ undefined,
-        installArgs,
-    );
+    await getPackageManager().install([`@genezio/nextjs-isr-${region}@${tag}`], cwd, installArgs);
 }

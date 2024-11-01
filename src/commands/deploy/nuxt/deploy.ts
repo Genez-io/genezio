@@ -41,7 +41,6 @@ export async function nuxtNitroDeploy(
 ) {
     const genezioConfig = await readOrAskConfig(options.config);
 
-    // Install dependencies
     const cwd = process.cwd();
 
     const NitroOrNuxtFlag =
@@ -53,8 +52,8 @@ export async function nuxtNitroDeploy(
         ? path.resolve(cwd, genezioConfig[NitroOrNuxtFlag].path)
         : cwd;
 
+    // Install dependencies
     const installDependenciesCommand = await attemptToInstallDependencies([], componentPath);
-
 
     switch (deployType) {
         case DeployType.Nuxt:
@@ -100,8 +99,8 @@ Note: If your Nuxt project was not migrated to Nuxt 3, please visit https://v2.n
     ]);
 
     const [cdnUrl] = await Promise.all([
-        deployCDN(cloudResult.functions, domain, genezioConfig, options.stage),
-        uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage),
+        deployCDN(cloudResult.functions, domain, genezioConfig, options.stage, componentPath),
+        uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage, componentPath),
         uploadEnvVarsFromFile(
             options.env,
             cloudResult.projectId,
@@ -123,16 +122,17 @@ Note: If your Nuxt project was not migrated to Nuxt 3, please visit https://v2.n
 async function deployFunction(
     config: YamlProjectConfiguration,
     options: GenezioDeployOptions,
-    cwd?: string,
+    cwd: string,
 ) {
     const cloudProvider = await getCloudProvider(config.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
+    const cwdRelative = path.relative(process.cwd(), cwd) || ".";
 
     const functions = [
         {
-            path: path.join(cwd || ".", ".output"),
+            path: path.join(cwdRelative, ".output"),
             name: "nuxt-server",
-            entry: path.join(cwd || ".", "server", "index.mjs"),
+            entry: path.join("server", "index.mjs"),
             handler: "handler",
             type: FunctionType.aws,
         },
@@ -141,7 +141,7 @@ async function deployFunction(
     const deployConfig: YamlProjectConfiguration = {
         ...config,
         backend: {
-            path: cwd || ".",
+            path: cwdRelative,
             language: {
                 name: Language.js,
                 runtime: "nodejs20.x",
@@ -179,7 +179,7 @@ async function deployCDN(
     domainName: string,
     config: YamlProjectConfiguration,
     stage: string,
-    cwd?: string,
+    cwd: string,
 ) {
     const serverOrigin: CreateFrontendV2Origin = {
         domain: {
@@ -222,7 +222,7 @@ async function deployCDN(
     return distributionUrl;
 }
 
-async function deployStaticAssets(config: YamlProjectConfiguration, stage: string, cwd?: string) {
+async function deployStaticAssets(config: YamlProjectConfiguration, stage: string, cwd: string) {
     const getFrontendPresignedURLPromise = getFrontendPresignedURL(
         /* subdomain= */ undefined,
         /* projectName= */ config.name,
@@ -235,7 +235,7 @@ async function deployStaticAssets(config: YamlProjectConfiguration, stage: strin
 
     await fs.promises.mkdir(path.join(temporaryFolder, "nuxt-static"));
     await fs.promises.cp(
-        path.join(cwd || process.cwd(), ".output", "public"),
+        path.join(cwd, ".output", "public"),
         path.join(temporaryFolder, "nuxt-static"),
         { recursive: true },
     );
@@ -257,9 +257,9 @@ async function deployStaticAssets(config: YamlProjectConfiguration, stage: strin
 
 async function computeAssetsPaths(
     s3Origin: CreateFrontendV2Origin,
-    cwd?: string,
+    cwd: string,
 ): Promise<CreateFrontendV2Path[]> {
-    const folder = path.join(cwd || process.cwd(), ".output", "public");
+    const folder = path.join(cwd, ".output", "public");
     return new Promise((resolve, reject) => {
         glob(
             "*",
