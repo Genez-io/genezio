@@ -26,6 +26,8 @@ import {
     addContainerComponentToConfig,
     addFrontendComponentToConfig,
     addSSRComponentToConfig,
+    getFrontendPrefix,
+    injectBackendApiUrlsInConfig,
 } from "./utils.js";
 import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
 import { report } from "./outputUtils.js";
@@ -35,7 +37,7 @@ import { UserError } from "../../errors.js";
 // backend javascript: aws-compatible functions, serverless-http functions, express, fastify
 // backend typescript: aws-compatible functions, serverless-http functions, express, fastify
 // backend python: aws-compatible functions, flask, django
-// frontend: react, vite
+// frontend: react, vite, vue, angular, svelte
 // ssr: next, nuxt, nitro
 // containers
 // services: databases, authentication, crons, cache/redis, queues
@@ -44,6 +46,12 @@ export type FrameworkReport = {
     frontend?: string[];
     ssr?: string[];
 };
+
+export enum FRONTEND_ENV_PREFIX {
+    React = "REACT_APP",
+    Vite = "VITE",
+    Vue = "VUE_APP",
+}
 
 export enum SUPPORTED_FORMATS {
     JSON = "json",
@@ -313,6 +321,19 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             frameworksDetected.backend.push("container");
             continue;
         }
+    }
+
+    // Inject Backend API URLs into the frontend component
+    // This is done after all the components have been detected
+    if (
+        frameworksDetected.backend &&
+        frameworksDetected.backend.length > 0 &&
+        frameworksDetected.frontend &&
+        frameworksDetected.frontend.length > 0
+    ) {
+        // TODO Support multiple frontend frameworks in the same project
+        const frontendPrefix = getFrontendPrefix(frameworksDetected.frontend[0]);
+        await injectBackendApiUrlsInConfig(configPath, frontendPrefix);
     }
 
     // Report the detected frameworks at stdout
