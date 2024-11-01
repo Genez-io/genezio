@@ -82,12 +82,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         );
     }
 
-    debugLogger.debug("Found component files:", componentFiles);
+    debugLogger.debug("Key component files found:", componentFiles);
 
-    const flag = true;
-    if (!flag) {
-        return;
-    }
     // Create a configuration object to add components to
     const genezioConfig = (await readOrAskConfig(configPath)) as RawYamlProjectConfiguration;
 
