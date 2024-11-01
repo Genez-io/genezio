@@ -10,7 +10,6 @@ import { PackageManagerType } from "../../../packageManagers/packageManager.js";
 import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
 import { debugLogger, log } from "../../../utils/logging.js";
 import {
-    addSSRComponentToConfig,
     attemptToInstallDependencies,
     readOrAskConfig,
     uploadEnvVarsFromFile,
@@ -34,6 +33,7 @@ import {
 import { DeployCodeFunctionResponse } from "../../../models/deployCodeResponse.js";
 import { DeployType } from "../command.js";
 import { SSRFrameworkComponentType } from "../../../models/projectOptions.js";
+import { addSSRComponentToConfig } from "../../analyze/utils.js";
 
 export async function nuxtNitroDeploy(
     options: GenezioDeployOptions,
@@ -82,12 +82,11 @@ Note: If your Nuxt project was not migrated to Nuxt 3, please visit https://v2.n
     // Add component in genezio config file
     await addSSRComponentToConfig(
         options.config,
-        genezioConfig,
         {
             path: componentPath,
             packageManager: getPackageManager().command as PackageManagerType,
             scripts: {
-                deploy: installDependenciesCommand.command,
+                deploy: [`${installDependenciesCommand.command}`],
             },
         },
         NitroOrNuxtFlag,

@@ -16,10 +16,7 @@ import {
     AuthenticationEmailTemplateType,
     DatabaseType,
 } from "../../projectConfiguration/yaml/models.js";
-import {
-    RawYamlProjectConfiguration,
-    YamlProjectConfiguration,
-} from "../../projectConfiguration/yaml/v2.js";
+import { YamlProjectConfiguration } from "../../projectConfiguration/yaml/v2.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import {
     createDatabase,
@@ -73,7 +70,6 @@ import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedUR
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import { displayHint, replaceExpression } from "../../utils/strings.js";
 import { getPackageManager } from "../../packageManagers/packageManager.js";
-import { SSRFrameworkComponent } from "./command.js";
 import { ContainerComponentType, SSRFrameworkComponentType } from "../../models/projectOptions.js";
 
 type DependenciesInstallResult = {
@@ -197,24 +193,6 @@ function getNoTargetPackage(errorMessage: string): string | null {
     const noTargetPackageRegex = /No matching version found for ([^@]+@[^.]+)/;
     const match = errorMessage.match(noTargetPackageRegex);
     return match ? match[1] : null;
-}
-
-export async function addSSRComponentToConfig(
-    configPath: string,
-    config: YamlProjectConfiguration | RawYamlProjectConfiguration,
-    component: SSRFrameworkComponent,
-    componentType: SSRFrameworkComponentType,
-) {
-    const configIOController = new YamlConfigurationIOController(configPath);
-    const relativePath = path.relative(process.cwd(), component.path) || ".";
-
-    config[componentType] = {
-        path: relativePath,
-        packageManager: component.packageManager,
-        scripts: component.scripts,
-    };
-
-    await configIOController.write(config);
 }
 
 export async function readOrAskConfig(configPath: string): Promise<YamlProjectConfiguration> {
