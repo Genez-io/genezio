@@ -70,7 +70,6 @@ import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedUR
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import { displayHint, replaceExpression } from "../../utils/strings.js";
 import { getPackageManager } from "../../packageManagers/packageManager.js";
-import { SSRFrameworkComponent } from "./command.js";
 import { ContainerComponentType, SSRFrameworkComponentType } from "../../models/projectOptions.js";
 
 type DependenciesInstallResult = {
@@ -194,44 +193,6 @@ function getNoTargetPackage(errorMessage: string): string | null {
     const noTargetPackageRegex = /No matching version found for ([^@]+@[^.]+)/;
     const match = errorMessage.match(noTargetPackageRegex);
     return match ? match[1] : null;
-}
-
-export async function addSSRComponentToConfig(
-    configPath: string,
-    component: SSRFrameworkComponent,
-    componentType: SSRFrameworkComponentType,
-) {
-    const configIOController = new YamlConfigurationIOController(configPath);
-    // We have to read the config here with fillDefaults=false
-    // to be able to edit it in the least intrusive way
-    const config = await configIOController.read(/* fillDefaults= */ false);
-
-    const relativePath = path.relative(process.cwd(), component.path) || ".";
-
-    // Ensure each script field is an array
-    // It's easier to use arrays consistently instead of
-    // having to check if it's a string or an array
-    const scripts = component.scripts;
-    if (scripts) {
-        if (scripts.deploy && typeof scripts.deploy === "string") {
-            scripts.deploy = [scripts.deploy];
-        }
-        if (scripts.build && typeof scripts.build === "string") {
-            scripts.build = [scripts.build];
-        }
-        if (scripts.start && typeof scripts.start === "string") {
-            scripts.start = [scripts.start];
-        }
-    }
-
-    config[componentType] = {
-        ...config[componentType],
-        path: config[componentType]?.path || relativePath,
-        packageManager: config[componentType]?.packageManager || component.packageManager,
-        scripts: config[componentType]?.scripts || component.scripts,
-    };
-
-    await configIOController.write(config);
 }
 
 export async function readOrAskConfig(configPath: string): Promise<YamlProjectConfiguration> {

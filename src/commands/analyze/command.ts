@@ -13,12 +13,16 @@ import {
     isServerlessHttpBackend,
     getEntryfile,
 } from "./frameworks.js";
-import { addSSRComponentToConfig, readOrAskConfig } from "../deploy/utils.js";
+import { readOrAskConfig } from "../deploy/utils.js";
 import { getPackageManager, PackageManagerType } from "../../packageManagers/packageManager.js";
 import { SSRFrameworkComponentType } from "../../models/projectOptions.js";
 import { RawYamlProjectConfiguration, YAMLLanguage } from "../../projectConfiguration/yaml/v2.js";
 import { UserError } from "../../errors.js";
-import { addBackendComponentToConfig, addFrontendComponentToConfig } from "./utils.js";
+import {
+    addBackendComponentToConfig,
+    addFrontendComponentToConfig,
+    addSSRComponentToConfig,
+} from "./utils.js";
 import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
 import { report } from "./outputUtils.js";
 import { isCI } from "../../utils/process.js";

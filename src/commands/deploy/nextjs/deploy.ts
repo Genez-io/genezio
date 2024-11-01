@@ -39,14 +39,10 @@ import { computeAssetsPaths } from "./assets.js";
 import * as Sentry from "@sentry/node";
 import { randomUUID } from "crypto";
 import { EdgeFunction, getEdgeFunctions } from "./edge.js";
-import {
-    addSSRComponentToConfig,
-    attemptToInstallDependencies,
-    uploadEnvVarsFromFile,
-    uploadUserCode,
-} from "../utils.js";
+import { attemptToInstallDependencies, uploadEnvVarsFromFile, uploadUserCode } from "../utils.js";
 import { readOrAskConfig } from "../utils.js";
 import { SSRFrameworkComponentType } from "../../../models/projectOptions.js";
+import { addSSRComponentToConfig } from "../../analyze/utils.js";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);

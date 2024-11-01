@@ -1,5 +1,8 @@
+import path from "path";
+import { SSRFrameworkComponentType } from "../../models/projectOptions.js";
 import { YamlFrontend, YAMLBackend } from "../../projectConfiguration/yaml/v2.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
+import { SSRFrameworkComponent } from "../deploy/command.js";
 
 export async function addFrontendComponentToConfig(configPath: string, component: YamlFrontend) {
     const configIOController = new YamlConfigurationIOController(configPath);
@@ -12,15 +15,7 @@ export async function addFrontendComponentToConfig(configPath: string, component
     // having to check if it's a string or an array
     const scripts = component.scripts;
     if (scripts) {
-        if (scripts.deploy && typeof scripts.deploy === "string") {
-            scripts.deploy = [scripts.deploy];
-        }
-        if (scripts.build && typeof scripts.build === "string") {
-            scripts.build = [scripts.build];
-        }
-        if (scripts.start && typeof scripts.start === "string") {
-            scripts.start = [scripts.start];
-        }
+        normalizeScripts(scripts);
     }
 
     // Update the existing frontend component only with the fields that are not set
@@ -54,12 +49,7 @@ export async function addBackendComponentToConfig(configPath: string, component:
     // having to check if it's a string or an array
     const scripts = component.scripts;
     if (scripts) {
-        if (scripts.deploy && typeof scripts.deploy === "string") {
-            scripts.deploy = [scripts.deploy];
-        }
-        if (scripts.local && typeof scripts.local === "string") {
-            scripts.local = [scripts.local];
-        }
+        normalizeScripts(scripts);
     }
 
     // Update the existing frontend component only with the fields that are not set
@@ -80,4 +70,56 @@ export async function addBackendComponentToConfig(configPath: string, component:
     config.backend = backend;
 
     await configIOController.write(config);
+}
+
+export async function addSSRComponentToConfig(
+    configPath: string,
+    component: SSRFrameworkComponent,
+    componentType: SSRFrameworkComponentType,
+) {
+    const configIOController = new YamlConfigurationIOController(configPath);
+    // We have to read the config here with fillDefaults=false
+    // to be able to edit it in the least intrusive way
+    const config = await configIOController.read(/* fillDefaults= */ false);
+
+    const relativePath = path.relative(process.cwd(), component.path) || ".";
+
+    // Ensure each script field is an array
+    // It's easier to use arrays consistently instead of
+    // having to check if it's a string or an array
+    const scripts = component.scripts;
+    if (scripts) {
+        normalizeScripts(scripts);
+    }
+
+    config[componentType] = {
+        ...config[componentType],
+        path: config[componentType]?.path || relativePath,
+        packageManager: config[componentType]?.packageManager || component.packageManager,
+        scripts: config[componentType]?.scripts || component.scripts,
+    };
+
+    await configIOController.write(config);
+}
+
+type Scripts = {
+    deploy?: string | string[];
+    build?: string | string[];
+    start?: string | string[];
+    local?: string | string[];
+};
+
+function normalizeScriptProperty(scripts: Scripts, property: keyof Scripts): void {
+    if (scripts[property] && typeof scripts[property] === "string") {
+        scripts[property] = [scripts[property]];
+    }
+}
+
+function normalizeScripts(scripts: Scripts): void {
+    if (scripts) {
+        const properties: (keyof Scripts)[] = ["deploy", "build", "start", "local"];
+        properties.forEach((property) => {
+            normalizeScriptProperty(scripts, property);
+        });
+    }
 }
