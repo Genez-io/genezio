@@ -69,6 +69,11 @@ export function getAstSummary(classesInfo: SdkGeneratorClassesInfoInput[]): AstS
                 methods: methods,
                 types: types,
                 docString: classElem.docString,
+                timeout: classConfiguration.classConfiguration.timeout,
+                storageSize: classConfiguration.classConfiguration.storageSize,
+                instanceSize: classConfiguration.classConfiguration.instanceSize,
+                maxConcurrentRequestsPerInstance:
+                    classConfiguration.classConfiguration.maxConcurrentRequestsPerInstance,
             };
             return classInfo;
         });

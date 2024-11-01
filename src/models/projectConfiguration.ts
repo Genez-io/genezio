@@ -13,6 +13,7 @@ import { SdkHandlerResponse } from "./sdkGeneratorResponse.js";
 import {
     DatabaseType,
     FunctionType,
+    InstanceSize,
     Language,
     TriggerType,
 } from "../projectConfiguration/yaml/models.js";
@@ -67,6 +68,10 @@ export class ClassConfiguration {
     version: string;
     docString?: string;
     options?: { [key: string]: string };
+    timeout?: number;
+    storageSize?: number;
+    instanceSize?: InstanceSize;
+    maxConcurrentRequestsPerInstance?: number;
 
     constructor(
         name: string,
@@ -77,6 +82,10 @@ export class ClassConfiguration {
         types: any[],
         version: string,
         docString?: string,
+        timeout?: number,
+        storageSize?: number,
+        instanceSize?: InstanceSize,
+        maxConcurrentRequestsPerInstance?: number,
     ) {
         this.name = name;
         this.path = path;
@@ -86,6 +95,10 @@ export class ClassConfiguration {
         this.types = types;
         this.version = version;
         this.docString = docString;
+        this.timeout = timeout;
+        this.storageSize = storageSize;
+        this.instanceSize = instanceSize;
+        this.maxConcurrentRequestsPerInstance = maxConcurrentRequestsPerInstance;
     }
 }
 
@@ -96,6 +109,10 @@ export class FunctionConfiguration {
     language: string;
     entry: string;
     type: FunctionType;
+    timeout?: number;
+    storageSize?: number;
+    instanceSize?: InstanceSize;
+    maxConcurrentRequestsPerInstance?: number;
 
     constructor(
         name: string,
@@ -104,6 +121,10 @@ export class FunctionConfiguration {
         language: string,
         entry: string,
         type: FunctionType,
+        timeout?: number,
+        storageSize?: number,
+        instanceSize?: InstanceSize,
+        maxConcurrentRequestsPerInstance?: number,
     ) {
         this.name = name;
         this.path = path;
@@ -111,6 +132,10 @@ export class FunctionConfiguration {
         this.language = language;
         this.entry = entry;
         this.type = type;
+        this.timeout = timeout;
+        this.storageSize = storageSize;
+        this.instanceSize = instanceSize;
+        this.maxConcurrentRequestsPerInstance = maxConcurrentRequestsPerInstance;
     }
 }
 
@@ -256,6 +281,10 @@ export class ProjectConfiguration {
                 types: c.types,
                 version: this.astSummary.version,
                 docString: c.docString,
+                timeout: c.timeout,
+                storageSize: c.storageSize,
+                instanceSize: c.instanceSize,
+                maxConcurrentRequestsPerInstance: c.maxConcurrentRequestsPerInstance,
             };
         });
 
@@ -268,6 +297,10 @@ export class ProjectConfiguration {
                     handler: f.handler || "handler",
                     entry: f.entry,
                     type: f.type || FunctionType.aws,
+                    timeout: f.timeout,
+                    storageSize: f.storageSize,
+                    instanceSize: f.instanceSize,
+                    maxConcurrentRequestsPerInstance: f.maxConcurrentRequestsPerInstance,
                 };
             }) || [];
     }

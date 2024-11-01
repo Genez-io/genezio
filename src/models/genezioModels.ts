@@ -1,4 +1,4 @@
-import { Language, TriggerType } from "../projectConfiguration/yaml/models.js";
+import { InstanceSize, Language, TriggerType } from "../projectConfiguration/yaml/models.js";
 
 export enum GenezioCommandTemplates {
     FULLSTACK = "Fullstack",
@@ -374,4 +374,8 @@ export type SdkClassConfiguration = {
     language: string;
     type: TriggerType;
     methods: SdkMethodConfiguration[];
+    timeout?: number;
+    storageSize?: number;
+    instanceSize?: InstanceSize;
+    maxConcurrentRequestsPerInstance?: number;
 };

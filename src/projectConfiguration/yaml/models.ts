@@ -39,6 +39,13 @@ export enum FunctionType {
     // gcp = "gcp",
 }
 
+export enum InstanceSize {
+    tiny = "tiny",
+    small = "small",
+    medium = "medium",
+    large = "large",
+}
+
 export const entryFileFunctionMap = {
     js: "index.mjs",
     ts: "index.mjs",
