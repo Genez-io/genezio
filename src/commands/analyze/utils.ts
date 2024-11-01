@@ -1,8 +1,9 @@
 import path from "path";
 import { SSRFrameworkComponentType } from "../../models/projectOptions.js";
-import { YamlFrontend, YAMLBackend } from "../../projectConfiguration/yaml/v2.js";
+import { YamlFrontend, YAMLBackend, YamlContainer } from "../../projectConfiguration/yaml/v2.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import { SSRFrameworkComponent } from "../deploy/command.js";
+import { FRONTEND_ENV_PREFIX } from "./command.js";
 
 export async function addFrontendComponentToConfig(configPath: string, component: YamlFrontend) {
     const configIOController = new YamlConfigurationIOController(configPath);
@@ -100,6 +101,91 @@ export async function addSSRComponentToConfig(
     };
 
     await configIOController.write(config);
+}
+
+export async function addContainerComponentToConfig(configPath: string, component: YamlContainer) {
+    const configIOController = new YamlConfigurationIOController(configPath);
+    // We have to read the config here with fillDefaults=false
+    // to be able to edit it in the least intrusive way
+    const config = await configIOController.read(/* fillDefaults= */ false);
+
+    const relativePath = path.relative(process.cwd(), component.path) || ".";
+
+    config.container = {
+        ...config.container,
+        path: config.container?.path || relativePath,
+    };
+
+    await configIOController.write(config);
+}
+
+/**
+ * Injects the backend function URLs into the frontend environment variables.
+ * @param frontendPrefix The prefix to use for the frontend environment variables.
+ * @param configPath The path to the config file.
+ */
+export async function injectBackendApiUrlsInConfig(configPath: string, frontendPrefix: string) {
+    const configIOController = new YamlConfigurationIOController(configPath);
+
+    // Load config with minimal changes
+    const config = await configIOController.read(/* fillDefaults= */ false);
+
+    // Validate backend and frontend existence
+    const backend = config.backend as YAMLBackend;
+    const frontend = config.frontend as YamlFrontend;
+    if (!backend || !frontend) return;
+
+    const backendFunctions = backend.functions;
+    if (!backendFunctions) return;
+
+    // Generate frontend environment variables based on backend functions
+    const frontendEnvironment = createFrontendEnvironment(frontendPrefix, backendFunctions);
+    frontend.environment = frontendEnvironment;
+
+    // Save the updated configuration
+    await configIOController.write(config);
+}
+
+/**
+ * Returns the frontend environment variable prefix based on the frontend framework.
+ *
+ * @param framework
+ * @returns
+ */
+export function getFrontendPrefix(framework: string): string {
+    switch (framework.toLowerCase()) {
+        case "react":
+            return FRONTEND_ENV_PREFIX.React;
+        case "vue":
+            return FRONTEND_ENV_PREFIX.Vue;
+        case "vite":
+            return FRONTEND_ENV_PREFIX.Vite;
+        default:
+            return FRONTEND_ENV_PREFIX.Vite;
+    }
+}
+
+/**
+ * Creates a Record<string, string> where each key represents a frontend environment
+ * variable based on the backend function name and each value is the function's URL.
+ */
+function createFrontendEnvironment(
+    frontendPrefix: string,
+    backendFunctions: Array<{ name: string }>,
+): Record<string, string> {
+    return backendFunctions.reduce<Record<string, string>>((environment, func) => {
+        const key = formatFunctionNameAsEnvVar(frontendPrefix, func.name);
+        const value = `\${{ backend.functions.${func.name}.url }}`;
+        environment[key] = value;
+        return environment;
+    }, {});
+}
+
+/**
+ * Formats a backend function name into an uppercase environment variable key.
+ */
+function formatFunctionNameAsEnvVar(prefix: string, functionName: string): string {
+    return `${prefix}_API_URL_${functionName.toUpperCase().replace(/-/g, "_")}`;
 }
 
 type Scripts = {

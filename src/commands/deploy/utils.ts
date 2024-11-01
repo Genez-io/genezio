@@ -264,7 +264,9 @@ export async function readOrAskProjectName(): Promise<string> {
             },
         ]));
     } else {
-        log.info("Using a random name for the project because no `genezio.yaml` file was found.");
+        debugLogger.debug(
+            "Using a random name for the project because no `genezio.yaml` file was found.",
+        );
     }
 
     return name;
