@@ -12,6 +12,9 @@ import {
     isViteComponent,
     isServerlessHttpBackend,
     getEntryfile,
+    isVueComponent,
+    isAngularComponent,
+    isSvelteComponent,
 } from "./frameworks.js";
 import { readOrAskConfig } from "../deploy/utils.js";
 import { getPackageManager, PackageManagerType } from "../../packageManagers/packageManager.js";
@@ -227,7 +230,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isViteComponent(contents)) {
-            addFrontendComponentToConfig(configPath, {
+            await addFrontendComponentToConfig(configPath, {
                 path: componentPath,
                 publish: path.join(componentPath, "dist"),
                 scripts: {
@@ -241,7 +244,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isReactComponent(contents)) {
-            addFrontendComponentToConfig(configPath, {
+            await addFrontendComponentToConfig(configPath, {
                 path: componentPath,
                 publish: path.join(componentPath, "build"),
                 scripts: {
@@ -251,6 +254,48 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             });
             frameworksDetected.frontend = frameworksDetected.frontend || [];
             frameworksDetected.frontend.push("react");
+            break component;
+        }
+
+        if (await isVueComponent(contents)) {
+            await addFrontendComponentToConfig(configPath, {
+                path: componentPath,
+                publish: path.join(componentPath, "dist"),
+                scripts: {
+                    deploy: [`${getPackageManager().command} install`],
+                    build: [`${getPackageManager().command} run build`],
+                },
+            });
+            frameworksDetected.frontend = frameworksDetected.frontend || [];
+            frameworksDetected.frontend.push("vue");
+            break component;
+        }
+
+        if (await isAngularComponent(contents)) {
+            await addFrontendComponentToConfig(configPath, {
+                path: componentPath,
+                publish: path.join(componentPath, "dist", "browser"),
+                scripts: {
+                    deploy: [`${getPackageManager().command} install`],
+                    build: [`${getPackageManager().command} run build`],
+                },
+            });
+            frameworksDetected.frontend = frameworksDetected.frontend || [];
+            frameworksDetected.frontend.push("angular");
+            break component;
+        }
+
+        if (await isSvelteComponent(contents)) {
+            await addFrontendComponentToConfig(configPath, {
+                path: componentPath,
+                publish: path.join(componentPath, "dist"),
+                scripts: {
+                    deploy: [`${getPackageManager().command} install`],
+                    build: [`${getPackageManager().command} run build`],
+                },
+            });
+            frameworksDetected.frontend = frameworksDetected.frontend || [];
+            frameworksDetected.frontend.push("svelte");
             break component;
         }
     }

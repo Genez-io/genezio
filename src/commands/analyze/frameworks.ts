@@ -120,6 +120,33 @@ export async function isViteComponent(contents: Record<string, string>): Promise
         : false;
 }
 
+// Checks if the project is a Vue component
+export async function isVueComponent(contents: Record<string, string>): Promise<boolean> {
+    const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
+    return packageJsonContent
+        ? "vue" in (packageJsonContent.dependencies || {}) ||
+              "vue" in (packageJsonContent.devDependencies || {})
+        : false;
+}
+
+// Checks if the project is an Angular component
+export async function isAngularComponent(contents: Record<string, string>): Promise<boolean> {
+    const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
+    return packageJsonContent
+        ? "@angular/core" in (packageJsonContent.dependencies || {}) ||
+              "@angular/core" in (packageJsonContent.devDependencies || {})
+        : false;
+}
+
+// Checks if the project is a Svelte component
+export async function isSvelteComponent(contents: Record<string, string>): Promise<boolean> {
+    const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
+    return packageJsonContent
+        ? "svelte" in (packageJsonContent.dependencies || {}) ||
+              "svelte" in (packageJsonContent.devDependencies || {})
+        : false;
+}
+
 // Checks if the project is a Python component (presence of 'requirements.txt')
 // `contents` is a map of important file paths and their contents
 export function isPythonComponent(contents: Record<string, string>): boolean {
