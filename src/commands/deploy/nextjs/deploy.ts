@@ -109,6 +109,7 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
             process.cwd(),
             options.stage || "prod",
             genezioConfig,
+            SSRFrameworkComponentType.next,
         ),
     ]);
 

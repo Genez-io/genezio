@@ -25,6 +25,10 @@ export enum SSRFrameworkComponentType {
     nuxt = "nuxt",
 }
 
+export enum ContainerComponentType {
+    container = "container",
+}
+
 export const supportedNodeRuntimes = ["nodejs20.x"] as const;
 export const supportedPythonRuntimes = ["python3.9.x"] as const;
 export const supportedArchitectures = ["arm64", "x86_64"] as const;

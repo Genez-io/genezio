@@ -13,6 +13,7 @@ import {
     addSSRComponentToConfig,
     attemptToInstallDependencies,
     readOrAskConfig,
+    uploadEnvVarsFromFile,
     uploadUserCode,
 } from "../utils.js";
 import { getPackageManager } from "../../../packageManagers/packageManager.js";
@@ -44,6 +45,11 @@ export async function nuxtNitroDeploy(
     const cwd = process.cwd();
     const installDependenciesCommand = await attemptToInstallDependencies([], cwd);
 
+    const NitroOrNuxtFlag =
+        deployType === DeployType.Nitro
+            ? SSRFrameworkComponentType.nitro
+            : SSRFrameworkComponentType.nuxt;
+
     switch (deployType) {
         case DeployType.Nuxt:
             await $({
@@ -53,21 +59,6 @@ export async function nuxtNitroDeploy(
                 throw new UserError(`Failed to build the Nuxt project. Check the logs above.
 Note: If your Nuxt project was not migrated to Nuxt 3, please visit https://v2.nuxt.com/lts for guidance on migrating your project. Genezio supports only Nuxt 3 projects.`);
             });
-
-            // Add nuxt component
-            await addSSRComponentToConfig(
-                options.config,
-                genezioConfig,
-                {
-                    path: cwd,
-                    packageManager: getPackageManager().command as PackageManagerType,
-                    scripts: {
-                        deploy: installDependenciesCommand.command,
-                    },
-                },
-                SSRFrameworkComponentType.nuxt,
-            );
-
             break;
         case DeployType.Nitro:
             await $({
@@ -76,25 +67,24 @@ Note: If your Nuxt project was not migrated to Nuxt 3, please visit https://v2.n
             })`npx nitro build --preset=aws_lambda`.catch(() => {
                 throw new UserError("Failed to build the Nuxt project. Check the logs above.");
             });
-
-            // Add nitro component
-            await addSSRComponentToConfig(
-                options.config,
-                genezioConfig,
-                {
-                    path: cwd,
-                    packageManager: getPackageManager().command as PackageManagerType,
-                    scripts: {
-                        deploy: installDependenciesCommand.command,
-                    },
-                },
-                SSRFrameworkComponentType.nitro,
-            );
-
             break;
         default:
             throw new Error(`Incorrect deployment type ${deployType}`);
     }
+
+    // Add component in genezio config file
+    await addSSRComponentToConfig(
+        options.config,
+        genezioConfig,
+        {
+            path: cwd,
+            packageManager: getPackageManager().command as PackageManagerType,
+            scripts: {
+                deploy: installDependenciesCommand.command,
+            },
+        },
+        NitroOrNuxtFlag,
+    );
 
     const [cloudResult, domain] = await Promise.all([
         deployFunction(genezioConfig, options),
@@ -104,6 +94,15 @@ Note: If your Nuxt project was not migrated to Nuxt 3, please visit https://v2.n
     const [cdnUrl] = await Promise.all([
         deployCDN(cloudResult.functions, domain, genezioConfig, options.stage),
         uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage),
+        uploadEnvVarsFromFile(
+            options.env,
+            cloudResult.projectId,
+            cloudResult.projectEnvId,
+            process.cwd(),
+            options.stage || "prod",
+            genezioConfig,
+            NitroOrNuxtFlag,
+        ),
     ]);
 
     debugLogger.debug(`Deployed functions: ${JSON.stringify(cloudResult.functions)}`);
