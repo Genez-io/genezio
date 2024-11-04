@@ -145,6 +145,11 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
                     cwd: dockerWorkingDir,
                     http_port: port,
                 },
+                timeout: config.container!.timeout,
+                storageSize: config.container!.storageSize,
+                instanceSize: config.container!.instanceSize,
+                maxConcurrentRequestsPerInstance:
+                    config.container!.maxConcurrentRequestsPerInstance,
             },
         ],
         projectConfiguration,

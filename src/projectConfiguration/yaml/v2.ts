@@ -267,6 +267,10 @@ function parseGenezioConfig(config: unknown) {
     // Define container schema
     const containerSchema = zod.object({
         path: zod.string(),
+        timeout: zod.number().optional(),
+        storageSize: zod.number().optional(),
+        instanceSize: zod.nativeEnum(InstanceSize).optional(),
+        maxConcurrentRequestsPerInstance: zod.number().optional(),
         environment: environmentSchema.optional(),
     });
 
