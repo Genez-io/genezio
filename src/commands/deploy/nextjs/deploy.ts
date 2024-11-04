@@ -39,59 +39,65 @@ import { computeAssetsPaths } from "./assets.js";
 import * as Sentry from "@sentry/node";
 import { randomUUID } from "crypto";
 import { EdgeFunction, getEdgeFunctions } from "./edge.js";
-import {
-    addSSRComponentToConfig,
-    attemptToInstallDependencies,
-    uploadEnvVarsFromFile,
-    uploadUserCode,
-} from "../utils.js";
+import { attemptToInstallDependencies, uploadEnvVarsFromFile, uploadUserCode } from "../utils.js";
 import { readOrAskConfig } from "../utils.js";
 import { SSRFrameworkComponentType } from "../../../models/projectOptions.js";
+import { addSSRComponentToConfig } from "../../analyze/utils.js";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
-    const cwd = process.cwd();
-
     const genezioConfig = await readOrAskConfig(options.config);
 
+    const cwd = process.cwd();
+    const componentPath = genezioConfig.nextjs?.path
+        ? path.resolve(cwd, genezioConfig.nextjs.path)
+        : cwd;
+
     // Install dependencies
-    const installDependenciesCommand = await attemptToInstallDependencies([], cwd);
+    const installDependenciesCommand = await attemptToInstallDependencies([], componentPath);
 
     // Add nextjs component
     await addSSRComponentToConfig(
         options.config,
-        genezioConfig,
         {
-            path: cwd,
+            path: componentPath,
             packageManager: getPackageManager().command as PackageManagerType,
             scripts: {
-                deploy: installDependenciesCommand.command,
+                deploy: [`${installDependenciesCommand.command}`],
             },
         },
         SSRFrameworkComponentType.next,
     );
 
-    const edgeFunctions = await getEdgeFunctions();
-    writeNextConfig();
-    await writeOpenNextConfig(genezioConfig.region, edgeFunctions, installDependenciesCommand.args);
+    const edgeFunctions = await getEdgeFunctions(componentPath);
+    writeNextConfig(componentPath);
+    await writeOpenNextConfig(
+        genezioConfig.region,
+        edgeFunctions,
+        installDependenciesCommand.args,
+        componentPath,
+    );
     // Build the Next.js project
-    await $({ stdio: "inherit" })`npx --yes @genezio/open-next@latest build`.catch(() => {
+    await $({
+        stdio: "inherit",
+        cwd: componentPath,
+    })`npx --yes @genezio/open-next@latest build`.catch(() => {
         throw new UserError("Failed to build the Next.js project. Check the logs above.");
     });
 
-    await checkProjectLimitations();
+    await checkProjectLimitations(componentPath);
 
     const cacheToken = randomUUID();
 
     const [deploymentResult, domainName] = await Promise.all([
         // Deploy NextJs serverless functions
-        deployFunctions(genezioConfig, options.stage),
+        deployFunctions(genezioConfig, componentPath, options.stage),
         // Deploy NextJs static assets to S3
-        deployStaticAssets(genezioConfig, options.stage, cacheToken),
+        deployStaticAssets(genezioConfig, options.stage, cacheToken, componentPath),
     ]);
 
     const [, , cdnUrl] = await Promise.all([
         // Upload the project code to S3 for in-browser editing
-        uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage),
+        uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage, componentPath),
         // Set environment variables for the Next.js project
         setupEnvironmentVariables(deploymentResult, domainName, genezioConfig.region, cacheToken),
         // Deploy CDN that serves the Next.js app
@@ -101,14 +107,16 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
             genezioConfig,
             options.stage,
             edgeFunctions,
+            componentPath,
         ),
         uploadEnvVarsFromFile(
             options.env,
             deploymentResult.projectId,
             deploymentResult.projectEnvId,
-            process.cwd(),
+            componentPath,
             options.stage || "prod",
             genezioConfig,
+            SSRFrameworkComponentType.next,
         ),
     ]);
 
@@ -117,8 +125,8 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     );
 }
 
-async function checkProjectLimitations() {
-    const assetsPath = path.join(process.cwd(), ".open-next", "assets");
+async function checkProjectLimitations(cwd: string) {
+    const assetsPath = path.join(cwd, ".open-next", "assets");
     const paths = await computeAssetsPaths(assetsPath, {} as CreateFrontendV2Origin);
 
     if (paths.length > 195) {
@@ -173,6 +181,7 @@ async function deployCDN(
     config: YamlProjectConfiguration,
     stage: string,
     edgeFunctions: EdgeFunction[] = [],
+    cwd: string,
 ) {
     const PATH_NUMBER_LIMIT = 200;
 
@@ -233,7 +242,7 @@ async function deployCDN(
         { origin: imageOptimizationOrigin, pattern: "_next/image*" },
     ];
 
-    const assetsFolder = path.join(process.cwd(), ".open-next", "assets");
+    const assetsFolder = path.join(cwd, ".open-next", "assets");
     paths.push(...(await computeAssetsPaths(assetsFolder, s3Origin)));
 
     if (paths.length >= PATH_NUMBER_LIMIT) {
@@ -263,6 +272,7 @@ async function deployStaticAssets(
     config: YamlProjectConfiguration,
     stage: string,
     cacheToken: string,
+    cwd: string,
 ) {
     const getFrontendPresignedURLPromise = getFrontendPresignedURL(
         /* subdomain= */ undefined,
@@ -277,12 +287,12 @@ async function deployStaticAssets(
     await fs.promises.mkdir(path.join(temporaryFolder, "next-static"));
     await Promise.all([
         fs.promises.cp(
-            path.join(process.cwd(), ".open-next", "assets"),
+            path.join(cwd, ".open-next", "assets"),
             path.join(temporaryFolder, "next-static", "_assets"),
             { recursive: true },
         ),
         fs.promises.cp(
-            path.join(process.cwd(), ".open-next", "cache"),
+            path.join(cwd, ".open-next", "cache"),
             path.join(temporaryFolder, "next-static", cacheToken, "_cache"),
             { recursive: true },
         ),
@@ -303,15 +313,17 @@ async function deployStaticAssets(
     return domain;
 }
 
-async function deployFunctions(config: YamlProjectConfiguration, stage?: string) {
+async function deployFunctions(config: YamlProjectConfiguration, cwd: string, stage?: string) {
     const cloudProvider = await getCloudProvider(config.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
 
-    const serverSubfolders = await getAllFilesFromPath(".open-next/server-functions", false);
+    const cwdRelative = path.relative(process.cwd(), cwd) || ".";
+    const basePath = path.join(cwdRelative, ".open-next", "server-functions");
+    const serverSubfolders = await getAllFilesFromPath(basePath, false);
 
     const functions = serverSubfolders.map((folder) => {
         return {
-            path: `.open-next/server-functions/${folder.name}`,
+            path: path.join(cwdRelative, ".open-next", "server-functions", folder.name),
             name: folder.name,
             entry: "index.mjs",
             handler: "handler",
@@ -320,7 +332,7 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
     });
 
     functions.push({
-        path: ".open-next/image-optimization-function",
+        path: path.join(cwdRelative, ".open-next", "image-optimization-function"),
         name: "image-optimization",
         entry: "index.mjs",
         handler: "handler",
@@ -369,8 +381,7 @@ async function deployFunctions(config: YamlProjectConfiguration, stage?: string)
     return result;
 }
 
-function writeNextConfig() {
-    const cwd = process.cwd();
+function writeNextConfig(cwd: string) {
     const configExists = ["js", "cjs", "mjs", "ts"].find((ext) =>
         fs.existsSync(path.join(cwd, `next.config.${ext}`)),
     );
@@ -383,6 +394,7 @@ async function writeOpenNextConfig(
     region: string,
     edgeFunctionPaths: EdgeFunction[],
     installArgs: string[] = [],
+    cwd: string,
 ) {
     let functions = "";
 
@@ -443,13 +455,9 @@ async function writeOpenNextConfig(
 
     // Write the open-next configuration
     // TODO: Check if the file already exists and merge the configurations, instead of overwriting it.
-    const openNextConfigPath = path.join(process.cwd(), "open-next.config.ts");
+    const openNextConfigPath = path.join(cwd, "open-next.config.ts");
     await fs.promises.writeFile(openNextConfigPath, OPEN_NEXT_CONFIG);
 
     const tag = ENVIRONMENT === "prod" ? "latest" : "dev";
-    await getPackageManager().install(
-        [`@genezio/nextjs-isr-${region}@${tag}`],
-        /* cwd */ undefined,
-        installArgs,
-    );
+    await getPackageManager().install([`@genezio/nextjs-isr-${region}@${tag}`], cwd, installArgs);
 }

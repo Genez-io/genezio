@@ -14,9 +14,9 @@ export type SSRFrameworkComponent = {
     path: string;
     packageManager: PackageManagerType;
     scripts?: {
-        deploy: string;
-        build?: string;
-        start?: string;
+        deploy: string | string[];
+        build?: string | string[];
+        start?: string | string[];
     };
     environment?: {
         [key: string]: string;
@@ -72,6 +72,15 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
 
         if (config.container) {
             return DeployType.Docker;
+        }
+        if (config.nextjs) {
+            return DeployType.NextJS;
+        }
+        if (config.nuxt) {
+            return DeployType.Nuxt;
+        }
+        if (config.nitro) {
+            return DeployType.Nitro;
         }
     }
 

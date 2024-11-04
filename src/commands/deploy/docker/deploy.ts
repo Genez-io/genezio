@@ -1,9 +1,7 @@
 import { $ } from "execa";
-import fs from "fs";
-import * as tar from "tar";
 import { UserError } from "../../../errors.js";
 import { debugLogger, log } from "../../../utils/logging.js";
-import { readOrAskConfig } from "../utils.js";
+import { readOrAskConfig, uploadEnvVarsFromFile } from "../utils.js";
 import { GenezioDeployOptions } from "../../../models/commandOptions.js";
 import {
     FunctionConfiguration,
@@ -20,6 +18,7 @@ import path from "path";
 import { reportSuccessFunctions } from "../../../utils/reporter.js";
 import { addContainerComponentToConfig } from "./utils.js";
 import { statSync } from "fs";
+import { ContainerComponentType } from "../../../models/projectOptions.js";
 
 export async function dockerDeploy(options: GenezioDeployOptions) {
     const config = await readOrAskConfig(options.config);
@@ -90,8 +89,6 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
         throw new UserError("Failed to export the container.");
     });
 
-    await overrideFileInTar(archivePath, "etc/resolv.conf", "nameserver 1.1.1.1\n"); 
-
     const { stdout: stdoutInspect } = await $`docker inspect ${containerId}`.catch((err) => {
         debugLogger.error(err);
         throw new UserError("Failed to inspect the container.");
@@ -151,7 +148,8 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
                 timeout: config.container!.timeout,
                 storageSize: config.container!.storageSize,
                 instanceSize: config.container!.instanceSize,
-                maxConcurrentRequestsPerInstance:  config.container!.maxConcurrentRequestsPerInstance,
+                maxConcurrentRequestsPerInstance:
+                    config.container!.maxConcurrentRequestsPerInstance,
             },
         ],
         projectConfiguration,
@@ -173,46 +171,17 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
 
     await setEnvironmentVariables(result.projectId, result.projectEnvId, envVars);
 
+    await uploadEnvVarsFromFile(
+        options.env,
+        result.projectId,
+        result.projectEnvId,
+        process.cwd(),
+        options.stage || "prod",
+        config,
+        ContainerComponentType.container,
+    );
+
     reportSuccessFunctions(result.functions);
-}
-
-async function overrideFileInTar(
-    tarPath: string,
-    filePathToOverride: string,
-    newContent: string
-): Promise<void> {
-    const tempDir = path.join(process.cwd(), 'temp');
-    // Ensure the temp directory exists
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
-
-    try {
-        // Extract the tar archive to the temporary directory
-        await tar.extract({
-            file: tarPath,
-            cwd: tempDir,
-        });
-
-        // Path to the file in the extracted temp directory
-        const tempFilePath = path.join(tempDir, filePathToOverride);
-
-        // Replace the file with the new content
-        fs.writeFileSync(tempFilePath, newContent, 'utf-8');
-
-        // Re-compress everything back into the original tar
-        await tar.create(
-            {
-                gzip: true,
-                file: tarPath,
-                cwd: tempDir,
-            },
-            fs.readdirSync(tempDir) // Add all files and directories inside temp
-        );
-    } catch (error) {
-        console.error('Error processing tar archive:', error);
-    } finally {
-        // Clean up by removing the temp directory
-        // fs.rmSync(tempDir, { recursive: true, force: true });
-    }
 }
 
 function getPort(exposedPort: { [id: string]: string }): string {

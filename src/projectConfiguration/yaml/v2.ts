@@ -4,7 +4,13 @@ import nativeFs from "fs";
 import { IFs } from "memfs";
 import { neonDatabaseRegions, legacyRegions, mongoDatabaseRegions } from "../../utils/configs.js";
 import { GENEZIO_CONFIGURATION_FILE_NOT_FOUND, UserError, zodFormatError } from "../../errors.js";
-import { AuthenticationDatabaseType, DatabaseType, FunctionType, InstanceSize, Language } from "./models.js";
+import {
+    AuthenticationDatabaseType,
+    DatabaseType,
+    FunctionType,
+    InstanceSize,
+    Language,
+} from "./models.js";
 import {
     DEFAULT_ARCHITECTURE,
     DEFAULT_NODE_RUNTIME,
@@ -265,6 +271,7 @@ function parseGenezioConfig(config: unknown) {
         storageSize: zod.number().optional(),
         instanceSize: zod.nativeEnum(InstanceSize).optional(),
         maxConcurrentRequestsPerInstance: zod.number().optional(),
+        environment: environmentSchema.optional(),
     });
 
     const v2Schema = zod.object({
