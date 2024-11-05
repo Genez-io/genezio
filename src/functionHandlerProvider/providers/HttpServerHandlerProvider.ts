@@ -1,6 +1,7 @@
 import { writeToFile } from "../../utils/file.js";
 import { FunctionConfiguration } from "../../models/projectConfiguration.js";
 import { FunctionHandlerProvider } from "../functionHandlerProvider.js";
+import path from "path";
 
 export class HttpServerHandlerProvider implements FunctionHandlerProvider {
     async write(
@@ -128,10 +129,13 @@ export class HttpServerPythonHandlerProvider implements FunctionHandlerProvider 
         handlerFileName: string,
         functionConfiguration: FunctionConfiguration,
     ): Promise<void> {
-        const nameModule =
-            `${functionConfiguration.path?.replace(/\//g, ".") ?? ""}.${functionConfiguration.entry?.split(".")[0] ?? ""}`
-                .replace(/^\.+/, "")
-                .replace(/\.+/g, ".");
+        const nameModule = path
+            .join(functionConfiguration.path || "", functionConfiguration.entry || "")
+            .replace(/\\/g, ".") // Convert backslashes to dots
+            .replace(/^\.+/, "") // Remove leading dots
+            .replace(/\.+/g, ".") // Remove duplicate dots
+            .replace(/\.py$/, ""); // Remove extension
+
         const handlerContent = `
 import asyncio
 import traceback
