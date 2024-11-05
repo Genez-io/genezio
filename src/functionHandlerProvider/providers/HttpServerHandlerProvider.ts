@@ -131,7 +131,8 @@ export class HttpServerPythonHandlerProvider implements FunctionHandlerProvider 
     ): Promise<void> {
         const nameModule = path
             .join(functionConfiguration.path || "", functionConfiguration.entry || "")
-            .replace(/\\/g, ".") // Convert backslashes to dots
+            .replace(/\\/g, ".") // Convert backslashes to dots (Windows)
+            .replace(/\//g, ".") // Convert slashes to dots (Unix)
             .replace(/^\.+/, "") // Remove leading dots
             .replace(/\.+/g, ".") // Remove duplicate dots
             .replace(/\.py$/, ""); // Remove extension
