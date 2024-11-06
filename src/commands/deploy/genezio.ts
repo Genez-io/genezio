@@ -85,7 +85,7 @@ import { getProjectEnvFromProjectByName } from "../../requests/getProjectInfoByN
 import { getFunctionHandlerProvider } from "../../utils/getFunctionHandlerProvider.js";
 import { getFunctionEntryFilename } from "../../utils/getFunctionEntryFilename.js";
 import { getPackageManager } from "../../packageManagers/packageManager.js";
-import { supportedPythonDepsInstallVersions } from "../../models/projectOptions.js";
+import { supportedPythonDepsInstallVersion } from "../../models/projectOptions.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -640,7 +640,7 @@ export async function functionToCloudInput(
                 let installCommand;
 
                 if (packageManager.command === "pip" || packageManager.command === "pip3") {
-                    installCommand = `${packageManager.command} install -r ${requirementsOutputPath} --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${supportedPythonDepsInstallVersions} -t ${pathForDependencies}`;
+                    installCommand = `${packageManager.command} install -r ${requirementsOutputPath} --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${supportedPythonDepsInstallVersion} -t ${pathForDependencies}`;
                 } else if (packageManager.command === "poetry") {
                     installCommand = `${packageManager.command} install --no-root --directory ${pathForDependencies}`;
                 } else {
