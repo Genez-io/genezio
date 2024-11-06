@@ -85,6 +85,7 @@ import { getProjectEnvFromProjectByName } from "../../requests/getProjectInfoByN
 import { getFunctionHandlerProvider } from "../../utils/getFunctionHandlerProvider.js";
 import { getFunctionEntryFilename } from "../../utils/getFunctionEntryFilename.js";
 import { getPackageManager } from "../../packageManagers/packageManager.js";
+import { supportedPythonDepsInstallVersions } from "../../models/projectOptions.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -635,7 +636,17 @@ export async function functionToCloudInput(
             const requirementsContent = fs.readFileSync(requirementsOutputPath, "utf8").trim();
             if (requirementsContent) {
                 const pathForDependencies = path.join(tmpFolderPath, "packages");
-                const installCommand = `${getPackageManager().command} install -r ${requirementsOutputPath} -t ${pathForDependencies}`;
+                const packageManager = getPackageManager();
+                let installCommand;
+
+                if (packageManager.command === "pip" || packageManager.command === "pip3") {
+                    installCommand = `${packageManager.command} install -r ${requirementsOutputPath} --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${supportedPythonDepsInstallVersions} -t ${pathForDependencies}`;
+                } else if (packageManager.command === "poetry") {
+                    installCommand = `${packageManager.command} install --no-root --directory ${pathForDependencies}`;
+                } else {
+                    throw new UserError(`Unsupported package manager: ${packageManager.command}`);
+                }
+
                 debugLogger.debug(`Installing dependencies using command: ${installCommand}`);
                 await runScript(installCommand, tmpFolderPath);
             } else {
