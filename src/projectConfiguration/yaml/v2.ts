@@ -133,19 +133,19 @@ function parseGenezioConfig(config: unknown) {
     const cronSchema = zod
         .object({
             name: zod.string(),
-            url: zod.string(),
-            cronString: zod.string(),
+            function: zod.string(),
+            schedule: zod.string(),
             endpoint: zod.string().optional(),
         })
-        .refine(({ cronString }) => {
-            if (cronString && !isValidCron(cronString)) {
+        .refine(({ schedule }) => {
+            if (schedule && !isValidCron(schedule)) {
                 return false;
             }
 
             return true;
         }, "The cronString is not valid. Check https://crontab.guru/ for more information.")
-        .refine(({ cronString }) => {
-            const cronParts = cronString?.split(" ");
+        .refine(({ schedule }) => {
+            const cronParts = schedule?.split(" ");
             if (cronParts && cronParts[2] != "*" && cronParts[4] != "*") {
                 return false;
             }

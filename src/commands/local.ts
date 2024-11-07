@@ -1049,9 +1049,9 @@ async function startCronJobs(
 
     if (yamlProjectConfiguration.services && yamlProjectConfiguration.services.crons) {
         for (const cronService of yamlProjectConfiguration.services.crons) {
-            const baseURL = await evaluateResource(
+            const functionName = await evaluateResource(
                 yamlProjectConfiguration,
-                cronService.url,
+                cronService.function,
                 "local",
                 undefined,
                 {
@@ -1060,7 +1060,8 @@ async function startCronJobs(
                 },
             );
             const endpoint = cronService.endpoint?.replace(/^\//, "");
-            const cronString = cronService.cronString;
+            const cronString = cronService.schedule;
+            const baseURL = `http://localhost:${port}/.functions/${functionName}`;
             let url: string;
             if (endpoint) {
                 url = `${baseURL}/${endpoint}`;
