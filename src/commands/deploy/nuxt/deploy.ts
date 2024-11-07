@@ -10,9 +10,9 @@ import { PackageManagerType } from "../../../packageManagers/packageManager.js";
 import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
 import { debugLogger, log } from "../../../utils/logging.js";
 import {
-    addSSRComponentToConfig,
     attemptToInstallDependencies,
     readOrAskConfig,
+    uploadEnvVarsFromFile,
     uploadUserCode,
 } from "../utils.js";
 import { getPackageManager } from "../../../packageManagers/packageManager.js";
@@ -33,6 +33,7 @@ import {
 import { DeployCodeFunctionResponse } from "../../../models/deployCodeResponse.js";
 import { DeployType } from "../command.js";
 import { SSRFrameworkComponentType } from "../../../models/projectOptions.js";
+import { addSSRComponentToConfig } from "../../analyze/utils.js";
 
 export async function nuxtNitroDeploy(
     options: GenezioDeployOptions,
@@ -40,70 +41,74 @@ export async function nuxtNitroDeploy(
 ) {
     const genezioConfig = await readOrAskConfig(options.config);
 
-    // Install dependencies
     const cwd = process.cwd();
-    const installDependenciesCommand = await attemptToInstallDependencies([], cwd);
+
+    const NitroOrNuxtFlag =
+        deployType === DeployType.Nitro
+            ? SSRFrameworkComponentType.nitro
+            : SSRFrameworkComponentType.nuxt;
+
+    const componentPath = genezioConfig[NitroOrNuxtFlag]?.path
+        ? path.resolve(cwd, genezioConfig[NitroOrNuxtFlag].path)
+        : cwd;
+
+    // Install dependencies
+    const installDependenciesCommand = await attemptToInstallDependencies([], componentPath);
 
     switch (deployType) {
         case DeployType.Nuxt:
             await $({
                 stdio: "inherit",
                 env: { NITRO_PRESET: "aws_lambda" },
+                cwd: componentPath,
             })`npx nuxi build --preset=aws_lambda`.catch(() => {
                 throw new UserError(`Failed to build the Nuxt project. Check the logs above.
 Note: If your Nuxt project was not migrated to Nuxt 3, please visit https://v2.nuxt.com/lts for guidance on migrating your project. Genezio supports only Nuxt 3 projects.`);
             });
-
-            // Add nuxt component
-            await addSSRComponentToConfig(
-                options.config,
-                genezioConfig,
-                {
-                    path: cwd,
-                    packageManager: getPackageManager().command as PackageManagerType,
-                    scripts: {
-                        deploy: installDependenciesCommand.command,
-                    },
-                },
-                SSRFrameworkComponentType.nuxt,
-            );
-
             break;
         case DeployType.Nitro:
             await $({
                 stdio: "inherit",
                 env: { NITRO_PRESET: "aws_lambda" },
+                cwd: componentPath,
             })`npx nitro build --preset=aws_lambda`.catch(() => {
                 throw new UserError("Failed to build the Nuxt project. Check the logs above.");
             });
-
-            // Add nitro component
-            await addSSRComponentToConfig(
-                options.config,
-                genezioConfig,
-                {
-                    path: cwd,
-                    packageManager: getPackageManager().command as PackageManagerType,
-                    scripts: {
-                        deploy: installDependenciesCommand.command,
-                    },
-                },
-                SSRFrameworkComponentType.nitro,
-            );
-
             break;
         default:
             throw new Error(`Incorrect deployment type ${deployType}`);
     }
 
+    // Add component in genezio config file
+    await addSSRComponentToConfig(
+        options.config,
+        {
+            path: componentPath,
+            packageManager: getPackageManager().command as PackageManagerType,
+            scripts: {
+                deploy: [`${installDependenciesCommand.command}`],
+            },
+        },
+        NitroOrNuxtFlag,
+    );
+
     const [cloudResult, domain] = await Promise.all([
-        deployFunction(genezioConfig, options),
-        deployStaticAssets(genezioConfig, options.stage),
+        deployFunction(genezioConfig, options, componentPath),
+        deployStaticAssets(genezioConfig, options.stage, componentPath),
     ]);
 
     const [cdnUrl] = await Promise.all([
-        deployCDN(cloudResult.functions, domain, genezioConfig, options.stage),
-        uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage),
+        deployCDN(cloudResult.functions, domain, genezioConfig, options.stage, componentPath),
+        uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage, componentPath),
+        uploadEnvVarsFromFile(
+            options.env,
+            cloudResult.projectId,
+            cloudResult.projectEnvId,
+            componentPath,
+            options.stage || "prod",
+            genezioConfig,
+            NitroOrNuxtFlag,
+        ),
     ]);
 
     debugLogger.debug(`Deployed functions: ${JSON.stringify(cloudResult.functions)}`);
@@ -113,15 +118,20 @@ Note: If your Nuxt project was not migrated to Nuxt 3, please visit https://v2.n
     );
 }
 
-async function deployFunction(config: YamlProjectConfiguration, options: GenezioDeployOptions) {
+async function deployFunction(
+    config: YamlProjectConfiguration,
+    options: GenezioDeployOptions,
+    cwd: string,
+) {
     const cloudProvider = await getCloudProvider(config.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
+    const cwdRelative = path.relative(process.cwd(), cwd) || ".";
 
     const functions = [
         {
-            path: ".output",
+            path: path.join(cwdRelative, ".output"),
             name: "nuxt-server",
-            entry: "server/index.mjs",
+            entry: path.join("server", "index.mjs"),
             handler: "handler",
             type: FunctionType.aws,
         },
@@ -130,7 +140,7 @@ async function deployFunction(config: YamlProjectConfiguration, options: Genezio
     const deployConfig: YamlProjectConfiguration = {
         ...config,
         backend: {
-            path: ".",
+            path: cwdRelative,
             language: {
                 name: Language.js,
                 runtime: "nodejs20.x",
@@ -168,6 +178,7 @@ async function deployCDN(
     domainName: string,
     config: YamlProjectConfiguration,
     stage: string,
+    cwd: string,
 ) {
     const serverOrigin: CreateFrontendV2Origin = {
         domain: {
@@ -189,7 +200,7 @@ async function deployCDN(
         cachePolicy: "caching-optimized",
     };
 
-    const paths: CreateFrontendV2Path[] = [...(await computeAssetsPaths(s3Origin))];
+    const paths: CreateFrontendV2Path[] = [...(await computeAssetsPaths(s3Origin, cwd))];
 
     const { domain: distributionUrl } = await createFrontendProjectV2(
         domainName,
@@ -210,7 +221,7 @@ async function deployCDN(
     return distributionUrl;
 }
 
-async function deployStaticAssets(config: YamlProjectConfiguration, stage: string) {
+async function deployStaticAssets(config: YamlProjectConfiguration, stage: string, cwd: string) {
     const getFrontendPresignedURLPromise = getFrontendPresignedURL(
         /* subdomain= */ undefined,
         /* projectName= */ config.name,
@@ -223,7 +234,7 @@ async function deployStaticAssets(config: YamlProjectConfiguration, stage: strin
 
     await fs.promises.mkdir(path.join(temporaryFolder, "nuxt-static"));
     await fs.promises.cp(
-        path.join(process.cwd(), ".output", "public"),
+        path.join(cwd, ".output", "public"),
         path.join(temporaryFolder, "nuxt-static"),
         { recursive: true },
     );
@@ -245,8 +256,9 @@ async function deployStaticAssets(config: YamlProjectConfiguration, stage: strin
 
 async function computeAssetsPaths(
     s3Origin: CreateFrontendV2Origin,
+    cwd: string,
 ): Promise<CreateFrontendV2Path[]> {
-    const folder = path.join(process.cwd(), ".output", "public");
+    const folder = path.join(cwd, ".output", "public");
     return new Promise((resolve, reject) => {
         glob(
             "*",

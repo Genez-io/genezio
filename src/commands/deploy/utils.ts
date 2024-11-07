@@ -16,10 +16,7 @@ import {
     AuthenticationEmailTemplateType,
     DatabaseType,
 } from "../../projectConfiguration/yaml/models.js";
-import {
-    RawYamlProjectConfiguration,
-    YamlProjectConfiguration,
-} from "../../projectConfiguration/yaml/v2.js";
+import { YamlProjectConfiguration } from "../../projectConfiguration/yaml/v2.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import {
     createDatabase,
@@ -73,8 +70,7 @@ import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedUR
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import { displayHint, replaceExpression } from "../../utils/strings.js";
 import { getPackageManager } from "../../packageManagers/packageManager.js";
-import { SSRFrameworkComponent } from "./command.js";
-import { SSRFrameworkComponentType } from "../../models/projectOptions.js";
+import { ContainerComponentType, SSRFrameworkComponentType } from "../../models/projectOptions.js";
 
 type DependenciesInstallResult = {
     command: string;
@@ -199,24 +195,6 @@ function getNoTargetPackage(errorMessage: string): string | null {
     return match ? match[1] : null;
 }
 
-export async function addSSRComponentToConfig(
-    configPath: string,
-    config: YamlProjectConfiguration | RawYamlProjectConfiguration,
-    component: SSRFrameworkComponent,
-    componentType: SSRFrameworkComponentType,
-) {
-    const configIOController = new YamlConfigurationIOController(configPath);
-    const relativePath = path.relative(process.cwd(), component.path) || ".";
-
-    config[componentType] = {
-        path: relativePath,
-        packageManager: component.packageManager,
-        scripts: component.scripts,
-    };
-
-    await configIOController.write(config);
-}
-
 export async function readOrAskConfig(configPath: string): Promise<YamlProjectConfiguration> {
     const configIOController = new YamlConfigurationIOController(configPath);
     if (!existsSync(configPath)) {
@@ -286,7 +264,9 @@ export async function readOrAskProjectName(): Promise<string> {
             },
         ]));
     } else {
-        log.info("Using a random name for the project because no `genezio.yaml` file was found.");
+        debugLogger.debug(
+            "Using a random name for the project because no `genezio.yaml` file was found.",
+        );
     }
 
     return name;
@@ -740,6 +720,7 @@ export async function uploadEnvVarsFromFile(
     cwd: string,
     stage: string,
     configuration: YamlProjectConfiguration,
+    componentType: SSRFrameworkComponentType | ContainerComponentType | "backend" = "backend",
 ) {
     if (envPath) {
         const envFile = path.join(process.cwd(), envPath);
@@ -786,7 +767,17 @@ export async function uploadEnvVarsFromFile(
     // Search for possible .env files in the project directory and use the first
     const envFile = envPath ? path.join(process.cwd(), envPath) : await findAnEnvFile(cwd);
 
-    const environment = configuration.backend?.environment;
+    // Select the enviroment object based on the component type (nuxt, nitro, nextjs, container, backend)
+    // "backend" is the default component type
+    const environment =
+        {
+            [ContainerComponentType.container]: configuration.container?.environment,
+            [SSRFrameworkComponentType.next]: configuration.nextjs?.environment,
+            [SSRFrameworkComponentType.nuxt]: configuration.nitro?.environment,
+            [SSRFrameworkComponentType.nitro]: configuration.nuxt?.environment,
+            backend: configuration.backend?.environment,
+        }[componentType] ?? configuration.backend?.environment;
+
     if (environment) {
         const unsetEnvVarKeys = await getUnsetEnvironmentVariables(
             Object.keys(environment),
@@ -878,24 +869,24 @@ export async function uploadEnvVarsFromFile(
 }
 
 // Upload the project code to S3 for in-browser editing
-export async function uploadUserCode(name: string, region: string, stage: string): Promise<void> {
+export async function uploadUserCode(
+    name: string,
+    region: string,
+    stage: string,
+    cwd: string,
+): Promise<void> {
     const tmpFolderProject = await createTemporaryFolder();
     debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
-    const promiseZip = zipDirectory(
-        process.cwd(),
-        path.join(tmpFolderProject, "projectCode.zip"),
-        false,
-        [
-            "**/node_modules/*",
-            "./node_modules/*",
-            "node_modules/*",
-            "**/node_modules",
-            "./node_modules",
-            "node_modules",
-            "node_modules/**",
-            "**/node_modules/**",
-        ],
-    );
+    const promiseZip = zipDirectory(cwd, path.join(tmpFolderProject, "projectCode.zip"), false, [
+        "**/node_modules/*",
+        "./node_modules/*",
+        "node_modules/*",
+        "**/node_modules",
+        "./node_modules",
+        "node_modules",
+        "node_modules/**",
+        "**/node_modules/**",
+    ]);
 
     await promiseZip;
     const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(region, name, stage);

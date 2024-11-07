@@ -18,6 +18,7 @@ import path from "path";
 import { reportSuccessFunctions } from "../../../utils/reporter.js";
 import { addContainerComponentToConfig } from "./utils.js";
 import { statSync } from "fs";
+import { ContainerComponentType } from "../../../models/projectOptions.js";
 
 export async function dockerDeploy(options: GenezioDeployOptions) {
     const config = await readOrAskConfig(options.config);
@@ -144,6 +145,11 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
                     cwd: dockerWorkingDir,
                     http_port: port,
                 },
+                timeout: config.container!.timeout,
+                storageSize: config.container!.storageSize,
+                instanceSize: config.container!.instanceSize,
+                maxConcurrentRequestsPerInstance:
+                    config.container!.maxConcurrentRequestsPerInstance,
             },
         ],
         projectConfiguration,
@@ -172,8 +178,10 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
         process.cwd(),
         options.stage || "prod",
         config,
-    ),
-        reportSuccessFunctions(result.functions);
+        ContainerComponentType.container,
+    );
+
+    reportSuccessFunctions(result.functions);
 }
 
 function getPort(exposedPort: { [id: string]: string }): string {
