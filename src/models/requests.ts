@@ -184,3 +184,51 @@ export type SetEmailTemplatesResponse = {
         variables: string[];
     }[];
 };
+
+export type FunctionDetails = {
+    id: string;
+    name: string;
+    projectName: string;
+    status: string;
+    cloudUrl: string;
+    cloudDeploymentId: string;
+    createdAt: number;
+    updatedAt: number;
+};
+
+export type GetFunctionsResponse = {
+    status: string;
+    functions: FunctionDetails[];
+};
+
+export type CreateFunctionRequest = {
+    projectName: string;
+    stageName: string;
+    function: {
+        name: string;
+        language: string;
+        entryFile: string;
+    };
+};
+
+export type CreateFunctionResponse = {
+    status: string;
+    functionId: string;
+};
+
+export type CronDetails = {
+    name: string;
+    url: string;
+    endpoint: string;
+    cronString: string;
+};
+
+export type SyncCronsRequest = {
+    projectName: string;
+    stageName: string;
+    crons: CronDetails[];
+};
+
+export type SyncCronsResponse = {
+    status: string;
+};

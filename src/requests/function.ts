@@ -1,19 +1,9 @@
+import {
+    CreateFunctionRequest,
+    CreateFunctionResponse,
+    GetFunctionsResponse,
+} from "../models/requests.js";
 import sendRequest from "../utils/requests.js";
-
-export type CreateFunctionRequest = {
-    projectName: string;
-    stageName: string;
-    function: {
-        name: string;
-        language: string;
-        entryFile: string;
-    };
-};
-
-export type CreateFunctionResponse = {
-    status: string;
-    functionId: string;
-};
 
 export async function createFunction(
     request: CreateFunctionRequest,
@@ -41,4 +31,14 @@ export async function createFunction(
     )) as CreateFunctionResponse;
 
     return createFunctionResponse;
+}
+
+export async function getFunctions(envId: string): Promise<GetFunctionsResponse> {
+    const getFunctionsResponse = (await sendRequest(
+        "GET",
+        `functions/all/${envId}`,
+        "",
+    )) as GetFunctionsResponse;
+
+    return getFunctionsResponse;
 }

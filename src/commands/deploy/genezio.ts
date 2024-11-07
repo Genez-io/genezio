@@ -74,6 +74,7 @@ import {
     enableAuthentication,
     uploadUserCode,
     setAuthenticationEmailTemplates,
+    evaluateResource,
 } from "./utils.js";
 import {
     disableEmailIntegration,
@@ -84,6 +85,9 @@ import { expandEnvironmentVariables, findAnEnvFile } from "../../utils/environme
 import { getProjectEnvFromProjectByName } from "../../requests/getProjectInfoByName.js";
 import { getFunctionHandlerProvider } from "../../utils/getFunctionHandlerProvider.js";
 import { getFunctionEntryFilename } from "../../utils/getFunctionEntryFilename.js";
+import { getFunctions } from "../../requests/function.js";
+import { CronDetails } from "../../models/requests.js";
+import { syncCrons } from "../../requests/crons.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -225,6 +229,47 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_END,
             commandOptions: JSON.stringify(options),
+        });
+    }
+
+    if (configuration.services?.crons) {
+        const res = await getFunctions(deployClassesResult?.projectEnvId || "").catch(() => {
+            throw new UserError("Something went wrong while fetching the cron functions.");
+        });
+        const crons: CronDetails[] = [];
+        for (const cron of configuration.services.crons) {
+            let cronFound = false;
+            const yamlFunctionName = await evaluateResource(
+                configuration,
+                cron.function,
+                options.stage || "prod",
+                undefined,
+                undefined,
+            );
+            for (const deployedFunction of res.functions) {
+                if (deployedFunction.name === yamlFunctionName) {
+                    crons.push({
+                        name: cron.name,
+                        url: deployedFunction.cloudUrl,
+                        endpoint: cron.endpoint || "",
+                        cronString: cron.schedule,
+                    });
+                    cronFound = true;
+                    break;
+                }
+            }
+            if (!cronFound) {
+                throw new UserError(
+                    `Function ${yamlFunctionName} not found in the deployed functions. Please make sure the function is deployed before adding it to the cron.`,
+                );
+            }
+        }
+        await syncCrons({
+            projectName: projectName,
+            stageName: options.stage || "prod",
+            crons: crons,
+        }).catch(() => {
+            throw new UserError("Something went wrong while syncing the cron jobs.");
         });
     }
 
