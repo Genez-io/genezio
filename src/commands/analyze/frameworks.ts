@@ -1,3 +1,7 @@
+import { promises as fs } from "fs";
+import path from "path";
+import { EXCLUDED_DIRECTORIES, EXTENSIONS } from "./command.js";
+
 export interface PackageJSON {
     name?: string;
     version?: string;
@@ -35,15 +39,84 @@ export async function isTypescript(contents: Record<string, string>): Promise<bo
     return false;
 }
 
-export async function getEntryfile(contents: Record<string, string>): Promise<string> {
-    if (!contents["package.json"]) {
-        return "index.mjs";
+export async function findEntryFile(
+    componentPath: string,
+    contents: Record<string, string>,
+    patterns: RegExp[],
+    defaultFile: string,
+): Promise<string> {
+    let entryFile = await getEntryFileFromPackageJson(componentPath, contents, patterns);
+
+    if (!entryFile) {
+        entryFile = await findFileByPatterns(componentPath, patterns, EXTENSIONS);
     }
 
-    // TODO Improve this - the entry file might not be defined in the package.json
-    // and it's not necessarily `index.mjs`, might be index.cjs, app.mjs, etc.
+    // If no entry file is found, use the default
+    return entryFile || defaultFile;
+}
+
+async function findFileByPatterns(
+    directory: string,
+    patterns: RegExp[],
+    extensions: string[],
+): Promise<string | undefined> {
+    const entries = await fs.readdir(directory, { withFileTypes: true });
+
+    for (const entry of entries) {
+        const fullPath = path.join(directory, entry.name);
+
+        if (entry.isDirectory()) {
+            // Skip excluded directories
+            if (EXCLUDED_DIRECTORIES.includes(entry.name)) continue;
+
+            // Recursively search within subdirectories
+            const result = await findFileByPatterns(fullPath, patterns, extensions);
+            if (result) return result;
+        } else if (entry.isFile() && extensions.some((ext) => entry.name.endsWith(ext))) {
+            // Check if the file content matches all given patterns
+            const content = await fs.readFile(fullPath, "utf-8");
+            const allPatternsMatch = patterns.every((pattern) => pattern.test(content));
+            if (allPatternsMatch) {
+                return fullPath;
+            }
+        }
+    }
+
+    return undefined;
+}
+
+async function getEntryFileFromPackageJson(
+    directory: string,
+    contents: Record<string, string>,
+    patterns: RegExp[],
+): Promise<string | undefined> {
+    if (!contents["package.json"]) {
+        return undefined;
+    }
+
     const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
-    return packageJsonContent.main || "index.mjs";
+    const mainPath = packageJsonContent.main;
+    if (!mainPath) {
+        return undefined;
+    }
+    const fullPath = path.join(directory, mainPath);
+
+    // Check if the mainPath exists
+    try {
+        await fs.access(fullPath);
+    } catch {
+        return undefined;
+    }
+
+    // Check if the main file contains patterns that indicate it is indeed an entry file
+
+    const entryFileContent = await fs.readFile(fullPath, "utf-8");
+    const allPatternsMatch = patterns.every((pattern) => pattern.test(entryFileContent));
+    if (!allPatternsMatch) {
+        return undefined;
+    }
+
+    return mainPath;
 }
 
 // Checks if the project is a Express component

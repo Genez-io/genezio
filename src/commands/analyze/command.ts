@@ -11,11 +11,11 @@ import {
     isReactComponent,
     isViteComponent,
     isServerlessHttpBackend,
-    getEntryfile,
     isVueComponent,
     isAngularComponent,
     isSvelteComponent,
     isContainerComponent,
+    findEntryFile,
 } from "./frameworks.js";
 import { readOrAskConfig } from "../deploy/utils.js";
 import { getPackageManager, PackageManagerType } from "../../packageManagers/packageManager.js";
@@ -32,6 +32,7 @@ import {
 import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
 import { report } from "./outputUtils.js";
 import { isCI } from "../../utils/process.js";
+import { EXPRESS_PATTERN, FASTIFY_PATTERN, SERVERLESS_HTTP_PATTERN } from "./constants.js";
 
 // backend javascript: aws-compatible functions, serverless-http functions, express, fastify
 // backend typescript: aws-compatible functions, serverless-http functions, express, fastify
@@ -64,6 +65,8 @@ export const DEFAULT_CI_FORMAT = SUPPORTED_FORMATS.JSON;
 
 export const KEY_FILES = ["package.json", "Dockerfile"];
 export const EXCLUDED_DIRECTORIES = ["node_modules", ".git", "dist", "build"];
+export const NODE_DEFAULT_ENTRY_FILE = "index.mjs";
+export const EXTENSIONS = [".js", ".ts", ".mjs", ".jsx", ".tsx"];
 
 // The analyze command has 2 side effects:
 // 1. It creates a new yaml with the detected components
@@ -104,7 +107,14 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         };
 
         if (await isServerlessHttpBackend(contents)) {
-            const entryfile = await getEntryfile(contents);
+            const entryFile = await findEntryFile(
+                componentPath,
+                contents,
+                SERVERLESS_HTTP_PATTERN,
+                NODE_DEFAULT_ENTRY_FILE,
+            );
+            debugLogger.debug("Serverless HTTP entry file found:", entryFile);
+
             // TODO: Add support for detecting and building typescript backends
             // const isTypescriptFlag = await isTypescript(contents);
 
@@ -124,7 +134,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                         path: ".",
                         // TODO: This is hardcoded because there are great chances that this indeed called `handler`
                         handler: "handler",
-                        entry: entryfile,
+                        entry: entryFile,
                         type: FunctionType.aws,
                     },
                 ],
@@ -135,7 +145,14 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isExpressBackend(contents)) {
-            const entryfile = await getEntryfile(contents);
+            const entryFile = await findEntryFile(
+                componentPath,
+                contents,
+                EXPRESS_PATTERN,
+                NODE_DEFAULT_ENTRY_FILE,
+            );
+            debugLogger.debug("Express entry file found:", entryFile);
+
             // TODO: Add support for detecting and building typescript backends
             // const isTypescriptFlag = await isTypescript(contents);
 
@@ -153,7 +170,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     {
                         name: "express",
                         path: ".",
-                        entry: entryfile,
+                        entry: entryFile,
                         type: FunctionType.httpServer,
                     },
                 ],
@@ -164,7 +181,14 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isFastifyBackend(contents)) {
-            const entryfile = await getEntryfile(contents);
+            const entryFile = await findEntryFile(
+                componentPath,
+                contents,
+                FASTIFY_PATTERN,
+                NODE_DEFAULT_ENTRY_FILE,
+            );
+            debugLogger.debug("Fastify entry file found:", entryFile);
+
             // TODO: Add support for detecting and building typescript backends
             // const isTypescriptFlag = await isTypescript(contents);
 
@@ -182,7 +206,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     {
                         name: "fastify",
                         path: ".",
-                        entry: entryfile,
+                        entry: entryFile,
                         type: FunctionType.httpServer,
                     },
                 ],
