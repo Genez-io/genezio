@@ -155,9 +155,11 @@ export async function createCommand(options: GenezioCreateOptions) {
                 yamlVersion: 2,
             });
 
-            await doAdaptiveLogAction("Finishing things up", () =>
-                transformVercelToGenezio(projectPath),
-            ).catch(() => {}); // Fail silently
+            // FIXME: Vercel changed their starting page template, so this doesn't work anymore
+            // Disable this until we update the transformation to fit the new template.
+            // await doAdaptiveLogAction("Finishing things up", () =>
+            //     transformVercelToGenezio(projectPath),
+            // ).catch(() => {}); // Fail silently
 
             log.info(SUCCESSFULL_CREATE_NEXTJS(projectPath));
             break;

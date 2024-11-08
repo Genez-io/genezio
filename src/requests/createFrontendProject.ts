@@ -12,6 +12,7 @@ export async function createFrontendProject(
     projectName: string,
     region: string,
     stage: string,
+    routingRules: { to: string; from: string; status?: number }[],
 ): Promise<string> {
     // Check if user is authenticated
     const authToken = await getAuthToken();
@@ -24,6 +25,7 @@ export async function createFrontendProject(
         projectName,
         region,
         stage,
+        routingRules,
     });
 
     const response: AxiosResponse<StatusOk<{ domain: string }>> = await axios({

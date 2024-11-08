@@ -1,0 +1,27 @@
+name: Trigger Build Machine Docker Build
+
+on:
+    push:
+        branches:
+            - dev
+        paths-ignore:
+            - "**/*.md"
+
+jobs:
+    ping:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Send Repository Dispatch
+              if: github.ref == 'refs/heads/dev'
+              uses: peter-evans/repository-dispatch@v3
+              with:
+                  token: ${{ secrets.ORG_ACCESS_TOKEN }}
+                  repository: genez-io/genezio-build-machine
+                  event-type: redeploy-build-machine-docker-images-dev
+            - name: Send Repository Dispatch - Runtime workflows
+              if: github.ref == 'refs/heads/dev'
+              uses: peter-evans/repository-dispatch@v3
+              with:
+                  token: ${{ secrets.ORG_ACCESS_TOKEN }}
+                  repository: genez-io/genezio-build-machine
+                  event-type: redeploy-build-machine-workflows-runtime-dev

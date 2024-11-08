@@ -54,7 +54,7 @@ import { askCloneOptions, cloneCommand } from "./commands/clone.js";
 import { pullCommand } from "./commands/pull.js";
 import { CloudProviderIdentifier } from "./models/cloudProviderIdentifier.js";
 import { isCI } from "./utils/process.js";
-import { analyzeCommand } from "./commands/analyze/command.js";
+import { analyzeCommand, DEFAULT_FORMAT } from "./commands/analyze/command.js";
 
 const program = new Command();
 
@@ -147,6 +147,10 @@ program
         "--config <config>",
         "Use a specific `genezio.yaml` to update the detected setup",
         "./genezio.yaml",
+    )
+    .option(
+        "--format <format>",
+        `Specify the output format at stdout - [json, list, markdown, text]. Default is ${DEFAULT_FORMAT}.`,
     )
     .summary("Analyze the current directory to determine the infrastructure setup.")
     .description(

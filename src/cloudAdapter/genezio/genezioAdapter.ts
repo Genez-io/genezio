@@ -29,16 +29,16 @@ import { UserError } from "../../errors.js";
 import { stdout } from "process";
 import { createHash } from "../../utils/strings.js";
 
-const BUNDLE_SIZE_LIMIT = 256901120;
+const BUNDLE_SIZE_LIMIT = 1.024e9;
 async function handleBigElementSizeError(
     element: GenezioCloudInput,
     projectConfiguration: ProjectConfiguration,
-    BUNDLE_SIZE_LIMIT: number = 256901120,
+    BUNDLE_SIZE_LIMIT: number = 1.024e9,
 ): Promise<void> {
     const size = await getFileSize(element.archivePath);
     if (size > BUNDLE_SIZE_LIMIT) {
         throw new UserError(
-            `Your ${element.type} ${element.name} is too big: ${size} bytes. The maximum size is 250MB. Try to reduce the size of your ${element.type}.`,
+            `Your ${element.type} ${element.name} is too big: ${size} bytes. The maximum size is ${(BUNDLE_SIZE_LIMIT / 1048576).toFixed(2)}MB. Try to reduce the size of your ${element.type}.`,
         );
     }
 
@@ -47,7 +47,7 @@ async function handleBigElementSizeError(
         element.type === GenezioCloudInputType.FUNCTION
     ) {
         throw new UserError(
-            `Your function ${element.name} is too big: ${element.unzippedBundleSize} bytes. The maximum size is 250MB. Try to reduce the size of your function.`,
+            `Your function ${element.name} is too big: ${element.unzippedBundleSize} bytes. The maximum size is ${(BUNDLE_SIZE_LIMIT / 1048576).toFixed(2)}MB. Try to reduce the size of your function.`,
         );
     }
 
@@ -65,7 +65,7 @@ async function handleBigElementSizeError(
     // Throw this error if bundle size is too big and the user is not using js or ts files.
     if (!dependenciesInfo || !allNonJsFilesPaths) {
         throw new UserError(
-            `Your ${element.type} ${element.name} is too big: ${element.unzippedBundleSize} bytes. The maximum size is 250MB. Try to reduce the size of your class.`,
+            `Your ${element.type} ${element.name} is too big: ${element.unzippedBundleSize} bytes. The maximum size is ${(BUNDLE_SIZE_LIMIT / 1048576).toFixed(2)}MB. Try to reduce the size of your class.`,
         );
     }
 
@@ -244,6 +244,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
             projectName,
             projectRegion,
             stage,
+            [...(frontend.redirects || []), ...(frontend.rewrites || [])],
         );
 
         // clean up temporary folder

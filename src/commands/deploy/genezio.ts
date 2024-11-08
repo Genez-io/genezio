@@ -88,6 +88,8 @@ import { getFunctionEntryFilename } from "../../utils/getFunctionEntryFilename.j
 import { getFunctions } from "../../requests/function.js";
 import { CronDetails } from "../../models/requests.js";
 import { syncCrons } from "../../requests/crons.js";
+import { getPackageManager } from "../../packageManagers/packageManager.js";
+import { supportedPythonDepsInstallVersion } from "../../models/projectOptions.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -369,7 +371,7 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         );
     }
 
-    await uploadUserCode(configuration.name, configuration.region, options.stage);
+    await uploadUserCode(configuration.name, configuration.region, options.stage, process.cwd());
 
     const settings = configuration.services?.authentication?.settings;
     if (settings) {
@@ -545,18 +547,16 @@ export async function deployClasses(
                 allNonJsFilesPaths: output.extra.allNonJsFilesPaths,
                 unzippedBundleSize: unzippedBundleSize,
                 entryFile: output.extra.entryFile ?? "",
+                timeout: element.timeout,
+                storageSize: element.storageSize,
+                instanceSize: element.instanceSize,
+                maxConcurrentRequestsPerInstance: element.maxConcurrentRequestsPerInstance,
             };
         },
     );
 
     const functionsResultArray: Promise<GenezioCloudInput>[] = projectConfiguration.functions.map(
-        (f) =>
-            functionToCloudInput(
-                f,
-                backend.path,
-                /* outputDir */ undefined,
-                configuration.backend?.language.packageManager,
-            ),
+        (f) => functionToCloudInput(f, backend.path, /* outputDir */ undefined),
     );
 
     const cloudAdapterDeployInput = await Promise.all([
@@ -637,7 +637,6 @@ export async function functionToCloudInput(
     functionElement: FunctionConfiguration,
     backendPath: string,
     outputDir?: string,
-    packageManager?: string,
 ): Promise<GenezioCloudInput> {
     const supportedFunctionLanguages = ["js", "ts", "python"];
 
@@ -661,9 +660,12 @@ export async function functionToCloudInput(
         `genezioDeploy.zip`,
     );
 
-    // copy everything to the temporary folder
-    await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath);
-
+    if (functionElement.language === "python") {
+        await fsExtra.copy(path.join(backendPath), tmpFolderPath);
+    } else {
+        // copy everything to the temporary folder
+        await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath);
+    }
     // Handle JS/TS functions with pnpm
     if (functionElement.language === "js" || functionElement.language === "ts") {
         if (fsExtra.pathExistsSync(path.join(tmpFolderPath, "node_modules", ".pnpm"))) {
@@ -680,16 +682,25 @@ export async function functionToCloudInput(
 
     // Handle Python projects dependencies
     if (functionElement.language === "python") {
-        const requirementsPath = path.join(backendPath, functionElement.path, "requirements.txt");
+        // Requirements file must be in the root of the backend folder
+        const requirementsPath = path.join(backendPath, "requirements.txt");
         if (fs.existsSync(requirementsPath)) {
             const requirementsOutputPath = path.join(tmpFolderPath, "requirements.txt");
-            await fsExtra.copy(requirementsPath, requirementsOutputPath);
             const requirementsContent = fs.readFileSync(requirementsOutputPath, "utf8").trim();
             if (requirementsContent) {
                 const pathForDependencies = path.join(tmpFolderPath, "packages");
-                const installCommand = packageManager
-                    ? `${packageManager.toLowerCase()} install -r ${requirementsOutputPath} -t ${pathForDependencies}`
-                    : `pip install ${requirementsOutputPath} -t ${pathForDependencies}`;
+                const packageManager = getPackageManager();
+                let installCommand;
+
+                if (packageManager.command === "pip" || packageManager.command === "pip3") {
+                    installCommand = `${packageManager.command} install -r ${requirementsOutputPath} --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${supportedPythonDepsInstallVersion} -t ${pathForDependencies}`;
+                } else if (packageManager.command === "poetry") {
+                    installCommand = `${packageManager.command} install --no-root --directory ${pathForDependencies}`;
+                } else {
+                    throw new UserError(`Unsupported package manager: ${packageManager.command}`);
+                }
+
+                debugLogger.debug(`Installing dependencies using command: ${installCommand}`);
                 await runScript(installCommand, tmpFolderPath);
             } else {
                 debugLogger.debug("No requirements.txt file found.");
@@ -729,6 +740,10 @@ export async function functionToCloudInput(
         archivePath: archivePath,
         unzippedBundleSize: unzippedBundleSize,
         entryFile: entryFileName,
+        timeout: functionElement.timeout,
+        instanceSize: functionElement.instanceSize,
+        storageSize: functionElement.storageSize,
+        maxConcurrentRequestsPerInstance: functionElement.maxConcurrentRequestsPerInstance,
     };
 }
 
@@ -776,7 +791,7 @@ export async function deployFrontend(
     }
 
     // check if subdomain contains only numbers, letters and hyphens
-    if (frontend.subdomain && !frontend.subdomain.match(/^[a-zA-z][a-zA-Z0-9-]{0,62}$/)) {
+    if (frontend.subdomain && !frontend.subdomain.match(/^[a-zA-z0-9][a-zA-Z0-9-]{0,62}$/)) {
         throw new UserError(`The subdomain can only contain letters, numbers and hyphens.`);
     }
 
