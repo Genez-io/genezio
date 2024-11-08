@@ -32,7 +32,6 @@ import {
 import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
 import { report } from "./outputUtils.js";
 import { isCI } from "../../utils/process.js";
-import { UserError } from "../../errors.js";
 
 // backend javascript: aws-compatible functions, serverless-http functions, express, fastify
 // backend typescript: aws-compatible functions, serverless-http functions, express, fastify
@@ -73,13 +72,20 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     const frameworksDetected: FrameworkReport = {};
     const configPath = options.config;
     const rootDirectory = process.cwd();
+    const format = isCI() ? options.format || DEFAULT_CI_FORMAT : options.format || DEFAULT_FORMAT;
 
     // Search the key files in the root directory and return a map of filenames and relative paths
     const componentFiles = await findKeyFiles(rootDirectory);
+
+    // Early return and let the user write the configs, from our perspective seems like there's nothing to be deployed
     if (componentFiles.size === 0) {
-        throw new UserError(
-            `Searched for key files - ${KEY_FILES.join(", ")} - in ${rootDirectory} but none were found. Seems like there is nothing to deploy.`,
-        );
+        frameworksDetected.backend = frameworksDetected.backend || [];
+        frameworksDetected.backend.push("other");
+        frameworksDetected.frontend = frameworksDetected.frontend || [];
+        frameworksDetected.frontend.push("other");
+        const result = report(format, frameworksDetected, {} as RawYamlProjectConfiguration);
+        log.info(result);
+        return;
     }
 
     debugLogger.debug("Key component files found:", componentFiles);
@@ -332,7 +338,6 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     }
 
     // Report the detected frameworks at stdout
-    const format = isCI() ? options.format || DEFAULT_CI_FORMAT : options.format || DEFAULT_FORMAT;
     const result = report(format, frameworksDetected, genezioConfig);
     log.info(result);
 }
