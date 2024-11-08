@@ -247,7 +247,7 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
                 undefined,
             );
             for (const deployedFunction of res.functions) {
-                if (deployedFunction.name === yamlFunctionName) {
+                if (deployedFunction.name === `function-${yamlFunctionName}`) {
                     crons.push({
                         name: cron.name,
                         url: deployedFunction.cloudUrl,
@@ -268,6 +268,14 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             projectName: projectName,
             stageName: options.stage || "prod",
             crons: crons,
+        }).catch(() => {
+            throw new UserError("Something went wrong while syncing the cron jobs.");
+        });
+    } else {
+        await syncCrons({
+            projectName: projectName,
+            stageName: options.stage || "prod",
+            crons: [],
         }).catch(() => {
             throw new UserError("Something went wrong while syncing the cron jobs.");
         });

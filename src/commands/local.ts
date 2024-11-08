@@ -1075,7 +1075,12 @@ async function startCronJobs(
             };
 
             cronHandler.cronObject = cron.schedule(cronHandler.cronString, async () => {
-                log.info("DEBUG: trigger cron: " + cronHandler.cronString + " on URL " + url);
+                log.info(
+                    "DEBUG: trigger cron: " +
+                        cronHandler.cronString +
+                        " on function " +
+                        functionName,
+                );
                 return await axios.post(url);
             });
 

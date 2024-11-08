@@ -190,26 +190,48 @@ function parseGenezioConfig(config: unknown) {
         settings: authEmailSettings.optional(),
     });
 
-    const servicesSchema = zod.object({
-        databases: zod.array(databaseSchema).optional(),
-        email: zod.boolean().optional(),
-        authentication: authenticationSchema.optional(),
-        crons: zod.array(cronSchema).optional(),
-    });
+    const servicesSchema = zod
+        .object({
+            databases: zod.array(databaseSchema).optional(),
+            email: zod.boolean().optional(),
+            authentication: authenticationSchema.optional(),
+            crons: zod.array(cronSchema).optional(),
+        })
+        .refine(({ crons }) => {
+            const cronNamesMap = new Map<string, string>();
+            for (const cron of crons || []) {
+                if (cronNamesMap.has(cron.name)) {
+                    return false;
+                }
+                cronNamesMap.set(cron.name, cron.name);
+            }
+            return true;
+        }, `You can't have two crons with the same name.`);
 
-    const backendSchema = zod.object({
-        path: zod.string(),
-        language: languageSchema,
-        environment: environmentSchema.optional(),
-        scripts: zod
-            .object({
-                deploy: scriptSchema,
-                local: scriptSchema,
-            })
-            .optional(),
-        classes: zod.array(classSchema).optional(),
-        functions: zod.array(functionsSchema).optional(),
-    });
+    const backendSchema = zod
+        .object({
+            path: zod.string(),
+            language: languageSchema,
+            environment: environmentSchema.optional(),
+            scripts: zod
+                .object({
+                    deploy: scriptSchema,
+                    local: scriptSchema,
+                })
+                .optional(),
+            classes: zod.array(classSchema).optional(),
+            functions: zod.array(functionsSchema).optional(),
+        })
+        .refine(({ functions }) => {
+            const functionNamesMap = new Map<string, string>();
+            for (const func of functions || []) {
+                if (functionNamesMap.has(func.name)) {
+                    return false;
+                }
+                functionNamesMap.set(func.name, func.name);
+            }
+            return true;
+        }, `You can't have two functions with the same name.`);
 
     const frontendSchema = zod.object({
         name: zod.string().optional(),
