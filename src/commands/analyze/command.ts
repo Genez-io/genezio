@@ -243,34 +243,6 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             continue;
         }
 
-        if (await isViteComponent(contents)) {
-            await addFrontendComponentToConfig(configPath, {
-                path: componentPath,
-                publish: "dist",
-                scripts: {
-                    deploy: [`${getPackageManager().command} install`],
-                    build: [`${getPackageManager().command} run build`],
-                },
-            });
-            frameworksDetected.frontend = frameworksDetected.frontend || [];
-            frameworksDetected.frontend.push("vite");
-            continue;
-        }
-
-        if (await isReactComponent(contents)) {
-            await addFrontendComponentToConfig(configPath, {
-                path: componentPath,
-                publish: "build",
-                scripts: {
-                    deploy: [`${getPackageManager().command} install`],
-                    build: [`${getPackageManager().command} run build`],
-                },
-            });
-            frameworksDetected.frontend = frameworksDetected.frontend || [];
-            frameworksDetected.frontend.push("react");
-            continue;
-        }
-
         if (await isVueComponent(contents)) {
             await addFrontendComponentToConfig(configPath, {
                 path: componentPath,
@@ -310,6 +282,34 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             });
             frameworksDetected.frontend = frameworksDetected.frontend || [];
             frameworksDetected.frontend.push("svelte");
+            continue;
+        }
+
+        if (await isViteComponent(contents)) {
+            await addFrontendComponentToConfig(configPath, {
+                path: componentPath,
+                publish: "dist",
+                scripts: {
+                    deploy: [`${getPackageManager().command} install`],
+                    build: [`${getPackageManager().command} run build`],
+                },
+            });
+            frameworksDetected.frontend = frameworksDetected.frontend || [];
+            frameworksDetected.frontend.push("vite");
+            continue;
+        }
+
+        if (await isReactComponent(contents)) {
+            await addFrontendComponentToConfig(configPath, {
+                path: componentPath,
+                publish: "build",
+                scripts: {
+                    deploy: [`${getPackageManager().command} install`],
+                    build: [`${getPackageManager().command} run build`],
+                },
+            });
+            frameworksDetected.frontend = frameworksDetected.frontend || [];
+            frameworksDetected.frontend.push("react");
             continue;
         }
 
