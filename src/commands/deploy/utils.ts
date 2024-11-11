@@ -868,6 +868,79 @@ export async function uploadEnvVarsFromFile(
     }
 }
 
+const excludedFiles = [
+    "projectCode.zip",
+    "**/projectCode.zip",
+    "**/node_modules/*",
+    "./node_modules/*",
+    "node_modules/*",
+    "**/node_modules",
+    "./node_modules",
+    "node_modules",
+    "node_modules/**",
+    "**/node_modules/**",
+    // ignore all .git files
+    "**/.git/*",
+    "./.git/*",
+    ".git/*",
+    "**/.git",
+    "./.git",
+    ".git",
+    ".git/**",
+    "**/.git/**",
+    // ignore all .next files
+    "**/.next/*",
+    "./.next/*",
+    ".next/*",
+    "**/.next",
+    "./.next",
+    ".next",
+    ".next/**",
+    "**/.next/**",
+    // ignore all .open-next files
+    "**/.open-next/*",
+    "./.open-next/*",
+    ".open-next/*",
+    "**/.open-next",
+    "./.open-next",
+    ".open-next",
+    ".open-next/**",
+    "**/.open-next/**",
+    // ignore all .vercel files
+    "**/.vercel/*",
+    "./.vercel/*",
+    ".vercel/*",
+    "**/.vercel",
+    "./.vercel",
+    ".vercel",
+    ".vercel/**",
+    "**/.vercel/**",
+    // ignore all .turbo files
+    "**/.turbo/*",
+    "./.turbo/*",
+    ".turbo/*",
+    "**/.turbo",
+    "./.turbo",
+    ".turbo",
+    ".turbo/**",
+    "**/.turbo/**",
+    // ignore all .sst files
+    "**/.sst/*",
+    "./.sst/*",
+    ".sst/*",
+    "**/.sst",
+    "./.sst",
+    ".sst",
+    ".sst/**",
+    "**/.sst/**",
+    // ignore env files
+    ".env",
+    ".env.development.local",
+    ".env.test.local",
+    ".env.production.local",
+    ".env.local",
+];
+
 // Upload the project code to S3 for in-browser editing
 export async function uploadUserCode(
     name: string,
@@ -877,16 +950,12 @@ export async function uploadUserCode(
 ): Promise<void> {
     const tmpFolderProject = await createTemporaryFolder();
     debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
-    const promiseZip = zipDirectory(cwd, path.join(tmpFolderProject, "projectCode.zip"), false, [
-        "**/node_modules/*",
-        "./node_modules/*",
-        "node_modules/*",
-        "**/node_modules",
-        "./node_modules",
-        "node_modules",
-        "node_modules/**",
-        "**/node_modules/**",
-    ]);
+    const promiseZip = zipDirectory(
+        cwd,
+        path.join(tmpFolderProject, "projectCode.zip"),
+        true,
+        excludedFiles,
+    );
 
     await promiseZip;
     const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(region, name, stage);
