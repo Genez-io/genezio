@@ -46,14 +46,25 @@ export async function findEntryFile(
     patterns: RegExp[],
     defaultFile: string,
 ): Promise<string> {
-    let entryFile = await getEntryFileFromPackageJson(componentPath, contents, patterns);
-
-    if (!entryFile) {
-        entryFile = await findFileByPatterns(componentPath, patterns, FUNCTION_EXTENSIONS);
+    const { candidateFile, fallback } = await getEntryFileFromPackageJson(
+        componentPath,
+        contents,
+        patterns,
+    );
+    if (candidateFile && !fallback) {
+        return candidateFile;
     }
 
-    // If no entry file is found, use the default
-    return entryFile || defaultFile;
+    const entryFile = await findFileByPatterns(componentPath, patterns, FUNCTION_EXTENSIONS);
+
+    // If we didn't find a suitable entry file, we set the entry as defined in package.json
+    // If this is not an option either, we set the default entry file
+    // Note - this is useful for ts projects where the entry file is not yet compiled
+    if (!entryFile) {
+        return candidateFile && fallback ? candidateFile : defaultFile;
+    }
+
+    return entryFile;
 }
 
 async function findFileByPatterns(
@@ -86,19 +97,22 @@ async function findFileByPatterns(
     return undefined;
 }
 
+// Returns an object containing:
+// - `candidateFile`: The path to the main file in package.json if it exists and matches patterns.
+// - `fallback`: A boolean indicating if the file should be considered a fallback entry.
 async function getEntryFileFromPackageJson(
     directory: string,
     contents: Record<string, string>,
     patterns: RegExp[],
-): Promise<string | undefined> {
+): Promise<{ candidateFile: string | undefined; fallback: boolean }> {
     if (!contents["package.json"]) {
-        return undefined;
+        return { candidateFile: undefined, fallback: false };
     }
 
     const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
     const mainPath = packageJsonContent.main;
     if (!mainPath) {
-        return undefined;
+        return { candidateFile: undefined, fallback: false };
     }
     const fullPath = path.join(directory, mainPath);
 
@@ -106,18 +120,17 @@ async function getEntryFileFromPackageJson(
     try {
         await fs.access(fullPath);
     } catch {
-        return undefined;
+        return { candidateFile: mainPath, fallback: true };
     }
 
     // Check if the main file contains patterns that indicate it is indeed an entry file
-
     const entryFileContent = await fs.readFile(fullPath, "utf-8");
     const allPatternsMatch = patterns.every((pattern) => pattern.test(entryFileContent));
     if (!allPatternsMatch) {
-        return undefined;
+        return { candidateFile: mainPath, fallback: true };
     }
 
-    return mainPath;
+    return { candidateFile: mainPath, fallback: false };
 }
 
 // Checks if the project is a Express component
