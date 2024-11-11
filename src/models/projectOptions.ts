@@ -9,6 +9,10 @@ export const CONTAINER_IMAGE_NODE20 = "node:20.11.1-alpine3.19";
 
 export const DEFAULT_NODE_RUNTIME_IMAGE = CONTAINER_IMAGE_NODE20;
 
+// Note: ts and tsx are not included in the list of FUNCTION_EXTENSIONS intentionally
+// A typescript function will be compiled to javascript before being deployed
+export const FUNCTION_EXTENSIONS = ["js", "mjs", "cjs", "py"];
+
 export type NodeOptions = {
     nodeRuntime: NodeRuntime;
     architecture: Architecture;
