@@ -16,6 +16,7 @@ import {
     isSvelteComponent,
     isContainerComponent,
     findEntryFile,
+    isGenezioTypesafe,
 } from "./frameworks.js";
 import { readOrAskConfig } from "../deploy/utils.js";
 import { getPackageManager, PackageManagerType } from "../../packageManagers/packageManager.js";
@@ -28,6 +29,7 @@ import {
     addSSRComponentToConfig,
     getFrontendPrefix,
     injectBackendApiUrlsInConfig,
+    injectSDKInConfig,
 } from "./utils.js";
 import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
 import { report } from "./outputUtils.js";
@@ -345,11 +347,29 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             frameworksDetected.backend.push("container");
             continue;
         }
+
+        if (await isGenezioTypesafe(contents)) {
+            await addBackendComponentToConfig(configPath, {
+                path: componentPath,
+                // TODO: Add support for detecting the language of the backend
+                language: {
+                    name: Language.ts,
+                } as YAMLLanguage,
+                scripts: {
+                    deploy: [`${getPackageManager().command} install`],
+                    local: [`${getPackageManager().command} install`],
+                },
+            });
+            frameworksDetected.backend = frameworksDetected.backend || [];
+            frameworksDetected.backend.push("genezio-typesafe");
+            continue;
+        }
     }
 
     // Inject Backend API URLs into the frontend component
     // This is done after all the components have been detected
     if (
+        !frameworksDetected.backend?.includes("genezio-typesafe") &&
         frameworksDetected.backend &&
         frameworksDetected.backend.length > 0 &&
         frameworksDetected.frontend &&
@@ -358,6 +378,11 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         // TODO Support multiple frontend frameworks in the same project
         const frontendPrefix = getFrontendPrefix(frameworksDetected.frontend[0]);
         await injectBackendApiUrlsInConfig(configPath, frontendPrefix);
+    }
+
+    if (frameworksDetected.backend?.includes("genezio-typesafe")) {
+        // TODO Support multiple frontend frameworks in the same project
+        await injectSDKInConfig(configPath);
     }
 
     // Report the detected frameworks at stdout

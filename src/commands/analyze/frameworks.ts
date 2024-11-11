@@ -176,6 +176,16 @@ export async function isServerlessHttpBackend(contents: Record<string, string>):
         : false;
 }
 
+// Checks if the project is a Genezio Typesafe component
+export async function isGenezioTypesafe(contents: Record<string, string>): Promise<boolean> {
+    if (!contents["package.json"]) {
+        return false;
+    }
+
+    const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
+    return packageJsonContent ? "@genezio/types" in (packageJsonContent.dependencies || {}) : false;
+}
+
 // Checks if the project is a Next.js component
 // `contents` is a map of important file paths and their contents
 export async function isNextjsComponent(contents: Record<string, string>): Promise<boolean> {
