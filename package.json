@@ -158,7 +158,7 @@
         "@rollup/rollup-darwin-x64": "4.18.0",
         "@rollup/rollup-linux-arm-gnueabihf": "4.24.0",
         "@rollup/rollup-linux-arm64-gnu": "4.24.3",
-        "@rollup/rollup-linux-arm64-musl": "4.22.4",
+        "@rollup/rollup-linux-arm64-musl": "4.25.0",
         "@rollup/rollup-linux-riscv64-gnu": "4.24.0",
         "@rollup/rollup-linux-x64-gnu": "4.22.5",
         "@rollup/rollup-linux-x64-musl": "4.24.3",
