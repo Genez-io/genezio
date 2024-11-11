@@ -8,7 +8,7 @@
 
 export const FASTIFY_PATTERN = [
     /app\.listen|fastify\.listen/,
-    /import\s+Fastify\s+from\s+['"]fastify['"]|require\(['"]fastify['"]\)/,
+    /import\s+Fastify\s+from\s+['"]fastify['"]|import\s+fastify\s+from\s+['"]fastify['"]|require\(['"]fastify['"]\)/,
 ];
 
 export const EXPRESS_PATTERN = [
@@ -17,5 +17,5 @@ export const EXPRESS_PATTERN = [
 ];
 
 export const SERVERLESS_HTTP_PATTERN = [
-    /import\s+Serverless\s+from\s+['"]serverless-http['"]|require\(['"]serverless-http['"]\)/,
+    /import\s+Serverless\s+from\s+['"]serverless-http['"]|import\s+serverless\s+from\s+['"]serverless-http['"]|require\(['"]serverless-http['"]\)/,
 ];

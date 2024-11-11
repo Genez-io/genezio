@@ -1,6 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { EXCLUDED_DIRECTORIES, EXTENSIONS } from "./command.js";
+import { EXCLUDED_DIRECTORIES } from "./command.js";
+import { FUNCTION_EXTENSIONS } from "../../models/projectOptions.js";
 
 export interface PackageJSON {
     name?: string;
@@ -48,7 +49,7 @@ export async function findEntryFile(
     let entryFile = await getEntryFileFromPackageJson(componentPath, contents, patterns);
 
     if (!entryFile) {
-        entryFile = await findFileByPatterns(componentPath, patterns, EXTENSIONS);
+        entryFile = await findFileByPatterns(componentPath, patterns, FUNCTION_EXTENSIONS);
     }
 
     // If no entry file is found, use the default
@@ -72,7 +73,7 @@ async function findFileByPatterns(
             // Recursively search within subdirectories
             const result = await findFileByPatterns(fullPath, patterns, extensions);
             if (result) return result;
-        } else if (entry.isFile() && extensions.some((ext) => entry.name.endsWith(ext))) {
+        } else if (entry.isFile() && extensions.some((ext) => entry.name.endsWith(`.${ext}`))) {
             // Check if the file content matches all given patterns
             const content = await fs.readFile(fullPath, "utf-8");
             const allPatternsMatch = patterns.every((pattern) => pattern.test(content));

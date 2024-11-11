@@ -66,7 +66,6 @@ export const DEFAULT_CI_FORMAT = SUPPORTED_FORMATS.JSON;
 export const KEY_FILES = ["package.json", "Dockerfile"];
 export const EXCLUDED_DIRECTORIES = ["node_modules", ".git", "dist", "build"];
 export const NODE_DEFAULT_ENTRY_FILE = "index.mjs";
-export const EXTENSIONS = [".js", ".ts", ".mjs", ".jsx", ".tsx"];
 
 // The analyze command has 2 side effects:
 // 1. It creates a new yaml with the detected components
