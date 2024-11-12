@@ -12,6 +12,7 @@ import { Language, TriggerType } from "../projectConfiguration/yaml/models.js";
 import path from "path";
 import { YamlClass } from "../projectConfiguration/yaml/v2.js";
 import { UserError } from "../errors.js";
+import { clearTypescriptAstResources } from "./astGenerator/TsAstGenerator.js";
 
 /**
  * Asynchronously handles a request to generate an SDK based on the provided YAML project configuration.
@@ -71,6 +72,11 @@ export async function sdkGeneratorApiHandler(
             fileName: path.basename(input.class.path),
         });
     }
+
+    // TODO: Fix hack. This is a temporary fix to clear the resources used by the typescript AST generator.
+    // The problem is that the typescript AST generator uses a global variable to store the program and source file.
+    // The global variable is used to avoit recomputing the program and source file for each class.
+    clearTypescriptAstResources();
 
     return {
         classesInfo,
