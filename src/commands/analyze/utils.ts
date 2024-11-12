@@ -209,3 +209,41 @@ function normalizeScripts(scripts: Scripts): void {
         });
     }
 }
+
+/**
+ * Returns the handler for a given python framework.
+ * Searches for framework initialization patterns in Python code.
+ * @param contents Record of file contents to search through
+ * @param framework The framework name (Flask, FastAPI, Django etc.)
+ * @returns The handler variable name or undefined if not found
+ */
+export async function getPythonHandler(
+    contents: Record<string, string>,
+    framework: string,
+): Promise<string> {
+    const frameworkName = framework.toLowerCase();
+
+    // Common initialization patterns for different frameworks
+    const patterns = [
+        // Flask/FastAPI style
+        new RegExp(`(\\w+)\\s*=\\s*${frameworkName}\\s*\\(`, "i"),
+        // Django style
+        new RegExp(`(\\w+)\\s*=\\s*get_[wa]sgi_application\\(\\)`, "i"),
+    ];
+
+    // Iterate through all values in the contents record
+    for (const content of Object.values(contents)) {
+        const lines = content.split("\n");
+
+        for (const line of lines) {
+            for (const pattern of patterns) {
+                const match = line.match(pattern);
+                if (match && match[1]) {
+                    return match[1];
+                }
+            }
+        }
+    }
+
+    return "default";
+}

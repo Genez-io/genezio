@@ -227,3 +227,42 @@ export function isContainerComponent(contents: Record<string, string>): boolean 
     const dockerfile = contents["Dockerfile"];
     return dockerfile !== undefined;
 }
+
+// Checks if the project is a Flask component (presence of 'requirements.txt', and 'flask' in 'requirements.txt')
+export function isFlaskComponent(contents: Record<string, string>): boolean {
+    if (!contents["requirements.txt"]) {
+        return false;
+    }
+    const requirementsTxt = contents["requirements.txt"];
+    return requirementsTxt !== undefined && requirementsTxt.includes("flask");
+}
+
+// Checks if the project is a Django component (presence of 'requirements.txt', and 'django' in 'requirements.txt')
+export function isDjangoComponent(contents: Record<string, string>): boolean {
+    if (!contents["requirements.txt"]) {
+        return false;
+    }
+    const requirementsTxt = contents["requirements.txt"];
+    return requirementsTxt !== undefined && requirementsTxt.includes("django");
+}
+
+// Checks if the project is a FastAPI component (presence of 'requirements.txt', and 'fastapi' in 'requirements.txt')
+export function isFastAPIComponent(contents: Record<string, string>): boolean {
+    if (!contents["requirements.txt"]) {
+        return false;
+    }
+    const requirementsTxt = contents["requirements.txt"];
+    return requirementsTxt !== undefined && requirementsTxt.includes("fastapi");
+}
+
+// Checks if the project is a Python function that is compatible with AWS Lambda (presence of 'requirements.txt' and have a file with 'def handler(event):')
+export function isPythonLambdaFunction(contents: Record<string, string>): boolean {
+    if (!contents["requirements.txt"]) {
+        return false;
+    }
+    const requirementsTxt = contents["requirements.txt"];
+    return (
+        requirementsTxt !== undefined &&
+        Object.values(contents).some((file) => file.includes("def handler(event):"))
+    );
+}
