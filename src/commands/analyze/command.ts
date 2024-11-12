@@ -367,6 +367,9 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 FLASK_PATTERN,
                 PYTHON_DEFAULT_ENTRY_FILE,
             );
+            const entryFileContent = await retrieveFileContent(path.join(componentPath, entryFile));
+            const pythonHandler = getPythonHandler(entryFileContent);
+
             await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 language: {
@@ -377,9 +380,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     {
                         name: "flask",
                         path: ".",
-                        handler: await getPythonHandler(
-                            await retrieveFileContent(path.join(componentPath, entryFile)),
-                        ),
+                        handler: pythonHandler,
                         entry: entryFile,
                         type: FunctionType.httpServer,
                     },
@@ -427,6 +428,10 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 FASTAPI_PATTERN,
                 PYTHON_DEFAULT_ENTRY_FILE,
             );
+
+            const entryFileContent = await retrieveFileContent(path.join(componentPath, entryfile));
+            const pythonHandler = getPythonHandler(entryFileContent);
+
             await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 language: {
@@ -437,9 +442,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     {
                         name: "fastapi",
                         path: ".",
-                        handler: await getPythonHandler(
-                            await retrieveFileContent(path.join(componentPath, entryfile)),
-                        ),
+                        handler: pythonHandler,
                         entry: entryfile,
                         type: FunctionType.httpServer,
                     },
