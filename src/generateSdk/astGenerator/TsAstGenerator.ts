@@ -43,6 +43,11 @@ type Declaration = StructLiteral | TypeAlias | Enum;
 let _files: readonly typescript.SourceFile[] | undefined;
 let _typeChecker: typescript.TypeChecker | undefined;
 
+export function clearTypescriptAstResources() {
+    _files = undefined;
+    _typeChecker = undefined;
+}
+
 export class AstGenerator implements AstGeneratorInterface {
     rootNode?: typescript.SourceFile;
 
