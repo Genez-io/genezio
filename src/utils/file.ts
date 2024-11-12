@@ -120,7 +120,10 @@ export async function zipDirectory(
             .glob("**/*", {
                 cwd: sourceDir,
                 dot: includeHiddenFiles,
+                // skip deals with directories, it doesn't allow any children to be returned
                 skip: exclusion,
+                // ignore deals with files, it doesn't prevent files from folder content to be returned
+                ignore: exclusion,
             })
             .on("error", (err) => reject(err))
             .pipe(stream);

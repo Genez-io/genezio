@@ -253,3 +253,29 @@ function normalizeScripts(scripts: Scripts): void {
         });
     }
 }
+
+/**
+ * Returns the handler for a given python framework.
+ * Searches for framework initialization patterns in Python code.
+ * @param contentEntryfile Content of the entry file
+ * @returns The handler variable name or undefined if not found
+ */
+export function getPythonHandler(contentEntryfile: string): string {
+    // Check if the contentEntryfile contains Flask or FastAPI initialization
+    const flaskPattern = /(\w+)\s*=\s*Flask\(__name__\)/;
+    const fastAPIPattern = /(\w+)\s*=\s*FastAPI\(\)/;
+
+    // Match the patterns in the contentEntryfile
+    const flaskMatch = contentEntryfile.match(flaskPattern);
+    const fastAPIMatch = contentEntryfile.match(fastAPIPattern);
+
+    if (flaskMatch && flaskMatch[1]) {
+        return flaskMatch[1];
+    }
+
+    if (fastAPIMatch && fastAPIMatch[1]) {
+        return fastAPIMatch[1];
+    }
+
+    return "app";
+}
