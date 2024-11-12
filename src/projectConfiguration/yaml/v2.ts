@@ -122,6 +122,7 @@ function parseGenezioConfig(config: unknown) {
             storageSize: zod.number().optional(),
             instanceSize: zod.nativeEnum(InstanceSize).optional(),
             maxConcurrentRequestsPerInstance: zod.number().optional(),
+            port: zod.string().optional(),
         })
         .refine(
             ({ type, handler }) => !(type === FunctionType.aws && !handler),

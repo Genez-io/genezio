@@ -38,6 +38,8 @@ import {
     GenezioCloudInput,
     GenezioCloudInputType,
     GenezioCloudOutput,
+    GenezioFunctionMetadata,
+    GenezioFunctionMetadataType,
 } from "../../cloudAdapter/cloudAdapter.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import { GenezioDeployOptions } from "../../models/commandOptions.js";
@@ -627,8 +629,20 @@ export async function functionToCloudInput(
         }
     }
 
+    let metadata: GenezioFunctionMetadata | undefined;
+    if (functionElement.type === "httpServer") {
+        metadata = {
+            type: GenezioFunctionMetadataType.HttpServer,
+            http_port: functionElement.port,
+        };
+    }
+
     // Handle Python projects dependencies
     if (functionElement.language === "python") {
+        metadata = {
+            type: GenezioFunctionMetadataType.Python,
+            app_name: functionElement.handler,
+        };
         // Requirements file must be in the root of the backend folder
         const requirementsPath = path.join(backendPath, "requirements.txt");
         if (fs.existsSync(requirementsPath)) {
@@ -670,7 +684,9 @@ export async function functionToCloudInput(
         );
     }
 
-    await handlerProvider.write(tmpFolderPath, entryFileName, functionElement);
+    if (handlerProvider) {
+        await handlerProvider.write(tmpFolderPath, entryFileName, functionElement);
+    }
 
     debugLogger.debug(`Zip the directory ${tmpFolderPath}.`);
 
@@ -691,6 +707,7 @@ export async function functionToCloudInput(
         instanceSize: functionElement.instanceSize,
         storageSize: functionElement.storageSize,
         maxConcurrentRequestsPerInstance: functionElement.maxConcurrentRequestsPerInstance,
+        metadata: metadata,
     };
 }
 

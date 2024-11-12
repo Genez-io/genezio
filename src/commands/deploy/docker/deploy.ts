@@ -13,6 +13,7 @@ import { getCloudAdapter } from "../genezio.js";
 import {
     GenezioCloudInputType,
     GenezioFunctionMetadata,
+    GenezioFunctionMetadataType,
 } from "../../../cloudAdapter/cloudAdapter.js";
 import { setEnvironmentVariables } from "../../../requests/setEnvironmentVariables.js";
 import { FunctionType } from "../../../projectConfiguration/yaml/models.js";
@@ -135,11 +136,10 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
     const cloudProvider = await getCloudProvider(projectConfiguration.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
     const metadata: GenezioFunctionMetadata = {
-        container: {
-            cmd: cmdEntryFile,
-            cwd: dockerWorkingDir,
-            http_port: port,
-        },
+        type: GenezioFunctionMetadataType.Container,
+        cmd: cmdEntryFile,
+        cwd: dockerWorkingDir,
+        http_port: port,
     };
     const result = await cloudAdapter.deploy(
         [
