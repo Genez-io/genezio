@@ -71,6 +71,7 @@ import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import { displayHint, replaceExpression } from "../../utils/strings.js";
 import { getPackageManager } from "../../packageManagers/packageManager.js";
 import { ContainerComponentType, SSRFrameworkComponentType } from "../../models/projectOptions.js";
+import gitignore from "parse-gitignore";
 
 type DependenciesInstallResult = {
     command: string;
@@ -941,6 +942,15 @@ const excludedFiles = [
     ".env.local",
 ];
 
+function getGitIgnoreFiles(cwd: string): string[] {
+    const gitIgnorePath = path.join(cwd, ".gitignore");
+    if (existsSync(gitIgnorePath)) {
+        return gitignore.parse(readFileSync(gitIgnorePath, "utf-8")).patterns;
+    }
+
+    return [];
+}
+
 // Upload the project code to S3 for in-browser editing
 export async function uploadUserCode(
     name: string,
@@ -954,7 +964,7 @@ export async function uploadUserCode(
         cwd,
         path.join(tmpFolderProject, "projectCode.zip"),
         true,
-        excludedFiles,
+        excludedFiles.concat(getGitIgnoreFiles(cwd)),
     );
 
     await promiseZip;
