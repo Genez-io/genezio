@@ -631,9 +631,10 @@ export async function functionToCloudInput(
 
     let metadata: GenezioFunctionMetadata | undefined;
     if (functionElement.type === "httpServer") {
+        debugLogger.debug(`Http server port: ${functionElement.port}`);
         metadata = {
             type: GenezioFunctionMetadataType.HttpServer,
-            http_port: functionElement.port,
+            http_port: functionElement.port?.toString(),
         };
     }
 
@@ -671,21 +672,26 @@ export async function functionToCloudInput(
 
     const unzippedBundleSize = await getBundleFolderSizeLimit(tmpFolderPath);
 
-    // add the handler to the temporary folder
-    let entryFileName =
-        entryFileFunctionMap[functionElement.language as keyof typeof entryFileFunctionMap];
-    while (fs.existsSync(path.join(tmpFolderPath, entryFileName))) {
-        debugLogger.debug(
-            `[FUNCTION ${functionElement.name}] File ${entryFileName} already exists in the temporary folder.`,
-        );
-        entryFileName = getFunctionEntryFilename(
-            functionElement.language as Language,
-            `index-${Math.random().toString(36).substring(7)}`,
-        );
-    }
+    // Determine entry file name
+    let entryFileName;
+    if (functionElement.type === "httpServer") {
+        entryFileName = functionElement.entry; // Use the entry file for httpServer
+    } else {
+        entryFileName =
+            entryFileFunctionMap[functionElement.language as keyof typeof entryFileFunctionMap];
+        while (fs.existsSync(path.join(tmpFolderPath, entryFileName))) {
+            debugLogger.debug(
+                `[FUNCTION ${functionElement.name}] File ${entryFileName} already exists in the temporary folder.`,
+            );
+            entryFileName = getFunctionEntryFilename(
+                functionElement.language as Language,
+                `index-${Math.random().toString(36).substring(7)}`,
+            );
+        }
 
-    if (handlerProvider) {
-        await handlerProvider.write(tmpFolderPath, entryFileName, functionElement);
+        if (handlerProvider) {
+            await handlerProvider.write(tmpFolderPath, entryFileName, functionElement);
+        }
     }
 
     debugLogger.debug(`Zip the directory ${tmpFolderPath}.`);

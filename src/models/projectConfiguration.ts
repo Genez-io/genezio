@@ -113,7 +113,7 @@ export class FunctionConfiguration {
     storageSize?: number;
     instanceSize?: InstanceSize;
     maxConcurrentRequestsPerInstance?: number;
-    port?: string;
+    port?: number;
     constructor(
         name: string,
         path: string,
@@ -125,7 +125,7 @@ export class FunctionConfiguration {
         storageSize?: number,
         instanceSize?: InstanceSize,
         maxConcurrentRequestsPerInstance?: number,
-        port?: string,
+        port?: number,
     ) {
         this.name = name;
         this.path = path;
@@ -303,6 +303,7 @@ export class ProjectConfiguration {
                     storageSize: f.storageSize,
                     instanceSize: f.instanceSize,
                     maxConcurrentRequestsPerInstance: f.maxConcurrentRequestsPerInstance,
+                    port: f.port,
                 };
             }) || [];
     }
