@@ -48,7 +48,7 @@ import {
     promptToConfirmSettingEnvironmentVariables,
 } from "../../utils/environmentVariables.js";
 import inquirer from "inquirer";
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, readdirSync } from "fs";
 import { checkProjectName } from "../create/create.js";
 import {
     uniqueNamesGenerator,
@@ -71,6 +71,7 @@ import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import { displayHint, replaceExpression } from "../../utils/strings.js";
 import { getPackageManager } from "../../packageManagers/packageManager.js";
 import { ContainerComponentType, SSRFrameworkComponentType } from "../../models/projectOptions.js";
+import gitignore from "parse-gitignore";
 
 type DependenciesInstallResult = {
     command: string;
@@ -868,6 +869,107 @@ export async function uploadEnvVarsFromFile(
     }
 }
 
+const excludedFiles = [
+    "projectCode.zip",
+    "**/projectCode.zip",
+    "**/node_modules/*",
+    "./node_modules/*",
+    "node_modules/*",
+    "**/node_modules",
+    "./node_modules",
+    "node_modules",
+    "node_modules/**",
+    "**/node_modules/**",
+    // ignore all .git files
+    "**/.git/*",
+    "./.git/*",
+    ".git/*",
+    "**/.git",
+    "./.git",
+    ".git",
+    ".git/**",
+    "**/.git/**",
+    // ignore all .next files
+    "**/.next/*",
+    "./.next/*",
+    ".next/*",
+    "**/.next",
+    "./.next",
+    ".next",
+    ".next/**",
+    "**/.next/**",
+    // ignore all .open-next files
+    "**/.open-next/*",
+    "./.open-next/*",
+    ".open-next/*",
+    "**/.open-next",
+    "./.open-next",
+    ".open-next",
+    ".open-next/**",
+    "**/.open-next/**",
+    // ignore all .vercel files
+    "**/.vercel/*",
+    "./.vercel/*",
+    ".vercel/*",
+    "**/.vercel",
+    "./.vercel",
+    ".vercel",
+    ".vercel/**",
+    "**/.vercel/**",
+    // ignore all .turbo files
+    "**/.turbo/*",
+    "./.turbo/*",
+    ".turbo/*",
+    "**/.turbo",
+    "./.turbo",
+    ".turbo",
+    ".turbo/**",
+    "**/.turbo/**",
+    // ignore all .sst files
+    "**/.sst/*",
+    "./.sst/*",
+    ".sst/*",
+    "**/.sst",
+    "./.sst",
+    ".sst",
+    ".sst/**",
+    "**/.sst/**",
+    // ignore env files
+    ".env",
+    ".env.development.local",
+    ".env.test.local",
+    ".env.production.local",
+    ".env.local",
+];
+
+function getGitIgnorePatterns(cwd: string): string[] {
+    const gitIgnorePath = path.join(cwd, ".gitignore");
+    if (existsSync(gitIgnorePath)) {
+        return gitignore.parse(readFileSync(gitIgnorePath, "utf-8")).patterns;
+    }
+
+    return [];
+}
+
+function getAllGitIgnorePatterns(cwd: string): string[] {
+    let patterns: string[] = getGitIgnorePatterns(cwd);
+    readdirSync(cwd, { withFileTypes: true }).forEach((file) => {
+        if (
+            file.isDirectory() &&
+            !file.name.startsWith(".") &&
+            !file.name.startsWith("node_modules")
+        ) {
+            patterns = [
+                ...patterns,
+                ...getAllGitIgnorePatterns(path.join(cwd, file.name)).map((pattern) =>
+                    path.join(path.relative(cwd, path.join(cwd, file.name)), pattern),
+                ),
+            ];
+        }
+    });
+    return patterns;
+}
+
 // Upload the project code to S3 for in-browser editing
 export async function uploadUserCode(
     name: string,
@@ -877,16 +979,12 @@ export async function uploadUserCode(
 ): Promise<void> {
     const tmpFolderProject = await createTemporaryFolder();
     debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
-    const promiseZip = zipDirectory(cwd, path.join(tmpFolderProject, "projectCode.zip"), false, [
-        "**/node_modules/*",
-        "./node_modules/*",
-        "node_modules/*",
-        "**/node_modules",
-        "./node_modules",
-        "node_modules",
-        "node_modules/**",
-        "**/node_modules/**",
-    ]);
+    const promiseZip = zipDirectory(
+        cwd,
+        path.join(tmpFolderProject, "projectCode.zip"),
+        true,
+        excludedFiles.concat(getAllGitIgnorePatterns(cwd)),
+    );
 
     await promiseZip;
     const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(region, name, stage);
