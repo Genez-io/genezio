@@ -314,3 +314,39 @@ export function isContainerComponent(contents: Record<string, string>): boolean 
     const dockerfile = contents["Dockerfile"];
     return dockerfile !== undefined;
 }
+
+// Checks if the project is a Flask component (presence of 'requirements.txt', and 'flask' in 'requirements.txt')
+export function isFlaskComponent(contents: Record<string, string>): boolean {
+    if (!contents["requirements.txt"]) {
+        return false;
+    }
+    const requirementsTxt = contents["requirements.txt"];
+    return requirementsTxt !== undefined && /flask(?:==|$|\s)/i.test(requirementsTxt); // Case-insensitive match for "flask", "Flask", "flask==", or "Flask=="
+}
+
+// Checks if the project is a Django component (presence of 'requirements.txt', and 'django' in 'requirements.txt')
+export function isDjangoComponent(contents: Record<string, string>): boolean {
+    if (!contents["requirements.txt"]) {
+        return false;
+    }
+    const requirementsTxt = contents["requirements.txt"];
+    return requirementsTxt !== undefined && /django(?:==|$|\s)/i.test(requirementsTxt);
+}
+
+// Checks if the project is a FastAPI component (presence of 'requirements.txt', and 'fastapi' in 'requirements.txt')
+export function isFastAPIComponent(contents: Record<string, string>): boolean {
+    if (!contents["requirements.txt"]) {
+        return false;
+    }
+    const requirementsTxt = contents["requirements.txt"];
+    return requirementsTxt !== undefined && /fastapi(?:==|$|\s)/i.test(requirementsTxt);
+}
+
+// Checks if the project is a Python function that is compatible with AWS Lambda (presence of 'requirements.txt')
+export function isPythonLambdaFunction(contents: Record<string, string>): boolean {
+    if (!("requirements.txt" in contents)) {
+        return false;
+    }
+
+    return true;
+}

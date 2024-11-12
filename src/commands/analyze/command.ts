@@ -15,6 +15,10 @@ import {
     isAngularComponent,
     isSvelteComponent,
     isContainerComponent,
+    isFlaskComponent,
+    isDjangoComponent,
+    isFastAPIComponent,
+    isPythonLambdaFunction,
     findEntryFile,
 } from "./frameworks.js";
 import { readOrAskConfig } from "../deploy/utils.js";
@@ -27,12 +31,21 @@ import {
     addFrontendComponentToConfig,
     addSSRComponentToConfig,
     getFrontendPrefix,
+    getPythonHandler,
     injectBackendApiUrlsInConfig,
 } from "./utils.js";
 import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
 import { report } from "./outputUtils.js";
 import { isCI } from "../../utils/process.js";
-import { EXPRESS_PATTERN, FASTIFY_PATTERN, SERVERLESS_HTTP_PATTERN } from "./constants.js";
+import {
+    DJANGO_PATTERN,
+    EXPRESS_PATTERN,
+    FASTAPI_PATTERN,
+    FASTIFY_PATTERN,
+    FLASK_PATTERN,
+    PYTHON_LAMBDA_PATTERN,
+    SERVERLESS_HTTP_PATTERN,
+} from "./constants.js";
 
 // backend javascript: aws-compatible functions, serverless-http functions, express, fastify
 // backend typescript: aws-compatible functions, serverless-http functions, express, fastify
@@ -63,9 +76,10 @@ export enum SUPPORTED_FORMATS {
 export const DEFAULT_FORMAT = SUPPORTED_FORMATS.TEXT;
 export const DEFAULT_CI_FORMAT = SUPPORTED_FORMATS.JSON;
 
-export const KEY_FILES = ["package.json", "Dockerfile"];
+export const KEY_FILES = ["package.json", "Dockerfile", "requirements.txt"];
 export const EXCLUDED_DIRECTORIES = ["node_modules", ".git", "dist", "build"];
 export const NODE_DEFAULT_ENTRY_FILE = "index.mjs";
+export const PYTHON_DEFAULT_ENTRY_FILE = "app.py";
 
 // The analyze command has 2 side effects:
 // 1. It creates a new yaml with the detected components
@@ -343,6 +357,128 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
 
             frameworksDetected.backend = frameworksDetected.backend || [];
             frameworksDetected.backend.push("container");
+            continue;
+        }
+
+        if (await isFlaskComponent(contents)) {
+            const entryFile = await findEntryFile(
+                componentPath,
+                contents,
+                FLASK_PATTERN,
+                PYTHON_DEFAULT_ENTRY_FILE,
+            );
+            const entryFileContent = await retrieveFileContent(path.join(componentPath, entryFile));
+            const pythonHandler = getPythonHandler(entryFileContent);
+
+            await addBackendComponentToConfig(configPath, {
+                path: componentPath,
+                language: {
+                    name: Language.python,
+                    packageManager: "pip" as PackageManagerType,
+                } as YAMLLanguage,
+                functions: [
+                    {
+                        name: "flask",
+                        path: ".",
+                        handler: pythonHandler,
+                        entry: entryFile,
+                        type: FunctionType.httpServer,
+                    },
+                ],
+            });
+
+            frameworksDetected.backend = frameworksDetected.backend || [];
+            frameworksDetected.backend.push("flask");
+            continue;
+        }
+
+        if (await isDjangoComponent(contents)) {
+            const entryfile = await findEntryFile(
+                componentPath,
+                contents,
+                DJANGO_PATTERN,
+                "wsgi.py",
+            );
+            await addBackendComponentToConfig(configPath, {
+                path: componentPath,
+                language: {
+                    name: Language.python,
+                    packageManager: "pip" as PackageManagerType,
+                } as YAMLLanguage,
+                functions: [
+                    {
+                        name: "django",
+                        path: ".",
+                        handler: "application",
+                        entry: entryfile,
+                        type: FunctionType.httpServer,
+                    },
+                ],
+            });
+
+            frameworksDetected.backend = frameworksDetected.backend || [];
+            frameworksDetected.backend.push("django");
+            continue;
+        }
+
+        if (await isFastAPIComponent(contents)) {
+            const entryfile = await findEntryFile(
+                componentPath,
+                contents,
+                FASTAPI_PATTERN,
+                PYTHON_DEFAULT_ENTRY_FILE,
+            );
+
+            const entryFileContent = await retrieveFileContent(path.join(componentPath, entryfile));
+            const pythonHandler = getPythonHandler(entryFileContent);
+
+            await addBackendComponentToConfig(configPath, {
+                path: componentPath,
+                language: {
+                    name: Language.python,
+                    packageManager: "pip" as PackageManagerType,
+                } as YAMLLanguage,
+                functions: [
+                    {
+                        name: "fastapi",
+                        path: ".",
+                        handler: pythonHandler,
+                        entry: entryfile,
+                        type: FunctionType.httpServer,
+                    },
+                ],
+            });
+
+            frameworksDetected.backend = frameworksDetected.backend || [];
+            frameworksDetected.backend.push("fastapi");
+            continue;
+        }
+
+        if (await isPythonLambdaFunction(contents)) {
+            const entryfile = await findEntryFile(
+                componentPath,
+                contents,
+                PYTHON_LAMBDA_PATTERN,
+                PYTHON_DEFAULT_ENTRY_FILE,
+            );
+            await addBackendComponentToConfig(configPath, {
+                path: componentPath,
+                language: {
+                    name: Language.python,
+                    packageManager: "pip" as PackageManagerType,
+                } as YAMLLanguage,
+                functions: [
+                    {
+                        name: "serverless",
+                        path: ".",
+                        handler: "handler",
+                        entry: entryfile,
+                        type: FunctionType.aws,
+                    },
+                ],
+            });
+            frameworksDetected.backend = frameworksDetected.backend || [];
+            frameworksDetected.backend.push("faas-python");
             continue;
         }
     }
