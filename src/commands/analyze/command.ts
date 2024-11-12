@@ -11,7 +11,6 @@ import {
     isReactComponent,
     isViteComponent,
     isServerlessHttpBackend,
-    getEntryfile,
     isVueComponent,
     isAngularComponent,
     isSvelteComponent,
@@ -20,6 +19,7 @@ import {
     isDjangoComponent,
     isFastAPIComponent,
     isPythonLambdaFunction,
+    findEntryFile,
 } from "./frameworks.js";
 import { readOrAskConfig } from "../deploy/utils.js";
 import { getPackageManager, PackageManagerType } from "../../packageManagers/packageManager.js";
@@ -37,7 +37,7 @@ import {
 import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
 import { report } from "./outputUtils.js";
 import { isCI } from "../../utils/process.js";
-import { UserError } from "../../errors.js";
+import { EXPRESS_PATTERN, FASTIFY_PATTERN, SERVERLESS_HTTP_PATTERN } from "./constants.js";
 
 // backend javascript: aws-compatible functions, serverless-http functions, express, fastify
 // backend typescript: aws-compatible functions, serverless-http functions, express, fastify
@@ -70,6 +70,7 @@ export const DEFAULT_CI_FORMAT = SUPPORTED_FORMATS.JSON;
 
 export const KEY_FILES = ["package.json", "Dockerfile", "requirements.txt"];
 export const EXCLUDED_DIRECTORIES = ["node_modules", ".git", "dist", "build"];
+export const NODE_DEFAULT_ENTRY_FILE = "index.mjs";
 
 // The analyze command has 2 side effects:
 // 1. It creates a new yaml with the detected components
@@ -78,13 +79,20 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     const frameworksDetected: FrameworkReport = {};
     const configPath = options.config;
     const rootDirectory = process.cwd();
+    const format = isCI() ? options.format || DEFAULT_CI_FORMAT : options.format || DEFAULT_FORMAT;
 
     // Search the key files in the root directory and return a map of filenames and relative paths
     const componentFiles = await findKeyFiles(rootDirectory);
+
+    // Early return and let the user write the configs, from our perspective seems like there's nothing to be deployed
     if (componentFiles.size === 0) {
-        throw new UserError(
-            `Searched for key files - ${KEY_FILES.join(", ")} - in ${rootDirectory} but none were found. Seems like there is nothing to deploy.`,
-        );
+        frameworksDetected.backend = frameworksDetected.backend || [];
+        frameworksDetected.backend.push("other");
+        frameworksDetected.frontend = frameworksDetected.frontend || [];
+        frameworksDetected.frontend.push("other");
+        const result = report(format, frameworksDetected, {} as RawYamlProjectConfiguration);
+        log.info(result);
+        return;
     }
 
     debugLogger.debug("Key component files found:", componentFiles);
@@ -103,7 +111,14 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         };
 
         if (await isServerlessHttpBackend(contents)) {
-            const entryfile = await getEntryfile(contents);
+            const entryFile = await findEntryFile(
+                componentPath,
+                contents,
+                SERVERLESS_HTTP_PATTERN,
+                NODE_DEFAULT_ENTRY_FILE,
+            );
+            debugLogger.debug("Serverless HTTP entry file found:", entryFile);
+
             // TODO: Add support for detecting and building typescript backends
             // const isTypescriptFlag = await isTypescript(contents);
 
@@ -123,7 +138,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                         path: ".",
                         // TODO: This is hardcoded because there are great chances that this indeed called `handler`
                         handler: "handler",
-                        entry: entryfile,
+                        entry: entryFile,
                         type: FunctionType.aws,
                     },
                 ],
@@ -134,7 +149,14 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isExpressBackend(contents)) {
-            const entryfile = await getEntryfile(contents);
+            const entryFile = await findEntryFile(
+                componentPath,
+                contents,
+                EXPRESS_PATTERN,
+                NODE_DEFAULT_ENTRY_FILE,
+            );
+            debugLogger.debug("Express entry file found:", entryFile);
+
             // TODO: Add support for detecting and building typescript backends
             // const isTypescriptFlag = await isTypescript(contents);
 
@@ -152,7 +174,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     {
                         name: "express",
                         path: ".",
-                        entry: entryfile,
+                        entry: entryFile,
                         type: FunctionType.httpServer,
                     },
                 ],
@@ -163,7 +185,14 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isFastifyBackend(contents)) {
-            const entryfile = await getEntryfile(contents);
+            const entryFile = await findEntryFile(
+                componentPath,
+                contents,
+                FASTIFY_PATTERN,
+                NODE_DEFAULT_ENTRY_FILE,
+            );
+            debugLogger.debug("Fastify entry file found:", entryFile);
+
             // TODO: Add support for detecting and building typescript backends
             // const isTypescriptFlag = await isTypescript(contents);
 
@@ -181,7 +210,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     {
                         name: "fastify",
                         path: ".",
-                        entry: entryfile,
+                        entry: entryFile,
                         type: FunctionType.httpServer,
                     },
                 ],
@@ -242,34 +271,6 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             continue;
         }
 
-        if (await isViteComponent(contents)) {
-            await addFrontendComponentToConfig(configPath, {
-                path: componentPath,
-                publish: "dist",
-                scripts: {
-                    deploy: [`${getPackageManager().command} install`],
-                    build: [`${getPackageManager().command} run build`],
-                },
-            });
-            frameworksDetected.frontend = frameworksDetected.frontend || [];
-            frameworksDetected.frontend.push("vite");
-            continue;
-        }
-
-        if (await isReactComponent(contents)) {
-            await addFrontendComponentToConfig(configPath, {
-                path: componentPath,
-                publish: "build",
-                scripts: {
-                    deploy: [`${getPackageManager().command} install`],
-                    build: [`${getPackageManager().command} run build`],
-                },
-            });
-            frameworksDetected.frontend = frameworksDetected.frontend || [];
-            frameworksDetected.frontend.push("react");
-            continue;
-        }
-
         if (await isVueComponent(contents)) {
             await addFrontendComponentToConfig(configPath, {
                 path: componentPath,
@@ -309,6 +310,34 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             });
             frameworksDetected.frontend = frameworksDetected.frontend || [];
             frameworksDetected.frontend.push("svelte");
+            continue;
+        }
+
+        if (await isViteComponent(contents)) {
+            await addFrontendComponentToConfig(configPath, {
+                path: componentPath,
+                publish: "dist",
+                scripts: {
+                    deploy: [`${getPackageManager().command} install`],
+                    build: [`${getPackageManager().command} run build`],
+                },
+            });
+            frameworksDetected.frontend = frameworksDetected.frontend || [];
+            frameworksDetected.frontend.push("vite");
+            continue;
+        }
+
+        if (await isReactComponent(contents)) {
+            await addFrontendComponentToConfig(configPath, {
+                path: componentPath,
+                publish: "build",
+                scripts: {
+                    deploy: [`${getPackageManager().command} install`],
+                    build: [`${getPackageManager().command} run build`],
+                },
+            });
+            frameworksDetected.frontend = frameworksDetected.frontend || [];
+            frameworksDetected.frontend.push("react");
             continue;
         }
 
@@ -432,7 +461,6 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     }
 
     // Report the detected frameworks at stdout
-    const format = isCI() ? options.format || DEFAULT_CI_FORMAT : options.format || DEFAULT_FORMAT;
     const result = report(format, frameworksDetected, genezioConfig);
     log.info(result);
 }

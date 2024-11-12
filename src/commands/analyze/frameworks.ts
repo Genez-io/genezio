@@ -1,3 +1,8 @@
+import { promises as fs } from "fs";
+import path from "path";
+import { EXCLUDED_DIRECTORIES } from "./command.js";
+import { FUNCTION_EXTENSIONS } from "../../models/projectOptions.js";
+
 export interface PackageJSON {
     name?: string;
     version?: string;
@@ -35,15 +40,97 @@ export async function isTypescript(contents: Record<string, string>): Promise<bo
     return false;
 }
 
-export async function getEntryfile(contents: Record<string, string>): Promise<string> {
-    if (!contents["package.json"]) {
-        return "index.mjs";
+export async function findEntryFile(
+    componentPath: string,
+    contents: Record<string, string>,
+    patterns: RegExp[],
+    defaultFile: string,
+): Promise<string> {
+    const { candidateFile, fallback } = await getEntryFileFromPackageJson(
+        componentPath,
+        contents,
+        patterns,
+    );
+    if (candidateFile && !fallback) {
+        return candidateFile;
     }
 
-    // TODO Improve this - the entry file might not be defined in the package.json
-    // and it's not necessarily `index.mjs`, might be index.cjs, app.mjs, etc.
+    const entryFile = await findFileByPatterns(componentPath, patterns, FUNCTION_EXTENSIONS);
+
+    // If we didn't find a suitable entry file, we set the entry as defined in package.json
+    // If this is not an option either, we set the default entry file
+    // Note - this is useful for ts projects where the entry file is not yet compiled
+    if (!entryFile) {
+        return candidateFile && fallback ? candidateFile : defaultFile;
+    }
+
+    return entryFile;
+}
+
+async function findFileByPatterns(
+    directory: string,
+    patterns: RegExp[],
+    extensions: string[],
+): Promise<string | undefined> {
+    const entries = await fs.readdir(directory, { withFileTypes: true });
+
+    for (const entry of entries) {
+        const fullPath = path.join(directory, entry.name);
+
+        if (entry.isDirectory()) {
+            // Skip excluded directories
+            if (EXCLUDED_DIRECTORIES.includes(entry.name)) continue;
+
+            // Recursively search within subdirectories
+            const result = await findFileByPatterns(fullPath, patterns, extensions);
+            if (result) return result;
+        } else if (entry.isFile() && extensions.some((ext) => entry.name.endsWith(`.${ext}`))) {
+            // Check if the file content matches all given patterns
+            const content = await fs.readFile(fullPath, "utf-8");
+            const allPatternsMatch = patterns.every((pattern) => pattern.test(content));
+            if (allPatternsMatch) {
+                return fullPath;
+            }
+        }
+    }
+
+    return undefined;
+}
+
+// Returns an object containing:
+// - `candidateFile`: The path to the main file in package.json if it exists and matches patterns.
+// - `fallback`: A boolean indicating if the file should be considered a fallback entry.
+async function getEntryFileFromPackageJson(
+    directory: string,
+    contents: Record<string, string>,
+    patterns: RegExp[],
+): Promise<{ candidateFile: string | undefined; fallback: boolean }> {
+    if (!contents["package.json"]) {
+        return { candidateFile: undefined, fallback: false };
+    }
+
     const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
-    return packageJsonContent.main || "index.mjs";
+    const mainPath = packageJsonContent.main;
+    if (!mainPath) {
+        return { candidateFile: undefined, fallback: false };
+    }
+    const fullPath = path.join(directory, mainPath);
+
+    // Check if the mainPath exists
+    try {
+        await fs.access(fullPath);
+    } catch {
+        return { candidateFile: mainPath, fallback: true };
+    }
+
+    // Check if the main file contains patterns that indicate it is indeed an entry file
+    const entryFileContent = await fs.readFile(fullPath, "utf-8");
+    const allPatternsMatch = patterns.every((pattern) => pattern.test(entryFileContent));
+    if (!allPatternsMatch) {
+        return { candidateFile: mainPath, fallback: true };
+    }
+
+    return { candidateFile: mainPath, fallback: false };
 }
 
 // Checks if the project is a Express component
