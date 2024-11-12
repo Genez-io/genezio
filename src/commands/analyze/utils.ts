@@ -156,9 +156,7 @@ export async function injectSDKInConfig(configPath: string) {
 
     // Load config with minimal changes
     const config = await configIOController.read(/* fillDefaults= */ false);
-
     const frontend = config.frontend as YamlFrontend;
-    if (!frontend) return;
 
     // TODO - Add support for other languages
     frontend.sdk = {

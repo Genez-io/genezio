@@ -362,7 +362,6 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             continue;
         }
 
-
         if (await isGenezioTypesafe(contents)) {
             await addBackendComponentToConfig(configPath, {
                 path: componentPath,
@@ -506,9 +505,9 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     // Inject Backend API URLs into the frontend component
     // This is done after all the components have been detected
     if (
-        !frameworksDetected.backend?.includes("genezio-typesafe") &&
         frameworksDetected.backend &&
         frameworksDetected.backend.length > 0 &&
+        !frameworksDetected.backend.includes("genezio-typesafe") &&
         frameworksDetected.frontend &&
         frameworksDetected.frontend.length > 0
     ) {
@@ -517,7 +516,11 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         await injectBackendApiUrlsInConfig(configPath, frontendPrefix);
     }
 
-    if (frameworksDetected.backend?.includes("genezio-typesafe")) {
+    if (
+        frameworksDetected.backend?.includes("genezio-typesafe") &&
+        frameworksDetected.frontend &&
+        frameworksDetected.frontend.length > 0
+    ) {
         // TODO Support multiple frontend frameworks in the same project
         await injectSDKInConfig(configPath);
     }
