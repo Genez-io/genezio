@@ -4,6 +4,7 @@ import { YamlFrontend, YAMLBackend, YamlContainer } from "../../projectConfigura
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import { SSRFrameworkComponent } from "../deploy/command.js";
 import { FRONTEND_ENV_PREFIX } from "./command.js";
+import { Language } from "../../projectConfiguration/yaml/models.js";
 
 export async function addFrontendComponentToConfig(configPath: string, component: YamlFrontend) {
     const configIOController = new YamlConfigurationIOController(configPath);
@@ -147,6 +148,47 @@ export async function injectBackendApiUrlsInConfig(configPath: string, frontendP
 }
 
 /**
+ * Injects the SDK into the backend configuration.
+ * @param configPath The path to the config file.
+ */
+export async function injectSDKInConfig(configPath: string) {
+    const configIOController = new YamlConfigurationIOController(configPath);
+
+    // Load config with minimal changes
+    const config = await configIOController.read(/* fillDefaults= */ false);
+    const frontend = config.frontend as YamlFrontend;
+
+    // TODO - Add support for other languages
+    frontend.sdk = {
+        language: Language.ts,
+    };
+
+    const scripts = frontend.scripts;
+    if (scripts) {
+        normalizeScripts(scripts);
+    }
+
+    // Check if scripts has the deploy and build properties for typesafe projects
+    // If not append them to the scripts object
+    frontend.scripts = {
+        ...scripts,
+        deploy: [
+            ...(frontend.scripts?.deploy?.includes(
+                "npm install @genezio-sdk/${{projectName}}@1.0.0-${{stage}}",
+            )
+                ? []
+                : ["npm install @genezio-sdk/${{projectName}}@1.0.0-${{stage}}"]),
+            ...(frontend.scripts?.deploy?.includes("npm install") ? [] : ["npm install"]),
+            ...(frontend.scripts?.deploy || []),
+        ],
+        build: frontend.scripts?.build || ["npm run build"],
+    };
+
+    // Save the updated configuration
+    await configIOController.write(config);
+}
+
+/**
  * Returns the frontend environment variable prefix based on the frontend framework.
  *
  * @param framework
@@ -208,4 +250,30 @@ function normalizeScripts(scripts: Scripts): void {
             normalizeScriptProperty(scripts, property);
         });
     }
+}
+
+/**
+ * Returns the handler for a given python framework.
+ * Searches for framework initialization patterns in Python code.
+ * @param contentEntryfile Content of the entry file
+ * @returns The handler variable name or undefined if not found
+ */
+export function getPythonHandler(contentEntryfile: string): string {
+    // Check if the contentEntryfile contains Flask or FastAPI initialization
+    const flaskPattern = /(\w+)\s*=\s*Flask\(__name__\)/;
+    const fastAPIPattern = /(\w+)\s*=\s*FastAPI\(\)/;
+
+    // Match the patterns in the contentEntryfile
+    const flaskMatch = contentEntryfile.match(flaskPattern);
+    const fastAPIMatch = contentEntryfile.match(fastAPIPattern);
+
+    if (flaskMatch && flaskMatch[1]) {
+        return flaskMatch[1];
+    }
+
+    if (fastAPIMatch && fastAPIMatch[1]) {
+        return fastAPIMatch[1];
+    }
+
+    return "app";
 }
