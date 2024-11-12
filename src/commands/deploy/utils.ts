@@ -48,7 +48,7 @@ import {
     promptToConfirmSettingEnvironmentVariables,
 } from "../../utils/environmentVariables.js";
 import inquirer from "inquirer";
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, readdirSync } from "fs";
 import { checkProjectName } from "../create/create.js";
 import {
     uniqueNamesGenerator,
@@ -942,13 +942,32 @@ const excludedFiles = [
     ".env.local",
 ];
 
-function getGitIgnoreFiles(cwd: string): string[] {
+function getGitIgnorePatterns(cwd: string): string[] {
     const gitIgnorePath = path.join(cwd, ".gitignore");
     if (existsSync(gitIgnorePath)) {
         return gitignore.parse(readFileSync(gitIgnorePath, "utf-8")).patterns;
     }
 
     return [];
+}
+
+function getAllGitIgnorePatterns(cwd: string): string[] {
+    let patterns: string[] = getGitIgnorePatterns(cwd);
+    readdirSync(cwd, { withFileTypes: true }).forEach((file) => {
+        if (
+            file.isDirectory() &&
+            !file.name.startsWith(".") &&
+            !file.name.startsWith("node_modules")
+        ) {
+            patterns = [
+                ...patterns,
+                ...getAllGitIgnorePatterns(path.join(cwd, file.name)).map((pattern) =>
+                    path.join(path.relative(cwd, path.join(cwd, file.name)), pattern),
+                ),
+            ];
+        }
+    });
+    return patterns;
 }
 
 // Upload the project code to S3 for in-browser editing
@@ -964,7 +983,7 @@ export async function uploadUserCode(
         cwd,
         path.join(tmpFolderProject, "projectCode.zip"),
         true,
-        excludedFiles.concat(getGitIgnoreFiles(cwd)),
+        excludedFiles.concat(getAllGitIgnorePatterns(cwd)),
     );
 
     await promiseZip;
