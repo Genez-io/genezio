@@ -743,7 +743,8 @@ export async function uploadEnvVarsFromFile(
                 .then(async () => {
                     const envVarKeys = envVars.map((envVar) => envVar.name);
                     log.info(
-                        `The following environment variables - ${envVarKeys.join(", ")} - were uploaded to the project successfully.`,
+                        `The following environment variables were uploaded successfully: `,
+                        envVarKeys.join(", "),
                     );
                     await GenezioTelemetry.sendEvent({
                         eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS,
@@ -850,7 +851,8 @@ export async function uploadEnvVarsFromFile(
             ).then(async () => {
                 const envVarKeys = environmentVariablesToBePushed.map((envVar) => envVar.name);
                 log.info(
-                    `The following environment variables - ${envVarKeys.join(", ")} - were uploaded to the project successfully.`,
+                    `The following environment variables were uploaded successfully: `,
+                    envVarKeys.join(", "),
                 );
                 await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS,
