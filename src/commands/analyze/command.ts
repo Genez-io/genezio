@@ -37,7 +37,15 @@ import {
 import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
 import { report } from "./outputUtils.js";
 import { isCI } from "../../utils/process.js";
-import { EXPRESS_PATTERN, FASTIFY_PATTERN, SERVERLESS_HTTP_PATTERN } from "./constants.js";
+import {
+    DJANGO_PATTERN,
+    EXPRESS_PATTERN,
+    FASTAPI_PATTERN,
+    FASTIFY_PATTERN,
+    FLASK_PATTERN,
+    PYTHON_LAMBDA_PATTERN,
+    SERVERLESS_HTTP_PATTERN,
+} from "./constants.js";
 
 // backend javascript: aws-compatible functions, serverless-http functions, express, fastify
 // backend typescript: aws-compatible functions, serverless-http functions, express, fastify
@@ -71,6 +79,7 @@ export const DEFAULT_CI_FORMAT = SUPPORTED_FORMATS.JSON;
 export const KEY_FILES = ["package.json", "Dockerfile", "requirements.txt"];
 export const EXCLUDED_DIRECTORIES = ["node_modules", ".git", "dist", "build"];
 export const NODE_DEFAULT_ENTRY_FILE = "index.mjs";
+export const PYTHON_DEFAULT_ENTRY_FILE = "app.py";
 
 // The analyze command has 2 side effects:
 // 1. It creates a new yaml with the detected components
@@ -352,19 +361,26 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isFlaskComponent(contents)) {
-            const entryfile = await getEntryfile(contents);
+            const entryFile = await findEntryFile(
+                componentPath,
+                contents,
+                FLASK_PATTERN,
+                PYTHON_DEFAULT_ENTRY_FILE,
+            );
             await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 language: {
                     name: Language.python,
-                    packageManager: getPackageManager().command as PackageManagerType,
+                    packageManager: "pip" as PackageManagerType,
                 } as YAMLLanguage,
                 functions: [
                     {
                         name: "flask",
                         path: ".",
-                        handler: await getPythonHandler(contents, "Flask"),
-                        entry: entryfile,
+                        handler: await getPythonHandler(
+                            await retrieveFileContent(path.join(componentPath, entryFile)),
+                        ),
+                        entry: entryFile,
                         type: FunctionType.httpServer,
                     },
                 ],
@@ -376,18 +392,23 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isDjangoComponent(contents)) {
-            const entryfile = await getEntryfile(contents);
+            const entryfile = await findEntryFile(
+                componentPath,
+                contents,
+                DJANGO_PATTERN,
+                "wsgi.py",
+            );
             await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 language: {
                     name: Language.python,
-                    packageManager: getPackageManager().command as PackageManagerType,
+                    packageManager: "pip" as PackageManagerType,
                 } as YAMLLanguage,
                 functions: [
                     {
                         name: "django",
                         path: ".",
-                        handler: await getPythonHandler(contents, "Django"),
+                        handler: "application",
                         entry: entryfile,
                         type: FunctionType.httpServer,
                     },
@@ -400,18 +421,25 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isFastAPIComponent(contents)) {
-            const entryfile = await getEntryfile(contents);
+            const entryfile = await findEntryFile(
+                componentPath,
+                contents,
+                FASTAPI_PATTERN,
+                PYTHON_DEFAULT_ENTRY_FILE,
+            );
             await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 language: {
                     name: Language.python,
-                    packageManager: getPackageManager().command as PackageManagerType,
+                    packageManager: "pip" as PackageManagerType,
                 } as YAMLLanguage,
                 functions: [
                     {
                         name: "fastapi",
                         path: ".",
-                        handler: await getPythonHandler(contents, "FastAPI"),
+                        handler: await getPythonHandler(
+                            await retrieveFileContent(path.join(componentPath, entryfile)),
+                        ),
                         entry: entryfile,
                         type: FunctionType.httpServer,
                     },
@@ -424,12 +452,17 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isPythonLambdaFunction(contents)) {
-            const entryfile = await getEntryfile(contents);
+            const entryfile = await findEntryFile(
+                componentPath,
+                contents,
+                PYTHON_LAMBDA_PATTERN,
+                PYTHON_DEFAULT_ENTRY_FILE,
+            );
             await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 language: {
                     name: Language.python,
-                    packageManager: getPackageManager().command as PackageManagerType,
+                    packageManager: "pip" as PackageManagerType,
                 } as YAMLLanguage,
                 functions: [
                     {

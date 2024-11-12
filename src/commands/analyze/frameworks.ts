@@ -321,7 +321,7 @@ export function isFlaskComponent(contents: Record<string, string>): boolean {
         return false;
     }
     const requirementsTxt = contents["requirements.txt"];
-    return requirementsTxt !== undefined && requirementsTxt.includes("flask");
+    return requirementsTxt !== undefined && /flask(?:==|$|\s)/i.test(requirementsTxt); // Case-insensitive match for "flask", "Flask", "flask==", or "Flask=="
 }
 
 // Checks if the project is a Django component (presence of 'requirements.txt', and 'django' in 'requirements.txt')
@@ -330,7 +330,7 @@ export function isDjangoComponent(contents: Record<string, string>): boolean {
         return false;
     }
     const requirementsTxt = contents["requirements.txt"];
-    return requirementsTxt !== undefined && requirementsTxt.includes("django");
+    return requirementsTxt !== undefined && /django(?:==|$|\s)/i.test(requirementsTxt);
 }
 
 // Checks if the project is a FastAPI component (presence of 'requirements.txt', and 'fastapi' in 'requirements.txt')
@@ -339,17 +339,14 @@ export function isFastAPIComponent(contents: Record<string, string>): boolean {
         return false;
     }
     const requirementsTxt = contents["requirements.txt"];
-    return requirementsTxt !== undefined && requirementsTxt.includes("fastapi");
+    return requirementsTxt !== undefined && /fastapi(?:==|$|\s)/i.test(requirementsTxt);
 }
 
-// Checks if the project is a Python function that is compatible with AWS Lambda (presence of 'requirements.txt' and have a file with 'def handler(event):')
+// Checks if the project is a Python function that is compatible with AWS Lambda (presence of 'requirements.txt')
 export function isPythonLambdaFunction(contents: Record<string, string>): boolean {
-    if (!contents["requirements.txt"]) {
+    if (!("requirements.txt" in contents)) {
         return false;
     }
-    const requirementsTxt = contents["requirements.txt"];
-    return (
-        requirementsTxt !== undefined &&
-        Object.values(contents).some((file) => file.includes("def handler(event):"))
-    );
+
+    return true;
 }
