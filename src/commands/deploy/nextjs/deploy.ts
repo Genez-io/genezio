@@ -16,11 +16,7 @@ import {
     getFrontendPresignedURL,
 } from "../../../requests/getFrontendPresignedURL.js";
 import { uploadContentToS3 } from "../../../requests/uploadContentToS3.js";
-import {
-    createTemporaryFolder,
-    getAllFilesFromPath,
-    zipDirectoryToDestinationPath,
-} from "../../../utils/file.js";
+import { createTemporaryFolder, zipDirectoryToDestinationPath } from "../../../utils/file.js";
 import { DeployCodeFunctionResponse } from "../../../models/deployCodeResponse.js";
 import {
     createFrontendProjectV2,
@@ -29,7 +25,6 @@ import {
 import { setEnvironmentVariables } from "../../../requests/setEnvironmentVariables.js";
 import { GenezioCloudOutput } from "../../../cloudAdapter/cloudAdapter.js";
 import {
-    ENVIRONMENT,
     GENEZIO_FRONTEND_DEPLOYMENT_BUCKET,
     NEXT_JS_GET_ACCESS_KEY,
     NEXT_JS_GET_SECRET_ACCESS_KEY,
@@ -38,7 +33,6 @@ import colors from "colors";
 import { computeAssetsPaths } from "./assets.js";
 import * as Sentry from "@sentry/node";
 import { randomUUID } from "crypto";
-import { EdgeFunction, getEdgeFunctions } from "./edge.js";
 import { attemptToInstallDependencies, uploadEnvVarsFromFile, uploadUserCode } from "../utils.js";
 import { readOrAskConfig } from "../utils.js";
 import { SSRFrameworkComponentType } from "../../../models/projectOptions.js";
@@ -68,19 +62,11 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         SSRFrameworkComponentType.next,
     );
 
-    const edgeFunctions = await getEdgeFunctions(componentPath);
     writeNextConfig(componentPath);
-    await writeOpenNextConfig(
-        genezioConfig.region,
-        edgeFunctions,
-        installDependenciesCommand.args,
-        componentPath,
-    );
-    // Build the Next.js project
     await $({
         stdio: "inherit",
         cwd: componentPath,
-    })`npx --yes @genezio/open-next@latest build`.catch(() => {
+    })`next build`.catch(() => {
         throw new UserError("Failed to build the Next.js project. Check the logs above.");
     });
 
@@ -90,7 +76,7 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
 
     const [deploymentResult, domainName] = await Promise.all([
         // Deploy NextJs serverless functions
-        deployFunctions(genezioConfig, componentPath, options.stage),
+        deployFunction(genezioConfig, componentPath, options.stage),
         // Deploy NextJs static assets to S3
         deployStaticAssets(genezioConfig, options.stage, cacheToken, componentPath),
     ]);
@@ -102,11 +88,10 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         setupEnvironmentVariables(deploymentResult, domainName, genezioConfig.region, cacheToken),
         // Deploy CDN that serves the Next.js app
         deployCDN(
-            deploymentResult.functions,
+            deploymentResult.functions[0],
             domainName,
             genezioConfig,
             options.stage,
-            edgeFunctions,
             componentPath,
         ),
         uploadEnvVarsFromFile(
@@ -126,7 +111,7 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
 }
 
 async function checkProjectLimitations(cwd: string) {
-    const assetsPath = path.join(cwd, ".open-next", "assets");
+    const assetsPath = path.join(cwd, ".next", "static");
     const paths = await computeAssetsPaths(assetsPath, {} as CreateFrontendV2Origin);
 
     if (paths.length > 195) {
@@ -176,48 +161,17 @@ async function setupEnvironmentVariables(
 }
 
 async function deployCDN(
-    deployedFunctions: DeployCodeFunctionResponse[],
+    deployedFunction: DeployCodeFunctionResponse,
     domainName: string,
     config: YamlProjectConfiguration,
     stage: string,
-    edgeFunctions: EdgeFunction[] = [],
     cwd: string,
 ) {
     const PATH_NUMBER_LIMIT = 200;
 
-    const externalPaths: {
-        origin: CreateFrontendV2Origin;
-        pattern: string;
-    }[] = deployedFunctions
-        .filter((f) => f.name !== "function-image-optimization" && f.name !== "function-default")
-        .map((f) => {
-            return {
-                origin: {
-                    domain: {
-                        id: f.id,
-                        type: "function",
-                    },
-                    path: undefined,
-                    methods: ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-                    cachePolicy: "custom-function-cache",
-                },
-                pattern: edgeFunctions.find((ef) => ef.name === f.name)!.pattern,
-            };
-        });
-
     const serverOrigin: CreateFrontendV2Origin = {
         domain: {
-            id: deployedFunctions.find((f) => f.name === "function-default")?.id ?? "",
-            type: "function",
-        },
-        path: undefined,
-        methods: ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-        cachePolicy: "custom-function-cache",
-    };
-
-    const imageOptimizationOrigin: CreateFrontendV2Origin = {
-        domain: {
-            id: deployedFunctions.find((f) => f.name === "function-image-optimization")?.id ?? "",
+            id: deployedFunction.id,
             type: "function",
         },
         path: undefined,
@@ -236,13 +190,12 @@ async function deployCDN(
     };
 
     const paths = [
-        ...externalPaths,
         { origin: serverOrigin, pattern: "api/*" },
         { origin: serverOrigin, pattern: "_next/data/*" },
-        { origin: imageOptimizationOrigin, pattern: "_next/image*" },
+        { origin: serverOrigin, pattern: "_next/image*" },
     ];
 
-    const assetsFolder = path.join(cwd, ".open-next", "assets");
+    const assetsFolder = path.join(cwd, ".next", "static");
     paths.push(...(await computeAssetsPaths(assetsFolder, s3Origin)));
 
     if (paths.length >= PATH_NUMBER_LIMIT) {
@@ -287,13 +240,8 @@ async function deployStaticAssets(
     await fs.promises.mkdir(path.join(temporaryFolder, "next-static"));
     await Promise.all([
         fs.promises.cp(
-            path.join(cwd, ".open-next", "assets"),
+            path.join(cwd, ".next", "static"),
             path.join(temporaryFolder, "next-static", "_assets"),
-            { recursive: true },
-        ),
-        fs.promises.cp(
-            path.join(cwd, ".open-next", "cache"),
-            path.join(temporaryFolder, "next-static", cacheToken, "_cache"),
             { recursive: true },
         ),
     ]);
@@ -313,31 +261,20 @@ async function deployStaticAssets(
     return domain;
 }
 
-async function deployFunctions(config: YamlProjectConfiguration, cwd: string, stage?: string) {
+async function deployFunction(config: YamlProjectConfiguration, cwd: string, stage?: string) {
     const cloudProvider = await getCloudProvider(config.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
 
     const cwdRelative = path.relative(process.cwd(), cwd) || ".";
-    const basePath = path.join(cwdRelative, ".open-next", "server-functions");
-    const serverSubfolders = await getAllFilesFromPath(basePath, false);
 
-    const functions = serverSubfolders.map((folder) => {
-        return {
-            path: path.join(cwdRelative, ".open-next", "server-functions", folder.name),
-            name: folder.name,
-            entry: "index.mjs",
-            handler: "handler",
-            type: FunctionType.aws,
-        };
-    });
-
-    functions.push({
-        path: path.join(cwdRelative, ".open-next", "image-optimization-function"),
-        name: "image-optimization",
-        entry: "index.mjs",
+    const serverFunction = {
+        path: path.join(cwdRelative, ".next"),
+        name: "nextjs",
+        entry: "standalone/server.js",
         handler: "handler",
-        type: FunctionType.aws,
-    });
+        type: FunctionType.httpServer,
+        port: 3000,
+    };
 
     const deployConfig: YamlProjectConfiguration = {
         ...config,
@@ -349,7 +286,7 @@ async function deployFunctions(config: YamlProjectConfiguration, cwd: string, st
                 architecture: "x86_64",
                 packageManager: PackageManagerType.npm,
             },
-            functions,
+            functions: [serverFunction],
         },
     };
 
@@ -386,78 +323,9 @@ function writeNextConfig(cwd: string) {
         fs.existsSync(path.join(cwd, `next.config.${ext}`)),
     );
     if (!configExists) {
-        fs.writeFileSync("next.config.js", ``);
+        fs.writeFileSync(
+            path.join(cwd, "next.config.js"),
+            `module.exports = { output: 'standalone' }`,
+        );
     }
-}
-
-async function writeOpenNextConfig(
-    region: string,
-    edgeFunctionPaths: EdgeFunction[],
-    installArgs: string[] = [],
-    cwd: string,
-) {
-    let functions = "";
-
-    if (edgeFunctionPaths.length > 0) {
-        functions += "functions: {\n";
-        for (const index in edgeFunctionPaths) {
-            const f = edgeFunctionPaths[index];
-            functions += `   edge${index}: {
-    runtime: 'edge',
-    routes: ['${f.path}'],
-    patterns: ['${f.pattern}'],
-    },
-`;
-        }
-        functions += "},";
-    }
-    const OPEN_NEXT_CONFIG = `
-    import { IncrementalCache, Queue, TagCache } from "@genezio/nextjs-isr-${region}";
-
-    const deployment = process.env["GENEZIO_DOMAIN_NAME"] || "";
-    const token = (process.env["GENEZIO_CACHE_TOKEN"] || "") + "/_cache/" + (process.env["NEXT_BUILD_ID"] || "");
-
-    const queue = () => ({
-        name: "genezio-queue",
-        send: Queue.send.bind(null, deployment, token),
-    });
-
-    const incrementalCache = () => ({
-        name: "genezio-incremental-cache",
-        get: IncrementalCache.get.bind(null, deployment, token),
-        set: IncrementalCache.set.bind(null, deployment, token),
-        delete: IncrementalCache.delete.bind(null, deployment, token),
-    });
-
-    const tagCache = () => ({
-        name: "genzio-tag-cache",
-        getByTag: TagCache.getByTag.bind(null, deployment, token),
-        getByPath: TagCache.getByPath.bind(null, deployment, token),
-        getLastModified: TagCache.getLastModified.bind(null, deployment, token),
-        writeTags: TagCache.writeTags.bind(null, deployment, token),
-    });
-
-    const config = {
-        default: {
-            override: {
-                queue,
-                incrementalCache,
-                tagCache,
-            },
-        },
-        ${functions}
-        imageOptimization: {
-            arch: "x64",
-        },
-    };
-
-    export default config;`;
-
-    // Write the open-next configuration
-    // TODO: Check if the file already exists and merge the configurations, instead of overwriting it.
-    const openNextConfigPath = path.join(cwd, "open-next.config.ts");
-    await fs.promises.writeFile(openNextConfigPath, OPEN_NEXT_CONFIG);
-
-    const tag = ENVIRONMENT === "prod" ? "latest" : "dev";
-    await getPackageManager().install([`@genezio/nextjs-isr-${region}@${tag}`], cwd, installArgs);
 }
