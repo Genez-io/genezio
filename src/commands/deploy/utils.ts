@@ -947,7 +947,7 @@ const excludedFiles = [
 function getGitIgnorePatterns(cwd: string): string[] {
     const gitIgnorePath = path.join(cwd, ".gitignore");
     if (existsSync(gitIgnorePath)) {
-        return gitignore.parse(readFileSync(gitIgnorePath, "utf-8")).patterns;
+        return gitignore.parse(readFileSync(gitIgnorePath)).patterns;
     }
 
     return [];
