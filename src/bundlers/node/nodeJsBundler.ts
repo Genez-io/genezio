@@ -327,7 +327,7 @@ export class NodeJsBundler implements BundlerInterface {
         while (true) {
             try {
                 // Building with `metafile` field set to true will return a JSON object with information about the dependencies
-                output = await esbuild.build({
+                output = esbuild.buildSync({
                     entryPoints: [filePath],
                     bundle: true,
                     metafile: true,
