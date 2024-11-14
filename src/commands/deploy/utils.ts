@@ -273,6 +273,35 @@ export async function readOrAskProjectName(): Promise<string> {
     return name;
 }
 
+/**
+ * To prevent reusing an already deployed database, we will check if the database exists remotely.
+ * @param prefix Prefix for the database name, usually the engine used - e.g. "postgres", "mongo"
+ * @returns A unique database name
+ */
+export async function generateDatabaseName(prefix: string): Promise<string> {
+    const defaultDatabaseName = prefix + "-" + "db";
+
+    const databaseExists = await getDatabaseByName(defaultDatabaseName)
+        .then(() => true)
+        .catch(() => false);
+
+    if (!databaseExists) {
+        return defaultDatabaseName;
+    }
+
+    const generatedDatabaseName =
+        prefix +
+        "-" +
+        uniqueNamesGenerator({
+            dictionaries: [adjectives, animals],
+            separator: "-",
+            style: "lowerCase",
+            length: 2,
+        });
+
+    return generatedDatabaseName;
+}
+
 export async function getOrCreateDatabase(
     createDatabaseReq: CreateDatabaseRequest,
     stage: string,

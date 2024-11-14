@@ -24,7 +24,7 @@ import {
     hasPostgresDependency,
     hasMongoDependency,
 } from "./frameworks.js";
-import { readOrAskConfig } from "../deploy/utils.js";
+import { generateDatabaseName, readOrAskConfig } from "../deploy/utils.js";
 import { getPackageManager, PackageManagerType } from "../../packageManagers/packageManager.js";
 import { SSRFrameworkComponentType } from "../../models/projectOptions.js";
 import { RawYamlProjectConfiguration, YAMLLanguage } from "../../projectConfiguration/yaml/v2.js";
@@ -135,7 +135,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             await addServicesToConfig(configPath, {
                 databases: [
                     {
-                        name: "postgres-db",
+                        name: await generateDatabaseName("postgres"),
                         region: genezioConfig.region,
                         type: DatabaseType.neon,
                     },
@@ -149,7 +149,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             await addServicesToConfig(configPath, {
                 databases: [
                     {
-                        name: "mongo-db",
+                        name: await generateDatabaseName("mongo"),
                         region: genezioConfig.region,
                         type: DatabaseType.mongo,
                     },
