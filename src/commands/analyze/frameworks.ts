@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { EXCLUDED_DIRECTORIES } from "./command.js";
+import { EXCLUDED_DIRECTORIES, KEY_DEPENDENCY_FILES } from "./command.js";
 import { FUNCTION_EXTENSIONS } from "../../models/projectOptions.js";
 
 export interface PackageJSON {
@@ -131,6 +131,79 @@ async function getEntryFileFromPackageJson(
     }
 
     return { candidateFile: mainPath, fallback: false };
+}
+
+export async function hasPostgresDependency(
+    contents: Record<string, string>,
+    dependencyFile: string,
+): Promise<boolean> {
+    if (!KEY_DEPENDENCY_FILES.includes(dependencyFile)) {
+        return false;
+    }
+
+    if (!contents[dependencyFile]) {
+        return false;
+    }
+
+    const jsPostgresIndicators = ["pg", "pg-promise"];
+    const pythonPostgresIndicators = ["psycopg2", "asyncpg", "py-postgresql"];
+    const dependencyList = jsPostgresIndicators.concat(pythonPostgresIndicators);
+
+    return await searchDependency(contents, dependencyFile, dependencyList);
+}
+
+export async function hasMongoDependency(
+    contents: Record<string, string>,
+    dependencyFile: string,
+): Promise<boolean> {
+    if (!KEY_DEPENDENCY_FILES.includes(dependencyFile)) {
+        return false;
+    }
+
+    if (!contents[dependencyFile]) {
+        return false;
+    }
+
+    const jsMongoIndicators = ["mongodb", "mongoose", "connect-mongo"];
+    const pythonMongoIndicators = ["pymongo"];
+    const dependencyList = jsMongoIndicators.concat(pythonMongoIndicators);
+
+    return await searchDependency(contents, dependencyFile, dependencyList);
+}
+
+/**
+ * This function receives a dependency file such as package.json or requirements.txt
+ * and a list of dependency such as ["mongodb", "mongoose", "connect-mongo"].
+ *
+ * It returns true if any of the dependencies are found in the file.
+ *
+ * This is used to determine if a project is using certain services such as Postgres or MongoDB
+ * Can be used for other services too - redis, mysql, kafka etc.
+ */
+export async function searchDependency(
+    contents: Record<string, string>,
+    dependencyFile: string,
+    dependencyList: string[],
+): Promise<boolean> {
+    if (!contents[dependencyFile]) {
+        return false;
+    }
+
+    if (dependencyFile === "package.json") {
+        const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
+        return dependencyList.some(
+            (indicator) =>
+                indicator in (packageJsonContent.dependencies || {}) ||
+                indicator in (packageJsonContent.devDependencies || {}),
+        );
+    } else if (dependencyFile === "requirements.txt") {
+        const requirementsContent = contents["requirements.txt"];
+        return requirementsContent
+            .split("\n")
+            .some((line) => dependencyList.some((indicator) => line.trim().startsWith(indicator)));
+    }
+
+    return false;
 }
 
 // Checks if the project is a Express component

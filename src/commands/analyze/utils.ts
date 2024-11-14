@@ -1,6 +1,11 @@
 import path from "path";
 import { SSRFrameworkComponentType } from "../../models/projectOptions.js";
-import { YamlFrontend, YAMLBackend, YamlContainer } from "../../projectConfiguration/yaml/v2.js";
+import {
+    YamlFrontend,
+    YAMLBackend,
+    YamlContainer,
+    YAMLService,
+} from "../../projectConfiguration/yaml/v2.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import { SSRFrameworkComponent } from "../deploy/command.js";
 import { FRONTEND_ENV_PREFIX } from "./command.js";
@@ -115,6 +120,20 @@ export async function addContainerComponentToConfig(configPath: string, componen
     config.container = {
         ...config.container,
         path: config.container?.path || relativePath,
+    };
+
+    await configIOController.write(config);
+}
+
+export async function addServicesToConfig(configPath: string, services: YAMLService) {
+    const configIOController = new YamlConfigurationIOController(configPath);
+    // We have to read the config here with fillDefaults=false
+    // to be able to edit it in the least intrusive way
+    const config = await configIOController.read(/* fillDefaults= */ false);
+
+    config.services = {
+        ...config.services,
+        ...services,
     };
 
     await configIOController.write(config);
