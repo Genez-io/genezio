@@ -51,10 +51,11 @@ Analyze the file and provide the following information for each environment vari
 - defaultValue: The default value of the environment variable - try and provide a value that is most likely to be used
 - aboveComment(optional): A helpful description of what this environment variable does
 - link(optional): A link to the documentation on how to retrieve this environment variable if it's not possible to provide a default value. This is an optional value. If you already have a default value, provide "" for link.
+- genezioProvisioned: If the environment variable is for a service that is provisioned by Genezio, set this to true. If not, set this to false.
 
 There are a few tips to keep in mind:
-1. If the environment variable is a postgres database - you can provide the following \`\${{services.databases.<database-name>.uri}}\`
-2. If the environment variable is a mongo database - you can provide the following \`\${{services.databases.<database-name>.uri}}\`
+1. If the environment variable is a postgres database - you can provide the following \`\${{services.databases.<database-name>.uri}}\` because it's provisioned by Genezio
+2. If the environment variable is a mongo database - you can provide the following \`\${{services.databases.<database-name>.uri}}\` because it's provisioned by Genezio
 3. If the environment variable has to be random secret string, generate a random string with the proper length
 
 `;

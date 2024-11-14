@@ -29,6 +29,7 @@ import { getPackageManager, PackageManagerType } from "../../packageManagers/pac
 import { SSRFrameworkComponentType } from "../../models/projectOptions.js";
 import {
     RawYamlProjectConfiguration,
+    YAMLBackend,
     YamlConfigurationIOController,
     YAMLLanguage,
 } from "../../projectConfiguration/yaml/v2.js";
@@ -572,6 +573,25 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             envExampleContentsString,
             config.services,
         );
+
+        const filteredEnvExampleAnalysis = envExampleAnalysis.filter((env: ProjectEnvironment) =>
+            /\$\{\{.*\}\}/.test(env.defaultValue),
+        );
+
+        const environment: Record<string, string> = filteredEnvExampleAnalysis.reduce(
+            (acc: Record<string, string>, env: ProjectEnvironment) => {
+                acc[env.key] = env.defaultValue;
+                return acc;
+            },
+            {},
+        );
+
+        // Add backend environment to the config
+        await addBackendComponentToConfig(configPath, {
+            ...(config.backend as YAMLBackend),
+            environment: environment,
+        });
+
         frameworksDetected.backendEnvironment = envExampleAnalysis;
     }
 

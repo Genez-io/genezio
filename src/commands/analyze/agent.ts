@@ -12,6 +12,7 @@ import { YAMLService } from "../../projectConfiguration/yaml/v2.js";
 export interface ProjectEnvironment {
     key: string;
     defaultValue: string;
+    genezioProvisioned: boolean;
     aboveComment?: string;
     link?: string;
 }
@@ -21,6 +22,7 @@ export const ProjectEnvironmentSchema = z.object({
         z.object({
             key: z.string(),
             defaultValue: z.string(),
+            genezioProvisioned: z.boolean(),
             aboveComment: z.string().optional(),
             link: z.string().optional(),
         }),
