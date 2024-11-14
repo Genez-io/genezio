@@ -27,7 +27,11 @@ import {
 import { generateDatabaseName, readOrAskConfig } from "../deploy/utils.js";
 import { getPackageManager, PackageManagerType } from "../../packageManagers/packageManager.js";
 import { SSRFrameworkComponentType } from "../../models/projectOptions.js";
-import { RawYamlProjectConfiguration, YAMLLanguage } from "../../projectConfiguration/yaml/v2.js";
+import {
+    RawYamlProjectConfiguration,
+    YamlConfigurationIOController,
+    YAMLLanguage,
+} from "../../projectConfiguration/yaml/v2.js";
 import {
     addBackendComponentToConfig,
     addContainerComponentToConfig,
@@ -51,6 +55,7 @@ import {
     PYTHON_LAMBDA_PATTERN,
     SERVERLESS_HTTP_PATTERN,
 } from "./constants.js";
+import { analyzeBackendEnvExampleFile, ProjectEnvironment } from "./agent.js";
 
 // backend javascript: aws-compatible functions, serverless-http functions, express, fastify
 // backend typescript: aws-compatible functions, serverless-http functions, express, fastify
@@ -61,6 +66,7 @@ import {
 // services: databases, authentication, crons, cache/redis, queues
 export type FrameworkReport = {
     backend?: string[];
+    backendEnvironment?: ProjectEnvironment[];
     frontend?: string[];
     ssr?: string[];
     services?: FrameworkReportService[];
@@ -88,6 +94,7 @@ export const DEFAULT_CI_FORMAT = SUPPORTED_FORMATS.JSON;
 
 export const KEY_FILES = ["package.json", "Dockerfile", "requirements.txt"];
 export const KEY_DEPENDENCY_FILES = ["package.json", "requirements.txt"];
+export const ENVIRONMENT_EXAMPLE_FILES = [".env.template", ".env.example", ".env.local.example"];
 export const EXCLUDED_DIRECTORIES = ["node_modules", ".git", "dist", "build"];
 export const NODE_DEFAULT_ENTRY_FILE = "index.mjs";
 export const PYTHON_DEFAULT_ENTRY_FILE = "app.py";
@@ -542,6 +549,32 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
     }
 
+    // Analyze the environment example file if we have a backend component
+    if (frameworksDetected.backend && frameworksDetected.backend.length > 0) {
+        const envExampleFiles = await findKeyFiles(rootDirectory, ENVIRONMENT_EXAMPLE_FILES);
+        // Read the file contents
+        const envExampleContents = new Map<string, string>();
+        for (const [relativeFilePath, filename] of envExampleFiles.entries()) {
+            const fileContent = await retrieveFileContent(relativeFilePath);
+            envExampleContents.set(filename, fileContent);
+        }
+
+        // envExampleContents to string
+        const envExampleContentsString = Array.from(envExampleContents.values()).join("\n");
+
+        const configIOController = new YamlConfigurationIOController(configPath);
+        // We have to read the config here with fillDefaults=false
+        // to be able to edit it in the least intrusive way
+        const config = await configIOController.read(/* fillDefaults= */ false);
+
+        // Analyze the environment example file
+        const envExampleAnalysis = await analyzeBackendEnvExampleFile(
+            envExampleContentsString,
+            config.services,
+        );
+        frameworksDetected.backendEnvironment = envExampleAnalysis;
+    }
+
     // Inject Backend API URLs into the frontend component
     // This is done after all the components have been detected
     if (
@@ -570,7 +603,10 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     log.info(result);
 }
 
-export const findKeyFiles = async (dir: string): Promise<Map<string, string>> => {
+export const findKeyFiles = async (
+    dir: string,
+    keyFiles: string[] = KEY_FILES,
+): Promise<Map<string, string>> => {
     const result = new Map<string, string>();
 
     const searchDir = async (currentDir: string) => {
@@ -586,7 +622,7 @@ export const findKeyFiles = async (dir: string): Promise<Map<string, string>> =>
 
                     // Recursively search subdirectory
                     await searchDir(fullPath);
-                } else if (KEY_FILES.includes(entry.name)) {
+                } else if (keyFiles.includes(entry.name)) {
                     // If the file is one of the key files, add it to the map
                     const relativePath = path.relative(dir, fullPath);
                     result.set(relativePath, entry.name);
