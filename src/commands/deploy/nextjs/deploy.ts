@@ -66,7 +66,11 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     await $({
         stdio: "inherit",
         cwd: componentPath,
-    })`next build`.catch(() => {
+        env: {
+            ...process.env,
+            NEXT_PRIVATE_STANDALONE: "true",
+        },
+    })`npx next build --no-lint`.catch(() => {
         throw new UserError("Failed to build the Next.js project. Check the logs above.");
     });
 
@@ -131,7 +135,7 @@ async function setupEnvironmentVariables(
     await setEnvironmentVariables(deploymentResult.projectId, deploymentResult.projectEnvId, [
         {
             name: "BUCKET_KEY_PREFIX",
-            value: `${domainName}/_assets`,
+            value: `${domainName}/_assets/`,
         },
         {
             name: "BUCKET_NAME",
@@ -192,7 +196,9 @@ async function deployCDN(
     const paths = [
         { origin: serverOrigin, pattern: "api/*" },
         { origin: serverOrigin, pattern: "_next/data/*" },
-        { origin: serverOrigin, pattern: "_next/image*" },
+        { origin: s3Origin, pattern: "_next/image*" },
+        { origin: s3Origin, pattern: "_next/static*" },
+        { origin: s3Origin, pattern: "*.*" },
     ];
 
     const assetsFolder = path.join(cwd, ".next", "static");
@@ -236,14 +242,20 @@ async function deployStaticAssets(
 
     const temporaryFolder = await createTemporaryFolder();
     const archivePath = path.join(temporaryFolder, "next-static.zip");
+    const staticAssetsPath = path.join(temporaryFolder, "next-static", "_assets");
 
-    await fs.promises.mkdir(path.join(temporaryFolder, "next-static"));
+    // Create base directory structure first
+    await fs.promises.mkdir(staticAssetsPath, { recursive: true });
+    await fs.promises.mkdir(path.join(staticAssetsPath, "_next"), { recursive: true });
+
+    // Copy files after directories are created
     await Promise.all([
         fs.promises.cp(
             path.join(cwd, ".next", "static"),
-            path.join(temporaryFolder, "next-static", "_assets"),
+            path.join(staticAssetsPath, "_next", "static"),
             { recursive: true },
         ),
+        fs.promises.cp(path.join(cwd, "public"), staticAssetsPath, { recursive: true }),
     ]);
 
     const { presignedURL, userId, domain } = await getFrontendPresignedURLPromise;
@@ -268,9 +280,9 @@ async function deployFunction(config: YamlProjectConfiguration, cwd: string, sta
     const cwdRelative = path.relative(process.cwd(), cwd) || ".";
 
     const serverFunction = {
-        path: path.join(cwdRelative, ".next"),
+        path: path.join(cwdRelative, ".next", "standalone"),
         name: "nextjs",
-        entry: "standalone/server.js",
+        entry: "server.js",
         handler: "handler",
         type: FunctionType.httpServer,
         port: 3000,
