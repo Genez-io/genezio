@@ -29,6 +29,7 @@ import { DeepRequired } from "../../utils/types.js";
 
 export type RawYamlProjectConfiguration = ReturnType<typeof parseGenezioConfig>;
 export type YAMLBackend = NonNullable<YamlProjectConfiguration["backend"]>;
+export type YAMLService = NonNullable<YamlProjectConfiguration["services"]>;
 export type YAMLLanguage = NonNullable<YAMLBackend["language"]>;
 export type YamlClass = NonNullable<YAMLBackend["classes"]>[number];
 export type YamlFunction = NonNullable<YAMLBackend["functions"]>[number];

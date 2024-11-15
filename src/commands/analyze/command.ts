@@ -21,8 +21,10 @@ import {
     isPythonLambdaFunction,
     findEntryFile,
     isGenezioTypesafe,
+    hasPostgresDependency,
+    hasMongoDependency,
 } from "./frameworks.js";
-import { readOrAskConfig } from "../deploy/utils.js";
+import { generateDatabaseName, readOrAskConfig } from "../deploy/utils.js";
 import { getPackageManager, PackageManagerType } from "../../packageManagers/packageManager.js";
 import { SSRFrameworkComponentType } from "../../models/projectOptions.js";
 import { RawYamlProjectConfiguration, YAMLLanguage } from "../../projectConfiguration/yaml/v2.js";
@@ -30,13 +32,14 @@ import {
     addBackendComponentToConfig,
     addContainerComponentToConfig,
     addFrontendComponentToConfig,
+    addServicesToConfig,
     addSSRComponentToConfig,
     getFrontendPrefix,
     getPythonHandler,
     injectBackendApiUrlsInConfig,
     injectSDKInConfig,
 } from "./utils.js";
-import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
+import { DatabaseType, FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
 import { report } from "./outputUtils.js";
 import { isCI } from "../../utils/process.js";
 import {
@@ -60,6 +63,11 @@ export type FrameworkReport = {
     backend?: string[];
     frontend?: string[];
     ssr?: string[];
+    services?: FrameworkReportService[];
+};
+
+export type FrameworkReportService = {
+    databases?: string[];
 };
 
 export enum FRONTEND_ENV_PREFIX {
@@ -79,6 +87,7 @@ export const DEFAULT_FORMAT = SUPPORTED_FORMATS.TEXT;
 export const DEFAULT_CI_FORMAT = SUPPORTED_FORMATS.JSON;
 
 export const KEY_FILES = ["package.json", "Dockerfile", "requirements.txt"];
+export const KEY_DEPENDENCY_FILES = ["package.json", "requirements.txt"];
 export const EXCLUDED_DIRECTORIES = ["node_modules", ".git", "dist", "build"];
 export const NODE_DEFAULT_ENTRY_FILE = "index.mjs";
 export const PYTHON_DEFAULT_ENTRY_FILE = "app.py";
@@ -121,6 +130,37 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             [filename]: fileContent,
         };
 
+        // Check for services (postgres, mongo)
+        if (await hasPostgresDependency(contents, filename)) {
+            await addServicesToConfig(configPath, {
+                databases: [
+                    {
+                        name: await generateDatabaseName("postgres"),
+                        region: genezioConfig.region,
+                        type: DatabaseType.neon,
+                    },
+                ],
+            });
+
+            frameworksDetected.services = frameworksDetected.services || [];
+            frameworksDetected.services.push({ databases: ["postgres"] });
+        }
+        if (await hasMongoDependency(contents, filename)) {
+            await addServicesToConfig(configPath, {
+                databases: [
+                    {
+                        name: await generateDatabaseName("mongo"),
+                        region: genezioConfig.region,
+                        type: DatabaseType.mongo,
+                    },
+                ],
+            });
+
+            frameworksDetected.services = frameworksDetected.services || [];
+            frameworksDetected.services.push({ databases: ["mongo"] });
+        }
+
+        // Check for frameworks (backend, frontend, ssr, container)
         if (await isServerlessHttpBackend(contents)) {
             const entryFile = await findEntryFile(
                 componentPath,
