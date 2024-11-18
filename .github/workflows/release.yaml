@@ -39,3 +39,27 @@ jobs:
                   name: Release ${{ github.ref_name }}
                   tag_name: ${{ github.ref_name }}
                   generate_release_notes: true
+
+    notify:
+        if: always()
+        runs-on: ubuntu-latest
+        needs: publish-cli
+        steps:
+            - name: Notify slack
+              uses: slackapi/slack-github-action@v2.0.0
+              with:
+                  method: chat.postMessage
+                  token: ${{ secrets.SLACK_NOTIFICATIONS_BOT_TOKEN }}
+                  payload: |
+                      channel: ${{ secrets.SLACK_CHANNEL_ID }}
+                      text: "GitHub Action build result: ${{ needs.publish-cli.result }}\n
+                      blocks:
+                          - type: "section"
+                          text:
+                              type: "mrkdwn"
+                              text: |
+                                *Github Action Build Result:* ${{ needs.publish-cli.result }}\n
+                                *Repository:* ${{ github.repository }}\n
+                                *Branch:* ${{ github.ref }}\n
+                                *Workflow:* ${{ github.workflow }}\n
+                                *Note: * This will trigger a new build on the build machine
