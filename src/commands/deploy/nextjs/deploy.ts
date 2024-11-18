@@ -337,7 +337,136 @@ function writeNextConfig(cwd: string) {
     if (!configExists) {
         fs.writeFileSync(
             path.join(cwd, "next.config.js"),
-            `module.exports = { output: 'standalone' }`,
+            `/** @type {import('next').NextConfig} */
+const nextConfig = {
+    cacheHandler: process.env.NODE_ENV === "production"
+        ? require.resolve("./cache-handler.js")
+        : undefined,
+    output: 'standalone'
+}
+
+module.exports = nextConfig;`,
+        );
+
+        fs.writeFileSync(
+            path.join(cwd, "cache-handler.js"),
+            `const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectsCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
+
+class CacheHandler {
+    constructor(options) {
+        this.client = new S3Client({
+            region: process.env.AWS_REGION,
+            credentials: {
+                accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+                secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+            }
+        });
+    }
+
+    // Helper method to build S3 key
+    _buildKey(key) {
+        return \`\${process.env.GENEZIO_DOMAIN_NAME}/_cache/\${key}.json\`;
+    }
+
+    async get(key) {
+        try {
+            console.log(\`[Cache] Attempting to get key: \${key}\`);
+            const command = new GetObjectCommand({
+                Bucket: process.env.BUCKET_NAME,
+                Key: this._buildKey(key)
+            });
+            
+            const response = await this.client.send(command);
+            const str = await response.Body.transformToString();
+            const data = JSON.parse(str);
+            
+            console.log(\`[Cache] Successfully retrieved key: \${key}\`);
+            return {
+                value: data.value,
+                isStale: false
+            };
+        } catch (e) {
+            console.log(\`[Cache] Miss or error for key: \${key}\`, e);
+            return { value: null, isStale: true };
+        }
+    }
+
+    async set(key, value, options = {}) {
+        try {
+            console.log(\`[Cache] Setting key: \${key}\`, { tags: options.tags });
+            const data = {
+                value,
+                tags: options.tags || [],
+                timestamp: Date.now()
+            };
+
+            const command = new PutObjectCommand({
+                Bucket: process.env.BUCKET_NAME,
+                Key: this._buildKey(key),
+                Body: JSON.stringify(data)
+            });
+            
+            await this.client.send(command);
+            console.log(\`[Cache] Successfully set key: \${key}\`);
+        } catch (e) {
+            console.error('[Cache] Write error:', e);
+        }
+    }
+
+    async revalidateTag(tags) {
+        try {
+            const tagsArray = Array.isArray(tags) ? tags : [tags];
+            console.log(\`[Cache] Revalidating tags:\`, tagsArray);
+            const prefix = \`\${process.env.GENEZIO_DOMAIN_NAME}/_cache/\`;
+
+            const listCommand = new ListObjectsV2Command({
+                Bucket: process.env.BUCKET_NAME,
+                Prefix: prefix
+            });
+
+            const listedObjects = await this.client.send(listCommand);
+            if (!listedObjects.Contents?.length) return;
+
+            const objectsToDelete = [];
+            for (const object of listedObjects.Contents) {
+                try {
+                    console.log(\`[Cache] Checking object: \${object.Key}\`);
+                    const getCommand = new GetObjectCommand({
+                        Bucket: process.env.BUCKET_NAME,
+                        Key: object.Key
+                    });
+                    
+                    const response = await this.client.send(getCommand);
+                    const data = JSON.parse(await response.Body.transformToString());
+                    
+                    if (data.tags?.some(tag => tagsArray.includes(tag))) {
+                        console.log(\`[Cache] Marking for deletion: \${object.Key}\`);
+                        objectsToDelete.push({ Key: object.Key });
+                    }
+                } catch (e) {
+                    console.error('[Cache] Error processing cache item:', e);
+                }
+            }
+
+            if (objectsToDelete.length > 0) {
+                console.log(\`[Cache] Deleting \${objectsToDelete.length} objects\`);
+                const deleteCommand = new DeleteObjectsCommand({
+                    Bucket: process.env.BUCKET_NAME,
+                    Delete: { Objects: objectsToDelete }
+                });
+                
+                await this.client.send(deleteCommand);
+                console.log('[Cache] Successfully deleted tagged objects');
+            } else {
+                console.log('[Cache] No objects found for deletion');
+            }
+        } catch (e) {
+            console.error('[Cache] Revalidation error:', e);
+        }
+    }
+}
+
+module.exports = CacheHandler;`,
         );
     }
 }
