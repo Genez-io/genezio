@@ -114,6 +114,7 @@ export class FunctionConfiguration {
     instanceSize?: InstanceSize;
     maxConcurrentRequestsPerInstance?: number;
     port?: number;
+
     constructor(
         name: string,
         path: string,

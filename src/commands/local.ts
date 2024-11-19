@@ -8,7 +8,11 @@ import url from "url";
 import * as http from "http";
 import colors from "colors";
 import { createRequire } from "module";
-import { ProjectConfiguration, ClassConfiguration } from "../models/projectConfiguration.js";
+import {
+    ProjectConfiguration,
+    ClassConfiguration,
+    FunctionConfiguration,
+} from "../models/projectConfiguration.js";
 import {
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
@@ -39,10 +43,10 @@ import axios, { AxiosError, AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
 import {
     entryFileFunctionMap,
+    FunctionType,
     Language,
     startingCommandMap,
     TriggerType,
-    FunctionType,
 } from "../projectConfiguration/yaml/models.js";
 import {
     YAMLBackend,
@@ -92,6 +96,7 @@ import { enableEmailIntegration, getProjectIntegrations } from "../requests/inte
 import { expandEnvironmentVariables, findAnEnvFile } from "../utils/environmentVariables.js";
 import { getFunctionHandlerProvider } from "../utils/getFunctionHandlerProvider.js";
 import { getFunctionEntryFilename } from "../utils/getFunctionEntryFilename.js";
+import { detectPythonCommand } from "../utils/detectPythonCommand.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -100,6 +105,7 @@ type UnitProcess = {
     listeningPort: number;
     envVars: dotenv.DotenvPopulateInput;
     type: "class" | "function";
+    handlerType?: FunctionType;
 };
 
 type LocalUnitProcessSpawnResponse = {
@@ -623,7 +629,7 @@ async function startProcesses(
     });
 
     const bundlersOutputPromiseFunctions = projectConfiguration.functions?.map(
-        async (functionInfo) => {
+        async (functionInfo: FunctionConfiguration) => {
             const tmpFolder = await createTemporaryFolder(
                 `${functionInfo.name}-${hash(functionInfo.path)}`,
             );
@@ -637,21 +643,44 @@ async function startProcesses(
                 functionInfo.language as Language,
             );
 
-            // if handlerProvider is Http
+            // if handlerProvider is Http, run it with node
             if (
                 functionInfo.type === FunctionType.httpServer &&
                 (functionInfo.language === Language.js || functionInfo.language === Language.ts)
             ) {
-                log.error("We recommend to run the HTTP server with `node` or `npm start`.");
-                process.exit(1);
+                process.env[`${functionInfo.name.replace(/-/g, "_").toUpperCase()}_PORT`] = (
+                    functionInfo.port || 8080
+                ).toString();
+
+                return {
+                    configuration: functionInfo,
+                    extra: {
+                        type: "function" as const,
+                        startingCommand: "node",
+                        commandParameters: [functionInfo.entry],
+                        handlerType: FunctionType.httpServer,
+                    },
+                };
             }
 
+            // if handlerProvider is Http and language is python
             if (
                 functionInfo.type === FunctionType.httpServer &&
                 functionInfo.language === Language.python
             ) {
-                log.error("We recommend to run the HTTP server with `python` or `python3`.");
-                process.exit(1);
+                process.env[`${functionInfo.name.replace(/-/g, "_").toUpperCase()}_PORT`] = (
+                    functionInfo.port || 8080
+                ).toString();
+
+                return {
+                    configuration: functionInfo,
+                    extra: {
+                        type: "function" as const,
+                        startingCommand: (await detectPythonCommand()) || "python",
+                        commandParameters: [functionInfo.entry],
+                        handlerType: FunctionType.httpServer,
+                    },
+                };
             }
 
             await writeToFile(
@@ -1002,7 +1031,10 @@ function getProjectFunctions(
     projectConfiguration: ProjectConfiguration,
 ): DeployCodeFunctionResponse[] {
     return projectConfiguration.functions.map((f) => ({
-        cloudUrl: `http://localhost:${port}/.functions/${f.name}`,
+        cloudUrl:
+            f.type === FunctionType.httpServer
+                ? `http://localhost:${process.env[`${f.name.replace(/-/g, "_").toUpperCase()}_PORT`]}`
+                : `http://localhost:${port}/.functions/${f.name}`,
         id: f.name,
         name: f.name,
     }));
@@ -1322,7 +1354,10 @@ function reportSuccess(projectConfiguration: ProjectConfiguration, port: number)
             projectConfiguration.functions.map((f) => ({
                 name: f.name,
                 id: f.name,
-                cloudUrl: `http://localhost:${port}/.functions/${f.name}`,
+                cloudUrl:
+                    f.type === FunctionType.httpServer
+                        ? `http://localhost:${process.env[`${f.name.replace(/-/g, "_").toUpperCase()}_PORT`]}`
+                        : `http://localhost:${port}/.functions/${f.name}`,
             })),
         );
     }
