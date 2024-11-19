@@ -973,26 +973,46 @@ const excludedFiles = [
     ".env.local",
 ];
 
-function getGitIgnorePatterns(cwd: string): string[] {
+type Patterns = {
+    exclude: string[];
+    reinclude: string[];
+};
+
+function getGitIgnorePatterns(cwd: string): Patterns {
     const gitIgnorePath = path.join(cwd, ".gitignore");
     if (existsSync(gitIgnorePath)) {
-        return gitignore.parse(readFileSync(gitIgnorePath)).patterns;
+        return {
+            exclude: gitignore
+                .parse(readFileSync(gitIgnorePath))
+                .patterns.filter((pattern) => !pattern.startsWith("!")),
+            reinclude: gitignore
+                .parse(readFileSync(gitIgnorePath))
+                .patterns.filter((pattern) => pattern.startsWith("!"))
+                .map((pattern) => pattern.slice(1)),
+        };
     }
 
-    return [];
+    return { exclude: [], reinclude: [] };
 }
 
-function getAllGitIgnorePatterns(cwd: string): string[] {
-    let patterns: string[] = getGitIgnorePatterns(cwd);
+function getAllGitIgnorePatterns(cwd: string): Patterns {
+    const patterns: Patterns = getGitIgnorePatterns(cwd);
     readdirSync(cwd, { withFileTypes: true }).forEach((file) => {
         if (
             file.isDirectory() &&
             !file.name.startsWith(".") &&
             !file.name.startsWith("node_modules")
         ) {
-            patterns = [
-                ...patterns,
-                ...getAllGitIgnorePatterns(path.join(cwd, file.name)).map((pattern) =>
+            const newPatterns = getAllGitIgnorePatterns(path.join(cwd, file.name));
+            patterns.exclude = [
+                ...patterns.exclude,
+                ...newPatterns.exclude.map((pattern) =>
+                    path.join(path.relative(cwd, path.join(cwd, file.name)), pattern),
+                ),
+            ];
+            patterns.reinclude = [
+                ...patterns.reinclude,
+                ...newPatterns.reinclude.map((pattern) =>
                     path.join(path.relative(cwd, path.join(cwd, file.name)), pattern),
                 ),
             ];
@@ -1010,11 +1030,13 @@ export async function uploadUserCode(
 ): Promise<void> {
     const tmpFolderProject = await createTemporaryFolder();
     debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
+    const { exclude, reinclude } = getAllGitIgnorePatterns(cwd);
     const promiseZip = zipDirectory(
         cwd,
         path.join(tmpFolderProject, "projectCode.zip"),
         true,
-        excludedFiles.concat(getAllGitIgnorePatterns(cwd)),
+        excludedFiles.concat(exclude),
+        reinclude,
     );
 
     await promiseZip;
