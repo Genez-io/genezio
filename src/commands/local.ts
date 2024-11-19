@@ -47,7 +47,6 @@ import {
     Language,
     startingCommandMap,
     TriggerType,
-    FunctionType,
 } from "../projectConfiguration/yaml/models.js";
 import {
     YAMLBackend,
