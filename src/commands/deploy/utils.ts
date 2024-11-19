@@ -25,7 +25,9 @@ import {
     linkDatabaseToEnvironment,
 } from "../../requests/database.js";
 import { DASHBOARD_URL } from "../../constants.js";
-import getProjectInfoByName from "../../requests/getProjectInfoByName.js";
+import getProjectInfoByName, {
+    getProjectEnvFromProjectByName,
+} from "../../requests/getProjectInfoByName.js";
 import { createEmptyProject } from "../../requests/project.js";
 import { debugLogger } from "../../utils/logging.js";
 import {
@@ -72,11 +74,124 @@ import { displayHint, replaceExpression } from "../../utils/strings.js";
 import { getPackageManager } from "../../packageManagers/packageManager.js";
 import { ContainerComponentType, SSRFrameworkComponentType } from "../../models/projectOptions.js";
 import gitignore from "parse-gitignore";
+import {
+    disableEmailIntegration,
+    enableEmailIntegration,
+    getProjectIntegrations,
+} from "../../requests/integration.js";
 
 type DependenciesInstallResult = {
     command: string;
     args: string[];
 };
+
+export async function prepareServicesPreBackendDeployment(
+    configuration: YamlProjectConfiguration,
+    projectName: string,
+    environment?: string,
+    envFile?: string,
+) {
+    if (!configuration.services) {
+        debugLogger.debug("No services found in the configuration file.");
+        return;
+    }
+
+    const projectDetails = await getOrCreateEmptyProject(
+        projectName,
+        configuration.region,
+        environment || "prod",
+    );
+
+    if (!projectDetails) {
+        throw new UserError("Could not create project.");
+    }
+
+    if (configuration.services?.databases) {
+        const databases = configuration.services.databases;
+
+        for (const database of databases) {
+            if (!database.region) {
+                database.region = configuration.region;
+            }
+            await getOrCreateDatabase(
+                {
+                    name: database.name,
+                    region: database.region,
+                    type: database.type,
+                },
+                environment || "prod",
+                projectDetails.projectId,
+                projectDetails.projectEnvId,
+            );
+        }
+    }
+
+    if (configuration.services?.email !== undefined) {
+        const isEnabled = (
+            await getProjectIntegrations(projectDetails.projectId, projectDetails.projectEnvId)
+        ).integrations.find((integration) => integration === "EMAIL-SERVICE");
+
+        if (configuration.services?.email && !isEnabled) {
+            await enableEmailIntegration(projectDetails.projectId, projectDetails.projectEnvId);
+            log.info("Email integration enabled successfully.");
+        } else if (configuration.services?.email === false && isEnabled) {
+            await disableEmailIntegration(projectDetails.projectId, projectDetails.projectEnvId);
+            log.info("Email integration disabled successfully.");
+        }
+    }
+
+    if (configuration.services?.authentication) {
+        await enableAuthentication(
+            configuration,
+            projectDetails.projectId,
+            projectDetails.projectEnvId,
+            environment || "prod",
+            envFile || (await findAnEnvFile(process.cwd())),
+        );
+    }
+}
+
+export async function prepareServicesPostBackendDeployment(
+    configuration: YamlProjectConfiguration,
+    projectName: string,
+    environment?: string,
+) {
+    if (!configuration.services) {
+        debugLogger.debug("No services found in the configuration file.");
+        return;
+    }
+
+    const settings = configuration.services?.authentication?.settings;
+    if (settings) {
+        const stage = environment || "prod";
+        const projectEnv = await getProjectEnvFromProjectByName(projectName, stage);
+        if (!projectEnv) {
+            throw new UserError(
+                `Stage ${stage} not found in project ${projectName}. Please run 'genezio deploy --stage ${stage}' to deploy your project to a new stage.`,
+            );
+        }
+
+        if (settings?.resetPassword) {
+            await setAuthenticationEmailTemplates(
+                configuration,
+                settings.resetPassword.redirectUrl,
+                AuthenticationEmailTemplateType.passwordReset,
+                stage,
+                projectEnv?.id,
+            );
+        }
+
+        if (settings.emailVerification) {
+            await setAuthenticationEmailTemplates(
+                configuration,
+                settings.emailVerification.redirectUrl,
+                AuthenticationEmailTemplateType.verification,
+                stage,
+                projectEnv?.id,
+            );
+        }
+    }
+}
 
 export async function getOrCreateEmptyProject(
     projectName: string,

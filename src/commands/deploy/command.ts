@@ -28,6 +28,9 @@ export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
     const type = await decideDeployType(options);
 
+    // Sync services connected to the project that are needed before deploying
+    // i.e databases, email, authentication services
+
     switch (type) {
         case DeployType.Classic:
             debugLogger.debug("Deploying classic genezio app");
@@ -48,6 +51,9 @@ export async function deployCommand(options: GenezioDeployOptions) {
             await dockerDeploy(options);
             break;
     }
+
+    // Sync services connected to the project that are needed after deploying
+    // i.e databases, authentication services
 }
 
 export enum DeployType {
