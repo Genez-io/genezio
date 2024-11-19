@@ -106,7 +106,7 @@ export async function resolveConfigurationVariable(
         isLocal?: boolean;
         port?: number;
     },
-): Promise<string|number> {
+): Promise<string | number> {
     if (options?.isLocal && !options?.port) {
         options.port = PORT_LOCAL_ENVIRONMENT;
     }
@@ -141,6 +141,12 @@ export async function resolveConfigurationVariable(
         // Retrieve custom output fields for a function object such as `url`
         if (field === "url") {
             if (options?.isLocal) {
+                if (functionObj.type === FunctionType.httpServer) {
+                    const port =
+                        process.env[`${functionObj.name.replace(/-/g, "_").toUpperCase()}_PORT`] ||
+                        "8080";
+                    return `http://localhost:${port}`;
+                }
                 return `http://localhost:${options.port}/.functions/function-${functionObj.name}`;
             }
 
