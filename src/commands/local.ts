@@ -47,6 +47,7 @@ import {
     Language,
     startingCommandMap,
     TriggerType,
+    FunctionType,
 } from "../projectConfiguration/yaml/models.js";
 import {
     YAMLBackend,
@@ -95,10 +96,6 @@ import { displayHint } from "../utils/strings.js";
 import { enableEmailIntegration, getProjectIntegrations } from "../requests/integration.js";
 import { expandEnvironmentVariables, findAnEnvFile } from "../utils/environmentVariables.js";
 import { getFunctionHandlerProvider } from "../utils/getFunctionHandlerProvider.js";
-import {
-    HttpServerHandlerProvider,
-    HttpServerPythonHandlerProvider,
-} from "../functionHandlerProvider/providers/HttpServerHandlerProvider.js";
 import { getFunctionEntryFilename } from "../utils/getFunctionEntryFilename.js";
 import { detectPythonCommand } from "../utils/detectPythonCommand.js";
 
@@ -648,7 +645,10 @@ async function startProcesses(
             );
 
             // if handlerProvider is Http, run it with node
-            if (handlerProvider instanceof HttpServerHandlerProvider) {
+            if (
+                functionInfo.type === FunctionType.httpServer &&
+                (functionInfo.language === Language.js || functionInfo.language === Language.ts)
+            ) {
                 process.env[`${functionInfo.name.replace(/-/g, "_").toUpperCase()}_PORT`] = (
                     functionInfo.port || 8080
                 ).toString();
@@ -665,7 +665,10 @@ async function startProcesses(
             }
 
             // if handlerProvider is Http and language is python
-            if (handlerProvider instanceof HttpServerPythonHandlerProvider) {
+            if (
+                functionInfo.type === FunctionType.httpServer &&
+                functionInfo.language === Language.python
+            ) {
                 process.env[`${functionInfo.name.replace(/-/g, "_").toUpperCase()}_PORT`] = (
                     functionInfo.port || 8080
                 ).toString();
@@ -687,7 +690,7 @@ async function startProcesses(
                     functionInfo.language as Language,
                     "local_function_wrapper",
                 ),
-                await handlerProvider.getLocalFunctionWrapperCode(
+                await handlerProvider!.getLocalFunctionWrapperCode(
                     functionInfo.handler,
                     functionInfo.entry,
                 ),
