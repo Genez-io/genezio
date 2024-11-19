@@ -142,9 +142,7 @@ export async function resolveConfigurationVariable(
         if (field === "url") {
             if (options?.isLocal) {
                 if (functionObj.type === FunctionType.httpServer) {
-                    const port =
-                        process.env[`${functionObj.name.replace(/-/g, "_").toUpperCase()}_PORT`] ||
-                        "8080";
+                    const port = functionObj.port || 8080;
                     return `http://localhost:${port}`;
                 }
                 return `http://localhost:${options.port}/.functions/function-${functionObj.name}`;
