@@ -42,6 +42,7 @@ import {
     Language,
     startingCommandMap,
     TriggerType,
+    FunctionType,
 } from "../projectConfiguration/yaml/models.js";
 import {
     YAMLBackend,
@@ -90,10 +91,6 @@ import { displayHint } from "../utils/strings.js";
 import { enableEmailIntegration, getProjectIntegrations } from "../requests/integration.js";
 import { expandEnvironmentVariables, findAnEnvFile } from "../utils/environmentVariables.js";
 import { getFunctionHandlerProvider } from "../utils/getFunctionHandlerProvider.js";
-import {
-    HttpServerHandlerProvider,
-    HttpServerPythonHandlerProvider,
-} from "../functionHandlerProvider/providers/HttpServerHandlerProvider.js";
 import { getFunctionEntryFilename } from "../utils/getFunctionEntryFilename.js";
 
 type UnitProcess = {
@@ -641,12 +638,18 @@ async function startProcesses(
             );
 
             // if handlerProvider is Http
-            if (handlerProvider instanceof HttpServerHandlerProvider) {
+            if (
+                functionInfo.type === FunctionType.httpServer &&
+                (functionInfo.language === Language.js || functionInfo.language === Language.ts)
+            ) {
                 log.error("We recommend to run the HTTP server with `node` or `npm start`.");
                 process.exit(1);
             }
 
-            if (handlerProvider instanceof HttpServerPythonHandlerProvider) {
+            if (
+                functionInfo.type === FunctionType.httpServer &&
+                functionInfo.language === Language.python
+            ) {
                 log.error("We recommend to run the HTTP server with `python` or `python3`.");
                 process.exit(1);
             }
@@ -657,7 +660,7 @@ async function startProcesses(
                     functionInfo.language as Language,
                     "local_function_wrapper",
                 ),
-                await handlerProvider.getLocalFunctionWrapperCode(
+                await handlerProvider!.getLocalFunctionWrapperCode(
                     functionInfo.handler,
                     functionInfo.entry,
                 ),

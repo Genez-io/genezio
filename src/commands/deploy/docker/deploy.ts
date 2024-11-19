@@ -10,7 +10,11 @@ import {
 import { CloudProviderIdentifier } from "../../../models/cloudProviderIdentifier.js";
 import { getCloudProvider } from "../../../requests/getCloudProvider.js";
 import { getCloudAdapter } from "../genezio.js";
-import { GenezioCloudInputType } from "../../../cloudAdapter/cloudAdapter.js";
+import {
+    GenezioCloudInputType,
+    GenezioFunctionMetadata,
+    GenezioFunctionMetadataType,
+} from "../../../cloudAdapter/cloudAdapter.js";
 import { setEnvironmentVariables } from "../../../requests/setEnvironmentVariables.js";
 import { FunctionType } from "../../../projectConfiguration/yaml/models.js";
 import { createTemporaryFolder } from "../../../utils/file.js";
@@ -131,6 +135,12 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
 
     const cloudProvider = await getCloudProvider(projectConfiguration.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
+    const metadata: GenezioFunctionMetadata = {
+        type: GenezioFunctionMetadataType.Container,
+        cmd: cmdEntryFile,
+        cwd: dockerWorkingDir,
+        http_port: port,
+    };
     const result = await cloudAdapter.deploy(
         [
             {
@@ -140,11 +150,7 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
                 archiveName: `genezio-${config.name}.tar`,
                 entryFile: cmdEntryFile,
                 unzippedBundleSize: 100,
-                metadata: {
-                    cmd: cmdEntryFile,
-                    cwd: dockerWorkingDir,
-                    http_port: port,
-                },
+                metadata: metadata,
                 timeout: config.container!.timeout,
                 storageSize: config.container!.storageSize,
                 instanceSize: config.container!.instanceSize,
