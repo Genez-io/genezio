@@ -646,7 +646,10 @@ async function startProcesses(
                 process.exit(1);
             }
 
-            if (functionInfo.type === "httpServer" && functionInfo.language === "python") {
+            if (
+                functionInfo.type === FunctionType.httpServer &&
+                functionInfo.language === Language.python
+            ) {
                 log.error("We recommend to run the HTTP server with `python` or `python3`.");
                 process.exit(1);
             }
