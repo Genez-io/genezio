@@ -304,6 +304,7 @@ export class ProjectConfiguration {
                     storageSize: f.storageSize,
                     instanceSize: f.instanceSize,
                     maxConcurrentRequestsPerInstance: f.maxConcurrentRequestsPerInstance,
+                    port: f.port,
                 };
             }) || [];
     }
