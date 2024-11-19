@@ -28,14 +28,10 @@ export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
     const type = await decideDeployType(options);
 
-    // Sync services connected to the project that are needed before deploying
-    // i.e databases, email, authentication services
-
     switch (type) {
         case DeployType.Classic:
             debugLogger.debug("Deploying classic genezio app");
             await genezioDeploy(options);
-
             break;
         case DeployType.NextJS:
             debugLogger.debug("Deploying Next.js app");
