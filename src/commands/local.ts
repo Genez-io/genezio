@@ -95,6 +95,7 @@ import {
     HttpServerPythonHandlerProvider,
 } from "../functionHandlerProvider/providers/HttpServerHandlerProvider.js";
 import { getFunctionEntryFilename } from "../utils/getFunctionEntryFilename.js";
+import { detectPythonCommand } from "../utils/detectPythonCommand.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -640,15 +641,28 @@ async function startProcesses(
                 functionInfo.language as Language,
             );
 
-            // if handlerProvider is Http
+            // if handlerProvider is Http, run it with node
             if (handlerProvider instanceof HttpServerHandlerProvider) {
-                log.error("We recommend to run the HTTP server with `node` or `npm start`.");
-                process.exit(1);
+                return {
+                    configuration: functionInfo,
+                    extra: {
+                        type: "function" as const,
+                        startingCommand: "node",
+                        commandParameters: [functionInfo.entry],
+                    },
+                };
             }
 
+            // if handlerProvider is Http and language is python
             if (handlerProvider instanceof HttpServerPythonHandlerProvider) {
-                log.error("We recommend to run the HTTP server with `python` or `python3`.");
-                process.exit(1);
+                return {
+                    configuration: functionInfo,
+                    extra: {
+                        type: "function" as const,
+                        startingCommand: (await detectPythonCommand()) || "python",
+                        commandParameters: [functionInfo.entry],
+                    },
+                };
             }
 
             await writeToFile(
