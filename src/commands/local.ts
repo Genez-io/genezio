@@ -42,6 +42,7 @@ import {
     Language,
     startingCommandMap,
     TriggerType,
+    FunctionType,
 } from "../projectConfiguration/yaml/models.js";
 import {
     YAMLBackend,
@@ -638,8 +639,8 @@ async function startProcesses(
 
             // if handlerProvider is Http
             if (
-                functionInfo.type === "httpServer" &&
-                (functionInfo.language === "js" || functionInfo.language === "ts")
+                functionInfo.type === FunctionType.httpServer &&
+                (functionInfo.language === Language.js || functionInfo.language === Language.ts)
             ) {
                 log.error("We recommend to run the HTTP server with `node` or `npm start`.");
                 process.exit(1);
