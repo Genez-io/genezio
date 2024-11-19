@@ -68,6 +68,10 @@ export async function addBackendComponentToConfig(configPath: string, component:
         path: backend?.path || component.path,
         language: backend?.language || component.language,
         functions: backend?.functions || component.functions,
+        environment: {
+            ...component.environment,
+            ...backend?.environment,
+        },
         scripts: {
             deploy: backend?.scripts?.deploy || scripts?.deploy,
             local: backend?.scripts?.local || scripts?.local,
