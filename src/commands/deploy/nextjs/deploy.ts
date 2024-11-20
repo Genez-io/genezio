@@ -381,7 +381,8 @@ function writeNextConfig(cwd: string, region: string) {
 const nextConfig = {${JSON.stringify(config, null, 2)
         .slice(1, -1)
         .replace(/"([^"]+)":/g, "$1:")},
-  cacheHandler: process.env.NODE_ENV === "production" ? "${handlerPath}" : undefined
+  cacheHandler: process.env.NODE_ENV === "production" ? "${handlerPath}" : undefined,
+  cacheMaxMemorySize: 0
 };
 
 ${isESM ? "export default nextConfig;" : "module.exports = nextConfig;"}`;
@@ -408,7 +409,8 @@ const nextConfig = {
     cacheHandler: process.env.NODE_ENV === "production"
         ? ${isESM ? handlerPath : `require.resolve("${handlerPath}")`}
         : undefined,
-    output: 'standalone'
+    output: 'standalone',
+    cacheMaxMemorySize: 0
 }
 
 ${isESM ? "export default nextConfig;" : "module.exports = nextConfig;"}`;
