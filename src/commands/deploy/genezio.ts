@@ -675,7 +675,7 @@ export async function functionToCloudInput(
     // Determine entry file name
     let entryFileName;
     if (functionElement.type === "httpServer") {
-        entryFileName = functionElement.entry; // Use the entry file for httpServer
+        entryFileName = path.join(functionElement.path, functionElement.entry);
     } else {
         entryFileName =
             entryFileFunctionMap[functionElement.language as keyof typeof entryFileFunctionMap];
