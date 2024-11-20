@@ -444,7 +444,6 @@ ${exportStatement}class CacheHandler {
         try {
             return await this.incrementalCache.get(deployment, token, key);
         } catch (error) {
-            console.error('Cache get error:', error);
             return null;
         }
     }
