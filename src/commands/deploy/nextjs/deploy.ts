@@ -377,13 +377,16 @@ function writeNextConfig(cwd: string, region: string) {
         );
     }
 
+    config.cacheHandler = `process.env.NODE_ENV === "production" ? "${handlerPath}" : undefined`;
+    config.cacheMaxMemorySize = 0;
+
     const configContent = `/** @type {import('next').NextConfig} */
-const nextConfig = {${JSON.stringify(config, null, 2)
-        .slice(1, -1)
-        .replace(/"([^"]+)":/g, "$1:")},
-  cacheHandler: process.env.NODE_ENV === "production" ? "${handlerPath}" : undefined,
-  cacheMaxMemorySize: 0
-};
+const nextConfig = ${JSON.stringify(config, null, 2)
+        .replace(/"([^"]+)":/g, "$1:")
+        .replace(
+            /"process\.env\.NODE_ENV === \\"production\\" \? \\"(.+)\\" : undefined"/g,
+            'process.env.NODE_ENV === "production" ? "$1" : undefined',
+        )}
 
 ${isESM ? "export default nextConfig;" : "module.exports = nextConfig;"}`;
 
