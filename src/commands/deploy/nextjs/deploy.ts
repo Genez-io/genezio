@@ -49,6 +49,12 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     // Install dependencies
     const installDependenciesCommand = await attemptToInstallDependencies([], componentPath);
 
+    // Install dependencies including the ISR package
+    await attemptToInstallDependencies(
+        [`@genezio/nextjs-isr-${genezioConfig.region}`],
+        componentPath,
+    );
+
     // Add nextjs component
     await addSSRComponentToConfig(
         options.config,
@@ -62,7 +68,7 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         SSRFrameworkComponentType.next,
     );
 
-    writeNextConfig(componentPath);
+    writeNextConfig(componentPath, genezioConfig.region);
     await $({
         stdio: "inherit",
         cwd: componentPath,
@@ -255,6 +261,10 @@ async function deployStaticAssets(
             path.join(staticAssetsPath, "_next", "static"),
             { recursive: true },
         ),
+        fs.promises.cp(
+            path.join(cwd, ".next", "BUILD_ID"),
+            path.join(staticAssetsPath, "BUILD_ID"),
+        ),
         fs.promises.cp(path.join(cwd, "public"), staticAssetsPath, { recursive: true }),
     ]);
 
@@ -330,143 +340,111 @@ async function deployFunction(config: YamlProjectConfiguration, cwd: string, sta
     return result;
 }
 
-function writeNextConfig(cwd: string) {
+function writeNextConfig(cwd: string, region: string) {
     const configExists = ["js", "cjs", "mjs", "ts"].find((ext) =>
         fs.existsSync(path.join(cwd, `next.config.${ext}`)),
     );
+
     if (!configExists) {
-        fs.writeFileSync(
-            path.join(cwd, "next.config.js"),
-            `/** @type {import('next').NextConfig} */
+        const extension = determineFileExtension(cwd);
+        writeConfigFiles(cwd, extension, region);
+    }
+}
+
+function determineFileExtension(cwd: string): "js" | "mjs" | "ts" {
+    try {
+        // Always prefer .mjs for Next.js config files
+        const packageJson = JSON.parse(fs.readFileSync(path.join(cwd, "package.json"), "utf8"));
+        return packageJson.type === "module" ? "mjs" : "js";
+    } catch {
+        return "js"; // Fallback to CommonJS
+    }
+}
+
+function getConfigContent(extension: string): string {
+    const isESM = extension === "mjs";
+    const handlerPath = `./cache-handler.${extension}`;
+
+    return `/** @type {import('next').NextConfig} */
 const nextConfig = {
     cacheHandler: process.env.NODE_ENV === "production"
-        ? require.resolve("./cache-handler.js")
+        ? ${isESM ? handlerPath : `require.resolve("${handlerPath}")`}
         : undefined,
     output: 'standalone'
 }
 
-module.exports = nextConfig;`,
-        );
+${isESM ? "export default nextConfig;" : "module.exports = nextConfig;"}`;
+}
 
-        fs.writeFileSync(
-            path.join(cwd, "cache-handler.js"),
-            `const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectsCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
+function getCacheHandlerContent(extension: "ts" | "mjs" | "js", region: string): string {
+    const imports = {
+        ts: `import { IncrementalCache, Queue, TagCache } from "@genezio/nextjs-isr-${region}";
 
-class CacheHandler {
+interface CacheOptions {
+    tags?: string[];
+    revalidate?: number;
+}`,
+        mjs: `import { IncrementalCache, Queue, TagCache } from "@genezio/nextjs-isr-${region}"`,
+        js: `const { IncrementalCache, Queue, TagCache } = require("@genezio/nextjs-isr-${region}");`,
+    };
+
+    const exportStatement = extension === "js" ? "module.exports = " : "export default ";
+
+    return `${imports[extension]}
+            
+const deployment = process.env["GENEZIO_DOMAIN_NAME"] || "";
+const token = (process.env["GENEZIO_CACHE_TOKEN"] || "") + "/_cache/" + (process.env["NEXT_BUILD_ID"] || "");
+
+${exportStatement}class CacheHandler {
     constructor(options) {
-        this.client = new S3Client({
-            region: process.env.AWS_REGION,
-            credentials: {
-                accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-                secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-            }
-        });
-    }
-
-    // Helper method to build S3 key
-    _buildKey(key) {
-        return \`\${process.env.GENEZIO_DOMAIN_NAME}/_cache/\${key}.json\`;
+        this.queue = Queue;
+        this.incrementalCache = IncrementalCache;
+        this.tagCache = TagCache;
     }
 
     async get(key) {
         try {
-            console.log(\`[Cache] Attempting to get key: \${key}\`);
-            const command = new GetObjectCommand({
-                Bucket: process.env.BUCKET_NAME,
-                Key: this._buildKey(key)
-            });
-            
-            const response = await this.client.send(command);
-            const str = await response.Body.transformToString();
-            const data = JSON.parse(str);
-            
-            console.log(\`[Cache] Successfully retrieved key: \${key}\`);
-            return {
-                value: data.value,
-                isStale: false
-            };
-        } catch (e) {
-            console.log(\`[Cache] Miss or error for key: \${key}\`, e);
-            return { value: null, isStale: true };
+            return await this.incrementalCache.get(deployment, token, key);
+        } catch (error) {
+            console.error('Cache get error:', error);
+            return null;
         }
     }
 
-    async set(key, value, options = {}) {
+    async set(key, data, options) {
         try {
-            console.log(\`[Cache] Setting key: \${key}\`, { tags: options.tags });
-            const data = {
-                value,
-                tags: options.tags || [],
-                timestamp: Date.now()
-            };
-
-            const command = new PutObjectCommand({
-                Bucket: process.env.BUCKET_NAME,
-                Key: this._buildKey(key),
-                Body: JSON.stringify(data)
-            });
+            await this.incrementalCache.set(deployment, token, key, data, options);
             
-            await this.client.send(command);
-            console.log(\`[Cache] Successfully set key: \${key}\`);
-        } catch (e) {
-            console.error('[Cache] Write error:', e);
-        }
-    }
-
-    async revalidateTag(tags) {
-        try {
-            const tagsArray = Array.isArray(tags) ? tags : [tags];
-            console.log(\`[Cache] Revalidating tags:\`, tagsArray);
-            const prefix = \`\${process.env.GENEZIO_DOMAIN_NAME}/_cache/\`;
-
-            const listCommand = new ListObjectsV2Command({
-                Bucket: process.env.BUCKET_NAME,
-                Prefix: prefix
-            });
-
-            const listedObjects = await this.client.send(listCommand);
-            if (!listedObjects.Contents?.length) return;
-
-            const objectsToDelete = [];
-            for (const object of listedObjects.Contents) {
-                try {
-                    console.log(\`[Cache] Checking object: \${object.Key}\`);
-                    const getCommand = new GetObjectCommand({
-                        Bucket: process.env.BUCKET_NAME,
-                        Key: object.Key
-                    });
-                    
-                    const response = await this.client.send(getCommand);
-                    const data = JSON.parse(await response.Body.transformToString());
-                    
-                    if (data.tags?.some(tag => tagsArray.includes(tag))) {
-                        console.log(\`[Cache] Marking for deletion: \${object.Key}\`);
-                        objectsToDelete.push({ Key: object.Key });
-                    }
-                } catch (e) {
-                    console.error('[Cache] Error processing cache item:', e);
-                }
+            if (options?.tags?.length) {
+                await this.tagCache.writeTags(deployment, token, key, options.tags);
             }
+        } catch (error) {
+            console.error('Cache set error:', error);
+        }
+    }
 
-            if (objectsToDelete.length > 0) {
-                console.log(\`[Cache] Deleting \${objectsToDelete.length} objects\`);
-                const deleteCommand = new DeleteObjectsCommand({
-                    Bucket: process.env.BUCKET_NAME,
-                    Delete: { Objects: objectsToDelete }
+    async revalidateTag(tag) {
+        try {
+            const paths = await this.tagCache.getByTag(deployment, token, tag);
+            
+            if (paths?.length) {
+                await this.queue.send(deployment, token, {
+                    type: 'revalidate',
+                    paths
                 });
-                
-                await this.client.send(deleteCommand);
-                console.log('[Cache] Successfully deleted tagged objects');
-            } else {
-                console.log('[Cache] No objects found for deletion');
             }
-        } catch (e) {
-            console.error('[Cache] Revalidation error:', e);
+        } catch (error) {
+            console.error('Tag revalidation error:', error);
         }
     }
+}`;
 }
 
-module.exports = CacheHandler;`,
-        );
-    }
+function writeConfigFiles(cwd: string, extension: "js" | "mjs" | "ts", region: string): void {
+    fs.writeFileSync(path.join(cwd, `next.config.${extension}`), getConfigContent(extension));
+
+    fs.writeFileSync(
+        path.join(cwd, `cache-handler.${extension}`),
+        getCacheHandlerContent(extension as "js" | "ts" | "mjs", region),
+    );
 }
