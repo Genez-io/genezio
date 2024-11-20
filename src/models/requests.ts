@@ -196,11 +196,6 @@ export type FunctionDetails = {
     updatedAt: number;
 };
 
-export type GetFunctionsResponse = {
-    status: string;
-    functions: FunctionDetails[];
-};
-
 export type CreateFunctionRequest = {
     projectName: string;
     stageName: string;

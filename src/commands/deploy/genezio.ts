@@ -85,7 +85,6 @@ import { expandEnvironmentVariables, findAnEnvFile } from "../../utils/environme
 import { getProjectEnvFromProjectByName } from "../../requests/getProjectInfoByName.js";
 import { getFunctionHandlerProvider } from "../../utils/getFunctionHandlerProvider.js";
 import { getFunctionEntryFilename } from "../../utils/getFunctionEntryFilename.js";
-import { getFunctions } from "../../requests/function.js";
 import { CronDetails } from "../../models/requests.js";
 import { syncCrons } from "../../requests/crons.js";
 import { getPackageManager } from "../../packageManagers/packageManager.js";
@@ -235,12 +234,8 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
     }
 
     if (configuration.services?.crons) {
-        const res = await getFunctions(deployClassesResult?.projectEnvId || "").catch(() => {
-            throw new UserError("Something went wrong while fetching the cron functions.");
-        });
         const crons: CronDetails[] = [];
         for (const cron of configuration.services.crons) {
-            let cronFound = false;
             const yamlFunctionName = await evaluateResource(
                 configuration,
                 cron.function,
@@ -248,30 +243,33 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
                 undefined,
                 undefined,
             );
-            for (const deployedFunction of res.functions) {
-                if (deployedFunction.name === `function-${yamlFunctionName}`) {
-                    crons.push({
-                        name: cron.name,
-                        url: deployedFunction.cloudUrl,
-                        endpoint: cron.endpoint || "",
-                        cronString: cron.schedule,
-                    });
-                    cronFound = true;
-                    break;
-                }
-            }
-            if (!cronFound) {
+            if (!deployClassesResult) {
                 throw new UserError(
-                    `Function ${yamlFunctionName} not found in the deployed functions. Please make sure the function is deployed before adding it to the cron.`,
+                    "Could not deploy cron jobs. Please make sure your backend is deployed before adding cron jobs.",
                 );
             }
+            const functions = deployClassesResult.functions ?? [];
+            const cronFunction = functions.find((f) => f.name === `function-${yamlFunctionName}`);
+            if (!cronFunction) {
+                throw new UserError(
+                    `Function ${yamlFunctionName} not found. Please make sure the function is deployed before adding cron jobs.`,
+                );
+            }
+            crons.push({
+                name: cron.name,
+                url: cronFunction.cloudUrl,
+                endpoint: cron.endpoint || "",
+                cronString: cron.schedule,
+            });
         }
         await syncCrons({
             projectName: projectName,
             stageName: options.stage || "prod",
             crons: crons,
-        }).catch(() => {
-            throw new UserError("Something went wrong while syncing the cron jobs.");
+        }).catch((error) => {
+            throw new UserError(
+                `Something went wrong while syncing the cron jobs.\n${error}\nPlease try to redeploy your project. If the problem persists, please contact support at contact@genez.io.`,
+            );
         });
     } else {
         await syncCrons({
@@ -279,7 +277,9 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             stageName: options.stage || "prod",
             crons: [],
         }).catch(() => {
-            throw new UserError("Something went wrong while syncing the cron jobs.");
+            throw new UserError(
+                "Something went wrong while syncing the cron jobs. Please try to redeploy your project. If the problem persists, please contact support at contact@genez.io.",
+            );
         });
     }
 
@@ -629,6 +629,8 @@ export async function deployClasses(
         return {
             projectId: projectId,
             projectEnvId: projectEnvId,
+            functions: result.functions,
+            classes: result.classes,
         };
     }
 }

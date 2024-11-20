@@ -1,8 +1,4 @@
-import {
-    CreateFunctionRequest,
-    CreateFunctionResponse,
-    GetFunctionsResponse,
-} from "../models/requests.js";
+import { CreateFunctionRequest, CreateFunctionResponse } from "../models/requests.js";
 import sendRequest from "../utils/requests.js";
 
 export async function createFunction(
@@ -31,14 +27,4 @@ export async function createFunction(
     )) as CreateFunctionResponse;
 
     return createFunctionResponse;
-}
-
-export async function getFunctions(envId: string): Promise<GetFunctionsResponse> {
-    const getFunctionsResponse = (await sendRequest(
-        "GET",
-        `functions/all/${envId}`,
-        "",
-    )) as GetFunctionsResponse;
-
-    return getFunctionsResponse;
 }

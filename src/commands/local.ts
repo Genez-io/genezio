@@ -1069,7 +1069,7 @@ async function startCronJobs(
             );
             const endpoint = cronService.endpoint?.replace(/^\//, "");
             const cronString = cronService.schedule;
-            const baseURL = `http://localhost:${port}/.functions/${functionName}`;
+            const baseURL = `http://localhost:${port}/.functions/function-${functionName}`;
             let url: string;
             if (endpoint) {
                 url = `${baseURL}/${endpoint}`;
@@ -1089,7 +1089,7 @@ async function startCronJobs(
                         " on function " +
                         functionName,
                 );
-                return await axios.post(url);
+                await axios.post(url);
             });
 
             cronHandler.cronObject.start();

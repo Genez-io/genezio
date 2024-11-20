@@ -25,12 +25,15 @@ import { isValidCron } from "cron-validator";
 import { tryV2Migration } from "./migration.js";
 import yaml, { YAMLParseError } from "yaml";
 import { DeepRequired } from "../../utils/types.js";
+import { isUnique } from "../../utils/yaml.js";
 
 export type RawYamlProjectConfiguration = ReturnType<typeof parseGenezioConfig>;
 export type YAMLBackend = NonNullable<YamlProjectConfiguration["backend"]>;
 export type YAMLLanguage = NonNullable<YAMLBackend["language"]>;
 export type YamlClass = NonNullable<YAMLBackend["classes"]>[number];
 export type YamlFunction = NonNullable<YAMLBackend["functions"]>[number];
+export type YamlServices = NonNullable<YamlProjectConfiguration["services"]>;
+export type YamlCron = NonNullable<YamlServices["crons"]>[number];
 export type YamlMethod = NonNullable<YamlClass["methods"]>[number];
 export type YamlFrontend = NonNullable<YamlProjectConfiguration["frontend"]>[number];
 export type YamlContainer = NonNullable<YamlProjectConfiguration["container"]>;
@@ -158,15 +161,7 @@ function parseGenezioConfig(config: unknown) {
             }
 
             return true;
-        }, "The cronString is not valid. Check https://crontab.guru/ for more information.")
-        .refine(({ schedule }) => {
-            const cronParts = schedule?.split(" ");
-            if (cronParts && cronParts[2] != "*" && cronParts[4] != "*") {
-                return false;
-            }
-
-            return true;
-        }, "The day of the month and day of the week cannot be specified at the same time.");
+        }, "The cronString is not valid. Check https://crontab.guru/ for more information.");
 
     const redirectUrlSchema = zod.string();
 
@@ -213,14 +208,8 @@ function parseGenezioConfig(config: unknown) {
             crons: zod.array(cronSchema).optional(),
         })
         .refine(({ crons }) => {
-            const cronNamesMap = new Map<string, string>();
-            for (const cron of crons || []) {
-                if (cronNamesMap.has(cron.name)) {
-                    return false;
-                }
-                cronNamesMap.set(cron.name, cron.name);
-            }
-            return true;
+            const isUniqueCron = isUnique(crons ?? [], "name");
+            return isUniqueCron;
         }, `You can't have two crons with the same name.`);
 
     const backendSchema = zod
@@ -238,14 +227,8 @@ function parseGenezioConfig(config: unknown) {
             functions: zod.array(functionsSchema).optional(),
         })
         .refine(({ functions }) => {
-            const functionNamesMap = new Map<string, string>();
-            for (const func of functions || []) {
-                if (functionNamesMap.has(func.name)) {
-                    return false;
-                }
-                functionNamesMap.set(func.name, func.name);
-            }
-            return true;
+            const isUniqueFunction = isUnique(functions ?? [], "name");
+            return isUniqueFunction;
         }, `You can't have two functions with the same name.`);
 
     const frontendSchema = zod.object({
