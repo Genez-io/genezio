@@ -341,14 +341,52 @@ async function deployFunction(config: YamlProjectConfiguration, cwd: string, sta
 }
 
 function writeNextConfig(cwd: string, region: string) {
-    const configExists = ["js", "cjs", "mjs", "ts"].find((ext) =>
+    const configExtensions = ["js", "cjs", "mjs", "ts"];
+    const existingConfig = configExtensions.find((ext) =>
         fs.existsSync(path.join(cwd, `next.config.${ext}`)),
     );
 
-    if (!configExists) {
+    if (!existingConfig) {
         const extension = determineFileExtension(cwd);
         writeConfigFiles(cwd, extension, region);
+        return;
     }
+
+    const configPath = path.join(cwd, `next.config.${existingConfig}`);
+    const handlerPath = `./cache-handler.${existingConfig}`;
+    const isESM = existingConfig === "mjs";
+
+    fs.writeFileSync(
+        path.join(cwd, `cache-handler.${existingConfig}`),
+        getCacheHandlerContent(existingConfig as "js" | "ts" | "mjs", region),
+    );
+
+    const content = fs.readFileSync(configPath, "utf8");
+    const configMatch = content.match(/nextConfig\s*=\s*(\{[^]*?\n\})/m);
+
+    if (!configMatch) {
+        throw new Error("Invalid Next.js configuration format");
+    }
+
+    let config;
+    try {
+        config = eval(`(${configMatch[1]})`);
+    } catch (error: unknown) {
+        throw new Error(
+            `Failed to parse Next.js config: ${error instanceof Error ? error.message : String(error)}`,
+        );
+    }
+
+    const configContent = `/** @type {import('next').NextConfig} */
+const nextConfig = {${JSON.stringify(config, null, 2)
+        .slice(1, -1)
+        .replace(/"([^"]+)":/g, "$1:")},
+  cacheHandler: process.env.NODE_ENV === "production" ? "${handlerPath}" : undefined
+};
+
+${isESM ? "export default nextConfig;" : "module.exports = nextConfig;"}`;
+
+    fs.writeFileSync(configPath, configContent);
 }
 
 function determineFileExtension(cwd: string): "js" | "mjs" | "ts" {
