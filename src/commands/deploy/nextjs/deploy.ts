@@ -354,7 +354,6 @@ function writeNextConfig(cwd: string, region: string) {
 
     const configPath = path.join(cwd, `next.config.${existingConfig}`);
     const handlerPath = `./cache-handler.${existingConfig}`;
-    const isESM = existingConfig === "mjs";
 
     fs.writeFileSync(
         path.join(cwd, `cache-handler.${existingConfig}`),
@@ -362,35 +361,28 @@ function writeNextConfig(cwd: string, region: string) {
     );
 
     const content = fs.readFileSync(configPath, "utf8");
-    const configMatch = content.match(/nextConfig\s*=\s*(\{[^]*?\n\})/m);
 
-    if (!configMatch) {
-        throw new Error("Invalid Next.js configuration format");
-    }
+    const updatedContent = content.replace(
+        /const\s+nextConfig\s*=\s*(\{[^]*?\n\})/m,
+        (match, configObject) => {
+            const hasCache = configObject.includes("cacheHandler");
+            const hasMemSize = configObject.includes("cacheMaxMemorySize");
 
-    let config;
-    try {
-        config = eval(`(${configMatch[1]})`);
-    } catch (error: unknown) {
-        throw new Error(
-            `Failed to parse Next.js config: ${error instanceof Error ? error.message : String(error)}`,
-        );
-    }
+            const newConfig = configObject.trim();
+            const insertPoint = newConfig.lastIndexOf("}");
 
-    config.cacheHandler = `process.env.NODE_ENV === "production" ? "${handlerPath}" : undefined`;
-    config.cacheMaxMemorySize = 0;
+            const cacheConfig = `${!hasCache ? `cacheHandler: process.env.NODE_ENV === "production" ? "${handlerPath}" : undefined,` : ""}
+  ${!hasMemSize ? "cacheMaxMemorySize: 0," : ""}`;
 
-    const configContent = `/** @type {import('next').NextConfig} */
-const nextConfig = ${JSON.stringify(config, null, 2)
-        .replace(/"([^"]+)":/g, "$1:")
-        .replace(
-            /"process\.env\.NODE_ENV === \\"production\\" \? \\"(.+)\\" : undefined"/g,
-            'process.env.NODE_ENV === "production" ? "$1" : undefined',
-        )}
+            return `const nextConfig = ${
+                newConfig.slice(0, insertPoint) +
+                (insertPoint > 0 ? cacheConfig : "") +
+                newConfig.slice(insertPoint)
+            }`;
+        },
+    );
 
-${isESM ? "export default nextConfig;" : "module.exports = nextConfig;"}`;
-
-    fs.writeFileSync(configPath, configContent);
+    fs.writeFileSync(configPath, updatedContent);
 }
 
 function determineFileExtension(cwd: string): "js" | "mjs" | "ts" {
