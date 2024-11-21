@@ -29,7 +29,6 @@ import { getPackageManager, PackageManagerType } from "../../packageManagers/pac
 import { SSRFrameworkComponentType } from "../../models/projectOptions.js";
 import {
     RawYamlProjectConfiguration,
-    YAMLBackend,
     YamlConfigurationIOController,
     YAMLLanguage,
 } from "../../projectConfiguration/yaml/v2.js";
@@ -69,7 +68,7 @@ import { analyzeBackendEnvExampleFile, ProjectEnvironment } from "./agent.js";
 // Specifically, it is used in the dashboard to display the detected components
 export type FrameworkReport = {
     backend?: string[];
-    backendEnvironment?: ProjectEnvironment[];
+    environment?: ProjectEnvironment[];
     frontend?: string[];
     ssr?: string[];
     services?: FrameworkReportService[];
@@ -97,10 +96,12 @@ export enum SUPPORTED_FORMATS {
 export const DEFAULT_FORMAT = SUPPORTED_FORMATS.TEXT;
 export const DEFAULT_CI_FORMAT = SUPPORTED_FORMATS.JSON;
 
-export const KEY_FILES = ["package.json", "requirements.txt", "pyproject.toml"];
 export const KEY_DEPENDENCY_FILES = ["package.json", "requirements.txt", "pyproject.toml"];
 export const ENVIRONMENT_EXAMPLE_FILES = [".env.template", ".env.example", ".env.local.example"];
+export const KEY_FILES = [...KEY_DEPENDENCY_FILES, ...ENVIRONMENT_EXAMPLE_FILES];
+
 export const EXCLUDED_DIRECTORIES = ["node_modules", ".git", "dist", "build", "tests"];
+
 export const NODE_DEFAULT_ENTRY_FILE = "index.mjs";
 export const PYTHON_DEFAULT_ENTRY_FILE = "app.py";
 
@@ -126,17 +127,18 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         log.info(result);
         return;
     }
-
     debugLogger.debug("Key component files found:", componentFiles);
 
     // Create a configuration object to add components to
     const genezioConfig = (await readOrAskConfig(configPath)) as RawYamlProjectConfiguration;
 
     // The order of the components matters - the first one found will be added to the config
-    // The `component` label is used to break out of the if
-    for (const [relativeFilePath, filename] of componentFiles.entries()) {
-        const componentPath = path.dirname(relativeFilePath);
-
+    const dependenciesFiles = new Map(
+        Array.from(componentFiles).filter(([_, filename]) =>
+            KEY_DEPENDENCY_FILES.includes(filename),
+        ),
+    );
+    for (const [relativeFilePath, filename] of dependenciesFiles.entries()) {
         const fileContent = await retrieveFileContent(relativeFilePath);
         const contents: Record<string, string> = {
             [filename]: fileContent,
@@ -148,7 +150,6 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 databases: [
                     {
                         name: await generateDatabaseName("postgres"),
-                        region: genezioConfig.region,
                         type: DatabaseType.neon,
                     },
                 ],
@@ -162,7 +163,6 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 databases: [
                     {
                         name: await generateDatabaseName("mongo"),
-                        region: genezioConfig.region,
                         type: DatabaseType.mongo,
                     },
                 ],
@@ -171,6 +171,57 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             frameworksDetected.services = frameworksDetected.services || [];
             frameworksDetected.services.push({ databases: ["mongo"] });
         }
+    }
+
+    // Extract the environment example files
+    const envExampleFiles = new Map(
+        Array.from(componentFiles).filter(([_, filename]) =>
+            ENVIRONMENT_EXAMPLE_FILES.includes(filename),
+        ),
+    );
+    debugLogger.debug("Environment example files found:", envExampleFiles);
+
+    // Analyze the environment example file if we have a backend component
+    const envExampleContents = new Map<string, string>();
+    const resultEnvironmentAnalysis = new Map<string, Record<string, string>>();
+    for (const [relativeFilePath, filename] of envExampleFiles.entries()) {
+        const fileContent = await retrieveFileContent(relativeFilePath);
+        envExampleContents.set(filename, fileContent);
+
+        const configIOController = new YamlConfigurationIOController(configPath);
+        // We have to read the config here with fillDefaults=false
+        // to be able to edit it in the least intrusive way
+        const config = await configIOController.read(/* fillDefaults= */ false);
+
+        // Analyze the environment example file
+        const envExampleAnalysis = await analyzeBackendEnvExampleFile(fileContent, config.services);
+        frameworksDetected.environment = frameworksDetected.environment || [];
+        frameworksDetected.environment.push(...envExampleAnalysis);
+
+        const filteredEnvExampleAnalysis = envExampleAnalysis.filter((env: ProjectEnvironment) =>
+            /\$\{\{.*\}\}/.test(env.defaultValue),
+        );
+
+        const environment: Record<string, string> = filteredEnvExampleAnalysis.reduce(
+            (acc: Record<string, string>, env: ProjectEnvironment) => {
+                acc[env.key] = env.defaultValue;
+                return acc;
+            },
+            {},
+        );
+        const componentPath = path.dirname(relativeFilePath);
+        resultEnvironmentAnalysis.set(componentPath, environment);
+    }
+
+    debugLogger.debug("Environment analysis result:", resultEnvironmentAnalysis);
+
+    for (const [relativeFilePath, filename] of dependenciesFiles.entries()) {
+        const componentPath = path.dirname(relativeFilePath);
+
+        const fileContent = await retrieveFileContent(relativeFilePath);
+        const contents: Record<string, string> = {
+            [filename]: fileContent,
+        };
 
         // Check for frameworks (backend, frontend, ssr, container)
         if (await isServerlessHttpBackend(contents)) {
@@ -195,6 +246,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     deploy: [`${getPackageManager().command} install`],
                     local: [`${getPackageManager().command} install`],
                 },
+                environment: resultEnvironmentAnalysis.get(componentPath),
                 functions: [
                     {
                         name: "serverless",
@@ -246,6 +298,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     // TODO: Add support for detecting and building typescript backends
                     name: Language.js,
                 } as YAMLLanguage,
+                environment: resultEnvironmentAnalysis.get(componentPath),
                 scripts: {
                     deploy: [`${getPackageManager().command} install`],
                     local: [`${getPackageManager().command} install`],
@@ -286,6 +339,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     deploy: [`${getPackageManager().command} install`],
                     local: [`${getPackageManager().command} install`],
                 },
+                environment: resultEnvironmentAnalysis.get(componentPath),
                 functions: [
                     {
                         name: "fastify",
@@ -306,6 +360,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 {
                     path: componentPath,
                     packageManager: getPackageManager().command as PackageManagerType,
+                    environment: resultEnvironmentAnalysis.get(componentPath),
                     scripts: {
                         deploy: [`${getPackageManager().command} install`],
                     },
@@ -323,6 +378,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 {
                     path: componentPath,
                     packageManager: getPackageManager().command as PackageManagerType,
+                    environment: resultEnvironmentAnalysis.get(componentPath),
                     scripts: {
                         deploy: [`${getPackageManager().command} install`],
                     },
@@ -340,6 +396,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 {
                     path: componentPath,
                     packageManager: getPackageManager().command as PackageManagerType,
+                    environment: resultEnvironmentAnalysis.get(componentPath),
                     scripts: {
                         deploy: [`${getPackageManager().command} install`],
                     },
@@ -454,6 +511,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     name: Language.python,
                     packageManager: "pip" as PackageManagerType,
                 } as YAMLLanguage,
+                environment: resultEnvironmentAnalysis.get(componentPath),
                 functions: [
                     {
                         name: "flask",
@@ -483,6 +541,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     name: Language.python,
                     packageManager: "pip" as PackageManagerType,
                 } as YAMLLanguage,
+                environment: resultEnvironmentAnalysis.get(componentPath),
                 functions: [
                     {
                         name: "django",
@@ -516,6 +575,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     name: Language.python,
                     packageManager: "pip" as PackageManagerType,
                 } as YAMLLanguage,
+                environment: resultEnvironmentAnalysis.get(componentPath),
                 functions: [
                     {
                         name: "fastapi",
@@ -545,6 +605,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     name: Language.python,
                     packageManager: "pip" as PackageManagerType,
                 } as YAMLLanguage,
+                environment: resultEnvironmentAnalysis.get(componentPath),
                 functions: [
                     {
                         name: "serverless",
@@ -559,54 +620,6 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             frameworksDetected.backend.push("faas-python");
             continue;
         }
-    }
-
-    // Analyze the environment example file if we have a backend component
-    if (
-        (frameworksDetected.backend && frameworksDetected.backend.length > 0) ||
-        (frameworksDetected.ssr && frameworksDetected.ssr.length > 0)
-    ) {
-        const envExampleFiles = await findKeyFiles(rootDirectory, ENVIRONMENT_EXAMPLE_FILES);
-        // Read the file contents
-        const envExampleContents = new Map<string, string>();
-        for (const [relativeFilePath, filename] of envExampleFiles.entries()) {
-            const fileContent = await retrieveFileContent(relativeFilePath);
-            envExampleContents.set(filename, fileContent);
-        }
-
-        // envExampleContents to string
-        const envExampleContentsString = Array.from(envExampleContents.values()).join("\n");
-
-        const configIOController = new YamlConfigurationIOController(configPath);
-        // We have to read the config here with fillDefaults=false
-        // to be able to edit it in the least intrusive way
-        const config = await configIOController.read(/* fillDefaults= */ false);
-
-        // Analyze the environment example file
-        const envExampleAnalysis = await analyzeBackendEnvExampleFile(
-            envExampleContentsString,
-            config.services,
-        );
-
-        const filteredEnvExampleAnalysis = envExampleAnalysis.filter((env: ProjectEnvironment) =>
-            /\$\{\{.*\}\}/.test(env.defaultValue),
-        );
-
-        const environment: Record<string, string> = filteredEnvExampleAnalysis.reduce(
-            (acc: Record<string, string>, env: ProjectEnvironment) => {
-                acc[env.key] = env.defaultValue;
-                return acc;
-            },
-            {},
-        );
-
-        // Add backend environment to the config
-        await addBackendComponentToConfig(configPath, {
-            ...(config.backend as YAMLBackend),
-            environment: environment,
-        });
-
-        frameworksDetected.backendEnvironment = envExampleAnalysis;
     }
 
     // Inject Backend API URLs into the frontend component
@@ -637,6 +650,9 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     log.info(result);
 }
 
+/**
+ * This is costly so we should try to call it as few times as possible
+ */
 export const findKeyFiles = async (
     dir: string,
     keyFiles: string[] = KEY_FILES,

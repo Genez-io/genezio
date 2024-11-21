@@ -107,6 +107,10 @@ export async function addSSRComponentToConfig(
         ...config[componentType],
         path: config[componentType]?.path || relativePath,
         packageManager: config[componentType]?.packageManager || component.packageManager,
+        environment: {
+            ...component.environment,
+            ...config[componentType]?.environment,
+        },
         scripts: config[componentType]?.scripts || component.scripts,
     };
 
