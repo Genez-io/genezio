@@ -202,7 +202,7 @@ async function deployCDN(
     const paths = [
         { origin: serverOrigin, pattern: "api/*" },
         { origin: serverOrigin, pattern: "_next/data/*" },
-        { origin: s3Origin, pattern: "_next/image*" },
+        { origin: serverOrigin, pattern: "_next/image*" },
         { origin: s3Origin, pattern: "_next/static*" },
         { origin: s3Origin, pattern: "*.*" },
     ];
