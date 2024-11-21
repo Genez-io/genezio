@@ -1005,7 +1005,7 @@ function getProjectFunctions(
     projectConfiguration: ProjectConfiguration,
 ): DeployCodeFunctionResponse[] {
     return projectConfiguration.functions.map((f) => ({
-        cloudUrl: `http://localhost:${port}/.functions/${f.name}`,
+        cloudUrl: retrieveLocalFunctionUrl(port, f.name),
         id: f.name,
         name: f.name,
     }));
@@ -1060,7 +1060,7 @@ async function startCronJobs(
             const functionName = await evaluateResource(
                 yamlProjectConfiguration,
                 cronService.function,
-                "local",
+                undefined,
                 undefined,
                 {
                     isLocal: true,
@@ -1069,7 +1069,7 @@ async function startCronJobs(
             );
             const endpoint = cronService.endpoint?.replace(/^\//, "");
             const cronString = cronService.schedule;
-            const baseURL = `http://localhost:${port}/.functions/function-${functionName}`;
+            const baseURL = retrieveLocalFunctionUrl(port, `function-${functionName}`);
             let url: string;
             if (endpoint) {
                 url = `${baseURL}/${endpoint}`;
@@ -1366,7 +1366,7 @@ function reportSuccess(projectConfiguration: ProjectConfiguration, port: number)
             projectConfiguration.functions.map((f) => ({
                 name: f.name,
                 id: f.name,
-                cloudUrl: `http://localhost:${port}/.functions/${f.name}`,
+                cloudUrl: retrieveLocalFunctionUrl(port, f.name),
             })),
         );
     }
@@ -1536,4 +1536,11 @@ function formatTimestamp(date: Date) {
 
     const formattedDate = `${day}/${month}/${year}:${hours}:${minutes}:${seconds} +0000`;
     return formattedDate;
+}
+
+export function retrieveLocalFunctionUrl(port?: number, functionName?: string): string {
+    if (!port) {
+        port = 8080;
+    }
+    return `http://localhost:${port}/.functions/${functionName}`;
 }

@@ -660,7 +660,7 @@ export async function setAuthenticationEmailTemplates(
 export async function evaluateResource(
     configuration: YamlProjectConfiguration,
     resource: string | undefined,
-    stage: string,
+    stage: string | undefined,
     envFile: string | undefined,
     options?: {
         isLocal?: boolean;
@@ -676,7 +676,7 @@ export async function evaluateResource(
     if ("path" in resourceRaw && "field" in resourceRaw) {
         const resourceValue = await resolveConfigurationVariable(
             configuration,
-            stage,
+            stage ?? "prod",
             resourceRaw.path,
             resourceRaw.field,
             options,

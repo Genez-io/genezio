@@ -161,7 +161,7 @@ function parseGenezioConfig(config: unknown) {
             }
 
             return true;
-        }, "The cronString is not valid. Check https://crontab.guru/ for more information.");
+        }, "The schedule expression is not valid. Please visit https://crontab.guru/ to validate it.");
 
     const redirectUrlSchema = zod.string();
 

@@ -185,32 +185,6 @@ export type SetEmailTemplatesResponse = {
     }[];
 };
 
-export type FunctionDetails = {
-    id: string;
-    name: string;
-    projectName: string;
-    status: string;
-    cloudUrl: string;
-    cloudDeploymentId: string;
-    createdAt: number;
-    updatedAt: number;
-};
-
-export type CreateFunctionRequest = {
-    projectName: string;
-    stageName: string;
-    function: {
-        name: string;
-        language: string;
-        entryFile: string;
-    };
-};
-
-export type CreateFunctionResponse = {
-    status: string;
-    functionId: string;
-};
-
 export type CronDetails = {
     name: string;
     url: string;
