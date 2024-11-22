@@ -654,10 +654,6 @@ async function startProcesses(
                 functionInfo.type === FunctionType.httpServer &&
                 (functionInfo.language === Language.js || functionInfo.language === Language.ts)
             ) {
-                process.env[`${functionInfo.name.replace(/-/g, "_").toUpperCase()}_PORT`] = (
-                    functionInfo.port || 8080
-                ).toString();
-
                 return {
                     configuration: functionInfo,
                     extra: {
@@ -674,10 +670,6 @@ async function startProcesses(
                 functionInfo.type === FunctionType.httpServer &&
                 functionInfo.language === Language.python
             ) {
-                process.env[`${functionInfo.name.replace(/-/g, "_").toUpperCase()}_PORT`] = (
-                    functionInfo.port || 8080
-                ).toString();
-
                 return {
                     configuration: functionInfo,
                     extra: {
@@ -1580,10 +1572,6 @@ function formatTimestamp(date: Date) {
 
 export function retrieveLocalFunctionUrl(functionObj: FunctionConfiguration): string {
     if (functionObj.type === FunctionType.httpServer) {
-        const envPort = process.env[`${functionObj.name.replace(/-/g, "_").toUpperCase()}_PORT`];
-        if (envPort) {
-            return `http://localhost:${envPort}`;
-        }
         return `http://localhost:${functionObj.port ?? 8080}`;
     }
 
