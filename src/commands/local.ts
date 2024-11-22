@@ -1572,8 +1572,8 @@ function formatTimestamp(date: Date) {
 
 export function retrieveLocalFunctionUrl(functionObj: FunctionConfiguration): string {
     if (functionObj.type === FunctionType.httpServer) {
-        return `http://localhost:${functionObj.port ?? 8080}`;
+        return `http://localhost:${functionObj.port ?? 8083}`;
     }
 
-    return `http://localhost:${functionObj.port ?? 8080}/.functions/${functionObj.name}`;
+    return `http://localhost:${functionObj.port ?? 8083}/.functions/${functionObj.name}`;
 }
