@@ -657,7 +657,7 @@ async function startProcesses(
                     extra: {
                         type: "function" as const,
                         startingCommand: "node",
-                        commandParameters: [functionInfo.entry],
+                        commandParameters: [path.resolve(functionInfo.path, functionInfo.entry)],
                         handlerType: FunctionType.httpServer,
                     },
                 };
@@ -677,7 +677,7 @@ async function startProcesses(
                     extra: {
                         type: "function" as const,
                         startingCommand: (await detectPythonCommand()) || "python",
-                        commandParameters: [functionInfo.entry],
+                        commandParameters: [path.resolve(functionInfo.path, functionInfo.entry)],
                         handlerType: FunctionType.httpServer,
                     },
                 };
