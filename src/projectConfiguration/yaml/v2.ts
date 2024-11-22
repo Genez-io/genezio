@@ -26,6 +26,7 @@ import { isValidCron } from "cron-validator";
 import { tryV2Migration } from "./migration.js";
 import yaml, { YAMLParseError } from "yaml";
 import { DeepRequired } from "../../utils/types.js";
+import { isUnique } from "../../utils/yaml.js";
 
 export type RawYamlProjectConfiguration = ReturnType<typeof parseGenezioConfig>;
 export type YAMLBackend = NonNullable<YamlProjectConfiguration["backend"]>;
@@ -33,6 +34,8 @@ export type YAMLService = NonNullable<YamlProjectConfiguration["services"]>;
 export type YAMLLanguage = NonNullable<YAMLBackend["language"]>;
 export type YamlClass = NonNullable<YAMLBackend["classes"]>[number];
 export type YamlFunction = NonNullable<YAMLBackend["functions"]>[number];
+export type YamlServices = NonNullable<YamlProjectConfiguration["services"]>;
+export type YamlCron = NonNullable<YamlServices["crons"]>[number];
 export type YamlMethod = NonNullable<YamlClass["methods"]>[number];
 export type YamlFrontend = NonNullable<YamlProjectConfiguration["frontend"]>[number];
 export type YamlContainer = NonNullable<YamlProjectConfiguration["container"]>;
@@ -148,6 +151,21 @@ function parseGenezioConfig(config: unknown) {
             }),
         );
 
+    const cronSchema = zod
+        .object({
+            name: zod.string(),
+            function: zod.string(),
+            schedule: zod.string(),
+            endpoint: zod.string().optional(),
+        })
+        .refine(({ schedule }) => {
+            if (schedule && !isValidCron(schedule)) {
+                return false;
+            }
+
+            return true;
+        }, "The schedule expression is not valid. Please visit https://crontab.guru/ to validate it.");
+
     const redirectUrlSchema = zod.string();
 
     const authEmailSettings = zod.object({
@@ -185,25 +203,36 @@ function parseGenezioConfig(config: unknown) {
         settings: authEmailSettings.optional(),
     });
 
-    const servicesSchema = zod.object({
-        databases: zod.array(databaseSchema).optional(),
-        email: zod.boolean().optional(),
-        authentication: authenticationSchema.optional(),
-    });
+    const servicesSchema = zod
+        .object({
+            databases: zod.array(databaseSchema).optional(),
+            email: zod.boolean().optional(),
+            authentication: authenticationSchema.optional(),
+            crons: zod.array(cronSchema).optional(),
+        })
+        .refine(({ crons }) => {
+            const isUniqueCron = isUnique(crons ?? [], "name");
+            return isUniqueCron;
+        }, `You can't have two crons with the same name.`);
 
-    const backendSchema = zod.object({
-        path: zod.string(),
-        language: languageSchema,
-        environment: environmentSchema.optional(),
-        scripts: zod
-            .object({
-                deploy: scriptSchema,
-                local: scriptSchema,
-            })
-            .optional(),
-        classes: zod.array(classSchema).optional(),
-        functions: zod.array(functionsSchema).optional(),
-    });
+    const backendSchema = zod
+        .object({
+            path: zod.string(),
+            language: languageSchema,
+            environment: environmentSchema.optional(),
+            scripts: zod
+                .object({
+                    deploy: scriptSchema,
+                    local: scriptSchema,
+                })
+                .optional(),
+            classes: zod.array(classSchema).optional(),
+            functions: zod.array(functionsSchema).optional(),
+        })
+        .refine(({ functions }) => {
+            const isUniqueFunction = isUnique(functions ?? [], "name");
+            return isUniqueFunction;
+        }, `You can't have two functions with the same name.`);
 
     const frontendSchema = zod.object({
         name: zod.string().optional(),

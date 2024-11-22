@@ -184,3 +184,20 @@ export type SetEmailTemplatesResponse = {
         variables: string[];
     }[];
 };
+
+export type CronDetails = {
+    name: string;
+    url: string;
+    endpoint: string;
+    cronString: string;
+};
+
+export type SyncCronsRequest = {
+    projectName: string;
+    stageName: string;
+    crons: CronDetails[];
+};
+
+export type SyncCronsResponse = {
+    status: string;
+};

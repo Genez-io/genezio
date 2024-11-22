@@ -76,6 +76,7 @@ import {
     enableAuthentication,
     uploadUserCode,
     setAuthenticationEmailTemplates,
+    evaluateResource,
 } from "./utils.js";
 import {
     disableEmailIntegration,
@@ -86,6 +87,8 @@ import { expandEnvironmentVariables, findAnEnvFile } from "../../utils/environme
 import { getProjectEnvFromProjectByName } from "../../requests/getProjectInfoByName.js";
 import { getFunctionHandlerProvider } from "../../utils/getFunctionHandlerProvider.js";
 import { getFunctionEntryFilename } from "../../utils/getFunctionEntryFilename.js";
+import { CronDetails } from "../../models/requests.js";
+import { syncCrons } from "../../requests/crons.js";
 import { getPackageManager } from "../../packageManagers/packageManager.js";
 import { supportedPythonDepsInstallVersion } from "../../models/projectOptions.js";
 
@@ -229,6 +232,56 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_END,
             commandOptions: JSON.stringify(options),
+        });
+    }
+
+    if (configuration.services?.crons) {
+        const crons: CronDetails[] = [];
+        for (const cron of configuration.services.crons) {
+            const yamlFunctionName = await evaluateResource(
+                configuration,
+                cron.function,
+                options.stage || "prod",
+                undefined,
+                undefined,
+            );
+            if (!deployClassesResult) {
+                throw new UserError(
+                    "Could not deploy cron jobs. Please make sure your backend is deployed before adding cron jobs.",
+                );
+            }
+            const functions = deployClassesResult.functions ?? [];
+            const cronFunction = functions.find((f) => f.name === `function-${yamlFunctionName}`);
+            if (!cronFunction) {
+                throw new UserError(
+                    `Function ${yamlFunctionName} not found. Please make sure the function is deployed before adding cron jobs.`,
+                );
+            }
+            crons.push({
+                name: cron.name,
+                url: cronFunction.cloudUrl,
+                endpoint: cron.endpoint || "",
+                cronString: cron.schedule,
+            });
+        }
+        await syncCrons({
+            projectName: projectName,
+            stageName: options.stage || "prod",
+            crons: crons,
+        }).catch((error) => {
+            throw new UserError(
+                `Something went wrong while syncing the cron jobs.\n${error}\nPlease try to redeploy your project. If the problem persists, please contact support at contact@genez.io.`,
+            );
+        });
+    } else {
+        await syncCrons({
+            projectName: projectName,
+            stageName: options.stage || "prod",
+            crons: [],
+        }).catch(() => {
+            throw new UserError(
+                "Something went wrong while syncing the cron jobs. Please try to redeploy your project. If the problem persists, please contact support at contact@genez.io.",
+            );
         });
     }
 
@@ -578,6 +631,8 @@ export async function deployClasses(
         return {
             projectId: projectId,
             projectEnvId: projectEnvId,
+            functions: result.functions,
+            classes: result.classes,
         };
     }
 }

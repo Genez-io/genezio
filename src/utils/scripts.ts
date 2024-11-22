@@ -15,6 +15,7 @@ import { execaCommand } from "execa";
 import { ENVIRONMENT, PORT_LOCAL_ENVIRONMENT } from "../constants.js";
 import { getDatabaseByName } from "../requests/database.js";
 import { getAuthentication } from "../requests/authentication.js";
+import { retrieveLocalFunctionUrl } from "../commands/local.js";
 
 /**
  * Determines whether a given value is a valid `FunctionConfiguration` object.
@@ -141,11 +142,7 @@ export async function resolveConfigurationVariable(
         // Retrieve custom output fields for a function object such as `url`
         if (field === "url") {
             if (options?.isLocal) {
-                if (functionObj.type === FunctionType.httpServer) {
-                    const port = functionObj.port || 8080;
-                    return `http://localhost:${port}`;
-                }
-                return `http://localhost:${options.port}/.functions/function-${functionObj.name}`;
+                return retrieveLocalFunctionUrl(functionObj);
             }
 
             const response = await getProjectInfoByName(configuration.name).catch((error) => {

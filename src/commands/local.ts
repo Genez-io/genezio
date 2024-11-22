@@ -88,6 +88,7 @@ import fsExtra from "fs-extra/esm";
 import { DeployCodeFunctionResponse } from "../models/deployCodeResponse.js";
 import {
     enableAuthentication,
+    evaluateResource,
     getOrCreateDatabase,
     getOrCreateEmptyProject,
 } from "./deploy/utils.js";
@@ -531,7 +532,12 @@ async function startBackendWatcher(
         );
 
         // Start cron jobs
-        const crons = startCronJobs(projectConfiguration, processForUnits);
+        const crons = await startCronJobs(
+            projectConfiguration,
+            processForUnits,
+            yamlProjectConfiguration,
+            options.port,
+        );
         log.info(
             "\x1b[36m%s\x1b[0m",
             "Your local server is running and the SDK was successfully generated!",
@@ -648,10 +654,6 @@ async function startProcesses(
                 functionInfo.type === FunctionType.httpServer &&
                 (functionInfo.language === Language.js || functionInfo.language === Language.ts)
             ) {
-                process.env[`${functionInfo.name.replace(/-/g, "_").toUpperCase()}_PORT`] = (
-                    functionInfo.port || 8080
-                ).toString();
-
                 return {
                     configuration: functionInfo,
                     extra: {
@@ -668,10 +670,6 @@ async function startProcesses(
                 functionInfo.type === FunctionType.httpServer &&
                 functionInfo.language === Language.python
             ) {
-                process.env[`${functionInfo.name.replace(/-/g, "_").toUpperCase()}_PORT`] = (
-                    functionInfo.port || 8080
-                ).toString();
-
                 return {
                     configuration: functionInfo,
                     extra: {
@@ -1031,50 +1029,45 @@ function getProjectFunctions(
     projectConfiguration: ProjectConfiguration,
 ): DeployCodeFunctionResponse[] {
     return projectConfiguration.functions.map((f) => ({
-        cloudUrl:
-            f.type === FunctionType.httpServer
-                ? `http://localhost:${process.env[`${f.name.replace(/-/g, "_").toUpperCase()}_PORT`]}`
-                : `http://localhost:${port}/.functions/${f.name}`,
+        cloudUrl: retrieveLocalFunctionUrl(f),
         id: f.name,
         name: f.name,
     }));
 }
 
 export type LocalEnvCronHandler = {
-    className: string;
-    methodName: string;
     cronString: string;
     cronObject: cron.ScheduledTask | null;
-    process: UnitProcess;
 };
 
-function startCronJobs(
+async function startCronJobs(
     projectConfiguration: ProjectConfiguration,
     processForUnits: Map<string, UnitProcess>,
-): LocalEnvCronHandler[] {
+    yamlProjectConfiguration: YamlProjectConfiguration,
+    port?: number,
+): Promise<LocalEnvCronHandler[]> {
     const cronHandlers: LocalEnvCronHandler[] = [];
     for (const classElement of projectConfiguration.classes) {
         const methods = classElement.methods;
         for (const method of methods) {
             if (method.type === TriggerType.cron && method.cronString) {
                 const cronHandler: LocalEnvCronHandler = {
-                    className: classElement.name,
-                    methodName: method.name,
                     cronString: rectifyCronString(method.cronString),
                     cronObject: null,
-                    process: processForUnits.get(classElement.name)!,
                 };
+
+                const process = processForUnits.get(classElement.name)!;
 
                 cronHandler.cronObject = cron.schedule(cronHandler.cronString, () => {
                     const reqToFunction = {
                         genezioEventType: "cron",
-                        methodName: cronHandler.methodName,
+                        methodName: method.name,
                         cronString: cronHandler.cronString,
                     };
 
                     void communicateWithProcess(
-                        cronHandler.process,
-                        cronHandler.className,
+                        process,
+                        classElement.name,
                         reqToFunction,
                         processForUnits,
                     );
@@ -1083,6 +1076,57 @@ function startCronJobs(
                 cronHandler.cronObject.start();
                 cronHandlers.push(cronHandler);
             }
+        }
+    }
+
+    if (yamlProjectConfiguration.services && yamlProjectConfiguration.services.crons) {
+        for (const cronService of yamlProjectConfiguration.services.crons) {
+            const functionName = await evaluateResource(
+                yamlProjectConfiguration,
+                cronService.function,
+                undefined,
+                undefined,
+                {
+                    isLocal: true,
+                    port: port,
+                },
+            );
+            const endpoint = cronService.endpoint?.replace(/^\//, "");
+            const cronString = cronService.schedule;
+            const functionConfiguration = projectConfiguration.functions.find(
+                (f) => f.name === `function-${functionName}`,
+            );
+            if (!functionConfiguration) {
+                throw new UserError(
+                    `Function ${functionName} not found in deployed functions. Check if your function is deployed. If the problem persists, please contact support at contact@genez.io.`,
+                );
+            }
+            const baseURL = retrieveLocalFunctionUrl(functionConfiguration);
+            let url: string;
+            if (endpoint) {
+                url = `${baseURL}/${endpoint}`;
+            } else {
+                url = baseURL;
+            }
+
+            const cronHandler: LocalEnvCronHandler = {
+                cronString: rectifyCronString(cronString),
+                cronObject: null,
+            };
+
+            cronHandler.cronObject = cron.schedule(cronHandler.cronString, async () => {
+                log.info(
+                    "DEBUG: trigger cron: " +
+                        cronHandler.cronString +
+                        " on function " +
+                        functionName,
+                );
+                await axios.post(url);
+            });
+
+            cronHandler.cronObject.start();
+
+            cronHandlers.push(cronHandler);
         }
     }
 
@@ -1354,10 +1398,7 @@ function reportSuccess(projectConfiguration: ProjectConfiguration, port: number)
             projectConfiguration.functions.map((f) => ({
                 name: f.name,
                 id: f.name,
-                cloudUrl:
-                    f.type === FunctionType.httpServer
-                        ? `http://localhost:${process.env[`${f.name.replace(/-/g, "_").toUpperCase()}_PORT`]}`
-                        : `http://localhost:${port}/.functions/${f.name}`,
+                cloudUrl: retrieveLocalFunctionUrl(f),
             })),
         );
     }
@@ -1527,4 +1568,12 @@ function formatTimestamp(date: Date) {
 
     const formattedDate = `${day}/${month}/${year}:${hours}:${minutes}:${seconds} +0000`;
     return formattedDate;
+}
+
+export function retrieveLocalFunctionUrl(functionObj: FunctionConfiguration): string {
+    if (functionObj.type === FunctionType.httpServer) {
+        return `http://localhost:${functionObj.port ?? 8083}`;
+    }
+
+    return `http://localhost:${functionObj.port ?? 8083}/.functions/${functionObj.name}`;
 }
