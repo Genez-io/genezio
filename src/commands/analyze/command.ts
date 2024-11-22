@@ -434,7 +434,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 FLASK_PATTERN,
                 PYTHON_DEFAULT_ENTRY_FILE,
             );
-            const entryFileContent = await retrieveFileContent(path.join(componentPath, entryFile));
+            const entryFileContent = await retrieveFileContent(entryFile);
             const pythonHandler = getPythonHandler(entryFileContent);
 
             await addBackendComponentToConfig(configPath, {
@@ -460,7 +460,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isDjangoComponent(contents)) {
-            const entryfile = await findEntryFile(
+            const entryFile = await findEntryFile(
                 componentPath,
                 contents,
                 DJANGO_PATTERN,
@@ -477,7 +477,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                         name: "django",
                         path: ".",
                         handler: "application",
-                        entry: entryfile,
+                        entry: entryFile,
                         type: FunctionType.httpServer,
                     },
                 ],
@@ -489,14 +489,14 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isFastAPIComponent(contents)) {
-            const entryfile = await findEntryFile(
+            const entryFile = await findEntryFile(
                 componentPath,
                 contents,
                 FASTAPI_PATTERN,
                 PYTHON_DEFAULT_ENTRY_FILE,
             );
 
-            const entryFileContent = await retrieveFileContent(path.join(componentPath, entryfile));
+            const entryFileContent = await retrieveFileContent(entryFile);
             const pythonHandler = getPythonHandler(entryFileContent);
 
             await addBackendComponentToConfig(configPath, {
@@ -510,7 +510,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                         name: "fastapi",
                         path: ".",
                         handler: pythonHandler,
-                        entry: entryfile,
+                        entry: entryFile,
                         type: FunctionType.httpServer,
                     },
                 ],
@@ -522,7 +522,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isPythonLambdaFunction(contents)) {
-            const entryfile = await findEntryFile(
+            const entryFile = await findEntryFile(
                 componentPath,
                 contents,
                 PYTHON_LAMBDA_PATTERN,
@@ -539,7 +539,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                         name: "serverless",
                         path: ".",
                         handler: "handler",
-                        entry: entryfile,
+                        entry: entryFile,
                         type: FunctionType.aws,
                     },
                 ],
