@@ -15,6 +15,7 @@ import {
     DEFAULT_ARCHITECTURE,
     DEFAULT_NODE_RUNTIME,
     DEFAULT_PYTHON_RUNTIME,
+    FUNCTION_EXTENSIONS,
     supportedArchitectures,
     supportedNodeRuntimes,
     supportedPythonRuntimes,
@@ -29,6 +30,7 @@ import { isUnique } from "../../utils/yaml.js";
 
 export type RawYamlProjectConfiguration = ReturnType<typeof parseGenezioConfig>;
 export type YAMLBackend = NonNullable<YamlProjectConfiguration["backend"]>;
+export type YAMLService = NonNullable<YamlProjectConfiguration["services"]>;
 export type YAMLLanguage = NonNullable<YAMLBackend["language"]>;
 export type YamlClass = NonNullable<YAMLBackend["classes"]>[number];
 export type YamlFunction = NonNullable<YAMLBackend["functions"]>[number];
@@ -116,7 +118,7 @@ function parseGenezioConfig(config: unknown) {
             entry: zod.string().refine((value) => {
                 return (
                     value.split(".").length === 2 &&
-                    ["js", "mjs", "cjs", "py"].includes(value.split(".")[1])
+                    FUNCTION_EXTENSIONS.includes(value.split(".")[1])
                 );
             }, "The handler should be in the format 'file.extension'. example: index.js / index.mjs / index.cjs / index.py"),
             type: zod.nativeEnum(FunctionType).default(FunctionType.aws),
@@ -124,6 +126,7 @@ function parseGenezioConfig(config: unknown) {
             storageSize: zod.number().optional(),
             instanceSize: zod.nativeEnum(InstanceSize).optional(),
             maxConcurrentRequestsPerInstance: zod.number().optional(),
+            port: zod.number().optional(),
         })
         .refine(
             ({ type, handler }) => !(type === FunctionType.aws && !handler),

@@ -38,6 +38,8 @@ import {
     GenezioCloudInput,
     GenezioCloudInputType,
     GenezioCloudOutput,
+    GenezioFunctionMetadata,
+    GenezioFunctionMetadataType,
 } from "../../cloudAdapter/cloudAdapter.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import { GenezioDeployOptions } from "../../models/commandOptions.js";
@@ -682,8 +684,21 @@ export async function functionToCloudInput(
         }
     }
 
+    let metadata: GenezioFunctionMetadata | undefined;
+    if (functionElement.type === "httpServer") {
+        debugLogger.debug(`Http server port: ${functionElement.port}`);
+        metadata = {
+            type: GenezioFunctionMetadataType.HttpServer,
+            http_port: functionElement.port?.toString(),
+        };
+    }
+
     // Handle Python projects dependencies
     if (functionElement.language === "python") {
+        metadata = {
+            type: GenezioFunctionMetadataType.Python,
+            app_name: functionElement.handler,
+        };
         // Requirements file must be in the root of the backend folder
         const requirementsPath = path.join(backendPath, "requirements.txt");
         if (fs.existsSync(requirementsPath)) {
@@ -712,20 +727,27 @@ export async function functionToCloudInput(
 
     const unzippedBundleSize = await getBundleFolderSizeLimit(tmpFolderPath);
 
-    // add the handler to the temporary folder
-    let entryFileName =
-        entryFileFunctionMap[functionElement.language as keyof typeof entryFileFunctionMap];
-    while (fs.existsSync(path.join(tmpFolderPath, entryFileName))) {
-        debugLogger.debug(
-            `[FUNCTION ${functionElement.name}] File ${entryFileName} already exists in the temporary folder.`,
-        );
-        entryFileName = getFunctionEntryFilename(
-            functionElement.language as Language,
-            `index-${Math.random().toString(36).substring(7)}`,
-        );
-    }
+    // Determine entry file name
+    let entryFileName;
+    if (functionElement.type === "httpServer") {
+        entryFileName = path.join(functionElement.path, functionElement.entry).replace(/\\/g, "/");
+    } else {
+        entryFileName =
+            entryFileFunctionMap[functionElement.language as keyof typeof entryFileFunctionMap];
+        while (fs.existsSync(path.join(tmpFolderPath, entryFileName))) {
+            debugLogger.debug(
+                `[FUNCTION ${functionElement.name}] File ${entryFileName} already exists in the temporary folder.`,
+            );
+            entryFileName = getFunctionEntryFilename(
+                functionElement.language as Language,
+                `index-${Math.random().toString(36).substring(7)}`,
+            );
+        }
 
-    await handlerProvider.write(tmpFolderPath, entryFileName, functionElement);
+        if (handlerProvider) {
+            await handlerProvider.write(tmpFolderPath, entryFileName, functionElement);
+        }
+    }
 
     debugLogger.debug(`Zip the directory ${tmpFolderPath}.`);
 
@@ -746,6 +768,7 @@ export async function functionToCloudInput(
         instanceSize: functionElement.instanceSize,
         storageSize: functionElement.storageSize,
         maxConcurrentRequestsPerInstance: functionElement.maxConcurrentRequestsPerInstance,
+        metadata: metadata,
     };
 }
 

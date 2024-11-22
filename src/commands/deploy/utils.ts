@@ -48,7 +48,7 @@ import {
     promptToConfirmSettingEnvironmentVariables,
 } from "../../utils/environmentVariables.js";
 import inquirer from "inquirer";
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, readdirSync } from "fs";
 import { checkProjectName } from "../create/create.js";
 import {
     uniqueNamesGenerator,
@@ -71,6 +71,7 @@ import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import { displayHint, replaceExpression } from "../../utils/strings.js";
 import { getPackageManager } from "../../packageManagers/packageManager.js";
 import { ContainerComponentType, SSRFrameworkComponentType } from "../../models/projectOptions.js";
+import gitignore from "parse-gitignore";
 
 type DependenciesInstallResult = {
     command: string;
@@ -270,6 +271,35 @@ export async function readOrAskProjectName(): Promise<string> {
     }
 
     return name;
+}
+
+/**
+ * To prevent reusing an already deployed database, we will check if the database exists remotely.
+ * @param prefix Prefix for the database name, usually the engine used - e.g. "postgres", "mongo"
+ * @returns A unique database name
+ */
+export async function generateDatabaseName(prefix: string): Promise<string> {
+    const defaultDatabaseName = prefix + "-" + "db";
+
+    const databaseExists = await getDatabaseByName(defaultDatabaseName)
+        .then(() => true)
+        .catch(() => false);
+
+    if (!databaseExists) {
+        return defaultDatabaseName;
+    }
+
+    const generatedDatabaseName =
+        prefix +
+        "-" +
+        uniqueNamesGenerator({
+            dictionaries: [adjectives, animals],
+            separator: "-",
+            style: "lowerCase",
+            length: 2,
+        });
+
+    return generatedDatabaseName;
 }
 
 export async function getOrCreateDatabase(
@@ -742,7 +772,8 @@ export async function uploadEnvVarsFromFile(
                 .then(async () => {
                     const envVarKeys = envVars.map((envVar) => envVar.name);
                     log.info(
-                        `The following environment variables ${envVarKeys.join(", ")} were uploaded to the project successfully.`,
+                        `The following environment variables were uploaded successfully: `,
+                        envVarKeys.join(", "),
                     );
                     await GenezioTelemetry.sendEvent({
                         eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS,
@@ -847,9 +878,10 @@ export async function uploadEnvVarsFromFile(
                 projectEnvId,
                 environmentVariablesToBePushed,
             ).then(async () => {
-                const envVarKeys = envVars.map((envVar) => envVar.name);
+                const envVarKeys = environmentVariablesToBePushed.map((envVar) => envVar.name);
                 log.info(
-                    `The following environment variables ${envVarKeys.join(", ")} were uploaded to the project successfully.`,
+                    `The following environment variables were uploaded successfully: `,
+                    envVarKeys.join(", "),
                 );
                 await GenezioTelemetry.sendEvent({
                     eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS,
@@ -868,6 +900,127 @@ export async function uploadEnvVarsFromFile(
     }
 }
 
+const excludedFiles = [
+    "projectCode.zip",
+    "**/projectCode.zip",
+    "**/node_modules/*",
+    "./node_modules/*",
+    "node_modules/*",
+    "**/node_modules",
+    "./node_modules",
+    "node_modules",
+    "node_modules/**",
+    "**/node_modules/**",
+    // ignore all .git files
+    "**/.git/*",
+    "./.git/*",
+    ".git/*",
+    "**/.git",
+    "./.git",
+    ".git",
+    ".git/**",
+    "**/.git/**",
+    // ignore all .next files
+    "**/.next/*",
+    "./.next/*",
+    ".next/*",
+    "**/.next",
+    "./.next",
+    ".next",
+    ".next/**",
+    "**/.next/**",
+    // ignore all .open-next files
+    "**/.open-next/*",
+    "./.open-next/*",
+    ".open-next/*",
+    "**/.open-next",
+    "./.open-next",
+    ".open-next",
+    ".open-next/**",
+    "**/.open-next/**",
+    // ignore all .vercel files
+    "**/.vercel/*",
+    "./.vercel/*",
+    ".vercel/*",
+    "**/.vercel",
+    "./.vercel",
+    ".vercel",
+    ".vercel/**",
+    "**/.vercel/**",
+    // ignore all .turbo files
+    "**/.turbo/*",
+    "./.turbo/*",
+    ".turbo/*",
+    "**/.turbo",
+    "./.turbo",
+    ".turbo",
+    ".turbo/**",
+    "**/.turbo/**",
+    // ignore all .sst files
+    "**/.sst/*",
+    "./.sst/*",
+    ".sst/*",
+    "**/.sst",
+    "./.sst",
+    ".sst",
+    ".sst/**",
+    "**/.sst/**",
+    // ignore env files
+    ".env",
+    ".env.development.local",
+    ".env.test.local",
+    ".env.production.local",
+    ".env.local",
+];
+
+type Patterns = {
+    exclude: string[];
+    reinclude: string[];
+};
+
+function getGitIgnorePatterns(cwd: string): Patterns {
+    const gitIgnorePath = path.join(cwd, ".gitignore");
+    if (existsSync(gitIgnorePath)) {
+        return {
+            exclude: gitignore
+                .parse(readFileSync(gitIgnorePath))
+                .patterns.filter((pattern) => !pattern.startsWith("!")),
+            reinclude: gitignore
+                .parse(readFileSync(gitIgnorePath))
+                .patterns.filter((pattern) => pattern.startsWith("!"))
+                .map((pattern) => pattern.slice(1)),
+        };
+    }
+
+    return { exclude: [], reinclude: [] };
+}
+
+function getAllGitIgnorePatterns(cwd: string): Patterns {
+    const patterns: Patterns = getGitIgnorePatterns(cwd);
+    readdirSync(cwd, { withFileTypes: true }).forEach((file) => {
+        if (
+            file.isDirectory() &&
+            !file.name.startsWith(".") &&
+            !file.name.startsWith("node_modules")
+        ) {
+            const newPatterns = getAllGitIgnorePatterns(path.join(cwd, file.name));
+            patterns.exclude = [
+                ...patterns.exclude,
+                ...newPatterns.exclude.map((pattern) =>
+                    path.join(path.relative(cwd, path.join(cwd, file.name)), pattern),
+                ),
+            ];
+            patterns.reinclude = [
+                ...patterns.reinclude,
+                ...newPatterns.reinclude.map((pattern) =>
+                    path.join(path.relative(cwd, path.join(cwd, file.name)), pattern),
+                ),
+            ];
+        }
+    });
+    return patterns;
+}
+
 // Upload the project code to S3 for in-browser editing
 export async function uploadUserCode(
     name: string,
@@ -877,16 +1030,14 @@ export async function uploadUserCode(
 ): Promise<void> {
     const tmpFolderProject = await createTemporaryFolder();
     debugLogger.debug(`Creating archive of the project in ${tmpFolderProject}`);
-    const promiseZip = zipDirectory(cwd, path.join(tmpFolderProject, "projectCode.zip"), false, [
-        "**/node_modules/*",
-        "./node_modules/*",
-        "node_modules/*",
-        "**/node_modules",
-        "./node_modules",
-        "node_modules",
-        "node_modules/**",
-        "**/node_modules/**",
-    ]);
+    const { exclude, reinclude } = getAllGitIgnorePatterns(cwd);
+    const promiseZip = zipDirectory(
+        cwd,
+        path.join(tmpFolderProject, "projectCode.zip"),
+        true,
+        excludedFiles.concat(exclude),
+        reinclude,
+    );
 
     await promiseZip;
     const presignedUrlForProjectCode = await getPresignedURLForProjectCodePush(region, name, stage);

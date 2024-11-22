@@ -1,3 +1,8 @@
+import { promises as fs } from "fs";
+import path from "path";
+import { EXCLUDED_DIRECTORIES, KEY_DEPENDENCY_FILES } from "./command.js";
+import { FUNCTION_EXTENSIONS } from "../../models/projectOptions.js";
+
 export interface PackageJSON {
     name?: string;
     version?: string;
@@ -35,15 +40,170 @@ export async function isTypescript(contents: Record<string, string>): Promise<bo
     return false;
 }
 
-export async function getEntryfile(contents: Record<string, string>): Promise<string> {
-    if (!contents["package.json"]) {
-        return "index.mjs";
+export async function findEntryFile(
+    componentPath: string,
+    contents: Record<string, string>,
+    patterns: RegExp[],
+    defaultFile: string,
+): Promise<string> {
+    const { candidateFile, fallback } = await getEntryFileFromPackageJson(
+        componentPath,
+        contents,
+        patterns,
+    );
+    if (candidateFile && !fallback) {
+        return candidateFile;
     }
 
-    // TODO Improve this - the entry file might not be defined in the package.json
-    // and it's not necessarily `index.mjs`, might be index.cjs, app.mjs, etc.
+    const entryFile = await findFileByPatterns(componentPath, patterns, FUNCTION_EXTENSIONS);
+
+    // If we didn't find a suitable entry file, we set the entry as defined in package.json
+    // If this is not an option either, we set the default entry file
+    // Note - this is useful for ts projects where the entry file is not yet compiled
+    if (!entryFile) {
+        return candidateFile && fallback ? candidateFile : defaultFile;
+    }
+
+    return entryFile;
+}
+
+async function findFileByPatterns(
+    directory: string,
+    patterns: RegExp[],
+    extensions: string[],
+): Promise<string | undefined> {
+    const entries = await fs.readdir(directory, { withFileTypes: true });
+
+    for (const entry of entries) {
+        const fullPath = path.join(directory, entry.name);
+
+        if (entry.isDirectory()) {
+            // Skip excluded directories
+            if (EXCLUDED_DIRECTORIES.includes(entry.name)) continue;
+
+            // Recursively search within subdirectories
+            const result = await findFileByPatterns(fullPath, patterns, extensions);
+            if (result) return result;
+        } else if (entry.isFile() && extensions.some((ext) => entry.name.endsWith(`.${ext}`))) {
+            // Check if the file content matches all given patterns
+            const content = await fs.readFile(fullPath, "utf-8");
+            const allPatternsMatch = patterns.every((pattern) => pattern.test(content));
+            if (allPatternsMatch) {
+                return fullPath;
+            }
+        }
+    }
+
+    return undefined;
+}
+
+// Returns an object containing:
+// - `candidateFile`: The path to the main file in package.json if it exists and matches patterns.
+// - `fallback`: A boolean indicating if the file should be considered a fallback entry.
+async function getEntryFileFromPackageJson(
+    directory: string,
+    contents: Record<string, string>,
+    patterns: RegExp[],
+): Promise<{ candidateFile: string | undefined; fallback: boolean }> {
+    if (!contents["package.json"]) {
+        return { candidateFile: undefined, fallback: false };
+    }
+
     const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
-    return packageJsonContent.main || "index.mjs";
+    const mainPath = packageJsonContent.main;
+    if (!mainPath) {
+        return { candidateFile: undefined, fallback: false };
+    }
+    const fullPath = path.join(directory, mainPath);
+
+    // Check if the mainPath exists
+    try {
+        await fs.access(fullPath);
+    } catch {
+        return { candidateFile: mainPath, fallback: true };
+    }
+
+    // Check if the main file contains patterns that indicate it is indeed an entry file
+    const entryFileContent = await fs.readFile(fullPath, "utf-8");
+    const allPatternsMatch = patterns.every((pattern) => pattern.test(entryFileContent));
+    if (!allPatternsMatch) {
+        return { candidateFile: mainPath, fallback: true };
+    }
+
+    return { candidateFile: mainPath, fallback: false };
+}
+
+export async function hasPostgresDependency(
+    contents: Record<string, string>,
+    dependencyFile: string,
+): Promise<boolean> {
+    if (!KEY_DEPENDENCY_FILES.includes(dependencyFile)) {
+        return false;
+    }
+
+    if (!contents[dependencyFile]) {
+        return false;
+    }
+
+    const jsPostgresIndicators = ["pg", "pg-promise"];
+    const pythonPostgresIndicators = ["psycopg2", "asyncpg", "py-postgresql"];
+    const dependencyList = jsPostgresIndicators.concat(pythonPostgresIndicators);
+
+    return await searchDependency(contents, dependencyFile, dependencyList);
+}
+
+export async function hasMongoDependency(
+    contents: Record<string, string>,
+    dependencyFile: string,
+): Promise<boolean> {
+    if (!KEY_DEPENDENCY_FILES.includes(dependencyFile)) {
+        return false;
+    }
+
+    if (!contents[dependencyFile]) {
+        return false;
+    }
+
+    const jsMongoIndicators = ["mongodb", "mongoose", "connect-mongo"];
+    const pythonMongoIndicators = ["pymongo"];
+    const dependencyList = jsMongoIndicators.concat(pythonMongoIndicators);
+
+    return await searchDependency(contents, dependencyFile, dependencyList);
+}
+
+/**
+ * This function receives a dependency file such as package.json or requirements.txt
+ * and a list of dependency such as ["mongodb", "mongoose", "connect-mongo"].
+ *
+ * It returns true if any of the dependencies are found in the file.
+ *
+ * This is used to determine if a project is using certain services such as Postgres or MongoDB
+ * Can be used for other services too - redis, mysql, kafka etc.
+ */
+export async function searchDependency(
+    contents: Record<string, string>,
+    dependencyFile: string,
+    dependencyList: string[],
+): Promise<boolean> {
+    if (!contents[dependencyFile]) {
+        return false;
+    }
+
+    if (dependencyFile === "package.json") {
+        const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
+        return dependencyList.some(
+            (indicator) =>
+                indicator in (packageJsonContent.dependencies || {}) ||
+                indicator in (packageJsonContent.devDependencies || {}),
+        );
+    } else if (dependencyFile === "requirements.txt") {
+        const requirementsContent = contents["requirements.txt"];
+        return requirementsContent
+            .split("\n")
+            .some((line) => dependencyList.some((indicator) => line.trim().startsWith(indicator)));
+    }
+
+    return false;
 }
 
 // Checks if the project is a Express component
@@ -87,6 +247,16 @@ export async function isServerlessHttpBackend(contents: Record<string, string>):
     return packageJsonContent
         ? "serverless-http" in (packageJsonContent.dependencies || {})
         : false;
+}
+
+// Checks if the project is a Genezio Typesafe component
+export async function isGenezioTypesafe(contents: Record<string, string>): Promise<boolean> {
+    if (!contents["package.json"]) {
+        return false;
+    }
+
+    const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
+    return packageJsonContent ? "@genezio/types" in (packageJsonContent.dependencies || {}) : false;
 }
 
 // Checks if the project is a Next.js component
@@ -226,4 +396,40 @@ export function isContainerComponent(contents: Record<string, string>): boolean 
 
     const dockerfile = contents["Dockerfile"];
     return dockerfile !== undefined;
+}
+
+// Checks if the project is a Flask component (presence of 'requirements.txt', and 'flask' in 'requirements.txt')
+export function isFlaskComponent(contents: Record<string, string>): boolean {
+    if (!contents["requirements.txt"]) {
+        return false;
+    }
+    const requirementsTxt = contents["requirements.txt"];
+    return requirementsTxt !== undefined && /flask(?:==|$|\s)/i.test(requirementsTxt); // Case-insensitive match for "flask", "Flask", "flask==", or "Flask=="
+}
+
+// Checks if the project is a Django component (presence of 'requirements.txt', and 'django' in 'requirements.txt')
+export function isDjangoComponent(contents: Record<string, string>): boolean {
+    if (!contents["requirements.txt"]) {
+        return false;
+    }
+    const requirementsTxt = contents["requirements.txt"];
+    return requirementsTxt !== undefined && /django(?:==|$|\s)/i.test(requirementsTxt);
+}
+
+// Checks if the project is a FastAPI component (presence of 'requirements.txt', and 'fastapi' in 'requirements.txt')
+export function isFastAPIComponent(contents: Record<string, string>): boolean {
+    if (!contents["requirements.txt"]) {
+        return false;
+    }
+    const requirementsTxt = contents["requirements.txt"];
+    return requirementsTxt !== undefined && /fastapi(?:==|$|\s)/i.test(requirementsTxt);
+}
+
+// Checks if the project is a Python function that is compatible with AWS Lambda (presence of 'requirements.txt')
+export function isPythonLambdaFunction(contents: Record<string, string>): boolean {
+    if (!("requirements.txt" in contents)) {
+        return false;
+    }
+
+    return true;
 }

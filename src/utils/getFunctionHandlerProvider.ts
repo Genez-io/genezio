@@ -3,16 +3,12 @@ import {
     AwsFunctionHandlerProvider,
     AwsPythonFunctionHandlerProvider,
 } from "../functionHandlerProvider/providers/AwsFunctionHandlerProvider.js";
-import {
-    HttpServerHandlerProvider,
-    HttpServerPythonHandlerProvider, 
-} from "../functionHandlerProvider/providers/HttpServerHandlerProvider.js";
 import { FunctionType, Language } from "../projectConfiguration/yaml/models.js";
 
 export function getFunctionHandlerProvider(
     functionType: FunctionType,
     language: Language,
-): AwsFunctionHandlerProvider | HttpServerHandlerProvider {
+): AwsFunctionHandlerProvider | null {
     switch (functionType) {
         case FunctionType.aws: {
             const providerMap: { [key: string]: AwsFunctionHandlerProvider } = {
@@ -33,23 +29,13 @@ export function getFunctionHandlerProvider(
             }
         }
         case FunctionType.httpServer: {
-            const providerMap: { [key: string]: HttpServerHandlerProvider } = {
-                [`${FunctionType.httpServer}-${Language.python}`]:
-                    new HttpServerPythonHandlerProvider(),
-                [`${FunctionType.httpServer}-${Language.js}`]: new HttpServerHandlerProvider(),
-                [`${FunctionType.httpServer}-${Language.ts}`]: new HttpServerHandlerProvider(),
-            };
-
-            const key = `${functionType}-${language}`;
-            const provider = providerMap[key];
-
-            if (provider) {
-                return provider;
-            } else {
+            const supportedLanguages = [Language.python, Language.js, Language.ts];
+            if (!supportedLanguages.includes(language)) {
                 throw new UserError(
                     `Unsupported language: ${language} for HTTP Server function. Supported languages are: python, js, ts.`,
                 );
             }
+            return null;
         }
         default:
             throw new UserError(

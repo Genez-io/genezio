@@ -39,8 +39,43 @@ import { GENEZIO_CLASS_STATIC_METHOD_NOT_SUPPORTED, UserError } from "../../erro
 
 type Declaration = StructLiteral | TypeAlias | Enum;
 
+// This properties should be populated only once and then reused
+let _files: readonly typescript.SourceFile[] | undefined;
+let _typeChecker: typescript.TypeChecker | undefined;
+
+export function clearTypescriptAstResources() {
+    _files = undefined;
+    _typeChecker = undefined;
+}
+
 export class AstGenerator implements AstGeneratorInterface {
     rootNode?: typescript.SourceFile;
+
+    get files(): readonly typescript.SourceFile[] {
+        // Lazy initialization: execute logic only once
+        if (!_files) {
+            const typescriptFiles: string[] = [];
+            this.getAllFiles(typescriptFiles, ".");
+
+            const program = typescript.createProgram(typescriptFiles, {});
+            _typeChecker = program.getTypeChecker();
+            _files = program.getSourceFiles();
+        }
+        return _files;
+    }
+
+    get typeChecker(): typescript.TypeChecker {
+        // Lazy initialization: execute logic only once
+        if (!_typeChecker) {
+            const typescriptFiles: string[] = [];
+            this.getAllFiles(typescriptFiles, ".");
+
+            const program = typescript.createProgram(typescriptFiles, {});
+            _typeChecker = program.getTypeChecker();
+            _files = program.getSourceFiles();
+        }
+        return _typeChecker;
+    }
 
     mapTypesToParamType(
         type: typescript.Node,
@@ -506,9 +541,26 @@ export class AstGenerator implements AstGeneratorInterface {
     }
 
     getAllFiles(files: string[], dirPath: string) {
-        if (dirPath.endsWith("node_modules")) {
+        const ignoreFolders = [
+            "node_modules",
+            ".git",
+            ".svn",
+            ".vscode",
+            ".idea",
+            ".cache",
+            "tmp",
+            ".temp",
+            ".history",
+            ".nyc_output",
+            ".terraform",
+            ".serverless",
+        ];
+
+        // Check if the current directory is in the ignore list
+        if (ignoreFolders.some((folder) => dirPath.indexOf(folder) !== -1)) {
             return;
         }
+
         readdirSync(dirPath).forEach((file) => {
             const absolute = path.join(dirPath, file);
             if (statSync(absolute).isDirectory()) {
@@ -520,14 +572,7 @@ export class AstGenerator implements AstGeneratorInterface {
     }
 
     async generateAst(input: AstGeneratorInput): Promise<AstGeneratorOutput> {
-        const typescriptFiles: string[] = [];
-        this.getAllFiles(typescriptFiles, ".");
-
-        const program = typescript.createProgram(typescriptFiles, {});
-        const typeChecker = program.getTypeChecker();
-
-        const files = program.getSourceFiles();
-        files.forEach((file) => {
+        this.files.forEach((file) => {
             if (path.resolve(file.fileName) === path.resolve(input.class.path)) {
                 this.rootNode = file;
             }
@@ -542,7 +587,7 @@ export class AstGenerator implements AstGeneratorInterface {
             if (typescript.isClassDeclaration(child)) {
                 const classDeclaration = this.parseClassDeclaration(
                     child,
-                    typeChecker,
+                    this.typeChecker,
                     declarations,
                 );
                 if (classDeclaration && !classDefinition) {

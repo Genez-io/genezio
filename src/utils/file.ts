@@ -106,7 +106,8 @@ export async function zipDirectory(
     sourceDir: string,
     outPath: string,
     includeHiddenFiles: boolean = false,
-    exclusion?: string[],
+    exclusion: string[] = [],
+    reinclusion: string[] = [],
 ): Promise<void> {
     const archive = archiver("zip", { zlib: { level: 9 } });
     const stream = fs.createWriteStream(outPath);
@@ -116,14 +117,25 @@ export async function zipDirectory(
     }
 
     return new Promise((resolve, reject) => {
-        archive
-            .glob("**/*", {
+        archive.on("error", (err) => reject(err));
+        archive.pipe(stream);
+
+        archive.glob("**/*", {
+            cwd: sourceDir,
+            dot: includeHiddenFiles,
+            // skip deals with directories, it doesn't allow any children to be returned
+            skip: exclusion,
+            // ignore deals with files, it doesn't prevent files from folder content to be returned
+            ignore: exclusion,
+        });
+
+        if (reinclusion.length > 0) {
+            archive.glob("**/*", {
                 cwd: sourceDir,
                 dot: includeHiddenFiles,
-                skip: exclusion,
-            })
-            .on("error", (err) => reject(err))
-            .pipe(stream);
+                pattern: reinclusion,
+            });
+        }
 
         stream.on("close", () => resolve());
         archive.finalize();
