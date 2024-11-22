@@ -22,7 +22,7 @@ export const SERVERLESS_HTTP_PATTERN = [
 
 export const FLASK_PATTERN = [
     /from\s+flask\s+import\s+Flask|import\s+flask/,
-    /\w+\s*=\s*[Ff]lask\(__name__\)/,
+    /\w+\s*=\s*[Ff]lask\(\s*__name__[^)]*\)/,
 ];
 
 export const DJANGO_PATTERN = [
