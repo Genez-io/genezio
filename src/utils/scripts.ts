@@ -142,11 +142,7 @@ export async function resolveConfigurationVariable(
         // Retrieve custom output fields for a function object such as `url`
         if (field === "url") {
             if (options?.isLocal) {
-              if (functionObj.type === FunctionType.httpServer) {
-                    const port = functionObj.port || 8080;
-                    return `http://localhost:${port}`;
-                }
-                return retrieveLocalFunctionUrl(options.port, `function-${functionObj.name}`);
+                return retrieveLocalFunctionUrl(functionObj);
             }
 
             const response = await getProjectInfoByName(configuration.name).catch((error) => {

@@ -1037,10 +1037,7 @@ function getProjectFunctions(
     projectConfiguration: ProjectConfiguration,
 ): DeployCodeFunctionResponse[] {
     return projectConfiguration.functions.map((f) => ({
-        cloudUrl:
-            f.type === FunctionType.httpServer
-                ? `http://localhost:${process.env[`${f.name.replace(/-/g, "_").toUpperCase()}_PORT`]}`
-                : retrieveLocalFunctionUrl(port, f.name),
+        cloudUrl: retrieveLocalFunctionUrl(f),
         id: f.name,
         name: f.name,
     }));
@@ -1104,7 +1101,15 @@ async function startCronJobs(
             );
             const endpoint = cronService.endpoint?.replace(/^\//, "");
             const cronString = cronService.schedule;
-            const baseURL = retrieveLocalFunctionUrl(port, `function-${functionName}`);
+            const functionConfiguration = projectConfiguration.functions.find(
+                (f) => f.name === `function-${functionName}`,
+            );
+            if (!functionConfiguration) {
+                throw new UserError(
+                    `Function ${functionName} not found in deployed functions. Check if your function is deployed. If the problem persists, please contact support at contact@genez.io.`,
+                );
+            }
+            const baseURL = retrieveLocalFunctionUrl(functionConfiguration);
             let url: string;
             if (endpoint) {
                 url = `${baseURL}/${endpoint}`;
@@ -1401,10 +1406,7 @@ function reportSuccess(projectConfiguration: ProjectConfiguration, port: number)
             projectConfiguration.functions.map((f) => ({
                 name: f.name,
                 id: f.name,
-                cloudUrl:
-                    f.type === FunctionType.httpServer
-                        ? `http://localhost:${process.env[`${f.name.replace(/-/g, "_").toUpperCase()}_PORT`]}`
-                        : retrieveLocalFunctionUrl(port, f.name),
+                cloudUrl: retrieveLocalFunctionUrl(f),
             })),
         );
     }
@@ -1576,9 +1578,14 @@ function formatTimestamp(date: Date) {
     return formattedDate;
 }
 
-export function retrieveLocalFunctionUrl(port?: number, functionName?: string): string {
-    if (!port) {
-        port = 8080;
+export function retrieveLocalFunctionUrl(functionObj: FunctionConfiguration): string {
+    if (functionObj.type === FunctionType.httpServer) {
+        const envPort = process.env[`${functionObj.name.replace(/-/g, "_").toUpperCase()}_PORT`];
+        if (envPort) {
+            return `http://localhost:${envPort}`;
+        }
+        return `http://localhost:${functionObj.port ?? 8080}`;
     }
-    return `http://localhost:${port}/.functions/${functionName}`;
+
+    return `http://localhost:${functionObj.port ?? 8080}/.functions/${functionObj.name}`;
 }
