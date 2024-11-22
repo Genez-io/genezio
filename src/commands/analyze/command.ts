@@ -96,7 +96,7 @@ export const DEFAULT_CI_FORMAT = SUPPORTED_FORMATS.JSON;
 export const KEY_FILES = ["package.json", "Dockerfile", "requirements.txt"];
 export const KEY_DEPENDENCY_FILES = ["package.json", "requirements.txt"];
 export const ENVIRONMENT_EXAMPLE_FILES = [".env.template", ".env.example", ".env.local.example"];
-export const EXCLUDED_DIRECTORIES = ["node_modules", ".git", "dist", "build"];
+export const EXCLUDED_DIRECTORIES = ["node_modules", ".git", "dist", "build", "static", "tests"];
 export const NODE_DEFAULT_ENTRY_FILE = "index.mjs";
 export const PYTHON_DEFAULT_ENTRY_FILE = "app.py";
 
@@ -434,7 +434,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 FLASK_PATTERN,
                 PYTHON_DEFAULT_ENTRY_FILE,
             );
-            const entryFileContent = await retrieveFileContent(path.join(componentPath, entryFile));
+            const entryFileContent = await retrieveFileContent(entryFile);
             const pythonHandler = getPythonHandler(entryFileContent);
 
             await addBackendComponentToConfig(configPath, {
@@ -460,7 +460,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isDjangoComponent(contents)) {
-            const entryfile = await findEntryFile(
+            const entryFile = await findEntryFile(
                 componentPath,
                 contents,
                 DJANGO_PATTERN,
@@ -477,7 +477,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                         name: "django",
                         path: ".",
                         handler: "application",
-                        entry: entryfile,
+                        entry: entryFile,
                         type: FunctionType.httpServer,
                     },
                 ],
@@ -489,14 +489,14 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isFastAPIComponent(contents)) {
-            const entryfile = await findEntryFile(
+            const entryFile = await findEntryFile(
                 componentPath,
                 contents,
                 FASTAPI_PATTERN,
                 PYTHON_DEFAULT_ENTRY_FILE,
             );
 
-            const entryFileContent = await retrieveFileContent(path.join(componentPath, entryfile));
+            const entryFileContent = await retrieveFileContent(entryFile);
             const pythonHandler = getPythonHandler(entryFileContent);
 
             await addBackendComponentToConfig(configPath, {
@@ -510,7 +510,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                         name: "fastapi",
                         path: ".",
                         handler: pythonHandler,
-                        entry: entryfile,
+                        entry: entryFile,
                         type: FunctionType.httpServer,
                     },
                 ],
@@ -522,7 +522,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isPythonLambdaFunction(contents)) {
-            const entryfile = await findEntryFile(
+            const entryFile = await findEntryFile(
                 componentPath,
                 contents,
                 PYTHON_LAMBDA_PATTERN,
@@ -539,7 +539,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                         name: "serverless",
                         path: ".",
                         handler: "handler",
-                        entry: entryfile,
+                        entry: entryFile,
                         type: FunctionType.aws,
                     },
                 ],
@@ -657,13 +657,19 @@ export const findKeyFiles = async (
 
 // Method to read the contents of a file
 async function retrieveFileContent(filePath: string): Promise<string> {
-    // check if file exists
+    try {
+        await fs.access(filePath);
+    } catch (error) {
+        log.error(`Cannot access ${filePath}: ${error}`);
+        return "";
+    }
 
     try {
+        // Read and return the file content
         const fileContent = await fs.readFile(filePath, "utf-8");
         return fileContent;
     } catch (error) {
-        log.error("Error reading package.json:", error);
+        log.error(`Error reading file at ${filePath}: ${error}`);
         return "";
     }
 }
