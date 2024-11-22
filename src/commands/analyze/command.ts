@@ -657,13 +657,19 @@ export const findKeyFiles = async (
 
 // Method to read the contents of a file
 async function retrieveFileContent(filePath: string): Promise<string> {
-    // check if file exists
+    try {
+        await fs.access(filePath);
+    } catch (error) {
+        log.error(`Cannot access ${filePath}: ${error}`);
+        return "";
+    }
 
     try {
+        // Read and return the file content
         const fileContent = await fs.readFile(filePath, "utf-8");
         return fileContent;
     } catch (error) {
-        log.error("Error reading package.json:", error);
+        log.error(`Error reading file at ${filePath}: ${error}`);
         return "";
     }
 }
