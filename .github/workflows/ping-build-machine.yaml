@@ -10,6 +10,7 @@ on:
 
 jobs:
     ping:
+        if: github.actor != 'dependabot[bot]' && github.actor != 'github-actions[bot]'
         runs-on: ubuntu-latest
         steps:
             # Dispatch for 'dev' branch
