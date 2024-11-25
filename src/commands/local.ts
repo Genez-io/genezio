@@ -1029,7 +1029,7 @@ function getProjectFunctions(
     projectConfiguration: ProjectConfiguration,
 ): DeployCodeFunctionResponse[] {
     return projectConfiguration.functions.map((f) => ({
-        cloudUrl: retrieveLocalFunctionUrl(f),
+        cloudUrl: retrieveLocalFunctionUrl(f, port),
         id: f.name,
         name: f.name,
     }));
@@ -1044,7 +1044,7 @@ async function startCronJobs(
     projectConfiguration: ProjectConfiguration,
     processForUnits: Map<string, UnitProcess>,
     yamlProjectConfiguration: YamlProjectConfiguration,
-    port?: number,
+    port: number,
 ): Promise<LocalEnvCronHandler[]> {
     const cronHandlers: LocalEnvCronHandler[] = [];
     for (const classElement of projectConfiguration.classes) {
@@ -1101,7 +1101,7 @@ async function startCronJobs(
                     `Function ${functionName} not found in deployed functions. Check if your function is deployed. If the problem persists, please contact support at contact@genez.io.`,
                 );
             }
-            const baseURL = retrieveLocalFunctionUrl(functionConfiguration);
+            const baseURL = retrieveLocalFunctionUrl(functionConfiguration, port);
             let url: string;
             if (endpoint) {
                 url = `${baseURL}/${endpoint}`;
@@ -1398,7 +1398,7 @@ function reportSuccess(projectConfiguration: ProjectConfiguration, port: number)
             projectConfiguration.functions.map((f) => ({
                 name: f.name,
                 id: f.name,
-                cloudUrl: retrieveLocalFunctionUrl(f),
+                cloudUrl: retrieveLocalFunctionUrl(f, port),
             })),
         );
     }
@@ -1570,10 +1570,10 @@ function formatTimestamp(date: Date) {
     return formattedDate;
 }
 
-export function retrieveLocalFunctionUrl(functionObj: FunctionConfiguration): string {
+export function retrieveLocalFunctionUrl(functionObj: FunctionConfiguration, port: number): string {
     if (functionObj.type === FunctionType.httpServer) {
-        return `http://localhost:${functionObj.port ?? 8083}`;
+        return `http://localhost:${port ?? 8083}`;
     }
 
-    return `http://localhost:${functionObj.port ?? 8083}/.functions/${functionObj.name}`;
+    return `http://localhost:${port ?? 8083}/.functions/${functionObj.name}`;
 }
