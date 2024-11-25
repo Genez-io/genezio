@@ -165,7 +165,7 @@
         "@rollup/rollup-linux-riscv64-gnu": "4.24.0",
         "@rollup/rollup-linux-x64-gnu": "4.27.4",
         "@rollup/rollup-linux-x64-musl": "4.27.4",
-        "@rollup/rollup-win32-arm64-msvc": "4.27.2",
+        "@rollup/rollup-win32-arm64-msvc": "4.27.4",
         "@rollup/rollup-win32-ia32-msvc": "4.22.4",
         "@rollup/rollup-win32-x64-msvc": "4.24.2"
     },
