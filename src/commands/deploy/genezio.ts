@@ -236,6 +236,7 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
     }
 
     if (configuration.services?.crons) {
+        printAdaptiveLog("Deploying cron jobs\n", "start");
         const crons: CronDetails[] = [];
         for (const cron of configuration.services.crons) {
             const yamlFunctionName = await evaluateResource(
@@ -269,10 +270,12 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             stageName: options.stage || "prod",
             crons: crons,
         }).catch((error) => {
+            printAdaptiveLog("Deploying cron jobs\n", "error");
             throw new UserError(
                 `Something went wrong while syncing the cron jobs.\n${error}\nPlease try to redeploy your project. If the problem persists, please contact support at contact@genez.io.`,
             );
         });
+        printAdaptiveLog("Cron Jobs deployed successfully\n", "end");
     } else {
         await syncCrons({
             projectName: projectName,
