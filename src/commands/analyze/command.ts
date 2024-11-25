@@ -37,6 +37,7 @@ import {
     addFrontendComponentToConfig,
     addServicesToConfig,
     addSSRComponentToConfig,
+    getExpressPort,
     getFrontendPrefix,
     getPythonHandler,
     injectBackendApiUrlsInConfig,
@@ -233,6 +234,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                         path: ".",
                         entry: entryFile,
                         type: FunctionType.httpServer,
+                        port: await getExpressPort(componentPath, entryFile),
                     },
                 ],
             });

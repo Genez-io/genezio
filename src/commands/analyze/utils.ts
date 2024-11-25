@@ -1,4 +1,5 @@
 import path from "path";
+import fs from "fs/promises";
 import { SSRFrameworkComponentType } from "../../models/projectOptions.js";
 import {
     YamlFrontend,
@@ -299,4 +300,143 @@ export function getPythonHandler(contentEntryfile: string): string {
     }
 
     return "app";
+}
+
+export async function getExpressPort(componentPath: string, entryFile: string): Promise<number> {
+    try {
+        const content = await fs.readFile(path.join(componentPath, entryFile), "utf-8");
+
+        // Match ".listen(...)" syntax
+        const listenMatch = content.match(
+            /\.listen\(\s*(\w+|process\.env\.\w+\s*\|\|\s*\d+|\d+)[\s,)]/,
+        );
+        if (!listenMatch) return 8080;
+
+        const portExpression = listenMatch[1];
+
+        // Handle direct process.env.PORT || number syntax in listen
+        const directEnvMatch = portExpression.match(/process\.env\.(\w+)\s*\|\|\s*(\d+)/);
+        if (directEnvMatch) {
+            const envVar = directEnvMatch[1];
+            const fallbackPort = parseInt(directEnvMatch[2], 10);
+
+            try {
+                const envContent = await fs.readFile(path.join(componentPath, ".env"), "utf-8");
+                const envLines = envContent.split("\n").map((line) => line.trim());
+                const envValue = envLines
+                    .find((line) => line.startsWith(`${envVar}=`) && !line.startsWith("#"))
+                    ?.split("=")
+                    .map((part) => part.trim())[1]
+                    ?.replace(/^["'](.*)["']$/, "$1");
+                if (envValue) {
+                    const port = parseInt(envValue, 10);
+                    if (!isNaN(port)) {
+                        return port;
+                    }
+                }
+            } catch (err) {
+                // If .env reading fails, fall back silently
+            }
+            return fallbackPort;
+        }
+
+        // Handle "app.listen(port || 3000)" or similar syntax
+        const orMatch = portExpression.match(/(\w+)\s*\|\|\s*(\d+)/);
+        if (orMatch) {
+            const variable = orMatch[1];
+            const fallbackPort = parseInt(orMatch[2], 10);
+
+            // Check if the variable is defined as "const port = ..."
+            const variableMatch = content.match(new RegExp(`const\\s+${variable}\\s*=\\s*(.*);`));
+            if (variableMatch) {
+                const variableValue = variableMatch[1];
+
+                // Handle "const port = process.env.PORT || 3000"
+                const envOrMatch = variableValue.match(/process\.env\.(\w+)\s*\|\|\s*(\d+)/);
+                if (envOrMatch) {
+                    const envVar = envOrMatch[1];
+                    const envFallbackPort = parseInt(envOrMatch[2], 10);
+
+                    try {
+                        const envContent = await fs.readFile(
+                            path.join(componentPath, ".env"),
+                            "utf-8",
+                        );
+                        // More robust .env parsing
+                        const envLines = envContent.split("\n").map((line) => line.trim());
+                        const envValue = envLines
+                            .find((line) => line.startsWith(`${envVar}`) && !line.startsWith("#"))
+                            ?.split("=")
+                            .map((part) => part.trim())[1] // Trim both parts around equals
+                            ?.replace(/^["'](.*)["']$/, "$1"); // Remove quotes if present
+                        if (envValue) {
+                            const port = parseInt(envValue, 10);
+                            if (!isNaN(port)) {
+                                return port;
+                            }
+                        }
+                    } catch (err) {
+                        // If .env reading fails, fall back silently
+                    }
+                    return envFallbackPort;
+                }
+
+                // Handle numeric assignment directly: "const port = 3000"
+                const numericMatch = variableValue.match(/^\d+$/);
+                if (numericMatch) {
+                    return parseInt(variableValue, 10);
+                }
+            }
+
+            // If no variable definition found, use fallback port
+            return fallbackPort;
+        }
+
+        // Handle "app.listen(port)" where port is a variable
+        const variableMatch = content.match(new RegExp(`const\\s+${portExpression}\\s*=\\s*(.*);`));
+        if (variableMatch) {
+            const variableValue = variableMatch[1];
+
+            // Handle "const port = process.env.PORT || 3000"
+            const envOrMatch = variableValue.match(/process\.env\.(\w+)\s*\|\|\s*(\d+)/);
+            if (envOrMatch) {
+                const envVar = envOrMatch[1];
+                const envFallbackPort = parseInt(envOrMatch[2], 10);
+
+                try {
+                    const envContent = await fs.readFile(path.join(componentPath, ".env"), "utf-8");
+                    // More robust .env parsing
+                    const envLines = envContent.split("\n").map((line) => line.trim());
+                    const envValue = envLines
+                        .find((line) => line.startsWith(`${envVar}`) && !line.startsWith("#"))
+                        ?.split("=")
+                        .map((part) => part.trim())[1] // Trim both parts around equals
+                        ?.replace(/^["'](.*)["']$/, "$1"); // Remove quotes if present
+                    if (envValue) {
+                        const port = parseInt(envValue, 10);
+                        if (!isNaN(port)) {
+                            return port;
+                        }
+                    }
+                } catch (err) {
+                    // If .env reading fails, fall back silently
+                }
+                return envFallbackPort;
+            }
+
+            // Handle numeric assignment directly: "const port = 3000"
+            const numericMatch = variableValue.match(/^\d+$/);
+            if (numericMatch) {
+                return parseInt(variableValue, 10);
+            }
+        }
+
+        // Handle numeric port directly
+        const numericPort = parseInt(portExpression, 10);
+        if (!isNaN(numericPort)) return numericPort;
+
+        return 8080;
+    } catch {
+        return 8080;
+    }
 }
