@@ -103,6 +103,11 @@ program
     .hook("preAction", (thisCommand: Command) => {
         setDebuggingLoggerLogLevel(thisCommand.opts()["logLevel"]);
     });
+
+program.hook("preAction", async () => {
+    log.info("Version: " + currentGenezioVersion);
+});
+
 program.hook("postAction", async () => {
     if (!isCI()) {
         await logOutdatedVersion().catch((error) => {
