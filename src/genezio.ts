@@ -86,7 +86,6 @@ try {
 // make genezio --version
 program.version(currentGenezioVersion, "-v, --version", "Print the installed genezio version.");
 program.helpOption("-h, --help", "Print this help message.");
-program.addHelpCommand("help", "Print this help message.");
 program.configureHelp({
     subcommandTerm: (cmd) => cmd.name(),
 });
