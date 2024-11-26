@@ -63,6 +63,9 @@ import { analyzeBackendEnvExampleFile, ProjectEnvironment } from "./agent.js";
 // ssr: next, nuxt, nitro
 // containers
 // services: databases, authentication, crons, cache/redis, queues
+
+// Warning: Changing this type will break compatibility across the codebase
+// Specifically, it is used in the dashboard to display the detected components
 export type FrameworkReport = {
     backend?: string[];
     backendEnvironment?: ProjectEnvironment[];
@@ -71,6 +74,8 @@ export type FrameworkReport = {
     services?: FrameworkReportService[];
 };
 
+// Warning: Changing this type will break compatibility across the codebase
+// Specifically, it is used in the dashboard to display the detected components
 export type FrameworkReportService = {
     databases?: string[];
 };

@@ -9,6 +9,8 @@ import {
 import { debugLogger } from "../../utils/logging.js";
 import { YAMLService } from "../../projectConfiguration/yaml/v2.js";
 
+// Warning: Changing this type will break compatibility across the codebase
+// Specifically, it is used in the dashboard to display the detected components
 export interface ProjectEnvironment {
     key: string;
     defaultValue: string;
