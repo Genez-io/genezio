@@ -104,7 +104,10 @@ program
         setDebuggingLoggerLogLevel(thisCommand.opts()["logLevel"]);
     });
 
-program.hook("preAction", async () => {
+program.hook("preAction", async (thisCommand) => {
+    if (thisCommand.args[0] === "analyze") {
+        return;
+    }
     log.info("Version: " + currentGenezioVersion);
 });
 
