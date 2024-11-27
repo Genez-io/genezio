@@ -413,7 +413,8 @@ ${isESM ? "export default nextConfig;" : "module.exports = nextConfig;"}`;
 
 function getCacheHandlerContent(extension: "ts" | "mjs" | "js", region: string): string {
     const imports = {
-        ts: `import { IncrementalCache, Queue, TagCache } from "@genezio/nextjs-isr-${region}";
+        ts: `// @ts-nocheck
+import { IncrementalCache, Queue, TagCache } from "@genezio/nextjs-isr-${region}";
 
 interface CacheOptions {
     tags?: string[];
@@ -431,7 +432,7 @@ const deployment = process.env["GENEZIO_DOMAIN_NAME"] || "";
 const token = (process.env["GENEZIO_CACHE_TOKEN"] || "") + "/_cache/" + (process.env["NEXT_BUILD_ID"] || "");
 
 ${exportStatement}class CacheHandler {
-    constructor(options) {
+    constructor(options: any) {
         this.queue = Queue;
         this.incrementalCache = IncrementalCache;
         this.tagCache = TagCache;
