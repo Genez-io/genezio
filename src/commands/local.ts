@@ -648,17 +648,47 @@ async function startProcesses(
                 functionInfo.language as Language,
             );
 
-            await writeToFile(
-                path.join(tmpFolder),
-                getFunctionEntryFilename(
-                    functionInfo.language as Language,
-                    "local_function_wrapper",
-                ),
-                await handlerProvider!.getLocalFunctionWrapperCode(
-                    functionInfo.handler,
-                    functionInfo.entry,
-                ),
-            );
+            // if handlerProvider is Http, run it with node
+            if (
+                functionInfo.type === FunctionType.httpServer &&
+                (functionInfo.language === Language.js || functionInfo.language === Language.ts)
+            ) {
+                await writeToFile(
+                    path.join(tmpFolder),
+                    getFunctionEntryFilename(
+                        functionInfo.language as Language,
+                        "local_function_wrapper",
+                    ),
+                    await getLocalFunctionHttpServerWrapper(functionInfo.entry),
+                );
+            }
+
+            // if handlerProvider is Http and language is python
+            else if (
+                functionInfo.type === FunctionType.httpServer &&
+                functionInfo.language === Language.python
+            ) {
+                await writeToFile(
+                    path.join(tmpFolder),
+                    getFunctionEntryFilename(
+                        functionInfo.language as Language,
+                        "local_function_wrapper",
+                    ),
+                    await getLocalFunctionHttpServerPythonWrapper(functionInfo.entry),
+                );
+            } else {
+                await writeToFile(
+                    path.join(tmpFolder),
+                    getFunctionEntryFilename(
+                        functionInfo.language as Language,
+                        "local_function_wrapper",
+                    ),
+                    await handlerProvider!.getLocalFunctionWrapperCode(
+                        functionInfo.handler,
+                        functionInfo.entry,
+                    ),
+                );
+            }
 
             return {
                 configuration: functionInfo,
@@ -1539,4 +1569,43 @@ function formatTimestamp(date: Date) {
 
 export function retrieveLocalFunctionUrl(functionObj: FunctionConfiguration): string {
     return `http://localhost:8083/.functions/${functionObj.name}`;
+}
+
+function getLocalFunctionHttpServerWrapper(entry: string): string {
+    return `
+import * as domain from "domain";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const http = require('http')
+
+const originalCreateServer = http.createServer;
+let server;
+
+http.createServer = function(...args) {
+    server = originalCreateServer(...args);
+    
+    // Store the original listen method
+    const originalListen = server.listen;
+    
+    // Override the listen method to only listen once
+    server.listen = function(...listenArgs) {
+        const genezioPort = parseInt(process.argv[process.argv.length - 1], 10);
+        console.log("[HTTP Server Wrapper] Starting server on port:", genezioPort);
+        // Only call listen once with the Genezio port
+        return originalListen.apply(server, [genezioPort, ...listenArgs.slice(1)]); 
+    };
+    
+    return server;
+};
+
+// Import the original app.js
+const app = await import("./${entry}");
+`;
+}
+function getLocalFunctionHttpServerPythonWrapper(entry: string): string {
+    return `
+import sys
+sys.path.append("${entry}")
+from app import app
+`;
 }
