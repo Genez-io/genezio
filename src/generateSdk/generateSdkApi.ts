@@ -102,7 +102,12 @@ export function mapYamlClassToSdkClassConfiguration(
             path: path.join(rootPath, yamlClass.path),
             language,
             type: yamlClass.type || TriggerType.jsonrpc,
-            methods: (yamlClass.methods || []).map((m) => ({ name: m.name, type: m.type })),
+            methods: (yamlClass.methods || []).map((m) => {
+                if (m.type === TriggerType.cron) {
+                    return { name: m.name, type: m.type, cronString: m.cronString };
+                }
+                return { name: m.name, type: m.type };
+            }),
             timeout: yamlClass.timeout,
             storageSize: yamlClass.storageSize,
             instanceSize: yamlClass.instanceSize,

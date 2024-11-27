@@ -12,6 +12,7 @@ export type AstSummaryMethod = {
     params: AstSummaryParam[];
     returnType: any;
     docString?: string;
+    cronString?: string;
 };
 
 export type AstSummaryClass = {

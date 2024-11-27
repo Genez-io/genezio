@@ -57,6 +57,7 @@ export function getAstSummary(classesInfo: SdkGeneratorClassesInfoInput[]): AstS
                         params: params,
                         docString: method.docString,
                         returnType: method.returnType,
+                        cronString: methodConfiguration?.cronString,
                     };
                     return methodInfo;
                 },

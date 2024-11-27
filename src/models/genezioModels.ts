@@ -366,6 +366,7 @@ export interface SdkGeneratorInterface {
 export type SdkMethodConfiguration = {
     name: string;
     type: TriggerType;
+    cronString?: string;
 };
 
 export type SdkClassConfiguration = {
