@@ -97,7 +97,6 @@ import { enableEmailIntegration, getProjectIntegrations } from "../requests/inte
 import { expandEnvironmentVariables, findAnEnvFile } from "../utils/environmentVariables.js";
 import { getFunctionHandlerProvider } from "../utils/getFunctionHandlerProvider.js";
 import { getFunctionEntryFilename } from "../utils/getFunctionEntryFilename.js";
-import { detectPythonCommand } from "../utils/detectPythonCommand.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -648,38 +647,6 @@ async function startProcesses(
                 functionInfo.type,
                 functionInfo.language as Language,
             );
-
-            // if handlerProvider is Http, run it with node
-            if (
-                functionInfo.type === FunctionType.httpServer &&
-                (functionInfo.language === Language.js || functionInfo.language === Language.ts)
-            ) {
-                return {
-                    configuration: functionInfo,
-                    extra: {
-                        type: "function" as const,
-                        startingCommand: "node",
-                        commandParameters: [path.resolve(functionInfo.path, functionInfo.entry)],
-                        handlerType: FunctionType.httpServer,
-                    },
-                };
-            }
-
-            // if handlerProvider is Http and language is python
-            if (
-                functionInfo.type === FunctionType.httpServer &&
-                functionInfo.language === Language.python
-            ) {
-                return {
-                    configuration: functionInfo,
-                    extra: {
-                        type: "function" as const,
-                        startingCommand: (await detectPythonCommand()) || "python",
-                        commandParameters: [path.resolve(functionInfo.path, functionInfo.entry)],
-                        handlerType: FunctionType.httpServer,
-                    },
-                };
-            }
 
             await writeToFile(
                 path.join(tmpFolder),
@@ -1571,9 +1538,5 @@ function formatTimestamp(date: Date) {
 }
 
 export function retrieveLocalFunctionUrl(functionObj: FunctionConfiguration): string {
-    if (functionObj.type === FunctionType.httpServer) {
-        return `http://localhost:${functionObj.port ?? 8083}`;
-    }
-
-    return `http://localhost:${functionObj.port ?? 8083}/.functions/${functionObj.name}`;
+    return `http://localhost:8083/.functions/${functionObj.name}`;
 }

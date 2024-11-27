@@ -13,11 +13,10 @@ export enum GenezioCloudInputType {
     FUNCTION = "function",
 }
 
-export type GenezioFunctionMetadata = ContainerMetadata | PythonMetadata | HttpServerMetadata;
+export type GenezioFunctionMetadata = ContainerMetadata | PythonMetadata;
 export enum GenezioFunctionMetadataType {
     Container = "container",
     Python = "python",
-    HttpServer = "httpServer",
 }
 
 export type ContainerMetadata = {
@@ -30,11 +29,6 @@ export type ContainerMetadata = {
 export type PythonMetadata = {
     type: GenezioFunctionMetadataType.Python;
     app_name?: string;
-};
-
-export type HttpServerMetadata = {
-    type: GenezioFunctionMetadataType.HttpServer;
-    http_port?: string;
 };
 
 export type GenezioCloudInput =

@@ -290,12 +290,11 @@ async function deployFunction(config: YamlProjectConfiguration, cwd: string, sta
     const cwdRelative = path.relative(process.cwd(), cwd) || ".";
 
     const serverFunction = {
-        path: path.join(cwdRelative, ".next", "standalone"),
+        path: ".",
         name: "nextjs",
         entry: "server.js",
         handler: "handler",
         type: FunctionType.httpServer,
-        port: 3000,
     };
 
     const deployConfig: YamlProjectConfiguration = {
@@ -321,7 +320,9 @@ async function deployFunction(config: YamlProjectConfiguration, cwd: string, sta
         },
     );
     const cloudInputs = await Promise.all(
-        projectConfiguration.functions.map((f) => functionToCloudInput(f, ".")),
+        projectConfiguration.functions.map((f) =>
+            functionToCloudInput(f, path.join(cwdRelative, ".next", "standalone")),
+        ),
     );
 
     const projectGitRepositoryUrl = (await git.listRemotes({ fs, dir: process.cwd() })).find(
