@@ -432,7 +432,7 @@ const deployment = process.env["GENEZIO_DOMAIN_NAME"] || "";
 const token = (process.env["GENEZIO_CACHE_TOKEN"] || "") + "/_cache/" + (process.env["NEXT_BUILD_ID"] || "");
 
 ${exportStatement}class CacheHandler {
-    constructor(options: any) {
+    constructor(options) {
         this.queue = Queue;
         this.incrementalCache = IncrementalCache;
         this.tagCache = TagCache;
