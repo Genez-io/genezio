@@ -415,7 +415,8 @@ ${isESM ? "export default nextConfig;" : "module.exports = nextConfig;"}`;
 
 function getCacheHandlerContent(extension: "ts" | "mjs" | "js", region: string): string {
     const imports = {
-        ts: `import { IncrementalCache, Queue, TagCache } from "@genezio/nextjs-isr-${region}";
+        ts: `// @ts-nocheck
+import { IncrementalCache, Queue, TagCache } from "@genezio/nextjs-isr-${region}";
 
 interface CacheOptions {
     tags?: string[];
