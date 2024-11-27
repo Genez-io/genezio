@@ -49,6 +49,12 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     // Install dependencies
     const installDependenciesCommand = await attemptToInstallDependencies([], componentPath);
 
+    // Install dependencies including the ISR package
+    await attemptToInstallDependencies(
+        [`@genezio/nextjs-isr-${genezioConfig.region}`],
+        componentPath,
+    );
+
     // Add nextjs component
     await addSSRComponentToConfig(
         options.config,
@@ -62,7 +68,7 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         SSRFrameworkComponentType.next,
     );
 
-    writeNextConfig(componentPath);
+    writeNextConfig(componentPath, genezioConfig.region);
     await $({
         stdio: "inherit",
         cwd: componentPath,
@@ -196,7 +202,7 @@ async function deployCDN(
     const paths = [
         { origin: serverOrigin, pattern: "api/*" },
         { origin: serverOrigin, pattern: "_next/data/*" },
-        { origin: s3Origin, pattern: "_next/image*" },
+        { origin: serverOrigin, pattern: "_next/image*" },
         { origin: s3Origin, pattern: "_next/static*" },
         { origin: s3Origin, pattern: "*.*" },
     ];
@@ -254,6 +260,10 @@ async function deployStaticAssets(
             path.join(cwd, ".next", "static"),
             path.join(staticAssetsPath, "_next", "static"),
             { recursive: true },
+        ),
+        fs.promises.cp(
+            path.join(cwd, ".next", "BUILD_ID"),
+            path.join(staticAssetsPath, "BUILD_ID"),
         ),
         fs.promises.cp(path.join(cwd, "public"), staticAssetsPath, { recursive: true }),
     ]);
@@ -330,14 +340,145 @@ async function deployFunction(config: YamlProjectConfiguration, cwd: string, sta
     return result;
 }
 
-function writeNextConfig(cwd: string) {
-    const configExists = ["js", "cjs", "mjs", "ts"].find((ext) =>
+function writeNextConfig(cwd: string, region: string) {
+    const configExtensions = ["js", "cjs", "mjs", "ts"];
+    const existingConfig = configExtensions.find((ext) =>
         fs.existsSync(path.join(cwd, `next.config.${ext}`)),
     );
-    if (!configExists) {
-        fs.writeFileSync(
-            path.join(cwd, "next.config.js"),
-            `module.exports = { output: 'standalone' }`,
-        );
+
+    if (!existingConfig) {
+        const extension = determineFileExtension(cwd);
+        writeConfigFiles(cwd, extension, region);
+        return;
     }
+
+    const configPath = path.join(cwd, `next.config.${existingConfig}`);
+    const handlerPath = `./cache-handler.${existingConfig}`;
+
+    fs.writeFileSync(
+        path.join(cwd, `cache-handler.${existingConfig}`),
+        getCacheHandlerContent(existingConfig as "js" | "ts" | "mjs", region),
+    );
+
+    const content = fs.readFileSync(configPath, "utf8");
+
+    const updatedContent = content.replace(
+        /const\s+nextConfig\s*=\s*(\{[^]*?\n\})/m,
+        (match, configObject) => {
+            const hasCache = configObject.includes("cacheHandler");
+            const hasMemSize = configObject.includes("cacheMaxMemorySize");
+
+            const newConfig = configObject.trim();
+            const insertPoint = newConfig.lastIndexOf("}");
+
+            const cacheConfig = `${!hasCache ? `cacheHandler: process.env.NODE_ENV === "production" ? "${handlerPath}" : undefined,` : ""}
+  ${!hasMemSize ? "cacheMaxMemorySize: 0," : ""}`;
+
+            return `const nextConfig = ${
+                newConfig.slice(0, insertPoint) +
+                (insertPoint > 0 ? cacheConfig : "") +
+                newConfig.slice(insertPoint)
+            }`;
+        },
+    );
+
+    fs.writeFileSync(configPath, updatedContent);
+}
+
+function determineFileExtension(cwd: string): "js" | "mjs" | "ts" {
+    try {
+        // Always prefer .mjs for Next.js config files
+        const packageJson = JSON.parse(fs.readFileSync(path.join(cwd, "package.json"), "utf8"));
+        return packageJson.type === "module" ? "mjs" : "js";
+    } catch {
+        return "js"; // Fallback to CommonJS
+    }
+}
+
+function getConfigContent(extension: string): string {
+    const isESM = extension === "mjs";
+    const handlerPath = `./cache-handler.${extension}`;
+
+    return `/** @type {import('next').NextConfig} */
+const nextConfig = {
+    cacheHandler: process.env.NODE_ENV === "production"
+        ? ${isESM ? handlerPath : `require.resolve("${handlerPath}")`}
+        : undefined,
+    output: 'standalone',
+    cacheMaxMemorySize: 0
+}
+
+${isESM ? "export default nextConfig;" : "module.exports = nextConfig;"}`;
+}
+
+function getCacheHandlerContent(extension: "ts" | "mjs" | "js", region: string): string {
+    const imports = {
+        ts: `import { IncrementalCache, Queue, TagCache } from "@genezio/nextjs-isr-${region}";
+
+interface CacheOptions {
+    tags?: string[];
+    revalidate?: number;
+}`,
+        mjs: `import { IncrementalCache, Queue, TagCache } from "@genezio/nextjs-isr-${region}"`,
+        js: `const { IncrementalCache, Queue, TagCache } = require("@genezio/nextjs-isr-${region}");`,
+    };
+
+    const exportStatement = extension === "js" ? "module.exports = " : "export default ";
+
+    return `${imports[extension]}
+            
+const deployment = process.env["GENEZIO_DOMAIN_NAME"] || "";
+const token = (process.env["GENEZIO_CACHE_TOKEN"] || "") + "/_cache/" + (process.env["NEXT_BUILD_ID"] || "");
+
+${exportStatement}class CacheHandler {
+    constructor(options) {
+        this.queue = Queue;
+        this.incrementalCache = IncrementalCache;
+        this.tagCache = TagCache;
+    }
+
+    async get(key) {
+        try {
+            return await this.incrementalCache.get(deployment, token, key);
+        } catch (error) {
+            return null;
+        }
+    }
+
+    async set(key, data, options) {
+        try {
+            await this.incrementalCache.set(deployment, token, key, data, options);
+            
+            if (options?.tags?.length) {
+                await this.tagCache.writeTags(deployment, token, key, options.tags);
+            }
+        } catch (error) {
+            console.error('Cache set error:', error);
+        }
+    }
+
+    async revalidateTag(tag) {
+        try {
+            const paths = await this.tagCache.getByTag(deployment, token, tag);
+            
+            if (paths?.length) {
+                await this.queue.send(deployment, token, {
+                    type: 'revalidate',
+                    paths
+                });
+            }
+        } catch (error) {
+            console.error('Tag revalidation error:', error);
+        }
+    }
+}`;
+}
+
+function writeConfigFiles(cwd: string, extension: "js" | "mjs" | "ts", region: string): void {
+    fs.writeFileSync(path.join(cwd, `next.config.${extension}`), getConfigContent(extension));
+
+    fs.writeFileSync(
+        path.join(cwd, `cache-handler.${extension}`),
+        getCacheHandlerContent(extension as "js" | "ts" | "mjs", region),
+    );
 }
