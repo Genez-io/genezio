@@ -121,6 +121,12 @@ type LocalProcessSpawnOutput = {
     sdk: SdkHandlerResponse;
 };
 
+type PortMapping = {
+    [key: string]: number;
+};
+
+let httpServerPortMapping: PortMapping = {};
+
 export async function prepareLocalBackendEnvironment(
     yamlProjectConfiguration: YamlProjectConfiguration,
     options: GenezioLocalOptions,
@@ -1474,6 +1480,11 @@ async function clearAllResources(
     processForUnits.forEach((unitProcess) => {
         unitProcess.process.kill();
     });
+
+    // Only clear port mappings if we're doing a full restart
+    if (process.env["GENEZIO_FULL_RESTART"] === "true") {
+        clearPortMappings();
+    }
 }
 
 async function startLocalUnitProcess(
@@ -1486,7 +1497,18 @@ async function startLocalUnitProcess(
     cwd?: string,
     configurationEnvVars?: { [key: string]: string | undefined },
 ) {
-    const availablePort = await findAvailablePort();
+    // Check if this is an HTTP server and already has an assigned port
+    let availablePort: number;
+    if (type === "function" && httpServerPortMapping[localUnitName]) {
+        availablePort = httpServerPortMapping[localUnitName];
+    } else {
+        availablePort = await findAvailablePort();
+        // Store the port mapping for HTTP servers
+        if (type === "function") {
+            httpServerPortMapping[localUnitName] = availablePort;
+        }
+    }
+
     debugLogger.debug(`[START_Unit_PROCESS] Starting ${localUnitName} on port ${availablePort}`);
     debugLogger.debug(`[START_Unit_PROCESS] Starting command: ${startingCommand}`);
     debugLogger.debug(`[START_Unit_PROCESS] Parameters: ${parameters}`);
@@ -1778,4 +1800,8 @@ else:
         print(f"Serving WSGI application on port {genezio_port}...")
         httpd.serve_forever()
 `;
+}
+
+function clearPortMappings() {
+    httpServerPortMapping = {};
 }
