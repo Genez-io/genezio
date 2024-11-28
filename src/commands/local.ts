@@ -803,7 +803,13 @@ async function startServerHttp(
     const astSummary: AstSummary = projectConfiguration.astSummary;
     const app = express();
     const require = createRequire(import.meta.url);
-    app.use(cors());
+    app.use(
+        cors({
+            origin: "*",
+            methods: "GET, POST, OPTIONS, PUT, PATCH, DELETE",
+            allowedHeaders: "*",
+        }),
+    );
     app.use(bodyParser.raw({ type: () => true, limit: "6mb" }));
     app.use(genezioRequestParser);
     const packagePath = path.dirname(require.resolve("@genezio/test-interface-component"));
@@ -1481,6 +1487,10 @@ async function startLocalUnitProcess(
     debugLogger.debug(`[START_Unit_PROCESS] Starting ${localUnitName} on port ${availablePort}`);
     debugLogger.debug(`[START_Unit_PROCESS] Starting command: ${startingCommand}`);
     debugLogger.debug(`[START_Unit_PROCESS] Parameters: ${parameters}`);
+
+    // Store the port in the environment variables
+    const modifyLocalUnitName = localUnitName.replace(/-/g, "_").toUpperCase();
+    process.env[`GENEZIO_PORT_${modifyLocalUnitName}`] = availablePort.toString();
     const processParameters = [...parameters, availablePort.toString()];
     const localUnitProcess = spawn(startingCommand, processParameters, {
         stdio: ["pipe", "pipe", "pipe"],
@@ -1568,10 +1578,14 @@ function formatTimestamp(date: Date) {
 }
 
 export function retrieveLocalFunctionUrl(functionObj: FunctionConfiguration): string {
+    const modifyLocalUnitName = functionObj.name.replace(/-/g, "_").toUpperCase();
+    if (functionObj.type === FunctionType.httpServer) {
+        return `http://localhost:${process.env[`GENEZIO_PORT_${modifyLocalUnitName}`]}`;
+    }
     return `http://localhost:8083/.functions/${functionObj.name}`;
 }
 
-function getLocalFunctionHttpServerWrapper(entry: string): string {
+async function getLocalFunctionHttpServerWrapper(entry: string): Promise<string> {
     return `
 import * as domain from "domain";
 import { createRequire } from "module";
@@ -1582,6 +1596,26 @@ const originalCreateServer = http.createServer;
 let server;
 
 http.createServer = function(...args) {
+    // If there's a request handler provided, wrap it with CORS headers
+    if (args[0] && typeof args[0] === 'function') {
+        const originalHandler = args[0];
+        args[0] = function(req, res) {
+            // Set CORS headers
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+            res.setHeader('Access-Control-Allow-Headers', '*');
+            
+            // Handle OPTIONS requests for CORS preflight
+            if (req.method === 'OPTIONS') {
+                res.writeHead(204);
+                res.end();
+                return;
+            }
+            
+            return originalHandler(req, res);
+        };
+    }
+    
     server = originalCreateServer(...args);
     
     // Store the original listen method
@@ -1590,7 +1624,6 @@ http.createServer = function(...args) {
     // Override the listen method to only listen once
     server.listen = function(...listenArgs) {
         const genezioPort = parseInt(process.argv[process.argv.length - 1], 10);
-        console.log("[HTTP Server Wrapper] Starting server on port:", genezioPort);
         // Only call listen once with the Genezio port
         return originalListen.apply(server, [genezioPort, ...listenArgs.slice(1)]); 
     };
@@ -1602,10 +1635,8 @@ http.createServer = function(...args) {
 const app = await import("./${entry}");
 `;
 }
-function getLocalFunctionHttpServerPythonWrapper(entry: string): string {
-    return `
-import sys
-sys.path.append("${entry}")
-from app import app
-`;
+
+async function getLocalFunctionHttpServerPythonWrapper(entry: string): Promise<string> {
+    // TODO: Implement this
+    return `${entry}`;
 }
