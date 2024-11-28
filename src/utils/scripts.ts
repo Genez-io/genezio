@@ -142,7 +142,7 @@ export async function resolveConfigurationVariable(
         // Retrieve custom output fields for a function object such as `url`
         if (field === "url") {
             if (options?.isLocal) {
-                return retrieveLocalFunctionUrl(functionObj);
+                return retrieveLocalFunctionUrl(functionObj, true);
             }
 
             const response = await getProjectInfoByName(configuration.name).catch((error) => {

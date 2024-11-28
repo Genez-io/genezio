@@ -1602,12 +1602,20 @@ function formatTimestamp(date: Date) {
     return formattedDate;
 }
 
-export function retrieveLocalFunctionUrl(functionObj: FunctionConfiguration): string {
-    const modifyLocalUnitName = functionObj.name.replace(/-/g, "_").toUpperCase();
+export function retrieveLocalFunctionUrl(
+    functionObj: FunctionConfiguration,
+    isIac: boolean = false,
+): string {
+    const BASE_PORT = 8083;
+    const functionName = isIac ? `function-${functionObj.name}` : functionObj.name;
+    const normalizedName = functionName.replace(/-/g, "_").toUpperCase();
+
     if (functionObj.type === FunctionType.httpServer) {
-        return `http://localhost:${process.env[`GENEZIO_PORT_${modifyLocalUnitName}`]}`;
+        const port = process.env[`GENEZIO_PORT_${normalizedName}`];
+        return `http://localhost:${port}`;
     }
-    return `http://localhost:8083/.functions/${functionObj.name}`;
+
+    return `http://localhost:${BASE_PORT}/.functions/${functionName}`;
 }
 
 async function getLocalFunctionHttpServerWrapper(entry: string): Promise<string> {
