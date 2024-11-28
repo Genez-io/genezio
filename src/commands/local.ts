@@ -125,7 +125,7 @@ type PortMapping = {
     [key: string]: number;
 };
 
-let httpServerPortMapping: PortMapping = {};
+const httpServerPortMapping: PortMapping = {};
 
 export async function prepareLocalBackendEnvironment(
     yamlProjectConfiguration: YamlProjectConfiguration,
@@ -647,7 +647,11 @@ async function startProcesses(
             // delete all content in the tmp folder
             await fsExtra.emptyDir(tmpFolder);
 
-            await fsExtra.copy(path.join(backend.path, functionInfo.path), tmpFolder);
+            if (functionInfo.language === Language.python) {
+                await fsExtra.copy(backend.path, tmpFolder);
+            } else {
+                await fsExtra.copy(path.join(backend.path, functionInfo.path), tmpFolder);
+            }
 
             const handlerProvider = getFunctionHandlerProvider(
                 functionInfo.type,
@@ -681,6 +685,7 @@ async function startProcesses(
                         "local_function_wrapper",
                     ),
                     await getLocalFunctionHttpServerPythonWrapper(
+                        functionInfo.path,
                         functionInfo.entry,
                         functionInfo.handler,
                     ),
@@ -1480,11 +1485,6 @@ async function clearAllResources(
     processForUnits.forEach((unitProcess) => {
         unitProcess.process.kill();
     });
-
-    // Only clear port mappings if we're doing a full restart
-    if (process.env["GENEZIO_FULL_RESTART"] === "true") {
-        clearPortMappings();
-    }
 }
 
 async function startLocalUnitProcess(
@@ -1662,19 +1662,37 @@ const app = await import("./${entry}");
 }
 
 async function getLocalFunctionHttpServerPythonWrapper(
+    pathString: string,
     entry: string,
     handler: string,
 ): Promise<string> {
+    const nameModule = path
+        .join(pathString, entry)
+        .replace(/\\/g, ".") // Convert backslashes to dots (Windows)
+        .replace(/\//g, ".") // Convert slashes to dots (Unix)
+        .replace(/^\.+/, "") // Remove leading dots
+        .replace(/\.+/g, ".") // Remove duplicate dots
+        .replace(/\.py$/, ""); // Remove extension
+
     return `
-from ${entry.split(".")[0]} import ${handler} as application
 import asyncio
 import sys
 import platform
 from wsgiref.simple_server import make_server
-import logging
-import inspect
 import importlib.util
 import subprocess
+import os
+from ${nameModule} import ${handler} as application
+
+# Try to configure Django's ALLOWED_HOSTS before importing the application
+try:
+    import django
+    from django.conf import settings
+    if not settings.configured:
+        settings.configure()
+    settings.ALLOWED_HOSTS.extend(['localhost', '127.0.0.1'])
+except (ImportError, AttributeError):
+    pass  # Not a Django application
 
 genezio_port = int(sys.argv[len(sys.argv) - 1])
 
@@ -1746,13 +1764,8 @@ class ASGICORSMiddleware:
 
 def install_uvicorn():
     system = platform.system().lower()
-    pip_commands = []
+    pip_commands = ["pip3", "pip"] if system == "darwin" else ["pip", "pip3"]
     
-    if system == "darwin":  # MacOS
-        pip_commands = ["pip3", "pip"]
-    else:  # Windows, Linux and others
-        pip_commands = ["pip", "pip3"]
-
     for pip_cmd in pip_commands:
         try:
             subprocess.check_call([pip_cmd, "install", "uvicorn"], 
@@ -1784,7 +1797,6 @@ if is_asgi:
     import uvicorn
     
     if __name__ == "__main__":
-        # Wrap the ASGI application with CORS middleware
         application = ASGICORSMiddleware(application)
         uvicorn.run(
             application,
@@ -1793,15 +1805,9 @@ if is_asgi:
             reload=False
         )
 else:
-    # Wrap the WSGI application with CORS middleware
     application = WSGICORSMiddleware(application)
-    
     with make_server("127.0.0.1", genezio_port, application) as httpd:
         print(f"Serving WSGI application on port {genezio_port}...")
         httpd.serve_forever()
 `;
-}
-
-function clearPortMappings() {
-    httpServerPortMapping = {};
 }
