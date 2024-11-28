@@ -83,6 +83,7 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     await checkProjectLimitations(componentPath);
 
     const cacheToken = randomUUID();
+    const sharpInstallFolder = await installSharp(cwd);
 
     const [deploymentResult, domainName] = await Promise.all([
         // Deploy NextJs serverless functions
@@ -95,7 +96,13 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         // Upload the project code to S3 for in-browser editing
         uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage, componentPath),
         // Set environment variables for the Next.js project
-        setupEnvironmentVariables(deploymentResult, domainName, genezioConfig.region, cacheToken),
+        setupEnvironmentVariables(
+            deploymentResult,
+            domainName,
+            genezioConfig.region,
+            cacheToken,
+            sharpInstallFolder,
+        ),
         // Deploy CDN that serves the Next.js app
         deployCDN(
             deploymentResult.functions[0],
@@ -136,6 +143,7 @@ async function setupEnvironmentVariables(
     domainName: string,
     region: string,
     cacheToken: string,
+    sharpInstallFolder: string,
 ) {
     debugLogger.debug(`Setting Next.js environment variables, ${JSON.stringify(deploymentResult)}`);
     await setEnvironmentVariables(deploymentResult.projectId, deploymentResult.projectEnvId, [
@@ -162,6 +170,10 @@ async function setupEnvironmentVariables(
         {
             name: "AWS_SECRET_ACCESS_KEY",
             value: NEXT_JS_GET_SECRET_ACCESS_KEY,
+        },
+        {
+            name: "NEXT_SHARP_PATH",
+            value: sharpInstallFolder,
         },
         {
             name: "AWS_REGION",
@@ -283,7 +295,11 @@ async function deployStaticAssets(
     return domain;
 }
 
-async function deployFunction(config: YamlProjectConfiguration, cwd: string, stage?: string) {
+async function deployFunction(
+    config: YamlProjectConfiguration,
+    cwd: string,
+    stage?: string,
+): Promise<GenezioCloudOutput> {
     const cloudProvider = await getCloudProvider(config.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
 
@@ -311,6 +327,19 @@ async function deployFunction(config: YamlProjectConfiguration, cwd: string, sta
             functions: [serverFunction],
         },
     };
+
+    await fs.promises.cp(
+        path.join(cwd, "public"),
+        path.join(cwd, ".next", "standalone", "public"),
+        {
+            recursive: true,
+        },
+    );
+    await fs.promises.cp(
+        path.join(cwd, ".next", "static"),
+        path.join(cwd, ".next", "standalone", ".next", "static"),
+        { recursive: true },
+    );
 
     const projectConfiguration = new ProjectConfiguration(
         deployConfig,
@@ -475,6 +504,43 @@ ${exportStatement}class CacheHandler {
         }
     }
 }`;
+}
+
+// Install sharp dependency.
+// Sharp uses some binary dependencies and we have to install the ones that are compatible with
+// Genezio environment.
+//
+// Another issue is that the nextjs standalone build output includes only the minimal set of
+// dependencies, so we have to install sharp in a separate folder and then reference it in the
+// nextjs project using the environment variable NEXT_SHARP_PATH.
+async function installSharp(cwd: string): Promise<string> {
+    // Create folder
+    const sharpPath = path.join(cwd, ".next", "standalone", "sharp");
+    await fs.promises.mkdir(sharpPath, { recursive: true });
+
+    // Create package.json
+    fs.writeFileSync(
+        path.join(sharpPath, "package.json"),
+        JSON.stringify({
+            name: "sharp-project",
+            version: "1.0.0",
+        }),
+    );
+
+    // Install sharp
+    await $({
+        stdio: "inherit",
+        cwd: sharpPath,
+        env: {
+            ...process.env,
+            NEXT_PRIVATE_STANDALONE: "true",
+        },
+    })`npm install --no-save --os=linux --cpu=x64 sharp`.catch(() => {
+        throw new UserError("Failed to install sharp deps.");
+    });
+
+    // This is relative to where it is used by the nextjs code.
+    return "../../../../sharp/node_modules/sharp";
 }
 
 function writeConfigFiles(cwd: string, extension: "js" | "mjs" | "ts", region: string): void {
