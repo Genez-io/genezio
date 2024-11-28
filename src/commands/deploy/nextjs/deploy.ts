@@ -295,7 +295,6 @@ async function deployFunction(config: YamlProjectConfiguration, cwd: string, sta
         entry: "server.js",
         handler: "handler",
         type: FunctionType.httpServer,
-        port: 3000,
     };
 
     const deployConfig: YamlProjectConfiguration = {

@@ -688,13 +688,6 @@ export async function functionToCloudInput(
     }
 
     let metadata: GenezioFunctionMetadata | undefined;
-    if (functionElement.type === "httpServer") {
-        debugLogger.debug(`Http server port: ${functionElement.port}`);
-        metadata = {
-            type: GenezioFunctionMetadataType.HttpServer,
-            http_port: functionElement.port?.toString(),
-        };
-    }
 
     // Handle Python projects dependencies
     if (functionElement.language === "python") {

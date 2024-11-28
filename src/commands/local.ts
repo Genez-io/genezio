@@ -97,7 +97,6 @@ import { enableEmailIntegration, getProjectIntegrations } from "../requests/inte
 import { expandEnvironmentVariables, findAnEnvFile } from "../utils/environmentVariables.js";
 import { getFunctionHandlerProvider } from "../utils/getFunctionHandlerProvider.js";
 import { getFunctionEntryFilename } from "../utils/getFunctionEntryFilename.js";
-import { detectPythonCommand } from "../utils/detectPythonCommand.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -121,6 +120,12 @@ type LocalProcessSpawnOutput = {
     processForLocalUnits: Map<string, UnitProcess>;
     sdk: SdkHandlerResponse;
 };
+
+type PortMapping = {
+    [key: string]: number;
+};
+
+let httpServerPortMapping: PortMapping = {};
 
 export async function prepareLocalBackendEnvironment(
     yamlProjectConfiguration: YamlProjectConfiguration,
@@ -654,44 +659,45 @@ async function startProcesses(
                 functionInfo.type === FunctionType.httpServer &&
                 (functionInfo.language === Language.js || functionInfo.language === Language.ts)
             ) {
-                return {
-                    configuration: functionInfo,
-                    extra: {
-                        type: "function" as const,
-                        startingCommand: "node",
-                        commandParameters: [path.resolve(functionInfo.path, functionInfo.entry)],
-                        handlerType: FunctionType.httpServer,
-                    },
-                };
+                await writeToFile(
+                    path.join(tmpFolder),
+                    getFunctionEntryFilename(
+                        functionInfo.language as Language,
+                        "local_function_wrapper",
+                    ),
+                    await getLocalFunctionHttpServerWrapper(functionInfo.entry),
+                );
             }
 
             // if handlerProvider is Http and language is python
-            if (
+            else if (
                 functionInfo.type === FunctionType.httpServer &&
                 functionInfo.language === Language.python
             ) {
-                return {
-                    configuration: functionInfo,
-                    extra: {
-                        type: "function" as const,
-                        startingCommand: (await detectPythonCommand()) || "python",
-                        commandParameters: [path.resolve(functionInfo.path, functionInfo.entry)],
-                        handlerType: FunctionType.httpServer,
-                    },
-                };
+                await writeToFile(
+                    path.join(tmpFolder),
+                    getFunctionEntryFilename(
+                        functionInfo.language as Language,
+                        "local_function_wrapper",
+                    ),
+                    await getLocalFunctionHttpServerPythonWrapper(
+                        functionInfo.entry,
+                        functionInfo.handler,
+                    ),
+                );
+            } else {
+                await writeToFile(
+                    path.join(tmpFolder),
+                    getFunctionEntryFilename(
+                        functionInfo.language as Language,
+                        "local_function_wrapper",
+                    ),
+                    await handlerProvider!.getLocalFunctionWrapperCode(
+                        functionInfo.handler,
+                        functionInfo.entry,
+                    ),
+                );
             }
-
-            await writeToFile(
-                path.join(tmpFolder),
-                getFunctionEntryFilename(
-                    functionInfo.language as Language,
-                    "local_function_wrapper",
-                ),
-                await handlerProvider!.getLocalFunctionWrapperCode(
-                    functionInfo.handler,
-                    functionInfo.entry,
-                ),
-            );
 
             return {
                 configuration: functionInfo,
@@ -806,7 +812,13 @@ async function startServerHttp(
     const astSummary: AstSummary = projectConfiguration.astSummary;
     const app = express();
     const require = createRequire(import.meta.url);
-    app.use(cors());
+    app.use(
+        cors({
+            origin: "*",
+            methods: "GET, POST, OPTIONS, PUT, PATCH, DELETE",
+            allowedHeaders: "*",
+        }),
+    );
     app.use(bodyParser.raw({ type: () => true, limit: "6mb" }));
     app.use(genezioRequestParser);
     const packagePath = path.dirname(require.resolve("@genezio/test-interface-component"));
@@ -1468,6 +1480,11 @@ async function clearAllResources(
     processForUnits.forEach((unitProcess) => {
         unitProcess.process.kill();
     });
+
+    // Only clear port mappings if we're doing a full restart
+    if (process.env["GENEZIO_FULL_RESTART"] === "true") {
+        clearPortMappings();
+    }
 }
 
 async function startLocalUnitProcess(
@@ -1480,10 +1497,25 @@ async function startLocalUnitProcess(
     cwd?: string,
     configurationEnvVars?: { [key: string]: string | undefined },
 ) {
-    const availablePort = await findAvailablePort();
+    // Check if this is an HTTP server and already has an assigned port
+    let availablePort: number;
+    if (type === "function" && httpServerPortMapping[localUnitName]) {
+        availablePort = httpServerPortMapping[localUnitName];
+    } else {
+        availablePort = await findAvailablePort();
+        // Store the port mapping for HTTP servers
+        if (type === "function") {
+            httpServerPortMapping[localUnitName] = availablePort;
+        }
+    }
+
     debugLogger.debug(`[START_Unit_PROCESS] Starting ${localUnitName} on port ${availablePort}`);
     debugLogger.debug(`[START_Unit_PROCESS] Starting command: ${startingCommand}`);
     debugLogger.debug(`[START_Unit_PROCESS] Parameters: ${parameters}`);
+
+    // Store the port in the environment variables
+    const modifyLocalUnitName = localUnitName.replace(/-/g, "_").toUpperCase();
+    process.env[`GENEZIO_PORT_${modifyLocalUnitName}`] = availablePort.toString();
     const processParameters = [...parameters, availablePort.toString()];
     const localUnitProcess = spawn(startingCommand, processParameters, {
         stdio: ["pipe", "pipe", "pipe"],
@@ -1571,9 +1603,205 @@ function formatTimestamp(date: Date) {
 }
 
 export function retrieveLocalFunctionUrl(functionObj: FunctionConfiguration): string {
+    const modifyLocalUnitName = functionObj.name.replace(/-/g, "_").toUpperCase();
     if (functionObj.type === FunctionType.httpServer) {
-        return `http://localhost:${functionObj.port ?? 8083}`;
+        return `http://localhost:${process.env[`GENEZIO_PORT_${modifyLocalUnitName}`]}`;
     }
+    return `http://localhost:8083/.functions/${functionObj.name}`;
+}
 
-    return `http://localhost:${functionObj.port ?? 8083}/.functions/${functionObj.name}`;
+async function getLocalFunctionHttpServerWrapper(entry: string): Promise<string> {
+    return `
+import * as domain from "domain";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const http = require('http')
+
+const originalCreateServer = http.createServer;
+let server;
+
+http.createServer = function(...args) {
+    // If there's a request handler provided, wrap it with CORS headers
+    if (args[0] && typeof args[0] === 'function') {
+        const originalHandler = args[0];
+        args[0] = function(req, res) {
+            // Set CORS headers
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+            res.setHeader('Access-Control-Allow-Headers', '*');
+            
+            // Handle OPTIONS requests for CORS preflight
+            if (req.method === 'OPTIONS') {
+                res.writeHead(204);
+                res.end();
+                return;
+            }
+            
+            return originalHandler(req, res);
+        };
+    }
+    
+    server = originalCreateServer(...args);
+    
+    // Store the original listen method
+    const originalListen = server.listen;
+    
+    // Override the listen method to only listen once
+    server.listen = function(...listenArgs) {
+        const genezioPort = parseInt(process.argv[process.argv.length - 1], 10);
+        // Only call listen once with the Genezio port
+        return originalListen.apply(server, [genezioPort, ...listenArgs.slice(1)]); 
+    };
+    
+    return server;
+};
+
+// Import the original app.js
+const app = await import("./${entry}");
+`;
+}
+
+async function getLocalFunctionHttpServerPythonWrapper(
+    entry: string,
+    handler: string,
+): Promise<string> {
+    return `
+from ${entry.split(".")[0]} import ${handler} as application
+import asyncio
+import sys
+import platform
+from wsgiref.simple_server import make_server
+import logging
+import inspect
+import importlib.util
+import subprocess
+
+genezio_port = int(sys.argv[len(sys.argv) - 1])
+
+is_asgi = callable(application) and asyncio.iscoroutinefunction(application.__call__)
+
+# WSGI CORS Middleware
+class WSGICORSMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    def __call__(self, environ, start_response):
+        def cors_start_response(status, headers, exc_info=None):
+            headers.extend([
+                ("Access-Control-Allow-Origin", "*"),
+                ("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE"),
+                ("Access-Control-Allow-Headers", "*"),
+            ])
+            return start_response(status, headers, exc_info)
+
+        if environ["REQUEST_METHOD"] == "OPTIONS":
+            headers = [
+                ("Access-Control-Allow-Origin", "*"),
+                ("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE"),
+                ("Access-Control-Allow-Headers", "*"),
+            ]
+            start_response("204 No Content", headers)
+            return [b""]
+
+        return self.app(environ, cors_start_response)
+
+# ASGI CORS Middleware
+class ASGICORSMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+
+        if scope["method"] == "OPTIONS":
+            headers = [
+                (b"access-control-allow-origin", b"*"),
+                (b"access-control-allow-methods", b"GET, POST, OPTIONS, PUT, PATCH, DELETE"),
+                (b"access-control-allow-headers", b"*"),
+            ]
+            await send({
+                "type": "http.response.start",
+                "status": 204,
+                "headers": headers
+            })
+            await send({
+                "type": "http.response.body",
+                "body": b""
+            })
+            return
+
+        async def wrapped_send(message):
+            if message["type"] == "http.response.start":
+                headers = message.get("headers", [])
+                headers.extend([
+                    (b"access-control-allow-origin", b"*"),
+                    (b"access-control-allow-methods", b"GET, POST, OPTIONS, PUT, PATCH, DELETE"),
+                    (b"access-control-allow-headers", b"*"),
+                ])
+                message["headers"] = headers
+            await send(message)
+
+        await self.app(scope, receive, wrapped_send)
+
+def install_uvicorn():
+    system = platform.system().lower()
+    pip_commands = []
+    
+    if system == "darwin":  # MacOS
+        pip_commands = ["pip3", "pip"]
+    else:  # Windows, Linux and others
+        pip_commands = ["pip", "pip3"]
+
+    for pip_cmd in pip_commands:
+        try:
+            subprocess.check_call([pip_cmd, "install", "uvicorn"], 
+                                stderr=subprocess.DEVNULL, 
+                                stdout=subprocess.DEVNULL)
+            print(f"Successfully installed uvicorn using {pip_cmd}!")
+            return True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            continue
+    
+    print("Failed to install uvicorn automatically. Please install it manually using:")
+    print("  pip install uvicorn")
+    print("  -- or --")
+    print("  pip3 install uvicorn")
+    return False
+
+if is_asgi:
+    uvicorn_spec = importlib.util.find_spec("uvicorn")
+    if uvicorn_spec is None:
+        print("ASGI application detected but uvicorn is not installed. Installing uvicorn...")
+        if not install_uvicorn():
+            sys.exit(1)
+        importlib.invalidate_caches()
+        uvicorn_spec = importlib.util.find_spec("uvicorn")
+        if uvicorn_spec is None:
+            print("Failed to import uvicorn after installation. Please try installing it manually.")
+            sys.exit(1)
+    
+    import uvicorn
+    
+    if __name__ == "__main__":
+        # Wrap the ASGI application with CORS middleware
+        application = ASGICORSMiddleware(application)
+        uvicorn.run(
+            application,
+            host="127.0.0.1", 
+            port=genezio_port, 
+            reload=False
+        )
+else:
+    # Wrap the WSGI application with CORS middleware
+    application = WSGICORSMiddleware(application)
+    
+    with make_server("127.0.0.1", genezio_port, application) as httpd:
+        print(f"Serving WSGI application on port {genezio_port}...")
+        httpd.serve_forever()
+`;
+}
+
+function clearPortMappings() {
+    httpServerPortMapping = {};
 }
