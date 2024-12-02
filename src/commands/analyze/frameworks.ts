@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { EXCLUDED_DIRECTORIES, KEY_DEPENDENCY_FILES } from "./command.js";
 import { FUNCTION_EXTENSIONS } from "../../models/projectOptions.js";
+import { debugLogger } from "../../utils/logging.js";
 
 export interface PackageJSON {
     name?: string;
@@ -40,31 +41,27 @@ export async function isTypescript(contents: Record<string, string>): Promise<bo
     return false;
 }
 
+// We try to find the entry file of the component by checking the following:
+// 1. Check if the component has a main file in package.json
+// 2. Check if the component has a file that matches the patterns
+// 3. Return the default file
 export async function findEntryFile(
     componentPath: string,
     contents: Record<string, string>,
     patterns: RegExp[],
     defaultFile: string,
 ): Promise<string> {
-    const { candidateFile, fallback } = await getEntryFileFromPackageJson(
-        componentPath,
-        contents,
-        patterns,
-    );
-    if (candidateFile && !fallback) {
+    const candidateFile = await getEntryFileFromPackageJson(componentPath, contents);
+    if (candidateFile) {
         return candidateFile;
     }
 
     const entryFile = await findFileByPatterns(componentPath, patterns, FUNCTION_EXTENSIONS);
-
-    // If we didn't find a suitable entry file, we set the entry as defined in package.json
-    // If this is not an option either, we set the default entry file
-    // Note - this is useful for ts projects where the entry file is not yet compiled
-    if (!entryFile) {
-        return candidateFile && fallback ? candidateFile : defaultFile;
+    if (entryFile) {
+        return entryFile;
     }
 
-    return entryFile;
+    return defaultFile;
 }
 
 async function findFileByPatterns(
@@ -97,40 +94,29 @@ async function findFileByPatterns(
     return undefined;
 }
 
-// Returns an object containing:
-// - `candidateFile`: The path to the main file in package.json if it exists and matches patterns.
-// - `fallback`: A boolean indicating if the file should be considered a fallback entry.
+// Returns an object containing `candidateFile`: The path to the main file in package.json if it exists.
 async function getEntryFileFromPackageJson(
     directory: string,
     contents: Record<string, string>,
-    patterns: RegExp[],
-): Promise<{ candidateFile: string | undefined; fallback: boolean }> {
+): Promise<string | undefined> {
     if (!contents["package.json"]) {
-        return { candidateFile: undefined, fallback: false };
+        return undefined;
     }
 
     const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
     const mainPath = packageJsonContent.main;
     if (!mainPath) {
-        return { candidateFile: undefined, fallback: false };
+        return undefined;
     }
     const fullPath = path.join(directory, mainPath);
 
-    // Check if the mainPath exists
     try {
-        await fs.access(fullPath);
+        if (fullPath) await fs.access(fullPath);
+        return mainPath;
     } catch {
-        return { candidateFile: mainPath, fallback: true };
+        debugLogger.debug(`File ${fullPath} does not exist`);
+        return undefined;
     }
-
-    // Check if the main file contains patterns that indicate it is indeed an entry file
-    const entryFileContent = await fs.readFile(fullPath, "utf-8");
-    const allPatternsMatch = patterns.every((pattern) => pattern.test(entryFileContent));
-    if (!allPatternsMatch) {
-        return { candidateFile: mainPath, fallback: true };
-    }
-
-    return { candidateFile: mainPath, fallback: false };
 }
 
 export async function hasPostgresDependency(
