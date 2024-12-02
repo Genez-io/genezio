@@ -55,6 +55,8 @@ For more details on how to use `genezio`, you can check out the official [docume
 
 -   [Features](#features)
 -   [Getting Started](#getting-started)
+-   [Installation](#installation)
+-   [Create a new project](#create-a-new-project)
 -   [Test your project using the Test Interface](#test-your-project-using-the-test-interface)
 -   [Commands Summary](#commands-summary)
 -   [Examples deployed with genezio](#examples-deployed-with-`genezio`)
@@ -94,6 +96,30 @@ For more details on how to use `genezio`, you can check out the official [docume
 Check out our [Getting started](https://genezio.com/docs/getting-started) documentation page to find out how to start using Genezio.
 
 For more details about the `genezio` CLI commands, run `genezio help` or `genezio [command] help`.
+
+# Installation
+
+To install the `genezio` CLI tool, run the following command:
+
+```bash
+npm install -g genezio
+```
+
+# Create a new project
+
+Visit the [Genezio template page](https://app.genez.io/new-project) and create a new project. You can choose from a variety of templates or start from scratch.
+
+If you want to create a new project from scratch, you can run the following command:
+
+```bash
+genezio create
+```
+
+If you already have a project you can either [import it from you GitHub repository](https://app.genez.io/import) or deploy it from your local machine using the following command:
+
+```bash
+genezio deploy
+```
 
 # Test your project using the Test Interface
 
