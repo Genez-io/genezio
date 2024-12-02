@@ -109,6 +109,12 @@ npm install -g genezio
 
 Visit the [Genezio template page](https://app.genez.io/new-project) and create a new project. You can choose from a variety of templates or start from scratch.
 
+If you want to create a new project from scratch, you can run the following command:
+
+```bash
+genezio create
+```
+
 If you already have a project you can either [import it from you GitHub repository](https://app.genez.io/import) or deploy it from your local machine using the following command:
 
 ```bash
