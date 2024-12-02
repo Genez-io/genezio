@@ -1,6 +1,6 @@
+import git from "isomorphic-git";
 import fs from "fs";
 import { GenezioDeployOptions } from "../../../models/commandOptions.js";
-import git from "isomorphic-git";
 import { YamlProjectConfiguration } from "../../../projectConfiguration/yaml/v2.js";
 import path from "path";
 import { debugLogger, log } from "../../../utils/logging.js";
@@ -304,11 +304,12 @@ async function deployFunction(
     const cloudAdapter = getCloudAdapter(cloudProvider);
 
     const cwdRelative = path.relative(process.cwd(), cwd) || ".";
+    writeMountFolderConfig(cwd);
 
     const serverFunction = {
         path: ".",
         name: "nextjs",
-        entry: "server.js",
+        entry: "start.js",
         handler: "handler",
         type: FunctionType.httpServer,
         port: 3000,
@@ -340,6 +341,10 @@ async function deployFunction(
         path.join(cwd, ".next", "standalone", ".next", "static"),
         { recursive: true },
     );
+    // create mkdir cache folder in .next
+    await fs.promises.mkdir(path.join(cwd, ".next", "standalone", ".next", "cache", "images"), {
+        recursive: true,
+    });
 
     const projectConfiguration = new ProjectConfiguration(
         deployConfig,
@@ -442,6 +447,46 @@ const nextConfig = {
 ${isESM ? "export default nextConfig;" : "module.exports = nextConfig;"}`;
 }
 
+function writeMountFolderConfig(cwd: string) {
+    const configPath = path.join(cwd, ".next", "standalone", "start.js");
+    const content = `
+const { exec } = require('child_process');
+
+const target = '/tmp/package/.next/cache';
+const source = '/tmp/next-cache';
+exec(\`mkdir -p \${target}\`, (error, stdout, stderr) => {
+  if (error) {
+    console.error(\`Error1: \${error.message}\`);
+    return;
+  }
+});
+
+exec(\`mkdir -p \${source}\`, (error, stdout, stderr) => {
+  if (error) {
+    console.error(\`Error2: \${error.message}\`);
+    return;
+  }
+});
+
+
+exec(\`mount --bind \${source} \${target}\`, (error, stdout, stderr) => {
+  if (error) {
+    console.error(\`Error: \${error.message}\`);
+    return;
+  }
+  if (stderr) {
+    console.error(\`Stderr: \${stderr}\`);
+    return;
+  }
+  console.log(\`Bind mount created successfully:\n\${stdout}\`);
+});
+
+const app = require("./server.js");
+`;
+
+    fs.writeFileSync(configPath, content);
+}
+
 function getCacheHandlerContent(extension: "ts" | "mjs" | "js", region: string): string {
     const imports = {
         ts: `// @ts-nocheck
@@ -458,9 +503,10 @@ interface CacheOptions {
     const exportStatement = extension === "js" ? "module.exports = " : "export default ";
 
     return `${imports[extension]}
-            
+
 const deployment = process.env["GENEZIO_DOMAIN_NAME"] || "";
 const token = (process.env["GENEZIO_CACHE_TOKEN"] || "") + "/_cache/" + (process.env["NEXT_BUILD_ID"] || "");
+
 
 ${exportStatement}class CacheHandler {
     constructor(options) {
