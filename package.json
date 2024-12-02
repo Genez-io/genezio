@@ -53,7 +53,7 @@
         "@babel/traverse": "^7.24.1",
         "@genezio/test-interface-component": "^1.2.3",
         "@sentry/node": "^7.119.1",
-        "@sentry/profiling-node": "~7.118.0",
+        "@sentry/profiling-node": "~7.120.0",
         "@types/adm-zip": "^0.5.6",
         "@webcontainer/env": "^1.1.1",
         "adm-zip": "^0.5.16",
