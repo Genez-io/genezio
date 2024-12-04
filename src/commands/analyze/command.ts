@@ -96,8 +96,8 @@ export enum SUPPORTED_FORMATS {
 export const DEFAULT_FORMAT = SUPPORTED_FORMATS.TEXT;
 export const DEFAULT_CI_FORMAT = SUPPORTED_FORMATS.JSON;
 
-export const KEY_FILES = ["package.json", "requirements.txt"];
-export const KEY_DEPENDENCY_FILES = ["package.json", "requirements.txt"];
+export const KEY_FILES = ["package.json", "requirements.txt", "pyproject.toml"];
+export const KEY_DEPENDENCY_FILES = ["package.json", "requirements.txt", "pyproject.toml"];
 export const ENVIRONMENT_EXAMPLE_FILES = [".env.template", ".env.example", ".env.local.example"];
 export const EXCLUDED_DIRECTORIES = ["node_modules", ".git", "dist", "build", "tests"];
 export const NODE_DEFAULT_ENTRY_FILE = "index.mjs";

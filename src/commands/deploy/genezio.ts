@@ -697,26 +697,35 @@ export async function functionToCloudInput(
         };
         // Requirements file must be in the root of the backend folder
         const requirementsPath = path.join(backendPath, "requirements.txt");
-        if (fs.existsSync(requirementsPath)) {
-            const requirementsOutputPath = path.join(tmpFolderPath, "requirements.txt");
-            const requirementsContent = fs.readFileSync(requirementsOutputPath, "utf8").trim();
-            if (requirementsContent) {
-                const pathForDependencies = path.join(tmpFolderPath, "packages");
-                const packageManager = getPackageManager();
-                let installCommand;
+        const pyProjectTomlPath = path.join(backendPath, "pyproject.toml");
+        if (fs.existsSync(requirementsPath) || fs.existsSync(pyProjectTomlPath)) {
+            const pathForDependencies = path.join(tmpFolderPath, "packages");
+            const packageManager = getPackageManager();
+            let installCommand;
 
-                if (packageManager.command === "pip" || packageManager.command === "pip3") {
-                    installCommand = `${packageManager.command} install -r ${requirementsOutputPath} --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${supportedPythonDepsInstallVersion} -t ${pathForDependencies}`;
-                } else if (packageManager.command === "poetry") {
-                    installCommand = `${packageManager.command} install --no-root --directory ${pathForDependencies}`;
-                } else {
-                    throw new UserError(`Unsupported package manager: ${packageManager.command}`);
+            if (packageManager.command === "pip" || packageManager.command === "pip3") {
+                if (fs.existsSync(requirementsPath)) {
+                    const requirementsOutputPath = path.join(tmpFolderPath, "requirements.txt");
+                    const requirementsContent = fs
+                        .readFileSync(requirementsOutputPath, "utf8")
+                        .trim();
+                    if (requirementsContent) {
+                        installCommand = `${packageManager.command} install -r ${requirementsOutputPath} --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${supportedPythonDepsInstallVersion} -t ${pathForDependencies}`;
+                    }
+                } else if (fs.existsSync(pyProjectTomlPath)) {
+                    installCommand = `${packageManager.command} install . --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${supportedPythonDepsInstallVersion} -t ${pathForDependencies}`;
                 }
+            } else if (packageManager.command === "poetry") {
+                installCommand = `${packageManager.command} install --no-root --directory ${pathForDependencies}`;
+            } else {
+                throw new UserError(`Unsupported package manager: ${packageManager.command}`);
+            }
 
+            if (installCommand) {
                 debugLogger.debug(`Installing dependencies using command: ${installCommand}`);
                 await runScript(installCommand, tmpFolderPath);
             } else {
-                debugLogger.debug("No requirements.txt file found.");
+                debugLogger.debug("No valid requirements.txt or pyproject.toml found.");
             }
         }
     }
