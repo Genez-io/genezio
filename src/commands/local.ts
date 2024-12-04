@@ -8,7 +8,11 @@ import url from "url";
 import * as http from "http";
 import colors from "colors";
 import { createRequire } from "module";
-import { ProjectConfiguration, ClassConfiguration } from "../models/projectConfiguration.js";
+import {
+    ProjectConfiguration,
+    ClassConfiguration,
+    FunctionConfiguration,
+} from "../models/projectConfiguration.js";
 import {
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
@@ -39,6 +43,7 @@ import axios, { AxiosError, AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
 import {
     entryFileFunctionMap,
+    FunctionType,
     Language,
     startingCommandMap,
     TriggerType,
@@ -83,6 +88,7 @@ import fsExtra from "fs-extra/esm";
 import { DeployCodeFunctionResponse } from "../models/deployCodeResponse.js";
 import {
     enableAuthentication,
+    evaluateResource,
     getOrCreateDatabase,
     getOrCreateEmptyProject,
 } from "./deploy/utils.js";
@@ -90,10 +96,6 @@ import { displayHint } from "../utils/strings.js";
 import { enableEmailIntegration, getProjectIntegrations } from "../requests/integration.js";
 import { expandEnvironmentVariables, findAnEnvFile } from "../utils/environmentVariables.js";
 import { getFunctionHandlerProvider } from "../utils/getFunctionHandlerProvider.js";
-import {
-    HttpServerHandlerProvider,
-    HttpServerPythonHandlerProvider,
-} from "../functionHandlerProvider/providers/HttpServerHandlerProvider.js";
 import { getFunctionEntryFilename } from "../utils/getFunctionEntryFilename.js";
 
 type UnitProcess = {
@@ -103,6 +105,7 @@ type UnitProcess = {
     listeningPort: number;
     envVars: dotenv.DotenvPopulateInput;
     type: "class" | "function";
+    handlerType?: FunctionType;
 };
 
 type LocalUnitProcessSpawnResponse = {
@@ -117,6 +120,12 @@ type LocalProcessSpawnOutput = {
     processForLocalUnits: Map<string, UnitProcess>;
     sdk: SdkHandlerResponse;
 };
+
+type PortMapping = {
+    [key: string]: number;
+};
+
+const httpServerPortMapping: PortMapping = {};
 
 export async function prepareLocalBackendEnvironment(
     yamlProjectConfiguration: YamlProjectConfiguration,
@@ -528,7 +537,12 @@ async function startBackendWatcher(
         );
 
         // Start cron jobs
-        const crons = startCronJobs(projectConfiguration, processForUnits);
+        const crons = await startCronJobs(
+            projectConfiguration,
+            processForUnits,
+            yamlProjectConfiguration,
+            options.port,
+        );
         log.info(
             "\x1b[36m%s\x1b[0m",
             "Your local server is running and the SDK was successfully generated!",
@@ -626,42 +640,69 @@ async function startProcesses(
     });
 
     const bundlersOutputPromiseFunctions = projectConfiguration.functions?.map(
-        async (functionInfo) => {
+        async (functionInfo: FunctionConfiguration) => {
             const tmpFolder = await createTemporaryFolder(
                 `${functionInfo.name}-${hash(functionInfo.path)}`,
             );
             // delete all content in the tmp folder
             await fsExtra.emptyDir(tmpFolder);
 
-            await fsExtra.copy(path.join(backend.path, functionInfo.path), tmpFolder);
+            if (functionInfo.language === Language.python) {
+                await fsExtra.copy(backend.path, tmpFolder);
+            } else {
+                await fsExtra.copy(path.join(backend.path, functionInfo.path), tmpFolder);
+            }
 
             const handlerProvider = getFunctionHandlerProvider(
                 functionInfo.type,
                 functionInfo.language as Language,
             );
 
-            // if handlerProvider is Http
-            if (handlerProvider instanceof HttpServerHandlerProvider) {
-                log.error("We recommend to run the HTTP server with `node` or `npm start`.");
-                process.exit(1);
+            // if handlerProvider is Http, run it with node
+            if (
+                functionInfo.type === FunctionType.httpServer &&
+                (functionInfo.language === Language.js || functionInfo.language === Language.ts)
+            ) {
+                await writeToFile(
+                    path.join(tmpFolder),
+                    getFunctionEntryFilename(
+                        functionInfo.language as Language,
+                        "local_function_wrapper",
+                    ),
+                    await getLocalFunctionHttpServerWrapper(functionInfo.entry),
+                );
             }
 
-            if (handlerProvider instanceof HttpServerPythonHandlerProvider) {
-                log.error("We recommend to run the HTTP server with `python` or `python3`.");
-                process.exit(1);
+            // if handlerProvider is Http and language is python
+            else if (
+                functionInfo.type === FunctionType.httpServer &&
+                functionInfo.language === Language.python
+            ) {
+                await writeToFile(
+                    path.join(tmpFolder),
+                    getFunctionEntryFilename(
+                        functionInfo.language as Language,
+                        "local_function_wrapper",
+                    ),
+                    await getLocalFunctionHttpServerPythonWrapper(
+                        functionInfo.path,
+                        functionInfo.entry,
+                        functionInfo.handler,
+                    ),
+                );
+            } else {
+                await writeToFile(
+                    path.join(tmpFolder),
+                    getFunctionEntryFilename(
+                        functionInfo.language as Language,
+                        "local_function_wrapper",
+                    ),
+                    await handlerProvider!.getLocalFunctionWrapperCode(
+                        functionInfo.handler,
+                        functionInfo.entry,
+                    ),
+                );
             }
-
-            await writeToFile(
-                path.join(tmpFolder),
-                getFunctionEntryFilename(
-                    functionInfo.language as Language,
-                    "local_function_wrapper",
-                ),
-                await handlerProvider.getLocalFunctionWrapperCode(
-                    functionInfo.handler,
-                    functionInfo.entry,
-                ),
-            );
 
             return {
                 configuration: functionInfo,
@@ -776,7 +817,13 @@ async function startServerHttp(
     const astSummary: AstSummary = projectConfiguration.astSummary;
     const app = express();
     const require = createRequire(import.meta.url);
-    app.use(cors());
+    app.use(
+        cors({
+            origin: "*",
+            methods: "GET, POST, OPTIONS, PUT, PATCH, DELETE",
+            allowedHeaders: "*",
+        }),
+    );
     app.use(bodyParser.raw({ type: () => true, limit: "6mb" }));
     app.use(genezioRequestParser);
     const packagePath = path.dirname(require.resolve("@genezio/test-interface-component"));
@@ -999,47 +1046,45 @@ function getProjectFunctions(
     projectConfiguration: ProjectConfiguration,
 ): DeployCodeFunctionResponse[] {
     return projectConfiguration.functions.map((f) => ({
-        cloudUrl: `http://localhost:${port}/.functions/${f.name}`,
+        cloudUrl: retrieveLocalFunctionUrl(f),
         id: f.name,
         name: f.name,
     }));
 }
 
 export type LocalEnvCronHandler = {
-    className: string;
-    methodName: string;
     cronString: string;
     cronObject: cron.ScheduledTask | null;
-    process: UnitProcess;
 };
 
-function startCronJobs(
+async function startCronJobs(
     projectConfiguration: ProjectConfiguration,
     processForUnits: Map<string, UnitProcess>,
-): LocalEnvCronHandler[] {
+    yamlProjectConfiguration: YamlProjectConfiguration,
+    port?: number,
+): Promise<LocalEnvCronHandler[]> {
     const cronHandlers: LocalEnvCronHandler[] = [];
     for (const classElement of projectConfiguration.classes) {
         const methods = classElement.methods;
         for (const method of methods) {
             if (method.type === TriggerType.cron && method.cronString) {
                 const cronHandler: LocalEnvCronHandler = {
-                    className: classElement.name,
-                    methodName: method.name,
                     cronString: rectifyCronString(method.cronString),
                     cronObject: null,
-                    process: processForUnits.get(classElement.name)!,
                 };
+
+                const process = processForUnits.get(classElement.name)!;
 
                 cronHandler.cronObject = cron.schedule(cronHandler.cronString, () => {
                     const reqToFunction = {
                         genezioEventType: "cron",
-                        methodName: cronHandler.methodName,
+                        methodName: method.name,
                         cronString: cronHandler.cronString,
                     };
 
                     void communicateWithProcess(
-                        cronHandler.process,
-                        cronHandler.className,
+                        process,
+                        classElement.name,
                         reqToFunction,
                         processForUnits,
                     );
@@ -1048,6 +1093,57 @@ function startCronJobs(
                 cronHandler.cronObject.start();
                 cronHandlers.push(cronHandler);
             }
+        }
+    }
+
+    if (yamlProjectConfiguration.services && yamlProjectConfiguration.services.crons) {
+        for (const cronService of yamlProjectConfiguration.services.crons) {
+            const functionName = await evaluateResource(
+                yamlProjectConfiguration,
+                cronService.function,
+                undefined,
+                undefined,
+                {
+                    isLocal: true,
+                    port: port,
+                },
+            );
+            const endpoint = cronService.endpoint?.replace(/^\//, "");
+            const cronString = cronService.schedule;
+            const functionConfiguration = projectConfiguration.functions.find(
+                (f) => f.name === `function-${functionName}`,
+            );
+            if (!functionConfiguration) {
+                throw new UserError(
+                    `Function ${functionName} not found in deployed functions. Check if your function is deployed. If the problem persists, please contact support at contact@genez.io.`,
+                );
+            }
+            const baseURL = retrieveLocalFunctionUrl(functionConfiguration);
+            let url: string;
+            if (endpoint) {
+                url = `${baseURL}/${endpoint}`;
+            } else {
+                url = baseURL;
+            }
+
+            const cronHandler: LocalEnvCronHandler = {
+                cronString: rectifyCronString(cronString),
+                cronObject: null,
+            };
+
+            cronHandler.cronObject = cron.schedule(cronHandler.cronString, async () => {
+                log.info(
+                    "DEBUG: trigger cron: " +
+                        cronHandler.cronString +
+                        " on function " +
+                        functionName,
+                );
+                await axios.post(url);
+            });
+
+            cronHandler.cronObject.start();
+
+            cronHandlers.push(cronHandler);
         }
     }
 
@@ -1319,7 +1415,7 @@ function reportSuccess(projectConfiguration: ProjectConfiguration, port: number)
             projectConfiguration.functions.map((f) => ({
                 name: f.name,
                 id: f.name,
-                cloudUrl: `http://localhost:${port}/.functions/${f.name}`,
+                cloudUrl: retrieveLocalFunctionUrl(f),
             })),
         );
     }
@@ -1401,10 +1497,25 @@ async function startLocalUnitProcess(
     cwd?: string,
     configurationEnvVars?: { [key: string]: string | undefined },
 ) {
-    const availablePort = await findAvailablePort();
+    // Check if this is an HTTP server and already has an assigned port
+    let availablePort: number;
+    if (type === "function" && httpServerPortMapping[localUnitName]) {
+        availablePort = httpServerPortMapping[localUnitName];
+    } else {
+        availablePort = await findAvailablePort();
+        // Store the port mapping for HTTP servers
+        if (type === "function") {
+            httpServerPortMapping[localUnitName] = availablePort;
+        }
+    }
+
     debugLogger.debug(`[START_Unit_PROCESS] Starting ${localUnitName} on port ${availablePort}`);
     debugLogger.debug(`[START_Unit_PROCESS] Starting command: ${startingCommand}`);
     debugLogger.debug(`[START_Unit_PROCESS] Parameters: ${parameters}`);
+
+    // Store the port in the environment variables
+    const modifyLocalUnitName = localUnitName.replace(/-/g, "_").toUpperCase();
+    process.env[`GENEZIO_PORT_${modifyLocalUnitName}`] = availablePort.toString();
     const processParameters = [...parameters, availablePort.toString()];
     const localUnitProcess = spawn(startingCommand, processParameters, {
         stdio: ["pipe", "pipe", "pipe"],
@@ -1489,4 +1600,222 @@ function formatTimestamp(date: Date) {
 
     const formattedDate = `${day}/${month}/${year}:${hours}:${minutes}:${seconds} +0000`;
     return formattedDate;
+}
+
+export function retrieveLocalFunctionUrl(
+    functionObj: FunctionConfiguration,
+    isIac: boolean = false,
+): string {
+    const BASE_PORT = 8083;
+    const functionName = isIac ? `function-${functionObj.name}` : functionObj.name;
+    const normalizedName = functionName.replace(/-/g, "_").toUpperCase();
+
+    if (functionObj.type === FunctionType.httpServer) {
+        const port = process.env[`GENEZIO_PORT_${normalizedName}`];
+        return `http://localhost:${port}`;
+    }
+
+    return `http://localhost:${BASE_PORT}/.functions/${functionName}`;
+}
+
+async function getLocalFunctionHttpServerWrapper(entry: string): Promise<string> {
+    return `
+import * as domain from "domain";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const http = require('http')
+
+const originalCreateServer = http.createServer;
+let server;
+
+http.createServer = function(...args) {
+    // If there's a request handler provided, wrap it with CORS headers
+    if (args[0] && typeof args[0] === 'function') {
+        const originalHandler = args[0];
+        args[0] = function(req, res) {
+            // Set CORS headers
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+            res.setHeader('Access-Control-Allow-Headers', '*');
+            
+            // Handle OPTIONS requests for CORS preflight
+            if (req.method === 'OPTIONS') {
+                res.writeHead(204);
+                res.end();
+                return;
+            }
+            
+            return originalHandler(req, res);
+        };
+    }
+    
+    server = originalCreateServer(...args);
+    
+    // Store the original listen method
+    const originalListen = server.listen;
+    
+    // Override the listen method to only listen once
+    server.listen = function(...listenArgs) {
+        const genezioPort = parseInt(process.argv[process.argv.length - 1], 10);
+        // Only call listen once with the Genezio port
+        return originalListen.apply(server, [genezioPort, ...listenArgs.slice(1)]); 
+    };
+    
+    return server;
+};
+
+// Import the original app.js
+const app = await import("./${entry}");
+`;
+}
+
+async function getLocalFunctionHttpServerPythonWrapper(
+    pathString: string,
+    entry: string,
+    handler: string,
+): Promise<string> {
+    const nameModule = path
+        .join(pathString, entry)
+        .replace(/\\/g, ".") // Convert backslashes to dots (Windows)
+        .replace(/\//g, ".") // Convert slashes to dots (Unix)
+        .replace(/^\.+/, "") // Remove leading dots
+        .replace(/\.+/g, ".") // Remove duplicate dots
+        .replace(/\.py$/, ""); // Remove extension
+
+    return `
+import asyncio
+import sys
+import platform
+from wsgiref.simple_server import make_server
+import importlib.util
+import subprocess
+import os
+from ${nameModule} import ${handler} as application
+
+# Try to configure Django's ALLOWED_HOSTS before importing the application
+try:
+    import django
+    from django.conf import settings
+    if not settings.configured:
+        settings.configure()
+    settings.ALLOWED_HOSTS.extend(['localhost', '127.0.0.1'])
+except (ImportError, AttributeError):
+    pass  # Not a Django application
+
+genezio_port = int(sys.argv[len(sys.argv) - 1])
+
+is_asgi = callable(application) and asyncio.iscoroutinefunction(application.__call__)
+
+# WSGI CORS Middleware
+class WSGICORSMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    def __call__(self, environ, start_response):
+        def cors_start_response(status, headers, exc_info=None):
+            headers.extend([
+                ("Access-Control-Allow-Origin", "*"),
+                ("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE"),
+                ("Access-Control-Allow-Headers", "*"),
+            ])
+            return start_response(status, headers, exc_info)
+
+        if environ["REQUEST_METHOD"] == "OPTIONS":
+            headers = [
+                ("Access-Control-Allow-Origin", "*"),
+                ("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE"),
+                ("Access-Control-Allow-Headers", "*"),
+            ]
+            start_response("204 No Content", headers)
+            return [b""]
+
+        return self.app(environ, cors_start_response)
+
+# ASGI CORS Middleware
+class ASGICORSMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+
+        if scope["method"] == "OPTIONS":
+            headers = [
+                (b"access-control-allow-origin", b"*"),
+                (b"access-control-allow-methods", b"GET, POST, OPTIONS, PUT, PATCH, DELETE"),
+                (b"access-control-allow-headers", b"*"),
+            ]
+            await send({
+                "type": "http.response.start",
+                "status": 204,
+                "headers": headers
+            })
+            await send({
+                "type": "http.response.body",
+                "body": b""
+            })
+            return
+
+        async def wrapped_send(message):
+            if message["type"] == "http.response.start":
+                headers = message.get("headers", [])
+                headers.extend([
+                    (b"access-control-allow-origin", b"*"),
+                    (b"access-control-allow-methods", b"GET, POST, OPTIONS, PUT, PATCH, DELETE"),
+                    (b"access-control-allow-headers", b"*"),
+                ])
+                message["headers"] = headers
+            await send(message)
+
+        await self.app(scope, receive, wrapped_send)
+
+def install_uvicorn():
+    system = platform.system().lower()
+    pip_commands = ["pip3", "pip"] if system == "darwin" else ["pip", "pip3"]
+    
+    for pip_cmd in pip_commands:
+        try:
+            subprocess.check_call([pip_cmd, "install", "uvicorn"], 
+                                stderr=subprocess.DEVNULL, 
+                                stdout=subprocess.DEVNULL)
+            print(f"Successfully installed uvicorn using {pip_cmd}!")
+            return True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            continue
+    
+    print("Failed to install uvicorn automatically. Please install it manually using:")
+    print("  pip install uvicorn")
+    print("  -- or --")
+    print("  pip3 install uvicorn")
+    return False
+
+if is_asgi:
+    uvicorn_spec = importlib.util.find_spec("uvicorn")
+    if uvicorn_spec is None:
+        print("ASGI application detected but uvicorn is not installed. Installing uvicorn...")
+        if not install_uvicorn():
+            sys.exit(1)
+        importlib.invalidate_caches()
+        uvicorn_spec = importlib.util.find_spec("uvicorn")
+        if uvicorn_spec is None:
+            print("Failed to import uvicorn after installation. Please try installing it manually.")
+            sys.exit(1)
+    
+    import uvicorn
+    
+    if __name__ == "__main__":
+        application = ASGICORSMiddleware(application)
+        uvicorn.run(
+            application,
+            host="127.0.0.1", 
+            port=genezio_port, 
+            reload=False
+        )
+else:
+    application = WSGICORSMiddleware(application)
+    with make_server("127.0.0.1", genezio_port, application) as httpd:
+        print(f"Serving WSGI application on port {genezio_port}...")
+        httpd.serve_forever()
+`;
 }

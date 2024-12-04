@@ -86,7 +86,6 @@ try {
 // make genezio --version
 program.version(currentGenezioVersion, "-v, --version", "Print the installed genezio version.");
 program.helpOption("-h, --help", "Print this help message.");
-program.addHelpCommand("help", "Print this help message.");
 program.configureHelp({
     subcommandTerm: (cmd) => cmd.name(),
 });
@@ -104,6 +103,14 @@ program
     .hook("preAction", (thisCommand: Command) => {
         setDebuggingLoggerLogLevel(thisCommand.opts()["logLevel"]);
     });
+
+program.hook("preAction", async (thisCommand) => {
+    if (thisCommand.args[0] === "analyze") {
+        return;
+    }
+    log.info("Version: " + currentGenezioVersion);
+});
+
 program.hook("postAction", async () => {
     if (!isCI()) {
         await logOutdatedVersion().catch((error) => {

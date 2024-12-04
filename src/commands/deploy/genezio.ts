@@ -38,6 +38,8 @@ import {
     GenezioCloudInput,
     GenezioCloudInputType,
     GenezioCloudOutput,
+    GenezioFunctionMetadata,
+    GenezioFunctionMetadataType,
 } from "../../cloudAdapter/cloudAdapter.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import { GenezioDeployOptions } from "../../models/commandOptions.js";
@@ -74,6 +76,7 @@ import {
     enableAuthentication,
     uploadUserCode,
     setAuthenticationEmailTemplates,
+    evaluateResource,
 } from "./utils.js";
 import {
     disableEmailIntegration,
@@ -84,6 +87,8 @@ import { expandEnvironmentVariables, findAnEnvFile } from "../../utils/environme
 import { getProjectEnvFromProjectByName } from "../../requests/getProjectInfoByName.js";
 import { getFunctionHandlerProvider } from "../../utils/getFunctionHandlerProvider.js";
 import { getFunctionEntryFilename } from "../../utils/getFunctionEntryFilename.js";
+import { CronDetails } from "../../models/requests.js";
+import { syncCrons } from "../../requests/crons.js";
 import { getPackageManager } from "../../packageManagers/packageManager.js";
 import { supportedPythonDepsInstallVersion } from "../../models/projectOptions.js";
 
@@ -227,6 +232,59 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         await GenezioTelemetry.sendEvent({
             eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_END,
             commandOptions: JSON.stringify(options),
+        });
+    }
+
+    if (configuration.services?.crons) {
+        printAdaptiveLog("Deploying cron jobs\n", "start");
+        const crons: CronDetails[] = [];
+        for (const cron of configuration.services.crons) {
+            const yamlFunctionName = await evaluateResource(
+                configuration,
+                cron.function,
+                options.stage || "prod",
+                undefined,
+                undefined,
+            );
+            if (!deployClassesResult) {
+                throw new UserError(
+                    "Could not deploy cron jobs. Please make sure your backend is deployed before adding cron jobs.",
+                );
+            }
+            const functions = deployClassesResult.functions ?? [];
+            const cronFunction = functions.find((f) => f.name === `function-${yamlFunctionName}`);
+            if (!cronFunction) {
+                throw new UserError(
+                    `Function ${yamlFunctionName} not found. Please make sure the function is deployed before adding cron jobs.`,
+                );
+            }
+            crons.push({
+                name: cron.name,
+                url: cronFunction.cloudUrl,
+                endpoint: cron.endpoint || "",
+                cronString: cron.schedule,
+            });
+        }
+        await syncCrons({
+            projectName: projectName,
+            stageName: options.stage || "prod",
+            crons: crons,
+        }).catch((error) => {
+            printAdaptiveLog("Deploying cron jobs\n", "error");
+            throw new UserError(
+                `Something went wrong while syncing the cron jobs.\n${error}\nPlease try to redeploy your project. If the problem persists, please contact support at contact@genez.io.`,
+            );
+        });
+        printAdaptiveLog("Cron Jobs deployed successfully\n", "end");
+    } else {
+        await syncCrons({
+            projectName: projectName,
+            stageName: options.stage || "prod",
+            crons: [],
+        }).catch(() => {
+            throw new UserError(
+                "Something went wrong while syncing the cron jobs. Please try to redeploy your project. If the problem persists, please contact support at contact@genez.io.",
+            );
         });
     }
 
@@ -576,6 +634,8 @@ export async function deployClasses(
         return {
             projectId: projectId,
             projectEnvId: projectEnvId,
+            functions: result.functions,
+            classes: result.classes,
         };
     }
 }
@@ -627,50 +687,72 @@ export async function functionToCloudInput(
         }
     }
 
+    let metadata: GenezioFunctionMetadata | undefined;
+
     // Handle Python projects dependencies
     if (functionElement.language === "python") {
+        metadata = {
+            type: GenezioFunctionMetadataType.Python,
+            app_name: functionElement.handler,
+        };
         // Requirements file must be in the root of the backend folder
         const requirementsPath = path.join(backendPath, "requirements.txt");
-        if (fs.existsSync(requirementsPath)) {
-            const requirementsOutputPath = path.join(tmpFolderPath, "requirements.txt");
-            const requirementsContent = fs.readFileSync(requirementsOutputPath, "utf8").trim();
-            if (requirementsContent) {
-                const pathForDependencies = path.join(tmpFolderPath, "packages");
-                const packageManager = getPackageManager();
-                let installCommand;
+        const pyProjectTomlPath = path.join(backendPath, "pyproject.toml");
+        if (fs.existsSync(requirementsPath) || fs.existsSync(pyProjectTomlPath)) {
+            const pathForDependencies = path.join(tmpFolderPath, "packages");
+            const packageManager = getPackageManager();
+            let installCommand;
 
-                if (packageManager.command === "pip" || packageManager.command === "pip3") {
-                    installCommand = `${packageManager.command} install -r ${requirementsOutputPath} --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${supportedPythonDepsInstallVersion} -t ${pathForDependencies}`;
-                } else if (packageManager.command === "poetry") {
-                    installCommand = `${packageManager.command} install --no-root --directory ${pathForDependencies}`;
-                } else {
-                    throw new UserError(`Unsupported package manager: ${packageManager.command}`);
+            if (packageManager.command === "pip" || packageManager.command === "pip3") {
+                if (fs.existsSync(requirementsPath)) {
+                    const requirementsOutputPath = path.join(tmpFolderPath, "requirements.txt");
+                    const requirementsContent = fs
+                        .readFileSync(requirementsOutputPath, "utf8")
+                        .trim();
+                    if (requirementsContent) {
+                        installCommand = `${packageManager.command} install -r ${requirementsOutputPath} --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${supportedPythonDepsInstallVersion} -t ${pathForDependencies}`;
+                    }
+                } else if (fs.existsSync(pyProjectTomlPath)) {
+                    installCommand = `${packageManager.command} install . --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${supportedPythonDepsInstallVersion} -t ${pathForDependencies}`;
                 }
+            } else if (packageManager.command === "poetry") {
+                installCommand = `${packageManager.command} install --no-root --directory ${pathForDependencies}`;
+            } else {
+                throw new UserError(`Unsupported package manager: ${packageManager.command}`);
+            }
 
+            if (installCommand) {
                 debugLogger.debug(`Installing dependencies using command: ${installCommand}`);
                 await runScript(installCommand, tmpFolderPath);
             } else {
-                debugLogger.debug("No requirements.txt file found.");
+                debugLogger.debug("No valid requirements.txt or pyproject.toml found.");
             }
         }
     }
 
     const unzippedBundleSize = await getBundleFolderSizeLimit(tmpFolderPath);
 
-    // add the handler to the temporary folder
-    let entryFileName =
-        entryFileFunctionMap[functionElement.language as keyof typeof entryFileFunctionMap];
-    while (fs.existsSync(path.join(tmpFolderPath, entryFileName))) {
-        debugLogger.debug(
-            `[FUNCTION ${functionElement.name}] File ${entryFileName} already exists in the temporary folder.`,
-        );
-        entryFileName = getFunctionEntryFilename(
-            functionElement.language as Language,
-            `index-${Math.random().toString(36).substring(7)}`,
-        );
-    }
+    // Determine entry file name
+    let entryFileName;
+    if (functionElement.type === "httpServer") {
+        entryFileName = path.join(functionElement.path, functionElement.entry).replace(/\\/g, "/");
+    } else {
+        entryFileName =
+            entryFileFunctionMap[functionElement.language as keyof typeof entryFileFunctionMap];
+        while (fs.existsSync(path.join(tmpFolderPath, entryFileName))) {
+            debugLogger.debug(
+                `[FUNCTION ${functionElement.name}] File ${entryFileName} already exists in the temporary folder.`,
+            );
+            entryFileName = getFunctionEntryFilename(
+                functionElement.language as Language,
+                `index-${Math.random().toString(36).substring(7)}`,
+            );
+        }
 
-    await handlerProvider.write(tmpFolderPath, entryFileName, functionElement);
+        if (handlerProvider) {
+            await handlerProvider.write(tmpFolderPath, entryFileName, functionElement);
+        }
+    }
 
     debugLogger.debug(`Zip the directory ${tmpFolderPath}.`);
 
@@ -691,6 +773,7 @@ export async function functionToCloudInput(
         instanceSize: functionElement.instanceSize,
         storageSize: functionElement.storageSize,
         maxConcurrentRequestsPerInstance: functionElement.maxConcurrentRequestsPerInstance,
+        metadata: metadata,
     };
 }
 

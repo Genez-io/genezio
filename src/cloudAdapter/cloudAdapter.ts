@@ -13,10 +13,22 @@ export enum GenezioCloudInputType {
     FUNCTION = "function",
 }
 
-export type GenezioFunctionMetadata = {
-    cwd: string;
-    cmd: string;
-    http_port: string;
+export type GenezioFunctionMetadata = ContainerMetadata | PythonMetadata;
+export enum GenezioFunctionMetadataType {
+    Container = "container",
+    Python = "python",
+}
+
+export type ContainerMetadata = {
+    type: GenezioFunctionMetadataType.Container;
+    cmd?: string;
+    cwd?: string;
+    http_port?: string;
+};
+
+export type PythonMetadata = {
+    type: GenezioFunctionMetadataType.Python;
+    app_name?: string;
 };
 
 export type GenezioCloudInput =

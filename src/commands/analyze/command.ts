@@ -14,29 +14,35 @@ import {
     isVueComponent,
     isAngularComponent,
     isSvelteComponent,
-    isContainerComponent,
     isFlaskComponent,
     isDjangoComponent,
     isFastAPIComponent,
     isPythonLambdaFunction,
     findEntryFile,
     isGenezioTypesafe,
+    hasPostgresDependency,
+    hasMongoDependency,
 } from "./frameworks.js";
-import { readOrAskConfig } from "../deploy/utils.js";
+import { generateDatabaseName, readOrAskConfig } from "../deploy/utils.js";
 import { getPackageManager, PackageManagerType } from "../../packageManagers/packageManager.js";
 import { SSRFrameworkComponentType } from "../../models/projectOptions.js";
-import { RawYamlProjectConfiguration, YAMLLanguage } from "../../projectConfiguration/yaml/v2.js";
+import {
+    RawYamlProjectConfiguration,
+    YAMLBackend,
+    YamlConfigurationIOController,
+    YAMLLanguage,
+} from "../../projectConfiguration/yaml/v2.js";
 import {
     addBackendComponentToConfig,
-    addContainerComponentToConfig,
     addFrontendComponentToConfig,
+    addServicesToConfig,
     addSSRComponentToConfig,
     getFrontendPrefix,
     getPythonHandler,
     injectBackendApiUrlsInConfig,
     injectSDKInConfig,
 } from "./utils.js";
-import { FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
+import { DatabaseType, FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
 import { report } from "./outputUtils.js";
 import { isCI } from "../../utils/process.js";
 import {
@@ -48,6 +54,7 @@ import {
     PYTHON_LAMBDA_PATTERN,
     SERVERLESS_HTTP_PATTERN,
 } from "./constants.js";
+import { analyzeBackendEnvExampleFile, ProjectEnvironment } from "./agent.js";
 
 // backend javascript: aws-compatible functions, serverless-http functions, express, fastify
 // backend typescript: aws-compatible functions, serverless-http functions, express, fastify
@@ -56,10 +63,21 @@ import {
 // ssr: next, nuxt, nitro
 // containers
 // services: databases, authentication, crons, cache/redis, queues
+
+// Warning: Changing this type will break compatibility across the codebase
+// Specifically, it is used in the dashboard to display the detected components
 export type FrameworkReport = {
     backend?: string[];
+    backendEnvironment?: ProjectEnvironment[];
     frontend?: string[];
     ssr?: string[];
+    services?: FrameworkReportService[];
+};
+
+// Warning: Changing this type will break compatibility across the codebase
+// Specifically, it is used in the dashboard to display the detected components
+export type FrameworkReportService = {
+    databases?: string[];
 };
 
 export enum FRONTEND_ENV_PREFIX {
@@ -78,8 +96,10 @@ export enum SUPPORTED_FORMATS {
 export const DEFAULT_FORMAT = SUPPORTED_FORMATS.TEXT;
 export const DEFAULT_CI_FORMAT = SUPPORTED_FORMATS.JSON;
 
-export const KEY_FILES = ["package.json", "Dockerfile", "requirements.txt"];
-export const EXCLUDED_DIRECTORIES = ["node_modules", ".git", "dist", "build"];
+export const KEY_FILES = ["package.json", "requirements.txt", "pyproject.toml"];
+export const KEY_DEPENDENCY_FILES = ["package.json", "requirements.txt", "pyproject.toml"];
+export const ENVIRONMENT_EXAMPLE_FILES = [".env.template", ".env.example", ".env.local.example"];
+export const EXCLUDED_DIRECTORIES = ["node_modules", ".git", "dist", "build", "tests"];
 export const NODE_DEFAULT_ENTRY_FILE = "index.mjs";
 export const PYTHON_DEFAULT_ENTRY_FILE = "app.py";
 
@@ -121,6 +141,37 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             [filename]: fileContent,
         };
 
+        // Check for services (postgres, mongo)
+        if (await hasPostgresDependency(contents, filename)) {
+            await addServicesToConfig(configPath, {
+                databases: [
+                    {
+                        name: await generateDatabaseName("postgres"),
+                        region: genezioConfig.region,
+                        type: DatabaseType.neon,
+                    },
+                ],
+            });
+
+            frameworksDetected.services = frameworksDetected.services || [];
+            frameworksDetected.services.push({ databases: ["postgres"] });
+        }
+        if (await hasMongoDependency(contents, filename)) {
+            await addServicesToConfig(configPath, {
+                databases: [
+                    {
+                        name: await generateDatabaseName("mongo"),
+                        region: genezioConfig.region,
+                        type: DatabaseType.mongo,
+                    },
+                ],
+            });
+
+            frameworksDetected.services = frameworksDetected.services || [];
+            frameworksDetected.services.push({ databases: ["mongo"] });
+        }
+
+        // Check for frameworks (backend, frontend, ssr, container)
         if (await isServerlessHttpBackend(contents)) {
             const entryFile = await findEntryFile(
                 componentPath,
@@ -352,16 +403,6 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             continue;
         }
 
-        if (await isContainerComponent(contents)) {
-            addContainerComponentToConfig(configPath, {
-                path: componentPath,
-            });
-
-            frameworksDetected.backend = frameworksDetected.backend || [];
-            frameworksDetected.backend.push("container");
-            continue;
-        }
-
         if (await isGenezioTypesafe(contents)) {
             await addBackendComponentToConfig(configPath, {
                 path: componentPath,
@@ -386,7 +427,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 FLASK_PATTERN,
                 PYTHON_DEFAULT_ENTRY_FILE,
             );
-            const entryFileContent = await retrieveFileContent(path.join(componentPath, entryFile));
+            const entryFileContent = await retrieveFileContent(entryFile);
             const pythonHandler = getPythonHandler(entryFileContent);
 
             await addBackendComponentToConfig(configPath, {
@@ -412,7 +453,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isDjangoComponent(contents)) {
-            const entryfile = await findEntryFile(
+            const entryFile = await findEntryFile(
                 componentPath,
                 contents,
                 DJANGO_PATTERN,
@@ -429,7 +470,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                         name: "django",
                         path: ".",
                         handler: "application",
-                        entry: entryfile,
+                        entry: entryFile,
                         type: FunctionType.httpServer,
                     },
                 ],
@@ -441,14 +482,14 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isFastAPIComponent(contents)) {
-            const entryfile = await findEntryFile(
+            const entryFile = await findEntryFile(
                 componentPath,
                 contents,
                 FASTAPI_PATTERN,
                 PYTHON_DEFAULT_ENTRY_FILE,
             );
 
-            const entryFileContent = await retrieveFileContent(path.join(componentPath, entryfile));
+            const entryFileContent = await retrieveFileContent(entryFile);
             const pythonHandler = getPythonHandler(entryFileContent);
 
             await addBackendComponentToConfig(configPath, {
@@ -462,7 +503,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                         name: "fastapi",
                         path: ".",
                         handler: pythonHandler,
-                        entry: entryfile,
+                        entry: entryFile,
                         type: FunctionType.httpServer,
                     },
                 ],
@@ -474,7 +515,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isPythonLambdaFunction(contents)) {
-            const entryfile = await findEntryFile(
+            const entryFile = await findEntryFile(
                 componentPath,
                 contents,
                 PYTHON_LAMBDA_PATTERN,
@@ -491,7 +532,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                         name: "serverless",
                         path: ".",
                         handler: "handler",
-                        entry: entryfile,
+                        entry: entryFile,
                         type: FunctionType.aws,
                     },
                 ],
@@ -500,6 +541,51 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             frameworksDetected.backend.push("faas-python");
             continue;
         }
+    }
+
+    // Analyze the environment example file if we have a backend component
+    if (frameworksDetected.backend && frameworksDetected.backend.length > 0) {
+        const envExampleFiles = await findKeyFiles(rootDirectory, ENVIRONMENT_EXAMPLE_FILES);
+        // Read the file contents
+        const envExampleContents = new Map<string, string>();
+        for (const [relativeFilePath, filename] of envExampleFiles.entries()) {
+            const fileContent = await retrieveFileContent(relativeFilePath);
+            envExampleContents.set(filename, fileContent);
+        }
+
+        // envExampleContents to string
+        const envExampleContentsString = Array.from(envExampleContents.values()).join("\n");
+
+        const configIOController = new YamlConfigurationIOController(configPath);
+        // We have to read the config here with fillDefaults=false
+        // to be able to edit it in the least intrusive way
+        const config = await configIOController.read(/* fillDefaults= */ false);
+
+        // Analyze the environment example file
+        const envExampleAnalysis = await analyzeBackendEnvExampleFile(
+            envExampleContentsString,
+            config.services,
+        );
+
+        const filteredEnvExampleAnalysis = envExampleAnalysis.filter((env: ProjectEnvironment) =>
+            /\$\{\{.*\}\}/.test(env.defaultValue),
+        );
+
+        const environment: Record<string, string> = filteredEnvExampleAnalysis.reduce(
+            (acc: Record<string, string>, env: ProjectEnvironment) => {
+                acc[env.key] = env.defaultValue;
+                return acc;
+            },
+            {},
+        );
+
+        // Add backend environment to the config
+        await addBackendComponentToConfig(configPath, {
+            ...(config.backend as YAMLBackend),
+            environment: environment,
+        });
+
+        frameworksDetected.backendEnvironment = envExampleAnalysis;
     }
 
     // Inject Backend API URLs into the frontend component
@@ -530,7 +616,10 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     log.info(result);
 }
 
-export const findKeyFiles = async (dir: string): Promise<Map<string, string>> => {
+export const findKeyFiles = async (
+    dir: string,
+    keyFiles: string[] = KEY_FILES,
+): Promise<Map<string, string>> => {
     const result = new Map<string, string>();
 
     const searchDir = async (currentDir: string) => {
@@ -546,7 +635,7 @@ export const findKeyFiles = async (dir: string): Promise<Map<string, string>> =>
 
                     // Recursively search subdirectory
                     await searchDir(fullPath);
-                } else if (KEY_FILES.includes(entry.name)) {
+                } else if (keyFiles.includes(entry.name)) {
                     // If the file is one of the key files, add it to the map
                     const relativePath = path.relative(dir, fullPath);
                     result.set(relativePath, entry.name);
@@ -561,13 +650,19 @@ export const findKeyFiles = async (dir: string): Promise<Map<string, string>> =>
 
 // Method to read the contents of a file
 async function retrieveFileContent(filePath: string): Promise<string> {
-    // check if file exists
+    try {
+        await fs.access(filePath);
+    } catch (error) {
+        log.error(`Cannot access ${filePath}: ${error}`);
+        return "";
+    }
 
     try {
+        // Read and return the file content
         const fileContent = await fs.readFile(filePath, "utf-8");
         return fileContent;
     } catch (error) {
-        log.error("Error reading package.json:", error);
+        log.error(`Error reading file at ${filePath}: ${error}`);
         return "";
     }
 }
