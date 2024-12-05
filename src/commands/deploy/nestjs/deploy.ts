@@ -4,7 +4,12 @@ import colors from "colors";
 import { $ } from "execa";
 import { GenezioDeployOptions } from "../../../models/commandOptions.js";
 import { log } from "../../../utils/logging.js";
-import { attemptToInstallDependencies, readOrAskConfig, uploadEnvVarsFromFile } from "../utils.js";
+import {
+    attemptToInstallDependencies,
+    readOrAskConfig,
+    uploadEnvVarsFromFile,
+    uploadUserCode,
+} from "../utils.js";
 import { addSSRComponentToConfig } from "../../analyze/utils.js";
 import { getPackageManager, PackageManagerType } from "../../../packageManagers/packageManager.js";
 import { SSRFrameworkComponentType } from "../../../models/projectOptions.js";
@@ -57,6 +62,8 @@ export async function nestJsDeploy(options: GenezioDeployOptions) {
         genezioConfig,
         SSRFrameworkComponentType.nestjs,
     );
+
+    await uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage, componentPath);
 
     const functionUrl = result.functions.find((f) => f.name === "function-nest")?.cloudUrl;
 
