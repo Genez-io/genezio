@@ -734,6 +734,10 @@ async function analyzeEnvironmentFilesConcurrently(
                 genezioConfig.services,
             );
 
+            if (environmentVariablesAnalysis.length === 0) {
+                return;
+            }
+
             resultEnvironmentAnalysis.set(componentPath, {
                 environmentVariables: environmentVariablesAnalysis,
             });
