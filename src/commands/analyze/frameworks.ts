@@ -256,6 +256,17 @@ export async function isNextjsComponent(contents: Record<string, string>): Promi
     return packageJsonContent ? "next" in (packageJsonContent.dependencies || {}) : false;
 }
 
+// Checks if the project is a Nest.js component
+// `contents` is a map of important file paths and their contents
+export async function isNestjsComponent(contents: Record<string, string>): Promise<boolean> {
+    if (!contents["package.json"]) {
+        return false;
+    }
+
+    const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
+    return packageJsonContent ? "@nestjs/core" in (packageJsonContent.dependencies || {}) : false;
+}
+
 // Checks if the project is a Nuxt component
 // `contents` is a map of important file paths and their contents
 export async function isNuxtComponent(contents: Record<string, string>): Promise<boolean> {
