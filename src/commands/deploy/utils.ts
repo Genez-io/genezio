@@ -279,16 +279,21 @@ export async function readOrAskProjectName(): Promise<string> {
  * @returns A unique database name
  */
 export async function generateDatabaseName(prefix: string): Promise<string> {
-    const defaultDatabaseName = prefix + "-" + "db";
+    const defaultDatabaseName = "my-" + prefix + "-db";
 
     const databaseExists = await getDatabaseByName(defaultDatabaseName)
-        .then(() => true)
+        .then((response) => {
+            return response !== undefined;
+        })
         .catch(() => false);
 
     if (!databaseExists) {
         return defaultDatabaseName;
     }
 
+    debugLogger.debug(
+        `Database ${defaultDatabaseName} already exists. Generating a new database name...`,
+    );
     const generatedDatabaseName =
         prefix +
         "-" +
