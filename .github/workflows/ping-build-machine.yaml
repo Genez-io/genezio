@@ -4,7 +4,6 @@ on:
     push:
         branches:
             - dev
-            - main
         paths-ignore:
             - "**/*.md"
 
@@ -28,23 +27,6 @@ jobs:
                   token: ${{ secrets.ORG_ACCESS_TOKEN }}
                   repository: genez-io/genezio-build-machine
                   event-type: redeploy-build-machine-workflows-runtime-dev
-
-            # Dispatch for 'main' branch
-            - name: Send Repository Dispatch - Prod Docker Build
-              if: github.ref == 'refs/heads/main'
-              uses: peter-evans/repository-dispatch@v3
-              with:
-                  token: ${{ secrets.ORG_ACCESS_TOKEN }}
-                  repository: genez-io/genezio-build-machine
-                  event-type: redeploy-build-machine-docker-images-prod
-
-            - name: Send Repository Dispatch - Prod Runtime Workflows
-              if: github.ref == 'refs/heads/main'
-              uses: peter-evans/repository-dispatch@v3
-              with:
-                  token: ${{ secrets.ORG_ACCESS_TOKEN }}
-                  repository: genez-io/genezio-build-machine
-                  event-type: redeploy-build-machine-workflows-runtime-prod
     notify:
         if: always()
         runs-on: ubuntu-latest
