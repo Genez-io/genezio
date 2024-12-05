@@ -135,10 +135,22 @@ export async function addServicesToConfig(configPath: string, services: YAMLServ
     // to be able to edit it in the least intrusive way
     const config = await configIOController.read(/* fillDefaults= */ false);
 
-    config.services = {
-        ...config.services,
-        ...services,
-    };
+    config.services = config.services || {};
+
+    // Ensure unique types are added
+    const existingDatabases = config.services.databases || [];
+    const newDatabases = services.databases || [];
+
+    // Add only new database types
+    const mergedDatabases = [
+        ...existingDatabases,
+        ...newDatabases.filter(
+            (db) => !existingDatabases.some((existingDb) => existingDb.type === db.type),
+        ),
+    ];
+
+    // Update services with the merged databases
+    config.services.databases = mergedDatabases;
 
     await configIOController.write(config);
 }
