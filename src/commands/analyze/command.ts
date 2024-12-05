@@ -22,6 +22,7 @@ import {
     isGenezioTypesafe,
     hasPostgresDependency,
     hasMongoDependency,
+    isNestjsComponent,
 } from "./frameworks.js";
 import { generateDatabaseName, readOrAskConfig } from "../deploy/utils.js";
 import { getPackageManager, PackageManagerType } from "../../packageManagers/packageManager.js";
@@ -296,6 +297,23 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             );
             frameworksDetected.ssr = frameworksDetected.ssr || [];
             frameworksDetected.ssr.push("next");
+            continue;
+        }
+
+        if (await isNestjsComponent(contents)) {
+            await addSSRComponentToConfig(
+                options.config,
+                {
+                    path: componentPath,
+                    packageManager: getPackageManager().command as PackageManagerType,
+                    scripts: {
+                        deploy: [`${getPackageManager().command} install`],
+                    },
+                },
+                SSRFrameworkComponentType.nestjs,
+            );
+            frameworksDetected.ssr = frameworksDetected.ssr || [];
+            frameworksDetected.ssr.push("nest");
             continue;
         }
 

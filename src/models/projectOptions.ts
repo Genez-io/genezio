@@ -27,6 +27,7 @@ export enum SSRFrameworkComponentType {
     next = "nextjs",
     nitro = "nitro",
     nuxt = "nuxt",
+    nestjs = "nestjs",
 }
 
 export enum ContainerComponentType {

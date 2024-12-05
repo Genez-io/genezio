@@ -315,6 +315,7 @@ function parseGenezioConfig(config: unknown) {
         backend: backendSchema.optional(),
         services: servicesSchema.optional(),
         frontend: zod.array(frontendSchema).or(frontendSchema).optional(),
+        nestjs: ssrFrameworkSchema.optional(),
         nextjs: ssrFrameworkSchema.optional(),
         nuxt: ssrFrameworkSchema.optional(),
         nitro: ssrFrameworkSchema.optional(),
