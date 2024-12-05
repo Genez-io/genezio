@@ -28,6 +28,24 @@ jobs:
               with:
                   token: ${{ secrets.NPM_AUTH_TOKEN }}
 
+    ping-build-machine:
+        runs-on: ubuntu-latest
+        needs: publish-cli
+        if: github.actor != 'dependabot[bot]' && github.actor != 'github-actions[bot]' && needs.publish-cli.result == 'success'
+        steps:
+            - name: Send Repository Dispatch - Prod Docker Build
+              uses: peter-evans/repository-dispatch@v3
+              with:
+                  token: ${{ secrets.ORG_ACCESS_TOKEN }}
+                  repository: genez-io/genezio-build-machine
+                  event-type: redeploy-build-machine-docker-images-prod
+            - name: Send Repository Dispatch - Prod Runtime Workflows
+              uses: peter-evans/repository-dispatch@v3
+              with:
+                  token: ${{ secrets.ORG_ACCESS_TOKEN }}
+                  repository: genez-io/genezio-build-machine
+                  event-type: redeploy-build-machine-workflows-runtime-prod
+
     generate-release-notes:
         runs-on: ubuntu-latest
         needs: publish-cli
