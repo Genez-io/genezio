@@ -70,14 +70,4 @@ jobs:
                   token: ${{ secrets.SLACK_NOTIFICATIONS_BOT_TOKEN }}
                   payload: |
                       channel: ${{ secrets.SLACK_CHANNEL_ID }}
-                      text: "GitHub Action build result: ${{ needs.publish-cli.result }}\n
-                      blocks:
-                          - type: "section"
-                          text:
-                              type: "mrkdwn"
-                              text: |
-                                *Github Action Build Result:* ${{ needs.publish-cli.result }}\n
-                                *Repository:* ${{ github.repository }}\n
-                                *Branch:* ${{ github.ref }}\n
-                                *Workflow:* ${{ github.workflow }}\n
-                                *Note: * This will trigger a new build on the build machine
+                      text: "GitHub Action build result: ${{ needs.publish-cli.result }}\n*Github Action Build Result:* ${{ needs.publish-cli.result }}\n*Repository:* ${{ github.repository }}\n*Branch:* ${{ github.ref }}\n*Workflow:* ${{ github.workflow }}\n*Note: * This will trigger a new build on the build machine"
