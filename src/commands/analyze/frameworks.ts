@@ -58,7 +58,7 @@ export async function findEntryFile(
 
     const entryFile = await findFileByPatterns(componentPath, patterns, FUNCTION_EXTENSIONS);
     if (entryFile) {
-        return entryFile;
+        return path.relative(componentPath, entryFile);
     }
 
     return defaultFile;
