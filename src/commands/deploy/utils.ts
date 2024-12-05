@@ -279,16 +279,21 @@ export async function readOrAskProjectName(): Promise<string> {
  * @returns A unique database name
  */
 export async function generateDatabaseName(prefix: string): Promise<string> {
-    const defaultDatabaseName = prefix + "-" + "db";
+    const defaultDatabaseName = "my-" + prefix + "-db";
 
     const databaseExists = await getDatabaseByName(defaultDatabaseName)
-        .then(() => true)
+        .then((response) => {
+            return response !== undefined;
+        })
         .catch(() => false);
 
     if (!databaseExists) {
         return defaultDatabaseName;
     }
 
+    debugLogger.debug(
+        `Database ${defaultDatabaseName} already exists. Generating a new database name...`,
+    );
     const generatedDatabaseName =
         prefix +
         "-" +
@@ -806,6 +811,7 @@ export async function uploadEnvVarsFromFile(
             [SSRFrameworkComponentType.next]: configuration.nextjs?.environment,
             [SSRFrameworkComponentType.nuxt]: configuration.nitro?.environment,
             [SSRFrameworkComponentType.nitro]: configuration.nuxt?.environment,
+            [SSRFrameworkComponentType.nestjs]: configuration.nuxt?.environment,
             backend: configuration.backend?.environment,
         }[componentType] ?? configuration.backend?.environment;
 

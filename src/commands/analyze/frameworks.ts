@@ -58,7 +58,7 @@ export async function findEntryFile(
 
     const entryFile = await findFileByPatterns(componentPath, patterns, FUNCTION_EXTENSIONS);
     if (entryFile) {
-        return entryFile;
+        return path.relative(componentPath, entryFile);
     }
 
     return defaultFile;
@@ -254,6 +254,17 @@ export async function isNextjsComponent(contents: Record<string, string>): Promi
 
     const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
     return packageJsonContent ? "next" in (packageJsonContent.dependencies || {}) : false;
+}
+
+// Checks if the project is a Nest.js component
+// `contents` is a map of important file paths and their contents
+export async function isNestjsComponent(contents: Record<string, string>): Promise<boolean> {
+    if (!contents["package.json"]) {
+        return false;
+    }
+
+    const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
+    return packageJsonContent ? "@nestjs/core" in (packageJsonContent.dependencies || {}) : false;
 }
 
 // Checks if the project is a Nuxt component
