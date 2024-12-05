@@ -33,7 +33,6 @@ export async function deployCommand(options: GenezioDeployOptions) {
         case DeployType.Classic:
             debugLogger.debug("Deploying classic genezio app");
             await genezioDeploy(options);
-
             break;
         case DeployType.NextJS:
             debugLogger.debug("Deploying Next.js app");
