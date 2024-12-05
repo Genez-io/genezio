@@ -31,7 +31,7 @@ export const ProjectEnvironmentSchema = z.object({
     ),
 });
 
-export async function analyzeBackendEnvExampleFile(
+export async function analyzeEnvironmentVariableExampleFile(
     contents: string,
     services?: YAMLService,
 ): Promise<ProjectEnvironment[]> {
