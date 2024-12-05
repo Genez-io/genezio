@@ -9,6 +9,7 @@ import { nuxtNitroDeploy } from "./nuxt/deploy.js";
 import { dockerDeploy } from "./docker/deploy.js";
 import { PackageManagerType } from "../../packageManagers/packageManager.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
+import { nestJsDeploy } from "./nestjs/deploy.js";
 
 export type SSRFrameworkComponent = {
     path: string;
@@ -47,6 +48,10 @@ export async function deployCommand(options: GenezioDeployOptions) {
             debugLogger.debug("Deploying Docker app");
             await dockerDeploy(options);
             break;
+        case DeployType.Nest:
+            debugLogger.debug("Deploying Nest.js app");
+            await nestJsDeploy(options);
+            break;
     }
 }
 
@@ -56,6 +61,7 @@ export enum DeployType {
     Nitro,
     Nuxt,
     Docker,
+    Nest,
 }
 
 async function decideDeployType(options: GenezioDeployOptions): Promise<DeployType> {
@@ -81,6 +87,9 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         }
         if (config.nitro) {
             return DeployType.Nitro;
+        }
+        if (config.nestjs) {
+            return DeployType.Nest;
         }
     }
 
@@ -114,6 +123,11 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         return DeployType.Nitro;
     }
 
+    // Check if nest-cli.json exists
+    if (fs.existsSync(path.join(cwd, "nest-cli.json"))) {
+        return DeployType.Nest;
+    }
+
     // Check if "next" package is present in the project dependencies
     if (fs.existsSync(path.join(cwd, "package.json"))) {
         const packageJson = JSON.parse(fs.readFileSync(path.join(cwd, "package.json"), "utf-8"));
@@ -125,6 +139,12 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         }
         if (packageJson.dependencies?.nitropack || packageJson.devDependencies?.nitropack) {
             return DeployType.Nitro;
+        }
+        if (
+            packageJson.dependencies?.["@nestjs/core"] ||
+            packageJson.devDependencies?.["@nestjs/core"]
+        ) {
+            return DeployType.Nest;
         }
     }
 

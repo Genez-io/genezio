@@ -811,6 +811,7 @@ export async function uploadEnvVarsFromFile(
             [SSRFrameworkComponentType.next]: configuration.nextjs?.environment,
             [SSRFrameworkComponentType.nuxt]: configuration.nitro?.environment,
             [SSRFrameworkComponentType.nitro]: configuration.nuxt?.environment,
+            [SSRFrameworkComponentType.nestjs]: configuration.nuxt?.environment,
             backend: configuration.backend?.environment,
         }[componentType] ?? configuration.backend?.environment;
 
