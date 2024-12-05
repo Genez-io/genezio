@@ -78,7 +78,6 @@ async function deployFunction(
     const cloudAdapter = getCloudAdapter(cloudProvider);
     const cwdRelative = path.relative(process.cwd(), cwd) || ".";
 
-    // Copiază node_modules în dist folosind fs.promises.cp
     await fs.promises
         .cp(
             path.join(cwdRelative, "node_modules"),
