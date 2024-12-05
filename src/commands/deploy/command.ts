@@ -47,9 +47,6 @@ export async function deployCommand(options: GenezioDeployOptions) {
             await dockerDeploy(options);
             break;
     }
-
-    // Sync services connected to the project that are needed after deploying
-    // i.e databases, authentication services
 }
 
 export enum DeployType {

@@ -157,6 +157,8 @@ export async function addServicesToConfig(configPath: string, services: YAMLServ
     config.services.databases = mergedDatabases;
 
     await configIOController.write(config);
+
+    return config;
 }
 
 /**
