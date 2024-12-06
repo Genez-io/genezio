@@ -69,10 +69,7 @@ import {
 } from "../models/cloudProviderIdentifier.js";
 import { LocalGoBundler } from "../bundlers/go/localGoBundler.js";
 import { importServiceEnvVariables } from "../utils/servicesEnvVariables.js";
-import {
-    isDependencyVersionCompatible,
-    checkExperimentalDecorators,
-} from "../utils/jsProjectChecker.js";
+import { isDependencyVersionCompatible } from "../utils/jsProjectChecker.js";
 import { scanClassesForDecorators } from "../utils/configuration.js";
 import { runScript, runFrontendStartScript } from "../utils/scripts.js";
 import { writeSdk } from "../generateSdk/sdkWriter/sdkWriter.js";
@@ -442,11 +439,6 @@ async function startBackendWatcher(
                 `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To solve this, please update the @genezio/types package on your backend component using the following command: npm install @genezio/types@${RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE}`,
             );
             exit(1);
-        }
-
-        // Only check experimental decorators if there are classes defined
-        if (backendConfiguration.classes && backendConfiguration.classes.length > 0) {
-            checkExperimentalDecorators(backendConfiguration.path);
         }
     }
 

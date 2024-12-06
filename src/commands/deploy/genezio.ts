@@ -47,10 +47,7 @@ import { GenezioTelemetry, TelemetryEventTypes } from "../../telemetry/telemetry
 import colors from "colors";
 import { Status } from "../../requests/models.js";
 import { bundle } from "../../bundlers/utils.js";
-import {
-    checkExperimentalDecorators,
-    isDependencyVersionCompatible,
-} from "../../utils/jsProjectChecker.js";
+import { isDependencyVersionCompatible } from "../../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import {
     AuthenticationEmailTemplateType,
@@ -123,11 +120,6 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             throw new UserError(
                 `You are currently using an older version of @genezio/types, which is not compatible with this version of the genezio CLI. To solve this, please update the @genezio/types package on your backend component using the following command: npm install @genezio/types@${RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE}`,
             );
-        }
-
-        // Only check experimental decorators if there are classes defined
-        if (configuration.backend?.classes && configuration.backend.classes.length > 0) {
-            checkExperimentalDecorators(backendCwd);
         }
     }
 
