@@ -211,6 +211,23 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             continue;
         }
 
+        if (await isNestjsComponent(contents)) {
+            await addSSRComponentToConfig(
+                options.config,
+                {
+                    path: componentPath,
+                    packageManager: getPackageManager().command as PackageManagerType,
+                    scripts: {
+                        deploy: [`${getPackageManager().command} install`],
+                    },
+                },
+                SSRFrameworkComponentType.nestjs,
+            );
+            frameworksDetected.ssr = frameworksDetected.ssr || [];
+            frameworksDetected.ssr.push("nest");
+            continue;
+        }
+
         if (await isExpressBackend(contents)) {
             const entryFile = await findEntryFile(
                 componentPath,
@@ -297,23 +314,6 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             );
             frameworksDetected.ssr = frameworksDetected.ssr || [];
             frameworksDetected.ssr.push("next");
-            continue;
-        }
-
-        if (await isNestjsComponent(contents)) {
-            await addSSRComponentToConfig(
-                options.config,
-                {
-                    path: componentPath,
-                    packageManager: getPackageManager().command as PackageManagerType,
-                    scripts: {
-                        deploy: [`${getPackageManager().command} install`],
-                    },
-                },
-                SSRFrameworkComponentType.nestjs,
-            );
-            frameworksDetected.ssr = frameworksDetected.ssr || [];
-            frameworksDetected.ssr.push("nest");
             continue;
         }
 
