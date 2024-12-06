@@ -41,7 +41,6 @@ export enum FunctionType {
 
 export enum InstanceSize {
     tiny = "tiny",
-    small = "small",
     medium = "medium",
     large = "large",
 }

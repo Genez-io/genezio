@@ -2,7 +2,7 @@ import path from "path";
 import { YAMLBackend, YamlClass, YamlMethod } from "../projectConfiguration/yaml/v2.js";
 import { getAllFilesFromPath } from "./file.js";
 import { debugLogger, log } from "./logging.js";
-import { TriggerType } from "../projectConfiguration/yaml/models.js";
+import { InstanceSize, TriggerType } from "../projectConfiguration/yaml/models.js";
 import { GENEZIO_DECORATOR_YAML_OVERLAP, UserError } from "../errors.js";
 import { DecoratorExtractorFactory } from "./decorators/decoratorFactory.js";
 
@@ -35,6 +35,8 @@ export async function scanClassesForDecorators(
     const result = await tryToReadClassInformationFromDecorators(yamlBackend).catch((error) => {
         if (error instanceof UserError && error.message.includes("Language not supported")) {
             debugLogger.debug("Language decorators not supported, skipping scan for decorators.");
+        } else if (error instanceof UserError) {
+            throw error;
         }
         return [];
     });
@@ -56,6 +58,10 @@ export async function scanClassesForDecorators(
             );
             if (!r && deployDecoratorFound) {
                 let type = TriggerType.jsonrpc;
+                let timeout: number | undefined;
+                let storageSize: number | undefined;
+                let instanceSize: InstanceSize | undefined;
+                let maxConcurrentRequestsPerInstance: number | undefined;
                 const methods = classInfo[0].methods
                     .map((m) => {
                         const genezioMethodDecorator = m.decorators.find(
@@ -67,7 +73,9 @@ export async function scanClassesForDecorators(
                         }
 
                         const methodType = genezioMethodDecorator.arguments["type"]
-                            ? getTriggerTypeFromString(genezioMethodDecorator.arguments["type"])
+                            ? getTriggerTypeFromString(
+                                  genezioMethodDecorator.arguments["type"] as string,
+                              )
                             : undefined;
                         const cronString = genezioMethodDecorator.arguments["cronString"];
 
@@ -83,16 +91,31 @@ export async function scanClassesForDecorators(
                     .filter((m) => m !== undefined) as YamlMethod[];
 
                 if (deployDecoratorFound.arguments) {
-                    const classType = deployDecoratorFound.arguments["type"];
+                    const classType = deployDecoratorFound.arguments["type"] as string;
                     if (classType) {
                         type = getTriggerTypeFromString(classType);
                     }
+
+                    timeout = deployDecoratorFound.arguments["timeout"] as number | undefined;
+                    storageSize = deployDecoratorFound.arguments["storageSize"] as
+                        | number
+                        | undefined;
+                    instanceSize = deployDecoratorFound.arguments["instanceSize"] as
+                        | InstanceSize
+                        | undefined;
+                    maxConcurrentRequestsPerInstance = deployDecoratorFound.arguments[
+                        "maxConcurrentRequestsPerInstance"
+                    ] as number | undefined;
                 }
 
                 classes.push({
                     name: classInfo[0].name,
                     path: path.relative(yamlBackend.path, classInfo[0].path),
                     type: type,
+                    timeout: timeout,
+                    storageSize: storageSize,
+                    instanceSize: instanceSize as InstanceSize,
+                    maxConcurrentRequestsPerInstance: maxConcurrentRequestsPerInstance,
                     methods: methods,
                 });
             } else if (r && deployDecoratorFound) {

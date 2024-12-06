@@ -1,6 +1,6 @@
 export type MethodDecoratorInfo = {
     name: string;
-    arguments?: { [key: string]: string };
+    arguments?: { [key: string]: string | number };
 };
 
 export type MethodInfo = {
@@ -10,7 +10,7 @@ export type MethodInfo = {
 
 export type ClassDecoratorInfo = {
     name: string;
-    arguments?: { [key: string]: string };
+    arguments?: { [key: string]: string | number };
 };
 
 export type ClassInfo = {
