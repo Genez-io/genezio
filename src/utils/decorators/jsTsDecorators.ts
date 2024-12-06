@@ -16,6 +16,7 @@ import {
     ExportDeclaration,
     isExportDefaultDeclaration,
     isExportNamedDeclaration,
+    isNumericLiteral,
 } from "@babel/types";
 import babel from "@babel/core";
 import { createRequire } from "module";
@@ -277,7 +278,7 @@ export class JsTsDecoratorExtractor extends DecoratorExtractor {
         return classes;
     }
 
-    static parseArguments(args: CallExpression["arguments"]): { [key: string]: string } {
+    static parseArguments(args: CallExpression["arguments"]): { [key: string]: string | number } {
         if (!args) {
             return {};
         }
@@ -286,11 +287,11 @@ export class JsTsDecoratorExtractor extends DecoratorExtractor {
             .map((arg) => {
                 if (isObjectExpression(arg)) {
                     return arg.properties.reduce(
-                        (acc: Array<{ key: string; value: string }>, curr) => {
+                        (acc: Array<{ key: string; value: string | number }>, curr) => {
                             if (
                                 isObjectProperty(curr) &&
                                 (isIdentifier(curr.key) || isStringLiteral(curr.key)) &&
-                                isStringLiteral(curr.value)
+                                (isStringLiteral(curr.value) || isNumericLiteral(curr.value))
                             ) {
                                 const key = isIdentifier(curr.key) ? curr.key.name : curr.key.value;
                                 return [...acc, { key, value: curr.value.value }];
@@ -306,7 +307,7 @@ export class JsTsDecoratorExtractor extends DecoratorExtractor {
             })
             .filter((a) => a !== undefined)
             .flat()
-            .reduce((acc: { [key: string]: string }, curr) => {
+            .reduce((acc: { [key: string]: string | number }, curr) => {
                 acc[curr!.key] = curr!.value;
                 return acc;
             }, {});
