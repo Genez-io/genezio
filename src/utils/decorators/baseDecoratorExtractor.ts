@@ -1,3 +1,4 @@
+import { UserError } from "../../errors.js";
 import FileDetails from "../../models/fileDetails.js";
 import { ClassInfo, MethodInfo } from "./decoratorTypes.js";
 
@@ -73,7 +74,7 @@ export abstract class DecoratorExtractor {
     }
 
     static createGenezioClassInfo(className: string, file: string, commentText: string): ClassInfo {
-        // Example of a comment: "// genezio: deploy jsonrpc; timeout: 3; size: 256"
+        // Example of a comment: "// genezio: deploy jsonrpc; timeout: 3; storageSize: 256"
         const genezioDeployArguments = commentText
             .split("genezio: deploy")[1]
             .split(" ")
@@ -93,6 +94,11 @@ export abstract class DecoratorExtractor {
                     key === "maxConcurrentRequestsPerInstance"
                 ) {
                     transformedValue = parseInt(value);
+                    if (isNaN(transformedValue)) {
+                        throw new UserError(
+                            `Error parsing the value of the argument ${key}. The value should be a number.`,
+                        );
+                    }
                 }
 
                 return { key: key, value: transformedValue };

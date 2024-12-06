@@ -35,6 +35,8 @@ export async function scanClassesForDecorators(
     const result = await tryToReadClassInformationFromDecorators(yamlBackend).catch((error) => {
         if (error instanceof UserError && error.message.includes("Language not supported")) {
             debugLogger.debug("Language decorators not supported, skipping scan for decorators.");
+        } else if (error instanceof UserError) {
+            throw error;
         }
         return [];
     });
@@ -58,7 +60,7 @@ export async function scanClassesForDecorators(
                 let type = TriggerType.jsonrpc;
                 let timeout: number | undefined;
                 let storageSize: number | undefined;
-                let instanceSize: ("tiny" | "medium" | "large") | undefined;
+                let instanceSize: InstanceSize | undefined;
                 let maxConcurrentRequestsPerInstance: number | undefined;
                 const methods = classInfo[0].methods
                     .map((m) => {
@@ -99,9 +101,7 @@ export async function scanClassesForDecorators(
                         | number
                         | undefined;
                     instanceSize = deployDecoratorFound.arguments["instanceSize"] as
-                        | "tiny"
-                        | "medium"
-                        | "large"
+                        | InstanceSize
                         | undefined;
                     maxConcurrentRequestsPerInstance = deployDecoratorFound.arguments[
                         "maxConcurrentRequestsPerInstance"
