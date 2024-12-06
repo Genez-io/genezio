@@ -1,3 +1,4 @@
+import { UserError } from "../../errors.js";
 import FileDetails from "../../models/fileDetails.js";
 import { ClassInfo, MethodInfo } from "./decoratorTypes.js";
 
@@ -73,10 +74,37 @@ export abstract class DecoratorExtractor {
     }
 
     static createGenezioClassInfo(className: string, file: string, commentText: string): ClassInfo {
+        // Example of a comment: "// genezio: deploy jsonrpc; timeout: 3; storageSize: 256"
         const genezioDeployArguments = commentText
             .split("genezio: deploy")[1]
             .split(" ")
             .filter((arg) => arg !== "");
+
+        const args = commentText.split(";");
+        let parsedArgs: { key: string; value: string | number }[] = [];
+        if (args && args.length > 1) {
+            parsedArgs = args.slice(1).map((arg) => {
+                const [key, value] = arg.split(":").map((el) => el.trim());
+                let transformedValue: string | number = value;
+
+                // These configuration values should be numbers
+                if (
+                    key === "timeout" ||
+                    key === "storageSize" ||
+                    key === "maxConcurrentRequestsPerInstance"
+                ) {
+                    transformedValue = parseInt(value);
+                    if (isNaN(transformedValue)) {
+                        throw new UserError(
+                            `Error parsing the value of the argument ${key}. The value should be a number.`,
+                        );
+                    }
+                }
+
+                return { key: key, value: transformedValue };
+            });
+        }
+
         let classType: string = "jsonrpc";
         if (genezioDeployArguments.length > 0) {
             switch (genezioDeployArguments[0]) {
@@ -91,6 +119,14 @@ export abstract class DecoratorExtractor {
             }
         }
 
+        const otherArgs = parsedArgs.reduce(
+            (acc, arg) => {
+                acc[arg.key] = arg.value;
+                return acc;
+            },
+            {} as Record<string, string | number>,
+        );
+
         const classInfo: ClassInfo = {
             path: file,
             name: className,
@@ -99,6 +135,7 @@ export abstract class DecoratorExtractor {
                     name: "GenezioDeploy",
                     arguments: {
                         type: classType,
+                        ...otherArgs,
                     },
                 },
             ],
