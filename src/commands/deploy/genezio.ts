@@ -125,7 +125,10 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             );
         }
 
-        checkExperimentalDecorators(backendCwd);
+        // Only check experimental decorators if there are classes defined
+        if (configuration.backend?.classes && configuration.backend.classes.length > 0) {
+            checkExperimentalDecorators(backendCwd);
+        }
     }
 
     // check if user is logged in

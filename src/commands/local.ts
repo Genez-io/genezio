@@ -444,7 +444,10 @@ async function startBackendWatcher(
             exit(1);
         }
 
-        checkExperimentalDecorators(backendConfiguration.path);
+        // Only check experimental decorators if there are classes defined
+        if (backendConfiguration.classes && backendConfiguration.classes.length > 0) {
+            checkExperimentalDecorators(backendConfiguration.path);
+        }
     }
 
     await doAdaptiveLogAction("Running backend local scripts", async () => {
