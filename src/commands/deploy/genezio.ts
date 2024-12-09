@@ -230,59 +230,6 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         });
     }
 
-    if (configuration.services?.crons) {
-        printAdaptiveLog("Deploying cron jobs\n", "start");
-        const crons: CronDetails[] = [];
-        for (const cron of configuration.services.crons) {
-            const yamlFunctionName = await evaluateResource(
-                configuration,
-                cron.function,
-                options.stage || "prod",
-                undefined,
-                undefined,
-            );
-            if (!deployClassesResult) {
-                throw new UserError(
-                    "Could not deploy cron jobs. Please make sure your backend is deployed before adding cron jobs.",
-                );
-            }
-            const functions = deployClassesResult.functions ?? [];
-            const cronFunction = functions.find((f) => f.name === `function-${yamlFunctionName}`);
-            if (!cronFunction) {
-                throw new UserError(
-                    `Function ${yamlFunctionName} not found. Please make sure the function is deployed before adding cron jobs.`,
-                );
-            }
-            crons.push({
-                name: cron.name,
-                url: cronFunction.cloudUrl,
-                endpoint: cron.endpoint || "",
-                cronString: cron.schedule,
-            });
-        }
-        await syncCrons({
-            projectName: projectName,
-            stageName: options.stage || "prod",
-            crons: crons,
-        }).catch((error) => {
-            printAdaptiveLog("Deploying cron jobs\n", "error");
-            throw new UserError(
-                `Something went wrong while syncing the cron jobs.\n${error}\nPlease try to redeploy your project. If the problem persists, please contact support at contact@genez.io.`,
-            );
-        });
-        printAdaptiveLog("Cron Jobs deployed successfully\n", "end");
-    } else {
-        await syncCrons({
-            projectName: projectName,
-            stageName: options.stage || "prod",
-            crons: [],
-        }).catch(() => {
-            throw new UserError(
-                "Something went wrong while syncing the cron jobs. Please try to redeploy your project. If the problem persists, please contact support at contact@genez.io.",
-            );
-        });
-    }
-
     const frontendUrls = [];
     if (configuration.frontend && !options.backend) {
         const frontends = configuration.frontend;
@@ -353,6 +300,60 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
                 commandOptions: JSON.stringify(options),
             });
         }
+    }
+
+    // Sync cron jobs after the project is created
+    if (configuration.services?.crons) {
+        printAdaptiveLog("Deploying cron jobs\n", "start");
+        const crons: CronDetails[] = [];
+        for (const cron of configuration.services.crons) {
+            const yamlFunctionName = await evaluateResource(
+                configuration,
+                cron.function,
+                options.stage || "prod",
+                undefined,
+                undefined,
+            );
+            if (!deployClassesResult) {
+                throw new UserError(
+                    "Could not deploy cron jobs. Please make sure your backend is deployed before adding cron jobs.",
+                );
+            }
+            const functions = deployClassesResult.functions ?? [];
+            const cronFunction = functions.find((f) => f.name === `function-${yamlFunctionName}`);
+            if (!cronFunction) {
+                throw new UserError(
+                    `Function ${yamlFunctionName} not found. Please make sure the function is deployed before adding cron jobs.`,
+                );
+            }
+            crons.push({
+                name: cron.name,
+                url: cronFunction.cloudUrl,
+                endpoint: cron.endpoint || "",
+                cronString: cron.schedule,
+            });
+        }
+        await syncCrons({
+            projectName: projectName,
+            stageName: options.stage || "prod",
+            crons: crons,
+        }).catch((error) => {
+            printAdaptiveLog("Deploying cron jobs\n", "error");
+            throw new UserError(
+                `Something went wrong while syncing the cron jobs.\n${error}\nPlease try to redeploy your project. If the problem persists, please contact support at contact@genez.io.`,
+            );
+        });
+        printAdaptiveLog("Cron Jobs deployed successfully\n", "end");
+    } else {
+        await syncCrons({
+            projectName: projectName,
+            stageName: options.stage || "prod",
+            crons: [],
+        }).catch(() => {
+            throw new UserError(
+                "Something went wrong while syncing the cron jobs. Please try to redeploy your project. If the problem persists, please contact support at contact@genez.io.",
+            );
+        });
     }
 
     // Add backend environment variables for backend deployments
