@@ -309,7 +309,7 @@ async function deployFunction(
     const serverFunction = {
         path: ".",
         name: "nextjs",
-        entry: "start.js",
+        entry: "start.mjs",
         handler: "handler",
         type: FunctionType.httpServer,
     };
@@ -447,9 +447,9 @@ ${isESM ? "export default nextConfig;" : "module.exports = nextConfig;"}`;
 }
 
 function writeMountFolderConfig(cwd: string) {
-    const configPath = path.join(cwd, ".next", "standalone", "start.js");
+    const configPath = path.join(cwd, ".next", "standalone", "start.mjs");
     const content = `
-const { exec } = require('child_process');
+import { exec } from 'child_process';
 
 const target = '/tmp/package/.next/cache';
 const source = '/tmp/next-cache';
@@ -467,7 +467,6 @@ exec(\`mkdir -p \${source}\`, (error, stdout, stderr) => {
   }
 });
 
-
 exec(\`mount --bind \${source} \${target}\`, (error, stdout, stderr) => {
   if (error) {
     console.error(\`Error: \${error.message}\`);
@@ -480,7 +479,7 @@ exec(\`mount --bind \${source} \${target}\`, (error, stdout, stderr) => {
   console.log(\`Bind mount created successfully:\n\${stdout}\`);
 });
 
-const app = require("./server.js");
+const app = await import("./server.js");
 `;
 
     fs.writeFileSync(configPath, content);
