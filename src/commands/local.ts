@@ -7,7 +7,6 @@ import path from "path";
 import url from "url";
 import * as http from "http";
 import colors from "colors";
-import { createRequire } from "module";
 import {
     ProjectConfiguration,
     ClassConfiguration,
@@ -811,7 +810,7 @@ async function startServerHttp(
 ): Promise<http.Server> {
     const astSummary: AstSummary = projectConfiguration.astSummary;
     const app = express();
-    const require = createRequire(import.meta.url);
+    // const require = createRequire(import.meta.url);
     app.use(
         cors({
             origin: "*",
@@ -821,15 +820,15 @@ async function startServerHttp(
     );
     app.use(bodyParser.raw({ type: () => true, limit: "6mb" }));
     app.use(genezioRequestParser);
-    const packagePath = path.dirname(require.resolve("@genezio/test-interface-component"));
+    // const packagePath = path.dirname(require.resolve("@genezio/test-interface-component"));
     // serve test interface built folder on localhost
-    const buildFolder = path.join(packagePath, "build");
+    // const buildFolder = path.join(packagePath, "build");
 
-    app.use(express.static(buildFolder));
-    app.get(`/explore`, (_req, res) => {
-        const filePath = path.join(buildFolder, "index.html");
-        res.sendFile(filePath);
-    });
+    // app.use(express.static(buildFolder));
+    // app.get(`/explore`, (_req, res) => {
+    //     const filePath = path.join(buildFolder, "index.html");
+    //     res.sendFile(filePath);
+    // });
 
     app.get("/get-ast-summary", (_req, res) => {
         res.setHeader("Content-Type", "application/json");
@@ -1415,12 +1414,12 @@ function reportSuccess(projectConfiguration: ProjectConfiguration, port: number)
         );
     }
 
-    const workspaceUrl = getWorkspaceUrl(port);
-    log.info(
-        colors.cyan(
-            `Test your code at ${workspaceUrl ? workspaceUrl : `http://localhost:${port}`}/explore`,
-        ),
-    );
+    // const workspaceUrl = getWorkspaceUrl(port);
+    // log.info(
+    //     colors.cyan(
+    //         `Test your code at ${workspaceUrl ? workspaceUrl : `http://localhost:${port}`}/explore`,
+    //     ),
+    // );
 }
 
 // This method is used to check if the user has a different node version installed than the one used by the server.
