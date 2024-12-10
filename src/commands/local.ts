@@ -1419,7 +1419,7 @@ function reportSuccess(projectConfiguration: ProjectConfiguration, port: number)
     if (projectConfiguration.classes.length > 0) {
         log.info(
             colors.cyan(
-                `Test your code at ${workspaceUrl ? workspaceUrl : `http://localhost:${port}`}/explore`,
+                `Test your classes at ${workspaceUrl ? workspaceUrl : `http://localhost:${port}`}/explore`,
             ),
         );
     }
