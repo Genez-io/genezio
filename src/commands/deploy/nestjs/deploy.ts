@@ -11,7 +11,10 @@ import {
     uploadUserCode,
 } from "../utils.js";
 import { addSSRComponentToConfig } from "../../analyze/utils.js";
-import { getPackageManager, PackageManagerType } from "../../../packageManagers/packageManager.js";
+import {
+    NODE_DEFAULT_PACKAGE_MANAGER,
+    PackageManagerType,
+} from "../../../packageManagers/packageManager.js";
 import { SSRFrameworkComponentType } from "../../../models/projectOptions.js";
 import { UserError } from "../../../errors.js";
 import { YamlProjectConfiguration } from "../../../projectConfiguration/yaml/v2.js";
@@ -22,20 +25,26 @@ import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
 
 export async function nestJsDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
+    const packageManagerType = genezioConfig.nestjs?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
+
     const cwd = process.cwd();
     const componentPath = genezioConfig.nestjs?.path
         ? path.resolve(cwd, genezioConfig.nestjs.path)
         : cwd;
 
     // Install dependencies
-    const installDependenciesCommand = await attemptToInstallDependencies([], componentPath);
+    const installDependenciesCommand = await attemptToInstallDependencies(
+        [],
+        componentPath,
+        packageManagerType,
+    );
 
     // Add nestjs component to config
     await addSSRComponentToConfig(
         options.config,
         {
             path: componentPath,
-            packageManager: getPackageManager().command as PackageManagerType,
+            packageManager: packageManagerType,
             scripts: {
                 deploy: [`${installDependenciesCommand.command}`],
             },
