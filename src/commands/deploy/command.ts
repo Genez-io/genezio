@@ -109,7 +109,11 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
             deployableComponents.push(DeployType.Classic);
         }
 
-        return deployableComponents;
+        // This ensures backwards compatibility for next/nuxt projects
+        // that have a simple (only name and region) genezio.yaml
+        if (deployableComponents.length > 0) {
+            return deployableComponents;
+        }
     }
 
     // Check if next.config.js exists
