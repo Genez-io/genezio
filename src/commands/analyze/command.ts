@@ -261,6 +261,9 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 {
                     path: componentPath,
                     packageManager: getPackageManager().command as PackageManagerType,
+                    environment: mapEnvironmentVariableToConfig(
+                        resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+                    ),
                     scripts: {
                         deploy: [`${getPackageManager().command} install`],
                     },
@@ -268,7 +271,10 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 SSRFrameworkComponentType.nestjs,
             );
             frameworksDetected.ssr = frameworksDetected.ssr || [];
-            frameworksDetected.ssr.push("nest");
+            frameworksDetected.ssr.push({
+                component: "nestjs",
+                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+            });
             continue;
         }
 
