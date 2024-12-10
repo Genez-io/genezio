@@ -68,6 +68,7 @@ For more details on how to use `genezio`, you can check out the official [docume
 -   [Troubleshooting](#troubleshooting)
 -   [Contributing](#contributing)
 -   [Ecosystem](#ecosystem)
+-   [Tutorials](#tutorials)
 -   [Badge](#badge)
 -   [License](#license)
 
@@ -75,14 +76,12 @@ For more details on how to use `genezio`, you can check out the official [docume
 
 -   🚀 **Function-as-a-service**: No need to worry about infrastructure, scaling, or maintenance.
 -   📦 **Genezio Functions**: Deploy and run code on-demand without managing servers or infrastructure.
--   💡 Full static type-safety with **auto-completion** in your favorite editor.
--   🧩 **Typesafe RPC**: Ensuring type safety and IDE auto-completion across diverse languages like TypeScript, Dart, Kotlin and Go, by leveraging advanced code analysis.
--   🚀 Tested and production ready for Javascript/Typescript.
-    -   Beta support for: GoLang, Kotlin and Dart.
--   📦 **NPM Registry** - the client SDK is pushed to a private or public registry.
--   🌐 **Framework agnostic**: works with React, Vue, Angular, Flutter, Svelte, etc.
--   🎯 **Seamless Bundling and Compiling**
--   ⚡ **Deploy with one command** the backend and the frontend.
+-   🚀 **Programming Languages**: Tested and production ready for Javascript/Typescript and Python.
+-   🌐 **Framework agnostic**: works with React, Vue, Angular, Flutter, Svelte, Next, Nuxt, Nest.
+-   🎯 **Seamless Bundling and Compiling**: automatically bundles and compiles your code, including dependencies, for efficient and error-free deployment.
+-   ⚡  **Deploy with one command** the backend and the frontend.
+-   🧩 **Typesafe RPC**: Ensuring type safety and IDE auto-completion across diverse languages like TypeScript, Flutter (Dart), Kotlin and Go, by leveraging advanced code analysis.
+-   📦 **NPM Registry**: the client SDK is pushed to a private or public registry.
 -   🔄 **Multiple staging environments** supported as well as local development environment.
 -   🖥️ **Dashboard**: explore logs, env variables for different environments, [Test interface](https://github.com/Genez-io/genezio?tab=readme-ov-file#test-your-project-using-the-test-interface) and easy to access third party integration.
 -   👥 **Collaboration**: work alone or as a team - share the projects and dashboard features between team members with different access rights.
@@ -209,9 +208,7 @@ If you deployed a project using `genezio` let us know on [Discord](https://disco
 
 # Tutorials
 
-Below you can find projects and tutorials for building and deploying on Genezio: 
-
-- [Tutorials](https://genezio.com/tags/tutorials/)
+Check out [tutorials for building and deploying](https://genezio.com/tags/tutorials/) various use cases with Genezio.
 
 # Badge
 
