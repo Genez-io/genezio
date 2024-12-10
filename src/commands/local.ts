@@ -1416,11 +1416,13 @@ function reportSuccess(projectConfiguration: ProjectConfiguration, port: number)
     }
 
     const workspaceUrl = getWorkspaceUrl(port);
-    log.info(
-        colors.cyan(
-            `Test your code at ${workspaceUrl ? workspaceUrl : `http://localhost:${port}`}/explore`,
-        ),
-    );
+    if (projectConfiguration.classes.length > 0) {
+        log.info(
+            colors.cyan(
+                `Test your code at ${workspaceUrl ? workspaceUrl : `http://localhost:${port}`}/explore`,
+            ),
+        );
+    }
 }
 
 // This method is used to check if the user has a different node version installed than the one used by the server.
