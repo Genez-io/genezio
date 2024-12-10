@@ -131,7 +131,7 @@ export async function hasPostgresDependency(
         return false;
     }
 
-    const jsPostgresIndicators = ["pg", "pg-promise"];
+    const jsPostgresIndicators = ["pg", "pg-promise", "postgres", "@vercel/postgres"];
     const pythonPostgresIndicators = ["psycopg2", "asyncpg", "py-postgresql"];
     const dependencyList = jsPostgresIndicators.concat(pythonPostgresIndicators);
 

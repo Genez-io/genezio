@@ -410,14 +410,12 @@ export async function generateDatabaseName(prefix: string): Promise<string> {
         `Database ${defaultDatabaseName} already exists. Generating a new database name...`,
     );
     const generatedDatabaseName =
-        prefix +
-        "-" +
         uniqueNamesGenerator({
             dictionaries: [adjectives, animals],
             separator: "-",
             style: "lowerCase",
             length: 2,
-        });
+        }) + "-db";
 
     return generatedDatabaseName;
 }
