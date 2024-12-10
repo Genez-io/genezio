@@ -27,31 +27,34 @@ export type SSRFrameworkComponent = {
 
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
-    const type = await decideDeployType(options);
+    const deployableComponentsType = await decideDeployType(options);
+    debugLogger.debug(`Deployable components: ${deployableComponentsType}`);
 
-    switch (type) {
-        case DeployType.Classic:
-            debugLogger.debug("Deploying classic genezio app");
-            await genezioDeploy(options);
-
-            break;
-        case DeployType.NextJS:
-            debugLogger.debug("Deploying Next.js app");
-            await nextJsDeploy(options);
-            break;
-        case DeployType.Nuxt:
-        case DeployType.Nitro:
-            debugLogger.debug("Deploying Nuxt app");
-            await nuxtNitroDeploy(options, type);
-            break;
-        case DeployType.Docker:
-            debugLogger.debug("Deploying Docker app");
-            await dockerDeploy(options);
-            break;
-        case DeployType.Nest:
-            debugLogger.debug("Deploying Nest.js app");
-            await nestJsDeploy(options);
-            break;
+    // The deployment actions are not called concurrently to avoid race conditions
+    for (const type of deployableComponentsType) {
+        switch (type) {
+            case DeployType.Classic:
+                debugLogger.debug("Deploying classic genezio app");
+                await genezioDeploy(options);
+                break;
+            case DeployType.NextJS:
+                debugLogger.debug("Deploying Next.js app");
+                await nextJsDeploy(options);
+                break;
+            case DeployType.Nuxt:
+            case DeployType.Nitro:
+                debugLogger.debug("Deploying Nuxt app");
+                await nuxtNitroDeploy(options, type);
+                break;
+            case DeployType.Docker:
+                debugLogger.debug("Deploying Docker app");
+                await dockerDeploy(options);
+                break;
+            case DeployType.Nest:
+                debugLogger.debug("Deploying Nest.js app");
+                await nestJsDeploy(options);
+                break;
+        }
     }
 }
 
@@ -64,11 +67,22 @@ export enum DeployType {
     Nest,
 }
 
-async function decideDeployType(options: GenezioDeployOptions): Promise<DeployType> {
+/**
+ * Determines the deployable components for a project.
+ *
+ * - If the `genezio.yaml` configuration specifies multiple components,
+ *   the function will return a list of all deployable components.
+ * - Otherwise, it will return the first deployable component
+ *   found based on the dependencies and files present in the project.
+ *
+ * @returns A list of deployable components.
+ */
+async function decideDeployType(options: GenezioDeployOptions): Promise<DeployType[]> {
     const cwd = process.cwd();
+    const deployableComponents: DeployType[] = [];
 
     if (options.image) {
-        return DeployType.Docker;
+        return [DeployType.Docker];
     }
 
     // Check if it's a genezio-containerized project
@@ -77,20 +91,25 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         const config = await configIOController.read();
 
         if (config.container) {
-            return DeployType.Docker;
+            deployableComponents.push(DeployType.Docker);
         }
         if (config.nextjs) {
-            return DeployType.NextJS;
+            deployableComponents.push(DeployType.NextJS);
         }
         if (config.nuxt) {
-            return DeployType.Nuxt;
+            deployableComponents.push(DeployType.Nuxt);
         }
         if (config.nitro) {
-            return DeployType.Nitro;
+            deployableComponents.push(DeployType.Nitro);
         }
         if (config.nestjs) {
-            return DeployType.Nest;
+            deployableComponents.push(DeployType.Nest);
         }
+        if (config.backend) {
+            deployableComponents.push(DeployType.Classic);
+        }
+
+        return deployableComponents;
     }
 
     // Check if next.config.js exists
@@ -100,7 +119,7 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         fs.existsSync(path.join(cwd, "next.config.cjs")) ||
         fs.existsSync(path.join(cwd, "next.config.ts"))
     ) {
-        return DeployType.NextJS;
+        return [DeployType.NextJS];
     }
 
     // Check if nuxt.config.js exists
@@ -110,7 +129,7 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         fs.existsSync(path.join(cwd, "nuxt.config.cjs")) ||
         fs.existsSync(path.join(cwd, "nuxt.config.ts"))
     ) {
-        return DeployType.Nuxt;
+        return [DeployType.Nuxt];
     }
 
     // Check if nitro.config.js exists
@@ -120,31 +139,31 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         fs.existsSync(path.join(cwd, "nitro.config.cjs")) ||
         fs.existsSync(path.join(cwd, "nitro.config.ts"))
     ) {
-        return DeployType.Nitro;
+        return [DeployType.Nitro];
     }
 
     // Check if nest-cli.json exists
     if (fs.existsSync(path.join(cwd, "nest-cli.json"))) {
-        return DeployType.Nest;
+        return [DeployType.Nest];
     }
 
     // Check if "next" package is present in the project dependencies
     if (fs.existsSync(path.join(cwd, "package.json"))) {
         const packageJson = JSON.parse(fs.readFileSync(path.join(cwd, "package.json"), "utf-8"));
         if (packageJson.dependencies?.next) {
-            return DeployType.NextJS;
+            return [DeployType.NextJS];
         }
         if (packageJson.dependencies?.nuxt || packageJson.devDependencies?.nuxt) {
-            return DeployType.Nuxt;
+            return [DeployType.Nuxt];
         }
         if (packageJson.dependencies?.nitropack || packageJson.devDependencies?.nitropack) {
-            return DeployType.Nitro;
+            return [DeployType.Nitro];
         }
         if (
             packageJson.dependencies?.["@nestjs/core"] ||
             packageJson.devDependencies?.["@nestjs/core"]
         ) {
-            return DeployType.Nest;
+            return [DeployType.Nest];
         }
     }
 
@@ -153,8 +172,8 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         !fs.existsSync(path.join(cwd, "genezio.yaml")) &&
         fs.existsSync(path.join(cwd, "Dockerfile"))
     ) {
-        return DeployType.Docker;
+        return [DeployType.Docker];
     }
 
-    return DeployType.Classic;
+    return [DeployType.Classic];
 }
