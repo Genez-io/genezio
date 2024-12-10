@@ -13,7 +13,7 @@ import { debugLogger } from "./logging.js";
 import { EnvironmentVariable } from "../models/environmentVariables.js";
 import dotenv from "dotenv";
 import fsExtra from "fs-extra";
-import { getPackageManager } from "../packageManagers/packageManager.js";
+import { packageManagers, PackageManagerType } from "../packageManagers/packageManager.js";
 import { UserError } from "../errors.js";
 
 export async function getAllFilesRecursively(folderPath: string): Promise<string[]> {
@@ -336,7 +336,10 @@ export async function createLocalTempFolder(
 
         // install @types/node in root folder to be accessible by all projects
         if (!fs.existsSync(path.join(os.tmpdir(), folderName, "node_modules", "@types/node"))) {
-            getPackageManager().installSync(["@types/node"], path.join(os.tmpdir(), folderName));
+            packageManagers[PackageManagerType.npm].installSync(
+                ["@types/node"],
+                path.join(os.tmpdir(), folderName),
+            );
         }
 
         if (name === undefined) {
