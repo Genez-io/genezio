@@ -6,6 +6,8 @@ import { GenezioDeployOptions } from "../../../models/commandOptions.js";
 import { log } from "../../../utils/logging.js";
 import {
     attemptToInstallDependencies,
+    prepareServicesPostBackendDeployment,
+    prepareServicesPreBackendDeployment,
     readOrAskConfig,
     uploadEnvVarsFromFile,
     uploadUserCode,
@@ -26,6 +28,14 @@ export async function nestJsDeploy(options: GenezioDeployOptions) {
     const componentPath = genezioConfig.nestjs?.path
         ? path.resolve(cwd, genezioConfig.nestjs.path)
         : cwd;
+
+    // Prepare services before deploying (database, authentication, etc)
+    await prepareServicesPreBackendDeployment(
+        genezioConfig,
+        genezioConfig.name,
+        options.stage,
+        options.env,
+    );
 
     // Install dependencies
     const installDependenciesCommand = await attemptToInstallDependencies([], componentPath);
@@ -66,6 +76,8 @@ export async function nestJsDeploy(options: GenezioDeployOptions) {
     await uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage, componentPath);
 
     const functionUrl = result.functions.find((f) => f.name === "function-nest")?.cloudUrl;
+
+    await prepareServicesPostBackendDeployment(genezioConfig, genezioConfig.name, options.stage);
 
     if (functionUrl) {
         log.info(

@@ -1,7 +1,12 @@
 import { $ } from "execa";
 import { UserError } from "../../../errors.js";
 import { debugLogger, log } from "../../../utils/logging.js";
-import { readOrAskConfig, uploadEnvVarsFromFile } from "../utils.js";
+import {
+    prepareServicesPostBackendDeployment,
+    prepareServicesPreBackendDeployment,
+    readOrAskConfig,
+    uploadEnvVarsFromFile,
+} from "../utils.js";
 import { GenezioDeployOptions } from "../../../models/commandOptions.js";
 import {
     FunctionConfiguration,
@@ -34,6 +39,9 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
             path: relativePath,
         });
     }
+
+    // Prepare services before deploying (database, authentication, etc)
+    await prepareServicesPreBackendDeployment(config, config.name, options.stage, options.env);
 
     const projectConfiguration = new ProjectConfiguration(
         config,
@@ -186,6 +194,9 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
         config,
         ContainerComponentType.container,
     );
+
+    // Prepare services after deploying (authentication redirect urls)
+    await prepareServicesPostBackendDeployment(config, config.name, options.stage);
 
     reportSuccessFunctions(result.functions);
 }
