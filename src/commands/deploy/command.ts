@@ -28,7 +28,9 @@ export type SSRFrameworkComponent = {
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
     const deployableComponentsType = await decideDeployType(options);
-    debugLogger.debug(`Deployable components: ${deployableComponentsType}`);
+    debugLogger.debug(
+        `The following components will be build and deployed: ${deployableComponentsType.join(", ")}`,
+    );
 
     // The deployment actions are not called concurrently to avoid race conditions
     for (const type of deployableComponentsType) {
@@ -59,12 +61,12 @@ export async function deployCommand(options: GenezioDeployOptions) {
 }
 
 export enum DeployType {
-    Classic,
-    NextJS,
-    Nitro,
-    Nuxt,
-    Docker,
-    Nest,
+    Classic = "typesafe",
+    NextJS = "next",
+    Nitro = "nitro",
+    Nuxt = "nuxt",
+    Docker = "docker",
+    Nest = "nest",
 }
 
 /**
@@ -85,7 +87,6 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         return [DeployType.Docker];
     }
 
-    // Check if it's a genezio-containerized project
     if (fs.existsSync(path.join(cwd, "genezio.yaml"))) {
         const configIOController = new YamlConfigurationIOController(options.config);
         const config = await configIOController.read();
@@ -151,7 +152,7 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         return [DeployType.Nest];
     }
 
-    // Check if "next" package is present in the project dependencies
+    // Check if package.json exists and has next/nuxt/nitro dependencies
     if (fs.existsSync(path.join(cwd, "package.json"))) {
         const packageJson = JSON.parse(fs.readFileSync(path.join(cwd, "package.json"), "utf-8"));
         if (packageJson.dependencies?.next) {
@@ -179,5 +180,6 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         return [DeployType.Docker];
     }
 
+    // Default to classic genezio app
     return [DeployType.Classic];
 }
