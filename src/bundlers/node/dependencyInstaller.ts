@@ -1,6 +1,9 @@
 import { Mutex } from "async-mutex";
 import { debugLogger } from "../../utils/logging.js";
-import { getPackageManager } from "../../packageManagers/packageManager.js";
+import {
+    NODE_DEFAULT_PACKAGE_MANAGER,
+    packageManagers,
+} from "../../packageManagers/packageManager.js";
 
 /**
  * The `DependencyInstaller` class provides a thread-safe way to install dependencies for a Node.js project.
@@ -24,7 +27,12 @@ class DependencyInstaller {
      * @returns {Promise<void>} A promise that resolves when all specified dependencies have been installed.
      */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async install(dependencyList: string[], cwd: string, noSave?: boolean): Promise<void> {
+    async install(
+        dependencyList: string[],
+        cwd: string,
+        noSave?: boolean,
+        packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER,
+    ): Promise<void> {
         const toBeInstalled: string[] = [];
 
         await this.mutex.runExclusive(async () => {
@@ -41,7 +49,7 @@ class DependencyInstaller {
 
             debugLogger.debug(`Installing dependencies: ${toBeInstalled.join(", ")}`);
             // TODO: Add support for no-save for all package managers
-            await getPackageManager().install(toBeInstalled, cwd);
+            await packageManagers[packageManagerType].install(toBeInstalled, cwd);
         });
     }
 
@@ -50,10 +58,13 @@ class DependencyInstaller {
      * This method is thread-safe and will only install dependencies once.
      * @returns {Promise<void>} A promise that resolves when all dependencies have been installed.
      */
-    async installAll(cwd: string): Promise<void> {
+    async installAll(
+        cwd: string,
+        packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER,
+    ): Promise<void> {
         await this.mutex.runExclusive(async () => {
             debugLogger.debug(`Installing all dependencies`);
-            await getPackageManager().install([], cwd);
+            await packageManagers[packageManagerType].install([], cwd);
         });
     }
 }

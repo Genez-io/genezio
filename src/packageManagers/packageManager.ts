@@ -28,6 +28,9 @@ export enum PackageManagerType {
     poetry = "poetry",
 }
 
+export const NODE_DEFAULT_PACKAGE_MANAGER = PackageManagerType.npm;
+export const PYTHON_DEFAULT_PACKAGE_MANAGER = PackageManagerType.pip;
+
 /*
  * A mapping between package manager types and package manager instances.
  *
@@ -45,7 +48,7 @@ export const packageManagers: {
 };
 
 /*
- * This is the currenly selected package manager.
+ * This is the currently selected package manager.
  *
  * Note: It should not be exported, as it is only used internally.
  * Use the getPackageManager and setPackageManager functions instead.

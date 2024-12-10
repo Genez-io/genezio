@@ -6,7 +6,10 @@ import { YamlProjectConfiguration } from "../../../projectConfiguration/yaml/v2.
 import { functionToCloudInput, getCloudAdapter } from "../genezio.js";
 import { getCloudProvider } from "../../../requests/getCloudProvider.js";
 import { FunctionType, Language } from "../../../projectConfiguration/yaml/models.js";
-import { PackageManagerType } from "../../../packageManagers/packageManager.js";
+import {
+    NODE_DEFAULT_PACKAGE_MANAGER,
+    PackageManagerType,
+} from "../../../packageManagers/packageManager.js";
 import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
 import { debugLogger, log } from "../../../utils/logging.js";
 import {
@@ -15,7 +18,6 @@ import {
     uploadEnvVarsFromFile,
     uploadUserCode,
 } from "../utils.js";
-import { getPackageManager } from "../../../packageManagers/packageManager.js";
 import path from "path";
 import colors from "colors";
 import {
@@ -40,6 +42,7 @@ export async function nuxtNitroDeploy(
     deployType: DeployType.Nuxt | DeployType.Nitro,
 ) {
     const genezioConfig = await readOrAskConfig(options.config);
+    const packageManagerType = genezioConfig.nuxt?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
 
     const cwd = process.cwd();
 
@@ -53,7 +56,11 @@ export async function nuxtNitroDeploy(
         : cwd;
 
     // Install dependencies
-    const installDependenciesCommand = await attemptToInstallDependencies([], componentPath);
+    const installDependenciesCommand = await attemptToInstallDependencies(
+        [],
+        componentPath,
+        packageManagerType,
+    );
 
     switch (deployType) {
         case DeployType.Nuxt:
@@ -84,7 +91,7 @@ Note: If your Nuxt project was not migrated to Nuxt 3, please visit https://v2.n
         options.config,
         {
             path: componentPath,
-            packageManager: getPackageManager().command as PackageManagerType,
+            packageManager: packageManagerType,
             scripts: {
                 deploy: [`${installDependenciesCommand.command}`],
             },
