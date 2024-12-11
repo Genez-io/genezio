@@ -100,7 +100,12 @@ export const DEFAULT_FORMAT = SUPPORTED_FORMATS.TEXT;
 export const DEFAULT_CI_FORMAT = SUPPORTED_FORMATS.JSON;
 
 export const KEY_DEPENDENCY_FILES = ["package.json", "requirements.txt", "pyproject.toml"];
-export const ENVIRONMENT_EXAMPLE_FILES = [".env.template", ".env.example", ".env.local.example"];
+export const ENVIRONMENT_EXAMPLE_FILES = [
+    ".env.template",
+    ".env.example",
+    ".env.local.example",
+    ".env.sample",
+];
 export const KEY_FILES = [...KEY_DEPENDENCY_FILES, ...ENVIRONMENT_EXAMPLE_FILES];
 
 export const EXCLUDED_DIRECTORIES = [
@@ -710,24 +715,18 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     log.info(result);
 }
 
+type EnvironmentAnalysisResult = Map<string, { environmentVariables: ProjectEnvironment[] }>;
+
 async function analyzeEnvironmentFilesConcurrently(
     envExampleFiles: Map<string, string>,
     genezioConfig: RawYamlProjectConfiguration,
-): Promise<
-    Map<
-        string,
-        {
-            environmentVariables: ProjectEnvironment[];
-        }
-    >
-> {
+): Promise<EnvironmentAnalysisResult> {
+    if (envExampleFiles.size === 0) {
+        return new Map();
+    }
+
     const envExampleContents = new Map<string, string>();
-    const resultEnvironmentAnalysis = new Map<
-        string,
-        {
-            environmentVariables: ProjectEnvironment[];
-        }
-    >();
+    const resultEnvironmentAnalysis: EnvironmentAnalysisResult = new Map();
     await Promise.all(
         Array.from(envExampleFiles.entries()).map(async ([relativeFilePath, filename]) => {
             const componentPath = path.dirname(relativeFilePath);
@@ -761,7 +760,7 @@ async function analyzeEnvironmentFilesConcurrently(
 function mapEnvironmentVariableToConfig(
     environmentVariables: ProjectEnvironment[] | undefined,
 ): Record<string, string> {
-    if (!environmentVariables) {
+    if (!environmentVariables || environmentVariables.length === 0) {
         return {};
     }
     return environmentVariables
