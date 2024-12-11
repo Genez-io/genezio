@@ -562,7 +562,10 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     }
 
     // Analyze the environment example file if we have a backend component
-    if (frameworksDetected.backend && frameworksDetected.backend.length > 0) {
+    if (
+        (frameworksDetected.backend && frameworksDetected.backend.length > 0) ||
+        (frameworksDetected.ssr && frameworksDetected.ssr.length > 0)
+    ) {
         const envExampleFiles = await findKeyFiles(rootDirectory, ENVIRONMENT_EXAMPLE_FILES);
         // Read the file contents
         const envExampleContents = new Map<string, string>();

@@ -11,6 +11,8 @@ import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
 import { debugLogger, log } from "../../../utils/logging.js";
 import {
     attemptToInstallDependencies,
+    prepareServicesPostBackendDeployment,
+    prepareServicesPreBackendDeployment,
     readOrAskConfig,
     uploadEnvVarsFromFile,
     uploadUserCode,
@@ -51,6 +53,14 @@ export async function nuxtNitroDeploy(
     const componentPath = genezioConfig[NitroOrNuxtFlag]?.path
         ? path.resolve(cwd, genezioConfig[NitroOrNuxtFlag].path)
         : cwd;
+
+    // Prepare services before deploying (database, authentication, etc)
+    await prepareServicesPreBackendDeployment(
+        genezioConfig,
+        genezioConfig.name,
+        options.stage,
+        options.env,
+    );
 
     // Install dependencies
     const installDependenciesCommand = await attemptToInstallDependencies([], componentPath);
@@ -111,7 +121,8 @@ Note: If your Nuxt project was not migrated to Nuxt 3, please visit https://v2.n
         ),
     ]);
 
-    debugLogger.debug(`Deployed functions: ${JSON.stringify(cloudResult.functions)}`);
+    // Prepare services after deploying (authentication, etc)
+    await prepareServicesPostBackendDeployment(genezioConfig, genezioConfig.name, options.stage);
 
     log.info(
         `The app is being deployed at ${colors.cyan(cdnUrl)}. It might take a few moments to be available worldwide.`,
