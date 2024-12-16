@@ -1041,7 +1041,7 @@ function getProjectFunctions(
     projectConfiguration: ProjectConfiguration,
 ): DeployCodeFunctionResponse[] {
     return projectConfiguration.functions.map((f) => ({
-        cloudUrl: retrieveLocalFunctionUrl(f),
+        cloudUrl: retrieveLocalFunctionUrl(f.name, f.type),
         id: f.name,
         name: f.name,
     }));
@@ -1113,7 +1113,10 @@ async function startCronJobs(
                     `Function ${functionName} not found in deployed functions. Check if your function is deployed. If the problem persists, please contact support at contact@genez.io.`,
                 );
             }
-            const baseURL = retrieveLocalFunctionUrl(functionConfiguration);
+            const baseURL = retrieveLocalFunctionUrl(
+                functionConfiguration.name,
+                functionConfiguration.type,
+            );
             let url: string;
             if (endpoint) {
                 url = `${baseURL}/${endpoint}`;
@@ -1410,7 +1413,7 @@ function reportSuccess(projectConfiguration: ProjectConfiguration, port: number)
             projectConfiguration.functions.map((f) => ({
                 name: f.name,
                 id: f.name,
-                cloudUrl: retrieveLocalFunctionUrl(f),
+                cloudUrl: retrieveLocalFunctionUrl(f.name, f.type),
             })),
         );
     }
@@ -1599,15 +1602,26 @@ function formatTimestamp(date: Date) {
     return formattedDate;
 }
 
-export function retrieveLocalFunctionUrl(
-    functionObj: FunctionConfiguration,
-    isIac: boolean = false,
-): string {
+/**
+ * This function is used to retrieve the local function URL.
+ *
+ * @param functionName This should contain `function-` prefix.
+ * @param functionType The type of the function handler.
+ * @returns
+ */
+export function retrieveLocalFunctionUrl(functionName: string, functionType: FunctionType): string {
     const BASE_PORT = 8083;
-    const functionName = isIac ? `function-${functionObj.name}` : functionObj.name;
+
+    // Check if the function name has the `function-` prefix
+    // At this point this function should be called with the correct prefix
+    // But we are adding this check just in case
+    if (!functionName.startsWith("function-")) {
+        functionName = `function-${functionName}`;
+    }
+
     const normalizedName = functionName.replace(/-/g, "_").toUpperCase();
 
-    if (functionObj.type === FunctionType.httpServer) {
+    if (functionType === FunctionType.httpServer) {
         const port = process.env[`GENEZIO_PORT_${normalizedName}`];
         return `http://localhost:${port}`;
     }
@@ -1634,30 +1648,30 @@ http.createServer = function(...args) {
             res.setHeader('Access-Control-Allow-Origin', '*');
             res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
             res.setHeader('Access-Control-Allow-Headers', '*');
-            
+
             // Handle OPTIONS requests for CORS preflight
             if (req.method === 'OPTIONS') {
                 res.writeHead(204);
                 res.end();
                 return;
             }
-            
+
             return originalHandler(req, res);
         };
     }
-    
+
     server = originalCreateServer(...args);
-    
+
     // Store the original listen method
     const originalListen = server.listen;
-    
+
     // Override the listen method to only listen once
     server.listen = function(...listenArgs) {
         const genezioPort = parseInt(process.argv[process.argv.length - 1], 10);
         // Only call listen once with the Genezio port
-        return originalListen.apply(server, [genezioPort, ...listenArgs.slice(1)]); 
+        return originalListen.apply(server, [genezioPort, ...listenArgs.slice(1)]);
     };
-    
+
     return server;
 };
 
@@ -1770,17 +1784,17 @@ class ASGICORSMiddleware:
 def install_uvicorn():
     system = platform.system().lower()
     pip_commands = ["pip3", "pip"] if system == "darwin" else ["pip", "pip3"]
-    
+
     for pip_cmd in pip_commands:
         try:
-            subprocess.check_call([pip_cmd, "install", "uvicorn"], 
-                                stderr=subprocess.DEVNULL, 
+            subprocess.check_call([pip_cmd, "install", "uvicorn"],
+                                stderr=subprocess.DEVNULL,
                                 stdout=subprocess.DEVNULL)
             print(f"Successfully installed uvicorn using {pip_cmd}!")
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):
             continue
-    
+
     print("Failed to install uvicorn automatically. Please install it manually using:")
     print("  pip install uvicorn")
     print("  -- or --")
@@ -1798,15 +1812,15 @@ if is_asgi:
         if uvicorn_spec is None:
             print("Failed to import uvicorn after installation. Please try installing it manually.")
             sys.exit(1)
-    
+
     import uvicorn
-    
+
     if __name__ == "__main__":
         application = ASGICORSMiddleware(application)
         uvicorn.run(
             application,
-            host="127.0.0.1", 
-            port=genezio_port, 
+            host="127.0.0.1",
+            port=genezio_port,
             reload=False
         )
 else:

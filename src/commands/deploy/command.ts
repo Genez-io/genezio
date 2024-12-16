@@ -61,7 +61,7 @@ export async function deployCommand(options: GenezioDeployOptions) {
 }
 
 export enum DeployType {
-    Classic = "typesafe",
+    Classic = "classic",
     NextJS = "next",
     Nitro = "nitro",
     Nuxt = "nuxt",
