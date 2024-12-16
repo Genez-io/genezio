@@ -106,10 +106,8 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         if (config.nestjs) {
             deployableComponents.push(DeployType.Nest);
         }
-        if (config.backend) {
-            deployableComponents.push(DeployType.Classic);
-        }
-        if (config.frontend) {
+        // For backend or frontend a classic genezio app should be added only once
+        if (config.backend || config.frontend) {
             deployableComponents.push(DeployType.Classic);
         }
 
