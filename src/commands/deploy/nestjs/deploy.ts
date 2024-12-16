@@ -97,15 +97,13 @@ async function deployFunction(
     const cloudAdapter = getCloudAdapter(cloudProvider);
     const cwdRelative = path.relative(process.cwd(), cwd) || ".";
 
-    await fs.promises
-        .cp(
-            path.join(cwdRelative, "node_modules"),
-            path.join(cwdRelative, "dist", "node_modules"),
-            { recursive: true },
-        )
-        .catch(() => {
-            throw new UserError("Failed to copy node_modules to dist directory");
-        });
+    const baseDir = path.normalize(path.resolve(process.cwd(), cwdRelative));
+    const sourceModulesPath = path.join(baseDir, "node_modules");
+    const targetModulesPath = path.join(baseDir, "dist", "node_modules");
+    const functionPath = path.join(baseDir, "dist");
+    await fs.promises.cp(sourceModulesPath, targetModulesPath, { recursive: true }).catch(() => {
+        throw new UserError("Failed to copy node_modules to dist directory");
+    });
 
     const serverFunction = {
         path: ".",
@@ -138,7 +136,7 @@ async function deployFunction(
     );
 
     const cloudInputs = await Promise.all(
-        projectConfiguration.functions.map((f) => functionToCloudInput(f, "dist")),
+        projectConfiguration.functions.map((f) => functionToCloudInput(f, functionPath)),
     );
 
     const result = await cloudAdapter.deploy(
