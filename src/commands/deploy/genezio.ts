@@ -49,11 +49,7 @@ import { Status } from "../../requests/models.js";
 import { bundle } from "../../bundlers/utils.js";
 import { isDependencyVersionCompatible } from "../../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
-import {
-    AuthenticationEmailTemplateType,
-    entryFileFunctionMap,
-    Language,
-} from "../../projectConfiguration/yaml/models.js";
+import { entryFileFunctionMap, Language } from "../../projectConfiguration/yaml/models.js";
 import { runScript } from "../../utils/scripts.js";
 import { scanClassesForDecorators } from "../../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../../projectConfiguration/yaml/v2.js";
@@ -67,21 +63,13 @@ import { getLinkedFrontendsForProject } from "../../utils/linkDatabase.js";
 import { getCloudProvider } from "../../requests/getCloudProvider.js";
 import fs, { mkdirSync } from "fs";
 import {
-    getOrCreateDatabase,
-    getOrCreateEmptyProject,
     uploadEnvVarsFromFile,
-    enableAuthentication,
     uploadUserCode,
-    setAuthenticationEmailTemplates,
     evaluateResource,
+    prepareServicesPreBackendDeployment,
+    prepareServicesPostBackendDeployment,
 } from "./utils.js";
-import {
-    disableEmailIntegration,
-    enableEmailIntegration,
-    getProjectIntegrations,
-} from "../../requests/integration.js";
-import { expandEnvironmentVariables, findAnEnvFile } from "../../utils/environmentVariables.js";
-import { getProjectEnvFromProjectByName } from "../../requests/getProjectInfoByName.js";
+import { expandEnvironmentVariables } from "../../utils/environmentVariables.js";
 import { getFunctionHandlerProvider } from "../../utils/getFunctionHandlerProvider.js";
 import { getFunctionEntryFilename } from "../../utils/getFunctionEntryFilename.js";
 import { CronDetails } from "../../models/requests.js";
@@ -134,65 +122,12 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
 
     const projectName = configuration.name;
 
-    if (configuration.services) {
-        const projectDetails = await getOrCreateEmptyProject(
-            projectName,
-            configuration.region,
-            options.stage || "prod",
-        );
-
-        if (!projectDetails) {
-            throw new UserError("Could not create project.");
-        }
-
-        if (configuration.services?.databases) {
-            const databases = configuration.services.databases;
-
-            for (const database of databases) {
-                if (!database.region) {
-                    database.region = configuration.region;
-                }
-                await getOrCreateDatabase(
-                    {
-                        name: database.name,
-                        region: database.region,
-                        type: database.type,
-                    },
-                    options.stage || "prod",
-                    projectDetails.projectId,
-                    projectDetails.projectEnvId,
-                );
-            }
-        }
-
-        if (configuration.services?.email !== undefined) {
-            const isEnabled = (
-                await getProjectIntegrations(projectDetails.projectId, projectDetails.projectEnvId)
-            ).integrations.find((integration) => integration === "EMAIL-SERVICE");
-
-            if (configuration.services?.email && !isEnabled) {
-                await enableEmailIntegration(projectDetails.projectId, projectDetails.projectEnvId);
-                log.info("Email integration enabled successfully.");
-            } else if (configuration.services?.email === false && isEnabled) {
-                await disableEmailIntegration(
-                    projectDetails.projectId,
-                    projectDetails.projectEnvId,
-                );
-                log.info("Email integration disabled successfully.");
-            }
-        }
-
-        if (configuration.services?.authentication) {
-            const envFile = options.env || (await findAnEnvFile(process.cwd()));
-            await enableAuthentication(
-                configuration,
-                projectDetails.projectId,
-                projectDetails.projectEnvId,
-                options.stage || "prod",
-                envFile,
-            );
-        }
-    }
+    await prepareServicesPreBackendDeployment(
+        configuration,
+        projectName,
+        options.stage,
+        options.env,
+    );
 
     let deployClassesResult;
     backend: if (configuration.backend && !options.frontend) {
@@ -377,36 +312,7 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
 
     await uploadUserCode(configuration.name, configuration.region, options.stage, process.cwd());
 
-    const settings = configuration.services?.authentication?.settings;
-    if (settings) {
-        const stage = options.stage || "prod";
-        const projectEnv = await getProjectEnvFromProjectByName(projectName, stage);
-        if (!projectEnv) {
-            throw new UserError(
-                `Stage ${stage} not found in project ${projectName}. Please run 'genezio deploy --stage ${stage}' to deploy your project to a new stage.`,
-            );
-        }
-
-        if (settings?.resetPassword) {
-            await setAuthenticationEmailTemplates(
-                configuration,
-                settings.resetPassword.redirectUrl,
-                AuthenticationEmailTemplateType.passwordReset,
-                stage,
-                projectEnv?.id,
-            );
-        }
-
-        if (settings.emailVerification) {
-            await setAuthenticationEmailTemplates(
-                configuration,
-                settings.emailVerification.redirectUrl,
-                AuthenticationEmailTemplateType.verification,
-                stage,
-                projectEnv?.id,
-            );
-        }
-    }
+    await prepareServicesPostBackendDeployment(configuration, projectName, options.stage);
 
     if (deployClassesResult) {
         log.info(

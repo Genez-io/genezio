@@ -36,7 +36,13 @@ import colors from "colors";
 import { computeAssetsPaths } from "./assets.js";
 import * as Sentry from "@sentry/node";
 import { randomUUID } from "crypto";
-import { attemptToInstallDependencies, uploadEnvVarsFromFile, uploadUserCode } from "../utils.js";
+import {
+    attemptToInstallDependencies,
+    prepareServicesPostBackendDeployment,
+    prepareServicesPreBackendDeployment,
+    uploadEnvVarsFromFile,
+    uploadUserCode,
+} from "../utils.js";
 import { readOrAskConfig } from "../utils.js";
 import { SSRFrameworkComponentType } from "../../../models/projectOptions.js";
 import { addSSRComponentToConfig } from "../../analyze/utils.js";
@@ -49,6 +55,14 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     const componentPath = genezioConfig.nextjs?.path
         ? path.resolve(cwd, genezioConfig.nextjs.path)
         : cwd;
+
+    // Prepare services before deploying (database, authentication, etc)
+    await prepareServicesPreBackendDeployment(
+        genezioConfig,
+        genezioConfig.name,
+        options.stage,
+        options.env,
+    );
 
     // Install dependencies
     const installDependenciesCommand = await attemptToInstallDependencies(
@@ -130,6 +144,8 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
             SSRFrameworkComponentType.next,
         ),
     ]);
+
+    await prepareServicesPostBackendDeployment(genezioConfig, genezioConfig.name, options.stage);
 
     log.info(
         `The app is being deployed at ${colors.cyan(cdnUrl)}. It might take a few moments to be available worldwide.`,
