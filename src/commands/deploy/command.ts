@@ -109,6 +109,9 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         if (config.backend) {
             deployableComponents.push(DeployType.Classic);
         }
+        if (config.frontend) {
+            deployableComponents.push(DeployType.Classic);
+        }
 
         // This ensures backwards compatibility for next/nuxt projects
         // that have a simple (only name and region) genezio.yaml
