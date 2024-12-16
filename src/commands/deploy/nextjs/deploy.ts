@@ -10,7 +10,10 @@ import { getCloudProvider } from "../../../requests/getCloudProvider.js";
 import { functionToCloudInput, getCloudAdapter } from "../genezio.js";
 import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
 import { FunctionType, Language } from "../../../projectConfiguration/yaml/models.js";
-import { getPackageManager, PackageManagerType } from "../../../packageManagers/packageManager.js";
+import {
+    NODE_DEFAULT_PACKAGE_MANAGER,
+    PackageManagerType,
+} from "../../../packageManagers/packageManager.js";
 import {
     FrontendPresignedURLAppType,
     getFrontendPresignedURL,
@@ -46,6 +49,7 @@ import { addSSRComponentToConfig } from "../../analyze/utils.js";
 
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
+    const packageManagerType = genezioConfig.nextjs?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
 
     const cwd = process.cwd();
     const componentPath = genezioConfig.nextjs?.path
@@ -61,12 +65,17 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     );
 
     // Install dependencies
-    const installDependenciesCommand = await attemptToInstallDependencies([], componentPath);
+    const installDependenciesCommand = await attemptToInstallDependencies(
+        [],
+        componentPath,
+        packageManagerType,
+    );
 
     // Install dependencies including the ISR package
     await attemptToInstallDependencies(
         [`@genezio/nextjs-isr-${genezioConfig.region}`],
         componentPath,
+        packageManagerType,
     );
 
     // Add nextjs component
@@ -74,7 +83,7 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         options.config,
         {
             path: componentPath,
-            packageManager: getPackageManager().command as PackageManagerType,
+            packageManager: packageManagerType,
             scripts: {
                 deploy: [`${installDependenciesCommand.command}`],
             },

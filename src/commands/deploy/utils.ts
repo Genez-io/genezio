@@ -71,7 +71,7 @@ import {
 import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import { displayHint, replaceExpression } from "../../utils/strings.js";
-import { getPackageManager } from "../../packageManagers/packageManager.js";
+import { packageManagers, PackageManagerType } from "../../packageManagers/packageManager.js";
 import { ContainerComponentType, SSRFrameworkComponentType } from "../../models/projectOptions.js";
 import gitignore from "parse-gitignore";
 import {
@@ -250,8 +250,9 @@ export async function getOrCreateEmptyProject(
 export async function attemptToInstallDependencies(
     args: string[] = [],
     currentPath: string,
+    packageManagerType: PackageManagerType,
 ): Promise<DependenciesInstallResult> {
-    const packageManager = getPackageManager();
+    const packageManager = packageManagers[packageManagerType];
     debugLogger.debug(
         `Attempting to install dependencies with ${packageManager.command} ${args.join(" ")}`,
     );
@@ -282,7 +283,11 @@ export async function attemptToInstallDependencies(
         }
 
         if (errorMessage.includes("code ERESOLVE") && !args.includes("--legacy-peer-deps")) {
-            return attemptToInstallDependencies([...args, "--legacy-peer-deps"], currentPath);
+            return attemptToInstallDependencies(
+                [...args, "--legacy-peer-deps"],
+                currentPath,
+                packageManagerType,
+            );
         }
 
         throw new UserError(`Failed to install dependencies: ${errorMessage}`);

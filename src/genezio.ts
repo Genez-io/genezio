@@ -42,7 +42,7 @@ import currentGenezioVersion, {
 } from "./utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js";
 import { linkCommand, unlinkCommand } from "./commands/link.js";
-import { PackageManagerType, setPackageManager } from "./packageManagers/packageManager.js";
+import { PackageManagerType, setGlobalPackageManager } from "./packageManagers/packageManager.js";
 import colors from "colors";
 import { createCommand } from "./commands/create/create.js";
 import { bundleCommand } from "./commands/bundle.js";
@@ -75,12 +75,12 @@ try {
             throw new Error();
         }
 
-        setPackageManager(packageManager);
+        setGlobalPackageManager(packageManager);
     } else {
-        setPackageManager(PackageManagerType.npm);
+        setGlobalPackageManager(PackageManagerType.npm);
     }
 } catch {
-    setPackageManager(PackageManagerType.npm);
+    setGlobalPackageManager(PackageManagerType.npm);
 }
 
 // make genezio --version
