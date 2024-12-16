@@ -20,6 +20,7 @@ import {
 import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
 import path from "path";
 import { UserError } from "../errors.js";
+
 export class ParameterType {
     name: string;
     type: any;

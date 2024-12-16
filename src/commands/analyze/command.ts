@@ -736,8 +736,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     // Inject Backend API URLs into the frontend component
     // This is done after all the components have been detected
     if (
-        frameworksDetected.backend &&
-        frameworksDetected.backend.length > 0 &&
+        ((frameworksDetected.backend && frameworksDetected.backend.length > 0) ||
+            (frameworksDetected.ssr && frameworksDetected.ssr.length > 0)) &&
         !frameworksDetected.backend?.some((entry) =>
             entry.component.includes("genezio-typesafe"),
         ) &&
