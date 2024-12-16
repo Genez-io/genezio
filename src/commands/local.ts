@@ -124,6 +124,14 @@ type PortMapping = {
 
 const httpServerPortMapping: PortMapping = {};
 
+type SsrFramework = {
+    path: string;
+    scripts?: {
+        start?: string;
+    };
+    environment?: Record<string, string>;
+};
+
 export async function prepareLocalBackendEnvironment(
     yamlProjectConfiguration: YamlProjectConfiguration,
     options: GenezioLocalOptions,
@@ -337,6 +345,14 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         );
     }
 
+    const ssrFrameworks = [
+        { config: yamlProjectConfiguration.nextjs, name: "Next.js" },
+        { config: yamlProjectConfiguration.nuxt, name: "Nuxt" },
+        { config: yamlProjectConfiguration.nestjs, name: "Nest.js" },
+        { config: yamlProjectConfiguration.nitro, name: "Nitro" },
+    ].filter((framework) => framework.config);
+
+    // Start all components in parallel
     await Promise.all([
         startBackendWatcher(yamlProjectConfiguration.backend, options, sdkSynchronizer),
         startFrontends(
@@ -345,6 +361,15 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             yamlProjectConfiguration,
             options.stage || "prod",
             options.port,
+        ),
+        ...ssrFrameworks.map((framework) =>
+            startSsrFramework(
+                framework.config as SsrFramework,
+                framework.name,
+                yamlProjectConfiguration,
+                options.stage || "prod",
+                options.port,
+            ),
         ),
     ]);
 }
@@ -1815,4 +1840,55 @@ else:
         print(f"Serving WSGI application on port {genezio_port}...")
         httpd.serve_forever()
 `;
+}
+
+// Add a new function to handle SSR frameworks
+async function startSsrFramework(
+    ssrConfig: SsrFramework,
+    frameworkName: string,
+    projectConfiguration: YamlProjectConfiguration,
+    stage: string,
+    port?: number,
+) {
+    if (!ssrConfig.scripts?.start) {
+        throw new UserError(
+            `No start script found for ${frameworkName} component. You need a start script to run the ${frameworkName} server.`,
+        );
+    }
+
+    const newEnvObject = await expandEnvironmentVariables(
+        ssrConfig.environment,
+        projectConfiguration,
+        stage,
+        undefined,
+        {
+            isLocal: true,
+            port: port,
+        },
+    );
+
+    debugLogger.debug(
+        `Environment variables injected for ${frameworkName}:`,
+        JSON.stringify(newEnvObject),
+    );
+
+    // Find an available port for the SSR framework
+    const ssrPort = await findAvailablePort();
+    process.env[`GENEZIO_SSR_PORT_${frameworkName.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`] =
+        ssrPort.toString();
+
+    // Add port to environment variables
+    newEnvObject["PORT"] = ssrPort.toString();
+
+    try {
+        await runFrontendStartScript(ssrConfig.scripts.start, ssrConfig.path, newEnvObject);
+        log.info(`${frameworkName} server started on port ${ssrPort}`);
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+        log.error(
+            new Error(
+                `Failed to start ${frameworkName} server located in \`${ssrConfig.path}\`: ${errorMessage}`,
+            ),
+        );
+    }
 }
