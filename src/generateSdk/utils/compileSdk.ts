@@ -6,7 +6,7 @@ import { Worker } from "worker_threads";
 import { deleteFolder, writeToFile } from "../../utils/file.js";
 import fs from "fs";
 import { default as fsExtra } from "fs-extra";
-import { packageManagers, PackageManagerType } from "../../packageManagers/packageManager.js";
+import { getGlobalPackageManager } from "../../packageManagers/packageManager.js";
 import { listFilesWithExtension } from "../../utils/file.js";
 import { fileURLToPath } from "url";
 import { doAdaptiveLogAction } from "../../utils/logging.js";
@@ -93,7 +93,7 @@ export async function compileSdk(
 
     if (publish === true) {
         await doAdaptiveLogAction("Publishing the SDK", async () => {
-            await packageManagers[PackageManagerType.npm].publish(modulePath);
+            await getGlobalPackageManager().publish(modulePath);
         });
     }
 
