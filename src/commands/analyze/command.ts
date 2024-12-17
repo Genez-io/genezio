@@ -582,7 +582,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 FLASK_PATTERN,
                 PYTHON_DEFAULT_ENTRY_FILE,
             );
-            const entryFileContent = await retrieveFileContent(entryFile);
+            const fullpath = path.join(componentPath, entryFile);
+            const entryFileContent = await retrieveFileContent(fullpath);
             const pythonHandler = getPythonHandler(entryFileContent);
 
             const packageManagerType =
@@ -661,8 +662,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 FASTAPI_PATTERN,
                 PYTHON_DEFAULT_ENTRY_FILE,
             );
-
-            const entryFileContent = await retrieveFileContent(entryFile);
+            const fullpath = path.join(componentPath, entryFile);
+            const entryFileContent = await retrieveFileContent(fullpath);
             const pythonHandler = getPythonHandler(entryFileContent);
 
             const packageManagerType =
