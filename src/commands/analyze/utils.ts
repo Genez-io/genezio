@@ -173,13 +173,13 @@ export async function injectBackendApiUrlsInConfig(configPath: string, frontendP
     const config = await configIOController.read(/* fillDefaults= */ false);
 
     // Validate backend and frontend existence
-    const functions: string[] = [];
+    let functions: string[] = [];
     const ssrFrameworks: string[] = [];
     const backend = config.backend as YAMLBackend;
     const frontend = config.frontend as YamlFrontend;
     if (!frontend) return;
 
-    if (backend?.functions) functions.push(...Object.keys(backend.functions));
+    if (backend?.functions) functions = backend.functions.map((fn) => fn.name);
     if (config.nextjs) ssrFrameworks.push("nextjs");
     if (config.nestjs) ssrFrameworks.push("nestjs");
     if (config.nuxt) ssrFrameworks.push("nuxt");
