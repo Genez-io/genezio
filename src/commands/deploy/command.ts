@@ -25,11 +25,41 @@ export type SSRFrameworkComponent = {
     subdomain?: string;
 };
 
+export enum DeployType {
+    Classic = "classic",
+    NextJS = "next",
+    Nitro = "nitro",
+    Nuxt = "nuxt",
+    Docker = "docker",
+    Nest = "nest",
+}
+
+const DeployTypePriority: Record<DeployType, number> = {
+    // Backends should be deployed first
+    [DeployType.Nest]: 10,
+    [DeployType.Nitro]: 20,
+    [DeployType.Docker]: 30,
+    // Classic genezio app contains both backend and frontend deployment logic
+    // TODO - refactor `classic` into `backend` and `frontend`
+    [DeployType.Classic]: 40,
+    // Frontends should be deployed last
+    [DeployType.Nuxt]: 50,
+    [DeployType.NextJS]: 60,
+};
+
 export async function deployCommand(options: GenezioDeployOptions) {
     await interruptLocalProcesses();
     const deployableComponentsType = await decideDeployType(options);
     debugLogger.debug(
         `The following components will be build and deployed: ${deployableComponentsType.join(", ")}`,
+    );
+
+    // Sort deployable components by priority to deploy them in the correct order
+    // This is important to correctly inject backend URLs into the clients
+    deployableComponentsType.sort((a, b) => DeployTypePriority[a] - DeployTypePriority[b]);
+
+    debugLogger.debug(
+        `Deploying components in the following order: ${deployableComponentsType.join(", ")}`,
     );
 
     // The deployment actions are not called concurrently to avoid race conditions
@@ -58,15 +88,6 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 break;
         }
     }
-}
-
-export enum DeployType {
-    Classic = "classic",
-    NextJS = "next",
-    Nitro = "nitro",
-    Nuxt = "nuxt",
-    Docker = "docker",
-    Nest = "nest",
 }
 
 /**
