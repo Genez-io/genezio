@@ -162,32 +162,57 @@ export async function addServicesToConfig(configPath: string, services: YAMLServ
 }
 
 /**
- * Injects the backend function URLs into the frontend environment variables.
+ * Injects the backend function URLs like express, flask (backend functions), nestjs and nitro
+ * into the frontend environment variables like react, vue, angular, nextjs and nuxt.
+ *
  * @param frontendPrefix The prefix to use for the frontend environment variables.
  * @param configPath The path to the config file.
  */
-export async function injectBackendApiUrlsInConfig(configPath: string, frontendPrefix: string) {
+export async function injectBackendUrlsInConfig(configPath: string) {
     const configIOController = new YamlConfigurationIOController(configPath);
 
     // Load config with minimal changes
     const config = await configIOController.read(/* fillDefaults= */ false);
 
-    // Validate backend and frontend existence
-    let functions: string[] = [];
-    const ssrFrameworks: string[] = [];
     const backend = config.backend as YAMLBackend;
-    const frontend = config.frontend as YamlFrontend;
-    if (!frontend) return;
+    const functions: string[] = backend?.functions?.map((fn) => fn.name) || [];
+    const ssrFunctions: string[] = [];
+    if (config.nestjs) ssrFunctions.push("nestjs");
+    if (config.nitro) ssrFunctions.push("nitro");
 
-    if (backend?.functions) functions = backend.functions.map((fn) => fn.name);
-    if (config.nextjs) ssrFrameworks.push("nextjs");
-    if (config.nestjs) ssrFrameworks.push("nestjs");
-    if (config.nuxt) ssrFrameworks.push("nuxt");
-    if (config.nitro) ssrFrameworks.push("nitro");
+    // Early return if there is nothing to inject
+    if (functions.length === 0 && ssrFunctions.length === 0) {
+        return;
+    }
 
     // Generate frontend environment variables based on backend functions
-    const frontendEnvironment = createFrontendEnvironment(frontendPrefix, functions, ssrFrameworks);
-    frontend.environment = frontendEnvironment;
+    const frontend = config.frontend as YamlFrontend;
+    if (frontend) {
+        // TODO Support multiple frontend frameworks in the same project
+        const frontendPrefix = getFrontendPrefix(Object.keys(frontend)[0]);
+        const frontendEnvironment = {
+            ...createFrontendEnvironmentRecord(frontendPrefix, functions, ssrFunctions),
+            ...frontend.environment,
+        };
+        frontend.environment = frontendEnvironment;
+        config.frontend = frontend;
+    }
+    // Generate nextjs environment variables based on backend functions
+    if (config.nextjs) {
+        const nextjsEnvironment = {
+            ...createFrontendEnvironmentRecord("NEXT_PUBLIC", functions, ssrFunctions),
+            ...config.nextjs.environment,
+        };
+        config.nextjs.environment = nextjsEnvironment;
+    }
+    // Generate nuxt environment variables based on backend functions
+    if (config.nuxt) {
+        const nuxtEnvironment = {
+            ...createFrontendEnvironmentRecord("NUXT", functions, ssrFunctions),
+            ...config.nuxt.environment,
+        };
+        config.nuxt.environment = nuxtEnvironment;
+    }
 
     // Save the updated configuration
     await configIOController.write(config);
@@ -257,7 +282,7 @@ export function getFrontendPrefix(framework: string): string {
  * Creates a Record<string, string> where each key represents a frontend environment
  * variable based on the backend function name and each value is the function's URL.
  */
-function createFrontendEnvironment(
+export function createFrontendEnvironmentRecord(
     frontendPrefix: string,
     backendFunctions: string[] = [],
     ssrFrameworks: string[] = [],
