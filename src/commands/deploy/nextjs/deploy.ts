@@ -422,23 +422,43 @@ function writeNextConfig(cwd: string, region: string) {
 
     const content = fs.readFileSync(configPath, "utf8");
 
+    if (!content) {
+        const parts = configPath.split(".");
+        const extension = parts[parts.length - 1];
+        fs.writeFileSync(configPath, getConfigContent(extension));
+        return;
+    }
+
     const updatedContent = content.replace(
-        /const\s+nextConfig\s*=\s*(\{[^]*?\n\})/m,
-        (match, configObject) => {
+        /(const|let|var)?\s*(\w+)\s*=\s*({[\s\S]*?})\s*;?\s*(module\.exports\s*=\s*\2\s*;?\s*|export\s+default\s+\2\s*;?\s*)?$/m,
+        (match, declaration, variableName, configObject) => {
             const hasCache = configObject.includes("cacheHandler");
             const hasMemSize = configObject.includes("cacheMaxMemorySize");
 
             const newConfig = configObject.trim();
             const insertPoint = newConfig.lastIndexOf("}");
 
-            const cacheConfig = `${!hasCache ? `cacheHandler: process.env.NODE_ENV === "production" ? "${handlerPath}" : undefined,` : ""}
-  ${!hasMemSize ? "cacheMaxMemorySize: 0," : ""}`;
+            const cacheConfig =
+                (!hasCache
+                    ? `  cacheHandler: process.env.NODE_ENV === "production" ? "${handlerPath}" : undefined,`
+                    : "") + (!hasMemSize ? "\n  cacheMaxMemorySize: 0," : "");
 
-            return `const nextConfig = ${
+            const updatedConfig =
                 newConfig.slice(0, insertPoint) +
                 (insertPoint > 0 ? cacheConfig : "") +
-                newConfig.slice(insertPoint)
-            }`;
+                newConfig.slice(insertPoint);
+
+            const formattedConfig = updatedConfig
+                .replace(/\s*:\s*/g, ": ")
+                .replace(/,\s*}/g, "}")
+                .trim();
+
+            const isESM = content.includes("export default");
+            const exportStatement = isESM
+                ? `\nexport default ${variableName};`
+                : `\nmodule.exports = ${variableName};`;
+
+            return `const ${variableName} = ${formattedConfig}${exportStatement}`;
         },
     );
 
@@ -462,9 +482,8 @@ function getConfigContent(extension: string): string {
     return `/** @type {import('next').NextConfig} */
 const nextConfig = {
     cacheHandler: process.env.NODE_ENV === "production"
-        ? ${isESM ? handlerPath : `require.resolve("${handlerPath}")`}
+        ? ${isESM ? `"${handlerPath}"` : `require.resolve("${handlerPath}")`}
         : undefined,
-    output: 'standalone',
     cacheMaxMemorySize: 0
 }
 
