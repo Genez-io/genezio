@@ -29,11 +29,13 @@ import { UserError } from "../../errors.js";
 import { stdout } from "process";
 import { createHash } from "../../utils/strings.js";
 
-const BUNDLE_SIZE_LIMIT = 1.024e9;
+// The maximum size of a bundle is 1.524e9 bytes approx 1.5GB.
+const BUNDLE_SIZE_LIMIT = 1.524e9;
+
 async function handleBigElementSizeError(
     element: GenezioCloudInput,
     projectConfiguration: ProjectConfiguration,
-    BUNDLE_SIZE_LIMIT: number = 1.024e9,
+    BUNDLE_SIZE_LIMIT: number = 1.524e9,
 ): Promise<void> {
     const size = await getFileSize(element.archivePath);
     if (size > BUNDLE_SIZE_LIMIT) {
@@ -57,6 +59,9 @@ async function handleBigElementSizeError(
             element.type === GenezioCloudInputType.CLASS
         )
     ) {
+        debugLogger.debug(
+            `The bundle for ${element.type} ${element.name} is ${(size / 1048576).toFixed(2)}MB out of ${(BUNDLE_SIZE_LIMIT / 1048576).toFixed(2)}MB.`,
+        );
         return;
     }
 

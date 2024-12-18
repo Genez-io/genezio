@@ -76,6 +76,11 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         const configIOController = new YamlConfigurationIOController(options.config);
         const config = await configIOController.read();
 
+        // Temporary fix: We should deploy Genezio Functions/Frontends first until
+        // we support fullstack projects such as Genezio Functions and next, nuxt, nitro, nestjs projects
+        if (config.backend || config.frontend) {
+            return DeployType.Classic;
+        }
         if (config.container) {
             return DeployType.Docker;
         }
