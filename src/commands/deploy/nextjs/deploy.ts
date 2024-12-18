@@ -115,6 +115,8 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         deployStaticAssets(genezioConfig, options.stage, cacheToken, componentPath),
     ]);
 
+    await removeBaseNextModification(componentPath);
+
     const [, , cdnUrl] = await Promise.all([
         // Upload the project code to S3 for in-browser editing
         uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage, componentPath),
@@ -409,40 +411,49 @@ function writeNextConfig(cwd: string, region: string) {
     if (!existingConfig) {
         const extension = determineFileExtension(cwd);
         writeConfigFiles(cwd, extension, region);
-        return;
     }
 
-    const configPath = path.join(cwd, `next.config.${existingConfig}`);
-    const handlerPath = `./cache-handler.${existingConfig}`;
+    const currentConfigPath = path.join(cwd, `next.config.${existingConfig}`);
+    const baseNextConfigPath = path.join(cwd, `base-next.${existingConfig}`);
+
+    // Rename file next.config.{ext} in base-next.{ext}
+    fs.renameSync(currentConfigPath, baseNextConfigPath);
+
+    const genezioConfigPath = path.join(cwd, `next.config.${existingConfig}`);
+
+    // Create the new genezio config file
+    const genezioConfigContent = `
+import userConfig from '${baseNextConfigPath}';
+
+userConfig.cacheHandler = process.env.NODE_ENV === "production" ? "./cache-handler.${existingConfig}" : undefined;
+userConfig.cacheMaxMemorySize = 0;
+
+export default userConfig;
+`;
+
+    fs.writeFileSync(genezioConfigPath, genezioConfigContent);
 
     fs.writeFileSync(
         path.join(cwd, `cache-handler.${existingConfig}`),
         getCacheHandlerContent(existingConfig as "js" | "ts" | "mjs", region),
     );
+}
 
-    const content = fs.readFileSync(configPath, "utf8");
-
-    const updatedContent = content.replace(
-        /const\s+nextConfig\s*=\s*(\{[^]*?\n\})/m,
-        (match, configObject) => {
-            const hasCache = configObject.includes("cacheHandler");
-            const hasMemSize = configObject.includes("cacheMaxMemorySize");
-
-            const newConfig = configObject.trim();
-            const insertPoint = newConfig.lastIndexOf("}");
-
-            const cacheConfig = `${!hasCache ? `cacheHandler: process.env.NODE_ENV === "production" ? "${handlerPath}" : undefined,` : ""}
-  ${!hasMemSize ? "cacheMaxMemorySize: 0," : ""}`;
-
-            return `const nextConfig = ${
-                newConfig.slice(0, insertPoint) +
-                (insertPoint > 0 ? cacheConfig : "") +
-                newConfig.slice(insertPoint)
-            }`;
-        },
+async function removeBaseNextModification(cwd: string) {
+    const configExtensions = ["js", "cjs", "mjs", "ts"];
+    const existingConfig = configExtensions.find((ext) =>
+        fs.existsSync(path.join(cwd, `next.config.${ext}`)),
     );
 
-    fs.writeFileSync(configPath, updatedContent);
+    // Delete next.config.{ext}
+    const currentConfigPath = path.join(cwd, `next.config.${existingConfig}`);
+    fs.unlinkSync(currentConfigPath);
+
+    // Rename base-next.{ext} in next.config.{ext}
+    const baseNextConfigPath = path.join(cwd, `base-next.${existingConfig}`);
+
+    // Rename file next.config.{ext} in base-next.{ext}
+    fs.renameSync(baseNextConfigPath, currentConfigPath);
 }
 
 function determineFileExtension(cwd: string): "js" | "mjs" | "ts" {
@@ -462,9 +473,8 @@ function getConfigContent(extension: string): string {
     return `/** @type {import('next').NextConfig} */
 const nextConfig = {
     cacheHandler: process.env.NODE_ENV === "production"
-        ? ${isESM ? handlerPath : `require.resolve("${handlerPath}")`}
+        ? ${isESM ? `"${handlerPath}"` : `require.resolve("${handlerPath}")`}
         : undefined,
-    output: 'standalone',
     cacheMaxMemorySize: 0
 }
 
