@@ -303,10 +303,15 @@ export async function isReactComponent(contents: Record<string, string>): Promis
     }
 
     const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
-    return packageJsonContent
-        ? "react" in (packageJsonContent.dependencies || {}) ||
-              "react" in (packageJsonContent.devDependencies || {})
-        : false;
+    const dependencies = packageJsonContent.dependencies || {};
+    const devDependencies = packageJsonContent.devDependencies || {};
+
+    // Return false if it's a react-native project
+    if ("react-native" in dependencies || "react-native" in devDependencies) {
+        return false;
+    }
+
+    return "react" in dependencies || "react" in devDependencies;
 }
 
 // Checks if the project is a Vite component
