@@ -72,17 +72,19 @@ export async function zipDeploy(options: GenezioDeployOptions) {
     }
 
     const frontendUrls: string[] = [];
-    for (const frontend of configuration.frontend!) {
-        const frontendUrl = await cloudAdapter.deployFrontend(
-            projectConfiguration.name,
-            projectConfiguration.region,
-            frontend,
-            options.stage,
-        );
-        frontendUrls.push(frontendUrl);
-    }
+    if (configuration.frontend) {
+        for (const frontend of configuration.frontend) {
+            const frontendUrl = await cloudAdapter.deployFrontend(
+                projectConfiguration.name,
+                projectConfiguration.region,
+                frontend,
+                options.stage,
+            );
+            frontendUrls.push(frontendUrl);
+        }
 
-    for (const frontendUrl of frontendUrls) {
-        log.info(colors.cyan(`Frontend URL: ${frontendUrl}`));
+        for (const frontendUrl of frontendUrls) {
+            log.info(colors.cyan(`Frontend URL: ${frontendUrl}`));
+        }
     }
 }
