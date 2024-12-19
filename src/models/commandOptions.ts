@@ -47,6 +47,7 @@ export interface GenezioDeployOptions extends BaseOptions {
     subdomain?: string;
     config: string;
     image?: string;
+    zip?: string;
 }
 
 export interface GenezioListOptions extends BaseOptions {

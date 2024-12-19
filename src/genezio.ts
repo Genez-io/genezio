@@ -186,6 +186,11 @@ program
         undefined,
     )
     .option("--env <envFile>", "Load environment variables from a given file", undefined)
+    .option(
+        "--zip <zipPath>",
+        "Deploy a zip file directly. The zip file must contain a valid genezio config file",
+        undefined,
+    )
     .option("--stage <stage>", "Set the environment name to deploy to", "prod")
     .option(
         "--subdomain <subdomain>",

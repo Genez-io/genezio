@@ -10,6 +10,7 @@ import { dockerDeploy } from "./docker/deploy.js";
 import { PackageManagerType } from "../../packageManagers/packageManager.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import { nestJsDeploy } from "./nestjs/deploy.js";
+import { zipDeploy } from "./zip/deploy.js";
 
 export type SSRFrameworkComponent = {
     path: string;
@@ -56,6 +57,10 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 debugLogger.debug("Deploying Nest.js app");
                 await nestJsDeploy(options);
                 break;
+            case DeployType.Zip:
+                debugLogger.debug("Deploying zip file");
+                await zipDeploy(options);
+                break;
         }
     }
 }
@@ -67,6 +72,7 @@ export enum DeployType {
     Nuxt = "nuxt",
     Docker = "docker",
     Nest = "nest",
+    Zip = "zip",
 }
 
 /**
@@ -82,6 +88,10 @@ export enum DeployType {
 async function decideDeployType(options: GenezioDeployOptions): Promise<DeployType[]> {
     const cwd = process.cwd();
     const deployableComponents: DeployType[] = [];
+
+    if (options.zip) {
+        return [DeployType.Zip];
+    }
 
     if (options.image) {
         return [DeployType.Docker];
