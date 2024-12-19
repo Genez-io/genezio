@@ -12,7 +12,10 @@ import { log } from "../../../utils/logging.js";
 import colors from "colors";
 
 export async function zipDeploy(options: GenezioDeployOptions) {
-    const zipPath = options.zip!;
+    if (!options.zip) {
+        throw new Error("The --zip option is required for the zip deploy command.");
+    }
+    const zipPath = options.zip;
 
     const zip = new ZipAdm(zipPath);
     const tmp = await createTemporaryFolder();
