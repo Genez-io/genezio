@@ -204,9 +204,9 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
 function getPort(exposedPort: { [id: string]: string }): string {
     let port = "8080";
 
-    if (Object.keys(exposedPort).length >= 2) {
+    if (exposedPort && Object.keys(exposedPort).length >= 2) {
         throw new UserError("Only one port can be exposed.");
-    } else if (Object.keys(exposedPort).length === 1) {
+    } else if (exposedPort && Object.keys(exposedPort).length === 1) {
         port = Object.keys(exposedPort)[0].split("/")[0];
         const protocol = Object.keys(exposedPort)[0].split("/")[1];
         if (protocol !== "tcp") {
