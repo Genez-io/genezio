@@ -51,7 +51,7 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
     const packageManagerType = genezioConfig.nextjs?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
 
-    const cwd = process.cwd();
+    let cwd = process.cwd();
     const componentPath = genezioConfig.nextjs?.path
         ? path.resolve(cwd, genezioConfig.nextjs.path)
         : cwd;
@@ -91,7 +91,14 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         SSRFrameworkComponentType.next,
     );
 
-    writeNextConfig(componentPath, genezioConfig.region);
+    // Copy project files to /tmp
+    const tempFolder = await createTemporaryFolder();
+    debugLogger.debug(`Copying project files to ${tempFolder}`);
+    await fs.promises.cp(process.cwd(), tempFolder, { recursive: true });
+
+    // The new cwd is the temp folder
+    cwd = tempFolder;
+    writeNextConfig(cwd, genezioConfig.region);
     await $({
         stdio: "inherit",
         cwd: componentPath,
@@ -416,14 +423,14 @@ function writeNextConfig(cwd: string, region: string) {
     const currentConfigPath = path.join(cwd, `next.config.${existingConfig}`);
     const baseNextConfigPath = path.join(cwd, `base-next.${existingConfig}`);
 
-    // Rename file next.config.{ext} in base-next.{ext}
+    // Rename next.config.{ext} to base-next.{ext}
     fs.renameSync(currentConfigPath, baseNextConfigPath);
 
     const genezioConfigPath = path.join(cwd, `next.config.${existingConfig}`);
 
     // Create the new genezio config file
     const genezioConfigContent = `
-import userConfig from '${baseNextConfigPath}';
+import userConfig from './base-next.${existingConfig}';
 
 userConfig.cacheHandler = process.env.NODE_ENV === "production" ? "./cache-handler.${existingConfig}" : undefined;
 userConfig.cacheMaxMemorySize = 0;
@@ -445,15 +452,18 @@ async function removeBaseNextModification(cwd: string) {
         fs.existsSync(path.join(cwd, `next.config.${ext}`)),
     );
 
-    // Delete next.config.{ext}
-    const currentConfigPath = path.join(cwd, `next.config.${existingConfig}`);
-    fs.unlinkSync(currentConfigPath);
+    if (!existingConfig) {
+        return;
+    }
 
-    // Rename base-next.{ext} in next.config.{ext}
+    const currentConfigPath = path.join(cwd, `next.config.${existingConfig}`);
     const baseNextConfigPath = path.join(cwd, `base-next.${existingConfig}`);
 
-    // Rename file next.config.{ext} in base-next.{ext}
-    fs.renameSync(baseNextConfigPath, currentConfigPath);
+    // Only attempt to rename and delete if base-next file exists
+    if (fs.existsSync(baseNextConfigPath)) {
+        fs.renameSync(baseNextConfigPath, currentConfigPath);
+        fs.unlinkSync(path.join(cwd, `cache-handler.${existingConfig}`));
+    }
 }
 
 function determineFileExtension(cwd: string): "js" | "mjs" | "ts" {
