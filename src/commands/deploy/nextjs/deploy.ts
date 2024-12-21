@@ -428,14 +428,14 @@ function writeNextConfig(cwd: string, region: string) {
 
     const genezioConfigPath = path.join(cwd, `next.config.${existingConfig}`);
 
-    // Create the new genezio config file
+    const isCommonJS = existingConfig === "js" || existingConfig === "cjs";
     const genezioConfigContent = `
 import userConfig from './base-next.${existingConfig}';
 
 userConfig.cacheHandler = process.env.NODE_ENV === "production" ? "./cache-handler.${existingConfig}" : undefined;
 userConfig.cacheMaxMemorySize = 0;
 
-export default userConfig;
+${isCommonJS ? "module.exports = userConfig;" : "export default userConfig;"}
 `;
 
     fs.writeFileSync(genezioConfigPath, genezioConfigContent);
