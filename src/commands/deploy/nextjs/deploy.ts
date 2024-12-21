@@ -51,7 +51,7 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
     const packageManagerType = genezioConfig.nextjs?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
 
-    const cwd = process.cwd();
+    let cwd = process.cwd();
     const componentPath = genezioConfig.nextjs?.path
         ? path.resolve(cwd, genezioConfig.nextjs.path)
         : cwd;
@@ -91,7 +91,14 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         SSRFrameworkComponentType.next,
     );
 
-    writeNextConfig(componentPath, genezioConfig.region);
+    // Copy project files to /tmp
+    const tempFolder = await createTemporaryFolder();
+    debugLogger.debug(`Copying project files to ${tempFolder}`);
+    await fs.promises.cp(process.cwd(), tempFolder, { recursive: true });
+
+    // The new cwd is the temp folder
+    cwd = tempFolder;
+    writeNextConfig(cwd, genezioConfig.region);
     await $({
         stdio: "inherit",
         cwd: componentPath,
@@ -114,6 +121,8 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         // Deploy NextJs static assets to S3
         deployStaticAssets(genezioConfig, options.stage, cacheToken, componentPath),
     ]);
+
+    await removeBaseNextModification(componentPath);
 
     const [, , cdnUrl] = await Promise.all([
         // Upload the project code to S3 for in-browser editing
@@ -409,40 +418,52 @@ function writeNextConfig(cwd: string, region: string) {
     if (!existingConfig) {
         const extension = determineFileExtension(cwd);
         writeConfigFiles(cwd, extension, region);
-        return;
     }
 
-    const configPath = path.join(cwd, `next.config.${existingConfig}`);
-    const handlerPath = `./cache-handler.${existingConfig}`;
+    const currentConfigPath = path.join(cwd, `next.config.${existingConfig}`);
+    const baseNextConfigPath = path.join(cwd, `base-next.${existingConfig}`);
+
+    // Rename next.config.{ext} to base-next.{ext}
+    fs.renameSync(currentConfigPath, baseNextConfigPath);
+
+    const genezioConfigPath = path.join(cwd, `next.config.${existingConfig}`);
+
+    const isCommonJS = existingConfig === "js" || existingConfig === "cjs";
+    const genezioConfigContent = `
+import userConfig from './base-next.${existingConfig}';
+
+userConfig.cacheHandler = process.env.NODE_ENV === "production" ? "./cache-handler.${existingConfig}" : undefined;
+userConfig.cacheMaxMemorySize = 0;
+
+${isCommonJS ? "module.exports = userConfig;" : "export default userConfig;"}
+`;
+
+    fs.writeFileSync(genezioConfigPath, genezioConfigContent);
 
     fs.writeFileSync(
         path.join(cwd, `cache-handler.${existingConfig}`),
         getCacheHandlerContent(existingConfig as "js" | "ts" | "mjs", region),
     );
+}
 
-    const content = fs.readFileSync(configPath, "utf8");
-
-    const updatedContent = content.replace(
-        /const\s+nextConfig\s*=\s*(\{[^]*?\n\})/m,
-        (match, configObject) => {
-            const hasCache = configObject.includes("cacheHandler");
-            const hasMemSize = configObject.includes("cacheMaxMemorySize");
-
-            const newConfig = configObject.trim();
-            const insertPoint = newConfig.lastIndexOf("}");
-
-            const cacheConfig = `${!hasCache ? `cacheHandler: process.env.NODE_ENV === "production" ? "${handlerPath}" : undefined,` : ""}
-  ${!hasMemSize ? "cacheMaxMemorySize: 0," : ""}`;
-
-            return `const nextConfig = ${
-                newConfig.slice(0, insertPoint) +
-                (insertPoint > 0 ? cacheConfig : "") +
-                newConfig.slice(insertPoint)
-            }`;
-        },
+async function removeBaseNextModification(cwd: string) {
+    const configExtensions = ["js", "cjs", "mjs", "ts"];
+    const existingConfig = configExtensions.find((ext) =>
+        fs.existsSync(path.join(cwd, `next.config.${ext}`)),
     );
 
-    fs.writeFileSync(configPath, updatedContent);
+    if (!existingConfig) {
+        return;
+    }
+
+    const currentConfigPath = path.join(cwd, `next.config.${existingConfig}`);
+    const baseNextConfigPath = path.join(cwd, `base-next.${existingConfig}`);
+
+    // Only attempt to rename and delete if base-next file exists
+    if (fs.existsSync(baseNextConfigPath)) {
+        fs.renameSync(baseNextConfigPath, currentConfigPath);
+        fs.unlinkSync(path.join(cwd, `cache-handler.${existingConfig}`));
+    }
 }
 
 function determineFileExtension(cwd: string): "js" | "mjs" | "ts" {
@@ -462,9 +483,8 @@ function getConfigContent(extension: string): string {
     return `/** @type {import('next').NextConfig} */
 const nextConfig = {
     cacheHandler: process.env.NODE_ENV === "production"
-        ? ${isESM ? handlerPath : `require.resolve("${handlerPath}")`}
+        ? ${isESM ? `"${handlerPath}"` : `require.resolve("${handlerPath}")`}
         : undefined,
-    output: 'standalone',
     cacheMaxMemorySize: 0
 }
 
