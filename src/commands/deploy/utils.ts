@@ -1,6 +1,8 @@
 import path from "path";
 import { ADD_DATABASE_CONFIG, UserError } from "../../errors.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
+import dns from "dns";
+import { promisify } from "util";
 import {
     AuthDatabaseConfig,
     AuthenticationProviders,
@@ -79,6 +81,8 @@ import {
     enableEmailIntegration,
     getProjectIntegrations,
 } from "../../requests/integration.js";
+
+const dnsLookup = promisify(dns.lookup);
 
 type DependenciesInstallResult = {
     command: string;
@@ -314,6 +318,25 @@ function getNoTargetPackage(errorMessage: string): string | null {
     const noTargetPackageRegex = /No matching version found for ([^@]+@[^.]+)/;
     const match = errorMessage.match(noTargetPackageRegex);
     return match ? match[1] : null;
+}
+
+export async function hasInternetConnection() {
+    const testDomain = "google.com";
+    const timeout = 5000;
+    try {
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => {
+                reject(new Error("DNS lookup timed out"));
+            }, timeout);
+        });
+
+        await Promise.race([dnsLookup(testDomain), timeoutPromise]);
+
+        return true;
+    } catch (error) {
+        debugLogger.debug(`Error checking internet connection: ${error}`);
+        return false;
+    }
 }
 
 export async function readOrAskConfig(configPath: string): Promise<YamlProjectConfiguration> {
