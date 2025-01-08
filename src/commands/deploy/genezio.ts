@@ -615,7 +615,7 @@ export async function functionToCloudInput(
                         .readFileSync(requirementsOutputPath, "utf8")
                         .trim();
                     if (requirementsContent) {
-                        installCommand = `${packageManager.command} install -r ${requirementsOutputPath} --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${supportedPythonDepsInstallVersion} -t ${pathForDependencies}`;
+                        installCommand = `${packageManager.command} install -r ${requirementsOutputPath} --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${supportedPythonDepsInstallVersion} -t ${pathForDependencies} --no-user`;
                     }
                 } else if (fs.existsSync(pyProjectTomlPath)) {
                     installCommand = `${packageManager.command} install . --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${supportedPythonDepsInstallVersion} -t ${pathForDependencies}`;
