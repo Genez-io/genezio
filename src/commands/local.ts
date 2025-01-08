@@ -1717,70 +1717,6 @@ genezio_port = int(sys.argv[len(sys.argv) - 1])
 
 is_asgi = callable(application) and asyncio.iscoroutinefunction(application.__call__)
 
-# WSGI CORS Middleware
-class WSGICORSMiddleware:
-    def __init__(self, app):
-        self.app = app
-
-    def __call__(self, environ, start_response):
-        def cors_start_response(status, headers, exc_info=None):
-            headers.extend([
-                ("Access-Control-Allow-Origin", "*"),
-                ("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE"),
-                ("Access-Control-Allow-Headers", "*"),
-            ])
-            return start_response(status, headers, exc_info)
-
-        if environ["REQUEST_METHOD"] == "OPTIONS":
-            headers = [
-                ("Access-Control-Allow-Origin", "*"),
-                ("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE"),
-                ("Access-Control-Allow-Headers", "*"),
-            ]
-            start_response("204 No Content", headers)
-            return [b""]
-
-        return self.app(environ, cors_start_response)
-
-# ASGI CORS Middleware
-class ASGICORSMiddleware:
-    def __init__(self, app):
-        self.app = app
-
-    async def __call__(self, scope, receive, send):
-        if scope["type"] != "http":
-            return await self.app(scope, receive, send)
-
-        if scope["method"] == "OPTIONS":
-            headers = [
-                (b"access-control-allow-origin", b"*"),
-                (b"access-control-allow-methods", b"GET, POST, OPTIONS, PUT, PATCH, DELETE"),
-                (b"access-control-allow-headers", b"*"),
-            ]
-            await send({
-                "type": "http.response.start",
-                "status": 204,
-                "headers": headers
-            })
-            await send({
-                "type": "http.response.body",
-                "body": b""
-            })
-            return
-
-        async def wrapped_send(message):
-            if message["type"] == "http.response.start":
-                headers = message.get("headers", [])
-                headers.extend([
-                    (b"access-control-allow-origin", b"*"),
-                    (b"access-control-allow-methods", b"GET, POST, OPTIONS, PUT, PATCH, DELETE"),
-                    (b"access-control-allow-headers", b"*"),
-                ])
-                message["headers"] = headers
-            await send(message)
-
-        await self.app(scope, receive, wrapped_send)
-
 def install_uvicorn():
     system = platform.system().lower()
     pip_commands = ["pip3", "pip"] if system == "darwin" else ["pip", "pip3"]
@@ -1816,7 +1752,6 @@ if is_asgi:
     import uvicorn
 
     if __name__ == "__main__":
-        application = ASGICORSMiddleware(application)
         uvicorn.run(
             application,
             host="127.0.0.1",
@@ -1824,7 +1759,6 @@ if is_asgi:
             reload=False
         )
 else:
-    application = WSGICORSMiddleware(application)
     with make_server("127.0.0.1", genezio_port, application) as httpd:
         print(f"Serving WSGI application on port {genezio_port}...")
         httpd.serve_forever()
