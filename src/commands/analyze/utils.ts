@@ -339,3 +339,23 @@ export function getPythonHandler(contentEntryfile: string): string {
 
     return "app";
 }
+
+/**
+ * Returns the handler for a given Streamlit component.
+ * Searches for Streamlit import with alias in the contentEntryfile.
+ * @param contentEntryfile Content of the entry file
+ * @returns The handler variable name or undefined if not found
+ */
+export function getStreamlitHandler(contentEntryfile: string): string {
+    // Check if the contentEntryfile contains Streamlit import with alias
+    const streamlitImportPattern = /import\s+streamlit\s+as\s+(\w+)/;
+
+    // Match the import pattern in the contentEntryfile
+    const importMatch = contentEntryfile.match(streamlitImportPattern);
+    if (importMatch && importMatch[1]) {
+        return importMatch[1];
+    }
+
+    // Default to "st" if no custom import alias is found
+    return "st";
+}

@@ -434,3 +434,11 @@ export function isFastAPIComponent(contents: Record<string, string>): boolean {
 export function isPythonLambdaFunction(contents: Record<string, string>): boolean {
     return contents["requirements.txt"] !== undefined || contents["pyproject.toml"] !== undefined;
 }
+
+// Checks if the project is a Streamlit component (presence of 'requirements.txt' and 'streamlit' in 'requirements.txt')
+export function isStreamlitComponent(contents: Record<string, string>): boolean {
+    return (
+        contents["requirements.txt"] !== undefined &&
+        /streamlit(?:==|$|\s)/i.test(contents["requirements.txt"])
+    );
+}

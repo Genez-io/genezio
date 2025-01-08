@@ -23,6 +23,7 @@ import {
     hasPostgresDependency,
     hasMongoDependency,
     isNestjsComponent,
+    isStreamlitComponent,
 } from "./frameworks.js";
 import { generateDatabaseName, readOrAskConfig } from "../deploy/utils.js";
 import {
@@ -39,6 +40,7 @@ import {
     addSSRComponentToConfig,
     getFrontendPrefix,
     getPythonHandler,
+    getStreamlitHandler,
     injectBackendApiUrlsInConfig,
     injectSDKInConfig,
 } from "./utils.js";
@@ -53,6 +55,7 @@ import {
     FLASK_PATTERN,
     PYTHON_LAMBDA_PATTERN,
     SERVERLESS_HTTP_PATTERN,
+    STREAMLIT_PATTERN,
 } from "./constants.js";
 import { analyzeEnvironmentVariableExampleFile, ProjectEnvironment } from "./agent.js";
 
@@ -691,6 +694,47 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             frameworksDetected.backend = frameworksDetected.backend || [];
             frameworksDetected.backend.push({
                 component: "fastapi",
+                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+            });
+            continue;
+        }
+
+        if (await isStreamlitComponent(contents)) {
+            const entryFile = await findEntryFile(
+                componentPath,
+                contents,
+                STREAMLIT_PATTERN,
+                PYTHON_DEFAULT_ENTRY_FILE,
+            );
+            const fullpath = path.join(componentPath, entryFile);
+            const entryFileContent = await retrieveFileContent(fullpath);
+            const pythonHandler = getStreamlitHandler(entryFileContent);
+
+            const packageManagerType =
+                genezioConfig.backend?.language?.packageManager || PYTHON_DEFAULT_PACKAGE_MANAGER;
+            await addBackendComponentToConfig(configPath, {
+                path: componentPath,
+                language: {
+                    name: Language.python,
+                    packageManager: packageManagerType,
+                } as YAMLLanguage,
+                environment: mapEnvironmentVariableToConfig(
+                    resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+                ),
+                functions: [
+                    {
+                        name: "streamlit",
+                        path: ".",
+                        handler: pythonHandler,
+                        entry: entryFile,
+                        type: FunctionType.httpServer,
+                    },
+                ],
+            });
+
+            frameworksDetected.backend = frameworksDetected.backend || [];
+            frameworksDetected.backend.push({
+                component: "streamlit",
                 environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
             });
             continue;
