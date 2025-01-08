@@ -101,24 +101,24 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         const configIOController = new YamlConfigurationIOController(options.config);
         const config = await configIOController.read();
 
-        if (config.container) {
-            deployableComponents.push(DeployType.Docker);
-        }
-        if (config.nextjs) {
-            deployableComponents.push(DeployType.NextJS);
-        }
-        if (config.nuxt) {
-            deployableComponents.push(DeployType.Nuxt);
-        }
         if (config.nitro) {
             deployableComponents.push(DeployType.Nitro);
         }
         if (config.nestjs) {
             deployableComponents.push(DeployType.Nest);
         }
+        if (config.container) {
+            deployableComponents.push(DeployType.Docker);
+        }
         // For backend or frontend a classic genezio app should be added only once
         if (config.backend || config.frontend) {
             deployableComponents.push(DeployType.Classic);
+        }
+        if (config.nextjs) {
+            deployableComponents.push(DeployType.NextJS);
+        }
+        if (config.nuxt) {
+            deployableComponents.push(DeployType.Nuxt);
         }
 
         // This ensures backwards compatibility for next/nuxt projects
