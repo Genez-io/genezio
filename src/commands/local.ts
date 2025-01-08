@@ -88,6 +88,7 @@ import {
     evaluateResource,
     getOrCreateDatabase,
     getOrCreateEmptyProject,
+    hasInternetConnection,
 } from "./deploy/utils.js";
 import { displayHint } from "../utils/strings.js";
 import { enableEmailIntegration, getProjectIntegrations } from "../requests/integration.js";
@@ -140,6 +141,12 @@ export async function prepareLocalBackendEnvironment(
 
         let configurationEnvVars: { [key: string]: string | undefined } = {};
         if (yamlProjectConfiguration.services) {
+            if (!(await hasInternetConnection())) {
+                throw new UserError(
+                    "No internet connection found. If you want to use services you need an active internet connection. Please check your internet connection and try again.",
+                );
+            }
+
             const projectDetails = await getOrCreateEmptyProject(
                 projectName,
                 region,

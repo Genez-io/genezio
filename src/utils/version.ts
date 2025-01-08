@@ -11,12 +11,10 @@ const requireESM = createRequire(import.meta.url);
 const pjson = requireESM("../../package.json");
 const currentGenezioVersion = pjson.version;
 
-const latestGenezioVersionPromise = latestVersion("genezio");
-
 export default currentGenezioVersion;
 
 export async function logOutdatedVersion() {
-    const latestGenezioVersion = await latestGenezioVersionPromise;
+    const latestGenezioVersion = await latestVersion("genezio");
     if (cmp(latestGenezioVersion, ">", currentGenezioVersion)) {
         log.info(
             boxen(
