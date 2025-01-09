@@ -50,10 +50,11 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
     const packageManagerType = genezioConfig.nextjs?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
 
-    let cwd = process.cwd();
-    let componentPath = genezioConfig.nextjs?.path
-        ? path.resolve(cwd, genezioConfig.nextjs.path)
-        : cwd;
+    // Base directory where genezio.yaml is located
+    const projectCwd = process.cwd();
+    const nextjsComponentPath = genezioConfig.nextjs?.path
+        ? path.resolve(projectCwd, genezioConfig.nextjs.path)
+        : projectCwd;
 
     // Prepare services before deploying (database, authentication, etc)
     await prepareServicesPreBackendDeployment(
@@ -67,45 +68,37 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     await addSSRComponentToConfig(
         options.config,
         {
-            path: componentPath,
+            path: nextjsComponentPath,
             packageManager: packageManagerType,
         },
         SSRFrameworkComponentType.next,
     );
 
-    // Copy project files to /tmp
-    const tempFolder = await createTemporaryFolder();
-    debugLogger.debug(`Copying project files to ${tempFolder}`);
-    await fs.promises.cp(process.cwd(), tempFolder, {
+    // Copy project files to /tmp for building
+    const tempBuildCwd = await createTemporaryFolder();
+    debugLogger.debug(`Copying project files to ${tempBuildCwd}`);
+    await fs.promises.cp(projectCwd, tempBuildCwd, {
         recursive: true,
         force: true,
         dereference: true,
     });
 
-    cwd = tempFolder;
-    componentPath = path.resolve(cwd, genezioConfig.nextjs?.path || ".");
+    const tempBuildComponentPath = path.resolve(tempBuildCwd, genezioConfig.nextjs?.path || ".");
 
-    // Remove node_modules folder and package-lock.json if they exist
-    await fs.promises.rm(path.join(componentPath, "node_modules"), {
-        recursive: true,
-        force: true,
-    });
-    await fs.promises.rm(path.join(componentPath, "package-lock.json"), { force: true });
+    // Install dependencies with clean install
+    await attemptToInstallDependencies([], tempBuildComponentPath, packageManagerType, true);
 
-    // Install dependencies
-    await attemptToInstallDependencies([], componentPath, packageManagerType);
-
-    // Install dependencies including the ISR package
+    // Install ISR package with clean install
     await attemptToInstallDependencies(
         [`@genezio/nextjs-isr-${genezioConfig.region}`],
-        componentPath,
+        tempBuildComponentPath,
         packageManagerType,
     );
 
-    writeNextConfig(componentPath, genezioConfig.region);
+    writeNextConfig(tempBuildComponentPath, genezioConfig.region);
     await $({
         stdio: "inherit",
-        cwd: componentPath,
+        cwd: tempBuildComponentPath,
         env: {
             ...process.env,
             NEXT_PRIVATE_STANDALONE: "true",
@@ -115,23 +108,21 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         throw new UserError("Failed to build the Next.js project. Check the logs above.");
     });
 
-    await checkProjectLimitations(componentPath);
+    await checkProjectLimitations(tempBuildComponentPath);
 
     const cacheToken = randomUUID();
-    const sharpInstallFolder = await installSharp(componentPath);
+    const sharpInstallFolder = await installSharp(tempBuildComponentPath);
 
     const [deploymentResult, domainName] = await Promise.all([
         // Deploy NextJs serverless functions
-        deployFunction(genezioConfig, componentPath, options.stage),
+        deployFunction(genezioConfig, tempBuildComponentPath, options.stage),
         // Deploy NextJs static assets to S3
-        deployStaticAssets(genezioConfig, options.stage, cacheToken, componentPath),
+        deployStaticAssets(genezioConfig, options.stage, cacheToken, tempBuildComponentPath),
     ]);
-
-    await removeProjectModifications(componentPath, genezioConfig.region);
 
     const [, , cdnUrl] = await Promise.all([
         // Upload the project code to S3 for in-browser editing
-        uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage, cwd),
+        uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage, projectCwd),
         // Set environment variables for the Next.js project
         setupEnvironmentVariables(
             deploymentResult,
@@ -146,13 +137,13 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
             domainName,
             genezioConfig,
             options.stage,
-            componentPath,
+            tempBuildComponentPath,
         ),
         uploadEnvVarsFromFile(
             options.env,
             deploymentResult.projectId,
             deploymentResult.projectEnvId,
-            componentPath,
+            tempBuildComponentPath,
             options.stage || "prod",
             genezioConfig,
             SSRFrameworkComponentType.next,
@@ -414,6 +405,20 @@ async function deployFunction(
     return result;
 }
 
+/**
+ * Configures Next.js by managing the next.config file and adding Genezio-specific configurations.
+ *
+ * This function performs the following steps:
+ * 1. If no next.config file exists, creates one with default settings
+ * 2. If a next.config file exists:
+ *    - Saves the user's original config to base-next.{ext}
+ *    - Creates a new next.config that imports and extends the user's config
+ *    - Adds Genezio-specific cache settings
+ * 3. Creates a cache handler file for production use
+ *
+ * @param cwd - Current working directory where the Next.js project is located
+ * @param region - AWS region for deployment
+ */
 function writeNextConfig(cwd: string, region: string) {
     const configExtensions = ["js", "cjs", "mjs", "ts"];
     const existingConfig = configExtensions.find((ext) =>
@@ -425,13 +430,11 @@ function writeNextConfig(cwd: string, region: string) {
         writeConfigFiles(cwd, extension, region);
     }
 
-    const currentConfigPath = path.join(cwd, `next.config.${existingConfig}`);
-    const baseNextConfigPath = path.join(cwd, `base-next.${existingConfig}`);
+    const genezioConfigPath = path.join(cwd, `next.config.${existingConfig}`);
+    const userConfigPath = path.join(cwd, `base-next.${existingConfig}`);
 
     // Rename next.config.{ext} to base-next.{ext}
-    fs.renameSync(currentConfigPath, baseNextConfigPath);
-
-    const genezioConfigPath = path.join(cwd, `next.config.${existingConfig}`);
+    fs.renameSync(genezioConfigPath, userConfigPath);
 
     const isCommonJS = existingConfig === "js" || existingConfig === "cjs";
     const genezioConfigContent = `
@@ -449,52 +452,6 @@ ${isCommonJS ? "module.exports = userConfig;" : "export default userConfig;"}
         path.join(cwd, `cache-handler.${existingConfig}`),
         getCacheHandlerContent(existingConfig as "js" | "ts" | "mjs", region),
     );
-}
-
-async function removeProjectModifications(cwd: string, region: string) {
-    const configExtensions = ["js", "cjs", "mjs", "ts"];
-    const existingConfig = configExtensions.find((ext) =>
-        fs.existsSync(path.join(cwd, `next.config.${ext}`)),
-    );
-
-    if (!existingConfig) {
-        return;
-    }
-
-    const currentConfigPath = path.join(cwd, `next.config.${existingConfig}`);
-    const baseNextConfigPath = path.join(cwd, `base-next.${existingConfig}`);
-
-    // delete next.config.{ext}
-    fs.unlinkSync(currentConfigPath);
-
-    // rename base-next.{ext} to next.config.{ext}
-    fs.renameSync(baseNextConfigPath, currentConfigPath);
-
-    // delete cache-handler.{ext}
-    fs.unlinkSync(path.join(cwd, `cache-handler.${existingConfig}`));
-
-    // delete @genezio/nextjs-isr-{region} from package.json
-    const packageJsonPath = path.join(cwd, "package.json");
-    if (fs.existsSync(packageJsonPath)) {
-        const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-        if (packageJson.dependencies && packageJson.dependencies[`@genezio/nextjs-isr-${region}`]) {
-            delete packageJson.dependencies[`@genezio/nextjs-isr-${region}`];
-            fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
-        }
-    }
-
-    // delete @genezio/nextjs-isr-{region} from package-lock.json
-    const packageLockJsonPath = path.join(cwd, "package-lock.json");
-    if (fs.existsSync(packageLockJsonPath)) {
-        const packageLockJson = JSON.parse(fs.readFileSync(packageLockJsonPath, "utf8"));
-        if (
-            packageLockJson.dependencies &&
-            packageLockJson.dependencies[`@genezio/nextjs-isr-${region}`]
-        ) {
-            delete packageLockJson.dependencies[`@genezio/nextjs-isr-${region}`];
-            fs.writeFileSync(packageLockJsonPath, JSON.stringify(packageLockJson, null, 2));
-        }
-    }
 }
 
 function determineFileExtension(cwd: string): "js" | "mjs" | "ts" {
