@@ -88,7 +88,7 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     // Install dependencies with clean install
     await attemptToInstallDependencies([], tempBuildComponentPath, packageManagerType, true);
 
-    // Install ISR package with clean install
+    // Install ISR package
     await attemptToInstallDependencies(
         [`@genezio/nextjs-isr-${genezioConfig.region}`],
         tempBuildComponentPath,
