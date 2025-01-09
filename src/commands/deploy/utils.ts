@@ -255,6 +255,7 @@ export async function attemptToInstallDependencies(
     args: string[] = [],
     currentPath: string,
     packageManagerType: PackageManagerType,
+    cleanInstall: boolean = false,
 ): Promise<DependenciesInstallResult> {
     const packageManager = packageManagers[packageManagerType];
     debugLogger.debug(
@@ -262,7 +263,11 @@ export async function attemptToInstallDependencies(
     );
 
     try {
-        await packageManager.install([], currentPath, args);
+        if (!cleanInstall) {
+            await packageManager.install(args, currentPath);
+        } else {
+            await packageManager.cleanInstall(currentPath, args);
+        }
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
 

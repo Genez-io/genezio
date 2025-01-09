@@ -16,7 +16,7 @@ export type SSRFrameworkComponent = {
     path: string;
     packageManager: PackageManagerType;
     scripts?: {
-        deploy: string | string[];
+        deploy?: string | string[];
         build?: string | string[];
         start?: string | string[];
     };

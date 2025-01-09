@@ -46,15 +46,15 @@ import {
 import { readOrAskConfig } from "../utils.js";
 import { SSRFrameworkComponentType } from "../../../models/projectOptions.js";
 import { addSSRComponentToConfig } from "../../analyze/utils.js";
-
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
     const packageManagerType = genezioConfig.nextjs?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
 
-    const cwd = process.cwd();
-    const componentPath = genezioConfig.nextjs?.path
-        ? path.resolve(cwd, genezioConfig.nextjs.path)
-        : cwd;
+    // Base directory where genezio.yaml is located
+    const projectCwd = process.cwd();
+    const nextjsComponentPath = genezioConfig.nextjs?.path
+        ? path.resolve(projectCwd, genezioConfig.nextjs.path)
+        : projectCwd;
 
     // Prepare services before deploying (database, authentication, etc)
     await prepareServicesPreBackendDeployment(
@@ -64,60 +64,65 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         options.env,
     );
 
-    // Install dependencies
-    const installDependenciesCommand = await attemptToInstallDependencies(
-        [],
-        componentPath,
-        packageManagerType,
-    );
-
-    // Install dependencies including the ISR package
-    await attemptToInstallDependencies(
-        [`@genezio/nextjs-isr-${genezioConfig.region}`],
-        componentPath,
-        packageManagerType,
-    );
-
     // Add nextjs component
     await addSSRComponentToConfig(
         options.config,
         {
-            path: componentPath,
+            path: nextjsComponentPath,
             packageManager: packageManagerType,
-            scripts: {
-                deploy: [`${installDependenciesCommand.command}`],
-            },
         },
         SSRFrameworkComponentType.next,
     );
 
-    writeNextConfig(componentPath, genezioConfig.region);
+    // Copy project files to /tmp for building
+    const tempBuildCwd = await createTemporaryFolder();
+    debugLogger.debug(`Copying project files to ${tempBuildCwd}`);
+    await fs.promises.cp(projectCwd, tempBuildCwd, {
+        recursive: true,
+        force: true,
+        dereference: true,
+    });
+
+    const tempBuildComponentPath = path.resolve(tempBuildCwd, genezioConfig.nextjs?.path || ".");
+
+    // Install dependencies with clean install
+    await attemptToInstallDependencies([], tempBuildComponentPath, packageManagerType, true);
+
+    // Install ISR package
+    await attemptToInstallDependencies(
+        [`@genezio/nextjs-isr-${genezioConfig.region}`],
+        tempBuildComponentPath,
+        packageManagerType,
+    );
+
+    writeNextConfig(tempBuildComponentPath, genezioConfig.region);
     await $({
         stdio: "inherit",
-        cwd: componentPath,
+        cwd: tempBuildComponentPath,
         env: {
             ...process.env,
             NEXT_PRIVATE_STANDALONE: "true",
+            NODE_ENV: "production",
         },
-    })`npx next build --no-lint`.catch(() => {
+    })`npx next build`.catch(() => {
         throw new UserError("Failed to build the Next.js project. Check the logs above.");
     });
 
-    await checkProjectLimitations(componentPath);
+    await checkProjectLimitations(tempBuildComponentPath);
 
     const cacheToken = randomUUID();
-    const sharpInstallFolder = await installSharp(cwd);
+    const sharpInstallFolder = await installSharp(tempBuildComponentPath);
 
     const [deploymentResult, domainName] = await Promise.all([
         // Deploy NextJs serverless functions
-        deployFunction(genezioConfig, componentPath, options.stage),
+        deployFunction(genezioConfig, tempBuildComponentPath, options.stage),
         // Deploy NextJs static assets to S3
-        deployStaticAssets(genezioConfig, options.stage, cacheToken, componentPath),
+        deployStaticAssets(genezioConfig, options.stage, cacheToken, tempBuildComponentPath),
     ]);
 
     const [, , cdnUrl] = await Promise.all([
         // Upload the project code to S3 for in-browser editing
-        uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage, componentPath),
+        uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage, projectCwd),
         // Set environment variables for the Next.js project
         setupEnvironmentVariables(
             deploymentResult,
@@ -132,13 +137,13 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
             domainName,
             genezioConfig,
             options.stage,
-            componentPath,
+            tempBuildComponentPath,
         ),
         uploadEnvVarsFromFile(
             options.env,
             deploymentResult.projectId,
             deploymentResult.projectEnvId,
-            componentPath,
+            tempBuildComponentPath,
             options.stage || "prod",
             genezioConfig,
             SSRFrameworkComponentType.next,
@@ -400,6 +405,20 @@ async function deployFunction(
     return result;
 }
 
+/**
+ * Configures Next.js by managing the next.config file and adding Genezio-specific configurations.
+ *
+ * This function performs the following steps:
+ * 1. If no next.config file exists, creates one with default settings
+ * 2. If a next.config file exists:
+ *    - Saves the user's original config to base-next.{ext}
+ *    - Creates a new next.config that imports and extends the user's config
+ *    - Adds Genezio-specific cache settings
+ * 3. Creates a cache handler file for production use
+ *
+ * @param cwd - Current working directory where the Next.js project is located
+ * @param region - AWS region for deployment
+ */
 function writeNextConfig(cwd: string, region: string) {
     const configExtensions = ["js", "cjs", "mjs", "ts"];
     const existingConfig = configExtensions.find((ext) =>
@@ -409,40 +428,30 @@ function writeNextConfig(cwd: string, region: string) {
     if (!existingConfig) {
         const extension = determineFileExtension(cwd);
         writeConfigFiles(cwd, extension, region);
-        return;
     }
 
-    const configPath = path.join(cwd, `next.config.${existingConfig}`);
-    const handlerPath = `./cache-handler.${existingConfig}`;
+    const genezioConfigPath = path.join(cwd, `next.config.${existingConfig}`);
+    const userConfigPath = path.join(cwd, `base-next.${existingConfig}`);
+
+    // Rename next.config.{ext} to base-next.{ext}
+    fs.renameSync(genezioConfigPath, userConfigPath);
+
+    const isCommonJS = existingConfig === "js" || existingConfig === "cjs";
+    const genezioConfigContent = `
+import userConfig from './base-next.${existingConfig}';
+
+userConfig.cacheHandler = process.env.NODE_ENV === "production" ? "./cache-handler.${existingConfig}" : undefined;
+userConfig.cacheMaxMemorySize = 0;
+
+${isCommonJS ? "module.exports = userConfig;" : "export default userConfig;"}
+`;
+
+    fs.writeFileSync(genezioConfigPath, genezioConfigContent);
 
     fs.writeFileSync(
         path.join(cwd, `cache-handler.${existingConfig}`),
         getCacheHandlerContent(existingConfig as "js" | "ts" | "mjs", region),
     );
-
-    const content = fs.readFileSync(configPath, "utf8");
-
-    const updatedContent = content.replace(
-        /const\s+nextConfig\s*=\s*(\{[^]*?\n\})/m,
-        (match, configObject) => {
-            const hasCache = configObject.includes("cacheHandler");
-            const hasMemSize = configObject.includes("cacheMaxMemorySize");
-
-            const newConfig = configObject.trim();
-            const insertPoint = newConfig.lastIndexOf("}");
-
-            const cacheConfig = `${!hasCache ? `cacheHandler: process.env.NODE_ENV === "production" ? "${handlerPath}" : undefined,` : ""}
-  ${!hasMemSize ? "cacheMaxMemorySize: 0," : ""}`;
-
-            return `const nextConfig = ${
-                newConfig.slice(0, insertPoint) +
-                (insertPoint > 0 ? cacheConfig : "") +
-                newConfig.slice(insertPoint)
-            }`;
-        },
-    );
-
-    fs.writeFileSync(configPath, updatedContent);
 }
 
 function determineFileExtension(cwd: string): "js" | "mjs" | "ts" {
@@ -462,9 +471,8 @@ function getConfigContent(extension: string): string {
     return `/** @type {import('next').NextConfig} */
 const nextConfig = {
     cacheHandler: process.env.NODE_ENV === "production"
-        ? ${isESM ? handlerPath : `require.resolve("${handlerPath}")`}
+        ? ${isESM ? `"${handlerPath}"` : `require.resolve("${handlerPath}")`}
         : undefined,
-    output: 'standalone',
     cacheMaxMemorySize: 0
 }
 
