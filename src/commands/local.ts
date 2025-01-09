@@ -330,7 +330,14 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     // It is locked until the first Genezio SDK is generated.
     sdkSynchronizer.acquire();
 
-    if (!yamlProjectConfiguration.backend && !yamlProjectConfiguration.frontend) {
+    if (
+        !yamlProjectConfiguration.backend &&
+        !yamlProjectConfiguration.frontend &&
+        !yamlProjectConfiguration.nextjs &&
+        !yamlProjectConfiguration.nuxt &&
+        !yamlProjectConfiguration.nestjs &&
+        !yamlProjectConfiguration.nitro
+    ) {
         throw new UserError(
             "No backend or frontend components found in the genezio.yaml file. You need at least one component to start the local environment.",
         );
@@ -1842,7 +1849,6 @@ else:
 `;
 }
 
-// Add a new function to handle SSR frameworks
 async function startSsrFramework(
     ssrConfig: SsrFramework,
     frameworkName: string,
@@ -1850,12 +1856,6 @@ async function startSsrFramework(
     stage: string,
     port?: number,
 ) {
-    if (!ssrConfig.scripts?.start) {
-        throw new UserError(
-            `No start script found for ${frameworkName} component. You need a start script to run the ${frameworkName} server.`,
-        );
-    }
-
     const newEnvObject = await expandEnvironmentVariables(
         ssrConfig.environment,
         projectConfiguration,
@@ -1877,12 +1877,50 @@ async function startSsrFramework(
     process.env[`GENEZIO_SSR_PORT_${frameworkName.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`] =
         ssrPort.toString();
 
-    // Add port to environment variables
-    newEnvObject["PORT"] = ssrPort.toString();
-
     try {
-        await runFrontendStartScript(ssrConfig.scripts.start, ssrConfig.path, newEnvObject);
-        log.info(`${frameworkName} server started on port ${ssrPort}`);
+        let command: string;
+        let args: string[];
+
+        switch (frameworkName.toLowerCase()) {
+            case "next.js":
+                command = "next";
+                args = ["dev", "-p", ssrPort.toString()];
+                break;
+            case "nuxt":
+                command = "nuxt";
+                args = ["dev", "--port", ssrPort.toString()];
+                break;
+            case "nest.js":
+                command = "nest";
+                args = ["start", "--watch", "--port", ssrPort.toString()];
+                break;
+            case "nitro":
+                command = "nitro";
+                args = ["dev", "--port", ssrPort.toString()];
+                break;
+            default:
+                throw new Error(`Unknown SSR framework: ${frameworkName}`);
+        }
+
+        const childProcess = spawn("npx", [command, ...args], {
+            stdio: "inherit",
+            shell: true,
+            env: {
+                ...process.env,
+                ...newEnvObject,
+            },
+            cwd: ssrConfig.path,
+        });
+
+        childProcess.on("error", (error) => {
+            log.error(
+                new Error(
+                    `Failed to start ${frameworkName} server located in \`${ssrConfig.path}\`: ${error.message}`,
+                ),
+            );
+        });
+
+        log.info(`${frameworkName} server process started on port ${ssrPort}`);
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
         log.error(
