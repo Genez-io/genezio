@@ -1647,26 +1647,6 @@ const originalCreateServer = http.createServer;
 let server;
 
 http.createServer = function(...args) {
-    // If there's a request handler provided, wrap it with CORS headers
-    if (args[0] && typeof args[0] === 'function') {
-        const originalHandler = args[0];
-        args[0] = function(req, res) {
-            // Set CORS headers
-            res.setHeader('Access-Control-Allow-Origin', '*');
-            res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-            res.setHeader('Access-Control-Allow-Headers', '*');
-
-            // Handle OPTIONS requests for CORS preflight
-            if (req.method === 'OPTIONS') {
-                res.writeHead(204);
-                res.end();
-                return;
-            }
-
-            return originalHandler(req, res);
-        };
-    }
-
     server = originalCreateServer(...args);
 
     // Store the original listen method
