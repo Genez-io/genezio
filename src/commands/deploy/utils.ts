@@ -1,4 +1,6 @@
 import path from "path";
+import git from "isomorphic-git";
+import fs from "fs";
 import { ADD_DATABASE_CONFIG, UserError } from "../../errors.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
 import dns from "dns";
@@ -368,6 +370,26 @@ export async function readOrAskConfig(configPath: string): Promise<YamlProjectCo
 }
 
 export async function readOrAskProjectName(): Promise<string> {
+    const repositoryUrl = (await git.listRemotes({ fs, dir: process.cwd() })).find(
+        (r) => r.remote === "origin",
+    )?.url;
+
+    if (repositoryUrl) {
+        const repositoryName = path.basename(repositoryUrl, ".git");
+        const validProjectName: boolean = await (async () => checkProjectName(repositoryName))()
+            .then(() => true)
+            .catch(() => false);
+
+        const projectExists = await getProjectInfoByName(repositoryName)
+            .then(() => true)
+            .catch(() => false);
+
+        // We don't want to automatically use the repository name if the project
+        // exists, because it could overwrite the existing project by accident.
+        if (repositoryName !== undefined && validProjectName && !projectExists)
+            return repositoryName;
+    }
+
     if (existsSync("package.json")) {
         // Read package.json content
         const packageJson = readFileSync("package.json", "utf-8");
