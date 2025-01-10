@@ -550,6 +550,36 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isViteComponent(contents)) {
+            if (await isRemixComponent(contents)) {
+                const packageManagerType =
+                    genezioConfig.remix?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
+                const packageManager = packageManagers[packageManagerType];
+                await addSSRComponentToConfig(
+                    options.config,
+                    {
+                        path: componentPath,
+                        packageManager: packageManagerType,
+                        environment: mapEnvironmentVariableToConfig(
+                            resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+                        ),
+                        scripts: {
+                            build: [`${packageManager.command} run build`],
+                            deploy: [
+                                `${packageManager.command} install`,
+                                `${packageManager.command} run build`,
+                            ],
+                        },
+                    },
+                    SSRFrameworkComponentType.remix,
+                );
+                frameworksDetected.ssr = frameworksDetected.ssr || [];
+                frameworksDetected.ssr.push({
+                    component: "remix",
+                    environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+                });
+                continue;
+            }
+
             const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
             const packageManager = packageManagers[packageManagerType];
             await addFrontendComponentToConfig(configPath, {
