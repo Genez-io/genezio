@@ -344,13 +344,17 @@ export async function hasInternetConnection() {
     }
 }
 
-export async function readOrAskConfig(configPath: string): Promise<YamlProjectConfiguration> {
+export async function readOrAskConfig(
+    configPath: string,
+    givenName?: string,
+    givenRegion?: string,
+): Promise<YamlProjectConfiguration> {
     const configIOController = new YamlConfigurationIOController(configPath);
     if (!existsSync(configPath)) {
-        const name = await readOrAskProjectName();
+        const name = givenName || (await readOrAskProjectName());
 
-        let region = regions[0].value;
-        if (!isCI()) {
+        let region = givenRegion || regions[0].value;
+        if (!isCI() && !givenRegion) {
             ({ region } = await inquirer.prompt([
                 {
                     type: "list",

@@ -157,7 +157,11 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     debugLogger.debug("Key component files found:", componentFiles);
 
     // Create a configuration object to add components to
-    let genezioConfig = (await readOrAskConfig(configPath)) as RawYamlProjectConfiguration;
+    let genezioConfig = (await readOrAskConfig(
+        configPath,
+        options.name,
+        options.region,
+    )) as RawYamlProjectConfiguration;
 
     // The order of the components matters - the first one found will be added to the config
     const dependenciesFiles = new Map(
