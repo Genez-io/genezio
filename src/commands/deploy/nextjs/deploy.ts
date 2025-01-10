@@ -437,10 +437,15 @@ function writeNextConfig(cwd: string, region: string) {
     fs.renameSync(genezioConfigPath, userConfigPath);
 
     const isCommonJS = existingConfig === "js" || existingConfig === "cjs";
-    const genezioConfigContent = `
-import userConfig from './base-next.${existingConfig}';
+    // Remove .ts extension for TypeScript imports
+    const importPath = existingConfig === "ts" ? "./base-next" : `./base-next.${existingConfig}`;
+    const importPathCacheHandler =
+        existingConfig === "ts" ? "./cache-handler.js" : `./cache-handler.${existingConfig}`;
 
-userConfig.cacheHandler = process.env.NODE_ENV === "production" ? "./cache-handler.${existingConfig}" : undefined;
+    const genezioConfigContent = `
+import userConfig from '${importPath}';
+
+userConfig.cacheHandler = process.env.NODE_ENV === "production" ? "${importPathCacheHandler}" : undefined;
 userConfig.cacheMaxMemorySize = 0;
 
 ${isCommonJS ? "module.exports = userConfig;" : "export default userConfig;"}
@@ -448,10 +453,14 @@ ${isCommonJS ? "module.exports = userConfig;" : "export default userConfig;"}
 
     fs.writeFileSync(genezioConfigPath, genezioConfigContent);
 
-    fs.writeFileSync(
-        path.join(cwd, `cache-handler.${existingConfig}`),
-        getCacheHandlerContent(existingConfig as "js" | "ts" | "mjs", region),
-    );
+    if (existingConfig === "ts") {
+        fs.writeFileSync(path.join(cwd, `cache-handler.js`), getCacheHandlerContent("js", region));
+    } else {
+        fs.writeFileSync(
+            path.join(cwd, `cache-handler.${existingConfig}`),
+            getCacheHandlerContent(existingConfig as "js" | "ts" | "mjs", region),
+        );
+    }
 }
 
 function determineFileExtension(cwd: string): "js" | "mjs" | "ts" {
