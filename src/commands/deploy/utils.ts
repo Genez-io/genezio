@@ -56,12 +56,7 @@ import {
 import inquirer from "inquirer";
 import { existsSync, readFileSync, readdirSync } from "fs";
 import { checkProjectName } from "../create/create.js";
-import {
-    uniqueNamesGenerator,
-    adjectives,
-    colors as ungColors,
-    animals,
-} from "unique-names-generator";
+import { uniqueNamesGenerator, adjectives, animals } from "unique-names-generator";
 import { regions } from "../../utils/configs.js";
 import { EnvironmentVariable } from "../../models/environmentVariables.js";
 import { isCI } from "../../utils/process.js";
@@ -373,9 +368,11 @@ export async function readOrAskProjectName(): Promise<string> {
     const repositoryUrl = (await git.listRemotes({ fs, dir: process.cwd() })).find(
         (r) => r.remote === "origin",
     )?.url;
+    let basename: string | undefined;
 
     if (repositoryUrl) {
         const repositoryName = path.basename(repositoryUrl, ".git");
+        basename = repositoryName;
         const validProjectName: boolean = await (async () => checkProjectName(repositoryName))()
             .then(() => true)
             .catch(() => false);
@@ -409,12 +406,15 @@ export async function readOrAskProjectName(): Promise<string> {
             return packageJsonName;
     }
 
-    let name = uniqueNamesGenerator({
-        dictionaries: [ungColors, adjectives, animals],
-        separator: "-",
-        style: "lowerCase",
-        length: 3,
-    });
+    let name = basename
+        ? `${basename}-${Math.random().toString(36).substring(2, 7)}`
+        : uniqueNamesGenerator({
+              dictionaries: [adjectives, animals],
+              separator: "-",
+              style: "lowerCase",
+              length: 2,
+          });
+
     if (!isCI()) {
         // Ask for project name
         ({ name } = await inquirer.prompt([
