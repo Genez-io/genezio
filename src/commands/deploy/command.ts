@@ -11,7 +11,7 @@ import { PackageManagerType } from "../../packageManagers/packageManager.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import { nestJsDeploy } from "./nestjs/deploy.js";
 import { zipDeploy } from "./zip/deploy.js";
-
+import { remixDeploy } from "./remix/deploy.js";
 export type SSRFrameworkComponent = {
     path: string;
     packageManager: PackageManagerType;
@@ -61,6 +61,10 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 debugLogger.debug("Deploying zip file");
                 await zipDeploy(options);
                 break;
+            case DeployType.Remix:
+                debugLogger.debug("Deploying Remix app");
+                await remixDeploy(options);
+                break;
         }
     }
 }
@@ -73,6 +77,7 @@ export enum DeployType {
     Docker = "docker",
     Nest = "nest",
     Zip = "zip",
+    Remix = "remix",
 }
 
 /**
@@ -119,6 +124,9 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         }
         if (config.nuxt) {
             deployableComponents.push(DeployType.Nuxt);
+        }
+        if (config.remix) {
+            deployableComponents.push(DeployType.Remix);
         }
 
         // This ensures backwards compatibility for next/nuxt projects
@@ -180,6 +188,13 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
             packageJson.devDependencies?.["@nestjs/core"]
         ) {
             return [DeployType.Nest];
+        }
+        if (
+            Object.keys({ ...packageJson.dependencies, ...packageJson.devDependencies }).some(
+                (dep) => dep.startsWith("@remix-run/"),
+            )
+        ) {
+            return [DeployType.Remix];
         }
     }
 

@@ -320,6 +320,7 @@ function parseGenezioConfig(config: unknown) {
         nuxt: ssrFrameworkSchema.optional(),
         nitro: ssrFrameworkSchema.optional(),
         container: containerSchema.optional(),
+        remix: ssrFrameworkSchema.optional(),
     });
 
     const parsedConfig = v2Schema.parse(config);
