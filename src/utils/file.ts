@@ -224,18 +224,6 @@ export async function directoryContainsHtmlFiles(directoryPath: string): Promise
     });
 }
 
-export async function getFileSize(filePath: string): Promise<number> {
-    return new Promise((resolve, reject) => {
-        fs.stat(filePath, (error, stats) => {
-            if (error) {
-                reject(error);
-            }
-
-            resolve(stats.size);
-        });
-    });
-}
-
 export async function getBundleFolderSizeLimit(directoryPath: string): Promise<number> {
     const files = await getAllFilesRecursively(directoryPath);
     const totalSize = files.reduce((acc, file) => {
