@@ -437,8 +437,11 @@ function writeNextConfig(cwd: string, region: string) {
     fs.renameSync(genezioConfigPath, userConfigPath);
 
     const isCommonJS = existingConfig === "js" || existingConfig === "cjs";
+    // Remove .ts extension for TypeScript imports
+    const importPath = existingConfig === "ts" ? "./base-next" : `./base-next.${existingConfig}`;
+
     const genezioConfigContent = `
-import userConfig from './base-next.${existingConfig}';
+import userConfig from '${importPath}';
 
 userConfig.cacheHandler = process.env.NODE_ENV === "production" ? "./cache-handler.${existingConfig}" : undefined;
 userConfig.cacheMaxMemorySize = 0;
