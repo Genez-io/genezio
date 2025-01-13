@@ -204,20 +204,21 @@ export async function injectBackendUrlsInConfig(configPath: string) {
         config.frontend = frontend;
     }
 
-    const frameworks = [
-        { key: SSRFrameworkComponentType.next, prefix: "NEXT_PUBLIC" },
-        { key: SSRFrameworkComponentType.nuxt, prefix: "NUXT" },
-    ];
+    // TODO - Uncomment this when Support functions (express, flask etc) with nextjs, nuxt, remix is fixed
+    // const frameworks = [
+    //     { key: SSRFrameworkComponentType.next, prefix: "NEXT_PUBLIC" },
+    //     { key: SSRFrameworkComponentType.nuxt, prefix: "NUXT" },
+    // ];
 
-    frameworks.forEach(({ key, prefix }) => {
-        if (config[key]) {
-            const environment = {
-                ...createFrontendEnvironmentRecord(prefix, functions, ssrFunctions),
-                ...config[key].environment,
-            };
-            config[key].environment = environment;
-        }
-    });
+    // frameworks.forEach(({ key, prefix }) => {
+    //     if (config[key]) {
+    //         const environment = {
+    //             ...createFrontendEnvironmentRecord(prefix, functions, ssrFunctions),
+    //             ...config[key].environment,
+    //         };
+    //         config[key].environment = environment;
+    //     }
+    // });
 
     // Save the updated configuration
     await configIOController.write(config);
