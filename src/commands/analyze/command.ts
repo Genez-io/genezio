@@ -38,9 +38,8 @@ import {
     addFrontendComponentToConfig,
     addServicesToConfig,
     addSSRComponentToConfig,
-    getFrontendPrefix,
     getPythonHandler,
-    injectBackendApiUrlsInConfig,
+    injectBackendUrlsInConfig,
     injectSDKInConfig,
 } from "./utils.js";
 import { DatabaseType, FunctionType, Language } from "../../projectConfiguration/yaml/models.js";
@@ -783,21 +782,10 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
     }
 
-    // Inject Backend API URLs into the frontend component
+    // Inject backend URLs into the frontend components like frontend, nextjs, nuxts
     // This is done after all the components have been detected
-    if (
-        ((frameworksDetected.backend && frameworksDetected.backend.length > 0) ||
-            (frameworksDetected.ssr && frameworksDetected.ssr.length > 0)) &&
-        !frameworksDetected.backend?.some((entry) =>
-            entry.component.includes("genezio-typesafe"),
-        ) &&
-        frameworksDetected.frontend &&
-        frameworksDetected.frontend.length > 0
-    ) {
-        // TODO Support multiple frontend frameworks in the same project
-        const frontendPrefix = getFrontendPrefix(frameworksDetected.frontend[0].component);
-        await injectBackendApiUrlsInConfig(configPath, frontendPrefix);
-    }
+    // TODO Support multiple frontend frameworks in the same project
+    await injectBackendUrlsInConfig(configPath);
 
     if (
         frameworksDetected.backend?.some((entry) => entry.component.includes("genezio-typesafe")) &&
