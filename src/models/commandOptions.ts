@@ -33,7 +33,9 @@ export interface GenezioLocalOptions extends BaseOptions {
 }
 
 export interface GenezioAnalyzeOptions extends BaseOptions {
+    region: string;
     config: string;
+    name?: string;
     format?: string;
 }
 
@@ -47,6 +49,7 @@ export interface GenezioDeployOptions extends BaseOptions {
     subdomain?: string;
     config: string;
     image?: string;
+    zip?: string;
 }
 
 export interface GenezioListOptions extends BaseOptions {

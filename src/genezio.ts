@@ -42,7 +42,7 @@ import currentGenezioVersion, {
 } from "./utils/version.js";
 import { GenezioTelemetry, TelemetryEventTypes } from "./telemetry/telemetry.js";
 import { linkCommand, unlinkCommand } from "./commands/link.js";
-import { PackageManagerType, setPackageManager } from "./packageManagers/packageManager.js";
+import { PackageManagerType, setGlobalPackageManager } from "./packageManagers/packageManager.js";
 import colors from "colors";
 import { createCommand } from "./commands/create/create.js";
 import { bundleCommand } from "./commands/bundle.js";
@@ -75,12 +75,12 @@ try {
             throw new Error();
         }
 
-        setPackageManager(packageManager);
+        setGlobalPackageManager(packageManager);
     } else {
-        setPackageManager(PackageManagerType.npm);
+        setGlobalPackageManager(PackageManagerType.npm);
     }
 } catch {
-    setPackageManager(PackageManagerType.npm);
+    setGlobalPackageManager(PackageManagerType.npm);
 }
 
 // make genezio --version
@@ -151,6 +151,11 @@ program
 program
     .command("analyze")
     .option(
+        "--name <name>",
+        "Name of the project you want to analyze. If not set, the project name will be randomly generated.",
+    )
+    .option("--region <region>", "Region of the project.", "us-east-1")
+    .option(
         "--config <config>",
         "Use a specific `genezio.yaml` to update the detected setup",
         "./genezio.yaml",
@@ -186,6 +191,11 @@ program
         undefined,
     )
     .option("--env <envFile>", "Load environment variables from a given file", undefined)
+    .option(
+        "--zip <zipPath>",
+        "Deploy a zip file directly. The zip file must contain a valid genezio config file",
+        undefined,
+    )
     .option("--stage <stage>", "Set the environment name to deploy to", "prod")
     .option(
         "--subdomain <subdomain>",

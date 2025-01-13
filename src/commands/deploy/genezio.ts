@@ -74,7 +74,10 @@ import { getFunctionHandlerProvider } from "../../utils/getFunctionHandlerProvid
 import { getFunctionEntryFilename } from "../../utils/getFunctionEntryFilename.js";
 import { CronDetails } from "../../models/requests.js";
 import { syncCrons } from "../../requests/crons.js";
-import { getPackageManager } from "../../packageManagers/packageManager.js";
+import {
+    packageManagers,
+    PYTHON_DEFAULT_PACKAGE_MANAGER,
+} from "../../packageManagers/packageManager.js";
 import { supportedPythonDepsInstallVersion } from "../../models/projectOptions.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
@@ -602,7 +605,7 @@ export async function functionToCloudInput(
         const pyProjectTomlPath = path.join(backendPath, "pyproject.toml");
         if (fs.existsSync(requirementsPath) || fs.existsSync(pyProjectTomlPath)) {
             const pathForDependencies = path.join(tmpFolderPath, "packages");
-            const packageManager = getPackageManager();
+            const packageManager = packageManagers[PYTHON_DEFAULT_PACKAGE_MANAGER];
             let installCommand;
 
             if (packageManager.command === "pip" || packageManager.command === "pip3") {
@@ -612,7 +615,7 @@ export async function functionToCloudInput(
                         .readFileSync(requirementsOutputPath, "utf8")
                         .trim();
                     if (requirementsContent) {
-                        installCommand = `${packageManager.command} install -r ${requirementsOutputPath} --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${supportedPythonDepsInstallVersion} -t ${pathForDependencies}`;
+                        installCommand = `${packageManager.command} install -r ${requirementsOutputPath} --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${supportedPythonDepsInstallVersion} -t ${pathForDependencies} --no-user`;
                     }
                 } else if (fs.existsSync(pyProjectTomlPath)) {
                     installCommand = `${packageManager.command} install . --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${supportedPythonDepsInstallVersion} -t ${pathForDependencies}`;

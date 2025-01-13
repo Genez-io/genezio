@@ -173,15 +173,20 @@ export async function injectBackendApiUrlsInConfig(configPath: string, frontendP
     const config = await configIOController.read(/* fillDefaults= */ false);
 
     // Validate backend and frontend existence
+    let functions: string[] = [];
+    const ssrFrameworks: string[] = [];
     const backend = config.backend as YAMLBackend;
     const frontend = config.frontend as YamlFrontend;
-    if (!backend || !frontend) return;
+    if (!frontend) return;
 
-    const backendFunctions = backend.functions;
-    if (!backendFunctions) return;
+    if (backend?.functions) functions = backend.functions.map((fn) => fn.name);
+    if (config.nextjs) ssrFrameworks.push("nextjs");
+    if (config.nestjs) ssrFrameworks.push("nestjs");
+    if (config.nuxt) ssrFrameworks.push("nuxt");
+    if (config.nitro) ssrFrameworks.push("nitro");
 
     // Generate frontend environment variables based on backend functions
-    const frontendEnvironment = createFrontendEnvironment(frontendPrefix, backendFunctions);
+    const frontendEnvironment = createFrontendEnvironment(frontendPrefix, functions, ssrFrameworks);
     frontend.environment = frontendEnvironment;
 
     // Save the updated configuration
@@ -254,14 +259,30 @@ export function getFrontendPrefix(framework: string): string {
  */
 function createFrontendEnvironment(
     frontendPrefix: string,
-    backendFunctions: Array<{ name: string }>,
+    backendFunctions: string[] = [],
+    ssrFrameworks: string[] = [],
 ): Record<string, string> {
-    return backendFunctions.reduce<Record<string, string>>((environment, func) => {
-        const key = formatFunctionNameAsEnvVar(frontendPrefix, func.name);
-        const value = `\${{ backend.functions.${func.name}.url }}`;
-        environment[key] = value;
-        return environment;
-    }, {});
+    const environment_backend = backendFunctions.reduce<Record<string, string>>(
+        (environment, functionName) => {
+            const key = formatFunctionNameAsEnvVar(frontendPrefix, functionName);
+            const value = `\${{ backend.functions.${functionName}.url }}`;
+            environment[key] = value;
+            return environment;
+        },
+        {},
+    );
+
+    const environment_ssr = ssrFrameworks.reduce<Record<string, string>>(
+        (environment, framework) => {
+            const key = `${frontendPrefix}_API_URL_${framework.toUpperCase()}`;
+            const value = `\${{ ${framework}.url }}`;
+            environment[key] = value;
+            return environment;
+        },
+        {},
+    );
+
+    return { ...environment_backend, ...environment_ssr };
 }
 
 /**

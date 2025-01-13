@@ -1,6 +1,10 @@
 import path from "path";
+import git from "isomorphic-git";
+import fs from "fs";
 import { ADD_DATABASE_CONFIG, UserError } from "../../errors.js";
 import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js";
+import dns from "dns";
+import { promisify } from "util";
 import {
     AuthDatabaseConfig,
     AuthenticationProviders,
@@ -52,12 +56,7 @@ import {
 import inquirer from "inquirer";
 import { existsSync, readFileSync, readdirSync } from "fs";
 import { checkProjectName } from "../create/create.js";
-import {
-    uniqueNamesGenerator,
-    adjectives,
-    colors as ungColors,
-    animals,
-} from "unique-names-generator";
+import { uniqueNamesGenerator, adjectives, animals } from "unique-names-generator";
 import { regions } from "../../utils/configs.js";
 import { EnvironmentVariable } from "../../models/environmentVariables.js";
 import { isCI } from "../../utils/process.js";
@@ -71,7 +70,7 @@ import {
 import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedURLForProjectCodePush.js";
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import { displayHint, replaceExpression } from "../../utils/strings.js";
-import { getPackageManager } from "../../packageManagers/packageManager.js";
+import { packageManagers, PackageManagerType } from "../../packageManagers/packageManager.js";
 import { ContainerComponentType, SSRFrameworkComponentType } from "../../models/projectOptions.js";
 import gitignore from "parse-gitignore";
 import {
@@ -79,6 +78,8 @@ import {
     enableEmailIntegration,
     getProjectIntegrations,
 } from "../../requests/integration.js";
+
+const dnsLookup = promisify(dns.lookup);
 
 type DependenciesInstallResult = {
     command: string;
@@ -250,14 +251,20 @@ export async function getOrCreateEmptyProject(
 export async function attemptToInstallDependencies(
     args: string[] = [],
     currentPath: string,
+    packageManagerType: PackageManagerType,
+    cleanInstall: boolean = false,
 ): Promise<DependenciesInstallResult> {
-    const packageManager = getPackageManager();
+    const packageManager = packageManagers[packageManagerType];
     debugLogger.debug(
         `Attempting to install dependencies with ${packageManager.command} ${args.join(" ")}`,
     );
 
     try {
-        await packageManager.install([], currentPath, args);
+        if (!cleanInstall) {
+            await packageManager.install(args, currentPath);
+        } else {
+            await packageManager.cleanInstall(currentPath, args);
+        }
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -282,7 +289,11 @@ export async function attemptToInstallDependencies(
         }
 
         if (errorMessage.includes("code ERESOLVE") && !args.includes("--legacy-peer-deps")) {
-            return attemptToInstallDependencies([...args, "--legacy-peer-deps"], currentPath);
+            return attemptToInstallDependencies(
+                [...args, "--legacy-peer-deps"],
+                currentPath,
+                packageManagerType,
+            );
         }
 
         throw new UserError(`Failed to install dependencies: ${errorMessage}`);
@@ -311,13 +322,36 @@ function getNoTargetPackage(errorMessage: string): string | null {
     return match ? match[1] : null;
 }
 
-export async function readOrAskConfig(configPath: string): Promise<YamlProjectConfiguration> {
+export async function hasInternetConnection() {
+    const testDomain = "google.com";
+    const timeout = 5000;
+    try {
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => {
+                reject(new Error("DNS lookup timed out"));
+            }, timeout);
+        });
+
+        await Promise.race([dnsLookup(testDomain), timeoutPromise]);
+
+        return true;
+    } catch (error) {
+        debugLogger.debug(`Error checking internet connection: ${error}`);
+        return false;
+    }
+}
+
+export async function readOrAskConfig(
+    configPath: string,
+    givenName?: string,
+    givenRegion?: string,
+): Promise<YamlProjectConfiguration> {
     const configIOController = new YamlConfigurationIOController(configPath);
     if (!existsSync(configPath)) {
-        const name = await readOrAskProjectName();
+        const name = givenName || (await readOrAskProjectName());
 
-        let region = regions[0].value;
-        if (!isCI()) {
+        let region = givenRegion || regions[0].value;
+        if (!isCI() && !givenRegion) {
             ({ region } = await inquirer.prompt([
                 {
                     type: "list",
@@ -335,6 +369,28 @@ export async function readOrAskConfig(configPath: string): Promise<YamlProjectCo
 }
 
 export async function readOrAskProjectName(): Promise<string> {
+    const repositoryUrl = (await git.listRemotes({ fs, dir: process.cwd() })).find(
+        (r) => r.remote === "origin",
+    )?.url;
+    let basename: string | undefined;
+
+    if (repositoryUrl) {
+        const repositoryName = path.basename(repositoryUrl, ".git");
+        basename = repositoryName;
+        const validProjectName: boolean = await (async () => checkProjectName(repositoryName))()
+            .then(() => true)
+            .catch(() => false);
+
+        const projectExists = await getProjectInfoByName(repositoryName)
+            .then(() => true)
+            .catch(() => false);
+
+        // We don't want to automatically use the repository name if the project
+        // exists, because it could overwrite the existing project by accident.
+        if (repositoryName !== undefined && validProjectName && !projectExists)
+            return repositoryName;
+    }
+
     if (existsSync("package.json")) {
         // Read package.json content
         const packageJson = readFileSync("package.json", "utf-8");
@@ -354,12 +410,15 @@ export async function readOrAskProjectName(): Promise<string> {
             return packageJsonName;
     }
 
-    let name = uniqueNamesGenerator({
-        dictionaries: [ungColors, adjectives, animals],
-        separator: "-",
-        style: "lowerCase",
-        length: 3,
-    });
+    let name = basename
+        ? `${basename}-${Math.random().toString(36).substring(2, 7)}`
+        : uniqueNamesGenerator({
+              dictionaries: [adjectives, animals],
+              separator: "-",
+              style: "lowerCase",
+              length: 2,
+          });
+
     if (!isCI()) {
         // Ask for project name
         ({ name } = await inquirer.prompt([

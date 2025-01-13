@@ -78,6 +78,11 @@ export async function scanClassesForDecorators(
                               )
                             : undefined;
                         const cronString = genezioMethodDecorator.arguments["cronString"];
+                        if (methodType === TriggerType.cron && !cronString) {
+                            throw new UserError(
+                                `Method ${m.name} in class ${classInfo[0].name} has type cron but no cronString specified`,
+                            );
+                        }
 
                         const usesAuth =
                             m.decorators.find((d) => d.name === "GenezioAuth") !== undefined;

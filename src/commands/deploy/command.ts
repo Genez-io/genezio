@@ -10,12 +10,13 @@ import { dockerDeploy } from "./docker/deploy.js";
 import { PackageManagerType } from "../../packageManagers/packageManager.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
 import { nestJsDeploy } from "./nestjs/deploy.js";
+import { zipDeploy } from "./zip/deploy.js";
 
 export type SSRFrameworkComponent = {
     path: string;
     packageManager: PackageManagerType;
     scripts?: {
-        deploy: string | string[];
+        deploy?: string | string[];
         build?: string | string[];
         start?: string | string[];
     };
@@ -56,17 +57,22 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 debugLogger.debug("Deploying Nest.js app");
                 await nestJsDeploy(options);
                 break;
+            case DeployType.Zip:
+                debugLogger.debug("Deploying zip file");
+                await zipDeploy(options);
+                break;
         }
     }
 }
 
 export enum DeployType {
-    Classic = "typesafe",
+    Classic = "classic",
     NextJS = "next",
     Nitro = "nitro",
     Nuxt = "nuxt",
     Docker = "docker",
     Nest = "nest",
+    Zip = "zip",
 }
 
 /**
@@ -83,6 +89,10 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
     const cwd = process.cwd();
     const deployableComponents: DeployType[] = [];
 
+    if (options.zip) {
+        return [DeployType.Zip];
+    }
+
     if (options.image) {
         return [DeployType.Docker];
     }
@@ -91,26 +101,24 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         const configIOController = new YamlConfigurationIOController(options.config);
         const config = await configIOController.read();
 
-        if (config.container) {
-            deployableComponents.push(DeployType.Docker);
-        }
-        if (config.nextjs) {
-            deployableComponents.push(DeployType.NextJS);
-        }
-        if (config.nuxt) {
-            deployableComponents.push(DeployType.Nuxt);
-        }
         if (config.nitro) {
             deployableComponents.push(DeployType.Nitro);
         }
         if (config.nestjs) {
             deployableComponents.push(DeployType.Nest);
         }
-        if (config.backend) {
+        if (config.container) {
+            deployableComponents.push(DeployType.Docker);
+        }
+        // For backend or frontend a classic genezio app should be added only once
+        if (config.backend || config.frontend) {
             deployableComponents.push(DeployType.Classic);
         }
-        if (config.frontend) {
-            deployableComponents.push(DeployType.Classic);
+        if (config.nextjs) {
+            deployableComponents.push(DeployType.NextJS);
+        }
+        if (config.nuxt) {
+            deployableComponents.push(DeployType.Nuxt);
         }
 
         // This ensures backwards compatibility for next/nuxt projects

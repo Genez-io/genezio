@@ -25,7 +25,11 @@ import {
     isNestjsComponent,
 } from "./frameworks.js";
 import { generateDatabaseName, readOrAskConfig } from "../deploy/utils.js";
-import { getPackageManager, PackageManagerType } from "../../packageManagers/packageManager.js";
+import {
+    NODE_DEFAULT_PACKAGE_MANAGER,
+    packageManagers,
+    PYTHON_DEFAULT_PACKAGE_MANAGER,
+} from "../../packageManagers/packageManager.js";
 import { SSRFrameworkComponentType } from "../../models/projectOptions.js";
 import { RawYamlProjectConfiguration, YAMLLanguage } from "../../projectConfiguration/yaml/v2.js";
 import {
@@ -153,7 +157,11 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     debugLogger.debug("Key component files found:", componentFiles);
 
     // Create a configuration object to add components to
-    let genezioConfig = (await readOrAskConfig(configPath)) as RawYamlProjectConfiguration;
+    let genezioConfig = (await readOrAskConfig(
+        configPath,
+        options.name,
+        options.region,
+    )) as RawYamlProjectConfiguration;
 
     // The order of the components matters - the first one found will be added to the config
     const dependenciesFiles = new Map(
@@ -228,6 +236,9 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             // TODO: Add support for detecting and building typescript backends
             // const isTypescriptFlag = await isTypescript(contents);
 
+            const packageManagerType =
+                genezioConfig.backend?.language?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
             await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 language: {
@@ -235,8 +246,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     name: Language.js,
                 } as YAMLLanguage,
                 scripts: {
-                    deploy: [`${getPackageManager().command} install`],
-                    local: [`${getPackageManager().command} install`],
+                    deploy: [`${packageManager.command} install`],
+                    local: [`${packageManager.command} install`],
                 },
                 environment: mapEnvironmentVariableToConfig(
                     resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
@@ -261,16 +272,19 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isNestjsComponent(contents)) {
+            const packageManagerType =
+                genezioConfig.nestjs?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
             await addSSRComponentToConfig(
                 options.config,
                 {
                     path: componentPath,
-                    packageManager: getPackageManager().command as PackageManagerType,
+                    packageManager: packageManagerType,
                     environment: mapEnvironmentVariableToConfig(
                         resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
                     ),
                     scripts: {
-                        deploy: [`${getPackageManager().command} install`],
+                        deploy: [`${packageManager.command} install`],
                     },
                 },
                 SSRFrameworkComponentType.nestjs,
@@ -294,7 +308,9 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
 
             // TODO: Add support for detecting and building typescript backends
             // const isTypescriptFlag = await isTypescript(contents);
-
+            const packageManagerType =
+                genezioConfig.backend?.language?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
             await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 language: {
@@ -305,8 +321,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
                 ),
                 scripts: {
-                    deploy: [`${getPackageManager().command} install`],
-                    local: [`${getPackageManager().command} install`],
+                    deploy: [`${packageManager.command} install`],
+                    local: [`${packageManager.command} install`],
                 },
                 functions: [
                     {
@@ -336,7 +352,9 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
 
             // TODO: Add support for detecting and building typescript backends
             // const isTypescriptFlag = await isTypescript(contents);
-
+            const packageManagerType =
+                genezioConfig.backend?.language?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
             await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 language: {
@@ -344,8 +362,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     name: Language.js,
                 } as YAMLLanguage,
                 scripts: {
-                    deploy: [`${getPackageManager().command} install`],
-                    local: [`${getPackageManager().command} install`],
+                    deploy: [`${packageManager.command} install`],
+                    local: [`${packageManager.command} install`],
                 },
                 environment: mapEnvironmentVariableToConfig(
                     resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
@@ -368,16 +386,19 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isNextjsComponent(contents)) {
+            const packageManagerType =
+                genezioConfig.nestjs?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
             await addSSRComponentToConfig(
                 options.config,
                 {
                     path: componentPath,
-                    packageManager: getPackageManager().command as PackageManagerType,
+                    packageManager: packageManagerType,
                     environment: mapEnvironmentVariableToConfig(
                         resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
                     ),
                     scripts: {
-                        deploy: [`${getPackageManager().command} install`],
+                        deploy: [`${packageManager.command} install`],
                     },
                 },
                 SSRFrameworkComponentType.next,
@@ -391,16 +412,20 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isNuxtComponent(contents)) {
+            const packageManagerType =
+                genezioConfig.nuxt?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
+
             await addSSRComponentToConfig(
                 options.config,
                 {
                     path: componentPath,
-                    packageManager: getPackageManager().command as PackageManagerType,
+                    packageManager: packageManagerType,
                     environment: mapEnvironmentVariableToConfig(
                         resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
                     ),
                     scripts: {
-                        deploy: [`${getPackageManager().command} install`],
+                        deploy: [`${packageManager.command} install`],
                     },
                 },
                 SSRFrameworkComponentType.nuxt,
@@ -414,16 +439,20 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isNitroComponent(contents)) {
+            const packageManagerType =
+                genezioConfig.nitro?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
+
             await addSSRComponentToConfig(
                 options.config,
                 {
                     path: componentPath,
-                    packageManager: getPackageManager().command as PackageManagerType,
+                    packageManager: packageManagerType,
                     environment: mapEnvironmentVariableToConfig(
                         resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
                     ),
                     scripts: {
-                        deploy: [`${getPackageManager().command} install`],
+                        deploy: [`${packageManager.command} install`],
                     },
                 },
                 SSRFrameworkComponentType.nitro,
@@ -437,12 +466,14 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isVueComponent(contents)) {
+            const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
             await addFrontendComponentToConfig(configPath, {
                 path: componentPath,
                 publish: path.join(componentPath, "dist"),
                 scripts: {
-                    deploy: [`${getPackageManager().command} install`],
-                    build: [`${getPackageManager().command} run build`],
+                    deploy: [`${packageManager.command} install`],
+                    build: [`${packageManager.command} run build`],
                 },
             });
             frameworksDetected.frontend = frameworksDetected.frontend || [];
@@ -454,12 +485,14 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isAngularComponent(contents)) {
+            const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
             await addFrontendComponentToConfig(configPath, {
                 path: componentPath,
                 publish: path.join("dist", "browser"),
                 scripts: {
-                    deploy: [`${getPackageManager().command} install`],
-                    build: [`${getPackageManager().command} run build`],
+                    deploy: [`${packageManager.command} install`],
+                    build: [`${packageManager.command} run build`],
                 },
             });
             frameworksDetected.frontend = frameworksDetected.frontend || [];
@@ -471,12 +504,14 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isSvelteComponent(contents)) {
+            const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
             await addFrontendComponentToConfig(configPath, {
                 path: componentPath,
                 publish: "dist",
                 scripts: {
-                    deploy: [`${getPackageManager().command} install`],
-                    build: [`${getPackageManager().command} run build`],
+                    deploy: [`${packageManager.command} install`],
+                    build: [`${packageManager.command} run build`],
                 },
             });
             frameworksDetected.frontend = frameworksDetected.frontend || [];
@@ -488,12 +523,14 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isViteComponent(contents)) {
+            const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
             await addFrontendComponentToConfig(configPath, {
                 path: componentPath,
                 publish: "dist",
                 scripts: {
-                    deploy: [`${getPackageManager().command} install`],
-                    build: [`${getPackageManager().command} run build`],
+                    deploy: [`${packageManager.command} install`],
+                    build: [`${packageManager.command} run build`],
                 },
             });
             frameworksDetected.frontend = frameworksDetected.frontend || [];
@@ -505,12 +542,14 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isReactComponent(contents)) {
+            const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
             await addFrontendComponentToConfig(configPath, {
                 path: componentPath,
                 publish: "build",
                 scripts: {
-                    deploy: [`${getPackageManager().command} install`],
-                    build: [`${getPackageManager().command} run build`],
+                    deploy: [`${packageManager.command} install`],
+                    build: [`${packageManager.command} run build`],
                 },
             });
             frameworksDetected.frontend = frameworksDetected.frontend || [];
@@ -522,6 +561,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isGenezioTypesafe(contents)) {
+            const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
             await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 // TODO: Add support for detecting the language of the backend
@@ -529,8 +570,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     name: Language.ts,
                 } as YAMLLanguage,
                 scripts: {
-                    deploy: [`${getPackageManager().command} install`],
-                    local: [`${getPackageManager().command} install`],
+                    deploy: [`${packageManager.command} install`],
+                    local: [`${packageManager.command} install`],
                 },
             });
             frameworksDetected.backend = frameworksDetected.backend || [];
@@ -545,14 +586,18 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 FLASK_PATTERN,
                 PYTHON_DEFAULT_ENTRY_FILE,
             );
-            const entryFileContent = await retrieveFileContent(entryFile);
+            const fullpath = path.join(componentPath, entryFile);
+            const entryFileContent = await retrieveFileContent(fullpath);
             const pythonHandler = getPythonHandler(entryFileContent);
+
+            const packageManagerType =
+                genezioConfig.backend?.language?.packageManager || PYTHON_DEFAULT_PACKAGE_MANAGER;
 
             await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 language: {
                     name: Language.python,
-                    packageManager: "pip" as PackageManagerType,
+                    packageManager: packageManagerType,
                 } as YAMLLanguage,
                 environment: mapEnvironmentVariableToConfig(
                     resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
@@ -583,11 +628,14 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 DJANGO_PATTERN,
                 "wsgi.py",
             );
+
+            const packageManagerType =
+                genezioConfig.backend?.language?.packageManager || PYTHON_DEFAULT_PACKAGE_MANAGER;
             await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 language: {
                     name: Language.python,
-                    packageManager: "pip" as PackageManagerType,
+                    packageManager: packageManagerType,
                 } as YAMLLanguage,
                 environment: mapEnvironmentVariableToConfig(
                     resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
@@ -618,15 +666,17 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 FASTAPI_PATTERN,
                 PYTHON_DEFAULT_ENTRY_FILE,
             );
-
-            const entryFileContent = await retrieveFileContent(entryFile);
+            const fullpath = path.join(componentPath, entryFile);
+            const entryFileContent = await retrieveFileContent(fullpath);
             const pythonHandler = getPythonHandler(entryFileContent);
 
+            const packageManagerType =
+                genezioConfig.backend?.language?.packageManager || PYTHON_DEFAULT_PACKAGE_MANAGER;
             await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 language: {
                     name: Language.python,
-                    packageManager: "pip" as PackageManagerType,
+                    packageManager: packageManagerType,
                 } as YAMLLanguage,
                 environment: mapEnvironmentVariableToConfig(
                     resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
@@ -657,11 +707,14 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 PYTHON_LAMBDA_PATTERN,
                 PYTHON_DEFAULT_ENTRY_FILE,
             );
+
+            const packageManagerType =
+                genezioConfig.backend?.language?.packageManager || PYTHON_DEFAULT_PACKAGE_MANAGER;
             await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 language: {
                     name: Language.python,
-                    packageManager: "pip" as PackageManagerType,
+                    packageManager: packageManagerType,
                 } as YAMLLanguage,
                 environment: mapEnvironmentVariableToConfig(
                     resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
@@ -688,8 +741,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     // Inject Backend API URLs into the frontend component
     // This is done after all the components have been detected
     if (
-        frameworksDetected.backend &&
-        frameworksDetected.backend.length > 0 &&
+        ((frameworksDetected.backend && frameworksDetected.backend.length > 0) ||
+            (frameworksDetected.ssr && frameworksDetected.ssr.length > 0)) &&
         !frameworksDetected.backend?.some((entry) =>
             entry.component.includes("genezio-typesafe"),
         ) &&
