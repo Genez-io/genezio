@@ -23,6 +23,7 @@ import {
     hasPostgresDependency,
     hasMongoDependency,
     isNestjsComponent,
+    isRemixComponent,
 } from "./frameworks.js";
 import { generateDatabaseName, readOrAskConfig } from "../deploy/utils.js";
 import {
@@ -297,6 +298,36 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             continue;
         }
 
+        if (await isRemixComponent(contents)) {
+            const packageManagerType =
+                genezioConfig.remix?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
+            await addSSRComponentToConfig(
+                options.config,
+                {
+                    path: componentPath,
+                    packageManager: packageManagerType,
+                    environment: mapEnvironmentVariableToConfig(
+                        resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+                    ),
+                    scripts: {
+                        build: [`${packageManager.command} run build`],
+                        deploy: [
+                            `${packageManager.command} install`,
+                            `${packageManager.command} run build`,
+                        ],
+                    },
+                },
+                SSRFrameworkComponentType.remix,
+            );
+            frameworksDetected.ssr = frameworksDetected.ssr || [];
+            frameworksDetected.ssr.push({
+                component: "remix",
+                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+            });
+            continue;
+        }
+
         if (await isExpressBackend(contents)) {
             const entryFile = await findEntryFile(
                 componentPath,
@@ -474,6 +505,10 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 scripts: {
                     deploy: [`${packageManager.command} install`],
                     build: [`${packageManager.command} run build`],
+                    start: [
+                        `${packageManager.command} install`,
+                        `${packageManager.command} run dev`,
+                    ],
                 },
             });
             frameworksDetected.frontend = frameworksDetected.frontend || [];
@@ -493,6 +528,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 scripts: {
                     deploy: [`${packageManager.command} install`],
                     build: [`${packageManager.command} run build`],
+                    start: [`${packageManager.command} install`, `${packageManager.command} start`],
                 },
             });
             frameworksDetected.frontend = frameworksDetected.frontend || [];
@@ -512,6 +548,10 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 scripts: {
                     deploy: [`${packageManager.command} install`],
                     build: [`${packageManager.command} run build`],
+                    start: [
+                        `${packageManager.command} install`,
+                        `${packageManager.command} run dev`,
+                    ],
                 },
             });
             frameworksDetected.frontend = frameworksDetected.frontend || [];
@@ -531,6 +571,10 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 scripts: {
                     deploy: [`${packageManager.command} install`],
                     build: [`${packageManager.command} run build`],
+                    start: [
+                        `${packageManager.command} install`,
+                        `${packageManager.command} run dev`,
+                    ],
                 },
             });
             frameworksDetected.frontend = frameworksDetected.frontend || [];
@@ -550,6 +594,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 scripts: {
                     deploy: [`${packageManager.command} install`],
                     build: [`${packageManager.command} run build`],
+                    start: [`${packageManager.command} install`, `${packageManager.command} start`],
                 },
             });
             frameworksDetected.frontend = frameworksDetected.frontend || [];

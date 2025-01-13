@@ -367,6 +367,19 @@ export async function isSvelteComponent(contents: Record<string, string>): Promi
         : false;
 }
 
+// Checks if the project is a Remix component
+export async function isRemixComponent(contents: Record<string, string>): Promise<boolean> {
+    if (!contents["package.json"]) {
+        return false;
+    }
+
+    const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
+
+    return Object.keys(packageJsonContent.dependencies || {}).some((key) =>
+        key.startsWith("@remix-run"),
+    );
+}
+
 // Checks if the project is a Python component (presence of 'requirements.txt' or 'pyproject.toml')
 export function isPythonComponent(contents: Record<string, string>): boolean {
     return contents["requirements.txt"] !== undefined || contents["pyproject.toml"] !== undefined;
