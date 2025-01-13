@@ -151,6 +151,11 @@ program
 program
     .command("analyze")
     .option(
+        "--name <name>",
+        "Name of the project you want to analyze. If not set, the project name will be randomly generated.",
+    )
+    .option("--region <region>", "Region of the project.", "us-east-1")
+    .option(
         "--config <config>",
         "Use a specific `genezio.yaml` to update the detected setup",
         "./genezio.yaml",
