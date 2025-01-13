@@ -96,6 +96,7 @@ import { expandEnvironmentVariables, findAnEnvFile } from "../utils/environmentV
 import { getFunctionHandlerProvider } from "../utils/getFunctionHandlerProvider.js";
 import { getFunctionEntryFilename } from "../utils/getFunctionEntryFilename.js";
 import { SSRFrameworkComponent } from "./deploy/command.js";
+import { fs } from "memfs";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -336,7 +337,8 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         !yamlProjectConfiguration.nextjs &&
         !yamlProjectConfiguration.nuxt &&
         !yamlProjectConfiguration.nestjs &&
-        !yamlProjectConfiguration.nitro
+        !yamlProjectConfiguration.nitro &&
+        !yamlProjectConfiguration.remix
     ) {
         throw new UserError(
             "No backend or frontend components found in the genezio.yaml file. You need at least one component to start the local environment.",
@@ -357,6 +359,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         { config: yamlProjectConfiguration.nuxt, name: "Nuxt" },
         { config: yamlProjectConfiguration.nestjs, name: "Nest.js" },
         { config: yamlProjectConfiguration.nitro, name: "Nitro" },
+        { config: yamlProjectConfiguration.remix, name: "Remix" },
     ].filter((framework) => framework.config);
 
     // Start all components in parallel
@@ -1777,6 +1780,29 @@ else:
 `;
 }
 
+/**
+ * Starts a Server-Side Rendering (SSR) framework in development mode.
+ *
+ * @param ssrConfig - Configuration object for the SSR framework
+ * @param frameworkName - Name of the SSR framework (e.g., "Next.js", "Nuxt", "Nitro", "Remix")
+ * @param projectConfiguration - The complete Genezio YAML project configuration
+ * @param stage - The deployment stage (e.g., "prod", "dev")
+ * @param port - Optional port number for the main Genezio server
+ *
+ * @throws {UserError} When Nest.js is specified (not supported in local mode, don't have --port option, todo: detect the port)
+ * @throws {Error} When an unknown SSR framework is specified
+ *
+ * @remarks
+ * This function:
+ * 1. Sets up environment variables for the SSR framework
+ * 2. Finds an available port for the SSR server
+ * 3. Spawns a child process to run the framework's development server
+ * 4. Handles stdout/stderr logging with ANSI code stripping
+ * 5. Provides specific configurations for Next.js, Nuxt, Nitro, and Remix
+ *
+ * For Remix specifically, it checks for the presence of a Vite config to determine
+ * the correct development command.
+ */
 async function startSsrFramework(
     ssrConfig: SSRFrameworkComponent,
     frameworkName: string,
@@ -1805,6 +1831,10 @@ async function startSsrFramework(
 
     const ssrPort = await findAvailablePort();
 
+    if (frameworkName.toLowerCase() === "nest.js") {
+        throw new UserError("Nest.js is not supported in local mode");
+    }
+
     process.env[`GENEZIO_PORT_${frameworkName.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`] =
         ssrPort.toString();
 
@@ -1815,6 +1845,7 @@ async function startSsrFramework(
         const currentDir = process.cwd();
         const ssrPath = path.resolve(currentDir, ssrConfig.path);
 
+        const isViteConfigExists = fs.existsSync(path.join(ssrPath, "vite.config.js"));
         switch (frameworkName.toLowerCase()) {
             case "next.js":
                 command = "next";
@@ -1828,6 +1859,12 @@ async function startSsrFramework(
                 command = "nitropack";
                 args = ["dev", "--port", ssrPort.toString()];
                 break;
+            case "remix":
+                command = "remix";
+                args = isViteConfigExists
+                    ? ["vite:dev", "--port", ssrPort.toString()]
+                    : ["dev", "--port", ssrPort.toString()];
+                break;
             default:
                 throw new Error(`Unknown SSR framework: ${frameworkName}`);
         }
@@ -1837,8 +1874,8 @@ async function startSsrFramework(
             env: {
                 ...process.env,
                 ...newEnvObject,
-                CI: "1",
-                TERM: "dumb",
+                CI: "1", // Forces CI mode
+                TERM: "dumb", // Simplifies terminal output
             },
             cwd: ssrPath,
         });
@@ -1850,6 +1887,7 @@ async function startSsrFramework(
             input: childProcess.stderr!,
         });
 
+        // Function to remove ANSI escape codes from a string (used to remove clear console output)
         const stripAnsi = (str: string): string => {
             /* eslint-disable-next-line no-control-regex */
             return str.replace(
