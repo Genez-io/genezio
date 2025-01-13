@@ -63,21 +63,25 @@ export async function remixDeploy(options: GenezioDeployOptions) {
         await $({
             stdio: "inherit",
             cwd: componentPath,
-        })`remix vite:build`.catch(() => {
-            throw new UserError("Failed to build the Remix project. Check the logs above.");
+        })`remix vite:build`.catch((error) => {
+            throw new UserError(
+                `Failed to build the Remix project. Check the logs above. ${error}`,
+            );
         });
     } else {
-        debugLogger.debug("Building the project using: npx remix build");
+        debugLogger.debug("Building the project using:remix build");
         // Build the project using remix build
         await $({
             stdio: "inherit",
             cwd: componentPath,
-        })`npx remix build`.catch(() => {
-            throw new UserError("Failed to build the Remix project. Check the logs above.");
+        })`remix build`.catch((error) => {
+            throw new UserError(
+                `Failed to build the Remix project. Check the logs above. ${error}`,
+            );
         });
     }
 
-    const remixBuildCommand = isRemixVite ? "remix vite:build" : "npx remix build";
+    const remixBuildCommand = isRemixVite ? "remix vite:build" : "remix build";
 
     // Add remix component to config
     await addSSRComponentToConfig(
@@ -101,8 +105,10 @@ export async function remixDeploy(options: GenezioDeployOptions) {
     const buildPath = path.join(componentPath, "build");
     await fs.promises
         .cp(buildPath, tempBuildCwd, { recursive: true, force: true, dereference: true })
-        .catch(() => {
-            throw new UserError("Failed to copy project build folder to temporary directory");
+        .catch((error) => {
+            throw new UserError(
+                `Failed to copy project build folder to temporary directory. ${error}`,
+            );
         });
 
     if (!isRemixVite) {
@@ -110,8 +116,10 @@ export async function remixDeploy(options: GenezioDeployOptions) {
         const publicPath = path.join(componentPath, "public");
         await fs.promises
             .mkdir(path.join(tempBuildCwd, "public"), { recursive: true })
-            .catch(() => {
-                throw new UserError("Failed to create public folder in temporary directory");
+            .catch((error) => {
+                throw new UserError(
+                    `Failed to create public folder in temporary directory. ${error}`,
+                );
             });
         await fs.promises
             .cp(publicPath, path.join(tempBuildCwd, "public"), {
@@ -119,8 +127,10 @@ export async function remixDeploy(options: GenezioDeployOptions) {
                 force: true,
                 dereference: true,
             })
-            .catch(() => {
-                throw new UserError("Failed to copy public folder to temporary directory");
+            .catch((error) => {
+                throw new UserError(
+                    `Failed to copy public folder to temporary directory. ${error}`,
+                );
             });
     }
 
@@ -138,8 +148,8 @@ export async function remixDeploy(options: GenezioDeployOptions) {
             force: true,
             dereference: true,
         })
-        .catch(() => {
-            throw new UserError("Failed to copy package.json to temporary directory");
+        .catch((error) => {
+            throw new UserError(`Failed to copy package.json to temporary directory. ${error}`);
         });
 
     if (isRemixVite) {
