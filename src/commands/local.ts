@@ -94,6 +94,7 @@ import { enableEmailIntegration, getProjectIntegrations } from "../requests/inte
 import { expandEnvironmentVariables, findAnEnvFile } from "../utils/environmentVariables.js";
 import { getFunctionHandlerProvider } from "../utils/getFunctionHandlerProvider.js";
 import { getFunctionEntryFilename } from "../utils/getFunctionEntryFilename.js";
+import { SSRFrameworkComponent } from "./deploy/command.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -123,14 +124,6 @@ type PortMapping = {
 };
 
 const httpServerPortMapping: PortMapping = {};
-
-type SsrFramework = {
-    path: string;
-    scripts?: {
-        start?: string;
-    };
-    environment?: Record<string, string>;
-};
 
 export async function prepareLocalBackendEnvironment(
     yamlProjectConfiguration: YamlProjectConfiguration,
@@ -371,7 +364,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         ),
         ...ssrFrameworks.map((framework) =>
             startSsrFramework(
-                framework.config as SsrFramework,
+                framework.config as SSRFrameworkComponent,
                 framework.name,
                 yamlProjectConfiguration,
                 options.stage || "prod",
@@ -1850,7 +1843,7 @@ else:
 }
 
 async function startSsrFramework(
-    ssrConfig: SsrFramework,
+    ssrConfig: SSRFrameworkComponent,
     frameworkName: string,
     projectConfiguration: YamlProjectConfiguration,
     stage: string,
