@@ -571,6 +571,12 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isNextjsComponent(contents)) {
+            // TODO: Remove this check when we support SSR with backends
+            // We are not currently supporting ssr with backends such as express, fastify, etc.
+            if (frameworksDetected.backend && frameworksDetected.backend.length > 0) {
+                continue;
+            }
+
             const packageManagerType =
                 genezioConfig.nestjs?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
             const packageManager = packageManagers[packageManagerType];
@@ -597,6 +603,12 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isNuxtComponent(contents)) {
+            // TODO: Remove this check when we support SSR with backends
+            // We are not currently supporting ssr with backends such as express, fastify, etc.
+            if (frameworksDetected.backend && frameworksDetected.backend.length > 0) {
+                continue;
+            }
+
             const packageManagerType =
                 genezioConfig.nuxt?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
             const packageManager = packageManagers[packageManagerType];
@@ -624,6 +636,12 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isRemixComponent(contents)) {
+            // TODO: Remove this check when we support SSR with backends
+            // We are not currently supporting ssr with backends such as express, fastify, etc.
+            if (frameworksDetected.backend && frameworksDetected.backend.length > 0) {
+                continue;
+            }
+
             const packageManagerType =
                 genezioConfig.remix?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
             const packageManager = packageManagers[packageManagerType];
