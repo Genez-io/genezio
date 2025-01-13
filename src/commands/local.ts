@@ -1908,7 +1908,6 @@ async function startSsrFramework(
             cwd: ssrPath,
         });
 
-        // Rest of the logging code remains the same
         const stdoutLineStream = readline.createInterface({
             input: childProcess.stdout!,
         });
