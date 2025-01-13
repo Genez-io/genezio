@@ -1890,7 +1890,7 @@ async function startSsrFramework(
                 args = ["dev", "--port", ssrPort.toString()];
                 break;
             case "nitro":
-                command = "nitro";
+                command = "nitropack";
                 args = ["dev", "--port", ssrPort.toString()];
                 break;
             default:
@@ -1943,6 +1943,9 @@ async function startSsrFramework(
                     `Failed to start ${frameworkName} server located in \`${ssrPath}\`: ${error.message}`,
                 ),
             );
+            if (error.stack) {
+                log.error(error.stack);
+            }
         });
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
