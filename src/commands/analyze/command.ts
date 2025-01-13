@@ -23,6 +23,7 @@ import {
     hasPostgresDependency,
     hasMongoDependency,
     isNestjsComponent,
+    isRemixComponent,
 } from "./frameworks.js";
 import { generateDatabaseName, readOrAskConfig } from "../deploy/utils.js";
 import {
@@ -292,6 +293,36 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             frameworksDetected.ssr = frameworksDetected.ssr || [];
             frameworksDetected.ssr.push({
                 component: "nestjs",
+                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+            });
+            continue;
+        }
+
+        if (await isRemixComponent(contents)) {
+            const packageManagerType =
+                genezioConfig.remix?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
+            await addSSRComponentToConfig(
+                options.config,
+                {
+                    path: componentPath,
+                    packageManager: packageManagerType,
+                    environment: mapEnvironmentVariableToConfig(
+                        resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+                    ),
+                    scripts: {
+                        build: [`${packageManager.command} run build`],
+                        deploy: [
+                            `${packageManager.command} install`,
+                            `${packageManager.command} run build`,
+                        ],
+                    },
+                },
+                SSRFrameworkComponentType.remix,
+            );
+            frameworksDetected.ssr = frameworksDetected.ssr || [];
+            frameworksDetected.ssr.push({
+                component: "remix",
                 environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
             });
             continue;
