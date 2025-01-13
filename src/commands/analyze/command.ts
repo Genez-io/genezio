@@ -474,6 +474,10 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 scripts: {
                     deploy: [`${packageManager.command} install`],
                     build: [`${packageManager.command} run build`],
+                    start: [
+                        `${packageManager.command} install`,
+                        `${packageManager.command} run dev`,
+                    ],
                 },
             });
             frameworksDetected.frontend = frameworksDetected.frontend || [];
@@ -493,6 +497,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 scripts: {
                     deploy: [`${packageManager.command} install`],
                     build: [`${packageManager.command} run build`],
+                    start: [`${packageManager.command} install`, `${packageManager.command} start`],
                 },
             });
             frameworksDetected.frontend = frameworksDetected.frontend || [];
@@ -512,6 +517,10 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 scripts: {
                     deploy: [`${packageManager.command} install`],
                     build: [`${packageManager.command} run build`],
+                    start: [
+                        `${packageManager.command} install`,
+                        `${packageManager.command} run dev`,
+                    ],
                 },
             });
             frameworksDetected.frontend = frameworksDetected.frontend || [];
@@ -531,6 +540,10 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 scripts: {
                     deploy: [`${packageManager.command} install`],
                     build: [`${packageManager.command} run build`],
+                    start: [
+                        `${packageManager.command} install`,
+                        `${packageManager.command} run dev`,
+                    ],
                 },
             });
             frameworksDetected.frontend = frameworksDetected.frontend || [];
@@ -550,6 +563,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 scripts: {
                     deploy: [`${packageManager.command} install`],
                     build: [`${packageManager.command} run build`],
+                    start: [`${packageManager.command} install`, `${packageManager.command} start`],
                 },
             });
             frameworksDetected.frontend = frameworksDetected.frontend || [];
