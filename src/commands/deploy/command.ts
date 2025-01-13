@@ -191,7 +191,7 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         }
         if (
             Object.keys({ ...packageJson.dependencies, ...packageJson.devDependencies }).some(
-                (dep) => dep.startsWith("@remix-run/"),
+                (dep) => dep.startsWith("@remix-run"),
             )
         ) {
             return [DeployType.Remix];
