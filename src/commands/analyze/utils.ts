@@ -177,8 +177,14 @@ export async function injectBackendUrlsInConfig(configPath: string) {
     const backend = config.backend as YAMLBackend;
     const functions: string[] = backend?.functions?.map((fn) => fn.name) || [];
     const ssrFunctions: string[] = [];
-    if (config.nestjs) ssrFunctions.push("nestjs");
-    if (config.nitro) ssrFunctions.push("nitro");
+
+    const ssrFrameworks = [SSRFrameworkComponentType.nestjs, SSRFrameworkComponentType.nitro];
+
+    ssrFrameworks.forEach((framework) => {
+        if (config[framework]) {
+            ssrFunctions.push(framework);
+        }
+    });
 
     // Early return if there is nothing to inject
     if (functions.length === 0 && ssrFunctions.length === 0) {
@@ -197,22 +203,21 @@ export async function injectBackendUrlsInConfig(configPath: string) {
         frontend.environment = frontendEnvironment;
         config.frontend = frontend;
     }
-    // Generate nextjs environment variables based on backend functions
-    if (config.nextjs) {
-        const nextjsEnvironment = {
-            ...createFrontendEnvironmentRecord("NEXT_PUBLIC", functions, ssrFunctions),
-            ...config.nextjs.environment,
-        };
-        config.nextjs.environment = nextjsEnvironment;
-    }
-    // Generate nuxt environment variables based on backend functions
-    if (config.nuxt) {
-        const nuxtEnvironment = {
-            ...createFrontendEnvironmentRecord("NUXT", functions, ssrFunctions),
-            ...config.nuxt.environment,
-        };
-        config.nuxt.environment = nuxtEnvironment;
-    }
+
+    const frameworks = [
+        { key: SSRFrameworkComponentType.next, prefix: "NEXT_PUBLIC" },
+        { key: SSRFrameworkComponentType.nuxt, prefix: "NUXT" },
+    ];
+
+    frameworks.forEach(({ key, prefix }) => {
+        if (config[key]) {
+            const environment = {
+                ...createFrontendEnvironmentRecord(prefix, functions, ssrFunctions),
+                ...config[key].environment,
+            };
+            config[key].environment = environment;
+        }
+    });
 
     // Save the updated configuration
     await configIOController.write(config);
