@@ -1849,6 +1849,9 @@ async function startSsrFramework(
     stage: string,
     port?: number,
 ) {
+    debugLogger.debug(`Starting SSR framework: ${frameworkName}`);
+    debugLogger.debug(`SSR path: ${ssrConfig.path}`);
+
     const newEnvObject = await expandEnvironmentVariables(
         ssrConfig.environment,
         projectConfiguration,
@@ -1865,27 +1868,26 @@ async function startSsrFramework(
         JSON.stringify(newEnvObject),
     );
 
-    // Find an available port for the SSR framework
     const ssrPort = await findAvailablePort();
-    process.env[`GENEZIO_SSR_PORT_${frameworkName.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`] =
+
+    process.env[`GENEZIO_PORT_${frameworkName.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`] =
         ssrPort.toString();
 
     try {
         let command: string;
         let args: string[];
 
+        const currentDir = process.cwd();
+        const ssrPath = path.resolve(currentDir, ssrConfig.path);
+
         switch (frameworkName.toLowerCase()) {
             case "next.js":
                 command = "next";
-                args = ["dev", "-p", ssrPort.toString()];
+                args = ["dev", "--port", ssrPort.toString()];
                 break;
             case "nuxt":
                 command = "nuxt";
                 args = ["dev", "--port", ssrPort.toString()];
-                break;
-            case "nest.js":
-                command = "nest";
-                args = ["start", "--watch", "--port", ssrPort.toString()];
                 break;
             case "nitro":
                 command = "nitro";
@@ -1896,24 +1898,53 @@ async function startSsrFramework(
         }
 
         const childProcess = spawn("npx", [command, ...args], {
-            stdio: "inherit",
-            shell: true,
+            stdio: "pipe",
             env: {
                 ...process.env,
                 ...newEnvObject,
+                CI: "1",
+                TERM: "dumb",
             },
-            cwd: ssrConfig.path,
+            cwd: ssrPath,
+        });
+
+        // Rest of the logging code remains the same
+        const stdoutLineStream = readline.createInterface({
+            input: childProcess.stdout!,
+        });
+        const stderrLineStream = readline.createInterface({
+            input: childProcess.stderr!,
+        });
+
+        const stripAnsi = (str: string): string => {
+            /* eslint-disable-next-line no-control-regex */
+            return str.replace(
+                /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g,
+                "",
+            );
+        };
+
+        stdoutLineStream.on("line", (line) => {
+            const cleanLine = stripAnsi(line);
+            if (cleanLine.trim()) {
+                log.info(cleanLine);
+            }
+        });
+
+        stderrLineStream.on("line", (line) => {
+            const cleanLine = stripAnsi(line);
+            if (cleanLine.trim()) {
+                log.info(cleanLine);
+            }
         });
 
         childProcess.on("error", (error) => {
             log.error(
                 new Error(
-                    `Failed to start ${frameworkName} server located in \`${ssrConfig.path}\`: ${error.message}`,
+                    `Failed to start ${frameworkName} server located in \`${ssrPath}\`: ${error.message}`,
                 ),
             );
         });
-
-        log.info(`${frameworkName} server process started on port ${ssrPort}`);
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
         log.error(
