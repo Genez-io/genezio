@@ -1857,15 +1857,15 @@ async function startSsrFramework(
         switch (frameworkName.toLowerCase()) {
             case "next.js":
                 command = "next";
-                args = ["dev", "--port", ssrPort.toString()];
+                args = ["dev", "--port", process.env[portEnvKey]];
                 break;
             case "nuxt":
                 command = "nuxt";
-                args = ["dev", "--port", ssrPort.toString()];
+                args = ["dev", "--port", process.env[portEnvKey]];
                 break;
             case "nitro":
                 command = "nitropack";
-                args = ["dev", "--port", ssrPort.toString()];
+                args = ["dev", "--port", process.env[portEnvKey]];
                 break;
             case "nest.js":
                 command = "nest";
@@ -1874,8 +1874,8 @@ async function startSsrFramework(
             case "remix":
                 command = "remix";
                 args = isViteConfigExists
-                    ? ["vite:dev", "--port", ssrPort.toString()]
-                    : ["dev", "--port", ssrPort.toString()];
+                    ? ["vite:dev", "--port", process.env[portEnvKey]]
+                    : ["dev", "--port", process.env[portEnvKey]];
                 break;
             default:
                 throw new Error(`Unknown SSR framework: ${frameworkName}`);
