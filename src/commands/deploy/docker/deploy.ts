@@ -164,6 +164,7 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
                 instanceSize: config.container!.instanceSize,
                 maxConcurrentRequestsPerInstance:
                     config.container!.maxConcurrentRequestsPerInstance,
+                cooldownTime: config.container!.cooldownTime,
             },
         ],
         projectConfiguration,

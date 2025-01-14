@@ -104,6 +104,7 @@ function parseGenezioConfig(config: unknown) {
         storageSize: zod.number().optional(),
         instanceSize: zod.nativeEnum(InstanceSize).optional(),
         maxConcurrentRequestsPerInstance: zod.number().optional(),
+        cooldownTime: zod.number().optional(),
     });
 
     const functionsSchema = zod
@@ -126,6 +127,7 @@ function parseGenezioConfig(config: unknown) {
             storageSize: zod.number().optional(),
             instanceSize: zod.nativeEnum(InstanceSize).optional(),
             maxConcurrentRequestsPerInstance: zod.number().optional(),
+            cooldownTime: zod.number().optional(),
         })
         .refine(
             ({ type, handler }) => !(type === FunctionType.aws && !handler),
@@ -302,6 +304,7 @@ function parseGenezioConfig(config: unknown) {
         storageSize: zod.number().optional(),
         instanceSize: zod.nativeEnum(InstanceSize).optional(),
         maxConcurrentRequestsPerInstance: zod.number().optional(),
+        cooldownTime: zod.number().optional(),
         environment: environmentSchema.optional(),
     });
 

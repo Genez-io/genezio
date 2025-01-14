@@ -62,6 +62,7 @@ export async function scanClassesForDecorators(
                 let storageSize: number | undefined;
                 let instanceSize: InstanceSize | undefined;
                 let maxConcurrentRequestsPerInstance: number | undefined;
+                let cooldownTime: number | undefined;
                 const methods = classInfo[0].methods
                     .map((m) => {
                         const genezioMethodDecorator = m.decorators.find(
@@ -111,6 +112,7 @@ export async function scanClassesForDecorators(
                     maxConcurrentRequestsPerInstance = deployDecoratorFound.arguments[
                         "maxConcurrentRequestsPerInstance"
                     ] as number | undefined;
+                    cooldownTime = deployDecoratorFound.arguments["cooldownTime"] as number | undefined;
                 }
 
                 classes.push({
@@ -121,6 +123,7 @@ export async function scanClassesForDecorators(
                     storageSize: storageSize,
                     instanceSize: instanceSize as InstanceSize,
                     maxConcurrentRequestsPerInstance: maxConcurrentRequestsPerInstance,
+                    cooldownTime: cooldownTime,
                     methods: methods,
                 });
             } else if (r && deployDecoratorFound) {
