@@ -1829,22 +1829,20 @@ async function startSsrFramework(
         JSON.stringify(newEnvObject),
     );
 
-    const ssrPort = await findAvailablePort();
-
     const portEnvKey = `GENEZIO_PORT_${frameworkName.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`;
-    if (!process.env[portEnvKey]) {
-        if (frameworkName.toLowerCase() === "nest.js") {
-            throw new UserError(
-                `You need to specify the port for Nest.js. You can do this by:
+    if (frameworkName.toLowerCase() === "nest.js" && !process.env[portEnvKey]) {
+        throw new UserError(
+            `You need to specify the port for Nest.js. You can do this by:
 1. Running \`GENEZIO_PORT_NEST_JS=<port> genezio local\` - for linux and macos
 2. Running \`set GENEZIO_PORT_NEST_JS=<port> && genezio local\` - for windows
 3. Adding \`GENEZIO_PORT_NEST_JS=<port>\` to your \`.env\` file.
-                `,
-            );
-        }
-        process.env[portEnvKey] = ssrPort.toString();
-        debugLogger.debug(`Set ${portEnvKey} to ${ssrPort}`);
+            `,
+        );
     }
+
+    const ssrPort = process.env[portEnvKey] || (await findAvailablePort()).toString();
+    process.env[portEnvKey] = ssrPort;
+    debugLogger.debug(`Set ${portEnvKey} to ${ssrPort}`);
 
     try {
         let command: string;
@@ -1857,15 +1855,15 @@ async function startSsrFramework(
         switch (frameworkName.toLowerCase()) {
             case "next.js":
                 command = "next";
-                args = ["dev", "--port", process.env[portEnvKey]];
+                args = ["dev", "--port", ssrPort];
                 break;
             case "nuxt":
                 command = "nuxt";
-                args = ["dev", "--port", process.env[portEnvKey]];
+                args = ["dev", "--port", ssrPort];
                 break;
             case "nitro":
                 command = "nitropack";
-                args = ["dev", "--port", process.env[portEnvKey]];
+                args = ["dev", "--port", ssrPort];
                 break;
             case "nest.js":
                 command = "nest";
@@ -1874,8 +1872,8 @@ async function startSsrFramework(
             case "remix":
                 command = "remix";
                 args = isViteConfigExists
-                    ? ["vite:dev", "--port", process.env[portEnvKey]]
-                    : ["dev", "--port", process.env[portEnvKey]];
+                    ? ["vite:dev", "--port", ssrPort]
+                    : ["dev", "--port", ssrPort];
                 break;
             default:
                 throw new Error(`Unknown SSR framework: ${frameworkName}`);
