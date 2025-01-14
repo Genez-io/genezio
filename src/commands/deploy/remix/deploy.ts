@@ -25,6 +25,7 @@ import { functionToCloudInput, getCloudAdapter } from "../genezio.js";
 import { FunctionType, Language } from "../../../projectConfiguration/yaml/models.js";
 import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
 import { createTemporaryFolder } from "../../../utils/file.js";
+import { DASHBOARD_URL } from "../../../constants.js";
 
 export async function remixDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
@@ -203,6 +204,11 @@ export async function remixDeploy(options: GenezioDeployOptions) {
     if (functionUrl) {
         log.info(
             `The app is being deployed at ${colors.cyan(functionUrl)}. It might take a few moments to be available worldwide.`,
+        );
+
+        log.info(
+            `\nApp Dashboard URL: ${colors.cyan(`${DASHBOARD_URL}/project/${result.projectId}/${result.projectEnvId}`)}\n` +
+                `${colors.dim("Here you can monitor logs, set up a custom domain, and more.")}\n`,
         );
     } else {
         log.warn("No deployment URL was returned.");

@@ -28,6 +28,8 @@ import { reportSuccessFunctions } from "../../../utils/reporter.js";
 import { addContainerComponentToConfig } from "./utils.js";
 import { statSync } from "fs";
 import { ContainerComponentType } from "../../../models/projectOptions.js";
+import colors from "colors";
+import { DASHBOARD_URL } from "../../../constants.js";
 
 export async function dockerDeploy(options: GenezioDeployOptions) {
     const config = await readOrAskConfig(options.config);
@@ -200,6 +202,11 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
     await prepareServicesPostBackendDeployment(config, config.name, options.stage);
 
     reportSuccessFunctions(result.functions);
+
+    log.info(
+        `\nApp Dashboard URL: ${colors.cyan(`${DASHBOARD_URL}/project/${result.projectId}/${result.projectEnvId}`)}\n` +
+            `${colors.dim("Here you can monitor logs, set up a custom domain, and more.")}\n`,
+    );
 }
 
 function getPort(exposedPort: { [id: string]: string }): string {

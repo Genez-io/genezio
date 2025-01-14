@@ -38,6 +38,7 @@ import { DeployCodeFunctionResponse } from "../../../models/deployCodeResponse.j
 import { DeployType } from "../command.js";
 import { SSRFrameworkComponentType } from "../../../models/projectOptions.js";
 import { addSSRComponentToConfig } from "../../analyze/utils.js";
+import { DASHBOARD_URL } from "../../../constants.js";
 
 export async function nuxtNitroDeploy(
     options: GenezioDeployOptions,
@@ -133,6 +134,11 @@ Note: If your Nuxt project was not migrated to Nuxt 3, please visit https://v2.n
 
     log.info(
         `The app is being deployed at ${colors.cyan(cdnUrl)}. It might take a few moments to be available worldwide.`,
+    );
+
+    log.info(
+        `\nApp Dashboard URL: ${colors.cyan(`${DASHBOARD_URL}/project/${cloudResult.projectId}/${cloudResult.projectEnvId}`)}\n` +
+            `${colors.dim("Here you can monitor logs, set up a custom domain, and more.")}\n`,
     );
 }
 
