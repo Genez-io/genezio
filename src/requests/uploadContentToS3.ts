@@ -23,8 +23,16 @@ export async function uploadContentToS3(
     if (!authToken) {
         throw new UserError(GENEZIO_NOT_AUTH_ERROR_MSG);
     }
-    const url = new URL(presignedURL);
 
+    const fileSize = fs.statSync(archivePath).size;
+    // If the file exceeds 5GB, we should not upload it
+    if (fileSize > 5 * 1024 * 1024 * 1024) {
+        throw new UserError(
+            `File with size ${fileSize / 1024 / 1024 / 1024}GB exceeds the limit of 5GB.`,
+        );
+    }
+
+    const url = new URL(presignedURL);
     const headers: OutgoingHttpHeaders = {
         "Content-Type": "application/octet-stream",
         "Content-Length": fs.statSync(archivePath).size,
