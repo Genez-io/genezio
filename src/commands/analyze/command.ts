@@ -297,36 +297,6 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             continue;
         }
 
-        if (await isRemixComponent(contents)) {
-            const packageManagerType =
-                genezioConfig.remix?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
-            const packageManager = packageManagers[packageManagerType];
-            await addSSRComponentToConfig(
-                options.config,
-                {
-                    path: componentPath,
-                    packageManager: packageManagerType,
-                    environment: mapEnvironmentVariableToConfig(
-                        resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
-                    ),
-                    scripts: {
-                        build: [`${packageManager.command} run build`],
-                        deploy: [
-                            `${packageManager.command} install`,
-                            `${packageManager.command} run build`,
-                        ],
-                    },
-                },
-                SSRFrameworkComponentType.remix,
-            );
-            frameworksDetected.ssr = frameworksDetected.ssr || [];
-            frameworksDetected.ssr.push({
-                component: "remix",
-                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
-            });
-            continue;
-        }
-
         if (await isExpressBackend(contents)) {
             const entryFile = await findEntryFile(
                 componentPath,
@@ -412,214 +382,6 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 component: "fastify",
                 environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
             });
-            continue;
-        }
-
-        if (await isNextjsComponent(contents)) {
-            const packageManagerType =
-                genezioConfig.nestjs?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
-            const packageManager = packageManagers[packageManagerType];
-            await addSSRComponentToConfig(
-                options.config,
-                {
-                    path: componentPath,
-                    packageManager: packageManagerType,
-                    environment: mapEnvironmentVariableToConfig(
-                        resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
-                    ),
-                    scripts: {
-                        deploy: [`${packageManager.command} install`],
-                    },
-                },
-                SSRFrameworkComponentType.next,
-            );
-            frameworksDetected.ssr = frameworksDetected.ssr || [];
-            frameworksDetected.ssr.push({
-                component: "next",
-                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
-            });
-            continue;
-        }
-
-        if (await isNuxtComponent(contents)) {
-            const packageManagerType =
-                genezioConfig.nuxt?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
-            const packageManager = packageManagers[packageManagerType];
-
-            await addSSRComponentToConfig(
-                options.config,
-                {
-                    path: componentPath,
-                    packageManager: packageManagerType,
-                    environment: mapEnvironmentVariableToConfig(
-                        resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
-                    ),
-                    scripts: {
-                        deploy: [`${packageManager.command} install`],
-                    },
-                },
-                SSRFrameworkComponentType.nuxt,
-            );
-            frameworksDetected.ssr = frameworksDetected.ssr || [];
-            frameworksDetected.ssr.push({
-                component: "nuxt",
-                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
-            });
-            continue;
-        }
-
-        if (await isNitroComponent(contents)) {
-            const packageManagerType =
-                genezioConfig.nitro?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
-            const packageManager = packageManagers[packageManagerType];
-
-            await addSSRComponentToConfig(
-                options.config,
-                {
-                    path: componentPath,
-                    packageManager: packageManagerType,
-                    environment: mapEnvironmentVariableToConfig(
-                        resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
-                    ),
-                    scripts: {
-                        deploy: [`${packageManager.command} install`],
-                    },
-                },
-                SSRFrameworkComponentType.nitro,
-            );
-            frameworksDetected.ssr = frameworksDetected.ssr || [];
-            frameworksDetected.ssr.push({
-                component: "nitro",
-                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
-            });
-            continue;
-        }
-
-        if (await isVueComponent(contents)) {
-            const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
-            const packageManager = packageManagers[packageManagerType];
-            await addFrontendComponentToConfig(configPath, {
-                path: componentPath,
-                publish: path.join(componentPath, "dist"),
-                scripts: {
-                    deploy: [`${packageManager.command} install`],
-                    build: [`${packageManager.command} run build`],
-                    start: [
-                        `${packageManager.command} install`,
-                        `${packageManager.command} run dev`,
-                    ],
-                },
-            });
-            frameworksDetected.frontend = frameworksDetected.frontend || [];
-            frameworksDetected.frontend.push({
-                component: "vue",
-                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
-            });
-            continue;
-        }
-
-        if (await isAngularComponent(contents)) {
-            const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
-            const packageManager = packageManagers[packageManagerType];
-            await addFrontendComponentToConfig(configPath, {
-                path: componentPath,
-                publish: path.join("dist", "browser"),
-                scripts: {
-                    deploy: [`${packageManager.command} install`],
-                    build: [`${packageManager.command} run build`],
-                    start: [`${packageManager.command} install`, `${packageManager.command} start`],
-                },
-            });
-            frameworksDetected.frontend = frameworksDetected.frontend || [];
-            frameworksDetected.frontend.push({
-                component: "angular",
-                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
-            });
-            continue;
-        }
-
-        if (await isSvelteComponent(contents)) {
-            const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
-            const packageManager = packageManagers[packageManagerType];
-            await addFrontendComponentToConfig(configPath, {
-                path: componentPath,
-                publish: "dist",
-                scripts: {
-                    deploy: [`${packageManager.command} install`],
-                    build: [`${packageManager.command} run build`],
-                    start: [
-                        `${packageManager.command} install`,
-                        `${packageManager.command} run dev`,
-                    ],
-                },
-            });
-            frameworksDetected.frontend = frameworksDetected.frontend || [];
-            frameworksDetected.frontend.push({
-                component: "svelte",
-                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
-            });
-            continue;
-        }
-
-        if (await isViteComponent(contents)) {
-            const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
-            const packageManager = packageManagers[packageManagerType];
-            await addFrontendComponentToConfig(configPath, {
-                path: componentPath,
-                publish: "dist",
-                scripts: {
-                    deploy: [`${packageManager.command} install`],
-                    build: [`${packageManager.command} run build`],
-                    start: [
-                        `${packageManager.command} install`,
-                        `${packageManager.command} run dev`,
-                    ],
-                },
-            });
-            frameworksDetected.frontend = frameworksDetected.frontend || [];
-            frameworksDetected.frontend.push({
-                component: "vite",
-                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
-            });
-            continue;
-        }
-
-        if (await isReactComponent(contents)) {
-            const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
-            const packageManager = packageManagers[packageManagerType];
-            await addFrontendComponentToConfig(configPath, {
-                path: componentPath,
-                publish: "build",
-                scripts: {
-                    deploy: [`${packageManager.command} install`],
-                    build: [`${packageManager.command} run build`],
-                    start: [`${packageManager.command} install`, `${packageManager.command} start`],
-                },
-            });
-            frameworksDetected.frontend = frameworksDetected.frontend || [];
-            frameworksDetected.frontend.push({
-                component: "react",
-                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
-            });
-            continue;
-        }
-
-        if (await isGenezioTypesafe(contents)) {
-            const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
-            const packageManager = packageManagers[packageManagerType];
-            await addBackendComponentToConfig(configPath, {
-                path: componentPath,
-                // TODO: Add support for detecting the language of the backend
-                language: {
-                    name: Language.ts,
-                } as YAMLLanguage,
-                scripts: {
-                    deploy: [`${packageManager.command} install`],
-                    local: [`${packageManager.command} install`],
-                },
-            });
-            frameworksDetected.backend = frameworksDetected.backend || [];
-            frameworksDetected.backend.push({ component: "genezio-typesafe" });
             continue;
         }
 
@@ -778,6 +540,262 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 component: "python-lambda",
                 environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
             });
+            continue;
+        }
+
+        if (await isNitroComponent(contents)) {
+            const packageManagerType =
+                genezioConfig.nitro?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
+
+            await addSSRComponentToConfig(
+                options.config,
+                {
+                    path: componentPath,
+                    packageManager: packageManagerType,
+                    environment: mapEnvironmentVariableToConfig(
+                        resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+                    ),
+                    scripts: {
+                        deploy: [`${packageManager.command} install`],
+                    },
+                },
+                SSRFrameworkComponentType.nitro,
+            );
+            frameworksDetected.ssr = frameworksDetected.ssr || [];
+            frameworksDetected.ssr.push({
+                component: "nitro",
+                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+            });
+            continue;
+        }
+
+        if (await isNextjsComponent(contents)) {
+            // TODO: Remove this check when we support SSR with backends
+            // We are not currently supporting ssr with backends such as express, fastify, etc.
+            if (frameworksDetected.backend && frameworksDetected.backend.length > 0) {
+                continue;
+            }
+
+            const packageManagerType =
+                genezioConfig.nestjs?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
+            await addSSRComponentToConfig(
+                options.config,
+                {
+                    path: componentPath,
+                    packageManager: packageManagerType,
+                    environment: mapEnvironmentVariableToConfig(
+                        resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+                    ),
+                    scripts: {
+                        deploy: [`${packageManager.command} install`],
+                    },
+                },
+                SSRFrameworkComponentType.next,
+            );
+            frameworksDetected.ssr = frameworksDetected.ssr || [];
+            frameworksDetected.ssr.push({
+                component: "next",
+                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+            });
+            continue;
+        }
+
+        if (await isNuxtComponent(contents)) {
+            // TODO: Remove this check when we support SSR with backends
+            // We are not currently supporting ssr with backends such as express, fastify, etc.
+            if (frameworksDetected.backend && frameworksDetected.backend.length > 0) {
+                continue;
+            }
+
+            const packageManagerType =
+                genezioConfig.nuxt?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
+
+            await addSSRComponentToConfig(
+                options.config,
+                {
+                    path: componentPath,
+                    packageManager: packageManagerType,
+                    environment: mapEnvironmentVariableToConfig(
+                        resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+                    ),
+                    scripts: {
+                        deploy: [`${packageManager.command} install`],
+                    },
+                },
+                SSRFrameworkComponentType.nuxt,
+            );
+            frameworksDetected.ssr = frameworksDetected.ssr || [];
+            frameworksDetected.ssr.push({
+                component: "nuxt",
+                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+            });
+            continue;
+        }
+
+        if (await isRemixComponent(contents)) {
+            // TODO: Remove this check when we support SSR with backends
+            // We are not currently supporting ssr with backends such as express, fastify, etc.
+            if (frameworksDetected.backend && frameworksDetected.backend.length > 0) {
+                continue;
+            }
+
+            const packageManagerType =
+                genezioConfig.remix?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
+            await addSSRComponentToConfig(
+                options.config,
+                {
+                    path: componentPath,
+                    packageManager: packageManagerType,
+                    environment: mapEnvironmentVariableToConfig(
+                        resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+                    ),
+                    scripts: {
+                        build: [`${packageManager.command} run build`],
+                        deploy: [
+                            `${packageManager.command} install`,
+                            `${packageManager.command} run build`,
+                        ],
+                    },
+                },
+                SSRFrameworkComponentType.remix,
+            );
+            frameworksDetected.ssr = frameworksDetected.ssr || [];
+            frameworksDetected.ssr.push({
+                component: "remix",
+                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+            });
+            continue;
+        }
+
+        if (await isVueComponent(contents)) {
+            const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
+            await addFrontendComponentToConfig(configPath, {
+                path: componentPath,
+                publish: path.join(componentPath, "dist"),
+                scripts: {
+                    deploy: [`${packageManager.command} install`],
+                    build: [`${packageManager.command} run build`],
+                    start: [
+                        `${packageManager.command} install`,
+                        `${packageManager.command} run dev`,
+                    ],
+                },
+            });
+            frameworksDetected.frontend = frameworksDetected.frontend || [];
+            frameworksDetected.frontend.push({
+                component: "vue",
+                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+            });
+            continue;
+        }
+
+        if (await isAngularComponent(contents)) {
+            const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
+            await addFrontendComponentToConfig(configPath, {
+                path: componentPath,
+                publish: path.join("dist", "browser"),
+                scripts: {
+                    deploy: [`${packageManager.command} install`],
+                    build: [`${packageManager.command} run build`],
+                    start: [`${packageManager.command} install`, `${packageManager.command} start`],
+                },
+            });
+            frameworksDetected.frontend = frameworksDetected.frontend || [];
+            frameworksDetected.frontend.push({
+                component: "angular",
+                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+            });
+            continue;
+        }
+
+        if (await isSvelteComponent(contents)) {
+            const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
+            await addFrontendComponentToConfig(configPath, {
+                path: componentPath,
+                publish: "dist",
+                scripts: {
+                    deploy: [`${packageManager.command} install`],
+                    build: [`${packageManager.command} run build`],
+                    start: [
+                        `${packageManager.command} install`,
+                        `${packageManager.command} run dev`,
+                    ],
+                },
+            });
+            frameworksDetected.frontend = frameworksDetected.frontend || [];
+            frameworksDetected.frontend.push({
+                component: "svelte",
+                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+            });
+            continue;
+        }
+
+        if (await isViteComponent(contents)) {
+            const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
+            await addFrontendComponentToConfig(configPath, {
+                path: componentPath,
+                publish: "dist",
+                scripts: {
+                    deploy: [`${packageManager.command} install`],
+                    build: [`${packageManager.command} run build`],
+                    start: [
+                        `${packageManager.command} install`,
+                        `${packageManager.command} run dev`,
+                    ],
+                },
+            });
+            frameworksDetected.frontend = frameworksDetected.frontend || [];
+            frameworksDetected.frontend.push({
+                component: "vite",
+                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+            });
+            continue;
+        }
+
+        if (await isReactComponent(contents)) {
+            const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
+            await addFrontendComponentToConfig(configPath, {
+                path: componentPath,
+                publish: "build",
+                scripts: {
+                    deploy: [`${packageManager.command} install`],
+                    build: [`${packageManager.command} run build`],
+                    start: [`${packageManager.command} install`, `${packageManager.command} start`],
+                },
+            });
+            frameworksDetected.frontend = frameworksDetected.frontend || [];
+            frameworksDetected.frontend.push({
+                component: "react",
+                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+            });
+            continue;
+        }
+
+        if (await isGenezioTypesafe(contents)) {
+            const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
+            await addBackendComponentToConfig(configPath, {
+                path: componentPath,
+                // TODO: Add support for detecting the language of the backend
+                language: {
+                    name: Language.ts,
+                } as YAMLLanguage,
+                scripts: {
+                    deploy: [`${packageManager.command} install`],
+                    local: [`${packageManager.command} install`],
+                },
+            });
+            frameworksDetected.backend = frameworksDetected.backend || [];
+            frameworksDetected.backend.push({ component: "genezio-typesafe" });
             continue;
         }
     }
