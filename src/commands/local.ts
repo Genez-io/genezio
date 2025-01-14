@@ -96,7 +96,7 @@ import { expandEnvironmentVariables, findAnEnvFile } from "../utils/environmentV
 import { getFunctionHandlerProvider } from "../utils/getFunctionHandlerProvider.js";
 import { getFunctionEntryFilename } from "../utils/getFunctionEntryFilename.js";
 import { SSRFrameworkComponent } from "./deploy/command.js";
-import { fs } from "memfs";
+import fs from "fs";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -1851,7 +1851,12 @@ async function startSsrFramework(
         const currentDir = process.cwd();
         const ssrPath = path.resolve(currentDir, ssrConfig.path);
 
-        const isViteConfigExists = fs.existsSync(path.join(ssrPath, "vite.config.js"));
+        const isViteConfigExists =
+            fs.existsSync(path.join(ssrPath, "vite.config.js")) ||
+            fs.existsSync(path.join(ssrPath, "vite.config.ts")) ||
+            fs.existsSync(path.join(ssrPath, "vite.config.mjs")) ||
+            fs.existsSync(path.join(ssrPath, "vite.config.cjs"));
+
         switch (frameworkName.toLowerCase()) {
             case "next.js":
                 command = "next";
@@ -1878,7 +1883,6 @@ async function startSsrFramework(
             default:
                 throw new Error(`Unknown SSR framework: ${frameworkName}`);
         }
-
         const childProcess = spawn("npx", [command, ...args], {
             stdio: "pipe",
             env: {
