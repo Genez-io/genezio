@@ -1829,14 +1829,20 @@ async function startSsrFramework(
         JSON.stringify(newEnvObject),
     );
 
-    const ssrPort = await findAvailablePort();
-
-    if (frameworkName.toLowerCase() === "nest.js") {
-        throw new UserError("Nest.js is not supported in local mode");
+    const portEnvKey = `GENEZIO_PORT_${frameworkName.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`;
+    if (frameworkName.toLowerCase() === "nest.js" && !process.env[portEnvKey]) {
+        throw new UserError(
+            `You need to specify the port for Nest.js. You can do this by:
+1. Running \`GENEZIO_PORT_NEST_JS=<port> genezio local\` - for linux and macos
+2. Running \`set GENEZIO_PORT_NEST_JS=<port> && genezio local\` - for windows
+3. Adding \`GENEZIO_PORT_NEST_JS=<port>\` to your \`.env\` file.
+            `,
+        );
     }
 
-    process.env[`GENEZIO_PORT_${frameworkName.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`] =
-        ssrPort.toString();
+    const ssrPort = process.env[portEnvKey] || (await findAvailablePort()).toString();
+    process.env[portEnvKey] = ssrPort;
+    debugLogger.debug(`Set ${portEnvKey} to ${ssrPort}`);
 
     try {
         let command: string;
@@ -1849,21 +1855,25 @@ async function startSsrFramework(
         switch (frameworkName.toLowerCase()) {
             case "next.js":
                 command = "next";
-                args = ["dev", "--port", ssrPort.toString()];
+                args = ["dev", "--port", ssrPort];
                 break;
             case "nuxt":
                 command = "nuxt";
-                args = ["dev", "--port", ssrPort.toString()];
+                args = ["dev", "--port", ssrPort];
                 break;
             case "nitro":
                 command = "nitropack";
-                args = ["dev", "--port", ssrPort.toString()];
+                args = ["dev", "--port", ssrPort];
+                break;
+            case "nest.js":
+                command = "nest";
+                args = ["start", "--watch", "--debug"];
                 break;
             case "remix":
                 command = "remix";
                 args = isViteConfigExists
-                    ? ["vite:dev", "--port", ssrPort.toString()]
-                    : ["dev", "--port", ssrPort.toString()];
+                    ? ["vite:dev", "--port", ssrPort]
+                    : ["dev", "--port", ssrPort];
                 break;
             default:
                 throw new Error(`Unknown SSR framework: ${frameworkName}`);
