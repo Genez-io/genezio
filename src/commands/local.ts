@@ -1831,12 +1831,20 @@ async function startSsrFramework(
 
     const ssrPort = await findAvailablePort();
 
-    if (frameworkName.toLowerCase() === "nest.js") {
-        throw new UserError("Nest.js is not supported in local mode");
+    const portEnvKey = `GENEZIO_PORT_${frameworkName.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`;
+    if (!process.env[portEnvKey]) {
+        if (frameworkName.toLowerCase() === "nest.js") {
+            throw new UserError(
+                `You need to specify the port for Nest.js. You can do this by:
+1. Running \`GENEZIO_PORT_NEST_JS=<port> genezio local\` - for linux and macos
+2. Running \`set GENEZIO_PORT_NEST_JS=<port> && genezio local\` - for windows
+3. Adding \`GENEZIO_PORT_NEST_JS=<port>\` to your \`.env\` file.
+                `,
+            );
+        }
+        process.env[portEnvKey] = ssrPort.toString();
+        debugLogger.debug(`Set ${portEnvKey} to ${ssrPort}`);
     }
-
-    process.env[`GENEZIO_PORT_${frameworkName.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`] =
-        ssrPort.toString();
 
     try {
         let command: string;
@@ -1858,6 +1866,10 @@ async function startSsrFramework(
             case "nitro":
                 command = "nitropack";
                 args = ["dev", "--port", ssrPort.toString()];
+                break;
+            case "nest.js":
+                command = "nest";
+                args = ["start", "--watch", "--debug"];
                 break;
             case "remix":
                 command = "remix";
