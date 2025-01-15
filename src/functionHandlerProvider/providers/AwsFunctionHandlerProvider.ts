@@ -144,7 +144,17 @@ const handler = async function(event) {
 
   const result = await genezioDeploy(req)
 
-  if (result.cookies) {
+  // Ensure result and headers exist
+  if (!result) {
+    return { headers: {} };
+  }
+  
+  if (!result.headers) {
+    result.headers = {};
+  }
+
+  // Only process cookies if they exist
+  if (result.cookies && Array.isArray(result.cookies)) {
     for (const cookie of result.cookies) {
       result.headers["Set-Cookie"] = cookie;
     }
