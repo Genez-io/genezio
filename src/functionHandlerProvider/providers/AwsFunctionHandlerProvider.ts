@@ -330,6 +330,15 @@ class RequestHandler(BaseHTTPRequestHandler):
         try:
             jsonParsedBody = json.loads(post_data)
             response = userHandler(jsonParsedBody)
+            
+            # Ensure we always have a dict result with headers
+            if response is None:
+                response = {"headers": {}}
+            elif not isinstance(response, dict):
+                response = {"headers": {}, "body": str(response)}
+            elif "headers" not in response:
+                response["headers"] = {}
+
             self.wfile.write(json.dumps(response).encode('utf-8'))
             sys.stdout.flush()
         except Exception as e:
