@@ -28,6 +28,7 @@ import {
 import { setEnvironmentVariables } from "../../../requests/setEnvironmentVariables.js";
 import { GenezioCloudOutput } from "../../../cloudAdapter/cloudAdapter.js";
 import {
+    DASHBOARD_URL,
     GENEZIO_FRONTEND_DEPLOYMENT_BUCKET,
     NEXT_JS_GET_ACCESS_KEY,
     NEXT_JS_GET_SECRET_ACCESS_KEY,
@@ -154,6 +155,11 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
 
     log.info(
         `The app is being deployed at ${colors.cyan(cdnUrl)}. It might take a few moments to be available worldwide.`,
+    );
+
+    log.info(
+        `\nApp Dashboard URL: ${colors.cyan(`${DASHBOARD_URL}/project/${deploymentResult.projectId}/${deploymentResult.projectEnvId}`)}\n` +
+            `${colors.dim("Here you can monitor logs, set up a custom domain, and more.")}\n`,
     );
 }
 
