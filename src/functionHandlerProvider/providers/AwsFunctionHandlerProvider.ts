@@ -289,7 +289,15 @@ def handler(event):
     }
 
     result = genezio_deploy(req)
-
+    
+    # Ensure we always have a dict result with headers
+    if result is None:
+        result = {"headers": {}}
+    elif not isinstance(result, dict):
+        result = {"headers": {}, "body": str(result)}
+    elif "headers" not in result:
+        result["headers"] = {}
+    
     if 'cookies' in result:
         result['headers']['Set-Cookie'] = result['cookies']
 
