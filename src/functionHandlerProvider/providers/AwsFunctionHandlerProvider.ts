@@ -351,14 +351,14 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from ${nameModule} import ${handler} as userHandler
 
 class RequestHandler(BaseHTTPRequestHandler):
+    def log_error(self, format, *args):
+        # Disable default error logging since we handle it ourselves
+        pass
 
     def do_POST(self):
         content_length = int(self.headers['Content-Length'])
         post_data = self.rfile.read(content_length)
-        self.send_response(200)
-        self.send_header('Content-Type', 'application/json')
-        self.end_headers()
-
+        
         try:
             jsonParsedBody = json.loads(post_data)
             response = userHandler(jsonParsedBody)
@@ -371,17 +371,37 @@ class RequestHandler(BaseHTTPRequestHandler):
             elif "headers" not in response:
                 response["headers"] = {}
 
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
             self.wfile.write(json.dumps(response).encode('utf-8'))
-            sys.stdout.flush()
         except Exception as e:
             import traceback
+            error_trace = traceback.format_exc()
             error_response = {
-                "error": str(e),
-                "stacktrace": traceback.format_exc()
+                "statusCode": 500,
+                "body": {
+                    "message": str(e),
+                    "stacktrace": error_trace
+                }
             }
+            
             self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
             self.wfile.write(json.dumps(error_response).encode('utf-8'))
+            
+            # Log the HTTP access first
+            self.log_message('"%s" %s %s',
+                           self.requestline, str(500), '-')
+            
+            # Then print the error details
+            print("Traceback:", error_trace, file=sys.stderr)
+            print("Error occurred:", str(e), file=sys.stderr)
+            sys.stderr.flush()
+        finally:
             sys.stdout.flush()
+            sys.stderr.flush()
 
 def run():
     port = int(sys.argv[1])
