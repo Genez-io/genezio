@@ -289,7 +289,15 @@ def handler(event):
     }
 
     result = genezio_deploy(req)
-
+    
+    # Ensure we always have a dict result with headers
+    if result is None:
+        result = {"headers": {}}
+    elif not isinstance(result, dict):
+        result = {"headers": {}, "body": str(result)}
+    elif "headers" not in result:
+        result["headers"] = {}
+    
     if 'cookies' in result:
         result['headers']['Set-Cookie'] = result['cookies']
 
@@ -322,6 +330,15 @@ class RequestHandler(BaseHTTPRequestHandler):
         try:
             jsonParsedBody = json.loads(post_data)
             response = userHandler(jsonParsedBody)
+            
+            # Ensure we always have a dict result with headers
+            if response is None:
+                response = {"headers": {}}
+            elif not isinstance(response, dict):
+                response = {"headers": {}, "body": str(response)}
+            elif "headers" not in response:
+                response["headers"] = {}
+
             self.wfile.write(json.dumps(response).encode('utf-8'))
             sys.stdout.flush()
         except Exception as e:
