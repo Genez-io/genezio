@@ -7,5 +7,8 @@ export interface FunctionHandlerProvider {
         functionConfiguration: FunctionConfiguration,
     ): Promise<void>;
 
-    getLocalFunctionWrapperCode(handler: string, entry: string): Promise<string>;
+    getLocalFunctionWrapperCode(
+        handler: string,
+        functionConfiguration: FunctionConfiguration,
+    ): Promise<string>;
 }

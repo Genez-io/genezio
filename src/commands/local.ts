@@ -729,7 +729,7 @@ async function startProcesses(
                     ),
                     await handlerProvider!.getLocalFunctionWrapperCode(
                         functionInfo.handler,
-                        functionInfo.entry,
+                        functionInfo,
                     ),
                 );
             }

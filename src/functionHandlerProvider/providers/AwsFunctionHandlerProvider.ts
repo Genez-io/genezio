@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { writeToFile } from "../../utils/file.js";
 import { FunctionConfiguration } from "../../models/projectConfiguration.js";
 import { FunctionHandlerProvider } from "../functionHandlerProvider.js";
+import path from "path";
 
 const streamifyOverrideFileContent = `
 const METADATA_PRELUDE_CONTENT_TYPE = 'application/vnd.awslambda.http-integration-response';
@@ -173,8 +174,11 @@ export { handler };`;
         );
     }
 
-    async getLocalFunctionWrapperCode(handler: string, entry: string): Promise<string> {
-        return `import { ${handler} as userHandler } from "./${entry}";
+    async getLocalFunctionWrapperCode(
+        handler: string,
+        functionConfiguration: FunctionConfiguration,
+    ): Promise<string> {
+        return `import { ${handler} as userHandler } from "./${functionConfiguration.entry}";
 
 
 
@@ -241,10 +245,17 @@ export class AwsPythonFunctionHandlerProvider implements FunctionHandlerProvider
         functionConfiguration: FunctionConfiguration,
     ): Promise<void> {
         const randomFileId = crypto.randomBytes(8).toString("hex");
+        const nameModule = path
+            .join(functionConfiguration.path, functionConfiguration.entry)
+            .replace(/\\/g, ".") // Convert backslashes to dots (Windows)
+            .replace(/\//g, ".") // Convert slashes to dots (Unix)
+            .replace(/^\.+/, "") // Remove leading dots
+            .replace(/\.+/g, ".") // Remove duplicate dots
+            .replace(/\.py$/, ""); // Remove extension
 
         const handlerContent = `
 from setupLambdaGlobals_${randomFileId} import AwsLambda
-from ${functionConfiguration.entry.split(".")[0]} import ${functionConfiguration.handler} as genezio_deploy
+from ${nameModule} import ${functionConfiguration.handler} as genezio_deploy
 import codecs
 
 def format_timestamp(timestamp):
@@ -321,12 +332,23 @@ def handler(event):
         );
     }
 
-    async getLocalFunctionWrapperCode(handler: string, entry: string): Promise<string> {
+    async getLocalFunctionWrapperCode(
+        handler: string,
+        functionConfiguration: FunctionConfiguration,
+    ): Promise<string> {
+        const nameModule = path
+            .join(functionConfiguration.path, functionConfiguration.entry)
+            .replace(/\\/g, ".") // Convert backslashes to dots (Windows)
+            .replace(/\//g, ".") // Convert slashes to dots (Unix)
+            .replace(/^\.+/, "") // Remove leading dots
+            .replace(/\.+/g, ".") // Remove duplicate dots
+            .replace(/\.py$/, ""); // Remove extension
+
         return `
 import sys
 import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from ${entry.split(".")[0]} import ${handler} as userHandler
+from ${nameModule} import ${handler} as userHandler
 
 class RequestHandler(BaseHTTPRequestHandler):
 
@@ -352,8 +374,13 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(response).encode('utf-8'))
             sys.stdout.flush()
         except Exception as e:
+            import traceback
+            error_response = {
+                "error": str(e),
+                "stacktrace": traceback.format_exc()
+            }
             self.send_response(500)
-            self.wfile.write(f"Error: {str(e)}".encode('utf-8'))
+            self.wfile.write(json.dumps(error_response).encode('utf-8'))
             sys.stdout.flush()
 
 def run():
