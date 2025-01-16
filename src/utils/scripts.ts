@@ -15,7 +15,8 @@ import { execaCommand } from "execa";
 import { ENVIRONMENT, PORT_LOCAL_ENVIRONMENT } from "../constants.js";
 import { getDatabaseByName } from "../requests/database.js";
 import { getAuthentication } from "../requests/authentication.js";
-import { retrieveLocalFunctionUrl } from "../commands/local.js";
+import { retrieveLocalFunctionUrl, retrieveLocalSSRUrl } from "../commands/local.js";
+import { SSRFrameworkComponentType } from "../models/projectOptions.js";
 
 /**
  * Determines whether a given value is a valid `FunctionConfiguration` object.
@@ -136,13 +137,13 @@ export async function resolveConfigurationVariable(
         }
     }
 
-    if (
-        path.startsWith("nestjs") ||
-        path.startsWith("nitro") ||
-        path.startsWith("nextjs") ||
-        path.startsWith("nuxt")
-    ) {
+    if (path.startsWith("nestjs") || path.startsWith("nitro")) {
         if (field === "url") {
+            const ssrFramework = path.split(".")[0];
+            if (options?.isLocal) {
+                return retrieveLocalSSRUrl(ssrFramework as SSRFrameworkComponentType);
+            }
+
             const response = await getProjectInfoByName(configuration.name).catch((error) => {
                 throw new UserError(
                     `Failed to retrieve the project ${configuration.name} with error: ${error}. You cannot use the url attribute.`,
@@ -155,7 +156,6 @@ export async function resolveConfigurationVariable(
                 ?.functions?.[0]?.cloudUrl;
 
             if (!functionUrl) {
-                const ssrFramework = path.split(".")[0];
                 throw new UserError(
                     `The function for the SSR framework ${ssrFramework} is not deployed in the stage ${stage}.`,
                 );
