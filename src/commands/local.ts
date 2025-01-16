@@ -58,7 +58,13 @@ import hash from "hash-it";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import dotenv from "dotenv";
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
-import { DEFAULT_NODE_RUNTIME, NodeOptions, PythonOptions } from "../models/projectOptions.js";
+import {
+    DEFAULT_NODE_RUNTIME,
+    NodeOptions,
+    PythonOptions,
+    SSRFrameworkComponentType,
+    SSRFrameworkName,
+} from "../models/projectOptions.js";
 import { exit } from "process";
 import { log } from "../utils/logging.js";
 import { interruptLocalPath } from "../utils/localInterrupt.js";
@@ -354,13 +360,12 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         );
     }
 
-    const ssrFrameworks = [
-        { config: yamlProjectConfiguration.nextjs, name: "Next.js" },
-        { config: yamlProjectConfiguration.nuxt, name: "Nuxt" },
-        { config: yamlProjectConfiguration.nestjs, name: "Nest.js" },
-        { config: yamlProjectConfiguration.nitro, name: "Nitro" },
-        { config: yamlProjectConfiguration.remix, name: "Remix" },
-    ].filter((framework) => framework.config);
+    const ssrFrameworks = Object.values(SSRFrameworkComponentType)
+        .map((frameworkType) => ({
+            config: yamlProjectConfiguration[frameworkType],
+            name: frameworkType,
+        }))
+        .filter((framework) => framework.config);
 
     // Start all components in parallel
     await Promise.all([
@@ -1664,6 +1669,18 @@ export function retrieveLocalFunctionUrl(functionName: string, functionType: Fun
     return `http://localhost:${BASE_PORT}/.functions/${functionName}`;
 }
 
+export function retrieveLocalSSRUrl(framework: SSRFrameworkComponentType): string {
+    const portEnvKey = `GENEZIO_PORT_${framework.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`;
+    if (!process.env[portEnvKey]) {
+        throw new UserError(
+            `${portEnvKey} is not exported. We cannot infer the local port for the SSR framework. Please run the command \`${portEnvKey}=<local_port> genezio local\``,
+        );
+    }
+    const port = process.env[portEnvKey];
+
+    return `http://localhost:${port}`;
+}
+
 async function getLocalFunctionHttpServerWrapper(entry: string): Promise<string> {
     return `
 import * as domain from "domain";
@@ -1805,12 +1822,12 @@ else:
  */
 async function startSsrFramework(
     ssrConfig: SSRFrameworkComponent,
-    frameworkName: string,
+    framework: SSRFrameworkComponentType,
     projectConfiguration: YamlProjectConfiguration,
     stage: string,
     port?: number,
 ) {
-    debugLogger.debug(`Starting SSR framework: ${frameworkName}`);
+    debugLogger.debug(`Starting SSR framework: ${SSRFrameworkName[framework]}`);
     debugLogger.debug(`SSR path: ${ssrConfig.path}`);
 
     const newEnvObject = await expandEnvironmentVariables(
@@ -1825,17 +1842,17 @@ async function startSsrFramework(
     );
 
     debugLogger.debug(
-        `Environment variables injected for ${frameworkName}:`,
+        `Environment variables injected for ${SSRFrameworkName[framework]}:`,
         JSON.stringify(newEnvObject),
     );
 
-    const portEnvKey = `GENEZIO_PORT_${frameworkName.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`;
-    if (frameworkName.toLowerCase() === "nest.js" && !process.env[portEnvKey]) {
+    const portEnvKey = `GENEZIO_PORT_${framework.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`;
+    if (framework.toLowerCase() === SSRFrameworkComponentType.nestjs && !process.env[portEnvKey]) {
         throw new UserError(
             `You need to specify the port for Nest.js. You can do this by:
-1. Running \`GENEZIO_PORT_NEST_JS=<port> genezio local\` - for linux and macos
-2. Running \`set GENEZIO_PORT_NEST_JS=<port> && genezio local\` - for windows
-3. Adding \`GENEZIO_PORT_NEST_JS=<port>\` to your \`.env\` file.
+1. Running \`GENEZIO_PORT_NESTJS=<port> genezio local\` - for linux and macos
+2. Running \`set GENEZIO_PORT_NESTJS=<port> && genezio local\` - for windows
+3. Adding \`GENEZIO_PORT_NESTJS=<port>\` to your \`.env\` file.
             `,
         );
     }
@@ -1857,31 +1874,31 @@ async function startSsrFramework(
             fs.existsSync(path.join(ssrPath, "vite.config.mjs")) ||
             fs.existsSync(path.join(ssrPath, "vite.config.cjs"));
 
-        switch (frameworkName.toLowerCase()) {
-            case "next.js":
+        switch (framework.toLowerCase()) {
+            case SSRFrameworkComponentType.next:
                 command = "next";
                 args = ["dev", "--port", ssrPort];
                 break;
-            case "nuxt":
+            case SSRFrameworkComponentType.nuxt:
                 command = "nuxt";
                 args = ["dev", "--port", ssrPort];
                 break;
-            case "nitro":
+            case SSRFrameworkComponentType.nitro:
                 command = "nitropack";
                 args = ["dev", "--port", ssrPort];
                 break;
-            case "nest.js":
+            case SSRFrameworkComponentType.nestjs:
                 command = "nest";
                 args = ["start", "--watch", "--debug"];
                 break;
-            case "remix":
+            case SSRFrameworkComponentType.remix:
                 command = "remix";
                 args = isViteConfigExists
                     ? ["vite:dev", "--port", ssrPort]
                     : ["dev", "--port", ssrPort];
                 break;
             default:
-                throw new Error(`Unknown SSR framework: ${frameworkName}`);
+                throw new Error(`Unknown SSR framework: ${framework}`);
         }
         const childProcess = spawn("npx", [command, ...args], {
             stdio: "pipe",
@@ -1927,7 +1944,7 @@ async function startSsrFramework(
         childProcess.on("error", (error) => {
             log.error(
                 new Error(
-                    `Failed to start ${frameworkName} server located in \`${ssrPath}\`: ${error.message}`,
+                    `Failed to start ${SSRFrameworkName[framework]} server located in \`${ssrPath}\`: ${error.message}`,
                 ),
             );
             if (error.stack) {
@@ -1938,7 +1955,7 @@ async function startSsrFramework(
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
         log.error(
             new Error(
-                `Failed to start ${frameworkName} server located in \`${ssrConfig.path}\`: ${errorMessage}`,
+                `Failed to start ${SSRFrameworkName[framework]} server located in \`${ssrConfig.path}\`: ${errorMessage}`,
             ),
         );
     }
