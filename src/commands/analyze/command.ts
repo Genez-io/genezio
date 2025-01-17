@@ -39,6 +39,7 @@ import {
     addServicesToConfig,
     addSSRComponentToConfig,
     getPythonHandler,
+    handleBackendAndSSRConfig,
     injectBackendUrlsInConfig,
     injectSDKInConfig,
 } from "./utils.js";
@@ -571,12 +572,6 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isNextjsComponent(contents)) {
-            // TODO: Remove this check when we support SSR with backends
-            // We are not currently supporting ssr with backends such as express, fastify, etc.
-            if (frameworksDetected.backend && frameworksDetected.backend.length > 0) {
-                continue;
-            }
-
             const packageManagerType =
                 genezioConfig.nestjs?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
             const packageManager = packageManagers[packageManagerType];
@@ -603,12 +598,6 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isNuxtComponent(contents)) {
-            // TODO: Remove this check when we support SSR with backends
-            // We are not currently supporting ssr with backends such as express, fastify, etc.
-            if (frameworksDetected.backend && frameworksDetected.backend.length > 0) {
-                continue;
-            }
-
             const packageManagerType =
                 genezioConfig.nuxt?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
             const packageManager = packageManagers[packageManagerType];
@@ -636,12 +625,6 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
         }
 
         if (await isRemixComponent(contents)) {
-            // TODO: Remove this check when we support SSR with backends
-            // We are not currently supporting ssr with backends such as express, fastify, etc.
-            if (frameworksDetected.backend && frameworksDetected.backend.length > 0) {
-                continue;
-            }
-
             const packageManagerType =
                 genezioConfig.remix?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
             const packageManager = packageManagers[packageManagerType];
@@ -798,6 +781,13 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             frameworksDetected.backend.push({ component: "genezio-typesafe" });
             continue;
         }
+    }
+
+    // TODO - Delete this when support for functions (express, flask etc) with nextjs, nuxt, remix is added
+    // If backend and ssr was detected, remove ssr to make sure this is still deployable
+    if (frameworksDetected.backend && frameworksDetected.ssr) {
+        frameworksDetected.ssr = undefined;
+        await handleBackendAndSSRConfig(configPath);
     }
 
     // Inject backend URLs into the frontend components like frontend, nextjs, nuxts

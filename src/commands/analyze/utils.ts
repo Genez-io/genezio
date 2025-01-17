@@ -161,6 +161,23 @@ export async function addServicesToConfig(configPath: string, services: YAMLServ
     return config;
 }
 
+// TODO - Remove this method when support for functions (express, flask etc) with nextjs, nuxt, remix is added
+export async function handleBackendAndSSRConfig(configPath: string) {
+    const configIOController = new YamlConfigurationIOController(configPath);
+
+    // Load configuration with minimal changes
+    const config = await configIOController.read(/* fillDefaults= */ false);
+
+    // Remove SSR-related framework configurations
+    const ssrFrameworks = Object.values(SSRFrameworkComponentType);
+    for (const framework of ssrFrameworks) {
+        config[framework] = undefined;
+    }
+
+    // Save the updated configuration
+    await configIOController.write(config);
+}
+
 /**
  * Injects the backend function URLs like express, flask (backend functions), nestjs and nitro
  * into the frontend environment variables like react, vue, angular, nextjs and nuxt.
@@ -204,7 +221,7 @@ export async function injectBackendUrlsInConfig(configPath: string) {
         config.frontend = frontend;
     }
 
-    // TODO - Uncomment this when Support functions (express, flask etc) with nextjs, nuxt, remix is fixed
+    // TODO - Uncomment this when support for functions (express, flask etc) with nextjs, nuxt, remix is added
     // const frameworks = [
     //     { key: SSRFrameworkComponentType.next, prefix: "NEXT_PUBLIC" },
     //     { key: SSRFrameworkComponentType.nuxt, prefix: "NUXT" },
