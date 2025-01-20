@@ -12,6 +12,7 @@ import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v
 import { nestJsDeploy } from "./nestjs/deploy.js";
 import { zipDeploy } from "./zip/deploy.js";
 import { remixDeploy } from "./remix/deploy.js";
+
 export type SSRFrameworkComponent = {
     path: string;
     packageManager: PackageManagerType;
@@ -96,6 +97,10 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
 
     if (options.zip) {
         return [DeployType.Zip];
+    }
+
+    if (options.zip) {
+        return DeployType.Zip;
     }
 
     if (options.image) {
