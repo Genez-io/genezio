@@ -1,7 +1,12 @@
 import { $ } from "execa";
 import { UserError } from "../../../errors.js";
 import { debugLogger, log } from "../../../utils/logging.js";
-import { readOrAskConfig, uploadEnvVarsFromFile } from "../utils.js";
+import {
+    prepareServicesPostBackendDeployment,
+    prepareServicesPreBackendDeployment,
+    readOrAskConfig,
+    uploadEnvVarsFromFile,
+} from "../utils.js";
 import { GenezioDeployOptions } from "../../../models/commandOptions.js";
 import {
     FunctionConfiguration,
@@ -23,6 +28,8 @@ import { reportSuccessFunctions } from "../../../utils/reporter.js";
 import { addContainerComponentToConfig } from "./utils.js";
 import { statSync } from "fs";
 import { ContainerComponentType } from "../../../models/projectOptions.js";
+import colors from "colors";
+import { DASHBOARD_URL } from "../../../constants.js";
 
 export async function dockerDeploy(options: GenezioDeployOptions) {
     const config = await readOrAskConfig(options.config);
@@ -34,6 +41,9 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
             path: relativePath,
         });
     }
+
+    // Prepare services before deploying (database, authentication, etc)
+    await prepareServicesPreBackendDeployment(config, config.name, options.stage, options.env);
 
     const projectConfiguration = new ProjectConfiguration(
         config,
@@ -156,6 +166,7 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
                 instanceSize: config.container!.instanceSize,
                 maxConcurrentRequestsPerInstance:
                     config.container!.maxConcurrentRequestsPerInstance,
+                cooldownTime: config.container!.cooldownTime,
             },
         ],
         projectConfiguration,
@@ -187,15 +198,23 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
         ContainerComponentType.container,
     );
 
+    // Prepare services after deploying (authentication redirect urls)
+    await prepareServicesPostBackendDeployment(config, config.name, options.stage);
+
     reportSuccessFunctions(result.functions);
+
+    log.info(
+        `\nApp Dashboard URL: ${colors.cyan(`${DASHBOARD_URL}/project/${result.projectId}/${result.projectEnvId}`)}\n` +
+            `${colors.dim("Here you can monitor logs, set up a custom domain, and more.")}\n`,
+    );
 }
 
 function getPort(exposedPort: { [id: string]: string }): string {
     let port = "8080";
 
-    if (Object.keys(exposedPort).length >= 2) {
+    if (exposedPort && Object.keys(exposedPort).length >= 2) {
         throw new UserError("Only one port can be exposed.");
-    } else if (Object.keys(exposedPort).length === 1) {
+    } else if (exposedPort && Object.keys(exposedPort).length === 1) {
         port = Object.keys(exposedPort)[0].split("/")[0];
         const protocol = Object.keys(exposedPort)[0].split("/")[1];
         if (protocol !== "tcp") {

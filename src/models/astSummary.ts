@@ -25,6 +25,7 @@ export type AstSummaryClass = {
     storageSize?: number;
     instanceSize?: InstanceSize;
     maxConcurrentRequestsPerInstance?: number;
+    cooldownTime?: number;
 };
 
 export type AstSummary = {

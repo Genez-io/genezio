@@ -28,7 +28,18 @@ export enum SSRFrameworkComponentType {
     nitro = "nitro",
     nuxt = "nuxt",
     nestjs = "nestjs",
+    remix = "remix",
 }
+
+// These are the human friendly names for the SSR frameworks
+// They can be used for displaying prettify logs
+export const SSRFrameworkName: Record<SSRFrameworkComponentType, string> = {
+    [SSRFrameworkComponentType.next]: "Next.js",
+    [SSRFrameworkComponentType.nitro]: "Nitro",
+    [SSRFrameworkComponentType.nuxt]: "Nuxt.js",
+    [SSRFrameworkComponentType.nestjs]: "NestJS",
+    [SSRFrameworkComponentType.remix]: "Remix",
+};
 
 export enum ContainerComponentType {
     container = "container",

@@ -8,6 +8,7 @@ import {
 } from "./constants.js";
 import { debugLogger } from "../../utils/logging.js";
 import { YAMLService } from "../../projectConfiguration/yaml/v2.js";
+import dotenv from "dotenv";
 
 // Warning: Changing this type will break compatibility across the codebase
 // Specifically, it is used in the dashboard to display the detected components
@@ -31,13 +32,32 @@ export const ProjectEnvironmentSchema = z.object({
     ),
 });
 
-export async function analyzeBackendEnvExampleFile(
+export async function analyzeEnvironmentVariableExampleFile(
     contents: string,
     services?: YAMLService,
 ): Promise<ProjectEnvironment[]> {
     if (!process.env["OPENAI_API_KEY"]) {
         debugLogger.debug("No OpenAI API key found. Set OPENAI_API_KEY to enable analyze agent.");
-        return [];
+        try {
+            // Load environment variables from the example file
+            const parsedEnv = dotenv.parse(contents);
+
+            // Map the variables to the ProjectEnvironment type
+            const projectEnvironments: ProjectEnvironment[] = Object.entries(parsedEnv).map(
+                ([key, value]) => ({
+                    key,
+                    defaultValue: value || "",
+                    genezioProvisioned: false,
+                    aboveComment: undefined,
+                    link: undefined,
+                }),
+            );
+
+            return projectEnvironments;
+        } catch (error) {
+            debugLogger.debug("Failed to parse environment variables from example file.", error);
+            return [];
+        }
     }
 
     try {

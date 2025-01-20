@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { writeToFile } from "../../utils/file.js";
 import { FunctionConfiguration } from "../../models/projectConfiguration.js";
 import { FunctionHandlerProvider } from "../functionHandlerProvider.js";
+import path from "path";
 
 const streamifyOverrideFileContent = `
 const METADATA_PRELUDE_CONTENT_TYPE = 'application/vnd.awslambda.http-integration-response';
@@ -144,7 +145,17 @@ const handler = async function(event) {
 
   const result = await genezioDeploy(req)
 
-  if (result.cookies) {
+  // Ensure result and headers exist
+  if (!result) {
+    return { headers: {} };
+  }
+  
+  if (!result.headers) {
+    result.headers = {};
+  }
+
+  // Only process cookies if they exist
+  if (result.cookies && Array.isArray(result.cookies)) {
     for (const cookie of result.cookies) {
       result.headers["Set-Cookie"] = cookie;
     }
@@ -163,8 +174,11 @@ export { handler };`;
         );
     }
 
-    async getLocalFunctionWrapperCode(handler: string, entry: string): Promise<string> {
-        return `import { ${handler} as userHandler } from "./${entry}";
+    async getLocalFunctionWrapperCode(
+        handler: string,
+        functionConfiguration: FunctionConfiguration,
+    ): Promise<string> {
+        return `import { ${handler} as userHandler } from "./${functionConfiguration.entry}";
 
 
 
@@ -231,10 +245,17 @@ export class AwsPythonFunctionHandlerProvider implements FunctionHandlerProvider
         functionConfiguration: FunctionConfiguration,
     ): Promise<void> {
         const randomFileId = crypto.randomBytes(8).toString("hex");
+        const nameModule = path
+            .join(functionConfiguration.path, functionConfiguration.entry)
+            .replace(/\\/g, ".") // Convert backslashes to dots (Windows)
+            .replace(/\//g, ".") // Convert slashes to dots (Unix)
+            .replace(/^\.+/, "") // Remove leading dots
+            .replace(/\.+/g, ".") // Remove duplicate dots
+            .replace(/\.py$/, ""); // Remove extension
 
         const handlerContent = `
 from setupLambdaGlobals_${randomFileId} import AwsLambda
-from ${functionConfiguration.entry.split(".")[0]} import ${functionConfiguration.handler} as genezio_deploy
+from ${nameModule} import ${functionConfiguration.handler} as genezio_deploy
 import codecs
 
 def format_timestamp(timestamp):
@@ -289,7 +310,15 @@ def handler(event):
     }
 
     result = genezio_deploy(req)
-
+    
+    # Ensure we always have a dict result with headers
+    if result is None:
+        result = {"headers": {}}
+    elif not isinstance(result, dict):
+        result = {"headers": {}, "body": str(result)}
+    elif "headers" not in result:
+        result["headers"] = {}
+    
     if 'cookies' in result:
         result['headers']['Set-Cookie'] = result['cookies']
 
@@ -303,31 +332,76 @@ def handler(event):
         );
     }
 
-    async getLocalFunctionWrapperCode(handler: string, entry: string): Promise<string> {
+    async getLocalFunctionWrapperCode(
+        handler: string,
+        functionConfiguration: FunctionConfiguration,
+    ): Promise<string> {
+        const nameModule = path
+            .join(functionConfiguration.path, functionConfiguration.entry)
+            .replace(/\\/g, ".") // Convert backslashes to dots (Windows)
+            .replace(/\//g, ".") // Convert slashes to dots (Unix)
+            .replace(/^\.+/, "") // Remove leading dots
+            .replace(/\.+/g, ".") // Remove duplicate dots
+            .replace(/\.py$/, ""); // Remove extension
+
         return `
 import sys
 import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from ${entry.split(".")[0]} import ${handler} as userHandler
+from ${nameModule} import ${handler} as userHandler
 
 class RequestHandler(BaseHTTPRequestHandler):
+    def log_error(self, format, *args):
+        # Disable default error logging since we handle it ourselves
+        pass
 
     def do_POST(self):
         content_length = int(self.headers['Content-Length'])
         post_data = self.rfile.read(content_length)
-        self.send_response(200)
-        self.send_header('Content-Type', 'application/json')
-        self.end_headers()
-
+        
         try:
             jsonParsedBody = json.loads(post_data)
             response = userHandler(jsonParsedBody)
+            
+            # Ensure we always have a dict result with headers
+            if response is None:
+                response = {"headers": {}}
+            elif not isinstance(response, dict):
+                response = {"headers": {}, "body": str(response)}
+            elif "headers" not in response:
+                response["headers"] = {}
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
             self.wfile.write(json.dumps(response).encode('utf-8'))
-            sys.stdout.flush()
         except Exception as e:
+            import traceback
+            error_trace = traceback.format_exc()
+            error_response = {
+                "statusCode": 500,
+                "body": {
+                    "message": str(e),
+                    "stacktrace": error_trace
+                }
+            }
+            
             self.send_response(500)
-            self.wfile.write(f"Error: {str(e)}".encode('utf-8'))
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps(error_response).encode('utf-8'))
+            
+            # Log the HTTP access first
+            self.log_message('"%s" %s %s',
+                           self.requestline, str(500), '-')
+            
+            # Then print the error details
+            print("Traceback:", error_trace, file=sys.stderr)
+            print("Error occurred:", str(e), file=sys.stderr)
+            sys.stderr.flush()
+        finally:
             sys.stdout.flush()
+            sys.stderr.flush()
 
 def run():
     port = int(sys.argv[1])

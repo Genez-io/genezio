@@ -10,6 +10,7 @@ import { GenezioCloudInputType } from "../../../cloudAdapter/cloudAdapter.js";
 import { reportSuccessFunctions } from "../../../utils/reporter.js";
 import { log } from "../../../utils/logging.js";
 import colors from "colors";
+import { DASHBOARD_URL } from "../../../constants.js";
 
 export async function zipDeploy(options: GenezioDeployOptions) {
     if (!options.zip) {
@@ -58,6 +59,7 @@ export async function zipDeploy(options: GenezioDeployOptions) {
             instanceSize: f.instanceSize,
             storageSize: f.storageSize,
             maxConcurrentRequestsPerInstance: f.maxConcurrentRequestsPerInstance,
+            cooldownTime: f.cooldownTime,
         };
     });
 
@@ -90,4 +92,9 @@ export async function zipDeploy(options: GenezioDeployOptions) {
             log.info(colors.cyan(`Frontend URL: ${frontendUrl}`));
         }
     }
+
+    log.info(
+        `\nApp Dashboard URL: ${colors.cyan(`${DASHBOARD_URL}/project/${result.projectId}/${result.projectEnvId}`)}\n` +
+            `${colors.dim("Here you can monitor logs, set up a custom domain, and more.")}\n`,
+    );
 }

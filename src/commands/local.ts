@@ -58,7 +58,13 @@ import hash from "hash-it";
 import { GenezioTelemetry, TelemetryEventTypes } from "../telemetry/telemetry.js";
 import dotenv from "dotenv";
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
-import { DEFAULT_NODE_RUNTIME, NodeOptions, PythonOptions } from "../models/projectOptions.js";
+import {
+    DEFAULT_NODE_RUNTIME,
+    NodeOptions,
+    PythonOptions,
+    SSRFrameworkComponentType,
+    SSRFrameworkName,
+} from "../models/projectOptions.js";
 import { exit } from "process";
 import { log } from "../utils/logging.js";
 import { interruptLocalPath } from "../utils/localInterrupt.js";
@@ -88,12 +94,15 @@ import {
     evaluateResource,
     getOrCreateDatabase,
     getOrCreateEmptyProject,
+    hasInternetConnection,
 } from "./deploy/utils.js";
 import { displayHint } from "../utils/strings.js";
 import { enableEmailIntegration, getProjectIntegrations } from "../requests/integration.js";
 import { expandEnvironmentVariables, findAnEnvFile } from "../utils/environmentVariables.js";
 import { getFunctionHandlerProvider } from "../utils/getFunctionHandlerProvider.js";
 import { getFunctionEntryFilename } from "../utils/getFunctionEntryFilename.js";
+import { SSRFrameworkComponent } from "./deploy/command.js";
+import fs from "fs";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -140,6 +149,12 @@ export async function prepareLocalBackendEnvironment(
 
         let configurationEnvVars: { [key: string]: string | undefined } = {};
         if (yamlProjectConfiguration.services) {
+            if (!(await hasInternetConnection())) {
+                throw new UserError(
+                    "No internet connection found. If you want to use services you need an active internet connection. Please check your internet connection and try again.",
+                );
+            }
+
             const projectDetails = await getOrCreateEmptyProject(
                 projectName,
                 region,
@@ -322,7 +337,15 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
     // It is locked until the first Genezio SDK is generated.
     sdkSynchronizer.acquire();
 
-    if (!yamlProjectConfiguration.backend && !yamlProjectConfiguration.frontend) {
+    if (
+        !yamlProjectConfiguration.backend &&
+        !yamlProjectConfiguration.frontend &&
+        !yamlProjectConfiguration.nextjs &&
+        !yamlProjectConfiguration.nuxt &&
+        !yamlProjectConfiguration.nestjs &&
+        !yamlProjectConfiguration.nitro &&
+        !yamlProjectConfiguration.remix
+    ) {
         throw new UserError(
             "No backend or frontend components found in the genezio.yaml file. You need at least one component to start the local environment.",
         );
@@ -337,6 +360,14 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         );
     }
 
+    const ssrFrameworks = Object.values(SSRFrameworkComponentType)
+        .map((frameworkType) => ({
+            config: yamlProjectConfiguration[frameworkType],
+            name: frameworkType,
+        }))
+        .filter((framework) => framework.config);
+
+    // Start all components in parallel
     await Promise.all([
         startBackendWatcher(yamlProjectConfiguration.backend, options, sdkSynchronizer),
         startFrontends(
@@ -345,6 +376,15 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
             yamlProjectConfiguration,
             options.stage || "prod",
             options.port,
+        ),
+        ...ssrFrameworks.map((framework) =>
+            startSsrFramework(
+                framework.config as SSRFrameworkComponent,
+                framework.name,
+                yamlProjectConfiguration,
+                options.stage || "prod",
+                options.port,
+            ),
         ),
     ]);
 }
@@ -694,7 +734,7 @@ async function startProcesses(
                     ),
                     await handlerProvider!.getLocalFunctionWrapperCode(
                         functionInfo.handler,
-                        functionInfo.entry,
+                        functionInfo,
                     ),
                 );
             }
@@ -1041,7 +1081,7 @@ function getProjectFunctions(
     projectConfiguration: ProjectConfiguration,
 ): DeployCodeFunctionResponse[] {
     return projectConfiguration.functions.map((f) => ({
-        cloudUrl: retrieveLocalFunctionUrl(f),
+        cloudUrl: retrieveLocalFunctionUrl(f.name, f.type),
         id: f.name,
         name: f.name,
     }));
@@ -1113,7 +1153,10 @@ async function startCronJobs(
                     `Function ${functionName} not found in deployed functions. Check if your function is deployed. If the problem persists, please contact support at contact@genez.io.`,
                 );
             }
-            const baseURL = retrieveLocalFunctionUrl(functionConfiguration);
+            const baseURL = retrieveLocalFunctionUrl(
+                functionConfiguration.name,
+                functionConfiguration.type,
+            );
             let url: string;
             if (endpoint) {
                 url = `${baseURL}/${endpoint}`;
@@ -1410,7 +1453,7 @@ function reportSuccess(projectConfiguration: ProjectConfiguration, port: number)
             projectConfiguration.functions.map((f) => ({
                 name: f.name,
                 id: f.name,
-                cloudUrl: retrieveLocalFunctionUrl(f),
+                cloudUrl: retrieveLocalFunctionUrl(f.name, f.type),
             })),
         );
     }
@@ -1599,20 +1642,43 @@ function formatTimestamp(date: Date) {
     return formattedDate;
 }
 
-export function retrieveLocalFunctionUrl(
-    functionObj: FunctionConfiguration,
-    isIac: boolean = false,
-): string {
+/**
+ * This function is used to retrieve the local function URL.
+ *
+ * @param functionName This should contain `function-` prefix.
+ * @param functionType The type of the function handler.
+ * @returns
+ */
+export function retrieveLocalFunctionUrl(functionName: string, functionType: FunctionType): string {
     const BASE_PORT = 8083;
-    const functionName = isIac ? `function-${functionObj.name}` : functionObj.name;
+
+    // Check if the function name has the `function-` prefix
+    // At this point this function should be called with the correct prefix
+    // But we are adding this check just in case
+    if (!functionName.startsWith("function-")) {
+        functionName = `function-${functionName}`;
+    }
+
     const normalizedName = functionName.replace(/-/g, "_").toUpperCase();
 
-    if (functionObj.type === FunctionType.httpServer) {
+    if (functionType === FunctionType.httpServer) {
         const port = process.env[`GENEZIO_PORT_${normalizedName}`];
         return `http://localhost:${port}`;
     }
 
     return `http://localhost:${BASE_PORT}/.functions/${functionName}`;
+}
+
+export function retrieveLocalSSRUrl(framework: SSRFrameworkComponentType): string {
+    const portEnvKey = `GENEZIO_PORT_${framework.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`;
+    if (!process.env[portEnvKey]) {
+        throw new UserError(
+            `${portEnvKey} is not exported. We cannot infer the local port for the SSR framework. Please run the command \`${portEnvKey}=<local_port> genezio local\``,
+        );
+    }
+    const port = process.env[portEnvKey];
+
+    return `http://localhost:${port}`;
 }
 
 async function getLocalFunctionHttpServerWrapper(entry: string): Promise<string> {
@@ -1626,38 +1692,18 @@ const originalCreateServer = http.createServer;
 let server;
 
 http.createServer = function(...args) {
-    // If there's a request handler provided, wrap it with CORS headers
-    if (args[0] && typeof args[0] === 'function') {
-        const originalHandler = args[0];
-        args[0] = function(req, res) {
-            // Set CORS headers
-            res.setHeader('Access-Control-Allow-Origin', '*');
-            res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-            res.setHeader('Access-Control-Allow-Headers', '*');
-            
-            // Handle OPTIONS requests for CORS preflight
-            if (req.method === 'OPTIONS') {
-                res.writeHead(204);
-                res.end();
-                return;
-            }
-            
-            return originalHandler(req, res);
-        };
-    }
-    
     server = originalCreateServer(...args);
-    
+
     // Store the original listen method
     const originalListen = server.listen;
-    
+
     // Override the listen method to only listen once
     server.listen = function(...listenArgs) {
         const genezioPort = parseInt(process.argv[process.argv.length - 1], 10);
         // Only call listen once with the Genezio port
-        return originalListen.apply(server, [genezioPort, ...listenArgs.slice(1)]); 
+        return originalListen.apply(server, [genezioPort, ...listenArgs.slice(1)]);
     };
-    
+
     return server;
 };
 
@@ -1703,84 +1749,20 @@ genezio_port = int(sys.argv[len(sys.argv) - 1])
 
 is_asgi = callable(application) and asyncio.iscoroutinefunction(application.__call__)
 
-# WSGI CORS Middleware
-class WSGICORSMiddleware:
-    def __init__(self, app):
-        self.app = app
-
-    def __call__(self, environ, start_response):
-        def cors_start_response(status, headers, exc_info=None):
-            headers.extend([
-                ("Access-Control-Allow-Origin", "*"),
-                ("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE"),
-                ("Access-Control-Allow-Headers", "*"),
-            ])
-            return start_response(status, headers, exc_info)
-
-        if environ["REQUEST_METHOD"] == "OPTIONS":
-            headers = [
-                ("Access-Control-Allow-Origin", "*"),
-                ("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE"),
-                ("Access-Control-Allow-Headers", "*"),
-            ]
-            start_response("204 No Content", headers)
-            return [b""]
-
-        return self.app(environ, cors_start_response)
-
-# ASGI CORS Middleware
-class ASGICORSMiddleware:
-    def __init__(self, app):
-        self.app = app
-
-    async def __call__(self, scope, receive, send):
-        if scope["type"] != "http":
-            return await self.app(scope, receive, send)
-
-        if scope["method"] == "OPTIONS":
-            headers = [
-                (b"access-control-allow-origin", b"*"),
-                (b"access-control-allow-methods", b"GET, POST, OPTIONS, PUT, PATCH, DELETE"),
-                (b"access-control-allow-headers", b"*"),
-            ]
-            await send({
-                "type": "http.response.start",
-                "status": 204,
-                "headers": headers
-            })
-            await send({
-                "type": "http.response.body",
-                "body": b""
-            })
-            return
-
-        async def wrapped_send(message):
-            if message["type"] == "http.response.start":
-                headers = message.get("headers", [])
-                headers.extend([
-                    (b"access-control-allow-origin", b"*"),
-                    (b"access-control-allow-methods", b"GET, POST, OPTIONS, PUT, PATCH, DELETE"),
-                    (b"access-control-allow-headers", b"*"),
-                ])
-                message["headers"] = headers
-            await send(message)
-
-        await self.app(scope, receive, wrapped_send)
-
 def install_uvicorn():
     system = platform.system().lower()
     pip_commands = ["pip3", "pip"] if system == "darwin" else ["pip", "pip3"]
-    
+
     for pip_cmd in pip_commands:
         try:
-            subprocess.check_call([pip_cmd, "install", "uvicorn"], 
-                                stderr=subprocess.DEVNULL, 
+            subprocess.check_call([pip_cmd, "install", "uvicorn"],
+                                stderr=subprocess.DEVNULL,
                                 stdout=subprocess.DEVNULL)
             print(f"Successfully installed uvicorn using {pip_cmd}!")
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):
             continue
-    
+
     print("Failed to install uvicorn automatically. Please install it manually using:")
     print("  pip install uvicorn")
     print("  -- or --")
@@ -1798,21 +1780,183 @@ if is_asgi:
         if uvicorn_spec is None:
             print("Failed to import uvicorn after installation. Please try installing it manually.")
             sys.exit(1)
-    
+
     import uvicorn
-    
+
     if __name__ == "__main__":
-        application = ASGICORSMiddleware(application)
         uvicorn.run(
             application,
-            host="127.0.0.1", 
-            port=genezio_port, 
+            host="127.0.0.1",
+            port=genezio_port,
             reload=False
         )
 else:
-    application = WSGICORSMiddleware(application)
     with make_server("127.0.0.1", genezio_port, application) as httpd:
         print(f"Serving WSGI application on port {genezio_port}...")
         httpd.serve_forever()
 `;
+}
+
+/**
+ * Starts a Server-Side Rendering (SSR) framework in development mode.
+ *
+ * @param ssrConfig - Configuration object for the SSR framework
+ * @param frameworkName - Name of the SSR framework (e.g., "Next.js", "Nuxt", "Nitro", "Remix")
+ * @param projectConfiguration - The complete Genezio YAML project configuration
+ * @param stage - The deployment stage (e.g., "prod", "dev")
+ * @param port - Optional port number for the main Genezio server
+ *
+ * @throws {UserError} When Nest.js is specified (not supported in local mode, don't have --port option, todo: detect the port)
+ * @throws {Error} When an unknown SSR framework is specified
+ *
+ * @remarks
+ * This function:
+ * 1. Sets up environment variables for the SSR framework
+ * 2. Finds an available port for the SSR server
+ * 3. Spawns a child process to run the framework's development server
+ * 4. Handles stdout/stderr logging with ANSI code stripping
+ * 5. Provides specific configurations for Next.js, Nuxt, Nitro, and Remix
+ *
+ * For Remix specifically, it checks for the presence of a Vite config to determine
+ * the correct development command.
+ */
+async function startSsrFramework(
+    ssrConfig: SSRFrameworkComponent,
+    framework: SSRFrameworkComponentType,
+    projectConfiguration: YamlProjectConfiguration,
+    stage: string,
+    port?: number,
+) {
+    debugLogger.debug(`Starting SSR framework: ${SSRFrameworkName[framework]}`);
+    debugLogger.debug(`SSR path: ${ssrConfig.path}`);
+
+    const newEnvObject = await expandEnvironmentVariables(
+        ssrConfig.environment,
+        projectConfiguration,
+        stage,
+        undefined,
+        {
+            isLocal: true,
+            port: port,
+        },
+    );
+
+    debugLogger.debug(
+        `Environment variables injected for ${SSRFrameworkName[framework]}:`,
+        JSON.stringify(newEnvObject),
+    );
+
+    const portEnvKey = `GENEZIO_PORT_${framework.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`;
+    if (framework.toLowerCase() === SSRFrameworkComponentType.nestjs && !process.env[portEnvKey]) {
+        throw new UserError(
+            `You need to specify the port for Nest.js. You can do this by:
+1. Running \`GENEZIO_PORT_NESTJS=<port> genezio local\` - for linux and macos
+2. Running \`set GENEZIO_PORT_NESTJS=<port> && genezio local\` - for windows
+3. Adding \`GENEZIO_PORT_NESTJS=<port>\` to your \`.env\` file.
+            `,
+        );
+    }
+
+    const ssrPort = process.env[portEnvKey] || (await findAvailablePort()).toString();
+    process.env[portEnvKey] = ssrPort;
+    debugLogger.debug(`Set ${portEnvKey} to ${ssrPort}`);
+
+    try {
+        let command: string;
+        let args: string[];
+
+        const currentDir = process.cwd();
+        const ssrPath = path.resolve(currentDir, ssrConfig.path);
+
+        const isViteConfigExists =
+            fs.existsSync(path.join(ssrPath, "vite.config.js")) ||
+            fs.existsSync(path.join(ssrPath, "vite.config.ts")) ||
+            fs.existsSync(path.join(ssrPath, "vite.config.mjs")) ||
+            fs.existsSync(path.join(ssrPath, "vite.config.cjs"));
+
+        switch (framework.toLowerCase()) {
+            case SSRFrameworkComponentType.next:
+                command = "next";
+                args = ["dev", "--port", ssrPort];
+                break;
+            case SSRFrameworkComponentType.nuxt:
+                command = "nuxt";
+                args = ["dev", "--port", ssrPort];
+                break;
+            case SSRFrameworkComponentType.nitro:
+                command = "nitropack";
+                args = ["dev", "--port", ssrPort];
+                break;
+            case SSRFrameworkComponentType.nestjs:
+                command = "nest";
+                args = ["start", "--watch", "--debug"];
+                break;
+            case SSRFrameworkComponentType.remix:
+                command = "remix";
+                args = isViteConfigExists
+                    ? ["vite:dev", "--port", ssrPort]
+                    : ["dev", "--port", ssrPort];
+                break;
+            default:
+                throw new Error(`Unknown SSR framework: ${framework}`);
+        }
+        const childProcess = spawn("npx", [command, ...args], {
+            stdio: "pipe",
+            env: {
+                ...process.env,
+                ...newEnvObject,
+                CI: "1", // Forces CI mode
+                TERM: "dumb", // Simplifies terminal output
+            },
+            cwd: ssrPath,
+        });
+
+        const stdoutLineStream = readline.createInterface({
+            input: childProcess.stdout!,
+        });
+        const stderrLineStream = readline.createInterface({
+            input: childProcess.stderr!,
+        });
+
+        // Function to remove ANSI escape codes from a string (used to remove clear console output)
+        const stripAnsi = (str: string): string => {
+            /* eslint-disable-next-line no-control-regex */
+            return str.replace(
+                /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g,
+                "",
+            );
+        };
+
+        stdoutLineStream.on("line", (line) => {
+            const cleanLine = stripAnsi(line);
+            if (cleanLine.trim()) {
+                log.info(cleanLine);
+            }
+        });
+
+        stderrLineStream.on("line", (line) => {
+            const cleanLine = stripAnsi(line);
+            if (cleanLine.trim()) {
+                log.info(cleanLine);
+            }
+        });
+
+        childProcess.on("error", (error) => {
+            log.error(
+                new Error(
+                    `Failed to start ${SSRFrameworkName[framework]} server located in \`${ssrPath}\`: ${error.message}`,
+                ),
+            );
+            if (error.stack) {
+                log.error(error.stack);
+            }
+        });
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+        log.error(
+            new Error(
+                `Failed to start ${SSRFrameworkName[framework]} server located in \`${ssrConfig.path}\`: ${errorMessage}`,
+            ),
+        );
+    }
 }

@@ -91,7 +91,8 @@ export abstract class DecoratorExtractor {
                 if (
                     key === "timeout" ||
                     key === "storageSize" ||
-                    key === "maxConcurrentRequestsPerInstance"
+                    key === "maxConcurrentRequestsPerInstance" ||
+                    key === "cooldownTime"
                 ) {
                     transformedValue = parseInt(value);
                     if (isNaN(transformedValue)) {

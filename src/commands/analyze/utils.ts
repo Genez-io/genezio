@@ -107,6 +107,10 @@ export async function addSSRComponentToConfig(
         ...config[componentType],
         path: config[componentType]?.path || relativePath,
         packageManager: config[componentType]?.packageManager || component.packageManager,
+        environment: {
+            ...component.environment,
+            ...config[componentType]?.environment,
+        },
         scripts: config[componentType]?.scripts || component.scripts,
     };
 
@@ -153,30 +157,85 @@ export async function addServicesToConfig(configPath: string, services: YAMLServ
     config.services.databases = mergedDatabases;
 
     await configIOController.write(config);
+
+    return config;
+}
+
+// TODO - Remove this method when support for functions (express, flask etc) with nextjs, nuxt, remix is added
+export async function handleBackendAndSSRConfig(configPath: string) {
+    const configIOController = new YamlConfigurationIOController(configPath);
+
+    // Load configuration with minimal changes
+    const config = await configIOController.read(/* fillDefaults= */ false);
+
+    // Remove SSR-related framework configurations
+    const ssrFrameworks = Object.values(SSRFrameworkComponentType);
+    for (const framework of ssrFrameworks) {
+        config[framework] = undefined;
+    }
+
+    // Save the updated configuration
+    await configIOController.write(config);
 }
 
 /**
- * Injects the backend function URLs into the frontend environment variables.
+ * Injects the backend function URLs like express, flask (backend functions), nestjs and nitro
+ * into the frontend environment variables like react, vue, angular, nextjs and nuxt.
+ *
  * @param frontendPrefix The prefix to use for the frontend environment variables.
  * @param configPath The path to the config file.
  */
-export async function injectBackendApiUrlsInConfig(configPath: string, frontendPrefix: string) {
+export async function injectBackendUrlsInConfig(configPath: string) {
     const configIOController = new YamlConfigurationIOController(configPath);
 
     // Load config with minimal changes
     const config = await configIOController.read(/* fillDefaults= */ false);
 
-    // Validate backend and frontend existence
     const backend = config.backend as YAMLBackend;
-    const frontend = config.frontend as YamlFrontend;
-    if (!backend || !frontend) return;
+    const functions: string[] = backend?.functions?.map((fn) => fn.name) || [];
+    const ssrFunctions: string[] = [];
 
-    const backendFunctions = backend.functions;
-    if (!backendFunctions) return;
+    const ssrFrameworks = [SSRFrameworkComponentType.nestjs, SSRFrameworkComponentType.nitro];
+
+    ssrFrameworks.forEach((framework) => {
+        if (config[framework]) {
+            ssrFunctions.push(framework);
+        }
+    });
+
+    // Early return if there is nothing to inject
+    if (functions.length === 0 && ssrFunctions.length === 0) {
+        return;
+    }
 
     // Generate frontend environment variables based on backend functions
-    const frontendEnvironment = createFrontendEnvironment(frontendPrefix, backendFunctions);
-    frontend.environment = frontendEnvironment;
+    const frontend = config.frontend as YamlFrontend;
+    if (frontend) {
+        // TODO Support multiple frontend frameworks in the same project
+        const frontendPrefix = getFrontendPrefix(Object.keys(frontend)[0]);
+        const frontendEnvironment = {
+            ...createFrontendEnvironmentRecord(frontendPrefix, functions, ssrFunctions),
+            ...frontend.environment,
+        };
+        frontend.environment = frontendEnvironment;
+        config.frontend = frontend;
+    }
+
+    // TODO - Uncomment this when support for functions (express, flask etc) with nextjs, nuxt, remix is added
+    // const frameworks = [
+    //     { key: SSRFrameworkComponentType.next, prefix: "NEXT_PUBLIC" },
+    //     { key: SSRFrameworkComponentType.nuxt, prefix: "NUXT" },
+    // ];
+
+    // frameworks.forEach(({ key, prefix }) => {
+    //     if (config[key]) {
+    //         const environment = {
+    //             ...createFrontendEnvironmentRecord(prefix, functions, ssrFunctions),
+    //             ...config[key].environment,
+    //         };
+    //         config[key].environment = environment;
+    //     }
+    // });
 
     // Save the updated configuration
     await configIOController.write(config);
@@ -246,16 +305,32 @@ export function getFrontendPrefix(framework: string): string {
  * Creates a Record<string, string> where each key represents a frontend environment
  * variable based on the backend function name and each value is the function's URL.
  */
-function createFrontendEnvironment(
+export function createFrontendEnvironmentRecord(
     frontendPrefix: string,
-    backendFunctions: Array<{ name: string }>,
+    backendFunctions: string[] = [],
+    ssrFrameworks: string[] = [],
 ): Record<string, string> {
-    return backendFunctions.reduce<Record<string, string>>((environment, func) => {
-        const key = formatFunctionNameAsEnvVar(frontendPrefix, func.name);
-        const value = `\${{ backend.functions.${func.name}.url }}`;
-        environment[key] = value;
-        return environment;
-    }, {});
+    const environment_backend = backendFunctions.reduce<Record<string, string>>(
+        (environment, functionName) => {
+            const key = formatFunctionNameAsEnvVar(frontendPrefix, functionName);
+            const value = `\${{ backend.functions.${functionName}.url }}`;
+            environment[key] = value;
+            return environment;
+        },
+        {},
+    );
+
+    const environment_ssr = ssrFrameworks.reduce<Record<string, string>>(
+        (environment, framework) => {
+            const key = `${frontendPrefix}_API_URL_${framework.toUpperCase()}`;
+            const value = `\${{ ${framework}.url }}`;
+            environment[key] = value;
+            return environment;
+        },
+        {},
+    );
+
+    return { ...environment_backend, ...environment_ssr };
 }
 
 /**

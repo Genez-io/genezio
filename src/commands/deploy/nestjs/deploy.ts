@@ -6,12 +6,17 @@ import { GenezioDeployOptions } from "../../../models/commandOptions.js";
 import { log } from "../../../utils/logging.js";
 import {
     attemptToInstallDependencies,
+    prepareServicesPostBackendDeployment,
+    prepareServicesPreBackendDeployment,
     readOrAskConfig,
     uploadEnvVarsFromFile,
     uploadUserCode,
 } from "../utils.js";
 import { addSSRComponentToConfig } from "../../analyze/utils.js";
-import { getPackageManager, PackageManagerType } from "../../../packageManagers/packageManager.js";
+import {
+    NODE_DEFAULT_PACKAGE_MANAGER,
+    PackageManagerType,
+} from "../../../packageManagers/packageManager.js";
 import { SSRFrameworkComponentType } from "../../../models/projectOptions.js";
 import { UserError } from "../../../errors.js";
 import { YamlProjectConfiguration } from "../../../projectConfiguration/yaml/v2.js";
@@ -19,23 +24,38 @@ import { getCloudProvider } from "../../../requests/getCloudProvider.js";
 import { functionToCloudInput, getCloudAdapter } from "../genezio.js";
 import { FunctionType, Language } from "../../../projectConfiguration/yaml/models.js";
 import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
+import { DASHBOARD_URL } from "../../../constants.js";
 
 export async function nestJsDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
+    const packageManagerType = genezioConfig.nestjs?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
+
     const cwd = process.cwd();
     const componentPath = genezioConfig.nestjs?.path
         ? path.resolve(cwd, genezioConfig.nestjs.path)
         : cwd;
 
+    // Prepare services before deploying (database, authentication, etc)
+    await prepareServicesPreBackendDeployment(
+        genezioConfig,
+        genezioConfig.name,
+        options.stage,
+        options.env,
+    );
+
     // Install dependencies
-    const installDependenciesCommand = await attemptToInstallDependencies([], componentPath);
+    const installDependenciesCommand = await attemptToInstallDependencies(
+        [],
+        componentPath,
+        packageManagerType,
+    );
 
     // Add nestjs component to config
     await addSSRComponentToConfig(
         options.config,
         {
             path: componentPath,
-            packageManager: getPackageManager().command as PackageManagerType,
+            packageManager: packageManagerType,
             scripts: {
                 deploy: [`${installDependenciesCommand.command}`],
             },
@@ -67,9 +87,16 @@ export async function nestJsDeploy(options: GenezioDeployOptions) {
 
     const functionUrl = result.functions.find((f) => f.name === "function-nest")?.cloudUrl;
 
+    await prepareServicesPostBackendDeployment(genezioConfig, genezioConfig.name, options.stage);
+
     if (functionUrl) {
         log.info(
             `The app is being deployed at ${colors.cyan(functionUrl)}. It might take a few moments to be available worldwide.`,
+        );
+
+        log.info(
+            `\nApp Dashboard URL: ${colors.cyan(`${DASHBOARD_URL}/project/${result.projectId}/${result.projectEnvId}`)}\n` +
+                `${colors.dim("Here you can monitor logs, set up a custom domain, and more.")}\n`,
         );
     } else {
         log.warn("No deployment URL was returned.");
@@ -85,15 +112,13 @@ async function deployFunction(
     const cloudAdapter = getCloudAdapter(cloudProvider);
     const cwdRelative = path.relative(process.cwd(), cwd) || ".";
 
-    await fs.promises
-        .cp(
-            path.join(cwdRelative, "node_modules"),
-            path.join(cwdRelative, "dist", "node_modules"),
-            { recursive: true },
-        )
-        .catch(() => {
-            throw new UserError("Failed to copy node_modules to dist directory");
-        });
+    const baseDir = path.normalize(path.resolve(process.cwd(), cwdRelative));
+    const sourceModulesPath = path.join(baseDir, "node_modules");
+    const targetModulesPath = path.join(baseDir, "dist", "node_modules");
+    const functionPath = path.join(baseDir, "dist");
+    await fs.promises.cp(sourceModulesPath, targetModulesPath, { recursive: true }).catch(() => {
+        throw new UserError("Failed to copy node_modules to dist directory");
+    });
 
     const serverFunction = {
         path: ".",
@@ -126,7 +151,7 @@ async function deployFunction(
     );
 
     const cloudInputs = await Promise.all(
-        projectConfiguration.functions.map((f) => functionToCloudInput(f, "dist")),
+        projectConfiguration.functions.map((f) => functionToCloudInput(f, functionPath)),
     );
 
     const result = await cloudAdapter.deploy(

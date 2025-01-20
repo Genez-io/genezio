@@ -20,6 +20,7 @@ import {
 import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
 import path from "path";
 import { UserError } from "../errors.js";
+
 export class ParameterType {
     name: string;
     type: any;
@@ -72,6 +73,7 @@ export class ClassConfiguration {
     storageSize?: number;
     instanceSize?: InstanceSize;
     maxConcurrentRequestsPerInstance?: number;
+    cooldownTime?: number;
 
     constructor(
         name: string,
@@ -86,6 +88,7 @@ export class ClassConfiguration {
         storageSize?: number,
         instanceSize?: InstanceSize,
         maxConcurrentRequestsPerInstance?: number,
+        cooldownTime?: number,
     ) {
         this.name = name;
         this.path = path;
@@ -99,6 +102,7 @@ export class ClassConfiguration {
         this.storageSize = storageSize;
         this.instanceSize = instanceSize;
         this.maxConcurrentRequestsPerInstance = maxConcurrentRequestsPerInstance;
+        this.cooldownTime = cooldownTime;
     }
 }
 
@@ -113,6 +117,7 @@ export class FunctionConfiguration {
     storageSize?: number;
     instanceSize?: InstanceSize;
     maxConcurrentRequestsPerInstance?: number;
+    cooldownTime?: number;
 
     constructor(
         name: string,
@@ -125,6 +130,7 @@ export class FunctionConfiguration {
         storageSize?: number,
         instanceSize?: InstanceSize,
         maxConcurrentRequestsPerInstance?: number,
+        cooldownTime?: number,
     ) {
         this.name = name;
         this.path = path;
@@ -136,6 +142,7 @@ export class FunctionConfiguration {
         this.storageSize = storageSize;
         this.instanceSize = instanceSize;
         this.maxConcurrentRequestsPerInstance = maxConcurrentRequestsPerInstance;
+        this.cooldownTime = cooldownTime;
     }
 }
 
@@ -285,6 +292,7 @@ export class ProjectConfiguration {
                 storageSize: c.storageSize,
                 instanceSize: c.instanceSize,
                 maxConcurrentRequestsPerInstance: c.maxConcurrentRequestsPerInstance,
+                cooldownTime: c.cooldownTime,
             };
         });
 
@@ -301,6 +309,7 @@ export class ProjectConfiguration {
                     storageSize: f.storageSize,
                     instanceSize: f.instanceSize,
                     maxConcurrentRequestsPerInstance: f.maxConcurrentRequestsPerInstance,
+                    cooldownTime: f.cooldownTime,
                 };
             }) || [];
     }

@@ -5,7 +5,7 @@ import { CloudProviderIdentifier } from "../../models/cloudProviderIdentifier.js
 import { fileExists } from "../../utils/file.js";
 import { log } from "../../utils/logging.js";
 import { debugLogger } from "../../utils/logging.js";
-import { getPackageManager } from "../../packageManagers/packageManager.js";
+import { getGlobalPackageManager } from "../../packageManagers/packageManager.js";
 import { UserError } from "../../errors.js";
 import { $ } from "execa";
 
@@ -66,7 +66,7 @@ export class NodeJsBinaryDependenciesBundler implements BundlerInterface {
         }
 
         if (binaryDependencies.length > 0) {
-            await getPackageManager().install(
+            await getGlobalPackageManager().install(
                 ["node-addon-api", "@mapbox/node-pre-gyp"],
                 tempFolderPath,
             );

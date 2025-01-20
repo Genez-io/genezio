@@ -131,7 +131,7 @@ export async function hasPostgresDependency(
         return false;
     }
 
-    const jsPostgresIndicators = ["pg", "pg-promise"];
+    const jsPostgresIndicators = ["pg", "pg-promise", "postgres", "@vercel/postgres"];
     const pythonPostgresIndicators = ["psycopg2", "asyncpg", "py-postgresql"];
     const dependencyList = jsPostgresIndicators.concat(pythonPostgresIndicators);
 
@@ -365,6 +365,19 @@ export async function isSvelteComponent(contents: Record<string, string>): Promi
         ? "svelte" in (packageJsonContent.dependencies || {}) ||
               "svelte" in (packageJsonContent.devDependencies || {})
         : false;
+}
+
+// Checks if the project is a Remix component
+export async function isRemixComponent(contents: Record<string, string>): Promise<boolean> {
+    if (!contents["package.json"]) {
+        return false;
+    }
+
+    const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
+
+    return Object.keys(packageJsonContent.dependencies || {}).some((key) =>
+        key.startsWith("@remix-run"),
+    );
 }
 
 // Checks if the project is a Python component (presence of 'requirements.txt' or 'pyproject.toml')

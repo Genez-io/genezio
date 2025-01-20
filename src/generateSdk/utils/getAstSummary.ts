@@ -74,6 +74,7 @@ export function getAstSummary(classesInfo: SdkGeneratorClassesInfoInput[]): AstS
                 instanceSize: classConfiguration.classConfiguration.instanceSize,
                 maxConcurrentRequestsPerInstance:
                     classConfiguration.classConfiguration.maxConcurrentRequestsPerInstance,
+                cooldownTime: classConfiguration.classConfiguration.cooldownTime,
             };
             return classInfo;
         });
