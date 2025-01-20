@@ -99,10 +99,6 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         return [DeployType.Zip];
     }
 
-    if (options.zip) {
-        return DeployType.Zip;
-    }
-
     if (options.image) {
         return [DeployType.Docker];
     }
