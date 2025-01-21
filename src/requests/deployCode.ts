@@ -51,6 +51,7 @@ export async function deployRequest(
                     storageSize: input?.storageSize,
                     instanceSize: input?.instanceSize,
                     maxConcurrentRequestsPerInstance: input?.maxConcurrentRequestsPerInstance,
+                    maxConcurrentInstances: input?.maxConcurrentInstances,
                     cooldownTime: input?.cooldownTime,
                 };
             }) ?? [],

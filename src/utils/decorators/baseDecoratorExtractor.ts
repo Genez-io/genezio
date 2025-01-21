@@ -92,6 +92,7 @@ export abstract class DecoratorExtractor {
                     key === "timeout" ||
                     key === "storageSize" ||
                     key === "maxConcurrentRequestsPerInstance" ||
+                    key === "maxConcurrentInstances" ||
                     key === "cooldownTime"
                 ) {
                     transformedValue = parseInt(value);

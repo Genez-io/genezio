@@ -47,6 +47,7 @@ export type GenezioCloudInput =
           storageSize?: number;
           instanceSize?: InstanceSize;
           maxConcurrentRequestsPerInstance?: number;
+          maxConcurrentInstances?: number;
           cooldownTime?: number;
       }
     | {
@@ -61,6 +62,7 @@ export type GenezioCloudInput =
           storageSize?: number;
           instanceSize?: InstanceSize;
           maxConcurrentRequestsPerInstance?: number;
+          maxConcurrentInstances?: number;
           cooldownTime?: number;
       };
 

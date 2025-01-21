@@ -461,6 +461,7 @@ export async function deployClasses(
                 storageSize: element.storageSize,
                 instanceSize: element.instanceSize,
                 maxConcurrentRequestsPerInstance: element.maxConcurrentRequestsPerInstance,
+                maxConcurrentInstances: element.maxConcurrentInstances,
                 cooldownTime: element.cooldownTime,
             };
         },
@@ -679,6 +680,7 @@ export async function functionToCloudInput(
         instanceSize: functionElement.instanceSize,
         storageSize: functionElement.storageSize,
         maxConcurrentRequestsPerInstance: functionElement.maxConcurrentRequestsPerInstance,
+        maxConcurrentInstances: functionElement.maxConcurrentInstances,
         cooldownTime: functionElement.cooldownTime,
         metadata: metadata,
     };
