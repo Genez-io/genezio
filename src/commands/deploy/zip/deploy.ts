@@ -59,6 +59,7 @@ export async function zipDeploy(options: GenezioDeployOptions) {
             instanceSize: f.instanceSize,
             storageSize: f.storageSize,
             maxConcurrentRequestsPerInstance: f.maxConcurrentRequestsPerInstance,
+            maxConcurrentInstances: f.maxConcurrentInstances,
             cooldownTime: f.cooldownTime,
         };
     });
