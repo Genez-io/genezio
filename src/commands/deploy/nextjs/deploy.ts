@@ -302,18 +302,28 @@ async function deployStaticAssets(
     await fs.promises.mkdir(staticAssetsPath, { recursive: true });
     await fs.promises.mkdir(path.join(staticAssetsPath, "_next"), { recursive: true });
 
-    // Copy files after directories are created
+    // Copy files after directories are created, handling cases where directories might not exist
     await Promise.all([
-        fs.promises.cp(
-            path.join(cwd, ".next", "static"),
-            path.join(staticAssetsPath, "_next", "static"),
-            { recursive: true },
-        ),
+        fs.promises
+            .access(path.join(cwd, ".next", "static"))
+            .then(() =>
+                fs.promises.cp(
+                    path.join(cwd, ".next", "static"),
+                    path.join(staticAssetsPath, "_next", "static"),
+                    { recursive: true },
+                ),
+            )
+            .catch(() => debugLogger.debug("No .next/static directory found, skipping...")),
         fs.promises.cp(
             path.join(cwd, ".next", "BUILD_ID"),
             path.join(staticAssetsPath, "BUILD_ID"),
         ),
-        fs.promises.cp(path.join(cwd, "public"), staticAssetsPath, { recursive: true }),
+        fs.promises
+            .access(path.join(cwd, "public"))
+            .then(() =>
+                fs.promises.cp(path.join(cwd, "public"), staticAssetsPath, { recursive: true }),
+            )
+            .catch(() => debugLogger.debug("No public directory found, skipping...")),
     ]);
 
     const { presignedURL, userId, domain } = await getFrontendPresignedURLPromise;
@@ -364,18 +374,28 @@ async function deployFunction(
         },
     };
 
-    await fs.promises.cp(
-        path.join(cwd, "public"),
-        path.join(cwd, ".next", "standalone", "public"),
-        {
-            recursive: true,
-        },
-    );
-    await fs.promises.cp(
-        path.join(cwd, ".next", "static"),
-        path.join(cwd, ".next", "standalone", ".next", "static"),
-        { recursive: true },
-    );
+    await fs.promises
+        .access(path.join(cwd, "public"))
+        .then(() =>
+            fs.promises.cp(
+                path.join(cwd, "public"),
+                path.join(cwd, ".next", "standalone", "public"),
+                { recursive: true },
+            ),
+        )
+        .catch(() => debugLogger.debug("No public directory found, skipping..."));
+
+    await fs.promises
+        .access(path.join(cwd, ".next", "static"))
+        .then(() =>
+            fs.promises.cp(
+                path.join(cwd, ".next", "static"),
+                path.join(cwd, ".next", "standalone", ".next", "static"),
+                { recursive: true },
+            ),
+        )
+        .catch(() => debugLogger.debug("No .next/static directory found, skipping..."));
+
     // create mkdir cache folder in .next
     await fs.promises.mkdir(path.join(cwd, ".next", "standalone", ".next", "cache", "images"), {
         recursive: true,
