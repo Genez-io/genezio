@@ -87,7 +87,11 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     const tempBuildComponentPath = path.resolve(tempBuildCwd, genezioConfig.nextjs?.path || ".");
 
     // Install dependencies with clean install
-    await attemptToInstallDependencies([], tempBuildComponentPath, packageManagerType, true);
+    if (fs.existsSync(path.join(tempBuildComponentPath, "package-lock.json"))) {
+        await attemptToInstallDependencies([], tempBuildComponentPath, packageManagerType, true);
+    } else {
+        await attemptToInstallDependencies([], tempBuildComponentPath, packageManagerType);
+    }
 
     // Install ISR package
     await attemptToInstallDependencies(
