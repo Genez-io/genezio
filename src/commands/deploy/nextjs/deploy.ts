@@ -610,12 +610,15 @@ async function installSharp(cwd: string): Promise<string> {
     const sharpPath = path.join(cwd, ".next", "standalone", "sharp");
     await fs.promises.mkdir(sharpPath, { recursive: true });
 
-    // Create package.json
+    // Create package.json with specific sharp version
     fs.writeFileSync(
         path.join(sharpPath, "package.json"),
         JSON.stringify({
             name: "sharp-project",
             version: "1.0.0",
+            dependencies: {
+                sharp: "^0.32.0",
+            },
         }),
     );
 
@@ -626,9 +629,13 @@ async function installSharp(cwd: string): Promise<string> {
         env: {
             ...process.env,
             NEXT_PRIVATE_STANDALONE: "true",
+            npm_config_platform: "linux",
+            npm_config_arch: "x64",
         },
-    })`npm install --no-save --os=linux --cpu=x64 sharp`.catch(() => {
-        throw new UserError("Failed to install sharp deps.");
+    })`npm install`.catch(() => {
+        throw new UserError(
+            "Failed to install sharp deps. Please ensure you have Node.js and npm installed correctly.",
+        );
     });
 
     // This is relative to where it is used by the nextjs code.
