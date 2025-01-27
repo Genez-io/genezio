@@ -448,13 +448,22 @@ function writeNextConfig(cwd: string, region: string) {
     const importPathCacheHandler =
         existingConfig === "ts" ? "./cache-handler.js" : `./cache-handler.${existingConfig}`;
 
-    const genezioConfigContent = `
+    const genezioConfigContent = isCommonJS
+        ? `
+const userConfig = require('${importPath}');
+
+userConfig.cacheHandler = process.env.NODE_ENV === "production" ? require.resolve("${importPathCacheHandler}") : undefined;
+userConfig.cacheMaxMemorySize = 0;
+
+module.exports = userConfig;
+`
+        : `
 import userConfig from '${importPath}';
 
 userConfig.cacheHandler = process.env.NODE_ENV === "production" ? "${importPathCacheHandler}" : undefined;
 userConfig.cacheMaxMemorySize = 0;
 
-${isCommonJS ? "module.exports = userConfig;" : "export default userConfig;"}
+export default userConfig;
 `;
 
     fs.writeFileSync(genezioConfigPath, genezioConfigContent);
