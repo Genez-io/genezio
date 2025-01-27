@@ -173,6 +173,11 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         const frontends = configuration.frontend;
 
         for (const [index, frontend] of frontends.entries()) {
+            // Skip if name option is provided and doesn't match the current frontend
+            if (options.name && frontend.name !== options.name) {
+                continue;
+            }
+
             try {
                 await doAdaptiveLogAction(
                     `Running frontend ${index + 1} deploy script`,
@@ -237,6 +242,11 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
                 eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_END,
                 commandOptions: JSON.stringify(options),
             });
+        }
+
+        // If name was provided but no matching frontend was found, throw an error
+        if (options.name && frontendUrls.length === 0) {
+            throw new UserError(`No frontend found with name: ${options.name}`);
         }
     }
 
