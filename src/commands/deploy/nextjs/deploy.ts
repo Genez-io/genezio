@@ -87,7 +87,11 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     const tempBuildComponentPath = path.resolve(tempBuildCwd, genezioConfig.nextjs?.path || ".");
 
     // Install dependencies with clean install
-    await attemptToInstallDependencies([], tempBuildComponentPath, packageManagerType, true);
+    if (fs.existsSync(path.join(tempBuildComponentPath, "package-lock.json"))) {
+        await attemptToInstallDependencies([], tempBuildComponentPath, packageManagerType, true);
+    } else {
+        await attemptToInstallDependencies([], tempBuildComponentPath, packageManagerType);
+    }
 
     // Install ISR package
     await attemptToInstallDependencies(
@@ -468,13 +472,22 @@ function writeNextConfig(cwd: string, region: string) {
     const importPathCacheHandler =
         existingConfig === "ts" ? "./cache-handler.js" : `./cache-handler.${existingConfig}`;
 
-    const genezioConfigContent = `
+    const genezioConfigContent = isCommonJS
+        ? `
+const userConfig = require('${importPath}');
+
+userConfig.cacheHandler = process.env.NODE_ENV === "production" ? require.resolve("${importPathCacheHandler}") : undefined;
+userConfig.cacheMaxMemorySize = 0;
+
+module.exports = userConfig;
+`
+        : `
 import userConfig from '${importPath}';
 
 userConfig.cacheHandler = process.env.NODE_ENV === "production" ? "${importPathCacheHandler}" : undefined;
 userConfig.cacheMaxMemorySize = 0;
 
-${isCommonJS ? "module.exports = userConfig;" : "export default userConfig;"}
+export default userConfig;
 `;
 
     fs.writeFileSync(genezioConfigPath, genezioConfigContent);
