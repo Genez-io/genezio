@@ -179,7 +179,7 @@ program
     .command("deploy")
     .option("--backend", "Deploy only the backend application.", false)
     .option("--frontend", "Deploy only the frontend application.", false)
-    .option("--name <name>", "Name of the component to deploy.")
+    .option("--name <name>", "Specify the name of the frontend to be deployed.")
     .option("--install-deps", "Automatically install missing dependencies", false)
     .option(
         "--disable-optimization",

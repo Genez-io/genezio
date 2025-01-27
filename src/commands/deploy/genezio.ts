@@ -172,10 +172,32 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
     if (configuration.frontend && !options.backend) {
         const frontends = configuration.frontend;
 
+        // If name was provided, validate it exists before attempting deployments
+        if (options.name) {
+            const matchingFrontend = frontends.find((f) => f.name === options.name);
+            if (!matchingFrontend) {
+                const availableFrontends = frontends
+                    .filter((f) => f.name)
+                    .map((f) => f.name)
+                    .join(", ");
+                throw new UserError(
+                    `No frontend found with name: ${options.name}. Available frontends: ${availableFrontends || "none"}`,
+                );
+            }
+        }
+
         for (const [index, frontend] of frontends.entries()) {
             // Skip if name option is provided and doesn't match the current frontend
-            if (options.name && frontend.name !== options.name) {
-                continue;
+            if (options.name) {
+                if (!frontend.name) {
+                    log.warn(
+                        `Frontend #${index + 1} has no name specified in genezio.yaml. Consider adding a name to improve deployment filtering.`,
+                    );
+                    continue;
+                }
+                if (frontend.name !== options.name) {
+                    continue;
+                }
             }
 
             try {
@@ -242,11 +264,6 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
                 eventType: TelemetryEventTypes.GENEZIO_FRONTEND_DEPLOY_END,
                 commandOptions: JSON.stringify(options),
             });
-        }
-
-        // If name was provided but no matching frontend was found, throw an error
-        if (options.name && frontendUrls.length === 0) {
-            throw new UserError(`No frontend found with name: ${options.name}`);
         }
     }
 
