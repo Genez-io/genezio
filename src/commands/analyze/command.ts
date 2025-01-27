@@ -139,6 +139,13 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     const rootDirectory = process.cwd();
     const format = isCI() ? options.format || DEFAULT_CI_FORMAT : options.format || DEFAULT_FORMAT;
 
+    // Create a configuration object to add components to
+    let genezioConfig = (await readOrAskConfig(
+        configPath,
+        options.name,
+        options.region,
+    )) as RawYamlProjectConfiguration;
+
     // Search the key files in the root directory and return a map of filenames and relative paths
     const componentFiles = await findKeyFiles(rootDirectory);
 
@@ -153,17 +160,15 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             component: "other",
         });
         const result = report(format, frameworksDetected, {} as RawYamlProjectConfiguration);
+        if (options.format === SUPPORTED_FORMATS.TEXT) {
+            log.info(
+                `We didn't detect a supported stack in your project. If you need assistance or would like to request support for additional frameworks, please reach out to us at support.`,
+            );
+        }
         log.info(result);
         return;
     }
     debugLogger.debug("Key component files found:", componentFiles);
-
-    // Create a configuration object to add components to
-    let genezioConfig = (await readOrAskConfig(
-        configPath,
-        options.name,
-        options.region,
-    )) as RawYamlProjectConfiguration;
 
     // The order of the components matters - the first one found will be added to the config
     const dependenciesFiles = new Map(

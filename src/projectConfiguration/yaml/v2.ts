@@ -27,6 +27,9 @@ import { tryV2Migration } from "./migration.js";
 import yaml, { YAMLParseError } from "yaml";
 import { DeepRequired } from "../../utils/types.js";
 import { isUnique } from "../../utils/yaml.js";
+import { isCI } from "../../utils/process.js";
+import { analyzeCommand } from "../../commands/analyze/command.js";
+import { GenezioAnalyzeOptions } from "../../models/commandOptions.js";
 
 export type RawYamlProjectConfiguration = ReturnType<typeof parseGenezioConfig>;
 export type YAMLBackend = NonNullable<YamlProjectConfiguration["backend"]>;
@@ -520,7 +523,25 @@ export class YamlConfigurationIOController {
         try {
             lastModified = this.fs.statSync(this.filePath).mtime;
         } catch {
-            throw new UserError(GENEZIO_CONFIGURATION_FILE_NOT_FOUND);
+            if (isCI()) {
+                // If in a CI environment and the file is not found, attempt to run `genezio analyze`.
+                const options: GenezioAnalyzeOptions = {
+                    region: "us-east-1",
+                    config: this.filePath,
+                };
+                try {
+                    await analyzeCommand(options);
+                    // After running analyzeCommand, check if the file was successfully created.
+                    lastModified = this.fs.statSync(this.filePath).mtime;
+                } catch (error) {
+                    throw new UserError(
+                        `Failed to create or access the configuration file after running 'genezio analyze': ${error}`,
+                    );
+                }
+            } else {
+                // If not in CI, throw a specific error indicating the missing file.
+                throw new UserError(GENEZIO_CONFIGURATION_FILE_NOT_FOUND);
+            }
         }
 
         if (this.cachedConfig && cache && this.latestRead && this.latestRead >= lastModified) {

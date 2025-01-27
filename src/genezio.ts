@@ -163,6 +163,7 @@ program
     .option(
         "--format <format>",
         `Specify the output format at stdout - [json, list, markdown, text]. Default is ${DEFAULT_FORMAT}.`,
+        DEFAULT_FORMAT,
     )
     .summary("Analyze the current directory to determine the infrastructure setup.")
     .description(
