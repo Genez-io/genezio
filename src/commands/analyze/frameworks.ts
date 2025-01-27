@@ -380,6 +380,19 @@ export async function isRemixComponent(contents: Record<string, string>): Promis
     );
 }
 
+// Checks if the project is an Ember component
+export async function isEmberComponent(contents: Record<string, string>): Promise<boolean> {
+    if (!contents["package.json"]) {
+        return false;
+    }
+
+    const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
+    return packageJsonContent
+        ? "ember-cli" in (packageJsonContent.dependencies || {}) ||
+              "ember-cli" in (packageJsonContent.devDependencies || {})
+        : false;
+}
+
 // Checks if the project is a Python component (presence of 'requirements.txt' or 'pyproject.toml')
 export function isPythonComponent(contents: Record<string, string>): boolean {
     return contents["requirements.txt"] !== undefined || contents["pyproject.toml"] !== undefined;
