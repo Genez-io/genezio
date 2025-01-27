@@ -42,6 +42,7 @@ export interface GenezioAnalyzeOptions extends BaseOptions {
 export interface GenezioDeployOptions extends BaseOptions {
     backend: boolean;
     frontend: boolean;
+    name?: string;
     installDeps: boolean;
     disableOptimization: boolean;
     env?: string;
