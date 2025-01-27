@@ -163,7 +163,9 @@ program
     .option(
         "--format <format>",
         `Specify the output format at stdout - [json, list, markdown, text]. Default is ${DEFAULT_FORMAT}.`,
+        DEFAULT_FORMAT,
     )
+    .option("-f, --force", "Force the analysis to overwrite the existing genezio.yaml file.", false)
     .summary("Analyze the current directory to determine the infrastructure setup.")
     .description(
         "Analyze the current directory to determine the infrastructure setup. This command will create a genezio.yaml file in the current directory with the detected setup.",

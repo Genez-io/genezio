@@ -1,4 +1,4 @@
-import { promises as fs } from "fs";
+import { existsSync, promises as fs } from "fs";
 import path from "path";
 import { GenezioAnalyzeOptions } from "../../models/commandOptions.js";
 import { debugLogger, log } from "../../utils/logging.js";
@@ -137,6 +137,15 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     const configPath = options.config;
     const rootDirectory = process.cwd();
     const format = isCI() ? options.format || DEFAULT_CI_FORMAT : options.format || DEFAULT_FORMAT;
+
+    if (!options.force && existsSync(configPath)) {
+        debugLogger.debug(`Configuration file found at ${configPath}. Skipping analysis.`);
+        if (options.format === SUPPORTED_FORMATS.TEXT) {
+            log.info(
+                `Configuration file found at ${configPath}. Skipping analysis. To overwrite the configuration file, run \`genezio analyze --force\` flag.`,
+            );
+        }
+    }
 
     // Search the key files in the root directory and return a map of filenames and relative paths
     const componentFiles = await findKeyFiles(rootDirectory);
