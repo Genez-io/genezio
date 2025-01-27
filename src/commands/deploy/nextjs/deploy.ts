@@ -617,7 +617,7 @@ async function installSharp(cwd: string): Promise<string> {
             name: "sharp-project",
             version: "1.0.0",
             dependencies: {
-                sharp: "^0.32.0",
+                sharp: "^0.33.0",
             },
         }),
     );
@@ -633,9 +633,7 @@ async function installSharp(cwd: string): Promise<string> {
             npm_config_arch: "x64",
         },
     })`npm install`.catch(() => {
-        throw new UserError(
-            "Failed to install sharp deps. Please ensure you have Node.js and npm installed correctly.",
-        );
+        log.warn("Failed to install sharp deps.");
     });
 
     // This is relative to where it is used by the nextjs code.
