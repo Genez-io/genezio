@@ -55,7 +55,10 @@ export const GENEZIO_NOT_ENOUGH_PERMISSION_FOR_FILE = function (filePath: string
 export const GENEZIO_GIT_NOT_FOUND = `Git is not installed. Please install it and try again.
 https://git-scm.com/book/en/v2/Getting-Started-Installing-Git`;
 
-export const GENEZIO_CONFIGURATION_FILE_NOT_FOUND = `The genezio.yaml configuration file was not found. Please execute this command at the root of your project.\nIf you don't have a project yet, you can create one by running the command 'genezio create'.`;
+export const GENEZIO_CONFIGURATION_FILE_NOT_FOUND = `The \`genezio.yaml\` configuration file was not found in the specified path.
+To generate a new configuration file automatically, run \`genezio analyze\` and follow the interactive wizard.
+
+For more details, visit the documentation: ${colors.blue(`https://genezio.com/docs/cli-tool/cli-commands/analyze`)}`;
 
 export const GENEZIO_DECORATOR_YAML_OVERLAP = function (overlappingClasses: string[]) {
     const multipleOverlaps = overlappingClasses.length > 1;
