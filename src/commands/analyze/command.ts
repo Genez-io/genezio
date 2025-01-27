@@ -24,6 +24,7 @@ import {
     hasMongoDependency,
     isNestjsComponent,
     isRemixComponent,
+    isEmberComponent,
 } from "./frameworks.js";
 import { generateDatabaseName, readOrAskConfig } from "../deploy/utils.js";
 import {
@@ -715,6 +716,31 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             frameworksDetected.frontend = frameworksDetected.frontend || [];
             frameworksDetected.frontend.push({
                 component: "svelte",
+                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+            });
+            continue;
+        }
+
+        if (await isEmberComponent(contents)) {
+            debugLogger.info("Ember component detected");
+            const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
+            await addFrontendComponentToConfig(configPath, {
+                path: componentPath,
+                publish: "dist",
+                scripts: {
+                    deploy: [`${packageManager.command} install`],
+                    build: [`${packageManager.command} run build`],
+                    start: [
+                        `${packageManager.command} install`,
+                        `${packageManager.command} run start`,
+                    ],
+                },
+            });
+
+            frameworksDetected.frontend = frameworksDetected.frontend || [];
+            frameworksDetected.frontend.push({
+                component: "ember",
                 environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
             });
             continue;
