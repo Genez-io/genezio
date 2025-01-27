@@ -617,7 +617,7 @@ async function installSharp(cwd: string): Promise<string> {
             name: "sharp-project",
             version: "1.0.0",
             dependencies: {
-                sharp: "^0.33.0",
+                sharp: "^0.32.0",
             },
         }),
     );
