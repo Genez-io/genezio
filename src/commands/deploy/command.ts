@@ -12,6 +12,7 @@ import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v
 import { nestJsDeploy } from "./nestjs/deploy.js";
 import { zipDeploy } from "./zip/deploy.js";
 import { remixDeploy } from "./remix/deploy.js";
+
 export type SSRFrameworkComponent = {
     path: string;
     packageManager: PackageManagerType;
