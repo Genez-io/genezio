@@ -87,7 +87,11 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     const tempBuildComponentPath = path.resolve(tempBuildCwd, genezioConfig.nextjs?.path || ".");
 
     // Install dependencies with clean install
-    await attemptToInstallDependencies([], tempBuildComponentPath, packageManagerType, true);
+    if (fs.existsSync(path.join(tempBuildComponentPath, "package-lock.json"))) {
+        await attemptToInstallDependencies([], tempBuildComponentPath, packageManagerType, true);
+    } else {
+        await attemptToInstallDependencies([], tempBuildComponentPath, packageManagerType);
+    }
 
     // Install ISR package
     await attemptToInstallDependencies(
@@ -302,18 +306,28 @@ async function deployStaticAssets(
     await fs.promises.mkdir(staticAssetsPath, { recursive: true });
     await fs.promises.mkdir(path.join(staticAssetsPath, "_next"), { recursive: true });
 
-    // Copy files after directories are created
+    // Copy files after directories are created, handling cases where directories might not exist
     await Promise.all([
-        fs.promises.cp(
-            path.join(cwd, ".next", "static"),
-            path.join(staticAssetsPath, "_next", "static"),
-            { recursive: true },
-        ),
+        fs.promises
+            .access(path.join(cwd, ".next", "static"))
+            .then(() =>
+                fs.promises.cp(
+                    path.join(cwd, ".next", "static"),
+                    path.join(staticAssetsPath, "_next", "static"),
+                    { recursive: true },
+                ),
+            )
+            .catch(() => debugLogger.debug("No .next/static directory found, skipping...")),
         fs.promises.cp(
             path.join(cwd, ".next", "BUILD_ID"),
             path.join(staticAssetsPath, "BUILD_ID"),
         ),
-        fs.promises.cp(path.join(cwd, "public"), staticAssetsPath, { recursive: true }),
+        fs.promises
+            .access(path.join(cwd, "public"))
+            .then(() =>
+                fs.promises.cp(path.join(cwd, "public"), staticAssetsPath, { recursive: true }),
+            )
+            .catch(() => debugLogger.debug("No public directory found, skipping...")),
     ]);
 
     const { presignedURL, userId, domain } = await getFrontendPresignedURLPromise;
@@ -364,18 +378,28 @@ async function deployFunction(
         },
     };
 
-    await fs.promises.cp(
-        path.join(cwd, "public"),
-        path.join(cwd, ".next", "standalone", "public"),
-        {
-            recursive: true,
-        },
-    );
-    await fs.promises.cp(
-        path.join(cwd, ".next", "static"),
-        path.join(cwd, ".next", "standalone", ".next", "static"),
-        { recursive: true },
-    );
+    await fs.promises
+        .access(path.join(cwd, "public"))
+        .then(() =>
+            fs.promises.cp(
+                path.join(cwd, "public"),
+                path.join(cwd, ".next", "standalone", "public"),
+                { recursive: true },
+            ),
+        )
+        .catch(() => debugLogger.debug("No public directory found, skipping..."));
+
+    await fs.promises
+        .access(path.join(cwd, ".next", "static"))
+        .then(() =>
+            fs.promises.cp(
+                path.join(cwd, ".next", "static"),
+                path.join(cwd, ".next", "standalone", ".next", "static"),
+                { recursive: true },
+            ),
+        )
+        .catch(() => debugLogger.debug("No .next/static directory found, skipping..."));
+
     // create mkdir cache folder in .next
     await fs.promises.mkdir(path.join(cwd, ".next", "standalone", ".next", "cache", "images"), {
         recursive: true,
@@ -448,13 +472,22 @@ function writeNextConfig(cwd: string, region: string) {
     const importPathCacheHandler =
         existingConfig === "ts" ? "./cache-handler.js" : `./cache-handler.${existingConfig}`;
 
-    const genezioConfigContent = `
+    const genezioConfigContent = isCommonJS
+        ? `
+const userConfig = require('${importPath}');
+
+userConfig.cacheHandler = process.env.NODE_ENV === "production" ? require.resolve("${importPathCacheHandler}") : undefined;
+userConfig.cacheMaxMemorySize = 0;
+
+module.exports = userConfig;
+`
+        : `
 import userConfig from '${importPath}';
 
 userConfig.cacheHandler = process.env.NODE_ENV === "production" ? "${importPathCacheHandler}" : undefined;
 userConfig.cacheMaxMemorySize = 0;
 
-${isCommonJS ? "module.exports = userConfig;" : "export default userConfig;"}
+export default userConfig;
 `;
 
     fs.writeFileSync(genezioConfigPath, genezioConfigContent);
@@ -610,12 +643,15 @@ async function installSharp(cwd: string): Promise<string> {
     const sharpPath = path.join(cwd, ".next", "standalone", "sharp");
     await fs.promises.mkdir(sharpPath, { recursive: true });
 
-    // Create package.json
+    // Create package.json with specific sharp version
     fs.writeFileSync(
         path.join(sharpPath, "package.json"),
         JSON.stringify({
             name: "sharp-project",
             version: "1.0.0",
+            dependencies: {
+                sharp: "^0.32.0",
+            },
         }),
     );
 
@@ -626,9 +662,11 @@ async function installSharp(cwd: string): Promise<string> {
         env: {
             ...process.env,
             NEXT_PRIVATE_STANDALONE: "true",
+            npm_config_platform: "linux",
+            npm_config_arch: "x64",
         },
-    })`npm install --no-save --os=linux --cpu=x64 sharp`.catch(() => {
-        throw new UserError("Failed to install sharp deps.");
+    })`npm install`.catch(() => {
+        log.warn("Failed to install sharp deps.");
     });
 
     // This is relative to where it is used by the nextjs code.

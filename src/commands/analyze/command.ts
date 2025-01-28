@@ -1,4 +1,4 @@
-import { promises as fs } from "fs";
+import { existsSync, promises as fs } from "fs";
 import path from "path";
 import { GenezioAnalyzeOptions } from "../../models/commandOptions.js";
 import { debugLogger, log } from "../../utils/logging.js";
@@ -24,6 +24,7 @@ import {
     hasMongoDependency,
     isNestjsComponent,
     isRemixComponent,
+    isEmberComponent,
 } from "./frameworks.js";
 import { generateDatabaseName, readOrAskConfig } from "../deploy/utils.js";
 import {
@@ -137,6 +138,15 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
     const configPath = options.config;
     const rootDirectory = process.cwd();
     const format = isCI() ? options.format || DEFAULT_CI_FORMAT : options.format || DEFAULT_FORMAT;
+
+    if (!options.force && existsSync(configPath)) {
+        debugLogger.debug(`Configuration file found at ${configPath}. Skipping analysis.`);
+        if (options.format === SUPPORTED_FORMATS.TEXT) {
+            log.info(
+                `Configuration file found at ${configPath}. Skipping analysis. To overwrite the configuration file, run \`genezio analyze --force\` flag.`,
+            );
+        }
+    }
 
     // Search the key files in the root directory and return a map of filenames and relative paths
     const componentFiles = await findKeyFiles(rootDirectory);
@@ -715,6 +725,31 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             frameworksDetected.frontend = frameworksDetected.frontend || [];
             frameworksDetected.frontend.push({
                 component: "svelte",
+                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+            });
+            continue;
+        }
+
+        if (await isEmberComponent(contents)) {
+            debugLogger.info("Ember component detected");
+            const packageManagerType = NODE_DEFAULT_PACKAGE_MANAGER;
+            const packageManager = packageManagers[packageManagerType];
+            await addFrontendComponentToConfig(configPath, {
+                path: componentPath,
+                publish: "dist",
+                scripts: {
+                    deploy: [`${packageManager.command} install`],
+                    build: [`${packageManager.command} run build`],
+                    start: [
+                        `${packageManager.command} install`,
+                        `${packageManager.command} run start`,
+                    ],
+                },
+            });
+
+            frameworksDetected.frontend = frameworksDetected.frontend || [];
+            frameworksDetected.frontend.push({
+                component: "ember",
                 environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
             });
             continue;

@@ -62,6 +62,7 @@ export async function scanClassesForDecorators(
                 let storageSize: number | undefined;
                 let instanceSize: InstanceSize | undefined;
                 let maxConcurrentRequestsPerInstance: number | undefined;
+                let maxConcurrentInstances: number | undefined;
                 let cooldownTime: number | undefined;
                 const methods = classInfo[0].methods
                     .map((m) => {
@@ -112,7 +113,12 @@ export async function scanClassesForDecorators(
                     maxConcurrentRequestsPerInstance = deployDecoratorFound.arguments[
                         "maxConcurrentRequestsPerInstance"
                     ] as number | undefined;
-                    cooldownTime = deployDecoratorFound.arguments["cooldownTime"] as number | undefined;
+                    maxConcurrentInstances = deployDecoratorFound.arguments[
+                        "maxConcurrentInstances"
+                    ] as number | undefined;
+                    cooldownTime = deployDecoratorFound.arguments["cooldownTime"] as
+                        | number
+                        | undefined;
                 }
 
                 classes.push({
@@ -123,6 +129,7 @@ export async function scanClassesForDecorators(
                     storageSize: storageSize,
                     instanceSize: instanceSize as InstanceSize,
                     maxConcurrentRequestsPerInstance: maxConcurrentRequestsPerInstance,
+                    maxConcurrentInstances: maxConcurrentInstances,
                     cooldownTime: cooldownTime,
                     methods: methods,
                 });

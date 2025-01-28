@@ -35,6 +35,7 @@ export interface GenezioLocalOptions extends BaseOptions {
 export interface GenezioAnalyzeOptions extends BaseOptions {
     region: string;
     config: string;
+    force: boolean;
     name?: string;
     format?: string;
 }
@@ -42,6 +43,7 @@ export interface GenezioAnalyzeOptions extends BaseOptions {
 export interface GenezioDeployOptions extends BaseOptions {
     backend: boolean;
     frontend: boolean;
+    name?: string;
     installDeps: boolean;
     disableOptimization: boolean;
     env?: string;

@@ -378,5 +378,6 @@ export type SdkClassConfiguration = {
     storageSize?: number;
     instanceSize?: InstanceSize;
     maxConcurrentRequestsPerInstance?: number;
+    maxConcurrentInstances?: number;
     cooldownTime?: number;
 };
