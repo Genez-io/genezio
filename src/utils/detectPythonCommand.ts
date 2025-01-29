@@ -27,3 +27,17 @@ export async function detectPipCommand() {
         }
     }
 }
+
+export async function detectPythonVersion(): Promise<string | undefined> {
+    try {
+        const { stdout } = await $`python3 --version`;
+        return stdout.replace("Python ", "").trim();
+    } catch {
+        try {
+            const { stdout } = await $`python --version`;
+            return stdout.replace("Python ", "").trim();
+        } catch {
+            return;
+        }
+    }
+}
