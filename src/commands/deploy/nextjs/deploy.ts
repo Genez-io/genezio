@@ -451,13 +451,14 @@ async function deployFunction(
  */
 function writeNextConfig(cwd: string, region: string) {
     const configExtensions = ["js", "cjs", "mjs", "ts"];
-    const existingConfig = configExtensions.find((ext) =>
+    let existingConfig = configExtensions.find((ext) =>
         fs.existsSync(path.join(cwd, `next.config.${ext}`)),
     );
 
     if (!existingConfig) {
         const extension = determineFileExtension(cwd);
         writeConfigFiles(cwd, extension, region);
+        existingConfig = extension;
     }
 
     const genezioConfigPath = path.join(cwd, `next.config.${existingConfig}`);
