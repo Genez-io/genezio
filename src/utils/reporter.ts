@@ -27,6 +27,11 @@ export function reportSuccess(classesInfo: GenezioCloudResultClass[]) {
                     "\n";
             }
         });
+        if (classInfo.authToken) {
+            printHttpString +=
+                `  - ${classInfo.className} authentication token: ${colors.green(classInfo.authToken)}` +
+                "\n";
+        }
     });
 
     if (printHttpString !== "") {
@@ -41,11 +46,15 @@ export function reportSuccessFunctions(functions: DeployCodeFunctionResponse[]) 
 
     functions.forEach((func) => {
         functionDeploymentsString += `  - ${func.name}: ${colors.yellow(func.cloudUrl)}` + "\n";
+        if (func.authToken) {
+            functionDeploymentsString +=
+                `  - ${func.name} authentication token: ${colors.green(func.authToken)}` + "\n";
+        }
     });
 
     if (functionDeploymentsString !== "") {
         log.info("");
-        log.info("Functions Deployed:");
+        log.info("Functions Deployed: ");
         log.info(functionDeploymentsString);
     }
 }

@@ -10,6 +10,7 @@ export type DeployCodeClassResponse = {
     name: string;
     path: string;
     type: string;
+    authToken?: string;
     methods: DeployCodeMethodResponse[];
 };
 
@@ -17,6 +18,7 @@ export type DeployCodeFunctionResponse = {
     cloudUrl: string;
     id: string;
     name: string;
+    authToken?: string;
 };
 
 export type DeployCodeResponse = {

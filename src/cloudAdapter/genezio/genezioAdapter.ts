@@ -195,6 +195,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
                 c.name,
             ),
             projectId: response.projectId,
+            authToken: c.authToken,
         }));
 
         return {

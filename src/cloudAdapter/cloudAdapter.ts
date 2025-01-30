@@ -71,6 +71,7 @@ export type GenezioCloudResultClass = {
     methods: DeployCodeMethodResponse[];
     functionUrl: string;
     projectId?: string;
+    authToken?: string;
 };
 
 export type GenezioCloudResultFunctions = {
