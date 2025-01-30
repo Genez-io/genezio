@@ -384,7 +384,6 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                 yamlProjectConfiguration,
                 options.stage || "prod",
                 options.port,
-                options.env,
             ),
         ),
     ]);
@@ -415,9 +414,8 @@ async function startFrontends(
                 frontend.environment,
                 configuration,
                 stage,
-                /* envFile= */ undefined,
+                /* envFile */ undefined,
                 {
-                    isFrontend: true,
                     isLocal: true,
                     port: port,
                 },
@@ -1138,8 +1136,8 @@ async function startCronJobs(
             const functionName = await evaluateResource(
                 yamlProjectConfiguration,
                 cronService.function,
-                /* stage */ undefined,
-                /* envFile */ undefined,
+                undefined,
+                undefined,
                 {
                     isLocal: true,
                     port: port,
@@ -1828,21 +1826,15 @@ async function startSsrFramework(
     projectConfiguration: YamlProjectConfiguration,
     stage: string,
     port?: number,
-    envFile?: string,
 ) {
     debugLogger.debug(`Starting SSR framework: ${SSRFrameworkName[framework]}`);
     debugLogger.debug(`SSR path: ${ssrConfig.path}`);
-
-    if (!envFile) {
-        debugLogger.debug(`No .env file provided using \`--env\` argument. Use .env as a default.`);
-        envFile = path.join(ssrConfig.path, ".env");
-    }
 
     const newEnvObject = await expandEnvironmentVariables(
         ssrConfig.environment,
         projectConfiguration,
         stage,
-        envFile,
+        undefined,
         {
             isLocal: true,
             port: port,

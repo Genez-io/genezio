@@ -4,7 +4,6 @@ import { getEnvironmentVariables } from "../requests/getEnvironmentVariables.js"
 import path from "path";
 import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
 import { evaluateResource } from "../commands/deploy/utils.js";
-import { UserError } from "../errors.js";
 
 export type ConfigurationVariable =
     | {
@@ -76,7 +75,6 @@ export async function expandEnvironmentVariables(
     stage: string,
     envFile?: string,
     options?: {
-        isFrontend?: boolean;
         isLocal?: boolean;
         port?: number;
     },
@@ -155,7 +153,7 @@ export async function getUnsetEnvironmentVariables(
  * @param cwd The directory to search for the environment variables file.
  * @returns The path to the environment variables file.
  */
-export async function findAnEnvFile(cwd: string): Promise<string> {
+export async function findAnEnvFile(cwd: string): Promise<string | undefined> {
     // These are the most common locations for the .env file
     const possibleEnvFilePath = ["server/.env", ".env"];
 
@@ -166,9 +164,5 @@ export async function findAnEnvFile(cwd: string): Promise<string> {
         }
     }
 
-    // Don't silently fail if the .env file is not found
-    // The user should be prompted to specify the path to the .env file
-    throw new UserError(
-        `Could not find a \`.env\`. Please specify the path to the environment variables file using the \`--env\` flag.`,
-    );
+    return undefined;
 }

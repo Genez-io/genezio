@@ -870,7 +870,6 @@ export async function evaluateResource(
     stage: string | undefined,
     envFile: string | undefined,
     options?: {
-        isFrontend?: boolean;
         isLocal?: boolean;
         port?: number;
     },
@@ -894,12 +893,6 @@ export async function evaluateResource(
     }
 
     if ("key" in resourceRaw) {
-        if (options?.isFrontend) {
-            throw new UserError(
-                `"Environment variable placeholders like {{env.ENV_VAR}} are not supported in \`frontend.environment\`. Please use the actual value or set it in a \`.env\` file.`,
-            );
-        }
-
         // search for the environment variable in process.env
         const resourceFromProcessValue = process.env[resourceRaw.key];
         if (resourceFromProcessValue) {
@@ -908,7 +901,7 @@ export async function evaluateResource(
 
         if (!envFile) {
             throw new UserError(
-                `Environment variable file ${envFile} is missing. Please provide the correct to the \`.env\` file using --env <envFile>.`,
+                `Environment variable file ${envFile} is missing. Please provide the correct path with genezio deploy --env <envFile>.`,
             );
         }
         const resourceValue = (await readEnvironmentVariablesFile(envFile)).find(
