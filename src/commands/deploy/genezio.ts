@@ -78,7 +78,8 @@ import {
     packageManagers,
     PYTHON_DEFAULT_PACKAGE_MANAGER,
 } from "../../packageManagers/packageManager.js";
-import { supportedPythonDepsInstallVersion } from "../../models/projectOptions.js";
+import { DEFAULT_PYTHON_VERSION_INSTALL } from "../../models/projectOptions.js";
+import { detectPythonVersion } from "../../utils/detectPythonCommand.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -495,7 +496,13 @@ export async function deployClasses(
     );
 
     const functionsResultArray: Promise<GenezioCloudInput>[] = projectConfiguration.functions.map(
-        (f) => functionToCloudInput(f, backend.path, /* outputDir */ undefined),
+        (f) =>
+            functionToCloudInput(
+                f,
+                backend.path,
+                /* outputDir */ undefined,
+                backend.language.runtime,
+            ),
     );
 
     const cloudAdapterDeployInput = await Promise.all([
@@ -578,6 +585,7 @@ export async function functionToCloudInput(
     functionElement: FunctionConfiguration,
     backendPath: string,
     outputDir?: string,
+    runtime?: string,
 ): Promise<GenezioCloudInput> {
     const supportedFunctionLanguages = ["js", "ts", "python"];
 
@@ -636,6 +644,35 @@ export async function functionToCloudInput(
             const pathForDependencies = path.join(tmpFolderPath, "packages");
             const packageManager = packageManagers[PYTHON_DEFAULT_PACKAGE_MANAGER];
             let installCommand;
+            const versionMatch = runtime!.match(/\d+\.\d+/);
+            const pythonVersion = versionMatch ? versionMatch[0] : DEFAULT_PYTHON_VERSION_INSTALL;
+
+            // check pythonVersion matches with local python version
+            const localPythonVersion =
+                (await detectPythonVersion())?.match(/\d+\.\d+/)?.[0] ||
+                DEFAULT_PYTHON_VERSION_INSTALL;
+
+            if (pythonVersion !== localPythonVersion) {
+                const warningMessage = [
+                    `Python Version Mismatch`,
+                    ``,
+                    `We noticed you're using different Python versions locally and in production:`,
+                    `Local Environment: Python ${localPythonVersion}`,
+                    `Production Runtime: Python ${pythonVersion}`,
+                    ``,
+                    `This might lead to unexpected behavior. To ensure consistency, update your genezio.yaml configuration to match your local version:`,
+                    ``,
+                    `language:`,
+                    `  name: python`,
+                    `  packageManager: pip`,
+                    `  runtime: python${localPythonVersion}.x`,
+                    ``,
+                    `This will help prevent potential compatibility issues!`,
+                    `For complete yaml configuration, visit: https://genezio.com/docs/project-structure/genezio-configuration-file/`,
+                ].join("\n");
+
+                log.warn(colors.yellow(warningMessage));
+            }
 
             if (packageManager.command === "pip" || packageManager.command === "pip3") {
                 if (fs.existsSync(requirementsPath)) {
@@ -644,10 +681,10 @@ export async function functionToCloudInput(
                         .readFileSync(requirementsOutputPath, "utf8")
                         .trim();
                     if (requirementsContent) {
-                        installCommand = `${packageManager.command} install -r ${requirementsOutputPath} --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${supportedPythonDepsInstallVersion} -t ${pathForDependencies} --no-user`;
+                        installCommand = `${packageManager.command} install -r ${requirementsOutputPath} --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${pythonVersion} -t ${pathForDependencies} --no-user`;
                     }
                 } else if (fs.existsSync(pyProjectTomlPath)) {
-                    installCommand = `${packageManager.command} install . --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${supportedPythonDepsInstallVersion} -t ${pathForDependencies}`;
+                    installCommand = `${packageManager.command} install . --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${pythonVersion} -t ${pathForDependencies}`;
                 }
             } else if (packageManager.command === "poetry") {
                 installCommand = `${packageManager.command} install --no-root --directory ${pathForDependencies}`;

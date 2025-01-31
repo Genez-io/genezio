@@ -32,7 +32,7 @@ import {
     packageManagers,
     PYTHON_DEFAULT_PACKAGE_MANAGER,
 } from "../../packageManagers/packageManager.js";
-import { SSRFrameworkComponentType } from "../../models/projectOptions.js";
+import { DEFAULT_PYTHON_RUNTIME, SSRFrameworkComponentType } from "../../models/projectOptions.js";
 import { RawYamlProjectConfiguration, YAMLLanguage } from "../../projectConfiguration/yaml/v2.js";
 import {
     addBackendComponentToConfig,
@@ -415,6 +415,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 language: {
                     name: Language.python,
                     packageManager: packageManagerType,
+                    runtime: DEFAULT_PYTHON_RUNTIME,
                 } as YAMLLanguage,
                 environment: mapEnvironmentVariableToConfig(
                     resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
@@ -453,6 +454,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 language: {
                     name: Language.python,
                     packageManager: packageManagerType,
+                    runtime: DEFAULT_PYTHON_RUNTIME,
                 } as YAMLLanguage,
                 environment: mapEnvironmentVariableToConfig(
                     resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
@@ -494,6 +496,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 language: {
                     name: Language.python,
                     packageManager: packageManagerType,
+                    runtime: DEFAULT_PYTHON_RUNTIME,
                 } as YAMLLanguage,
                 environment: mapEnvironmentVariableToConfig(
                     resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
@@ -532,6 +535,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 language: {
                     name: Language.python,
                     packageManager: packageManagerType,
+                    runtime: DEFAULT_PYTHON_RUNTIME,
                 } as YAMLLanguage,
                 environment: mapEnvironmentVariableToConfig(
                     resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
