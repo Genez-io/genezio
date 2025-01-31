@@ -103,6 +103,7 @@ import { getFunctionHandlerProvider } from "../utils/getFunctionHandlerProvider.
 import { getFunctionEntryFilename } from "../utils/getFunctionEntryFilename.js";
 import { SSRFrameworkComponent } from "./deploy/command.js";
 import fs from "fs";
+import { detectPythonCommand } from "../utils/detectPythonCommand.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -344,7 +345,8 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         !yamlProjectConfiguration.nuxt &&
         !yamlProjectConfiguration.nestjs &&
         !yamlProjectConfiguration.nitro &&
-        !yamlProjectConfiguration.remix
+        !yamlProjectConfiguration.remix &&
+        !yamlProjectConfiguration.streamlit
     ) {
         throw new UserError(
             "No backend or frontend components found in the genezio.yaml file. You need at least one component to start the local environment.",
@@ -1897,10 +1899,20 @@ async function startSsrFramework(
                     ? ["vite:dev", "--port", ssrPort]
                     : ["dev", "--port", ssrPort];
                 break;
+            case SSRFrameworkComponentType.streamlit:
+                command = "-m";
+                args = ["streamlit", "run", ssrConfig.entryFile!, "--server.port", ssrPort];
+                break;
             default:
                 throw new Error(`Unknown SSR framework: ${framework}`);
         }
-        const childProcess = spawn("npx", [command, ...args], {
+
+        const spawnCommand =
+            framework === SSRFrameworkComponentType.streamlit
+                ? (await detectPythonCommand()) || "python3"
+                : "npx";
+
+        const childProcess = spawn(spawnCommand, [command, ...args], {
             stdio: "pipe",
             env: {
                 ...process.env,
