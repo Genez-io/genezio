@@ -329,6 +329,8 @@ function parseGenezioConfig(config: unknown) {
             .optional(),
         environment: environmentSchema.optional(),
         subdomain: zod.string().optional(),
+        runtime: zod.string().optional(),
+        entryFile: zod.string().optional(),
     });
 
     // Define container schema
@@ -375,6 +377,7 @@ function parseGenezioConfig(config: unknown) {
         nitro: ssrFrameworkSchema.optional(),
         container: containerSchema.optional(),
         remix: ssrFrameworkSchema.optional(),
+        streamlit: ssrFrameworkSchema.optional(),
     });
 
     const parsedConfig = v2Schema.parse(config);

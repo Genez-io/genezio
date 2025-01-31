@@ -12,6 +12,7 @@ import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v
 import { nestJsDeploy } from "./nestjs/deploy.js";
 import { zipDeploy } from "./zip/deploy.js";
 import { remixDeploy } from "./remix/deploy.js";
+import { streamlitDeploy } from "./streamlit/deploy.js";
 export type SSRFrameworkComponent = {
     path: string;
     packageManager: PackageManagerType;
@@ -24,6 +25,8 @@ export type SSRFrameworkComponent = {
         [key: string]: string;
     };
     subdomain?: string;
+    runtime?: string;
+    entryFile?: string;
 };
 
 export async function deployCommand(options: GenezioDeployOptions) {
@@ -65,6 +68,10 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 debugLogger.debug("Deploying Remix app");
                 await remixDeploy(options);
                 break;
+            case DeployType.Streamlit:
+                debugLogger.debug("Deploying Streamlit app");
+                await streamlitDeploy(options);
+                break;
         }
     }
 }
@@ -78,6 +85,7 @@ export enum DeployType {
     Nest = "nest",
     Zip = "zip",
     Remix = "remix",
+    Streamlit = "streamlit",
 }
 
 /**
@@ -127,6 +135,9 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         }
         if (config.remix) {
             deployableComponents.push(DeployType.Remix);
+        }
+        if (config.streamlit) {
+            deployableComponents.push(DeployType.Streamlit);
         }
 
         // This ensures backwards compatibility for next/nuxt projects
@@ -204,6 +215,15 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         fs.existsSync(path.join(cwd, "Dockerfile"))
     ) {
         return [DeployType.Docker];
+    }
+
+    // Check if requirements.txt exists
+    if (fs.existsSync(path.join(cwd, "requirements.txt"))) {
+        // Check if streamlit is in the requirements.txt
+        const requirementsTxt = fs.readFileSync(path.join(cwd, "requirements.txt"), "utf-8");
+        if (requirementsTxt.includes("streamlit")) {
+            return [DeployType.Streamlit];
+        }
     }
 
     // Default to classic genezio app

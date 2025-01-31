@@ -1,5 +1,10 @@
 export type NodeRuntime = "nodejs20.x";
-export type PythonRuntime = "python3.11.x";
+export type PythonRuntime =
+    | "python3.9.x"
+    | "python3.10.x"
+    | "python3.11.x"
+    | "python3.12.x"
+    | "python3.13.x";
 export type Architecture = "arm64" | "x86_64";
 export const DEFAULT_NODE_RUNTIME: NodeRuntime = "nodejs20.x";
 export const DEFAULT_ARCHITECTURE: Architecture = "arm64";
@@ -30,6 +35,7 @@ export enum SSRFrameworkComponentType {
     nuxt = "nuxt",
     nestjs = "nestjs",
     remix = "remix",
+    streamlit = "streamlit",
 }
 
 // These are the human friendly names for the SSR frameworks
@@ -40,6 +46,7 @@ export const SSRFrameworkName: Record<SSRFrameworkComponentType, string> = {
     [SSRFrameworkComponentType.nuxt]: "Nuxt.js",
     [SSRFrameworkComponentType.nestjs]: "NestJS",
     [SSRFrameworkComponentType.remix]: "Remix",
+    [SSRFrameworkComponentType.streamlit]: "Streamlit",
 };
 
 export enum ContainerComponentType {
@@ -55,5 +62,5 @@ export const supportedPythonRuntimes = [
     "python3.13.x",
 ] as const;
 export const supportedArchitectures = ["arm64", "x86_64"] as const;
-export const supportedSSRFrameworks = ["nextjs", "nitro", "nuxt"] as const;
+export const supportedSSRFrameworks = ["nextjs", "nitro", "nuxt", "streamlit"] as const;
 export const supportedPythonDepsInstallVersion = ["3.9", "3.10", "3.11", "3.12", "3.13"] as const;
