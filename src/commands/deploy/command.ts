@@ -209,14 +209,6 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         }
     }
 
-    // Check if a Dockerfile exists in non-genezio project
-    if (
-        !fs.existsSync(path.join(cwd, "genezio.yaml")) &&
-        fs.existsSync(path.join(cwd, "Dockerfile"))
-    ) {
-        return [DeployType.Docker];
-    }
-
     // Check if requirements.txt exists
     if (fs.existsSync(path.join(cwd, "requirements.txt"))) {
         // Check if streamlit is in the requirements.txt
@@ -224,6 +216,14 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         if (requirementsTxt.includes("streamlit")) {
             return [DeployType.Streamlit];
         }
+    }
+
+    // Check if a Dockerfile exists in non-genezio project
+    if (
+        !fs.existsSync(path.join(cwd, "genezio.yaml")) &&
+        fs.existsSync(path.join(cwd, "Dockerfile"))
+    ) {
+        return [DeployType.Docker];
     }
 
     // Default to classic genezio app
