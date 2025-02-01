@@ -78,15 +78,16 @@ export async function streamlitDeploy(options: GenezioDeployOptions) {
         dereference: true,
     });
 
-    // create start file if not exists
-    const startFile = path.join(tempCwd, "start.py");
+    const randomId = Math.random().toString(36).substring(2, 6);
+    const startFileName = `start-${randomId}.py`;
+    const startFile = path.join(tempCwd, startFileName);
     if (!fs.existsSync(startFile)) {
         fs.writeFileSync(startFile, getStartFileContent(entryFile));
     }
 
     const updatedGenezioConfig = await readOrAskConfig(options.config);
     // Deploy the component
-    const result = await deployFunction(updatedGenezioConfig, options, tempCwd);
+    const result = await deployFunction(updatedGenezioConfig, options, tempCwd, startFileName);
 
     await uploadEnvVarsFromFile(
         options.env,
@@ -131,6 +132,7 @@ async function deployFunction(
     config: YamlProjectConfiguration,
     options: GenezioDeployOptions,
     cwd: string,
+    startFileName: string,
 ) {
     const cloudProvider = await getCloudProvider(config.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
@@ -138,7 +140,7 @@ async function deployFunction(
     const serverFunction = {
         path: ".",
         name: "streamlit",
-        entry: "start.py",
+        entry: startFileName,
         type: FunctionType.httpServer,
     };
 
