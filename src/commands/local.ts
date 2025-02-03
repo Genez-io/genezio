@@ -1733,7 +1733,51 @@ from wsgiref.simple_server import make_server
 import importlib.util
 import subprocess
 import os
+import logging
 from ${nameModule} import ${handler} as application
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s',
+    stream=sys.stdout
+)
+
+# WSGI middleware to capture logs
+def logging_middleware(app):
+    def wrapper(environ, start_response):
+        # Capture stdout and stderr
+        stdout = sys.stdout
+        stderr = sys.stderr
+        output = []
+        
+        class LogCapturer:
+            def write(self, msg):
+                if msg.strip():  # Only log non-empty messages
+                    # Check if this is a WSGI access log (contains HTTP method and status code)
+                    http_methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
+                    if any(f'"{method}' in msg for method in http_methods):
+                        logging.info(msg.strip())
+                    else:
+                        from datetime import datetime
+                        now = datetime.now()
+                        formatted_time = now.strftime('%d/%b/%Y %H:%M:%S')
+                        logging.info(f'127.0.0.1 - - [{formatted_time}] {msg.strip()}')
+                output.append(msg)
+            
+            def flush(self):
+                pass
+        
+        sys.stdout = LogCapturer()
+        sys.stderr = LogCapturer()
+        
+        try:
+            return app(environ, start_response)
+        finally:
+            sys.stdout = stdout
+            sys.stderr = stderr
+    
+    return wrapper
 
 # Try to configure Django's ALLOWED_HOSTS before importing the application
 try:
@@ -1788,10 +1832,11 @@ if is_asgi:
             application,
             host="127.0.0.1",
             port=genezio_port,
-            reload=False
         )
 else:
-    with make_server("127.0.0.1", genezio_port, application) as httpd:
+    # Wrap the application with the logging middleware
+    wrapped_app = logging_middleware(application)
+    with make_server("127.0.0.1", genezio_port, wrapped_app) as httpd:
         print(f"Serving WSGI application on port {genezio_port}...")
         httpd.serve_forever()
 `;
