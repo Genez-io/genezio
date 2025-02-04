@@ -37,6 +37,8 @@ export const FASTAPI_PATTERN = [
     /from\s+fastapi\s+import\s+FastAPI|import\s+fastapi/,
 ];
 
+export const STREAMLIT_PATTERN = [/import\s+streamlit(?:\s+as\s+st)?|from\s+streamlit\s+import/];
+
 // Agent Prompts
 export const ENVIRONMENT_ANALYZE_PROMPT = `Your task is to analyze the following .env.example file and provide values as best as you can.
 

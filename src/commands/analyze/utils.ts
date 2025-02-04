@@ -112,6 +112,8 @@ export async function addSSRComponentToConfig(
             ...config[componentType]?.environment,
         },
         scripts: config[componentType]?.scripts || component.scripts,
+        entryFile: config[componentType]?.entryFile || component.entryFile,
+        runtime: config[componentType]?.runtime || component.runtime,
     };
 
     await configIOController.write(config);

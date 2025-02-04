@@ -25,6 +25,7 @@ import {
     isNestjsComponent,
     isRemixComponent,
     isEmberComponent,
+    isStreamlitComponent,
 } from "./frameworks.js";
 import { generateDatabaseName, readOrAskConfig } from "../deploy/utils.js";
 import {
@@ -55,6 +56,7 @@ import {
     FLASK_PATTERN,
     PYTHON_LAMBDA_PATTERN,
     SERVERLESS_HTTP_PATTERN,
+    STREAMLIT_PATTERN,
 } from "./constants.js";
 import { analyzeEnvironmentVariableExampleFile, ProjectEnvironment } from "./agent.js";
 
@@ -277,6 +279,37 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             frameworksDetected.backend = frameworksDetected.backend || [];
             frameworksDetected.backend.push({
                 component: "serverless-http",
+                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+            });
+            continue;
+        }
+
+        if (await isStreamlitComponent(contents)) {
+            const packageManagerType =
+                genezioConfig.streamlit?.packageManager || PYTHON_DEFAULT_PACKAGE_MANAGER;
+            const entryFile = await findEntryFile(
+                componentPath,
+                contents,
+                STREAMLIT_PATTERN,
+                PYTHON_DEFAULT_ENTRY_FILE,
+            );
+            debugLogger.debug("Streamlit entry file found:", entryFile);
+            await addSSRComponentToConfig(
+                options.config,
+                {
+                    path: componentPath,
+                    packageManager: packageManagerType,
+                    environment: mapEnvironmentVariableToConfig(
+                        resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+                    ),
+                    runtime: DEFAULT_PYTHON_RUNTIME,
+                    entryFile: entryFile,
+                },
+                SSRFrameworkComponentType.streamlit,
+            );
+            frameworksDetected.ssr = frameworksDetected.ssr || [];
+            frameworksDetected.ssr.push({
+                component: "streamlit",
                 environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
             });
             continue;
