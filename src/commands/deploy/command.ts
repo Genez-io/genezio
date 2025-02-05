@@ -209,12 +209,23 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         }
     }
 
-    // Check if requirements.txt exists
-    if (fs.existsSync(path.join(cwd, "requirements.txt"))) {
-        // Check if streamlit is in the requirements.txt
-        const requirementsTxt = fs.readFileSync(path.join(cwd, "requirements.txt"), "utf-8");
-        if (requirementsTxt.includes("streamlit")) {
-            return [DeployType.Streamlit];
+    // Check if requirements.txt or pyproject.toml exists
+    if (
+        fs.existsSync(path.join(cwd, "requirements.txt")) ||
+        fs.existsSync(path.join(cwd, "pyproject.toml"))
+    ) {
+        if (fs.existsSync(path.join(cwd, "requirements.txt"))) {
+            const requirementsTxt = fs.readFileSync(path.join(cwd, "requirements.txt"), "utf-8");
+            if (requirementsTxt.includes("streamlit")) {
+                return [DeployType.Streamlit];
+            }
+        }
+
+        if (fs.existsSync(path.join(cwd, "pyproject.toml"))) {
+            const pyprojectToml = fs.readFileSync(path.join(cwd, "pyproject.toml"), "utf-8");
+            if (pyprojectToml.includes("streamlit")) {
+                return [DeployType.Streamlit];
+            }
         }
     }
 
