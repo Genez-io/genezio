@@ -60,6 +60,10 @@ To generate a new configuration file automatically, run \`genezio analyze\` and 
 
 For more details, visit the documentation: ${colors.blue(`https://genezio.com/docs/cli-tool/cli-commands/analyze`)}`;
 
+export const GENEZIO_NOTHING_TO_DEPLOY = `There is nothing to deploy. You can manually configure the genezio.yaml file or use the interactive wizard to automatically detect the stack by running \`genezio analyze\`.
+
+For more details, visit the documentation: ${colors.blue(`https://genezio.com/docs/project-structure/genezio-configuration-file`)}`;
+
 export const GENEZIO_DECORATOR_YAML_OVERLAP = function (overlappingClasses: string[]) {
     const multipleOverlaps = overlappingClasses.length > 1;
 

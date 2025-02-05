@@ -8,7 +8,7 @@ import {
     RECOMMENTDED_GENEZIO_TYPES_VERSION_RANGE,
     REQUIRED_GENEZIO_TYPES_VERSION_RANGE,
 } from "../../constants.js";
-import { GENEZIO_NO_CLASSES_FOUND, UserError } from "../../errors.js";
+import { GENEZIO_NO_CLASSES_FOUND, GENEZIO_NOTHING_TO_DEPLOY, UserError } from "../../errors.js";
 import {
     mapYamlClassToSdkClassConfiguration,
     sdkGeneratorApiHandler,
@@ -87,9 +87,8 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
     });
     const configuration = await configIOController.read();
     if (!configuration.backend && !configuration.frontend) {
-        throw new UserError(
-            "Nothing to deploy. Please add a backend or frontend configuration to your genezio.yaml.",
-        );
+        log.warn(GENEZIO_NOTHING_TO_DEPLOY);
+        return;
     }
     const backendCwd = configuration.backend?.path || process.cwd();
 
