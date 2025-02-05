@@ -8,8 +8,8 @@ export type PythonRuntime =
 export type Architecture = "arm64" | "x86_64";
 export const DEFAULT_NODE_RUNTIME: NodeRuntime = "nodejs20.x";
 export const DEFAULT_ARCHITECTURE: Architecture = "arm64";
-export const DEFAULT_PYTHON_RUNTIME: PythonRuntime = "python3.11.x";
-export const DEFAULT_PYTHON_VERSION_INSTALL: string = "3.11";
+export const DEFAULT_PYTHON_RUNTIME: PythonRuntime = "python3.13.x";
+export const DEFAULT_PYTHON_VERSION_INSTALL: string = "3.13";
 
 export const CONTAINER_IMAGE_NODE20 = "node:20.11.1-alpine3.19";
 
