@@ -192,11 +192,15 @@ async function deployFunction(
 function getStartFileContent(entryFile: string) {
     const startFileContent = `
 import streamlit.web.bootstrap as bootstrap
+import asyncio
 
 flags = {
     'server_port': 8080,
     'global_developmentMode': False
 }
+
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
 
 bootstrap.load_config_options(flag_options=flags)
 bootstrap.run('${entryFile}', False, [], flags)
