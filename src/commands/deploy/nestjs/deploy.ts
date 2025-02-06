@@ -125,6 +125,12 @@ async function deployFunction(
         name: "nest",
         entry: "main.js",
         type: FunctionType.httpServer,
+        timeout: config.nestjs?.timeout,
+        storageSize: config.nestjs?.storageSize,
+        instanceSize: config.nestjs?.instanceSize,
+        maxConcurrentRequestsPerInstance: config.nestjs?.maxConcurrentRequestsPerInstance,
+        maxConcurrentInstances: config.nestjs?.maxConcurrentInstances,
+        cooldownTime: config.nestjs?.cooldownTime,
     };
 
     const deployConfig: YamlProjectConfiguration = {

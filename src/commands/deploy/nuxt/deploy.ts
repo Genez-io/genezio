@@ -158,6 +158,12 @@ async function deployFunction(
             entry: path.join("server", "index.mjs"),
             handler: "handler",
             type: FunctionType.aws,
+            timeout: config.nuxt?.timeout,
+            storageSize: config.nuxt?.storageSize,
+            instanceSize: config.nuxt?.instanceSize,
+            maxConcurrentRequestsPerInstance: config.nuxt?.maxConcurrentRequestsPerInstance,
+            maxConcurrentInstances: config.nuxt?.maxConcurrentInstances,
+            cooldownTime: config.nuxt?.cooldownTime,
         },
     ];
 

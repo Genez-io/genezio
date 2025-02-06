@@ -331,6 +331,28 @@ function parseGenezioConfig(config: unknown) {
         subdomain: zod.string().optional(),
         runtime: zod.string().optional(),
         entryFile: zod.string().optional(),
+        timeout: zod.number().optional(),
+        storageSize: zod.number().optional(),
+        instanceSize: zod.nativeEnum(InstanceSize).optional(),
+        maxConcurrentRequestsPerInstance: zod
+            .number()
+            .optional()
+            .refine((value) => {
+                if (value && value < 1) {
+                    return false;
+                }
+                return true;
+            }, "The maximum number of concurrent requests per instance should be greater than 0."),
+        maxConcurrentInstances: zod
+            .number()
+            .optional()
+            .refine((value) => {
+                if (value && value < 1) {
+                    return false;
+                }
+                return true;
+            }, "The maximum number of concurrent instances should be greater than 0."),
+        cooldownTime: zod.number().optional(),
     });
 
     // Define container schema
