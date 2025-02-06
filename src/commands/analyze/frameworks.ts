@@ -461,10 +461,12 @@ export function isPythonLambdaFunction(contents: Record<string, string>): boolea
     return contents["requirements.txt"] !== undefined || contents["pyproject.toml"] !== undefined;
 }
 
-// Checks if the project is a Streamlit component (presence of 'requirements.txt' and 'streamlit' in 'requirements.txt')
+// Checks if the project is a Streamlit component (presence of 'requirements.txt' or 'pyproject.toml' and 'streamlit' in 'requirements.txt' or 'pyproject.toml')
 export function isStreamlitComponent(contents: Record<string, string>): boolean {
     return (
-        contents["requirements.txt"] !== undefined &&
-        contents["requirements.txt"].includes("streamlit")
+        (contents["requirements.txt"] !== undefined &&
+            contents["requirements.txt"].includes("streamlit")) ||
+        (contents["pyproject.toml"] !== undefined &&
+            contents["pyproject.toml"].includes("streamlit"))
     );
 }
