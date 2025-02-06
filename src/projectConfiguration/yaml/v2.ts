@@ -12,9 +12,6 @@ import {
     Language,
 } from "./models.js";
 import {
-    DEFAULT_ARCHITECTURE,
-    DEFAULT_NODE_RUNTIME,
-    DEFAULT_PYTHON_RUNTIME,
     FUNCTION_EXTENSIONS,
     supportedArchitectures,
     supportedNodeRuntimes,
@@ -394,13 +391,9 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
             case Language.ts:
             case Language.js:
                 defaultConfig.backend.language.packageManager ??= PackageManagerType.npm;
-                defaultConfig.backend.language.runtime ??= DEFAULT_NODE_RUNTIME;
-                defaultConfig.backend.language.architecture ??= DEFAULT_ARCHITECTURE;
                 break;
             case Language.python:
                 defaultConfig.backend.language.packageManager ??= PackageManagerType.pip;
-                defaultConfig.backend.language.runtime ??= DEFAULT_PYTHON_RUNTIME;
-                defaultConfig.backend.language.architecture ??= DEFAULT_ARCHITECTURE;
                 break;
         }
     }

@@ -1,6 +1,7 @@
 import { YamlProjectConfiguration } from "../../../projectConfiguration/yaml/v2.js";
 import { GenezioDeployOptions } from "../../../models/commandOptions.js";
 import {
+    DEFAULT_ARCHITECTURE,
     DEFAULT_PYTHON_RUNTIME,
     PythonRuntime,
     SSRFrameworkComponentType,
@@ -153,7 +154,7 @@ async function deployFunction(
             language: {
                 name: Language.python,
                 runtime: runtime,
-                architecture: "x86_64",
+                architecture: DEFAULT_ARCHITECTURE,
                 packageManager: PackageManagerType.pip,
             },
             functions: [serverFunction],
