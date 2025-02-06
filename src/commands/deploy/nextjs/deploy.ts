@@ -362,6 +362,12 @@ async function deployFunction(
         entry: "start.mjs",
         handler: "handler",
         type: FunctionType.httpServer,
+        timeout: config.nextjs?.timeout,
+        storageSize: config.nextjs?.storageSize,
+        instanceSize: config.nextjs?.instanceSize,
+        maxConcurrentRequestsPerInstance: config.nextjs?.maxConcurrentRequestsPerInstance,
+        maxConcurrentInstances: config.nextjs?.maxConcurrentInstances,
+        cooldownTime: config.nextjs?.cooldownTime,
     };
 
     const deployConfig: YamlProjectConfiguration = {

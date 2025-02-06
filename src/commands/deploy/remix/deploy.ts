@@ -228,6 +228,12 @@ async function deployFunction(
         name: "remix",
         entry: "server.mjs",
         type: FunctionType.httpServer,
+        timeout: config.remix?.timeout,
+        storageSize: config.remix?.storageSize,
+        instanceSize: config.remix?.instanceSize,
+        maxConcurrentRequestsPerInstance: config.remix?.maxConcurrentRequestsPerInstance,
+        maxConcurrentInstances: config.remix?.maxConcurrentInstances,
+        cooldownTime: config.remix?.cooldownTime,
     };
 
     const deployConfig: YamlProjectConfiguration = {

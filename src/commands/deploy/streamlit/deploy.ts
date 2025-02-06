@@ -142,6 +142,12 @@ async function deployFunction(
         name: "streamlit",
         entry: startFileName,
         type: FunctionType.httpServer,
+        timeout: config.streamlit?.timeout,
+        storageSize: config.streamlit?.storageSize,
+        instanceSize: config.streamlit?.instanceSize,
+        maxConcurrentRequestsPerInstance: config.streamlit?.maxConcurrentRequestsPerInstance,
+        maxConcurrentInstances: config.streamlit?.maxConcurrentInstances,
+        cooldownTime: config.streamlit?.cooldownTime,
     };
 
     const runtime = (config.streamlit?.runtime as PythonRuntime) || DEFAULT_PYTHON_RUNTIME;
