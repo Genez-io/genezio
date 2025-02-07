@@ -490,6 +490,7 @@ export async function deployClasses(
                 maxConcurrentRequestsPerInstance: element.maxConcurrentRequestsPerInstance,
                 maxConcurrentInstances: element.maxConcurrentInstances,
                 cooldownTime: element.cooldownTime,
+                persistent: element.persistent,
             };
         },
     );
@@ -742,6 +743,7 @@ export async function functionToCloudInput(
         maxConcurrentRequestsPerInstance: functionElement.maxConcurrentRequestsPerInstance,
         maxConcurrentInstances: functionElement.maxConcurrentInstances,
         cooldownTime: functionElement.cooldownTime,
+        persistent: functionElement.persistent,
         metadata: metadata,
     };
 }

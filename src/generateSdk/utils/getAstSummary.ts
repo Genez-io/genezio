@@ -77,6 +77,7 @@ export function getAstSummary(classesInfo: SdkGeneratorClassesInfoInput[]): AstS
                 maxConcurrentInstances:
                     classConfiguration.classConfiguration.maxConcurrentInstances,
                 cooldownTime: classConfiguration.classConfiguration.cooldownTime,
+                persistent: classConfiguration.classConfiguration.persistent,
             };
             return classInfo;
         });

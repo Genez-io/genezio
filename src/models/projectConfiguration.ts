@@ -75,6 +75,7 @@ export class ClassConfiguration {
     maxConcurrentRequestsPerInstance?: number;
     maxConcurrentInstances?: number;
     cooldownTime?: number;
+    persistent?: boolean;
 
     constructor(
         name: string,
@@ -91,6 +92,7 @@ export class ClassConfiguration {
         maxConcurrentRequestsPerInstance?: number,
         maxConcurrentInstances?: number,
         cooldownTime?: number,
+        persistent?: boolean,
     ) {
         this.name = name;
         this.path = path;
@@ -106,6 +108,7 @@ export class ClassConfiguration {
         this.maxConcurrentRequestsPerInstance = maxConcurrentRequestsPerInstance;
         this.maxConcurrentInstances = maxConcurrentInstances;
         this.cooldownTime = cooldownTime;
+        this.persistent = persistent;
     }
 }
 
@@ -122,6 +125,7 @@ export class FunctionConfiguration {
     maxConcurrentRequestsPerInstance?: number;
     maxConcurrentInstances?: number;
     cooldownTime?: number;
+    persistent?: boolean;
 
     constructor(
         name: string,
@@ -136,6 +140,7 @@ export class FunctionConfiguration {
         maxConcurrentRequestsPerInstance?: number,
         maxConcurrentInstances?: number,
         cooldownTime?: number,
+        persistent?: boolean,
     ) {
         this.name = name;
         this.path = path;
@@ -149,6 +154,7 @@ export class FunctionConfiguration {
         this.maxConcurrentRequestsPerInstance = maxConcurrentRequestsPerInstance;
         this.maxConcurrentInstances = maxConcurrentInstances;
         this.cooldownTime = cooldownTime;
+        this.persistent = persistent;
     }
 }
 
@@ -300,6 +306,7 @@ export class ProjectConfiguration {
                 maxConcurrentRequestsPerInstance: c.maxConcurrentRequestsPerInstance,
                 maxConcurrentInstances: c.maxConcurrentInstances,
                 cooldownTime: c.cooldownTime,
+                persistent: c.persistent,
             };
         });
 
@@ -318,6 +325,7 @@ export class ProjectConfiguration {
                     maxConcurrentRequestsPerInstance: f.maxConcurrentRequestsPerInstance,
                     maxConcurrentInstances: f.maxConcurrentInstances,
                     cooldownTime: f.cooldownTime,
+                    persistent: f.persistent,
                 };
             }) || [];
     }

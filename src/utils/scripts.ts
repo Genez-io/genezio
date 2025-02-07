@@ -108,7 +108,7 @@ export async function resolveConfigurationVariable(
         isLocal?: boolean;
         port?: number;
     },
-): Promise<string | number> {
+): Promise<string | number | boolean> {
     if (options?.isLocal && !options?.port) {
         options.port = PORT_LOCAL_ENVIRONMENT;
     }
