@@ -19,7 +19,6 @@ import {
 } from "../../../packageManagers/packageManager.js";
 import {
     DEFAULT_ARCHITECTURE,
-    DEFAULT_NODE_RUNTIME,
     SSRFrameworkComponentType,
 } from "../../../models/projectOptions.js";
 import { UserError } from "../../../errors.js";
@@ -240,9 +239,9 @@ async function deployFunction(
             path: cwd,
             language: {
                 name: Language.js,
-                runtime: DEFAULT_NODE_RUNTIME,
                 architecture: DEFAULT_ARCHITECTURE,
                 packageManager: PackageManagerType.npm,
+                ...(config.remix?.runtime !== undefined && { runtime: config.remix.runtime }),
             },
             functions: [serverFunction],
         },

@@ -13,6 +13,8 @@ import { nestJsDeploy } from "./nestjs/deploy.js";
 import { zipDeploy } from "./zip/deploy.js";
 import { remixDeploy } from "./remix/deploy.js";
 import { streamlitDeploy } from "./streamlit/deploy.js";
+import { YAMLLanguageRuntime } from "../../projectConfiguration/yaml/v2.js";
+
 export type SSRFrameworkComponent = {
     path: string;
     packageManager: PackageManagerType;
@@ -25,7 +27,7 @@ export type SSRFrameworkComponent = {
         [key: string]: string;
     };
     subdomain?: string;
-    runtime?: string;
+    runtime?: YAMLLanguageRuntime;
     entryFile?: string;
 };
 

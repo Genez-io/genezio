@@ -38,7 +38,6 @@ import { DeployCodeFunctionResponse } from "../../../models/deployCodeResponse.j
 import { DeployType } from "../command.js";
 import {
     DEFAULT_ARCHITECTURE,
-    DEFAULT_NODE_RUNTIME,
     SSRFrameworkComponentType,
 } from "../../../models/projectOptions.js";
 import { addSSRComponentToConfig } from "../../analyze/utils.js";
@@ -171,9 +170,9 @@ async function deployFunction(
             path: cwdRelative,
             language: {
                 name: Language.js,
-                runtime: DEFAULT_NODE_RUNTIME,
                 architecture: DEFAULT_ARCHITECTURE,
                 packageManager: PackageManagerType.npm,
+                ...(config.nuxt?.runtime !== undefined && { runtime: config.nuxt.runtime }),
             },
             functions,
         },

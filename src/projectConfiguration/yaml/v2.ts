@@ -29,6 +29,7 @@ export type RawYamlProjectConfiguration = ReturnType<typeof parseGenezioConfig>;
 export type YAMLBackend = NonNullable<YamlProjectConfiguration["backend"]>;
 export type YAMLService = NonNullable<YamlProjectConfiguration["services"]>;
 export type YAMLLanguage = NonNullable<YAMLBackend["language"]>;
+export type YAMLLanguageRuntime = NonNullable<YAMLLanguage["runtime"]>;
 export type YamlClass = NonNullable<YAMLBackend["classes"]>[number];
 export type YamlFunction = NonNullable<YAMLBackend["functions"]>[number];
 export type YamlServices = NonNullable<YamlProjectConfiguration["services"]>;
@@ -326,7 +327,7 @@ function parseGenezioConfig(config: unknown) {
             .optional(),
         environment: environmentSchema.optional(),
         subdomain: zod.string().optional(),
-        runtime: zod.string().optional(),
+        runtime: zod.enum([...supportedNodeRuntimes, ...supportedPythonRuntimes]).optional(),
         entryFile: zod.string().optional(),
     });
 
@@ -406,7 +407,6 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
         typeof defaultConfig,
         | "region"
         | "backend.language.packageManager"
-        | "backend.language.runtime"
         | "backend.language.architecture"
     > & {
         frontend: typeof defaultConfig.frontend;

@@ -47,7 +47,6 @@ import {
 import { readOrAskConfig } from "../utils.js";
 import {
     DEFAULT_ARCHITECTURE,
-    DEFAULT_NODE_RUNTIME,
     SSRFrameworkComponentType,
 } from "../../../models/projectOptions.js";
 import { addSSRComponentToConfig } from "../../analyze/utils.js";
@@ -374,9 +373,9 @@ async function deployFunction(
             path: ".",
             language: {
                 name: Language.ts,
-                runtime: DEFAULT_NODE_RUNTIME,
-                architecture: DEFAULT_ARCHITECTURE,
                 packageManager: PackageManagerType.npm,
+                architecture: DEFAULT_ARCHITECTURE,
+                ...(config.nextjs?.runtime !== undefined && { runtime: config.nextjs.runtime }),
             },
             functions: [serverFunction],
         },
