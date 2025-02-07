@@ -8,6 +8,7 @@ export enum Language {
     dart = "dart",
     kt = "kt",
     go = "go",
+    container = "container",
 }
 
 export enum AuthenticationDatabaseType {

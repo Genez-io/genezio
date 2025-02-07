@@ -36,7 +36,10 @@ import {
 } from "../../../requests/createFrontendProject.js";
 import { DeployCodeFunctionResponse } from "../../../models/deployCodeResponse.js";
 import { DeployType } from "../command.js";
-import { SSRFrameworkComponentType } from "../../../models/projectOptions.js";
+import {
+    DEFAULT_ARCHITECTURE,
+    SSRFrameworkComponentType,
+} from "../../../models/projectOptions.js";
 import { addSSRComponentToConfig } from "../../analyze/utils.js";
 import { DASHBOARD_URL } from "../../../constants.js";
 
@@ -173,9 +176,9 @@ async function deployFunction(
             path: cwdRelative,
             language: {
                 name: Language.js,
-                runtime: "nodejs20.x",
-                architecture: "x86_64",
+                architecture: DEFAULT_ARCHITECTURE,
                 packageManager: PackageManagerType.npm,
+                ...(config.nuxt?.runtime !== undefined && { runtime: config.nuxt.runtime }),
             },
             functions,
         },

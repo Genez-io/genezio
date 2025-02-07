@@ -12,9 +12,6 @@ import {
     Language,
 } from "./models.js";
 import {
-    DEFAULT_ARCHITECTURE,
-    DEFAULT_NODE_RUNTIME,
-    DEFAULT_PYTHON_RUNTIME,
     FUNCTION_EXTENSIONS,
     supportedArchitectures,
     supportedNodeRuntimes,
@@ -32,6 +29,7 @@ export type RawYamlProjectConfiguration = ReturnType<typeof parseGenezioConfig>;
 export type YAMLBackend = NonNullable<YamlProjectConfiguration["backend"]>;
 export type YAMLService = NonNullable<YamlProjectConfiguration["services"]>;
 export type YAMLLanguage = NonNullable<YAMLBackend["language"]>;
+export type YAMLLanguageRuntime = NonNullable<YAMLLanguage["runtime"]>;
 export type YamlClass = NonNullable<YAMLBackend["classes"]>[number];
 export type YamlFunction = NonNullable<YAMLBackend["functions"]>[number];
 export type YamlServices = NonNullable<YamlProjectConfiguration["services"]>;
@@ -329,7 +327,7 @@ function parseGenezioConfig(config: unknown) {
             .optional(),
         environment: environmentSchema.optional(),
         subdomain: zod.string().optional(),
-        runtime: zod.string().optional(),
+        runtime: zod.enum([...supportedNodeRuntimes, ...supportedPythonRuntimes]).optional(),
         entryFile: zod.string().optional(),
         timeout: zod.number().optional(),
         storageSize: zod.number().optional(),
@@ -416,13 +414,9 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
             case Language.ts:
             case Language.js:
                 defaultConfig.backend.language.packageManager ??= PackageManagerType.npm;
-                defaultConfig.backend.language.runtime ??= DEFAULT_NODE_RUNTIME;
-                defaultConfig.backend.language.architecture ??= DEFAULT_ARCHITECTURE;
                 break;
             case Language.python:
                 defaultConfig.backend.language.packageManager ??= PackageManagerType.pip;
-                defaultConfig.backend.language.runtime ??= DEFAULT_PYTHON_RUNTIME;
-                defaultConfig.backend.language.architecture ??= DEFAULT_ARCHITECTURE;
                 break;
         }
     }
@@ -435,7 +429,6 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
         typeof defaultConfig,
         | "region"
         | "backend.language.packageManager"
-        | "backend.language.runtime"
         | "backend.language.architecture"
     > & {
         frontend: typeof defaultConfig.frontend;

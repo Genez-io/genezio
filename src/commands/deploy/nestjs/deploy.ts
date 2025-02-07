@@ -17,7 +17,10 @@ import {
     NODE_DEFAULT_PACKAGE_MANAGER,
     PackageManagerType,
 } from "../../../packageManagers/packageManager.js";
-import { SSRFrameworkComponentType } from "../../../models/projectOptions.js";
+import {
+    DEFAULT_ARCHITECTURE,
+    SSRFrameworkComponentType,
+} from "../../../models/projectOptions.js";
 import { UserError } from "../../../errors.js";
 import { YamlProjectConfiguration } from "../../../projectConfiguration/yaml/v2.js";
 import { getCloudProvider } from "../../../requests/getCloudProvider.js";
@@ -139,9 +142,9 @@ async function deployFunction(
             path: cwdRelative,
             language: {
                 name: Language.js,
-                runtime: "nodejs20.x",
-                architecture: "x86_64",
+                architecture: DEFAULT_ARCHITECTURE,
                 packageManager: PackageManagerType.npm,
+                ...(config.nestjs?.runtime !== undefined && { runtime: config.nestjs.runtime }),
             },
             functions: [serverFunction],
         },

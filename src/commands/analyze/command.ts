@@ -33,7 +33,11 @@ import {
     packageManagers,
     PYTHON_DEFAULT_PACKAGE_MANAGER,
 } from "../../packageManagers/packageManager.js";
-import { DEFAULT_PYTHON_RUNTIME, SSRFrameworkComponentType } from "../../models/projectOptions.js";
+import {
+    DEFAULT_NODE_RUNTIME,
+    DEFAULT_PYTHON_RUNTIME,
+    SSRFrameworkComponentType,
+} from "../../models/projectOptions.js";
 import { RawYamlProjectConfiguration, YAMLLanguage } from "../../projectConfiguration/yaml/v2.js";
 import {
     addBackendComponentToConfig,
@@ -263,6 +267,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 language: {
                     // TODO: Add support for detecting and building typescript backends
                     name: Language.js,
+                    runtime: DEFAULT_NODE_RUNTIME,
                 } as YAMLLanguage,
                 scripts: {
                     deploy: [`${packageManager.command} install`],
@@ -366,6 +371,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 language: {
                     // TODO: Add support for detecting and building typescript backends
                     name: Language.js,
+                    runtime: DEFAULT_NODE_RUNTIME,
                 } as YAMLLanguage,
                 environment: mapEnvironmentVariableToConfig(
                     resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
@@ -410,6 +416,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 language: {
                     // TODO: Add support for detecting and building typescript backends
                     name: Language.js,
+                    runtime: DEFAULT_NODE_RUNTIME,
                 } as YAMLLanguage,
                 scripts: {
                     deploy: [`${packageManager.command} install`],
@@ -849,6 +856,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 // TODO: Add support for detecting the language of the backend
                 language: {
                     name: Language.ts,
+                    runtime: DEFAULT_NODE_RUNTIME,
                 } as YAMLLanguage,
                 scripts: {
                     deploy: [`${packageManager.command} install`],

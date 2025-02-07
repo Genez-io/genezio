@@ -78,7 +78,10 @@ import {
     packageManagers,
     PYTHON_DEFAULT_PACKAGE_MANAGER,
 } from "../../packageManagers/packageManager.js";
-import { DEFAULT_PYTHON_VERSION_INSTALL } from "../../models/projectOptions.js";
+import {
+    DEFAULT_PYTHON_RUNTIME,
+    DEFAULT_PYTHON_VERSION_INSTALL,
+} from "../../models/projectOptions.js";
 import { detectPythonVersion } from "../../utils/detectPythonCommand.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
@@ -643,7 +646,7 @@ export async function functionToCloudInput(
             const pathForDependencies = path.join(tmpFolderPath, "packages");
             const packageManager = packageManagers[PYTHON_DEFAULT_PACKAGE_MANAGER];
             let installCommand;
-            const versionMatch = runtime!.match(/\d+\.\d+/);
+            const versionMatch = (runtime || DEFAULT_PYTHON_RUNTIME).match(/\d+\.\d+/);
             const pythonVersion = versionMatch ? versionMatch[0] : DEFAULT_PYTHON_VERSION_INSTALL;
 
             // check pythonVersion matches with local python version

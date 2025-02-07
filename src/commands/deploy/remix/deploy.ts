@@ -17,7 +17,10 @@ import {
     NODE_DEFAULT_PACKAGE_MANAGER,
     PackageManagerType,
 } from "../../../packageManagers/packageManager.js";
-import { SSRFrameworkComponentType } from "../../../models/projectOptions.js";
+import {
+    DEFAULT_ARCHITECTURE,
+    SSRFrameworkComponentType,
+} from "../../../models/projectOptions.js";
 import { UserError } from "../../../errors.js";
 import { YamlProjectConfiguration } from "../../../projectConfiguration/yaml/v2.js";
 import { getCloudProvider } from "../../../requests/getCloudProvider.js";
@@ -242,9 +245,9 @@ async function deployFunction(
             path: cwd,
             language: {
                 name: Language.js,
-                runtime: "nodejs20.x",
-                architecture: "x86_64",
+                architecture: DEFAULT_ARCHITECTURE,
                 packageManager: PackageManagerType.npm,
+                ...(config.remix?.runtime !== undefined && { runtime: config.remix.runtime }),
             },
             functions: [serverFunction],
         },
@@ -276,7 +279,7 @@ async function deployFunction(
 const serverRemixViteContent = `
 import express from "express";
 import { createRequestHandler } from "@remix-run/express";
-import * as build from "./server/index.js"; 
+import * as build from "./server/index.js";
 
 const app = express();
 
