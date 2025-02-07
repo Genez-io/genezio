@@ -109,6 +109,7 @@ export function mapYamlClassToSdkClassConfiguration(
             maxConcurrentRequestsPerInstance: yamlClass.maxConcurrentRequestsPerInstance,
             maxConcurrentInstances: yamlClass.maxConcurrentInstances,
             cooldownTime: yamlClass.cooldownTime,
+            persistent: yamlClass.persistent,
         };
     });
 }

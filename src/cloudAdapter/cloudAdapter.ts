@@ -49,6 +49,7 @@ export type GenezioCloudInput =
           maxConcurrentRequestsPerInstance?: number;
           maxConcurrentInstances?: number;
           cooldownTime?: number;
+          persistent?: boolean;
       }
     | {
           type: GenezioCloudInputType.FUNCTION;
@@ -64,6 +65,7 @@ export type GenezioCloudInput =
           maxConcurrentRequestsPerInstance?: number;
           maxConcurrentInstances?: number;
           cooldownTime?: number;
+          persistent?: boolean;
       };
 
 export type GenezioCloudResultClass = {

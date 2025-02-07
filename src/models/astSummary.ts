@@ -30,6 +30,7 @@ export type AstSummaryClass = {
     maxConcurrentRequestsPerInstance?: number;
     maxConcurrentInstances?: number;
     cooldownTime?: number;
+    persistent?: boolean;
 };
 
 export type AstSummary = {
