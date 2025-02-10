@@ -60,8 +60,6 @@ import dotenv from "dotenv";
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
 import {
     DEFAULT_NODE_RUNTIME,
-    NodeOptions,
-    PythonOptions,
     SSRFrameworkComponentType,
     SSRFrameworkName,
 } from "../models/projectOptions.js";
@@ -599,16 +597,12 @@ async function startBackendWatcher(
             backendConfiguration.language.name === Language.ts ||
             backendConfiguration.language.name === Language.js
         ) {
-            const isNodeOptions = (
-                options: NodeOptions | PythonOptions | undefined,
-            ): options is NodeOptions => {
-                return (options as NodeOptions).nodeRuntime !== undefined;
-            };
-            if (!isNodeOptions(projectConfiguration.options)) {
-                throw new UserError("Invalid node options");
-            }
+            const nodeVersion =
+                (projectConfiguration.options && "nodeRuntime" in projectConfiguration.options
+                    ? projectConfiguration.options.nodeRuntime
+                    : undefined) || DEFAULT_NODE_RUNTIME;
 
-            reportDifferentNodeRuntime(projectConfiguration.options?.nodeRuntime);
+            reportDifferentNodeRuntime(nodeVersion);
         }
 
         // Start listening for changes in user's code
@@ -1752,7 +1746,7 @@ def logging_middleware(app):
         stdout = sys.stdout
         stderr = sys.stderr
         output = []
-        
+
         class LogCapturer:
             def write(self, msg):
                 if msg.strip():  # Only log non-empty messages
@@ -1766,19 +1760,19 @@ def logging_middleware(app):
                         formatted_time = now.strftime('%d/%b/%Y %H:%M:%S')
                         logging.info(f'127.0.0.1 - - [{formatted_time}] {msg.strip()}')
                 output.append(msg)
-            
+
             def flush(self):
                 pass
-        
+
         sys.stdout = LogCapturer()
         sys.stderr = LogCapturer()
-        
+
         try:
             return app(environ, start_response)
         finally:
             sys.stdout = stdout
             sys.stderr = stderr
-    
+
     return wrapper
 
 # Try to configure Django's ALLOWED_HOSTS before importing the application
