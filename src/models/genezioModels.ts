@@ -380,4 +380,5 @@ export type SdkClassConfiguration = {
     maxConcurrentRequestsPerInstance?: number;
     maxConcurrentInstances?: number;
     cooldownTime?: number;
+    persistent?: boolean;
 };

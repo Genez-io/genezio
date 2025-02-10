@@ -2,13 +2,7 @@
 import { getAstSummary } from "../generateSdk/utils/getAstSummary.js";
 import { AstSummary } from "./astSummary.js";
 import { CloudProviderIdentifier } from "./cloudProviderIdentifier.js";
-import {
-    DEFAULT_ARCHITECTURE,
-    DEFAULT_NODE_RUNTIME,
-    DEFAULT_PYTHON_RUNTIME,
-    NodeOptions,
-    PythonOptions,
-} from "./projectOptions.js";
+import { NodeOptions, PythonOptions } from "./projectOptions.js";
 import { SdkHandlerResponse } from "./sdkGeneratorResponse.js";
 import {
     DatabaseType,
@@ -75,6 +69,7 @@ export class ClassConfiguration {
     maxConcurrentRequestsPerInstance?: number;
     maxConcurrentInstances?: number;
     cooldownTime?: number;
+    persistent?: boolean;
 
     constructor(
         name: string,
@@ -91,6 +86,7 @@ export class ClassConfiguration {
         maxConcurrentRequestsPerInstance?: number,
         maxConcurrentInstances?: number,
         cooldownTime?: number,
+        persistent?: boolean,
     ) {
         this.name = name;
         this.path = path;
@@ -106,6 +102,7 @@ export class ClassConfiguration {
         this.maxConcurrentRequestsPerInstance = maxConcurrentRequestsPerInstance;
         this.maxConcurrentInstances = maxConcurrentInstances;
         this.cooldownTime = cooldownTime;
+        this.persistent = persistent;
     }
 }
 
@@ -122,6 +119,7 @@ export class FunctionConfiguration {
     maxConcurrentRequestsPerInstance?: number;
     maxConcurrentInstances?: number;
     cooldownTime?: number;
+    persistent?: boolean;
 
     constructor(
         name: string,
@@ -136,6 +134,7 @@ export class FunctionConfiguration {
         maxConcurrentRequestsPerInstance?: number,
         maxConcurrentInstances?: number,
         cooldownTime?: number,
+        persistent?: boolean,
     ) {
         this.name = name;
         this.path = path;
@@ -149,6 +148,7 @@ export class FunctionConfiguration {
         this.maxConcurrentRequestsPerInstance = maxConcurrentRequestsPerInstance;
         this.maxConcurrentInstances = maxConcurrentInstances;
         this.cooldownTime = cooldownTime;
+        this.persistent = persistent;
     }
 }
 
@@ -230,17 +230,14 @@ export class ProjectConfiguration {
             case Language.ts:
             case Language.js:
                 this.options = {
-                    nodeRuntime: yamlConfiguration.backend.language.runtime || DEFAULT_NODE_RUNTIME,
-                    architecture:
-                        yamlConfiguration.backend.language.architecture || DEFAULT_ARCHITECTURE,
+                    nodeRuntime: yamlConfiguration.backend.language.runtime,
+                    architecture: yamlConfiguration.backend.language.architecture,
                 } as NodeOptions;
                 break;
             case Language.python:
                 this.options = {
-                    pythonRuntime:
-                        yamlConfiguration.backend.language.runtime || DEFAULT_PYTHON_RUNTIME,
-                    architecture:
-                        yamlConfiguration.backend.language.architecture || DEFAULT_ARCHITECTURE,
+                    pythonRuntime: yamlConfiguration.backend.language.runtime,
+                    architecture: yamlConfiguration.backend.language.architecture,
                 } as PythonOptions;
                 break;
         }
@@ -300,6 +297,7 @@ export class ProjectConfiguration {
                 maxConcurrentRequestsPerInstance: c.maxConcurrentRequestsPerInstance,
                 maxConcurrentInstances: c.maxConcurrentInstances,
                 cooldownTime: c.cooldownTime,
+                persistent: c.persistent,
             };
         });
 
@@ -318,6 +316,7 @@ export class ProjectConfiguration {
                     maxConcurrentRequestsPerInstance: f.maxConcurrentRequestsPerInstance,
                     maxConcurrentInstances: f.maxConcurrentInstances,
                     cooldownTime: f.cooldownTime,
+                    persistent: f.persistent,
                 };
             }) || [];
     }

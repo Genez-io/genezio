@@ -45,7 +45,10 @@ import {
     uploadUserCode,
 } from "../utils.js";
 import { readOrAskConfig } from "../utils.js";
-import { SSRFrameworkComponentType } from "../../../models/projectOptions.js";
+import {
+    DEFAULT_ARCHITECTURE,
+    SSRFrameworkComponentType,
+} from "../../../models/projectOptions.js";
 import { addSSRComponentToConfig } from "../../analyze/utils.js";
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
@@ -362,6 +365,12 @@ async function deployFunction(
         entry: "start.mjs",
         handler: "handler",
         type: FunctionType.httpServer,
+        timeout: config.nextjs?.timeout,
+        storageSize: config.nextjs?.storageSize,
+        instanceSize: config.nextjs?.instanceSize,
+        maxConcurrentRequestsPerInstance: config.nextjs?.maxConcurrentRequestsPerInstance,
+        maxConcurrentInstances: config.nextjs?.maxConcurrentInstances,
+        cooldownTime: config.nextjs?.cooldownTime,
     };
 
     const deployConfig: YamlProjectConfiguration = {
@@ -370,9 +379,9 @@ async function deployFunction(
             path: ".",
             language: {
                 name: Language.ts,
-                runtime: "nodejs20.x",
-                architecture: "x86_64",
                 packageManager: PackageManagerType.npm,
+                architecture: DEFAULT_ARCHITECTURE,
+                ...(config.nextjs?.runtime !== undefined && { runtime: config.nextjs.runtime }),
             },
             functions: [serverFunction],
         },
@@ -451,13 +460,14 @@ async function deployFunction(
  */
 function writeNextConfig(cwd: string, region: string) {
     const configExtensions = ["js", "cjs", "mjs", "ts"];
-    const existingConfig = configExtensions.find((ext) =>
+    let existingConfig = configExtensions.find((ext) =>
         fs.existsSync(path.join(cwd, `next.config.${ext}`)),
     );
 
     if (!existingConfig) {
         const extension = determineFileExtension(cwd);
         writeConfigFiles(cwd, extension, region);
+        existingConfig = extension;
     }
 
     const genezioConfigPath = path.join(cwd, `next.config.${existingConfig}`);

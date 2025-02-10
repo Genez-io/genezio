@@ -12,6 +12,8 @@ import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v
 import { nestJsDeploy } from "./nestjs/deploy.js";
 import { zipDeploy } from "./zip/deploy.js";
 import { remixDeploy } from "./remix/deploy.js";
+import { streamlitDeploy } from "./streamlit/deploy.js";
+import { YAMLLanguageRuntime } from "../../projectConfiguration/yaml/v2.js";
 
 export type SSRFrameworkComponent = {
     path: string;
@@ -25,6 +27,8 @@ export type SSRFrameworkComponent = {
         [key: string]: string;
     };
     subdomain?: string;
+    runtime?: YAMLLanguageRuntime;
+    entryFile?: string;
 };
 
 export async function deployCommand(options: GenezioDeployOptions) {
@@ -66,6 +70,10 @@ export async function deployCommand(options: GenezioDeployOptions) {
                 debugLogger.debug("Deploying Remix app");
                 await remixDeploy(options);
                 break;
+            case DeployType.Streamlit:
+                debugLogger.debug("Deploying Streamlit app");
+                await streamlitDeploy(options);
+                break;
         }
     }
 }
@@ -79,6 +87,7 @@ export enum DeployType {
     Nest = "nest",
     Zip = "zip",
     Remix = "remix",
+    Streamlit = "streamlit",
 }
 
 /**
@@ -128,6 +137,9 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         }
         if (config.remix) {
             deployableComponents.push(DeployType.Remix);
+        }
+        if (config.streamlit) {
+            deployableComponents.push(DeployType.Streamlit);
         }
 
         // This ensures backwards compatibility for next/nuxt projects
@@ -196,6 +208,26 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
             )
         ) {
             return [DeployType.Remix];
+        }
+    }
+
+    // Check if requirements.txt or pyproject.toml exists
+    if (
+        fs.existsSync(path.join(cwd, "requirements.txt")) ||
+        fs.existsSync(path.join(cwd, "pyproject.toml"))
+    ) {
+        if (fs.existsSync(path.join(cwd, "requirements.txt"))) {
+            const requirementsTxt = fs.readFileSync(path.join(cwd, "requirements.txt"), "utf-8");
+            if (requirementsTxt.includes("streamlit")) {
+                return [DeployType.Streamlit];
+            }
+        }
+
+        if (fs.existsSync(path.join(cwd, "pyproject.toml"))) {
+            const pyprojectToml = fs.readFileSync(path.join(cwd, "pyproject.toml"), "utf-8");
+            if (pyprojectToml.includes("streamlit")) {
+                return [DeployType.Streamlit];
+            }
         }
     }
 

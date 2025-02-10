@@ -25,6 +25,7 @@ import {
     isNestjsComponent,
     isRemixComponent,
     isEmberComponent,
+    isStreamlitComponent,
 } from "./frameworks.js";
 import { generateDatabaseName, readOrAskConfig } from "../deploy/utils.js";
 import {
@@ -32,7 +33,11 @@ import {
     packageManagers,
     PYTHON_DEFAULT_PACKAGE_MANAGER,
 } from "../../packageManagers/packageManager.js";
-import { SSRFrameworkComponentType } from "../../models/projectOptions.js";
+import {
+    DEFAULT_NODE_RUNTIME,
+    DEFAULT_PYTHON_RUNTIME,
+    SSRFrameworkComponentType,
+} from "../../models/projectOptions.js";
 import { RawYamlProjectConfiguration, YAMLLanguage } from "../../projectConfiguration/yaml/v2.js";
 import {
     addBackendComponentToConfig,
@@ -55,6 +60,7 @@ import {
     FLASK_PATTERN,
     PYTHON_LAMBDA_PATTERN,
     SERVERLESS_HTTP_PATTERN,
+    STREAMLIT_PATTERN,
 } from "./constants.js";
 import { analyzeEnvironmentVariableExampleFile, ProjectEnvironment } from "./agent.js";
 
@@ -146,7 +152,15 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 `Configuration file found at ${configPath}. Skipping analysis. To overwrite the configuration file, run \`genezio analyze --force\` flag.`,
             );
         }
+        return;
     }
+
+    // Create a configuration object to add components to
+    let genezioConfig = (await readOrAskConfig(
+        configPath,
+        options.name,
+        options.region,
+    )) as RawYamlProjectConfiguration;
 
     // Search the key files in the root directory and return a map of filenames and relative paths
     const componentFiles = await findKeyFiles(rootDirectory);
@@ -162,17 +176,15 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             component: "other",
         });
         const result = report(format, frameworksDetected, {} as RawYamlProjectConfiguration);
+        if (options.format === SUPPORTED_FORMATS.TEXT) {
+            log.info(
+                `We didn't detect a supported stack in your project. If you need assistance or would like to request support for additional frameworks, please reach out to us at support.`,
+            );
+        }
         log.info(result);
         return;
     }
     debugLogger.debug("Key component files found:", componentFiles);
-
-    // Create a configuration object to add components to
-    let genezioConfig = (await readOrAskConfig(
-        configPath,
-        options.name,
-        options.region,
-    )) as RawYamlProjectConfiguration;
 
     // The order of the components matters - the first one found will be added to the config
     const dependenciesFiles = new Map(
@@ -255,6 +267,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 language: {
                     // TODO: Add support for detecting and building typescript backends
                     name: Language.js,
+                    runtime: DEFAULT_NODE_RUNTIME,
                 } as YAMLLanguage,
                 scripts: {
                     deploy: [`${packageManager.command} install`],
@@ -277,6 +290,37 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             frameworksDetected.backend = frameworksDetected.backend || [];
             frameworksDetected.backend.push({
                 component: "serverless-http",
+                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+            });
+            continue;
+        }
+
+        if (await isStreamlitComponent(contents)) {
+            const packageManagerType =
+                genezioConfig.streamlit?.packageManager || PYTHON_DEFAULT_PACKAGE_MANAGER;
+            const entryFile = await findEntryFile(
+                componentPath,
+                contents,
+                STREAMLIT_PATTERN,
+                PYTHON_DEFAULT_ENTRY_FILE,
+            );
+            debugLogger.debug("Streamlit entry file found:", entryFile);
+            await addSSRComponentToConfig(
+                options.config,
+                {
+                    path: componentPath,
+                    packageManager: packageManagerType,
+                    environment: mapEnvironmentVariableToConfig(
+                        resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+                    ),
+                    runtime: DEFAULT_PYTHON_RUNTIME,
+                    entryFile: entryFile,
+                },
+                SSRFrameworkComponentType.streamlit,
+            );
+            frameworksDetected.ssr = frameworksDetected.ssr || [];
+            frameworksDetected.ssr.push({
+                component: "streamlit",
                 environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
             });
             continue;
@@ -327,6 +371,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 language: {
                     // TODO: Add support for detecting and building typescript backends
                     name: Language.js,
+                    runtime: DEFAULT_NODE_RUNTIME,
                 } as YAMLLanguage,
                 environment: mapEnvironmentVariableToConfig(
                     resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
@@ -371,6 +416,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 language: {
                     // TODO: Add support for detecting and building typescript backends
                     name: Language.js,
+                    runtime: DEFAULT_NODE_RUNTIME,
                 } as YAMLLanguage,
                 scripts: {
                     deploy: [`${packageManager.command} install`],
@@ -415,6 +461,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 language: {
                     name: Language.python,
                     packageManager: packageManagerType,
+                    runtime: DEFAULT_PYTHON_RUNTIME,
                 } as YAMLLanguage,
                 environment: mapEnvironmentVariableToConfig(
                     resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
@@ -453,6 +500,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 language: {
                     name: Language.python,
                     packageManager: packageManagerType,
+                    runtime: DEFAULT_PYTHON_RUNTIME,
                 } as YAMLLanguage,
                 environment: mapEnvironmentVariableToConfig(
                     resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
@@ -494,6 +542,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 language: {
                     name: Language.python,
                     packageManager: packageManagerType,
+                    runtime: DEFAULT_PYTHON_RUNTIME,
                 } as YAMLLanguage,
                 environment: mapEnvironmentVariableToConfig(
                     resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
@@ -532,6 +581,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 language: {
                     name: Language.python,
                     packageManager: packageManagerType,
+                    runtime: DEFAULT_PYTHON_RUNTIME,
                 } as YAMLLanguage,
                 environment: mapEnvironmentVariableToConfig(
                     resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
@@ -806,6 +856,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 // TODO: Add support for detecting the language of the backend
                 language: {
                     name: Language.ts,
+                    runtime: DEFAULT_NODE_RUNTIME,
                 } as YAMLLanguage,
                 scripts: {
                     deploy: [`${packageManager.command} install`],

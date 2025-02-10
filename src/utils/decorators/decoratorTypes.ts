@@ -10,7 +10,7 @@ export type MethodInfo = {
 
 export type ClassDecoratorInfo = {
     name: string;
-    arguments?: { [key: string]: string | number };
+    arguments?: { [key: string]: string | number | boolean };
 };
 
 export type ClassInfo = {

@@ -53,6 +53,7 @@ export async function deployRequest(
                     maxConcurrentRequestsPerInstance: input?.maxConcurrentRequestsPerInstance,
                     maxConcurrentInstances: input?.maxConcurrentInstances,
                     cooldownTime: input?.cooldownTime,
+                    persistent: input?.persistent,
                 };
             }) ?? [],
         projectName: projectConfiguration.name,

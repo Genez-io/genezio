@@ -60,8 +60,6 @@ import dotenv from "dotenv";
 import { TsRequiredDepsBundler } from "../bundlers/node/typescriptRequiredDepsBundler.js";
 import {
     DEFAULT_NODE_RUNTIME,
-    NodeOptions,
-    PythonOptions,
     SSRFrameworkComponentType,
     SSRFrameworkName,
 } from "../models/projectOptions.js";
@@ -103,6 +101,7 @@ import { getFunctionHandlerProvider } from "../utils/getFunctionHandlerProvider.
 import { getFunctionEntryFilename } from "../utils/getFunctionEntryFilename.js";
 import { SSRFrameworkComponent } from "./deploy/command.js";
 import fs from "fs";
+import { detectPythonCommand } from "../utils/detectPythonCommand.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -344,7 +343,8 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
         !yamlProjectConfiguration.nuxt &&
         !yamlProjectConfiguration.nestjs &&
         !yamlProjectConfiguration.nitro &&
-        !yamlProjectConfiguration.remix
+        !yamlProjectConfiguration.remix &&
+        !yamlProjectConfiguration.streamlit
     ) {
         throw new UserError(
             "No backend or frontend components found in the genezio.yaml file. You need at least one component to start the local environment.",
@@ -597,16 +597,12 @@ async function startBackendWatcher(
             backendConfiguration.language.name === Language.ts ||
             backendConfiguration.language.name === Language.js
         ) {
-            const isNodeOptions = (
-                options: NodeOptions | PythonOptions | undefined,
-            ): options is NodeOptions => {
-                return (options as NodeOptions).nodeRuntime !== undefined;
-            };
-            if (!isNodeOptions(projectConfiguration.options)) {
-                throw new UserError("Invalid node options");
-            }
+            const nodeVersion =
+                (projectConfiguration.options && "nodeRuntime" in projectConfiguration.options
+                    ? projectConfiguration.options.nodeRuntime
+                    : undefined) || DEFAULT_NODE_RUNTIME;
 
-            reportDifferentNodeRuntime(projectConfiguration.options?.nodeRuntime);
+            reportDifferentNodeRuntime(nodeVersion);
         }
 
         // Start listening for changes in user's code
@@ -1733,7 +1729,51 @@ from wsgiref.simple_server import make_server
 import importlib.util
 import subprocess
 import os
+import logging
 from ${nameModule} import ${handler} as application
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s',
+    stream=sys.stdout
+)
+
+# WSGI middleware to capture logs
+def logging_middleware(app):
+    def wrapper(environ, start_response):
+        # Capture stdout and stderr
+        stdout = sys.stdout
+        stderr = sys.stderr
+        output = []
+
+        class LogCapturer:
+            def write(self, msg):
+                if msg.strip():  # Only log non-empty messages
+                    # Check if this is a WSGI access log (contains HTTP method and status code)
+                    http_methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
+                    if any(f'"{method}' in msg for method in http_methods):
+                        logging.info(msg.strip())
+                    else:
+                        from datetime import datetime
+                        now = datetime.now()
+                        formatted_time = now.strftime('%d/%b/%Y %H:%M:%S')
+                        logging.info(f'127.0.0.1 - - [{formatted_time}] {msg.strip()}')
+                output.append(msg)
+
+            def flush(self):
+                pass
+
+        sys.stdout = LogCapturer()
+        sys.stderr = LogCapturer()
+
+        try:
+            return app(environ, start_response)
+        finally:
+            sys.stdout = stdout
+            sys.stderr = stderr
+
+    return wrapper
 
 # Try to configure Django's ALLOWED_HOSTS before importing the application
 try:
@@ -1788,10 +1828,11 @@ if is_asgi:
             application,
             host="127.0.0.1",
             port=genezio_port,
-            reload=False
         )
 else:
-    with make_server("127.0.0.1", genezio_port, application) as httpd:
+    # Wrap the application with the logging middleware
+    wrapped_app = logging_middleware(application)
+    with make_server("127.0.0.1", genezio_port, wrapped_app) as httpd:
         print(f"Serving WSGI application on port {genezio_port}...")
         httpd.serve_forever()
 `;
@@ -1897,10 +1938,20 @@ async function startSsrFramework(
                     ? ["vite:dev", "--port", ssrPort]
                     : ["dev", "--port", ssrPort];
                 break;
+            case SSRFrameworkComponentType.streamlit:
+                command = "-m";
+                args = ["streamlit", "run", ssrConfig.entryFile!, "--server.port", ssrPort];
+                break;
             default:
                 throw new Error(`Unknown SSR framework: ${framework}`);
         }
-        const childProcess = spawn("npx", [command, ...args], {
+
+        const spawnCommand =
+            framework === SSRFrameworkComponentType.streamlit
+                ? (await detectPythonCommand()) || "python3"
+                : "npx";
+
+        const childProcess = spawn(spawnCommand, [command, ...args], {
             stdio: "pipe",
             env: {
                 ...process.env,
