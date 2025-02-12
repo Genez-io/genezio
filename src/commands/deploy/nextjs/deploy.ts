@@ -25,7 +25,6 @@ import {
     createFrontendProjectV2,
     CreateFrontendV2Origin,
 } from "../../../requests/createFrontendProject.js";
-import { setEnvironmentVariables } from "../../../requests/setEnvironmentVariables.js";
 import { GenezioCloudOutput } from "../../../cloudAdapter/cloudAdapter.js";
 import {
     DASHBOARD_URL,
@@ -47,6 +46,8 @@ import {
 import { readOrAskConfig } from "../utils.js";
 import { DEFAULT_ARCHITECTURE, SSRFrameworkComponentType } from "../../../models/projectOptions.js";
 import { addSSRComponentToConfig } from "../../analyze/utils.js";
+import { EnvironmentVariable } from "../../../models/environmentVariables.js";
+import { setEnvironmentVariables } from "../../../requests/setEnvironmentVariables.js";
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
     const packageManagerType = genezioConfig.nextjs?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
@@ -117,10 +118,16 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
 
     const cacheToken = randomUUID();
     const sharpInstallFolder = await installSharp(tempBuildComponentPath);
+    const environmentVariables = await uploadEnvVarsFromFile(
+        options.env,
+        options.stage,
+        genezioConfig,
+        SSRFrameworkComponentType.next,
+    );
 
     const [deploymentResult, domainName] = await Promise.all([
         // Deploy NextJs serverless functions
-        deployFunction(genezioConfig, tempBuildComponentPath, options.stage),
+        deployFunction(genezioConfig, tempBuildComponentPath, options.stage, environmentVariables),
         // Deploy NextJs static assets to S3
         deployStaticAssets(genezioConfig, options.stage, cacheToken, tempBuildComponentPath),
     ]);
@@ -143,15 +150,6 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
             genezioConfig,
             options.stage,
             tempBuildComponentPath,
-        ),
-        uploadEnvVarsFromFile(
-            options.env,
-            deploymentResult.projectId,
-            deploymentResult.projectEnvId,
-            tempBuildComponentPath,
-            options.stage || "prod",
-            genezioConfig,
-            SSRFrameworkComponentType.next,
         ),
     ]);
 
@@ -349,6 +347,7 @@ async function deployFunction(
     config: YamlProjectConfiguration,
     cwd: string,
     stage?: string,
+    environmentVariables?: EnvironmentVariable[],
 ): Promise<GenezioCloudOutput> {
     const cloudProvider = await getCloudProvider(config.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
@@ -437,6 +436,7 @@ async function deployFunction(
         { stage },
         ["nextjs"],
         projectGitRepositoryUrl,
+        environmentVariables,
     );
     debugLogger.debug(`Deployed functions: ${JSON.stringify(result.functions)}`);
 

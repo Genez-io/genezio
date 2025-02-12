@@ -23,6 +23,7 @@ import {
 } from "../utils.js";
 import path from "path";
 import fs from "fs";
+import git from "isomorphic-git";
 import { debugLogger, log } from "../../../utils/logging.js";
 import colors from "colors";
 import { Language } from "../../../projectConfiguration/yaml/models.js";
@@ -32,6 +33,7 @@ import { functionToCloudInput, getCloudAdapter } from "../genezio.js";
 import { FunctionType } from "../../../projectConfiguration/yaml/models.js";
 import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
 import { createTemporaryFolder } from "../../../utils/file.js";
+import { EnvironmentVariable } from "../../../models/environmentVariables.js";
 
 export async function streamlitDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
@@ -87,17 +89,19 @@ export async function streamlitDeploy(options: GenezioDeployOptions) {
     }
 
     const updatedGenezioConfig = await readOrAskConfig(options.config);
-    // Deploy the component
-    const result = await deployFunction(updatedGenezioConfig, options, tempCwd, startFileName);
-
-    await uploadEnvVarsFromFile(
+    const environmentVariables = await uploadEnvVarsFromFile(
         options.env,
-        result.projectId,
-        result.projectEnvId,
-        tempCwd,
-        options.stage || "prod",
+        options.stage,
         updatedGenezioConfig,
         SSRFrameworkComponentType.streamlit,
+    );
+    // Deploy the component
+    const result = await deployFunction(
+        updatedGenezioConfig,
+        options,
+        tempCwd,
+        startFileName,
+        environmentVariables,
     );
 
     await uploadUserCode(
@@ -134,6 +138,7 @@ async function deployFunction(
     options: GenezioDeployOptions,
     cwd: string,
     startFileName: string,
+    environmentVariables?: EnvironmentVariable[],
 ) {
     const cloudProvider = await getCloudProvider(config.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
@@ -182,11 +187,17 @@ async function deployFunction(
         projectConfiguration.functions.map((f) => functionToCloudInput(f, cwd, undefined, runtime)),
     );
 
+    const projectGitRepositoryUrl = (await git.listRemotes({ fs, dir: process.cwd() })).find(
+        (r) => r.remote === "origin",
+    )?.url;
+
     const result = await cloudAdapter.deploy(
         cloudInputs,
         projectConfiguration,
         { stage: options.stage },
         ["streamlit"],
+        projectGitRepositoryUrl,
+        environmentVariables,
     );
 
     return result;

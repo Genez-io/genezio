@@ -1,5 +1,6 @@
 import { $ } from "execa";
 import glob from "glob";
+import git from "isomorphic-git";
 import { GenezioDeployOptions } from "../../../models/commandOptions.js";
 import { UserError } from "../../../errors.js";
 import { YamlProjectConfiguration } from "../../../projectConfiguration/yaml/v2.js";
@@ -39,6 +40,7 @@ import { DeployType } from "../command.js";
 import { DEFAULT_ARCHITECTURE, SSRFrameworkComponentType } from "../../../models/projectOptions.js";
 import { addSSRComponentToConfig } from "../../analyze/utils.js";
 import { DASHBOARD_URL } from "../../../constants.js";
+import { EnvironmentVariable } from "../../../models/environmentVariables.js";
 
 export async function nuxtNitroDeploy(
     options: GenezioDeployOptions,
@@ -110,23 +112,20 @@ Note: If your Nuxt project was not migrated to Nuxt 3, please visit https://v2.n
         NitroOrNuxtFlag,
     );
 
+    const environmentVariables = await uploadEnvVarsFromFile(
+        options.env,
+        options.stage,
+        genezioConfig,
+        NitroOrNuxtFlag,
+    );
     const [cloudResult, domain] = await Promise.all([
-        deployFunction(genezioConfig, options, componentPath),
+        deployFunction(genezioConfig, options, componentPath, environmentVariables),
         deployStaticAssets(genezioConfig, options.stage, componentPath),
     ]);
 
     const [cdnUrl] = await Promise.all([
         deployCDN(cloudResult.functions, domain, genezioConfig, options.stage, componentPath),
         uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage, componentPath),
-        uploadEnvVarsFromFile(
-            options.env,
-            cloudResult.projectId,
-            cloudResult.projectEnvId,
-            componentPath,
-            options.stage || "prod",
-            genezioConfig,
-            NitroOrNuxtFlag,
-        ),
     ]);
 
     // Prepare services after deploying (authentication, etc)
@@ -146,6 +145,7 @@ async function deployFunction(
     config: YamlProjectConfiguration,
     options: GenezioDeployOptions,
     cwd: string,
+    environmentVariables?: EnvironmentVariable[],
 ) {
     const cloudProvider = await getCloudProvider(config.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
@@ -195,11 +195,17 @@ async function deployFunction(
         projectConfiguration.functions.map((f) => functionToCloudInput(f, ".")),
     );
 
+    const projectGitRepositoryUrl = (await git.listRemotes({ fs, dir: process.cwd() })).find(
+        (r) => r.remote === "origin",
+    )?.url;
+
     const result = await cloudAdapter.deploy(
         cloudInputs,
         projectConfiguration,
         { stage: options.stage },
         ["nuxt"],
+        projectGitRepositoryUrl,
+        environmentVariables,
     );
 
     return result;

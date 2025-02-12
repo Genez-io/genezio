@@ -155,6 +155,7 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_START,
             commandOptions: JSON.stringify(options),
         });
+
         deployClassesResult = await deployClasses(configuration, options).catch(
             async (error: AxiosError<Status>) => {
                 await GenezioTelemetry.sendEvent({
@@ -322,22 +323,6 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
                 "Something went wrong while syncing the cron jobs. Please try to redeploy your project. If the problem persists, please contact support at contact@genez.io.",
             );
         });
-    }
-
-    // Add backend environment variables for backend deployments
-    // At this point the project and environment should be available in deployClassesResult
-    if (configuration.backend && !options.frontend && deployClassesResult) {
-        const cwd = configuration.backend.path
-            ? path.resolve(configuration.backend.path)
-            : process.cwd();
-        await uploadEnvVarsFromFile(
-            options.env,
-            deployClassesResult.projectId,
-            deployClassesResult.projectEnvId,
-            cwd,
-            options.stage || "prod",
-            configuration,
-        );
     }
 
     await uploadUserCode(configuration.name, configuration.region, options.stage, process.cwd());
@@ -540,6 +525,12 @@ export async function deployClasses(
         (r) => r.remote === "origin",
     )?.url;
 
+    const environmentVariables = await uploadEnvVarsFromFile(
+        options.env,
+        options.stage,
+        configuration,
+    );
+
     // TODO: Enable cloud adapter setting for every class
     const cloudAdapter = getCloudAdapter(cloudProvider);
     const result = await cloudAdapter.deploy(
@@ -550,6 +541,7 @@ export async function deployClasses(
         },
         stack,
         /* sourceRepository= */ projectGitRepositoryUrl,
+        /* environmentVariables= */ environmentVariables,
     );
 
     if (

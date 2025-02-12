@@ -1,4 +1,5 @@
 import path from "path";
+import git from "isomorphic-git";
 import fs from "fs";
 import colors from "colors";
 import { $ } from "execa";
@@ -25,6 +26,7 @@ import { functionToCloudInput, getCloudAdapter } from "../genezio.js";
 import { FunctionType, Language } from "../../../projectConfiguration/yaml/models.js";
 import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
 import { DASHBOARD_URL } from "../../../constants.js";
+import { EnvironmentVariable } from "../../../models/environmentVariables.js";
 
 export async function nestJsDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
@@ -71,16 +73,17 @@ export async function nestJsDeploy(options: GenezioDeployOptions) {
         throw new UserError("Failed to build the NestJS project. Check the logs above.");
     });
 
-    const result = await deployFunction(genezioConfig, options, componentPath);
-
-    await uploadEnvVarsFromFile(
+    const environmentVariables = await uploadEnvVarsFromFile(
         options.env,
-        result.projectId,
-        result.projectEnvId,
-        componentPath,
-        options.stage || "prod",
+        options.stage,
         genezioConfig,
         SSRFrameworkComponentType.nestjs,
+    );
+    const result = await deployFunction(
+        genezioConfig,
+        options,
+        componentPath,
+        environmentVariables,
     );
 
     await uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage, componentPath);
@@ -107,6 +110,7 @@ async function deployFunction(
     config: YamlProjectConfiguration,
     options: GenezioDeployOptions,
     cwd: string,
+    environmentVariables?: EnvironmentVariable[],
 ) {
     const cloudProvider = await getCloudProvider(config.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
@@ -162,11 +166,17 @@ async function deployFunction(
         projectConfiguration.functions.map((f) => functionToCloudInput(f, functionPath)),
     );
 
+    const projectGitRepositoryUrl = (await git.listRemotes({ fs, dir: process.cwd() })).find(
+        (r) => r.remote === "origin",
+    )?.url;
+
     const result = await cloudAdapter.deploy(
         cloudInputs,
         projectConfiguration,
         { stage: options.stage },
         ["nestjs"],
+        /* sourceRepository */ projectGitRepositoryUrl,
+        /* environmentVariables */ environmentVariables,
     );
 
     return result;
