@@ -1,4 +1,6 @@
 import { $ } from "execa";
+import git from "isomorphic-git";
+import fs from "fs";
 import { UserError } from "../../../errors.js";
 import { debugLogger, log } from "../../../utils/logging.js";
 import {
@@ -20,16 +22,16 @@ import {
     GenezioFunctionMetadata,
     GenezioFunctionMetadataType,
 } from "../../../cloudAdapter/cloudAdapter.js";
-import { setEnvironmentVariables } from "../../../requests/setEnvironmentVariables.js";
 import { FunctionType } from "../../../projectConfiguration/yaml/models.js";
 import { createTemporaryFolder } from "../../../utils/file.js";
 import path from "path";
 import { reportSuccessFunctions } from "../../../utils/reporter.js";
 import { addContainerComponentToConfig } from "./utils.js";
 import { statSync } from "fs";
-import { ContainerComponentType } from "../../../models/projectOptions.js";
 import colors from "colors";
 import { DASHBOARD_URL } from "../../../constants.js";
+import { EnvironmentVariable } from "../../../models/environmentVariables.js";
+import { ContainerComponentType } from "../../../models/projectOptions.js";
 
 export async function dockerDeploy(options: GenezioDeployOptions) {
     const config = await readOrAskConfig(options.config);
@@ -143,6 +145,28 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
         ),
     );
 
+    const environmentVariables = await uploadEnvVarsFromFile(
+        options.env,
+        options.stage,
+        config,
+        ContainerComponentType.container,
+    );
+
+    const envVars: EnvironmentVariable[] = envs.map((env: string) => {
+        const components = env.split("=");
+        const key = components[0];
+        const value = components.slice(1).join("=");
+        return {
+            name: key,
+            value,
+        };
+    });
+    environmentVariables.push(...envVars);
+
+    const projectGitRepositoryUrl = (await git.listRemotes({ fs, dir: process.cwd() })).find(
+        (r) => r.remote === "origin",
+    )?.url;
+
     const cloudProvider = await getCloudProvider(projectConfiguration.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
     const metadata: GenezioFunctionMetadata = {
@@ -178,28 +202,8 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
             stage: options.stage,
         },
         ["docker"],
-    );
-
-    const envVars = envs.map((env: string) => {
-        const components = env.split("=");
-        const key = components[0];
-        const value = components.slice(1).join("=");
-        return {
-            name: key,
-            value,
-        };
-    });
-
-    await setEnvironmentVariables(result.projectId, result.projectEnvId, envVars);
-
-    await uploadEnvVarsFromFile(
-        options.env,
-        result.projectId,
-        result.projectEnvId,
-        process.cwd(),
-        options.stage || "prod",
-        config,
-        ContainerComponentType.container,
+        /* sourceRepository */ projectGitRepositoryUrl,
+        /* environmentVariables */ environmentVariables,
     );
 
     // Prepare services after deploying (authentication redirect urls)

@@ -1,4 +1,5 @@
 import path from "path";
+import git from "isomorphic-git";
 import fs from "fs";
 import colors from "colors";
 import { $ } from "execa";
@@ -26,6 +27,7 @@ import { FunctionType, Language } from "../../../projectConfiguration/yaml/model
 import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
 import { createTemporaryFolder } from "../../../utils/file.js";
 import { DASHBOARD_URL } from "../../../constants.js";
+import { EnvironmentVariable } from "../../../models/environmentVariables.js";
 
 export async function remixDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
@@ -182,18 +184,13 @@ export async function remixDeploy(options: GenezioDeployOptions) {
         serverMjsPath,
         isRemixVite ? serverRemixViteContent : serverRemixClassicContent,
     );
-
-    const result = await deployFunction(genezioConfig, options, tempBuildCwd);
-
-    await uploadEnvVarsFromFile(
+    const environmentVariables = await uploadEnvVarsFromFile(
         options.env,
-        result.projectId,
-        result.projectEnvId,
-        componentPath,
-        options.stage || "prod",
+        options.stage,
         genezioConfig,
         SSRFrameworkComponentType.remix,
     );
+    const result = await deployFunction(genezioConfig, options, tempBuildCwd, environmentVariables);
 
     await uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage, componentPath);
 
@@ -219,6 +216,7 @@ async function deployFunction(
     config: YamlProjectConfiguration,
     options: GenezioDeployOptions,
     cwd: string,
+    environmentVariables?: EnvironmentVariable[],
 ) {
     const cloudProvider = await getCloudProvider(config.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
@@ -264,12 +262,17 @@ async function deployFunction(
     const cloudInputs = await Promise.all(
         projectConfiguration.functions.map((f) => functionToCloudInput(f, cwd)),
     );
+    const projectGitRepositoryUrl = (await git.listRemotes({ fs, dir: process.cwd() })).find(
+        (r) => r.remote === "origin",
+    )?.url;
 
     const result = await cloudAdapter.deploy(
         cloudInputs,
         projectConfiguration,
         { stage: options.stage },
         ["remix"],
+        /* sourceRepository */ projectGitRepositoryUrl,
+        /* environmentVariables */ environmentVariables,
     );
 
     return result;
