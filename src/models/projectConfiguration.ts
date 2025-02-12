@@ -66,6 +66,8 @@ export class ClassConfiguration {
     timeout?: number;
     storageSize?: number;
     instanceSize?: InstanceSize;
+    vcpuCount?: number;
+    memoryMb?: number;
     maxConcurrentRequestsPerInstance?: number;
     maxConcurrentInstances?: number;
     cooldownTime?: number;
@@ -83,6 +85,8 @@ export class ClassConfiguration {
         timeout?: number,
         storageSize?: number,
         instanceSize?: InstanceSize,
+        vcpuCount?: number,
+        memoryMb?: number,
         maxConcurrentRequestsPerInstance?: number,
         maxConcurrentInstances?: number,
         cooldownTime?: number,
@@ -99,6 +103,8 @@ export class ClassConfiguration {
         this.timeout = timeout;
         this.storageSize = storageSize;
         this.instanceSize = instanceSize;
+        this.vcpuCount = vcpuCount;
+        this.memoryMb = memoryMb;
         this.maxConcurrentRequestsPerInstance = maxConcurrentRequestsPerInstance;
         this.maxConcurrentInstances = maxConcurrentInstances;
         this.cooldownTime = cooldownTime;
@@ -116,6 +122,8 @@ export class FunctionConfiguration {
     timeout?: number;
     storageSize?: number;
     instanceSize?: InstanceSize;
+    vcpuCount?: number;
+    memoryMb?: number;
     maxConcurrentRequestsPerInstance?: number;
     maxConcurrentInstances?: number;
     cooldownTime?: number;
@@ -131,6 +139,8 @@ export class FunctionConfiguration {
         timeout?: number,
         storageSize?: number,
         instanceSize?: InstanceSize,
+        vcpuCount?: number,
+        memoryMb?: number,
         maxConcurrentRequestsPerInstance?: number,
         maxConcurrentInstances?: number,
         cooldownTime?: number,
@@ -145,6 +155,8 @@ export class FunctionConfiguration {
         this.timeout = timeout;
         this.storageSize = storageSize;
         this.instanceSize = instanceSize;
+        this.vcpuCount = vcpuCount;
+        this.memoryMb = memoryMb;
         this.maxConcurrentRequestsPerInstance = maxConcurrentRequestsPerInstance;
         this.maxConcurrentInstances = maxConcurrentInstances;
         this.cooldownTime = cooldownTime;
@@ -294,6 +306,8 @@ export class ProjectConfiguration {
                 timeout: c.timeout,
                 storageSize: c.storageSize,
                 instanceSize: c.instanceSize,
+                vcpuCount: c.vcpuCount,
+                memoryMb: c.memoryMb,
                 maxConcurrentRequestsPerInstance: c.maxConcurrentRequestsPerInstance,
                 maxConcurrentInstances: c.maxConcurrentInstances,
                 cooldownTime: c.cooldownTime,
@@ -313,6 +327,8 @@ export class ProjectConfiguration {
                     timeout: f.timeout,
                     storageSize: f.storageSize,
                     instanceSize: f.instanceSize,
+                    vcpuCount: f.vcpuCount,
+                    memoryMb: f.memoryMb,
                     maxConcurrentRequestsPerInstance: f.maxConcurrentRequestsPerInstance,
                     maxConcurrentInstances: f.maxConcurrentInstances,
                     cooldownTime: f.cooldownTime,

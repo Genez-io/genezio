@@ -17,10 +17,7 @@ import {
     NODE_DEFAULT_PACKAGE_MANAGER,
     PackageManagerType,
 } from "../../../packageManagers/packageManager.js";
-import {
-    DEFAULT_ARCHITECTURE,
-    SSRFrameworkComponentType,
-} from "../../../models/projectOptions.js";
+import { DEFAULT_ARCHITECTURE, SSRFrameworkComponentType } from "../../../models/projectOptions.js";
 import { UserError } from "../../../errors.js";
 import { YamlProjectConfiguration } from "../../../projectConfiguration/yaml/v2.js";
 import { getCloudProvider } from "../../../requests/getCloudProvider.js";
@@ -234,6 +231,8 @@ async function deployFunction(
         timeout: config.remix?.timeout,
         storageSize: config.remix?.storageSize,
         instanceSize: config.remix?.instanceSize,
+        vcpuCount: config.remix?.vcpuCount,
+        memoryMb: config.remix?.memoryMb,
         maxConcurrentRequestsPerInstance: config.remix?.maxConcurrentRequestsPerInstance,
         maxConcurrentInstances: config.remix?.maxConcurrentInstances,
         cooldownTime: config.remix?.cooldownTime,

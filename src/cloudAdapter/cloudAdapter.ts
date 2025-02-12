@@ -46,6 +46,8 @@ export type GenezioCloudInput =
           timeout?: number;
           storageSize?: number;
           instanceSize?: InstanceSize;
+          vcpuCount?: number;
+          memoryMb?: number;
           maxConcurrentRequestsPerInstance?: number;
           maxConcurrentInstances?: number;
           cooldownTime?: number;
@@ -62,6 +64,8 @@ export type GenezioCloudInput =
           timeout?: number;
           storageSize?: number;
           instanceSize?: InstanceSize;
+          vcpuCount?: number;
+          memoryMb?: number;
           maxConcurrentRequestsPerInstance?: number;
           maxConcurrentInstances?: number;
           cooldownTime?: number;

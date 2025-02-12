@@ -50,6 +50,8 @@ export async function deployRequest(
                     timeout: input?.timeout,
                     storageSize: input?.storageSize,
                     instanceSize: input?.instanceSize,
+                    vcpuCount: input?.vcpuCount,
+                    memoryMb: input?.memoryMb,
                     maxConcurrentRequestsPerInstance: input?.maxConcurrentRequestsPerInstance,
                     maxConcurrentInstances: input?.maxConcurrentInstances,
                     cooldownTime: input?.cooldownTime,

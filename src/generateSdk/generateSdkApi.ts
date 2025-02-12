@@ -106,6 +106,8 @@ export function mapYamlClassToSdkClassConfiguration(
             timeout: yamlClass.timeout,
             storageSize: yamlClass.storageSize,
             instanceSize: yamlClass.instanceSize,
+            vcpuCount: yamlClass.vcpuCount,
+            memoryMb: yamlClass.memoryMb,
             maxConcurrentRequestsPerInstance: yamlClass.maxConcurrentRequestsPerInstance,
             maxConcurrentInstances: yamlClass.maxConcurrentInstances,
             cooldownTime: yamlClass.cooldownTime,

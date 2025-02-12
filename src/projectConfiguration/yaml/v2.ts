@@ -101,6 +101,8 @@ function parseGenezioConfig(config: unknown) {
         timeout: zod.number().optional(),
         storageSize: zod.number().optional(),
         instanceSize: zod.nativeEnum(InstanceSize).optional(),
+        vcpuCount: zod.number().optional(),
+        memoryMb: zod.number().optional(),
         maxConcurrentRequestsPerInstance: zod
             .number()
             .optional()
@@ -142,6 +144,8 @@ function parseGenezioConfig(config: unknown) {
             timeout: zod.number().optional(),
             storageSize: zod.number().optional(),
             instanceSize: zod.nativeEnum(InstanceSize).optional(),
+            vcpuCount: zod.number().optional(),
+            memoryMb: zod.number().optional(),
             maxConcurrentRequestsPerInstance: zod
                 .number()
                 .optional()
@@ -334,6 +338,8 @@ function parseGenezioConfig(config: unknown) {
         timeout: zod.number().optional(),
         storageSize: zod.number().optional(),
         instanceSize: zod.nativeEnum(InstanceSize).optional(),
+        vcpuCount: zod.number().optional(),
+        memoryMb: zod.number().optional(),
         maxConcurrentRequestsPerInstance: zod
             .number()
             .optional()
@@ -361,6 +367,8 @@ function parseGenezioConfig(config: unknown) {
         timeout: zod.number().optional(),
         storageSize: zod.number().optional(),
         instanceSize: zod.nativeEnum(InstanceSize).optional(),
+        vcpuCount: zod.number().optional(),
+        memoryMb: zod.number().optional(),
         maxConcurrentRequestsPerInstance: zod
             .number()
             .optional()
@@ -430,9 +438,7 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
 
     return defaultConfig as DeepRequired<
         typeof defaultConfig,
-        | "region"
-        | "backend.language.packageManager"
-        | "backend.language.architecture"
+        "region" | "backend.language.packageManager" | "backend.language.architecture"
     > & {
         frontend: typeof defaultConfig.frontend;
     };
