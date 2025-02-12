@@ -17,10 +17,7 @@ import {
     NODE_DEFAULT_PACKAGE_MANAGER,
     PackageManagerType,
 } from "../../../packageManagers/packageManager.js";
-import {
-    DEFAULT_ARCHITECTURE,
-    SSRFrameworkComponentType,
-} from "../../../models/projectOptions.js";
+import { DEFAULT_ARCHITECTURE, SSRFrameworkComponentType } from "../../../models/projectOptions.js";
 import { UserError } from "../../../errors.js";
 import { YamlProjectConfiguration } from "../../../projectConfiguration/yaml/v2.js";
 import { getCloudProvider } from "../../../requests/getCloudProvider.js";
@@ -131,6 +128,8 @@ async function deployFunction(
         timeout: config.nestjs?.timeout,
         storageSize: config.nestjs?.storageSize,
         instanceSize: config.nestjs?.instanceSize,
+        vcpuCount: config.nestjs?.vcpuCount,
+        memoryMb: config.nestjs?.memoryMb,
         maxConcurrentRequestsPerInstance: config.nestjs?.maxConcurrentRequestsPerInstance,
         maxConcurrentInstances: config.nestjs?.maxConcurrentInstances,
         cooldownTime: config.nestjs?.cooldownTime,

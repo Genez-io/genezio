@@ -146,6 +146,8 @@ async function deployFunction(
         timeout: config.streamlit?.timeout,
         storageSize: config.streamlit?.storageSize,
         instanceSize: config.streamlit?.instanceSize,
+        vcpuCount: config.streamlit?.vcpuCount,
+        memoryMb: config.streamlit?.memoryMb,
         maxConcurrentRequestsPerInstance: config.streamlit?.maxConcurrentRequestsPerInstance,
         maxConcurrentInstances: config.streamlit?.maxConcurrentInstances,
         cooldownTime: config.streamlit?.cooldownTime,

@@ -36,10 +36,7 @@ import {
 } from "../../../requests/createFrontendProject.js";
 import { DeployCodeFunctionResponse } from "../../../models/deployCodeResponse.js";
 import { DeployType } from "../command.js";
-import {
-    DEFAULT_ARCHITECTURE,
-    SSRFrameworkComponentType,
-} from "../../../models/projectOptions.js";
+import { DEFAULT_ARCHITECTURE, SSRFrameworkComponentType } from "../../../models/projectOptions.js";
 import { addSSRComponentToConfig } from "../../analyze/utils.js";
 import { DASHBOARD_URL } from "../../../constants.js";
 
@@ -164,6 +161,8 @@ async function deployFunction(
             timeout: config.nuxt?.timeout,
             storageSize: config.nuxt?.storageSize,
             instanceSize: config.nuxt?.instanceSize,
+            vcpuCount: config.nuxt?.vcpuCount,
+            memoryMb: config.nuxt?.memoryMb,
             maxConcurrentRequestsPerInstance: config.nuxt?.maxConcurrentRequestsPerInstance,
             maxConcurrentInstances: config.nuxt?.maxConcurrentInstances,
             cooldownTime: config.nuxt?.cooldownTime,

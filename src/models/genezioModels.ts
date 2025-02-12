@@ -377,6 +377,8 @@ export type SdkClassConfiguration = {
     timeout?: number;
     storageSize?: number;
     instanceSize?: InstanceSize;
+    vcpuCount?: number;
+    memoryMb?: number;
     maxConcurrentRequestsPerInstance?: number;
     maxConcurrentInstances?: number;
     cooldownTime?: number;

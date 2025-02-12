@@ -164,6 +164,8 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
                 timeout: config.container!.timeout,
                 storageSize: config.container!.storageSize,
                 instanceSize: config.container!.instanceSize,
+                vcpuCount: config.container!.vcpuCount,
+                memoryMb: config.container!.memoryMb,
                 maxConcurrentRequestsPerInstance:
                     config.container!.maxConcurrentRequestsPerInstance,
                 maxConcurrentInstances: config.container!.maxConcurrentInstances,

@@ -45,10 +45,7 @@ import {
     uploadUserCode,
 } from "../utils.js";
 import { readOrAskConfig } from "../utils.js";
-import {
-    DEFAULT_ARCHITECTURE,
-    SSRFrameworkComponentType,
-} from "../../../models/projectOptions.js";
+import { DEFAULT_ARCHITECTURE, SSRFrameworkComponentType } from "../../../models/projectOptions.js";
 import { addSSRComponentToConfig } from "../../analyze/utils.js";
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
@@ -368,6 +365,8 @@ async function deployFunction(
         timeout: config.nextjs?.timeout,
         storageSize: config.nextjs?.storageSize,
         instanceSize: config.nextjs?.instanceSize,
+        vcpuCount: config.nextjs?.vcpuCount,
+        memoryMb: config.nextjs?.memoryMb,
         maxConcurrentRequestsPerInstance: config.nextjs?.maxConcurrentRequestsPerInstance,
         maxConcurrentInstances: config.nextjs?.maxConcurrentInstances,
         cooldownTime: config.nextjs?.cooldownTime,

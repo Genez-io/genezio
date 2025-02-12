@@ -61,6 +61,8 @@ export async function scanClassesForDecorators(
                 let timeout: number | undefined;
                 let storageSize: number | undefined;
                 let instanceSize: InstanceSize | undefined;
+                let vcpuCount: number | undefined;
+                let memoryMb: number | undefined;
                 let maxConcurrentRequestsPerInstance: number | undefined;
                 let maxConcurrentInstances: number | undefined;
                 let cooldownTime: number | undefined;
@@ -111,6 +113,8 @@ export async function scanClassesForDecorators(
                     instanceSize = deployDecoratorFound.arguments["instanceSize"] as
                         | InstanceSize
                         | undefined;
+                    vcpuCount = deployDecoratorFound.arguments["vcpuCount"] as number | undefined;
+                    memoryMb = deployDecoratorFound.arguments["memoryMb"] as number | undefined;
                     maxConcurrentRequestsPerInstance = deployDecoratorFound.arguments[
                         "maxConcurrentRequestsPerInstance"
                     ] as number | undefined;
@@ -132,6 +136,8 @@ export async function scanClassesForDecorators(
                     timeout: timeout,
                     storageSize: storageSize,
                     instanceSize: instanceSize as InstanceSize,
+                    vcpuCount: vcpuCount,
+                    memoryMb: memoryMb,
                     maxConcurrentRequestsPerInstance: maxConcurrentRequestsPerInstance,
                     maxConcurrentInstances: maxConcurrentInstances,
                     cooldownTime: cooldownTime,

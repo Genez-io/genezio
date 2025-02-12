@@ -72,6 +72,8 @@ export function getAstSummary(classesInfo: SdkGeneratorClassesInfoInput[]): AstS
                 timeout: classConfiguration.classConfiguration.timeout,
                 storageSize: classConfiguration.classConfiguration.storageSize,
                 instanceSize: classConfiguration.classConfiguration.instanceSize,
+                vcpuCount: classConfiguration.classConfiguration.vcpuCount,
+                memoryMb: classConfiguration.classConfiguration.memoryMb,
                 maxConcurrentRequestsPerInstance:
                     classConfiguration.classConfiguration.maxConcurrentRequestsPerInstance,
                 maxConcurrentInstances:

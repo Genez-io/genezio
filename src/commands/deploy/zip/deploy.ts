@@ -57,6 +57,8 @@ export async function zipDeploy(options: GenezioDeployOptions) {
             entryFile: f.entry,
             timeout: f.timeout,
             instanceSize: f.instanceSize,
+            vcpuCount: f.vcpuCount,
+            memoryMb: f.memoryMb,
             storageSize: f.storageSize,
             maxConcurrentRequestsPerInstance: f.maxConcurrentRequestsPerInstance,
             maxConcurrentInstances: f.maxConcurrentInstances,
