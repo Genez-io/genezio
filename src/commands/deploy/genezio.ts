@@ -68,6 +68,7 @@ import {
     evaluateResource,
     prepareServicesPreBackendDeployment,
     prepareServicesPostBackendDeployment,
+    excludedFiles,
 } from "./utils.js";
 import { expandEnvironmentVariables } from "../../utils/environmentVariables.js";
 import { getFunctionHandlerProvider } from "../../utils/getFunctionHandlerProvider.js";
@@ -586,29 +587,6 @@ export async function deployClasses(
     }
 }
 
-export async function getIgnorePatterns(backendPath: string): Promise<string[]> {
-    // Default patterns to always ignore
-    const defaultPatterns = ["venv", ".venv", "__pycache__", ".pytest_cache"];
-
-    try {
-        const genezioIgnorePath = path.join(backendPath, ".genezioignore");
-        if (await fileExists(genezioIgnorePath)) {
-            const customPatterns = fs
-                .readFileSync(genezioIgnorePath, "utf8")
-                .split("\n")
-                .map((line) => line.trim())
-                .filter((line) => line && !line.startsWith("#")); // Remove empty lines and comments
-            debugLogger.debug(`.genezioignore file found at ${genezioIgnorePath}`);
-            debugLogger.debug(`Custom patterns: ${customPatterns}`);
-            return [...defaultPatterns, ...customPatterns];
-        }
-    } catch (error) {
-        debugLogger.debug(`Error reading .geneziognore file: ${error}`);
-    }
-
-    return defaultPatterns;
-}
-
 export async function functionToCloudInput(
     functionElement: FunctionConfiguration,
     backendPath: string,
@@ -637,13 +615,11 @@ export async function functionToCloudInput(
         `genezioDeploy.zip`,
     );
 
-    const ignorePatterns = await getIgnorePatterns(backendPath);
-
     if (functionElement.language === "python") {
         await fsExtra.copy(path.join(backendPath), tmpFolderPath, {
             filter: (src) => {
                 const relativePath = path.relative(backendPath, src);
-                return !ignorePatterns.some((pattern) => relativePath.includes(pattern));
+                return !excludedFiles.some((pattern) => relativePath.includes(pattern));
             },
         });
     } else {
@@ -651,7 +627,7 @@ export async function functionToCloudInput(
         await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath, {
             filter: (src) => {
                 const relativePath = path.relative(backendPath, src);
-                return !ignorePatterns.some((pattern) => relativePath.includes(pattern));
+                return !excludedFiles.some((pattern) => relativePath.includes(pattern));
             },
         });
     }
