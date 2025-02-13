@@ -41,6 +41,7 @@ import { DEFAULT_ARCHITECTURE, SSRFrameworkComponentType } from "../../../models
 import { addSSRComponentToConfig } from "../../analyze/utils.js";
 import { DASHBOARD_URL } from "../../../constants.js";
 import { EnvironmentVariable } from "../../../models/environmentVariables.js";
+import { warningMissingEnvironmentVariables } from "../../../utils/environmentVariables.js";
 
 export async function nuxtNitroDeploy(
     options: GenezioDeployOptions,
@@ -127,6 +128,8 @@ Note: If your Nuxt project was not migrated to Nuxt 3, please visit https://v2.n
         deployCDN(cloudResult.functions, domain, genezioConfig, options.stage, componentPath),
         uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage, componentPath),
     ]);
+
+    await warningMissingEnvironmentVariables(genezioConfig.nuxt?.path || "./", cloudResult.projectId, cloudResult.projectEnvId);
 
     // Prepare services after deploying (authentication, etc)
     await prepareServicesPostBackendDeployment(genezioConfig, genezioConfig.name, options.stage);

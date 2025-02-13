@@ -27,6 +27,7 @@ import { FunctionType, Language } from "../../../projectConfiguration/yaml/model
 import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
 import { DASHBOARD_URL } from "../../../constants.js";
 import { EnvironmentVariable } from "../../../models/environmentVariables.js";
+import { warningMissingEnvironmentVariables } from "../../../utils/environmentVariables.js";
 
 export async function nestJsDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
@@ -89,6 +90,8 @@ export async function nestJsDeploy(options: GenezioDeployOptions) {
     await uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage, componentPath);
 
     const functionUrl = result.functions.find((f) => f.name === "function-nest")?.cloudUrl;
+
+    await warningMissingEnvironmentVariables(genezioConfig.nestjs?.path || "./", result.projectId, result.projectEnvId);
 
     await prepareServicesPostBackendDeployment(genezioConfig, genezioConfig.name, options.stage);
 

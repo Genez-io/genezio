@@ -32,6 +32,7 @@ import colors from "colors";
 import { DASHBOARD_URL } from "../../../constants.js";
 import { EnvironmentVariable } from "../../../models/environmentVariables.js";
 import { ContainerComponentType } from "../../../models/projectOptions.js";
+import { warningMissingEnvironmentVariables } from "../../../utils/environmentVariables.js";
 
 export async function dockerDeploy(options: GenezioDeployOptions) {
     const config = await readOrAskConfig(options.config);
@@ -205,6 +206,8 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
         /* sourceRepository */ projectGitRepositoryUrl,
         /* environmentVariables */ environmentVariables,
     );
+
+    await warningMissingEnvironmentVariables(config.container?.path || "./", result.projectId, result.projectEnvId);
 
     // Prepare services after deploying (authentication redirect urls)
     await prepareServicesPostBackendDeployment(config, config.name, options.stage);

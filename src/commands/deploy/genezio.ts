@@ -70,7 +70,7 @@ import {
     prepareServicesPostBackendDeployment,
     excludedFiles,
 } from "./utils.js";
-import { expandEnvironmentVariables } from "../../utils/environmentVariables.js";
+import { expandEnvironmentVariables, warningMissingEnvironmentVariables } from "../../utils/environmentVariables.js";
 import { getFunctionHandlerProvider } from "../../utils/getFunctionHandlerProvider.js";
 import { getFunctionEntryFilename } from "../../utils/getFunctionEntryFilename.js";
 import { CronDetails } from "../../models/requests.js";
@@ -171,6 +171,10 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_END,
             commandOptions: JSON.stringify(options),
         });
+
+        if (deployClassesResult) {
+            await warningMissingEnvironmentVariables(backendCwd, deployClassesResult?.projectId, deployClassesResult?.projectEnvId);
+        }
     }
 
     const frontendUrls = [];
