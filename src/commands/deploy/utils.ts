@@ -1080,7 +1080,8 @@ export async function uploadEnvVarsFromFile(
     }
 }
 
-const excludedFiles = [
+// Variables to be excluded from the zip file for the project code (.genezioignore)
+export const excludedFiles = [
     "projectCode.zip",
     "**/projectCode.zip",
     "**/node_modules/*",
@@ -1151,6 +1152,26 @@ const excludedFiles = [
     ".env.test.local",
     ".env.production.local",
     ".env.local",
+    // ignore python virtual environment
+    "**/venv/*",
+    ".venv/*",
+    "venv/*",
+    "**/venv",
+    ".venv",
+    "venv",
+    // python cache
+    "**/__pycache__/*",
+    ".pycache/*",
+    ".pycache",
+    "**/__pycache__",
+    "**/__pycache__/*",
+    // .pytest_cache
+    "**/pytest_cache/*",
+    ".pytest_cache/*",
+    "pytest_cache/*",
+    "**/pytest_cache",
+    ".pytest_cache",
+    "pytest_cache",
 ];
 
 type Patterns = {

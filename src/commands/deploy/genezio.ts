@@ -68,6 +68,7 @@ import {
     evaluateResource,
     prepareServicesPreBackendDeployment,
     prepareServicesPostBackendDeployment,
+    excludedFiles,
 } from "./utils.js";
 import { expandEnvironmentVariables } from "../../utils/environmentVariables.js";
 import { getFunctionHandlerProvider } from "../../utils/getFunctionHandlerProvider.js";
@@ -615,7 +616,12 @@ export async function functionToCloudInput(
     );
 
     if (functionElement.language === "python") {
-        await fsExtra.copy(path.join(backendPath), tmpFolderPath);
+        await fsExtra.copy(path.join(backendPath), tmpFolderPath, {
+            filter: (src) => {
+                const relativePath = path.relative(backendPath, src);
+                return !excludedFiles.some((pattern) => relativePath.includes(pattern));
+            },
+        });
     } else {
         // copy everything to the temporary folder
         await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath);
