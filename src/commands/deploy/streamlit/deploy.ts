@@ -34,6 +34,7 @@ import { FunctionType } from "../../../projectConfiguration/yaml/models.js";
 import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
 import { createTemporaryFolder } from "../../../utils/file.js";
 import { EnvironmentVariable } from "../../../models/environmentVariables.js";
+import { warningMissingEnvironmentVariables } from "../../../utils/environmentVariables.js";
 
 export async function streamlitDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
@@ -112,6 +113,8 @@ export async function streamlitDeploy(options: GenezioDeployOptions) {
     );
 
     const functionUrl = result.functions.find((f) => f.name === "function-streamlit")?.cloudUrl;
+
+    await warningMissingEnvironmentVariables(genezioConfig.streamlit?.path || "./", result.projectId, result.projectEnvId);
 
     await prepareServicesPostBackendDeployment(
         updatedGenezioConfig,

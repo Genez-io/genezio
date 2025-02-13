@@ -1,9 +1,12 @@
 import inquirer from "inquirer";
-import { fileExists } from "./file.js";
-import { getEnvironmentVariables } from "../requests/getEnvironmentVariables.js";
 import path from "path";
+import colors from "colors";
+import { fileExists, readEnvironmentVariablesFile } from "./file.js";
+import { getEnvironmentVariables } from "../requests/getEnvironmentVariables.js";
 import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
 import { evaluateResource } from "../commands/deploy/utils.js";
+import { DASHBOARD_URL } from "../constants.js";
+import { log } from "./logging.js";
 
 export type ConfigurationVariable =
     | {
@@ -124,6 +127,33 @@ export async function promptToConfirmSettingEnvironmentVariables(envVars: string
     }
 
     return true;
+}
+
+
+export async function warningMissingEnvironmentVariables(cwd: string, projectId: string, projectEnvId: string) {
+    const envFileFullPath = path.join(cwd, ".env");
+    if (!(await fileExists(envFileFullPath))) {
+        return;
+    }
+    const envVars = await readEnvironmentVariablesFile(envFileFullPath);
+    if (envVars.length === 0) {
+        return
+    }
+
+    const missingEnvVars = await getUnsetEnvironmentVariables(
+        envVars.map((envVar) => envVar.name),
+        projectId,
+        projectEnvId,
+    );
+
+    if (missingEnvVars.length === 0) {
+        return;
+    }
+    log.warn(
+        `Environment variables ${missingEnvVars.join(", ")} are not set remotely. Please set them using the dashboard ${colors.cyan(
+            DASHBOARD_URL,
+        )}`,
+    );
 }
 
 /**

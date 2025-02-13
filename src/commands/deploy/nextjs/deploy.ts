@@ -48,6 +48,7 @@ import { DEFAULT_ARCHITECTURE, SSRFrameworkComponentType } from "../../../models
 import { addSSRComponentToConfig } from "../../analyze/utils.js";
 import { EnvironmentVariable } from "../../../models/environmentVariables.js";
 import { setEnvironmentVariables } from "../../../requests/setEnvironmentVariables.js";
+import { warningMissingEnvironmentVariables } from "../../../utils/environmentVariables.js";
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
     const packageManagerType = genezioConfig.nextjs?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
@@ -152,6 +153,8 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
             tempBuildComponentPath,
         ),
     ]);
+
+    await warningMissingEnvironmentVariables(genezioConfig.nextjs?.path || "./", deploymentResult.projectId, deploymentResult.projectEnvId);
 
     await prepareServicesPostBackendDeployment(genezioConfig, genezioConfig.name, options.stage);
 
