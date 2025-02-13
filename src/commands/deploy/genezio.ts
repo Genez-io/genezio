@@ -616,9 +616,12 @@ export async function functionToCloudInput(
     );
 
     if (functionElement.language === "python") {
-        await fsExtra.copy(path.join(backendPath), tmpFolderPath, {
+        await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath, {
             filter: (src) => {
-                const relativePath = path.relative(backendPath, src);
+                const relativePath = path.relative(
+                    path.join(backendPath, functionElement.path),
+                    src,
+                );
                 return !excludedFiles.some((pattern) => relativePath.includes(pattern));
             },
         });
@@ -648,9 +651,9 @@ export async function functionToCloudInput(
             type: GenezioFunctionMetadataType.Python,
             app_name: functionElement.handler,
         };
-        // Requirements file must be in the root of the backend folder
-        const requirementsPath = path.join(backendPath, "requirements.txt");
-        const pyProjectTomlPath = path.join(backendPath, "pyproject.toml");
+
+        const requirementsPath = path.join(backendPath, functionElement.path, "requirements.txt");
+        const pyProjectTomlPath = path.join(backendPath, functionElement.path, "pyproject.toml");
         if (fs.existsSync(requirementsPath) || fs.existsSync(pyProjectTomlPath)) {
             const pathForDependencies = path.join(tmpFolderPath, "packages");
             const packageManager = packageManagers[PYTHON_DEFAULT_PACKAGE_MANAGER];
@@ -684,6 +687,8 @@ export async function functionToCloudInput(
 
             if (packageManager.command === "pip" || packageManager.command === "pip3") {
                 if (fs.existsSync(requirementsPath)) {
+                    // Copy requirements.txt to tmp folder
+                    fs.copyFileSync(requirementsPath, path.join(tmpFolderPath, "requirements.txt"));
                     const requirementsOutputPath = path.join(tmpFolderPath, "requirements.txt");
                     const requirementsContent = fs
                         .readFileSync(requirementsOutputPath, "utf8")
@@ -692,7 +697,7 @@ export async function functionToCloudInput(
                         installCommand = `${packageManager.command} install -r ${requirementsOutputPath} --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${pythonVersion} -t ${pathForDependencies} --no-user`;
                     }
                 } else if (fs.existsSync(pyProjectTomlPath)) {
-                    installCommand = `${packageManager.command} install . --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${pythonVersion} -t ${pathForDependencies}`;
+                    installCommand = `${packageManager.command} install ${path.join(tmpFolderPath)} --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${pythonVersion} -t ${pathForDependencies}`;
                 }
             } else if (packageManager.command === "poetry") {
                 installCommand = `${packageManager.command} install --no-root --directory ${pathForDependencies}`;
