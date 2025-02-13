@@ -4,6 +4,7 @@ import fs from "fs";
 import { UserError } from "../../../errors.js";
 import { debugLogger, log } from "../../../utils/logging.js";
 import {
+    actionDetectedEnvFile,
     prepareServicesPostBackendDeployment,
     prepareServicesPreBackendDeployment,
     readOrAskConfig,
@@ -33,6 +34,7 @@ import { DASHBOARD_URL } from "../../../constants.js";
 import { EnvironmentVariable } from "../../../models/environmentVariables.js";
 import { ContainerComponentType } from "../../../models/projectOptions.js";
 import { warningMissingEnvironmentVariables } from "../../../utils/environmentVariables.js";
+import { isCI } from "../../../utils/process.js";
 
 export async function dockerDeploy(options: GenezioDeployOptions) {
     const config = await readOrAskConfig(options.config);
@@ -43,6 +45,11 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
         await addContainerComponentToConfig(options.config, config, {
             path: relativePath,
         });
+    }
+
+    // Give the user another chance if he forgot to add `--env` flag
+    if (!isCI() && !options.env) {
+        options.env = await actionDetectedEnvFile(config.container?.path || ".");
     }
 
     // Prepare services before deploying (database, authentication, etc)

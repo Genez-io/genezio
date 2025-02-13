@@ -915,9 +915,9 @@ export async function evaluateResource(
     return resourceRaw.value;
 }
 
-export async function actionDetectedEnvFile(): Promise<string | undefined> {
+export async function actionDetectedEnvFile(cwd: string): Promise<string | undefined> {
     const envFile = ".env";
-    const envFileFullPath = path.join(process.cwd(), envFile);
+    const envFileFullPath = path.join(cwd, envFile);
     if (!(await fileExists(envFileFullPath))) {
         return undefined;
     }

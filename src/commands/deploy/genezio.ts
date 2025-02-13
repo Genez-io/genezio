@@ -69,6 +69,7 @@ import {
     prepareServicesPreBackendDeployment,
     prepareServicesPostBackendDeployment,
     excludedFiles,
+    actionDetectedEnvFile,
 } from "./utils.js";
 import { expandEnvironmentVariables, warningMissingEnvironmentVariables } from "../../utils/environmentVariables.js";
 import { getFunctionHandlerProvider } from "../../utils/getFunctionHandlerProvider.js";
@@ -84,6 +85,7 @@ import {
     DEFAULT_PYTHON_VERSION_INSTALL,
 } from "../../models/projectOptions.js";
 import { detectPythonVersion } from "../../utils/detectPythonCommand.js";
+import { isCI } from "../../utils/process.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -95,6 +97,11 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         return;
     }
     const backendCwd = configuration.backend?.path || process.cwd();
+
+    // Give the user another chance if he forgot to add `--env` flag
+    if (!isCI() && !options.env) {
+        options.env = await actionDetectedEnvFile(backendCwd);
+    }
 
     // We need to check if the user is using an older version of @genezio/types
     // because we migrated the decorators implemented in the @genezio/types package to the stage 3 implementation.
