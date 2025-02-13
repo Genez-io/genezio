@@ -11,6 +11,7 @@ import { AxiosResponse } from "axios";
 import { StatusOk } from "./models.js";
 import { GENEZIO_NOT_AUTH_ERROR_MSG, UserError } from "../errors.js";
 import { GenezioCloudInput, GenezioCloudInputType } from "../cloudAdapter/cloudAdapter.js";
+import { EnvironmentVariable } from "../models/environmentVariables.js";
 
 export async function deployRequest(
     projectConfiguration: ProjectConfiguration,
@@ -18,6 +19,7 @@ export async function deployRequest(
     stage: string,
     stack: string[] = [],
     sourceRepository?: string,
+    environmentVariables?: EnvironmentVariable[],
 ): Promise<DeployCodeResponse> {
     // auth token
     printAdaptiveLog("Checking your credentials", "start");
@@ -64,6 +66,7 @@ export async function deployRequest(
         stage: stage,
         stack: stack,
         sourceRepository,
+        environmentVariables,
     });
 
     debugLogger.debug("Deploy request sent with body:", json);
