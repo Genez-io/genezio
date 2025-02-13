@@ -687,8 +687,6 @@ export async function functionToCloudInput(
 
             if (packageManager.command === "pip" || packageManager.command === "pip3") {
                 if (fs.existsSync(requirementsPath)) {
-                    // Copy requirements.txt to tmp folder
-                    fs.copyFileSync(requirementsPath, path.join(tmpFolderPath, "requirements.txt"));
                     const requirementsOutputPath = path.join(tmpFolderPath, "requirements.txt");
                     const requirementsContent = fs
                         .readFileSync(requirementsOutputPath, "utf8")
