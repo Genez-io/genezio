@@ -64,14 +64,34 @@ export async function nestJsDeploy(options: GenezioDeployOptions) {
     );
 
     // Build NestJS project
-    await $({
-        stdio: "inherit",
-        cwd: componentPath,
-    })`npx nest build`.catch(() => {
-        throw new UserError("Failed to build the NestJS project. Check the logs above.");
-    });
+    const nxConfigPath = path.join(componentPath, "nx.json");
+    const isNxProject = fs.existsSync(nxConfigPath);
 
-    const result = await deployFunction(genezioConfig, options, componentPath);
+    const nxEnvName = process.env["NX_ENV_NAME"] || "server";
+
+    if (isNxProject && !process.env["NX_ENV_NAME"]) {
+        log.warn("NX_ENV_NAME environment variable is not set. Using default value 'server'.");
+    }
+
+    if (isNxProject) {
+        await $({
+            stdio: "inherit",
+            cwd: componentPath,
+        })`npx nx build ${nxEnvName}`.catch(() => {
+            throw new UserError(
+                "Failed to build the NestJS project with NX. Check the logs above.",
+            );
+        });
+    } else {
+        await $({
+            stdio: "inherit",
+            cwd: componentPath,
+        })`npx nest build`.catch(() => {
+            throw new UserError("Failed to build the NestJS project. Check the logs above.");
+        });
+    }
+
+    const result = await deployFunction(genezioConfig, options, componentPath, nxEnvName);
 
     await uploadEnvVarsFromFile(
         options.env,
@@ -107,6 +127,7 @@ async function deployFunction(
     config: YamlProjectConfiguration,
     options: GenezioDeployOptions,
     cwd: string,
+    nxEnvName: string,
 ) {
     const cloudProvider = await getCloudProvider(config.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
@@ -114,8 +135,13 @@ async function deployFunction(
 
     const baseDir = path.normalize(path.resolve(process.cwd(), cwdRelative));
     const sourceModulesPath = path.join(baseDir, "node_modules");
-    const targetModulesPath = path.join(baseDir, "dist", "node_modules");
-    const functionPath = path.join(baseDir, "dist");
+    const isNxProject = fs.existsSync(path.join(cwd, "nx.json"));
+    const targetBasePath = isNxProject
+        ? path.join(baseDir, "dist", "apps", nxEnvName)
+        : path.join(baseDir, "dist");
+    const targetModulesPath = path.join(targetBasePath, "node_modules");
+    const functionPath = targetBasePath;
+
     await fs.promises.cp(sourceModulesPath, targetModulesPath, { recursive: true }).catch(() => {
         throw new UserError("Failed to copy node_modules to dist directory");
     });
