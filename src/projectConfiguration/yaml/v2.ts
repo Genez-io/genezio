@@ -271,7 +271,25 @@ function parseGenezioConfig(config: unknown) {
         .refine(({ functions }) => {
             const isUniqueFunction = isUnique(functions ?? [], "name");
             return isUniqueFunction;
-        }, `You can't have two functions with the same name.`);
+        }, `You can't have two functions with the same name.`)
+        .refine(({ functions }) => {
+            for (const func of functions ?? []) {
+                if (func.type === FunctionType.aws && !func.handler) {
+                    return false;
+                }
+            }
+            return true;
+        }, `functions[].handler is mandatory for functions with type aws.`)
+        .refine(({ functions }) => {
+            if (languageSchema.parse({ name: Language.python }).name === Language.python) {
+                for (const func of functions ?? []) {
+                    if (!func.handler) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }, ` functions[].handler is mandatory for python functions.`);
 
     const frontendSchema = zod.object({
         name: zod.string().optional(),
