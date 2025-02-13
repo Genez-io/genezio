@@ -1719,7 +1719,8 @@ async function getLocalFunctionHttpServerPythonWrapper(
         .replace(/\//g, ".") // Convert slashes to dots (Unix)
         .replace(/^\.+/, "") // Remove leading dots
         .replace(/\.+/g, ".") // Remove duplicate dots
-        .replace(/\.py$/, ""); // Remove extension
+        .replace(/\.py$/, "") // Remove extension
+        .replace(/-/g, "_"); // Convert hyphens to underscores for Python module compatibility
 
     return `
 import asyncio

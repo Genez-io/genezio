@@ -251,7 +251,8 @@ export class AwsPythonFunctionHandlerProvider implements FunctionHandlerProvider
             .replace(/\//g, ".") // Convert slashes to dots (Unix)
             .replace(/^\.+/, "") // Remove leading dots
             .replace(/\.+/g, ".") // Remove duplicate dots
-            .replace(/\.py$/, ""); // Remove extension
+            .replace(/\.py$/, "") // Remove extension
+            .replace(/-/g, "_"); // Convert hyphens to underscores for Python module compatibility
 
         const handlerContent = `
 from setupLambdaGlobals_${randomFileId} import AwsLambda
@@ -342,7 +343,8 @@ def handler(event):
             .replace(/\//g, ".") // Convert slashes to dots (Unix)
             .replace(/^\.+/, "") // Remove leading dots
             .replace(/\.+/g, ".") // Remove duplicate dots
-            .replace(/\.py$/, ""); // Remove extension
+            .replace(/\.py$/, "") // Remove extension
+            .replace(/-/g, "_"); // Convert hyphens to underscores for Python module compatibility;
 
         return `
 import sys
