@@ -24,6 +24,7 @@ import { tryV2Migration } from "./migration.js";
 import yaml, { YAMLParseError } from "yaml";
 import { DeepRequired } from "../../utils/types.js";
 import { isUnique } from "../../utils/yaml.js";
+import path from "path";
 
 export type RawYamlProjectConfiguration = ReturnType<typeof parseGenezioConfig>;
 export type YAMLBackend = NonNullable<YamlProjectConfiguration["backend"]>;
@@ -135,9 +136,10 @@ function parseGenezioConfig(config: unknown) {
             // handler is mandatory only if type is AWS
             handler: zod.string().optional(),
             entry: zod.string().refine((value) => {
+                const filename = path.basename(value);
                 return (
-                    value.split(".").length === 2 &&
-                    FUNCTION_EXTENSIONS.includes(value.split(".")[1])
+                    filename.split(".").length === 2 &&
+                    FUNCTION_EXTENSIONS.includes(filename.split(".")[1])
                 );
             }, "The handler should be in the format 'file.extension'. example: index.js / index.mjs / index.cjs / index.py"),
             type: zod.nativeEnum(FunctionType).default(FunctionType.aws),
