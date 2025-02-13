@@ -624,12 +624,7 @@ export async function functionToCloudInput(
         });
     } else {
         // copy everything to the temporary folder
-        await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath, {
-            filter: (src) => {
-                const relativePath = path.relative(backendPath, src);
-                return !excludedFiles.some((pattern) => relativePath.includes(pattern));
-            },
-        });
+        await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath);
     }
     // Handle JS/TS functions with pnpm
     if (functionElement.language === "js" || functionElement.language === "ts") {
