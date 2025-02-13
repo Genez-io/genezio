@@ -14,8 +14,6 @@ import { zipDeploy } from "./zip/deploy.js";
 import { remixDeploy } from "./remix/deploy.js";
 import { streamlitDeploy } from "./streamlit/deploy.js";
 import { YAMLLanguageRuntime } from "../../projectConfiguration/yaml/v2.js";
-import { actionDetectedEnvFile } from "./utils.js";
-import { isCI } from "../../utils/process.js";
 
 export type SSRFrameworkComponent = {
     path: string;
@@ -39,11 +37,6 @@ export async function deployCommand(options: GenezioDeployOptions) {
     debugLogger.debug(
         `The following components will be build and deployed: ${deployableComponentsType.join(", ")}`,
     );
-
-    // Give the user another chance if he forgot to add `--env` flag
-    if (!isCI() && !options.env) {
-        options.env = await actionDetectedEnvFile();
-    }
 
     // The deployment actions are not called concurrently to avoid race conditions
     for (const type of deployableComponentsType) {

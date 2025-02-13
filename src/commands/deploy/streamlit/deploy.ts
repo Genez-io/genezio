@@ -15,6 +15,7 @@ import { STREAMLIT_PATTERN } from "../../analyze/constants.js";
 import { findEntryFile } from "../../analyze/frameworks.js";
 import { addSSRComponentToConfig } from "../../analyze/utils.js";
 import {
+    actionDetectedEnvFile,
     prepareServicesPostBackendDeployment,
     prepareServicesPreBackendDeployment,
     readOrAskConfig,
@@ -35,6 +36,7 @@ import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
 import { createTemporaryFolder } from "../../../utils/file.js";
 import { EnvironmentVariable } from "../../../models/environmentVariables.js";
 import { warningMissingEnvironmentVariables } from "../../../utils/environmentVariables.js";
+import { isCI } from "../../../utils/process.js";
 
 export async function streamlitDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
@@ -45,6 +47,11 @@ export async function streamlitDeploy(options: GenezioDeployOptions) {
     const componentPath = genezioConfig.streamlit?.path
         ? path.resolve(cwd, genezioConfig.streamlit.path)
         : cwd;
+
+   // Give the user another chance if he forgot to add `--env` flag
+    if (!isCI() && !options.env) {
+        options.env = await actionDetectedEnvFile(componentPath);
+    }
 
     // Prepare services before deploying (database, authentication, etc)
     await prepareServicesPreBackendDeployment(

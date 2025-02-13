@@ -6,6 +6,7 @@ import { $ } from "execa";
 import { GenezioDeployOptions } from "../../../models/commandOptions.js";
 import { log } from "../../../utils/logging.js";
 import {
+    actionDetectedEnvFile,
     attemptToInstallDependencies,
     prepareServicesPostBackendDeployment,
     prepareServicesPreBackendDeployment,
@@ -28,6 +29,7 @@ import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
 import { DASHBOARD_URL } from "../../../constants.js";
 import { EnvironmentVariable } from "../../../models/environmentVariables.js";
 import { warningMissingEnvironmentVariables } from "../../../utils/environmentVariables.js";
+import { isCI } from "../../../utils/process.js";
 
 export async function nestJsDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
@@ -37,6 +39,11 @@ export async function nestJsDeploy(options: GenezioDeployOptions) {
     const componentPath = genezioConfig.nestjs?.path
         ? path.resolve(cwd, genezioConfig.nestjs.path)
         : cwd;
+
+    // Give the user another chance if he forgot to add `--env` flag
+    if (!isCI() && !options.env) {
+        options.env = await actionDetectedEnvFile(componentPath);
+    }
 
     // Prepare services before deploying (database, authentication, etc)
     await prepareServicesPreBackendDeployment(
