@@ -48,7 +48,7 @@ export async function streamlitDeploy(options: GenezioDeployOptions) {
         ? path.resolve(cwd, genezioConfig.streamlit.path)
         : cwd;
 
-   // Give the user another chance if he forgot to add `--env` flag
+    // Give the user another chance if he forgot to add `--env` flag
     if (!isCI() && !options.env) {
         options.env = await actionDetectedEnvFile(componentPath, genezioConfig.name, options.stage);
     }
@@ -121,7 +121,11 @@ export async function streamlitDeploy(options: GenezioDeployOptions) {
 
     const functionUrl = result.functions.find((f) => f.name === "function-streamlit")?.cloudUrl;
 
-    await warningMissingEnvironmentVariables(genezioConfig.streamlit?.path || "./", result.projectId, result.projectEnvId);
+    await warningMissingEnvironmentVariables(
+        genezioConfig.streamlit?.path || "./",
+        result.projectId,
+        result.projectEnvId,
+    );
 
     await prepareServicesPostBackendDeployment(
         updatedGenezioConfig,
@@ -166,6 +170,7 @@ async function deployFunction(
         maxConcurrentRequestsPerInstance: config.streamlit?.maxConcurrentRequestsPerInstance,
         maxConcurrentInstances: config.streamlit?.maxConcurrentInstances,
         cooldownTime: config.streamlit?.cooldownTime,
+        persistent: config.streamlit?.type === FunctionType.persistent,
     };
 
     const runtime = (config.streamlit?.runtime as PythonRuntime) || DEFAULT_PYTHON_RUNTIME;

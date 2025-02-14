@@ -98,7 +98,11 @@ export async function nestJsDeploy(options: GenezioDeployOptions) {
 
     const functionUrl = result.functions.find((f) => f.name === "function-nest")?.cloudUrl;
 
-    await warningMissingEnvironmentVariables(genezioConfig.nestjs?.path || "./", result.projectId, result.projectEnvId);
+    await warningMissingEnvironmentVariables(
+        genezioConfig.nestjs?.path || "./",
+        result.projectId,
+        result.projectEnvId,
+    );
 
     await prepareServicesPostBackendDeployment(genezioConfig, genezioConfig.name, options.stage);
 
@@ -147,6 +151,7 @@ async function deployFunction(
         maxConcurrentRequestsPerInstance: config.nestjs?.maxConcurrentRequestsPerInstance,
         maxConcurrentInstances: config.nestjs?.maxConcurrentInstances,
         cooldownTime: config.nestjs?.cooldownTime,
+        persistent: config.nestjs?.type === FunctionType.persistent,
     };
 
     const deployConfig: YamlProjectConfiguration = {

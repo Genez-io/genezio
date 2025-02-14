@@ -360,6 +360,7 @@ function parseGenezioConfig(config: unknown) {
                 return true;
             }, "The maximum number of concurrent instances should be greater than 0."),
         cooldownTime: zod.number().optional(),
+        type: zod.literal(FunctionType.persistent).optional(),
     });
 
     // Define container schema

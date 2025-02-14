@@ -63,7 +63,7 @@ export async function nuxtNitroDeploy(
         ? path.resolve(cwd, genezioConfig[NitroOrNuxtFlag].path)
         : cwd;
 
-   // Give the user another chance if he forgot to add `--env` flag
+    // Give the user another chance if he forgot to add `--env` flag
     if (!isCI() && !options.env) {
         options.env = await actionDetectedEnvFile(componentPath, genezioConfig.name, options.stage);
     }
@@ -136,7 +136,11 @@ Note: If your Nuxt project was not migrated to Nuxt 3, please visit https://v2.n
         uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage, componentPath),
     ]);
 
-    await warningMissingEnvironmentVariables(genezioConfig.nuxt?.path || "./", cloudResult.projectId, cloudResult.projectEnvId);
+    await warningMissingEnvironmentVariables(
+        genezioConfig.nuxt?.path || "./",
+        cloudResult.projectId,
+        cloudResult.projectEnvId,
+    );
 
     // Prepare services after deploying (authentication, etc)
     await prepareServicesPostBackendDeployment(genezioConfig, genezioConfig.name, options.stage);
@@ -176,6 +180,7 @@ async function deployFunction(
             maxConcurrentRequestsPerInstance: config.nuxt?.maxConcurrentRequestsPerInstance,
             maxConcurrentInstances: config.nuxt?.maxConcurrentInstances,
             cooldownTime: config.nuxt?.cooldownTime,
+            persistent: config.nuxt?.type === FunctionType.persistent,
         },
     ];
 
