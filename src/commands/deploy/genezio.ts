@@ -49,7 +49,11 @@ import { Status } from "../../requests/models.js";
 import { bundle } from "../../bundlers/utils.js";
 import { isDependencyVersionCompatible } from "../../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
-import { entryFileFunctionMap, Language } from "../../projectConfiguration/yaml/models.js";
+import {
+    entryFileFunctionMap,
+    FunctionType,
+    Language,
+} from "../../projectConfiguration/yaml/models.js";
 import { runScript } from "../../utils/scripts.js";
 import { scanClassesForDecorators } from "../../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../../projectConfiguration/yaml/v2.js";
@@ -724,7 +728,10 @@ export async function functionToCloudInput(
 
     // Determine entry file name
     let entryFileName;
-    if (functionElement.type === "httpServer") {
+    if (
+        functionElement.type === FunctionType.httpServer ||
+        functionElement.type === FunctionType.persistent
+    ) {
         entryFileName = path.join(functionElement.entry).replace(/\\/g, "/");
     } else {
         entryFileName =
