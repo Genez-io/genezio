@@ -10,6 +10,7 @@ import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v
 import { SSRFrameworkComponent } from "../deploy/command.js";
 import { FRONTEND_ENV_PREFIX } from "./command.js";
 import { Language } from "../../projectConfiguration/yaml/models.js";
+import { debugLogger } from "../../utils/logging.js";
 
 export async function addFrontendComponentToConfig(configPath: string, component: YamlFrontend) {
     const configIOController = new YamlConfigurationIOController(configPath);
@@ -388,4 +389,105 @@ export function getPythonHandler(contentEntryfile: string): string {
     }
 
     return "app";
+}
+
+interface TypeScriptConfig {
+    compilerOptions?: CompilerOptions;
+}
+
+interface CompilerOptions {
+    outDir?: string;
+    rootDir?: string;
+    module?: string;
+}
+
+const DEFAULT_COMPILER_OPTIONS = {
+    outDir: "dist",
+    rootDir: ".",
+    module: "commonjs",
+} as const;
+
+const MODULE_FILE_EXTENSIONS = {
+    // ES Modules
+    es6: ".mjs",
+    esnext: ".mjs",
+    es2015: ".mjs",
+    es2020: ".mjs",
+    es2022: ".mjs",
+    node16: ".mjs",
+    nodenext: ".mjs",
+    // CommonJS
+    commonjs: ".js",
+} as const;
+
+/**
+ * Determines the output file path for a TypeScript project.
+ *
+ * @param entryFile - Source file path (e.g., "src/index.ts")
+ * @param tsconfigContent - tsconfig.json content as string or object
+ * @returns Compiled file path (e.g., "dist/index.js")
+ * @throws {Error} If entryFile is invalid
+ */
+export function getEntryFileTypescript(
+    entryFile: string,
+    tsconfigContent: string | object,
+): string {
+    if (!entryFile?.trim()) {
+        throw new Error("Entry file path is required");
+    }
+
+    const config = parseTypeScriptConfig(tsconfigContent);
+    const options = getCompilerOptions(config);
+
+    const normalizedPath = getNormalizedPath(entryFile, options.rootDir);
+    const extension = getOutputExtension(options.module);
+    const outputFileName = normalizedPath.replace(/\.ts$/, extension);
+
+    return path.join(options.outDir, outputFileName);
+}
+
+/**
+ * Parses the TypeScript configuration from a string or object.
+ */
+function parseTypeScriptConfig(config: string | object): TypeScriptConfig {
+    if (typeof config === "string") {
+        try {
+            return JSON.parse(config);
+        } catch (error) {
+            debugLogger.debug("Error parsing tsconfig.json:", error);
+            return { compilerOptions: DEFAULT_COMPILER_OPTIONS };
+        }
+    }
+    return config as TypeScriptConfig;
+}
+
+/**
+ * Extracts and normalizes compiler options with defaults.
+ */
+function getCompilerOptions(config: TypeScriptConfig) {
+    const userOptions = config.compilerOptions ?? {};
+
+    return {
+        outDir: userOptions.outDir ?? DEFAULT_COMPILER_OPTIONS.outDir,
+        rootDir: userOptions.rootDir ?? DEFAULT_COMPILER_OPTIONS.rootDir,
+        module: userOptions.module ?? DEFAULT_COMPILER_OPTIONS.module,
+    };
+}
+
+/**
+ * Normalizes the input file path relative to rootDir.
+ */
+function getNormalizedPath(entryFile: string, rootDir: string): string {
+    const cleanRootDir = rootDir.replace(/^\.\//, "");
+    return entryFile.startsWith(cleanRootDir)
+        ? entryFile.slice(cleanRootDir.length + 1)
+        : entryFile;
+}
+
+/**
+ * Determines the output file extension based on the module type.
+ */
+function getOutputExtension(moduleType: string): string {
+    const normalizedModule = moduleType.toLowerCase();
+    return MODULE_FILE_EXTENSIONS[normalizedModule as keyof typeof MODULE_FILE_EXTENSIONS] ?? ".js";
 }

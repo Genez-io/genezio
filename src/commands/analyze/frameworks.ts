@@ -22,19 +22,32 @@ export interface TsconfigJSON {
 }
 
 export async function isTypescript(contents: Record<string, string>): Promise<boolean> {
-    const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
-    const tsconfigJsonContent = JSON.parse(contents["tsconfig.json"]) as TsconfigJSON;
-
     // If there is no package.json, the language is not ts, nor js
-    if (!packageJsonContent) {
+    if (!contents["package.json"]) {
         return false;
     }
+
+    const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
+
+    // Only try to parse tsconfig.json if it exists in contents
+    const tsconfigJsonContent = contents["tsconfig.json"]
+        ? (JSON.parse(contents["tsconfig.json"]) as TsconfigJSON)
+        : undefined;
 
     if (tsconfigJsonContent) {
         return true;
     }
 
     if (packageJsonContent.main && packageJsonContent.main.endsWith(".ts")) {
+        return true;
+    }
+
+    // Check for TypeScript-related dependencies
+    const dependencies = packageJsonContent.dependencies || {};
+    const devDependencies = packageJsonContent.devDependencies || {};
+    const tsRelatedDeps = ["typescript", "ts-node", "@types/node"];
+
+    if (tsRelatedDeps.some((dep) => dep in dependencies || dep in devDependencies)) {
         return true;
     }
 
