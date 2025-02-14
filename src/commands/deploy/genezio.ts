@@ -71,7 +71,10 @@ import {
     excludedFiles,
     actionDetectedEnvFile,
 } from "./utils.js";
-import { expandEnvironmentVariables, warningMissingEnvironmentVariables } from "../../utils/environmentVariables.js";
+import {
+    expandEnvironmentVariables,
+    warningMissingEnvironmentVariables,
+} from "../../utils/environmentVariables.js";
 import { getFunctionHandlerProvider } from "../../utils/getFunctionHandlerProvider.js";
 import { getFunctionEntryFilename } from "../../utils/getFunctionEntryFilename.js";
 import { CronDetails } from "../../models/requests.js";
@@ -180,7 +183,11 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         });
 
         if (deployClassesResult) {
-            await warningMissingEnvironmentVariables(backendCwd, deployClassesResult?.projectId, deployClassesResult?.projectEnvId);
+            await warningMissingEnvironmentVariables(
+                backendCwd,
+                deployClassesResult?.projectId,
+                deployClassesResult?.projectEnvId,
+            );
         }
     }
 
@@ -440,8 +447,6 @@ export async function deployClasses(
                 options.disableOptimization,
             );
 
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            // check if the unzipped folder is smaller than 250MB
             const unzippedBundleSize: number = await getBundleFolderSizeLimit(output.path);
             debugLogger.debug(
                 `The unzippedBundleSize for class ${element.path} is ${unzippedBundleSize}.`,
@@ -762,7 +767,7 @@ export async function functionToCloudInput(
         maxConcurrentRequestsPerInstance: functionElement.maxConcurrentRequestsPerInstance,
         maxConcurrentInstances: functionElement.maxConcurrentInstances,
         cooldownTime: functionElement.cooldownTime,
-        persistent: functionElement.persistent,
+        persistent: functionElement.type === FunctionType.persistent,
         metadata: metadata,
     };
 }

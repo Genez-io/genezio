@@ -49,7 +49,11 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
 
     // Give the user another chance if he forgot to add `--env` flag
     if (!isCI() && !options.env) {
-        options.env = await actionDetectedEnvFile(config.container?.path || ".", config.name, options.stage);
+        options.env = await actionDetectedEnvFile(
+            config.container?.path || ".",
+            config.name,
+            options.stage,
+        );
     }
 
     // Prepare services before deploying (database, authentication, etc)
@@ -202,7 +206,6 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
                     config.container!.maxConcurrentRequestsPerInstance,
                 maxConcurrentInstances: config.container!.maxConcurrentInstances,
                 cooldownTime: config.container!.cooldownTime,
-                persistent: config.container!.persistent,
             },
         ],
         projectConfiguration,
@@ -214,7 +217,11 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
         /* environmentVariables */ environmentVariables,
     );
 
-    await warningMissingEnvironmentVariables(config.container?.path || "./", result.projectId, result.projectEnvId);
+    await warningMissingEnvironmentVariables(
+        config.container?.path || "./",
+        result.projectId,
+        result.projectEnvId,
+    );
 
     // Prepare services after deploying (authentication redirect urls)
     await prepareServicesPostBackendDeployment(config, config.name, options.stage);
