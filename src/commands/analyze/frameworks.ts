@@ -1,7 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { EXCLUDED_DIRECTORIES, KEY_DEPENDENCY_FILES } from "./command.js";
-import { FUNCTION_EXTENSIONS } from "../../models/projectOptions.js";
 import { debugLogger } from "../../utils/logging.js";
 
 export interface PackageJSON {
@@ -69,7 +68,7 @@ export async function findEntryFile(
         return candidateFile;
     }
 
-    const FUNCTION_EXTENSIONS_WITH_TS = FUNCTION_EXTENSIONS.concat(".ts");
+    const FUNCTION_EXTENSIONS_WITH_TS = ["js", "mjs", "cjs", "py", "ts", "mts", "cts"];
     const entryFile = await findFileByPatterns(
         componentPath,
         patterns,

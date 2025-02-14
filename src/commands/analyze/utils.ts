@@ -10,7 +10,6 @@ import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v
 import { SSRFrameworkComponent } from "../deploy/command.js";
 import { FRONTEND_ENV_PREFIX } from "./command.js";
 import { Language } from "../../projectConfiguration/yaml/models.js";
-import { debugLogger } from "../../utils/logging.js";
 
 export async function addFrontendComponentToConfig(configPath: string, component: YamlFrontend) {
     const configIOController = new YamlConfigurationIOController(configPath);
@@ -393,12 +392,15 @@ export function getPythonHandler(contentEntryfile: string): string {
 
 interface TypeScriptConfig {
     compilerOptions?: CompilerOptions;
+    include?: string[];
 }
 
 interface CompilerOptions {
     outDir?: string;
     rootDir?: string;
     module?: string;
+    moduleResolution?: string;
+    target?: string;
 }
 
 const DEFAULT_COMPILER_OPTIONS = {
@@ -408,16 +410,19 @@ const DEFAULT_COMPILER_OPTIONS = {
 } as const;
 
 const MODULE_FILE_EXTENSIONS = {
-    // ES Modules
-    es6: ".mjs",
+    es6: ".js",
     esnext: ".mjs",
-    es2015: ".mjs",
+    es2015: ".js",
     es2020: ".mjs",
     es2022: ".mjs",
     node16: ".mjs",
     nodenext: ".mjs",
     // CommonJS
     commonjs: ".js",
+    amd: ".js",
+    umd: ".js",
+    system: ".js",
+    none: ".js",
 } as const;
 
 /**
@@ -440,7 +445,12 @@ export function getEntryFileTypescript(
     const options = getCompilerOptions(config);
 
     const normalizedPath = getNormalizedPath(entryFile, options.rootDir);
-    const extension = getOutputExtension(options.module);
+    const extension = getOutputExtension(
+        entryFile,
+        options.module,
+        options.moduleResolution,
+        options.target,
+    );
     const outputFileName = normalizedPath.replace(/\.ts$/, extension);
 
     return path.join(options.outDir, outputFileName);
@@ -454,7 +464,6 @@ function parseTypeScriptConfig(config: string | object): TypeScriptConfig {
         try {
             return JSON.parse(config);
         } catch (error) {
-            debugLogger.debug("Error parsing tsconfig.json:", error);
             return { compilerOptions: DEFAULT_COMPILER_OPTIONS };
         }
     }
@@ -467,10 +476,14 @@ function parseTypeScriptConfig(config: string | object): TypeScriptConfig {
 function getCompilerOptions(config: TypeScriptConfig) {
     const userOptions = config.compilerOptions ?? {};
 
+    const inferredRootDir = config.include?.[0]?.replace(/[*\\/]+$/, ""); // "src*" -> "src"
+
     return {
         outDir: userOptions.outDir ?? DEFAULT_COMPILER_OPTIONS.outDir,
-        rootDir: userOptions.rootDir ?? DEFAULT_COMPILER_OPTIONS.rootDir,
+        rootDir: userOptions.rootDir ?? inferredRootDir ?? DEFAULT_COMPILER_OPTIONS.rootDir,
         module: userOptions.module ?? DEFAULT_COMPILER_OPTIONS.module,
+        moduleResolution: userOptions.moduleResolution,
+        target: userOptions.target,
     };
 }
 
@@ -478,16 +491,53 @@ function getCompilerOptions(config: TypeScriptConfig) {
  * Normalizes the input file path relative to rootDir.
  */
 function getNormalizedPath(entryFile: string, rootDir: string): string {
-    const cleanRootDir = rootDir.replace(/^\.\//, "");
-    return entryFile.startsWith(cleanRootDir)
-        ? entryFile.slice(cleanRootDir.length + 1)
-        : entryFile;
+    const relativePath = entryFile.startsWith(rootDir)
+        ? entryFile.slice(rootDir.length).replace(/^[/\\]+/, "")
+        : path.relative(rootDir, entryFile);
+    return relativePath.replace(/\\/g, "/");
 }
 
 /**
- * Determines the output file extension based on the module type.
+ * Determines the output file extension based on the module type and input file extension.
  */
-function getOutputExtension(moduleType: string): string {
-    const normalizedModule = moduleType.toLowerCase();
-    return MODULE_FILE_EXTENSIONS[normalizedModule as keyof typeof MODULE_FILE_EXTENSIONS] ?? ".js";
+function getOutputExtension(
+    entryFile: string,
+    moduleType: string,
+    moduleResolution?: string,
+    target?: string,
+): string {
+    // Handle explicit TypeScript module extensions first
+    if (entryFile.endsWith(".mts")) return ".mjs";
+    if (entryFile.endsWith(".cts")) return ".cjs";
+    if (entryFile.endsWith(".ts")) {
+        // Handle TypeScript files with explicit module resolution
+        const normalizedModule = moduleType?.toLowerCase() || "commonjs";
+        const normalizedResolution = moduleResolution?.toLowerCase();
+
+        // NodeNext and Node16 resolution takes precedence
+        if (normalizedResolution === "nodenext" || normalizedResolution === "node16") {
+            return normalizedModule === "commonjs" ? ".cjs" : ".mjs";
+        }
+
+        // Node resolution always outputs .js
+        if (normalizedResolution === "node") {
+            return ".js";
+        }
+
+        // Modern ECMAScript targets should use .mjs
+        if (target && target.toLowerCase().startsWith("es")) {
+            const version = parseInt(target.substring(2));
+            if (!isNaN(version) && version >= 2020) {
+                return ".mjs";
+            }
+        }
+
+        // Fallback to module-specific extensions
+        return (
+            MODULE_FILE_EXTENSIONS[normalizedModule as keyof typeof MODULE_FILE_EXTENSIONS] ?? ".js"
+        );
+    }
+
+    // For non-TypeScript files, preserve the original extension
+    return path.extname(entryFile);
 }

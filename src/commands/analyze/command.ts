@@ -262,10 +262,23 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             debugLogger.debug("Is Serverless HTTP typescript:", isTypescriptFlag);
 
             let entryFileBuildOut = entryFile;
-            if (isTypescriptFlag) {
-                const tsconfigJsonContent = JSON.parse(
-                    await retrieveFileContent(path.join(componentPath, "tsconfig.json")),
+            if (
+                isTypescriptFlag &&
+                (entryFile.endsWith(".ts") ||
+                    entryFile.endsWith(".mts") ||
+                    entryFile.endsWith(".cts"))
+            ) {
+                const tsconfigContent = await retrieveFileContent(
+                    path.join(componentPath, "tsconfig.json"),
                 );
+
+                // Remove comments before parsing JSON
+                const tsconfigJsonString = tsconfigContent
+                    .replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "$1") // Remove comments
+                    .replace(/\s*\n\s*/g, "") // Remove newlines and whitespace
+                    .trim();
+
+                const tsconfigJsonContent = JSON.parse(tsconfigJsonString);
                 entryFileBuildOut = getEntryFileTypescript(entryFile, tsconfigJsonContent);
                 debugLogger.debug("Serverless HTTP entry file build out:", entryFileBuildOut);
             }
@@ -380,10 +393,22 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             debugLogger.debug("Is Express typescript:", isTypescriptFlag);
 
             let entryFileBuildOut = entryFile;
-            if (isTypescriptFlag) {
-                const tsconfigJsonContent = JSON.parse(
-                    await retrieveFileContent(path.join(componentPath, "tsconfig.json")),
+            if (
+                isTypescriptFlag &&
+                (entryFile.endsWith(".ts") ||
+                    entryFile.endsWith(".mts") ||
+                    entryFile.endsWith(".cts"))
+            ) {
+                const tsconfigContent = await retrieveFileContent(
+                    path.join(componentPath, "tsconfig.json"),
                 );
+                // Remove comments before parsing JSON
+                const tsconfigJsonString = tsconfigContent
+                    .replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "$1") // Remove comments
+                    .replace(/\s*\n\s*/g, "") // Remove newlines and whitespace
+                    .trim();
+
+                const tsconfigJsonContent = JSON.parse(tsconfigJsonString);
                 entryFileBuildOut = getEntryFileTypescript(entryFile, tsconfigJsonContent);
                 debugLogger.debug("Express entry file build out:", entryFileBuildOut);
             }
@@ -394,7 +419,6 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 language: {
-                    // TODO: Add support for detecting and building typescript backends
                     name: Language.js,
                     runtime: DEFAULT_NODE_RUNTIME,
                 } as YAMLLanguage,
@@ -440,10 +464,22 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             const isTypescriptFlag = await isTypescript(contents);
             debugLogger.debug("Is Fastify typescript:", isTypescriptFlag);
             let entryFileBuildOut = entryFile;
-            if (isTypescriptFlag) {
-                const tsconfigJsonContent = JSON.parse(
-                    await retrieveFileContent(path.join(componentPath, "tsconfig.json")),
+            if (
+                isTypescriptFlag &&
+                (entryFile.endsWith(".ts") ||
+                    entryFile.endsWith(".mts") ||
+                    entryFile.endsWith(".cts"))
+            ) {
+                const tsconfigContent = await retrieveFileContent(
+                    path.join(componentPath, "tsconfig.json"),
                 );
+                // Remove comments before parsing JSON
+                const tsconfigJsonString = tsconfigContent
+                    .replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "$1") // Remove comments
+                    .replace(/\s*\n\s*/g, "") // Remove newlines and whitespace
+                    .trim();
+
+                const tsconfigJsonContent = JSON.parse(tsconfigJsonString);
                 entryFileBuildOut = getEntryFileTypescript(entryFile, tsconfigJsonContent);
                 debugLogger.debug("Fastify entry file build out:", entryFileBuildOut);
             }
