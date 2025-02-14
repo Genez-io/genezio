@@ -69,7 +69,12 @@ export async function findEntryFile(
         return candidateFile;
     }
 
-    const entryFile = await findFileByPatterns(componentPath, patterns, FUNCTION_EXTENSIONS);
+    const FUNCTION_EXTENSIONS_WITH_TS = FUNCTION_EXTENSIONS.concat(".ts");
+    const entryFile = await findFileByPatterns(
+        componentPath,
+        patterns,
+        FUNCTION_EXTENSIONS_WITH_TS,
+    );
     if (entryFile) {
         return path.relative(componentPath, entryFile);
     }
