@@ -100,7 +100,7 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
 
     // Give the user another chance if he forgot to add `--env` flag
     if (!isCI() && !options.env) {
-        options.env = await actionDetectedEnvFile(backendCwd);
+        options.env = await actionDetectedEnvFile(backendCwd, configuration.name, options.stage);
     }
 
     // We need to check if the user is using an older version of @genezio/types

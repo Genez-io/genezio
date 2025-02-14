@@ -49,7 +49,7 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
 
     // Give the user another chance if he forgot to add `--env` flag
     if (!isCI() && !options.env) {
-        options.env = await actionDetectedEnvFile(config.container?.path || ".");
+        options.env = await actionDetectedEnvFile(config.container?.path || ".", config.name, options.stage);
     }
 
     // Prepare services before deploying (database, authentication, etc)

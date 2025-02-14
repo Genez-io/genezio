@@ -45,6 +45,7 @@ import { log } from "../../utils/logging.js";
 import colors from "colors";
 import {
     findAnEnvFile,
+    getUnsetEnvironmentVariables,
     parseConfigurationVariable,
     promptToConfirmSettingEnvironmentVariables,
 } from "../../utils/environmentVariables.js";
@@ -915,7 +916,7 @@ export async function evaluateResource(
     return resourceRaw.value;
 }
 
-export async function actionDetectedEnvFile(cwd: string): Promise<string | undefined> {
+export async function actionDetectedEnvFile(cwd: string, projectName: string, stage: string): Promise<string | undefined> {
     const envFile = ".env";
     const envFileFullPath = path.join(cwd, envFile);
     if (!(await fileExists(envFileFullPath))) {
@@ -927,8 +928,23 @@ export async function actionDetectedEnvFile(cwd: string): Promise<string | undef
         return undefined;
     }
 
+    const project = await getProjectInfoByName(projectName);
+    const projectEnv = project.projectEnvs.find((projectEnv) => projectEnv.name == stage);
+    let missingEnvVars: EnvironmentVariable[] = []
+    if (project && projectEnv) {
+        const missingEnvVarsKeys = await getUnsetEnvironmentVariables(
+            envVars.map((envVar) => envVar.name),
+            project.id,
+            projectEnv.id,
+        );
+        if (missingEnvVarsKeys.length == 0) {
+            return undefined;
+        }
+        missingEnvVars = envVars.filter((envVar) => missingEnvVarsKeys.includes(envVar.name));
+    }
+
     const confirmSettingEnvVars = await promptToConfirmSettingEnvironmentVariables(
-        envVars.map((envVar) => envVar.name),
+        missingEnvVars.map((envVar) => envVar.name),
     );
 
     if (!confirmSettingEnvVars) {

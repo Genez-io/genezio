@@ -65,7 +65,7 @@ export async function nuxtNitroDeploy(
 
    // Give the user another chance if he forgot to add `--env` flag
     if (!isCI() && !options.env) {
-        options.env = await actionDetectedEnvFile(componentPath);
+        options.env = await actionDetectedEnvFile(componentPath, genezioConfig.name, options.stage);
     }
 
     // Prepare services before deploying (database, authentication, etc)
