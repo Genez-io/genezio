@@ -391,6 +391,7 @@ function parseGenezioConfig(config: unknown) {
             }, "The maximum number of concurrent instances should be greater than 0."),
         cooldownTime: zod.number().optional(),
         environment: environmentSchema.optional(),
+        type: zod.literal(FunctionType.persistent).optional(),
     });
 
     const v2Schema = zod.object({
