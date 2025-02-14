@@ -1,10 +1,12 @@
 import path from "path";
+import git from "isomorphic-git";
 import fs from "fs";
 import colors from "colors";
 import { $ } from "execa";
 import { GenezioDeployOptions } from "../../../models/commandOptions.js";
 import { debugLogger, log } from "../../../utils/logging.js";
 import {
+    actionDetectedEnvFile,
     attemptToInstallDependencies,
     prepareServicesPostBackendDeployment,
     prepareServicesPreBackendDeployment,
@@ -26,6 +28,9 @@ import { FunctionType, Language } from "../../../projectConfiguration/yaml/model
 import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
 import { createTemporaryFolder } from "../../../utils/file.js";
 import { DASHBOARD_URL } from "../../../constants.js";
+import { EnvironmentVariable } from "../../../models/environmentVariables.js";
+import { warningMissingEnvironmentVariables } from "../../../utils/environmentVariables.js";
+import { isCI } from "../../../utils/process.js";
 
 export async function remixDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
@@ -35,6 +40,11 @@ export async function remixDeploy(options: GenezioDeployOptions) {
     const componentPath = genezioConfig.remix?.path
         ? path.resolve(cwd, genezioConfig.remix.path)
         : cwd;
+
+   // Give the user another chance if he forgot to add `--env` flag
+    if (!isCI() && !options.env) {
+        options.env = await actionDetectedEnvFile(componentPath, genezioConfig.name, options.stage);
+    }
 
     // Prepare services before deploying (database, authentication, etc)
     await prepareServicesPreBackendDeployment(
@@ -182,22 +192,19 @@ export async function remixDeploy(options: GenezioDeployOptions) {
         serverMjsPath,
         isRemixVite ? serverRemixViteContent : serverRemixClassicContent,
     );
-
-    const result = await deployFunction(genezioConfig, options, tempBuildCwd);
-
-    await uploadEnvVarsFromFile(
+    const environmentVariables = await uploadEnvVarsFromFile(
         options.env,
-        result.projectId,
-        result.projectEnvId,
-        componentPath,
-        options.stage || "prod",
+        options.stage,
         genezioConfig,
         SSRFrameworkComponentType.remix,
     );
+    const result = await deployFunction(genezioConfig, options, tempBuildCwd, environmentVariables);
 
     await uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage, componentPath);
 
     const functionUrl = result.functions.find((f) => f.name === "function-remix")?.cloudUrl;
+
+    await warningMissingEnvironmentVariables(genezioConfig.remix?.path || "./", result.projectId, result.projectEnvId);
 
     await prepareServicesPostBackendDeployment(genezioConfig, genezioConfig.name, options.stage);
 
@@ -219,6 +226,7 @@ async function deployFunction(
     config: YamlProjectConfiguration,
     options: GenezioDeployOptions,
     cwd: string,
+    environmentVariables?: EnvironmentVariable[],
 ) {
     const cloudProvider = await getCloudProvider(config.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
@@ -264,12 +272,17 @@ async function deployFunction(
     const cloudInputs = await Promise.all(
         projectConfiguration.functions.map((f) => functionToCloudInput(f, cwd)),
     );
+    const projectGitRepositoryUrl = (await git.listRemotes({ fs, dir: process.cwd() })).find(
+        (r) => r.remote === "origin",
+    )?.url;
 
     const result = await cloudAdapter.deploy(
         cloudInputs,
         projectConfiguration,
         { stage: options.stage },
         ["remix"],
+        /* sourceRepository */ projectGitRepositoryUrl,
+        /* environmentVariables */ environmentVariables,
     );
 
     return result;

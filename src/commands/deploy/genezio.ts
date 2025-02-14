@@ -69,8 +69,9 @@ import {
     prepareServicesPreBackendDeployment,
     prepareServicesPostBackendDeployment,
     excludedFiles,
+    actionDetectedEnvFile,
 } from "./utils.js";
-import { expandEnvironmentVariables } from "../../utils/environmentVariables.js";
+import { expandEnvironmentVariables, warningMissingEnvironmentVariables } from "../../utils/environmentVariables.js";
 import { getFunctionHandlerProvider } from "../../utils/getFunctionHandlerProvider.js";
 import { getFunctionEntryFilename } from "../../utils/getFunctionEntryFilename.js";
 import { CronDetails } from "../../models/requests.js";
@@ -84,6 +85,7 @@ import {
     DEFAULT_PYTHON_VERSION_INSTALL,
 } from "../../models/projectOptions.js";
 import { detectPythonVersion } from "../../utils/detectPythonCommand.js";
+import { isCI } from "../../utils/process.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -95,6 +97,11 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         return;
     }
     const backendCwd = configuration.backend?.path || process.cwd();
+
+    // Give the user another chance if he forgot to add `--env` flag
+    if (!isCI() && !options.env) {
+        options.env = await actionDetectedEnvFile(backendCwd, configuration.name, options.stage);
+    }
 
     // We need to check if the user is using an older version of @genezio/types
     // because we migrated the decorators implemented in the @genezio/types package to the stage 3 implementation.
@@ -156,6 +163,7 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_START,
             commandOptions: JSON.stringify(options),
         });
+
         deployClassesResult = await deployClasses(configuration, options).catch(
             async (error: AxiosError<Status>) => {
                 await GenezioTelemetry.sendEvent({
@@ -170,6 +178,10 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_END,
             commandOptions: JSON.stringify(options),
         });
+
+        if (deployClassesResult) {
+            await warningMissingEnvironmentVariables(backendCwd, deployClassesResult?.projectId, deployClassesResult?.projectEnvId);
+        }
     }
 
     const frontendUrls = [];
@@ -323,22 +335,6 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
                 "Something went wrong while syncing the cron jobs. Please try to redeploy your project. If the problem persists, please contact support at contact@genez.io.",
             );
         });
-    }
-
-    // Add backend environment variables for backend deployments
-    // At this point the project and environment should be available in deployClassesResult
-    if (configuration.backend && !options.frontend && deployClassesResult) {
-        const cwd = configuration.backend.path
-            ? path.resolve(configuration.backend.path)
-            : process.cwd();
-        await uploadEnvVarsFromFile(
-            options.env,
-            deployClassesResult.projectId,
-            deployClassesResult.projectEnvId,
-            cwd,
-            options.stage || "prod",
-            configuration,
-        );
     }
 
     await uploadUserCode(configuration.name, configuration.region, options.stage, process.cwd());
@@ -541,6 +537,12 @@ export async function deployClasses(
         (r) => r.remote === "origin",
     )?.url;
 
+    const environmentVariables = await uploadEnvVarsFromFile(
+        options.env,
+        options.stage,
+        configuration,
+    );
+
     // TODO: Enable cloud adapter setting for every class
     const cloudAdapter = getCloudAdapter(cloudProvider);
     const result = await cloudAdapter.deploy(
@@ -551,6 +553,7 @@ export async function deployClasses(
         },
         stack,
         /* sourceRepository= */ projectGitRepositoryUrl,
+        /* environmentVariables= */ environmentVariables,
     );
 
     if (

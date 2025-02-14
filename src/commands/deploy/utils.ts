@@ -41,13 +41,9 @@ import {
     zipDirectory,
 } from "../../utils/file.js";
 import { resolveConfigurationVariable } from "../../utils/scripts.js";
-import { GenezioTelemetry, TelemetryEventTypes } from "../../telemetry/telemetry.js";
-import { setEnvironmentVariables } from "../../requests/setEnvironmentVariables.js";
 import { log } from "../../utils/logging.js";
-import { AxiosError } from "axios";
 import colors from "colors";
 import {
-    detectEnvironmentVariablesFile,
     findAnEnvFile,
     getUnsetEnvironmentVariables,
     parseConfigurationVariable,
@@ -71,13 +67,13 @@ import { getPresignedURLForProjectCodePush } from "../../requests/getPresignedUR
 import { uploadContentToS3 } from "../../requests/uploadContentToS3.js";
 import { displayHint, replaceExpression } from "../../utils/strings.js";
 import { packageManagers, PackageManagerType } from "../../packageManagers/packageManager.js";
-import { ContainerComponentType, SSRFrameworkComponentType } from "../../models/projectOptions.js";
 import gitignore from "parse-gitignore";
 import {
     disableEmailIntegration,
     enableEmailIntegration,
     getProjectIntegrations,
 } from "../../requests/integration.js";
+import { ContainerComponentType, SSRFrameworkComponentType } from "../../models/projectOptions.js";
 
 const dnsLookup = promisify(dns.lookup);
 
@@ -901,7 +897,7 @@ export async function evaluateResource(
 
         if (!envFile) {
             throw new UserError(
-                `Environment variable file ${envFile} is missing. Please provide the correct path with genezio deploy --env <envFile>.`,
+                `Environment variable file ${envFile} is missing. Please provide the correct path with genezio deploy \`--env <envFile>\`.`,
             );
         }
         const resourceValue = (await readEnvironmentVariablesFile(envFile)).find(
@@ -920,64 +916,118 @@ export async function evaluateResource(
     return resourceRaw.value;
 }
 
+export async function actionDetectedEnvFile(cwd: string, projectName: string, stage: string): Promise<string | undefined> {
+    const envFile = ".env";
+    const envFileFullPath = path.join(cwd, envFile);
+    if (!(await fileExists(envFileFullPath))) {
+        return undefined;
+    }
+
+    const envVars = await readEnvironmentVariablesFile(envFileFullPath);
+    if (envVars.length === 0) {
+        return undefined;
+    }
+
+    const project = await getProjectInfoByName(projectName);
+    const projectEnv = project.projectEnvs.find((projectEnv) => projectEnv.name == stage);
+    let missingEnvVars: EnvironmentVariable[] = []
+    if (project && projectEnv) {
+        const missingEnvVarsKeys = await getUnsetEnvironmentVariables(
+            envVars.map((envVar) => envVar.name),
+            project.id,
+            projectEnv.id,
+        );
+        if (missingEnvVarsKeys.length == 0) {
+            return undefined;
+        }
+        missingEnvVars = envVars.filter((envVar) => missingEnvVarsKeys.includes(envVar.name));
+    }
+
+    const confirmSettingEnvVars = await promptToConfirmSettingEnvironmentVariables(
+        missingEnvVars.map((envVar) => envVar.name),
+    );
+
+    if (!confirmSettingEnvVars) {
+        log.info(
+            `Skipping environment variables upload. You can set them later by navigating to the dashboard.`,
+        );
+        return undefined;
+    }
+
+    debugLogger.debug(
+        `Uploading environment variables ${JSON.stringify(envVars)} from ${envFileFullPath}.`,
+    );
+
+    return envFile;
+}
+
 export async function uploadEnvVarsFromFile(
-    envPath: string | undefined,
-    projectId: string,
-    projectEnvId: string,
-    cwd: string,
+    optionsEnvFileFlag: string | undefined,
     stage: string,
     configuration: YamlProjectConfiguration,
     componentType: SSRFrameworkComponentType | ContainerComponentType | "backend" = "backend",
-) {
-    if (envPath) {
-        const envFile = path.join(process.cwd(), envPath);
-        debugLogger.debug(`Loading environment variables from ${envFile}.`);
+): Promise<EnvironmentVariable[]> {
+    if (!optionsEnvFileFlag) {
+        return [];
+    }
+    const envFile = path.join(process.cwd(), optionsEnvFileFlag);
 
-        if (!(await fileExists(envFile))) {
-            // There is no need to exit the process here, as the project has been deployed
-            log.error(`File ${envFile} does not exists. Please provide the correct path.`);
-            await GenezioTelemetry.sendEvent({
-                eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
-                errorTrace: `File ${envFile} does not exists`,
-            });
-        } else {
-            // Read environment variables from .env file
-            const envVars = await readEnvironmentVariablesFile(envFile);
-
-            // Upload environment variables to the project
-            await setEnvironmentVariables(projectId, projectEnvId, envVars)
-                .then(async () => {
-                    const envVarKeys = envVars.map((envVar) => envVar.name);
-                    log.info(
-                        `The following environment variables were uploaded successfully: `,
-                        envVarKeys.join(", "),
-                    );
-                    await GenezioTelemetry.sendEvent({
-                        eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS,
-                    });
-                })
-                .catch(async (error: AxiosError) => {
-                    log.error(`Loading environment variables failed with: ${error.message}`);
-                    log.error(
-                        `Try to set the environment variables using the dashboard ${colors.cyan(
-                            DASHBOARD_URL,
-                        )}`,
-                    );
-                    await GenezioTelemetry.sendEvent({
-                        eventType: TelemetryEventTypes.GENEZIO_DEPLOY_ERROR,
-                        errorTrace: error.toString(),
-                    });
-                });
-        }
+    if (!(await fileExists(envFile))) {
+        throw new UserError(
+            `File ${envFile} does not exist. Please provide the correct path using \`--env <envFile>\`.`,
+        );
     }
 
-    // This is best effort, we should encourage the user to use `--env <envFile>` to set the correct env file path.
-    // Search for possible .env files in the project directory and use the first
-    const envFile = envPath ? path.join(process.cwd(), envPath) : await findAnEnvFile(cwd);
+    const envVars = await readEnvironmentVariablesFile(envFile);
+    debugLogger.debug(
+        `Found the following variables in the env file: ${envVars.map((envVar) => envVar.name).join(", ")}`,
+    );
 
-    // Select the enviroment object based on the component type (nuxt, nitro, nextjs, container, backend)
-    // "backend" is the default component type
-    const environment =
+    const environment = getEnvironmentConfiguration(configuration, componentType);
+    if (environment) {
+        const environmentVariablesFromConfigFile =
+            await evaluateEnvironmentVariablesFromConfiguration(
+                environment,
+                configuration,
+                stage,
+                envFile,
+            );
+        debugLogger.debug(
+            `Found the following variables in the \`genezio.yaml\` file: ${JSON.stringify(environmentVariablesFromConfigFile)}`,
+        );
+        envVars.push(...environmentVariablesFromConfigFile);
+    }
+
+    return envVars;
+}
+
+async function evaluateEnvironmentVariablesFromConfiguration(
+    environment: Record<string, string>,
+    configuration: YamlProjectConfiguration,
+    stage: string,
+    envFile: string,
+): Promise<EnvironmentVariable[]> {
+    const envVarKeys = Object.keys(environment);
+    return (
+        await Promise.all(
+            envVarKeys.map(async (envVarKey) => {
+                const value = await evaluateResource(
+                    configuration,
+                    environment[envVarKey],
+                    stage,
+                    envFile,
+                );
+                return value ? { name: envVarKey, value } : undefined;
+            }),
+        )
+    ).filter(Boolean) as EnvironmentVariable[];
+}
+
+function getEnvironmentConfiguration(
+    configuration: YamlProjectConfiguration,
+    componentType: SSRFrameworkComponentType | ContainerComponentType | "backend",
+) {
+    return (
         {
             [ContainerComponentType.container]: configuration.container?.environment,
             [SSRFrameworkComponentType.next]: configuration.nextjs?.environment,
@@ -987,97 +1037,8 @@ export async function uploadEnvVarsFromFile(
             [SSRFrameworkComponentType.remix]: configuration.remix?.environment,
             [SSRFrameworkComponentType.streamlit]: configuration.streamlit?.environment,
             backend: configuration.backend?.environment,
-        }[componentType] ?? configuration.backend?.environment;
-
-    if (environment) {
-        const unsetEnvVarKeys = await getUnsetEnvironmentVariables(
-            Object.keys(environment),
-            projectId,
-            projectEnvId,
-        );
-
-        const environmentVariablesToBePushed: EnvironmentVariable[] = (
-            await Promise.all(
-                unsetEnvVarKeys.map(async (envVarKey) => {
-                    const value = await evaluateResource(
-                        configuration,
-                        environment[envVarKey],
-                        stage,
-                        envFile,
-                    );
-                    return value ? { name: envVarKey, value } : undefined;
-                }),
-            )
-        ).filter(Boolean) as EnvironmentVariable[];
-
-        if (environmentVariablesToBePushed.length > 0) {
-            debugLogger.debug(
-                `Uploading environment variables ${JSON.stringify(environmentVariablesToBePushed)} to project ${projectId}`,
-            );
-            await setEnvironmentVariables(projectId, projectEnvId, environmentVariablesToBePushed);
-            debugLogger.debug(
-                `Environment variables uploaded to project ${projectId} successfully.`,
-            );
-        }
-
-        return;
-    }
-
-    if (!envFile) {
-        return;
-    }
-
-    const envVars = await readEnvironmentVariablesFile(envFile);
-    const missingEnvVars = await getUnsetEnvironmentVariables(
-        envVars.map((envVar) => envVar.name),
-        projectId,
-        projectEnvId,
+        }[componentType] ?? configuration.backend?.environment
     );
-
-    if (!isCI() && missingEnvVars.length > 0 && (await detectEnvironmentVariablesFile(envFile))) {
-        debugLogger.debug(`Attempting to upload ${missingEnvVars.join(", ")} from ${envFile}.`);
-
-        // Interactively prompt the user to confirm setting environment variables
-        const confirmSettingEnvVars =
-            await promptToConfirmSettingEnvironmentVariables(missingEnvVars);
-
-        if (!confirmSettingEnvVars) {
-            log.info(
-                `Skipping environment variables upload. You can set them later by navigation to the dashboard ${DASHBOARD_URL}`,
-            );
-        } else {
-            const environmentVariablesToBePushed = envVars.filter((envVar: { name: string }) =>
-                missingEnvVars.includes(envVar.name),
-            );
-
-            debugLogger.debug(
-                `Uploading environment variables ${JSON.stringify(environmentVariablesToBePushed)} from ${envFile} to project ${projectId}`,
-            );
-            await setEnvironmentVariables(
-                projectId,
-                projectEnvId,
-                environmentVariablesToBePushed,
-            ).then(async () => {
-                const envVarKeys = environmentVariablesToBePushed.map((envVar) => envVar.name);
-                log.info(
-                    `The following environment variables were uploaded successfully: `,
-                    envVarKeys.join(", "),
-                );
-                await GenezioTelemetry.sendEvent({
-                    eventType: TelemetryEventTypes.GENEZIO_DEPLOY_LOAD_ENV_VARS,
-                });
-            });
-            debugLogger.debug(
-                `Environment variables uploaded to project ${projectId} successfully.`,
-            );
-        }
-    } else if (missingEnvVars.length > 0) {
-        log.warn(
-            `Environment variables ${missingEnvVars.join(", ")} are not set remotely. Please set them using the dashboard ${colors.cyan(
-                DASHBOARD_URL,
-            )}`,
-        );
-    }
 }
 
 // Variables to be excluded from the zip file for the project code (.genezioignore)

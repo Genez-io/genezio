@@ -1,10 +1,12 @@
 import path from "path";
+import git from "isomorphic-git";
 import fs from "fs";
 import colors from "colors";
 import { $ } from "execa";
 import { GenezioDeployOptions } from "../../../models/commandOptions.js";
 import { log } from "../../../utils/logging.js";
 import {
+    actionDetectedEnvFile,
     attemptToInstallDependencies,
     prepareServicesPostBackendDeployment,
     prepareServicesPreBackendDeployment,
@@ -25,6 +27,9 @@ import { functionToCloudInput, getCloudAdapter } from "../genezio.js";
 import { FunctionType, Language } from "../../../projectConfiguration/yaml/models.js";
 import { ProjectConfiguration } from "../../../models/projectConfiguration.js";
 import { DASHBOARD_URL } from "../../../constants.js";
+import { EnvironmentVariable } from "../../../models/environmentVariables.js";
+import { warningMissingEnvironmentVariables } from "../../../utils/environmentVariables.js";
+import { isCI } from "../../../utils/process.js";
 
 export async function nestJsDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
@@ -34,6 +39,11 @@ export async function nestJsDeploy(options: GenezioDeployOptions) {
     const componentPath = genezioConfig.nestjs?.path
         ? path.resolve(cwd, genezioConfig.nestjs.path)
         : cwd;
+
+    // Give the user another chance if he forgot to add `--env` flag
+    if (!isCI() && !options.env) {
+        options.env = await actionDetectedEnvFile(componentPath, genezioConfig.name, options.stage);
+    }
 
     // Prepare services before deploying (database, authentication, etc)
     await prepareServicesPreBackendDeployment(
@@ -71,21 +81,24 @@ export async function nestJsDeploy(options: GenezioDeployOptions) {
         throw new UserError("Failed to build the NestJS project. Check the logs above.");
     });
 
-    const result = await deployFunction(genezioConfig, options, componentPath);
-
-    await uploadEnvVarsFromFile(
+    const environmentVariables = await uploadEnvVarsFromFile(
         options.env,
-        result.projectId,
-        result.projectEnvId,
-        componentPath,
-        options.stage || "prod",
+        options.stage,
         genezioConfig,
         SSRFrameworkComponentType.nestjs,
+    );
+    const result = await deployFunction(
+        genezioConfig,
+        options,
+        componentPath,
+        environmentVariables,
     );
 
     await uploadUserCode(genezioConfig.name, genezioConfig.region, options.stage, componentPath);
 
     const functionUrl = result.functions.find((f) => f.name === "function-nest")?.cloudUrl;
+
+    await warningMissingEnvironmentVariables(genezioConfig.nestjs?.path || "./", result.projectId, result.projectEnvId);
 
     await prepareServicesPostBackendDeployment(genezioConfig, genezioConfig.name, options.stage);
 
@@ -107,6 +120,7 @@ async function deployFunction(
     config: YamlProjectConfiguration,
     options: GenezioDeployOptions,
     cwd: string,
+    environmentVariables?: EnvironmentVariable[],
 ) {
     const cloudProvider = await getCloudProvider(config.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
@@ -162,11 +176,17 @@ async function deployFunction(
         projectConfiguration.functions.map((f) => functionToCloudInput(f, functionPath)),
     );
 
+    const projectGitRepositoryUrl = (await git.listRemotes({ fs, dir: process.cwd() })).find(
+        (r) => r.remote === "origin",
+    )?.url;
+
     const result = await cloudAdapter.deploy(
         cloudInputs,
         projectConfiguration,
         { stage: options.stage },
         ["nestjs"],
+        /* sourceRepository */ projectGitRepositoryUrl,
+        /* environmentVariables */ environmentVariables,
     );
 
     return result;
