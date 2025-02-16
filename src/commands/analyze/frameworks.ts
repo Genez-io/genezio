@@ -456,6 +456,14 @@ export function isFastAPIComponent(contents: Record<string, string>): boolean {
     return false;
 }
 
+// Check if the project is a FastHTML component (presence of 'requirements.txt', and 'fasthtml' in 'requirements.txt')
+export function isFastHTMLComponent(contents: Record<string, string>): boolean {
+    if (contents["requirements.txt"]) {
+        return /fasthtml(?:==|$|\s)/i.test(contents["requirements.txt"]);
+    }
+    return false;
+}
+
 // Checks if the project is a Python function that is compatible with AWS Lambda (presence of 'requirements.txt')
 export function isPythonLambdaFunction(contents: Record<string, string>): boolean {
     return contents["requirements.txt"] !== undefined || contents["pyproject.toml"] !== undefined;
