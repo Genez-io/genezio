@@ -1974,6 +1974,7 @@ async function startSsrFramework(
             stdio: "pipe",
             env: {
                 ...process.env,
+                ...loadedEnvVars,
                 ...newEnvObject,
                 CI: "1", // Forces CI mode
                 TERM: "dumb", // Simplifies terminal output
