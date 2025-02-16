@@ -1551,7 +1551,10 @@ async function startLocalUnitProcess(
 
     // Store the port in the environment variables
     const modifyLocalUnitName = localUnitName.replace(/-/g, "_").toUpperCase();
-    process.env[`GENEZIO_PORT_${modifyLocalUnitName}`] = availablePort.toString();
+    const portEnvKey = `GENEZIO_PORT_${modifyLocalUnitName}`;
+    if (!process.env[portEnvKey]) {
+        process.env[portEnvKey] = availablePort.toString();
+    }
     const processParameters = [...parameters, availablePort.toString()];
     const localUnitProcess = spawn(startingCommand, processParameters, {
         stdio: ["pipe", "pipe", "pipe"],
