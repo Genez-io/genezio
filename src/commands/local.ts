@@ -1533,13 +1533,24 @@ async function startLocalUnitProcess(
     cwd?: string,
     configurationEnvVars?: { [key: string]: string | undefined },
 ) {
-    // Check if this is an HTTP server and already has an assigned port
+    // Load .env file from the current working directory or specified cwd
+    const envPath = path.join(cwd || process.cwd(), ".env");
+    const envConfig = dotenv.config({ path: envPath });
+    const loadedEnvVars = envConfig.parsed || {};
+
+    const modifyLocalUnitName = localUnitName.replace(/-/g, "_").toUpperCase();
+    const portEnvKey = `GENEZIO_PORT_${modifyLocalUnitName}`;
+
+    // Check for existing port in environment variables
     let availablePort: number;
-    if (type === "function" && httpServerPortMapping[localUnitName]) {
+    const existingPort = loadedEnvVars[portEnvKey] || process.env[portEnvKey];
+
+    if (existingPort) {
+        availablePort = parseInt(existingPort, 10);
+    } else if (type === "function" && httpServerPortMapping[localUnitName]) {
         availablePort = httpServerPortMapping[localUnitName];
     } else {
         availablePort = await findAvailablePort();
-        // Store the port mapping for HTTP servers
         if (type === "function") {
             httpServerPortMapping[localUnitName] = availablePort;
         }
@@ -1549,9 +1560,6 @@ async function startLocalUnitProcess(
     debugLogger.debug(`[START_Unit_PROCESS] Starting command: ${startingCommand}`);
     debugLogger.debug(`[START_Unit_PROCESS] Parameters: ${parameters}`);
 
-    // Store the port in the environment variables
-    const modifyLocalUnitName = localUnitName.replace(/-/g, "_").toUpperCase();
-    const portEnvKey = `GENEZIO_PORT_${modifyLocalUnitName}`;
     if (!process.env[portEnvKey]) {
         process.env[portEnvKey] = availablePort.toString();
     }
@@ -1559,6 +1567,7 @@ async function startLocalUnitProcess(
     const localUnitProcess = spawn(startingCommand, processParameters, {
         stdio: ["pipe", "pipe", "pipe"],
         env: {
+            ...loadedEnvVars,
             ...process.env,
             ...envVars,
             ...configurationEnvVars,
