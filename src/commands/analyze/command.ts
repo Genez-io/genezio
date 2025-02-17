@@ -26,6 +26,7 @@ import {
     isRemixComponent,
     isEmberComponent,
     isStreamlitComponent,
+    isTypescript,
 } from "./frameworks.js";
 import { generateDatabaseName, readOrAskConfig } from "../deploy/utils.js";
 import {
@@ -44,6 +45,7 @@ import {
     addFrontendComponentToConfig,
     addServicesToConfig,
     addSSRComponentToConfig,
+    getEntryFileTypescript,
     getPythonHandler,
     handleBackendAndSSRConfig,
     injectBackendUrlsInConfig,
@@ -256,8 +258,30 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             );
             debugLogger.debug("Serverless HTTP entry file found:", entryFile);
 
-            // TODO: Add support for detecting and building typescript backends
-            // const isTypescriptFlag = await isTypescript(contents);
+            const isTypescriptFlag = await isTypescript(contents);
+            debugLogger.debug("Is Serverless HTTP typescript:", isTypescriptFlag);
+
+            let entryFileBuildOut = entryFile;
+            if (
+                isTypescriptFlag &&
+                (entryFile.endsWith(".ts") ||
+                    entryFile.endsWith(".mts") ||
+                    entryFile.endsWith(".cts"))
+            ) {
+                const tsconfigContent = await retrieveFileContent(
+                    path.join(componentPath, "tsconfig.json"),
+                );
+
+                // Remove comments before parsing JSON
+                const tsconfigJsonString = tsconfigContent
+                    .replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "$1") // Remove comments
+                    .replace(/\s*\n\s*/g, "") // Remove newlines and whitespace
+                    .trim();
+
+                const tsconfigJsonContent = JSON.parse(tsconfigJsonString);
+                entryFileBuildOut = getEntryFileTypescript(entryFile, tsconfigJsonContent);
+                debugLogger.debug("Serverless HTTP entry file build out:", entryFileBuildOut);
+            }
 
             const packageManagerType =
                 genezioConfig.backend?.language?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
@@ -265,13 +289,18 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 language: {
-                    // TODO: Add support for detecting and building typescript backends
                     name: Language.js,
                     runtime: DEFAULT_NODE_RUNTIME,
                 } as YAMLLanguage,
                 scripts: {
-                    deploy: [`${packageManager.command} install`],
-                    local: [`${packageManager.command} install`],
+                    deploy: [
+                        `${packageManager.command} install`,
+                        isTypescriptFlag ? `${packageManager.command} run build` : "",
+                    ].filter(Boolean),
+                    local: [
+                        `${packageManager.command} install`,
+                        isTypescriptFlag ? `${packageManager.command} run build` : "",
+                    ].filter(Boolean),
                 },
                 environment: mapEnvironmentVariableToConfig(
                     resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
@@ -280,9 +309,8 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     {
                         name: "serverless",
                         path: ".",
-                        // TODO: This is hardcoded because there are great chances that this indeed called `handler`
                         handler: "handler",
-                        entry: entryFile,
+                        entry: isTypescriptFlag ? entryFileBuildOut : entryFile,
                         type: FunctionType.aws,
                     },
                 ],
@@ -361,15 +389,36 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             );
             debugLogger.debug("Express entry file found:", entryFile);
 
-            // TODO: Add support for detecting and building typescript backends
-            // const isTypescriptFlag = await isTypescript(contents);
+            const isTypescriptFlag = await isTypescript(contents);
+            debugLogger.debug("Is Express typescript:", isTypescriptFlag);
+
+            let entryFileBuildOut = entryFile;
+            if (
+                isTypescriptFlag &&
+                (entryFile.endsWith(".ts") ||
+                    entryFile.endsWith(".mts") ||
+                    entryFile.endsWith(".cts"))
+            ) {
+                const tsconfigContent = await retrieveFileContent(
+                    path.join(componentPath, "tsconfig.json"),
+                );
+                // Remove comments before parsing JSON
+                const tsconfigJsonString = tsconfigContent
+                    .replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "$1") // Remove comments
+                    .replace(/\s*\n\s*/g, "") // Remove newlines and whitespace
+                    .trim();
+
+                const tsconfigJsonContent = JSON.parse(tsconfigJsonString);
+                entryFileBuildOut = getEntryFileTypescript(entryFile, tsconfigJsonContent);
+                debugLogger.debug("Express entry file build out:", entryFileBuildOut);
+            }
+
             const packageManagerType =
                 genezioConfig.backend?.language?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
             const packageManager = packageManagers[packageManagerType];
             await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 language: {
-                    // TODO: Add support for detecting and building typescript backends
                     name: Language.js,
                     runtime: DEFAULT_NODE_RUNTIME,
                 } as YAMLLanguage,
@@ -377,14 +426,20 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
                 ),
                 scripts: {
-                    deploy: [`${packageManager.command} install`],
-                    local: [`${packageManager.command} install`],
+                    deploy: [
+                        `${packageManager.command} install`,
+                        isTypescriptFlag ? `${packageManager.command} run build` : "",
+                    ].filter(Boolean),
+                    local: [
+                        `${packageManager.command} install`,
+                        isTypescriptFlag ? `${packageManager.command} run build` : "",
+                    ].filter(Boolean),
                 },
                 functions: [
                     {
                         name: "express",
                         path: ".",
-                        entry: entryFile,
+                        entry: isTypescriptFlag ? entryFileBuildOut : entryFile,
                         type: FunctionType.httpServer,
                     },
                 ],
@@ -406,21 +461,46 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
             );
             debugLogger.debug("Fastify entry file found:", entryFile);
 
-            // TODO: Add support for detecting and building typescript backends
-            // const isTypescriptFlag = await isTypescript(contents);
+            const isTypescriptFlag = await isTypescript(contents);
+            debugLogger.debug("Is Fastify typescript:", isTypescriptFlag);
+            let entryFileBuildOut = entryFile;
+            if (
+                isTypescriptFlag &&
+                (entryFile.endsWith(".ts") ||
+                    entryFile.endsWith(".mts") ||
+                    entryFile.endsWith(".cts"))
+            ) {
+                const tsconfigContent = await retrieveFileContent(
+                    path.join(componentPath, "tsconfig.json"),
+                );
+                // Remove comments before parsing JSON
+                const tsconfigJsonString = tsconfigContent
+                    .replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, "$1") // Remove comments
+                    .replace(/\s*\n\s*/g, "") // Remove newlines and whitespace
+                    .trim();
+
+                const tsconfigJsonContent = JSON.parse(tsconfigJsonString);
+                entryFileBuildOut = getEntryFileTypescript(entryFile, tsconfigJsonContent);
+                debugLogger.debug("Fastify entry file build out:", entryFileBuildOut);
+            }
             const packageManagerType =
                 genezioConfig.backend?.language?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
             const packageManager = packageManagers[packageManagerType];
             await addBackendComponentToConfig(configPath, {
                 path: componentPath,
                 language: {
-                    // TODO: Add support for detecting and building typescript backends
                     name: Language.js,
                     runtime: DEFAULT_NODE_RUNTIME,
                 } as YAMLLanguage,
                 scripts: {
-                    deploy: [`${packageManager.command} install`],
-                    local: [`${packageManager.command} install`],
+                    deploy: [
+                        `${packageManager.command} install`,
+                        isTypescriptFlag ? `${packageManager.command} run build` : "",
+                    ].filter(Boolean),
+                    local: [
+                        `${packageManager.command} install`,
+                        isTypescriptFlag ? `${packageManager.command} run build` : "",
+                    ].filter(Boolean),
                 },
                 environment: mapEnvironmentVariableToConfig(
                     resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
@@ -429,7 +509,7 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                     {
                         name: "fastify",
                         path: ".",
-                        entry: entryFile,
+                        entry: isTypescriptFlag ? entryFileBuildOut : entryFile,
                         type: FunctionType.httpServer,
                     },
                 ],

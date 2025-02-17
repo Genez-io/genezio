@@ -1,7 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { EXCLUDED_DIRECTORIES, KEY_DEPENDENCY_FILES } from "./command.js";
-import { FUNCTION_EXTENSIONS } from "../../models/projectOptions.js";
 import { debugLogger } from "../../utils/logging.js";
 
 export interface PackageJSON {
@@ -22,19 +21,32 @@ export interface TsconfigJSON {
 }
 
 export async function isTypescript(contents: Record<string, string>): Promise<boolean> {
-    const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
-    const tsconfigJsonContent = JSON.parse(contents["tsconfig.json"]) as TsconfigJSON;
-
     // If there is no package.json, the language is not ts, nor js
-    if (!packageJsonContent) {
+    if (!contents["package.json"]) {
         return false;
     }
+
+    const packageJsonContent = JSON.parse(contents["package.json"]) as PackageJSON;
+
+    // Only try to parse tsconfig.json if it exists in contents
+    const tsconfigJsonContent = contents["tsconfig.json"]
+        ? (JSON.parse(contents["tsconfig.json"]) as TsconfigJSON)
+        : undefined;
 
     if (tsconfigJsonContent) {
         return true;
     }
 
     if (packageJsonContent.main && packageJsonContent.main.endsWith(".ts")) {
+        return true;
+    }
+
+    // Check for TypeScript-related dependencies
+    const dependencies = packageJsonContent.dependencies || {};
+    const devDependencies = packageJsonContent.devDependencies || {};
+    const tsRelatedDeps = ["typescript", "ts-node", "@types/node"];
+
+    if (tsRelatedDeps.some((dep) => dep in dependencies || dep in devDependencies)) {
         return true;
     }
 
@@ -56,7 +68,12 @@ export async function findEntryFile(
         return candidateFile;
     }
 
-    const entryFile = await findFileByPatterns(componentPath, patterns, FUNCTION_EXTENSIONS);
+    const FUNCTION_EXTENSIONS_WITH_TS = ["js", "mjs", "cjs", "py", "ts", "mts", "cts"];
+    const entryFile = await findFileByPatterns(
+        componentPath,
+        patterns,
+        FUNCTION_EXTENSIONS_WITH_TS,
+    );
     if (entryFile) {
         return path.relative(componentPath, entryFile);
     }
