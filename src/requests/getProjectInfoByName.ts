@@ -23,6 +23,17 @@ export default async function getProjectInfoByName(projectName: string): Promise
     return response.data.project;
 }
 
+export async function getProjectInfoByNameIfExits(projectName: string) {
+    let projectInfo;
+    try {
+        projectInfo = await getProjectInfoByName(projectName);
+    } catch (e) {
+        /* empty */
+    }
+
+    return projectInfo;
+}
+
 export async function getProjectEnvFromProjectByName(projectName: string, stageName: string) {
     let completeProjectInfo;
     try {
