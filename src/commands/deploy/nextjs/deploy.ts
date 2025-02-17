@@ -25,7 +25,6 @@ import {
     createFrontendProjectV2,
     CreateFrontendV2Origin,
 } from "../../../requests/createFrontendProject.js";
-import { setEnvironmentVariables } from "../../../requests/setEnvironmentVariables.js";
 import { GenezioCloudOutput } from "../../../cloudAdapter/cloudAdapter.js";
 import {
     DASHBOARD_URL,
@@ -38,6 +37,7 @@ import { computeAssetsPaths } from "./assets.js";
 import * as Sentry from "@sentry/node";
 import { randomUUID } from "crypto";
 import {
+    actionDetectedEnvFile,
     attemptToInstallDependencies,
     prepareServicesPostBackendDeployment,
     prepareServicesPreBackendDeployment,
@@ -45,11 +45,12 @@ import {
     uploadUserCode,
 } from "../utils.js";
 import { readOrAskConfig } from "../utils.js";
-import {
-    DEFAULT_ARCHITECTURE,
-    SSRFrameworkComponentType,
-} from "../../../models/projectOptions.js";
+import { DEFAULT_ARCHITECTURE, SSRFrameworkComponentType } from "../../../models/projectOptions.js";
 import { addSSRComponentToConfig } from "../../analyze/utils.js";
+import { EnvironmentVariable } from "../../../models/environmentVariables.js";
+import { setEnvironmentVariables } from "../../../requests/setEnvironmentVariables.js";
+import { warningMissingEnvironmentVariables } from "../../../utils/environmentVariables.js";
+import { isCI } from "../../../utils/process.js";
 export async function nextJsDeploy(options: GenezioDeployOptions) {
     const genezioConfig = await readOrAskConfig(options.config);
     const packageManagerType = genezioConfig.nextjs?.packageManager || NODE_DEFAULT_PACKAGE_MANAGER;
@@ -59,6 +60,15 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
     const nextjsComponentPath = genezioConfig.nextjs?.path
         ? path.resolve(projectCwd, genezioConfig.nextjs.path)
         : projectCwd;
+
+    // Give the user another chance if he forgot to add `--env` flag
+    if (!isCI() && !options.env) {
+        options.env = await actionDetectedEnvFile(
+            nextjsComponentPath,
+            genezioConfig.name,
+            options.stage,
+        );
+    }
 
     // Prepare services before deploying (database, authentication, etc)
     await prepareServicesPreBackendDeployment(
@@ -120,10 +130,16 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
 
     const cacheToken = randomUUID();
     const sharpInstallFolder = await installSharp(tempBuildComponentPath);
+    const environmentVariables = await uploadEnvVarsFromFile(
+        options.env,
+        options.stage,
+        genezioConfig,
+        SSRFrameworkComponentType.next,
+    );
 
     const [deploymentResult, domainName] = await Promise.all([
         // Deploy NextJs serverless functions
-        deployFunction(genezioConfig, tempBuildComponentPath, options.stage),
+        deployFunction(genezioConfig, tempBuildComponentPath, options.stage, environmentVariables),
         // Deploy NextJs static assets to S3
         deployStaticAssets(genezioConfig, options.stage, cacheToken, tempBuildComponentPath),
     ]);
@@ -147,16 +163,13 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
             options.stage,
             tempBuildComponentPath,
         ),
-        uploadEnvVarsFromFile(
-            options.env,
-            deploymentResult.projectId,
-            deploymentResult.projectEnvId,
-            tempBuildComponentPath,
-            options.stage || "prod",
-            genezioConfig,
-            SSRFrameworkComponentType.next,
-        ),
     ]);
+
+    await warningMissingEnvironmentVariables(
+        genezioConfig.nextjs?.path || "./",
+        deploymentResult.projectId,
+        deploymentResult.projectEnvId,
+    );
 
     await prepareServicesPostBackendDeployment(genezioConfig, genezioConfig.name, options.stage);
 
@@ -352,6 +365,7 @@ async function deployFunction(
     config: YamlProjectConfiguration,
     cwd: string,
     stage?: string,
+    environmentVariables?: EnvironmentVariable[],
 ): Promise<GenezioCloudOutput> {
     const cloudProvider = await getCloudProvider(config.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
@@ -364,10 +378,15 @@ async function deployFunction(
         name: "nextjs",
         entry: "start.mjs",
         handler: "handler",
-        type: FunctionType.httpServer,
+        type:
+            config.nextjs?.type === FunctionType.persistent
+                ? FunctionType.persistent
+                : FunctionType.httpServer,
         timeout: config.nextjs?.timeout,
         storageSize: config.nextjs?.storageSize,
         instanceSize: config.nextjs?.instanceSize,
+        vcpuCount: config.nextjs?.vcpuCount,
+        memoryMb: config.nextjs?.memoryMb,
         maxConcurrentRequestsPerInstance: config.nextjs?.maxConcurrentRequestsPerInstance,
         maxConcurrentInstances: config.nextjs?.maxConcurrentInstances,
         cooldownTime: config.nextjs?.cooldownTime,
@@ -438,6 +457,7 @@ async function deployFunction(
         { stage },
         ["nextjs"],
         projectGitRepositoryUrl,
+        environmentVariables,
     );
     debugLogger.debug(`Deployed functions: ${JSON.stringify(result.functions)}`);
 

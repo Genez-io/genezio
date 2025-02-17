@@ -49,7 +49,11 @@ import { Status } from "../../requests/models.js";
 import { bundle } from "../../bundlers/utils.js";
 import { isDependencyVersionCompatible } from "../../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
-import { entryFileFunctionMap, Language } from "../../projectConfiguration/yaml/models.js";
+import {
+    entryFileFunctionMap,
+    FunctionType,
+    Language,
+} from "../../projectConfiguration/yaml/models.js";
 import { runScript } from "../../utils/scripts.js";
 import { scanClassesForDecorators } from "../../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../../projectConfiguration/yaml/v2.js";
@@ -68,8 +72,13 @@ import {
     evaluateResource,
     prepareServicesPreBackendDeployment,
     prepareServicesPostBackendDeployment,
+    excludedFiles,
+    actionDetectedEnvFile,
 } from "./utils.js";
-import { expandEnvironmentVariables } from "../../utils/environmentVariables.js";
+import {
+    expandEnvironmentVariables,
+    warningMissingEnvironmentVariables,
+} from "../../utils/environmentVariables.js";
 import { getFunctionHandlerProvider } from "../../utils/getFunctionHandlerProvider.js";
 import { getFunctionEntryFilename } from "../../utils/getFunctionEntryFilename.js";
 import { CronDetails } from "../../models/requests.js";
@@ -83,6 +92,7 @@ import {
     DEFAULT_PYTHON_VERSION_INSTALL,
 } from "../../models/projectOptions.js";
 import { detectPythonVersion } from "../../utils/detectPythonCommand.js";
+import { isCI } from "../../utils/process.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -94,6 +104,11 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         return;
     }
     const backendCwd = configuration.backend?.path || process.cwd();
+
+    // Give the user another chance if he forgot to add `--env` flag
+    if (!isCI() && !options.env) {
+        options.env = await actionDetectedEnvFile(backendCwd, configuration.name, options.stage);
+    }
 
     // We need to check if the user is using an older version of @genezio/types
     // because we migrated the decorators implemented in the @genezio/types package to the stage 3 implementation.
@@ -155,6 +170,7 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_START,
             commandOptions: JSON.stringify(options),
         });
+
         deployClassesResult = await deployClasses(configuration, options).catch(
             async (error: AxiosError<Status>) => {
                 await GenezioTelemetry.sendEvent({
@@ -169,6 +185,14 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
             eventType: TelemetryEventTypes.GENEZIO_BACKEND_DEPLOY_END,
             commandOptions: JSON.stringify(options),
         });
+
+        if (deployClassesResult) {
+            await warningMissingEnvironmentVariables(
+                backendCwd,
+                deployClassesResult?.projectId,
+                deployClassesResult?.projectEnvId,
+            );
+        }
     }
 
     const frontendUrls = [];
@@ -324,22 +348,6 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         });
     }
 
-    // Add backend environment variables for backend deployments
-    // At this point the project and environment should be available in deployClassesResult
-    if (configuration.backend && !options.frontend && deployClassesResult) {
-        const cwd = configuration.backend.path
-            ? path.resolve(configuration.backend.path)
-            : process.cwd();
-        await uploadEnvVarsFromFile(
-            options.env,
-            deployClassesResult.projectId,
-            deployClassesResult.projectEnvId,
-            cwd,
-            options.stage || "prod",
-            configuration,
-        );
-    }
-
     await uploadUserCode(configuration.name, configuration.region, options.stage, process.cwd());
 
     await prepareServicesPostBackendDeployment(configuration, projectName, options.stage);
@@ -443,8 +451,6 @@ export async function deployClasses(
                 options.disableOptimization,
             );
 
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            // check if the unzipped folder is smaller than 250MB
             const unzippedBundleSize: number = await getBundleFolderSizeLimit(output.path);
             debugLogger.debug(
                 `The unzippedBundleSize for class ${element.path} is ${unzippedBundleSize}.`,
@@ -490,6 +496,8 @@ export async function deployClasses(
                 timeout: element.timeout,
                 storageSize: element.storageSize,
                 instanceSize: element.instanceSize,
+                vcpuCount: element.vcpuCount,
+                memoryMb: element.memoryMb,
                 maxConcurrentRequestsPerInstance: element.maxConcurrentRequestsPerInstance,
                 maxConcurrentInstances: element.maxConcurrentInstances,
                 cooldownTime: element.cooldownTime,
@@ -538,6 +546,12 @@ export async function deployClasses(
         (r) => r.remote === "origin",
     )?.url;
 
+    const environmentVariables = await uploadEnvVarsFromFile(
+        options.env,
+        options.stage,
+        configuration,
+    );
+
     // TODO: Enable cloud adapter setting for every class
     const cloudAdapter = getCloudAdapter(cloudProvider);
     const result = await cloudAdapter.deploy(
@@ -548,6 +562,7 @@ export async function deployClasses(
         },
         stack,
         /* sourceRepository= */ projectGitRepositoryUrl,
+        /* environmentVariables= */ environmentVariables,
     );
 
     if (
@@ -613,7 +628,15 @@ export async function functionToCloudInput(
     );
 
     if (functionElement.language === "python") {
-        await fsExtra.copy(path.join(backendPath), tmpFolderPath);
+        await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath, {
+            filter: (src) => {
+                const relativePath = path.relative(
+                    path.join(backendPath, functionElement.path),
+                    src,
+                );
+                return !excludedFiles.some((pattern) => relativePath.includes(pattern));
+            },
+        });
     } else {
         // copy everything to the temporary folder
         await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath);
@@ -640,9 +663,9 @@ export async function functionToCloudInput(
             type: GenezioFunctionMetadataType.Python,
             app_name: functionElement.handler,
         };
-        // Requirements file must be in the root of the backend folder
-        const requirementsPath = path.join(backendPath, "requirements.txt");
-        const pyProjectTomlPath = path.join(backendPath, "pyproject.toml");
+
+        const requirementsPath = path.join(backendPath, functionElement.path, "requirements.txt");
+        const pyProjectTomlPath = path.join(backendPath, functionElement.path, "pyproject.toml");
         if (fs.existsSync(requirementsPath) || fs.existsSync(pyProjectTomlPath)) {
             const pathForDependencies = path.join(tmpFolderPath, "packages");
             const packageManager = packageManagers[PYTHON_DEFAULT_PACKAGE_MANAGER];
@@ -684,7 +707,7 @@ export async function functionToCloudInput(
                         installCommand = `${packageManager.command} install -r ${requirementsOutputPath} --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${pythonVersion} -t ${pathForDependencies} --no-user`;
                     }
                 } else if (fs.existsSync(pyProjectTomlPath)) {
-                    installCommand = `${packageManager.command} install . --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${pythonVersion} -t ${pathForDependencies}`;
+                    installCommand = `${packageManager.command} install ${path.join(tmpFolderPath)} --platform manylinux2014_x86_64 --only-binary=:all: --python-version ${pythonVersion} -t ${pathForDependencies}`;
                 }
             } else if (packageManager.command === "poetry") {
                 installCommand = `${packageManager.command} install --no-root --directory ${pathForDependencies}`;
@@ -705,8 +728,11 @@ export async function functionToCloudInput(
 
     // Determine entry file name
     let entryFileName;
-    if (functionElement.type === "httpServer") {
-        entryFileName = path.join(functionElement.path, functionElement.entry).replace(/\\/g, "/");
+    if (
+        functionElement.type === FunctionType.httpServer ||
+        functionElement.type === FunctionType.persistent
+    ) {
+        entryFileName = path.join(functionElement.entry).replace(/\\/g, "/");
     } else {
         entryFileName =
             entryFileFunctionMap[functionElement.language as keyof typeof entryFileFunctionMap];
@@ -742,11 +768,13 @@ export async function functionToCloudInput(
         entryFile: entryFileName,
         timeout: functionElement.timeout,
         instanceSize: functionElement.instanceSize,
+        vcpuCount: functionElement.vcpuCount,
+        memoryMb: functionElement.memoryMb,
         storageSize: functionElement.storageSize,
         maxConcurrentRequestsPerInstance: functionElement.maxConcurrentRequestsPerInstance,
         maxConcurrentInstances: functionElement.maxConcurrentInstances,
         cooldownTime: functionElement.cooldownTime,
-        persistent: functionElement.persistent,
+        persistent: functionElement.type === FunctionType.persistent,
         metadata: metadata,
     };
 }

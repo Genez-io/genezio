@@ -11,10 +11,7 @@ export const FASTIFY_PATTERN = [
     /import\s+Fastify\s+from\s+['"]fastify['"]|import\s+fastify\s+from\s+['"]fastify['"]|require\(['"]fastify['"]\)/,
 ];
 
-export const EXPRESS_PATTERN = [
-    /app\.listen/,
-    /import\s+express\s+from\s+['"]express['"]|require\(['"]express['"]\)/,
-];
+export const EXPRESS_PATTERN = [/app\.listen/, /import.*from\s+['"]express['"]/];
 
 export const SERVERLESS_HTTP_PATTERN = [
     /import\s+Serverless\s+from\s+['"]serverless-http['"]|import\s+serverless\s+from\s+['"]serverless-http['"]|require\(['"]serverless-http['"]\)/,

@@ -7,6 +7,7 @@ import { YamlFrontend } from "../projectConfiguration/yaml/v2.js";
 import { Dependency } from "../bundlers/bundler.interface.js";
 import FileDetails from "../models/fileDetails.js";
 import { InstanceSize } from "../projectConfiguration/yaml/models.js";
+import { EnvironmentVariable } from "../models/environmentVariables.js";
 
 export enum GenezioCloudInputType {
     CLASS = "class",
@@ -46,6 +47,8 @@ export type GenezioCloudInput =
           timeout?: number;
           storageSize?: number;
           instanceSize?: InstanceSize;
+          vcpuCount?: number;
+          memoryMb?: number;
           maxConcurrentRequestsPerInstance?: number;
           maxConcurrentInstances?: number;
           cooldownTime?: number;
@@ -62,6 +65,8 @@ export type GenezioCloudInput =
           timeout?: number;
           storageSize?: number;
           instanceSize?: InstanceSize;
+          vcpuCount?: number;
+          memoryMb?: number;
           maxConcurrentRequestsPerInstance?: number;
           maxConcurrentInstances?: number;
           cooldownTime?: number;
@@ -100,6 +105,7 @@ export interface CloudAdapter {
         cloudAdapterOptions: CloudAdapterOptions,
         stack: string[],
         sourceRepository?: string,
+        environmentVariables?: EnvironmentVariable[],
     ): Promise<GenezioCloudOutput>;
     deployFrontend(
         projectName: string,

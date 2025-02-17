@@ -24,6 +24,7 @@ import { tryV2Migration } from "./migration.js";
 import yaml, { YAMLParseError } from "yaml";
 import { DeepRequired } from "../../utils/types.js";
 import { isUnique } from "../../utils/yaml.js";
+import path from "path";
 
 export type RawYamlProjectConfiguration = ReturnType<typeof parseGenezioConfig>;
 export type YAMLBackend = NonNullable<YamlProjectConfiguration["backend"]>;
@@ -101,6 +102,8 @@ function parseGenezioConfig(config: unknown) {
         timeout: zod.number().optional(),
         storageSize: zod.number().optional(),
         instanceSize: zod.nativeEnum(InstanceSize).optional(),
+        vcpuCount: zod.number().optional(),
+        memoryMb: zod.number().optional(),
         maxConcurrentRequestsPerInstance: zod
             .number()
             .optional()
@@ -133,15 +136,18 @@ function parseGenezioConfig(config: unknown) {
             // handler is mandatory only if type is AWS
             handler: zod.string().optional(),
             entry: zod.string().refine((value) => {
+                const filename = path.basename(value);
                 return (
-                    value.split(".").length === 2 &&
-                    FUNCTION_EXTENSIONS.includes(value.split(".")[1])
+                    filename.split(".").length === 2 &&
+                    FUNCTION_EXTENSIONS.includes(filename.split(".")[1])
                 );
             }, "The handler should be in the format 'file.extension'. example: index.js / index.mjs / index.cjs / index.py"),
             type: zod.nativeEnum(FunctionType).default(FunctionType.aws),
             timeout: zod.number().optional(),
             storageSize: zod.number().optional(),
             instanceSize: zod.nativeEnum(InstanceSize).optional(),
+            vcpuCount: zod.number().optional(),
+            memoryMb: zod.number().optional(),
             maxConcurrentRequestsPerInstance: zod
                 .number()
                 .optional()
@@ -161,7 +167,6 @@ function parseGenezioConfig(config: unknown) {
                     return true;
                 }, "The maximum number of concurrent instances should be greater than 0."),
             cooldownTime: zod.number().optional(),
-            persistent: zod.boolean().optional(),
         })
         .refine(
             ({ type, handler }) => !(type === FunctionType.aws && !handler),
@@ -334,6 +339,8 @@ function parseGenezioConfig(config: unknown) {
         timeout: zod.number().optional(),
         storageSize: zod.number().optional(),
         instanceSize: zod.nativeEnum(InstanceSize).optional(),
+        vcpuCount: zod.number().optional(),
+        memoryMb: zod.number().optional(),
         maxConcurrentRequestsPerInstance: zod
             .number()
             .optional()
@@ -353,6 +360,7 @@ function parseGenezioConfig(config: unknown) {
                 return true;
             }, "The maximum number of concurrent instances should be greater than 0."),
         cooldownTime: zod.number().optional(),
+        type: zod.literal(FunctionType.persistent).optional(),
     });
 
     // Define container schema
@@ -361,6 +369,8 @@ function parseGenezioConfig(config: unknown) {
         timeout: zod.number().optional(),
         storageSize: zod.number().optional(),
         instanceSize: zod.nativeEnum(InstanceSize).optional(),
+        vcpuCount: zod.number().optional(),
+        memoryMb: zod.number().optional(),
         maxConcurrentRequestsPerInstance: zod
             .number()
             .optional()
@@ -380,8 +390,8 @@ function parseGenezioConfig(config: unknown) {
                 return true;
             }, "The maximum number of concurrent instances should be greater than 0."),
         cooldownTime: zod.number().optional(),
-        persistent: zod.boolean().optional(),
         environment: environmentSchema.optional(),
+        type: zod.literal(FunctionType.persistent).optional(),
     });
 
     const v2Schema = zod.object({
@@ -430,9 +440,7 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
 
     return defaultConfig as DeepRequired<
         typeof defaultConfig,
-        | "region"
-        | "backend.language.packageManager"
-        | "backend.language.architecture"
+        "region" | "backend.language.packageManager" | "backend.language.architecture"
     > & {
         frontend: typeof defaultConfig.frontend;
     };

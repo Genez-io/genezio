@@ -231,7 +231,7 @@ program
     .command("local")
     .option(
         "-p, --port <port>",
-        "Set the port your local server will be running on.",
+        "Set the port for testing your genezio classes locally",
         String(PORT_LOCAL_ENVIRONMENT),
     )
     .option(

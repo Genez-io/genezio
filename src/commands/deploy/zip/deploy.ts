@@ -11,6 +11,7 @@ import { reportSuccessFunctions } from "../../../utils/reporter.js";
 import { log } from "../../../utils/logging.js";
 import colors from "colors";
 import { DASHBOARD_URL } from "../../../constants.js";
+import { FunctionType } from "../../../projectConfiguration/yaml/models.js";
 
 export async function zipDeploy(options: GenezioDeployOptions) {
     if (!options.zip) {
@@ -57,11 +58,13 @@ export async function zipDeploy(options: GenezioDeployOptions) {
             entryFile: f.entry,
             timeout: f.timeout,
             instanceSize: f.instanceSize,
+            vcpuCount: f.vcpuCount,
+            memoryMb: f.memoryMb,
             storageSize: f.storageSize,
             maxConcurrentRequestsPerInstance: f.maxConcurrentRequestsPerInstance,
             maxConcurrentInstances: f.maxConcurrentInstances,
             cooldownTime: f.cooldownTime,
-            persistent: f.persistent,
+            persistent: f.type === FunctionType.persistent,
         };
     });
 

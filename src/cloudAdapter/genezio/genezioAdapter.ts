@@ -28,6 +28,7 @@ import Table from "cli-table";
 import { UserError } from "../../errors.js";
 import { stdout } from "process";
 import { createHash } from "../../utils/strings.js";
+import { EnvironmentVariable } from "../../models/environmentVariables.js";
 
 // The maximum size of a bundle is 1.524e9 bytes approx 1.5GB.
 const BUNDLE_SIZE_LIMIT = 1.524e9;
@@ -123,6 +124,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
         cloudAdapterOptions: CloudAdapterOptions,
         stack: string[] = [],
         sourceRepository?: string,
+        environmentVariables?: EnvironmentVariable[],
     ): Promise<GenezioCloudOutput> {
         const stage: string = cloudAdapterOptions.stage || "";
 
@@ -180,6 +182,7 @@ export class GenezioCloudAdapter implements CloudAdapter {
             stage,
             stack,
             sourceRepository,
+            environmentVariables,
         );
         const classesInfo = response.classes.map((c) => ({
             className: c.name,

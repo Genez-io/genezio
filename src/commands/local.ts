@@ -691,7 +691,8 @@ async function startProcesses(
 
             // if handlerProvider is Http, run it with node
             if (
-                functionInfo.type === FunctionType.httpServer &&
+                (functionInfo.type === FunctionType.httpServer ||
+                    functionInfo.type === FunctionType.persistent) &&
                 (functionInfo.language === Language.js || functionInfo.language === Language.ts)
             ) {
                 await writeToFile(
@@ -706,7 +707,8 @@ async function startProcesses(
 
             // if handlerProvider is Http and language is python
             else if (
-                functionInfo.type === FunctionType.httpServer &&
+                (functionInfo.type === FunctionType.httpServer ||
+                    functionInfo.type === FunctionType.persistent) &&
                 functionInfo.language === Language.python
             ) {
                 await writeToFile(
@@ -1533,13 +1535,24 @@ async function startLocalUnitProcess(
     cwd?: string,
     configurationEnvVars?: { [key: string]: string | undefined },
 ) {
-    // Check if this is an HTTP server and already has an assigned port
+    // Load .env file from the current working directory or specified cwd
+    const envPath = path.join(cwd || process.cwd(), ".env");
+    const envConfig = dotenv.config({ path: envPath });
+    const loadedEnvVars = envConfig.parsed || {};
+
+    const modifyLocalUnitName = localUnitName.replace(/-/g, "_").toUpperCase();
+    const portEnvKey = `GENEZIO_PORT_${modifyLocalUnitName}`;
+
+    // Check for existing port in environment variables
     let availablePort: number;
-    if (type === "function" && httpServerPortMapping[localUnitName]) {
+    const existingPort = loadedEnvVars[portEnvKey] || process.env[portEnvKey];
+
+    if (existingPort) {
+        availablePort = parseInt(existingPort, 10);
+    } else if (type === "function" && httpServerPortMapping[localUnitName]) {
         availablePort = httpServerPortMapping[localUnitName];
     } else {
         availablePort = await findAvailablePort();
-        // Store the port mapping for HTTP servers
         if (type === "function") {
             httpServerPortMapping[localUnitName] = availablePort;
         }
@@ -1549,13 +1562,14 @@ async function startLocalUnitProcess(
     debugLogger.debug(`[START_Unit_PROCESS] Starting command: ${startingCommand}`);
     debugLogger.debug(`[START_Unit_PROCESS] Parameters: ${parameters}`);
 
-    // Store the port in the environment variables
-    const modifyLocalUnitName = localUnitName.replace(/-/g, "_").toUpperCase();
-    process.env[`GENEZIO_PORT_${modifyLocalUnitName}`] = availablePort.toString();
+    if (!process.env[portEnvKey]) {
+        process.env[portEnvKey] = availablePort.toString();
+    }
     const processParameters = [...parameters, availablePort.toString()];
     const localUnitProcess = spawn(startingCommand, processParameters, {
         stdio: ["pipe", "pipe", "pipe"],
         env: {
+            ...loadedEnvVars,
             ...process.env,
             ...envVars,
             ...configurationEnvVars,
@@ -1657,7 +1671,7 @@ export function retrieveLocalFunctionUrl(functionName: string, functionType: Fun
 
     const normalizedName = functionName.replace(/-/g, "_").toUpperCase();
 
-    if (functionType === FunctionType.httpServer) {
+    if (functionType === FunctionType.httpServer || FunctionType.persistent) {
         const port = process.env[`GENEZIO_PORT_${normalizedName}`];
         return `http://localhost:${port}`;
     }
@@ -1719,7 +1733,8 @@ async function getLocalFunctionHttpServerPythonWrapper(
         .replace(/\//g, ".") // Convert slashes to dots (Unix)
         .replace(/^\.+/, "") // Remove leading dots
         .replace(/\.+/g, ".") // Remove duplicate dots
-        .replace(/\.py$/, ""); // Remove extension
+        .replace(/\.py$/, "") // Remove extension
+        .replace(/-/g, "_"); // Convert hyphens to underscores for Python module compatibility
 
     return `
 import asyncio
@@ -1871,6 +1886,11 @@ async function startSsrFramework(
     debugLogger.debug(`Starting SSR framework: ${SSRFrameworkName[framework]}`);
     debugLogger.debug(`SSR path: ${ssrConfig.path}`);
 
+    // Load .env file from the current working directory or specified cwd
+    const envPath = path.join(process.cwd(), ".env");
+    const envConfig = dotenv.config({ path: envPath });
+    const loadedEnvVars = envConfig.parsed || {};
+
     const newEnvObject = await expandEnvironmentVariables(
         ssrConfig.environment,
         projectConfiguration,
@@ -1888,7 +1908,8 @@ async function startSsrFramework(
     );
 
     const portEnvKey = `GENEZIO_PORT_${framework.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`;
-    if (framework.toLowerCase() === SSRFrameworkComponentType.nestjs && !process.env[portEnvKey]) {
+    const existingPort = loadedEnvVars[portEnvKey] || process.env[portEnvKey];
+    if (framework.toLowerCase() === SSRFrameworkComponentType.nestjs && !existingPort) {
         throw new UserError(
             `You need to specify the port for Nest.js. You can do this by:
 1. Running \`GENEZIO_PORT_NESTJS=<port> genezio local\` - for linux and macos
@@ -1898,7 +1919,7 @@ async function startSsrFramework(
         );
     }
 
-    const ssrPort = process.env[portEnvKey] || (await findAvailablePort()).toString();
+    const ssrPort = existingPort || (await findAvailablePort()).toString();
     process.env[portEnvKey] = ssrPort;
     debugLogger.debug(`Set ${portEnvKey} to ${ssrPort}`);
 
@@ -1955,6 +1976,7 @@ async function startSsrFramework(
             stdio: "pipe",
             env: {
                 ...process.env,
+                ...loadedEnvVars,
                 ...newEnvObject,
                 CI: "1", // Forces CI mode
                 TERM: "dumb", // Simplifies terminal output

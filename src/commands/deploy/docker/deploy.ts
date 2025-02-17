@@ -1,7 +1,10 @@
 import { $ } from "execa";
+import git from "isomorphic-git";
+import fs from "fs";
 import { UserError } from "../../../errors.js";
 import { debugLogger, log } from "../../../utils/logging.js";
 import {
+    actionDetectedEnvFile,
     prepareServicesPostBackendDeployment,
     prepareServicesPreBackendDeployment,
     readOrAskConfig,
@@ -20,16 +23,18 @@ import {
     GenezioFunctionMetadata,
     GenezioFunctionMetadataType,
 } from "../../../cloudAdapter/cloudAdapter.js";
-import { setEnvironmentVariables } from "../../../requests/setEnvironmentVariables.js";
 import { FunctionType } from "../../../projectConfiguration/yaml/models.js";
 import { createTemporaryFolder } from "../../../utils/file.js";
 import path from "path";
 import { reportSuccessFunctions } from "../../../utils/reporter.js";
 import { addContainerComponentToConfig } from "./utils.js";
 import { statSync } from "fs";
-import { ContainerComponentType } from "../../../models/projectOptions.js";
 import colors from "colors";
 import { DASHBOARD_URL } from "../../../constants.js";
+import { EnvironmentVariable } from "../../../models/environmentVariables.js";
+import { ContainerComponentType } from "../../../models/projectOptions.js";
+import { warningMissingEnvironmentVariables } from "../../../utils/environmentVariables.js";
+import { isCI } from "../../../utils/process.js";
 
 export async function dockerDeploy(options: GenezioDeployOptions) {
     const config = await readOrAskConfig(options.config);
@@ -40,6 +45,15 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
         await addContainerComponentToConfig(options.config, config, {
             path: relativePath,
         });
+    }
+
+    // Give the user another chance if he forgot to add `--env` flag
+    if (!isCI() && !options.env) {
+        options.env = await actionDetectedEnvFile(
+            config.container?.path || ".",
+            config.name,
+            options.stage,
+        );
     }
 
     // Prepare services before deploying (database, authentication, etc)
@@ -143,6 +157,28 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
         ),
     );
 
+    const environmentVariables = await uploadEnvVarsFromFile(
+        options.env,
+        options.stage,
+        config,
+        ContainerComponentType.container,
+    );
+
+    const envVars: EnvironmentVariable[] = envs.map((env: string) => {
+        const components = env.split("=");
+        const key = components[0];
+        const value = components.slice(1).join("=");
+        return {
+            name: key,
+            value,
+        };
+    });
+    environmentVariables.push(...envVars);
+
+    const projectGitRepositoryUrl = (await git.listRemotes({ fs, dir: process.cwd() })).find(
+        (r) => r.remote === "origin",
+    )?.url;
+
     const cloudProvider = await getCloudProvider(projectConfiguration.name);
     const cloudAdapter = getCloudAdapter(cloudProvider);
     const metadata: GenezioFunctionMetadata = {
@@ -164,11 +200,13 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
                 timeout: config.container!.timeout,
                 storageSize: config.container!.storageSize,
                 instanceSize: config.container!.instanceSize,
+                vcpuCount: config.container!.vcpuCount,
+                memoryMb: config.container!.memoryMb,
                 maxConcurrentRequestsPerInstance:
                     config.container!.maxConcurrentRequestsPerInstance,
                 maxConcurrentInstances: config.container!.maxConcurrentInstances,
                 cooldownTime: config.container!.cooldownTime,
-                persistent: config.container!.persistent,
+                persistent: config.container?.type === FunctionType.persistent,
             },
         ],
         projectConfiguration,
@@ -176,28 +214,14 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
             stage: options.stage,
         },
         ["docker"],
+        /* sourceRepository */ projectGitRepositoryUrl,
+        /* environmentVariables */ environmentVariables,
     );
 
-    const envVars = envs.map((env: string) => {
-        const components = env.split("=");
-        const key = components[0];
-        const value = components.slice(1).join("=");
-        return {
-            name: key,
-            value,
-        };
-    });
-
-    await setEnvironmentVariables(result.projectId, result.projectEnvId, envVars);
-
-    await uploadEnvVarsFromFile(
-        options.env,
+    await warningMissingEnvironmentVariables(
+        config.container?.path || "./",
         result.projectId,
         result.projectEnvId,
-        process.cwd(),
-        options.stage || "prod",
-        config,
-        ContainerComponentType.container,
     );
 
     // Prepare services after deploying (authentication redirect urls)
