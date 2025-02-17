@@ -691,7 +691,8 @@ async function startProcesses(
 
             // if handlerProvider is Http, run it with node
             if (
-                functionInfo.type === FunctionType.httpServer &&
+                (functionInfo.type === FunctionType.httpServer ||
+                    functionInfo.type === FunctionType.persistent) &&
                 (functionInfo.language === Language.js || functionInfo.language === Language.ts)
             ) {
                 await writeToFile(
@@ -706,7 +707,8 @@ async function startProcesses(
 
             // if handlerProvider is Http and language is python
             else if (
-                functionInfo.type === FunctionType.httpServer &&
+                (functionInfo.type === FunctionType.httpServer ||
+                    functionInfo.type === FunctionType.persistent) &&
                 functionInfo.language === Language.python
             ) {
                 await writeToFile(
@@ -1657,7 +1659,7 @@ export function retrieveLocalFunctionUrl(functionName: string, functionType: Fun
 
     const normalizedName = functionName.replace(/-/g, "_").toUpperCase();
 
-    if (functionType === FunctionType.httpServer) {
+    if (functionType === FunctionType.httpServer || FunctionType.persistent) {
         const port = process.env[`GENEZIO_PORT_${normalizedName}`];
         return `http://localhost:${port}`;
     }

@@ -49,7 +49,11 @@ import { Status } from "../../requests/models.js";
 import { bundle } from "../../bundlers/utils.js";
 import { isDependencyVersionCompatible } from "../../utils/jsProjectChecker.js";
 import { YamlConfigurationIOController } from "../../projectConfiguration/yaml/v2.js";
-import { entryFileFunctionMap, Language } from "../../projectConfiguration/yaml/models.js";
+import {
+    entryFileFunctionMap,
+    FunctionType,
+    Language,
+} from "../../projectConfiguration/yaml/models.js";
 import { runScript } from "../../utils/scripts.js";
 import { scanClassesForDecorators } from "../../utils/configuration.js";
 import configIOController, { YamlFrontend } from "../../projectConfiguration/yaml/v2.js";
@@ -71,7 +75,10 @@ import {
     excludedFiles,
     actionDetectedEnvFile,
 } from "./utils.js";
-import { expandEnvironmentVariables, warningMissingEnvironmentVariables } from "../../utils/environmentVariables.js";
+import {
+    expandEnvironmentVariables,
+    warningMissingEnvironmentVariables,
+} from "../../utils/environmentVariables.js";
 import { getFunctionHandlerProvider } from "../../utils/getFunctionHandlerProvider.js";
 import { getFunctionEntryFilename } from "../../utils/getFunctionEntryFilename.js";
 import { CronDetails } from "../../models/requests.js";
@@ -180,7 +187,11 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         });
 
         if (deployClassesResult) {
-            await warningMissingEnvironmentVariables(backendCwd, deployClassesResult?.projectId, deployClassesResult?.projectEnvId);
+            await warningMissingEnvironmentVariables(
+                backendCwd,
+                deployClassesResult?.projectId,
+                deployClassesResult?.projectEnvId,
+            );
         }
     }
 
@@ -440,8 +451,6 @@ export async function deployClasses(
                 options.disableOptimization,
             );
 
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            // check if the unzipped folder is smaller than 250MB
             const unzippedBundleSize: number = await getBundleFolderSizeLimit(output.path);
             debugLogger.debug(
                 `The unzippedBundleSize for class ${element.path} is ${unzippedBundleSize}.`,
@@ -719,7 +728,10 @@ export async function functionToCloudInput(
 
     // Determine entry file name
     let entryFileName;
-    if (functionElement.type === "httpServer") {
+    if (
+        functionElement.type === FunctionType.httpServer ||
+        functionElement.type === FunctionType.persistent
+    ) {
         entryFileName = path.join(functionElement.entry).replace(/\\/g, "/");
     } else {
         entryFileName =
@@ -762,7 +774,7 @@ export async function functionToCloudInput(
         maxConcurrentRequestsPerInstance: functionElement.maxConcurrentRequestsPerInstance,
         maxConcurrentInstances: functionElement.maxConcurrentInstances,
         cooldownTime: functionElement.cooldownTime,
-        persistent: functionElement.persistent,
+        persistent: functionElement.type === FunctionType.persistent,
         metadata: metadata,
     };
 }

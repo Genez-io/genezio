@@ -332,7 +332,6 @@ export class ProjectConfiguration {
                     maxConcurrentRequestsPerInstance: f.maxConcurrentRequestsPerInstance,
                     maxConcurrentInstances: f.maxConcurrentInstances,
                     cooldownTime: f.cooldownTime,
-                    persistent: f.persistent,
                 };
             }) || [];
     }

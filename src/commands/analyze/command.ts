@@ -991,7 +991,6 @@ async function retrieveFileContent(filePath: string): Promise<string> {
     try {
         await fs.access(filePath);
     } catch (error) {
-        log.error(`Cannot access ${filePath}: ${error}`);
         return "";
     }
 

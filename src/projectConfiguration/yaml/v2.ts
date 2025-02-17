@@ -167,7 +167,6 @@ function parseGenezioConfig(config: unknown) {
                     return true;
                 }, "The maximum number of concurrent instances should be greater than 0."),
             cooldownTime: zod.number().optional(),
-            persistent: zod.boolean().optional(),
         })
         .refine(
             ({ type, handler }) => !(type === FunctionType.aws && !handler),
@@ -361,6 +360,7 @@ function parseGenezioConfig(config: unknown) {
                 return true;
             }, "The maximum number of concurrent instances should be greater than 0."),
         cooldownTime: zod.number().optional(),
+        type: zod.literal(FunctionType.persistent).optional(),
     });
 
     // Define container schema
@@ -390,8 +390,8 @@ function parseGenezioConfig(config: unknown) {
                 return true;
             }, "The maximum number of concurrent instances should be greater than 0."),
         cooldownTime: zod.number().optional(),
-        persistent: zod.boolean().optional(),
         environment: environmentSchema.optional(),
+        type: zod.literal(FunctionType.persistent).optional(),
     });
 
     const v2Schema = zod.object({

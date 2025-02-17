@@ -41,7 +41,7 @@ export async function remixDeploy(options: GenezioDeployOptions) {
         ? path.resolve(cwd, genezioConfig.remix.path)
         : cwd;
 
-   // Give the user another chance if he forgot to add `--env` flag
+    // Give the user another chance if he forgot to add `--env` flag
     if (!isCI() && !options.env) {
         options.env = await actionDetectedEnvFile(componentPath, genezioConfig.name, options.stage);
     }
@@ -204,7 +204,11 @@ export async function remixDeploy(options: GenezioDeployOptions) {
 
     const functionUrl = result.functions.find((f) => f.name === "function-remix")?.cloudUrl;
 
-    await warningMissingEnvironmentVariables(genezioConfig.remix?.path || "./", result.projectId, result.projectEnvId);
+    await warningMissingEnvironmentVariables(
+        genezioConfig.remix?.path || "./",
+        result.projectId,
+        result.projectEnvId,
+    );
 
     await prepareServicesPostBackendDeployment(genezioConfig, genezioConfig.name, options.stage);
 
@@ -235,7 +239,10 @@ async function deployFunction(
         path: ".",
         name: "remix",
         entry: "server.mjs",
-        type: FunctionType.httpServer,
+        type:
+            config.remix?.type === FunctionType.persistent
+                ? FunctionType.persistent
+                : FunctionType.httpServer,
         timeout: config.remix?.timeout,
         storageSize: config.remix?.storageSize,
         instanceSize: config.remix?.instanceSize,

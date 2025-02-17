@@ -63,7 +63,11 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
 
     // Give the user another chance if he forgot to add `--env` flag
     if (!isCI() && !options.env) {
-        options.env = await actionDetectedEnvFile(nextjsComponentPath, genezioConfig.name, options.stage);
+        options.env = await actionDetectedEnvFile(
+            nextjsComponentPath,
+            genezioConfig.name,
+            options.stage,
+        );
     }
 
     // Prepare services before deploying (database, authentication, etc)
@@ -161,7 +165,11 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
         ),
     ]);
 
-    await warningMissingEnvironmentVariables(genezioConfig.nextjs?.path || "./", deploymentResult.projectId, deploymentResult.projectEnvId);
+    await warningMissingEnvironmentVariables(
+        genezioConfig.nextjs?.path || "./",
+        deploymentResult.projectId,
+        deploymentResult.projectEnvId,
+    );
 
     await prepareServicesPostBackendDeployment(genezioConfig, genezioConfig.name, options.stage);
 
@@ -370,7 +378,10 @@ async function deployFunction(
         name: "nextjs",
         entry: "start.mjs",
         handler: "handler",
-        type: FunctionType.httpServer,
+        type:
+            config.nextjs?.type === FunctionType.persistent
+                ? FunctionType.persistent
+                : FunctionType.httpServer,
         timeout: config.nextjs?.timeout,
         storageSize: config.nextjs?.storageSize,
         instanceSize: config.nextjs?.instanceSize,
