@@ -26,6 +26,7 @@ import {
     isRemixComponent,
     isEmberComponent,
     isStreamlitComponent,
+    isFastHTMLComponent,
 } from "./frameworks.js";
 import { generateDatabaseName, readOrAskConfig } from "../deploy/utils.js";
 import {
@@ -56,6 +57,7 @@ import {
     DJANGO_PATTERN,
     EXPRESS_PATTERN,
     FASTAPI_PATTERN,
+    FASTHTML_PATTERN,
     FASTIFY_PATTERN,
     FLASK_PATTERN,
     PYTHON_LAMBDA_PATTERN,
@@ -550,6 +552,48 @@ export async function analyzeCommand(options: GenezioAnalyzeOptions) {
                 functions: [
                     {
                         name: "fastapi",
+                        path: ".",
+                        handler: pythonHandler,
+                        entry: entryFile,
+                        type: FunctionType.httpServer,
+                    },
+                ],
+            });
+
+            frameworksDetected.backend = frameworksDetected.backend || [];
+            frameworksDetected.backend.push({
+                component: "fastapi",
+                environment: resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+            });
+            continue;
+        }
+
+        if (await isFastHTMLComponent(contents)) {
+            const entryFile = await findEntryFile(
+                componentPath,
+                contents,
+                FASTHTML_PATTERN,
+                PYTHON_DEFAULT_ENTRY_FILE,
+            );
+            const fullpath = path.join(componentPath, entryFile);
+            const entryFileContent = await retrieveFileContent(fullpath);
+            const pythonHandler = getPythonHandler(entryFileContent);
+
+            const packageManagerType =
+                genezioConfig.backend?.language?.packageManager || PYTHON_DEFAULT_PACKAGE_MANAGER;
+            await addBackendComponentToConfig(configPath, {
+                path: componentPath,
+                language: {
+                    name: Language.python,
+                    packageManager: packageManagerType,
+                    runtime: DEFAULT_PYTHON_RUNTIME,
+                } as YAMLLanguage,
+                environment: mapEnvironmentVariableToConfig(
+                    resultEnvironmentAnalysis.get(componentPath)?.environmentVariables,
+                ),
+                functions: [
+                    {
+                        name: "fasthtml",
                         path: ".",
                         handler: pythonHandler,
                         entry: entryFile,
