@@ -142,7 +142,7 @@ async function deployFunction(
         path: ".",
         name: "nest",
         entry: "main.js",
-        type: FunctionType.httpServer,
+        type: config.nestjs?.type ? FunctionType.persistent : FunctionType.httpServer,
         timeout: config.nestjs?.timeout,
         storageSize: config.nestjs?.storageSize,
         instanceSize: config.nestjs?.instanceSize,
@@ -151,7 +151,6 @@ async function deployFunction(
         maxConcurrentRequestsPerInstance: config.nestjs?.maxConcurrentRequestsPerInstance,
         maxConcurrentInstances: config.nestjs?.maxConcurrentInstances,
         cooldownTime: config.nestjs?.cooldownTime,
-        persistent: config.nestjs?.type === FunctionType.persistent,
     };
 
     const deployConfig: YamlProjectConfiguration = {

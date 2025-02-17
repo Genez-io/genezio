@@ -171,7 +171,10 @@ async function deployFunction(
             name: "nuxt-server",
             entry: path.join("server", "index.mjs"),
             handler: "handler",
-            type: FunctionType.aws,
+            type:
+                config.nuxt?.type === FunctionType.persistent
+                    ? FunctionType.persistent
+                    : FunctionType.aws,
             timeout: config.nuxt?.timeout,
             storageSize: config.nuxt?.storageSize,
             instanceSize: config.nuxt?.instanceSize,
@@ -180,7 +183,6 @@ async function deployFunction(
             maxConcurrentRequestsPerInstance: config.nuxt?.maxConcurrentRequestsPerInstance,
             maxConcurrentInstances: config.nuxt?.maxConcurrentInstances,
             cooldownTime: config.nuxt?.cooldownTime,
-            persistent: config.nuxt?.type === FunctionType.persistent,
         },
     ];
 

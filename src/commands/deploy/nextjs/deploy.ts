@@ -378,7 +378,10 @@ async function deployFunction(
         name: "nextjs",
         entry: "start.mjs",
         handler: "handler",
-        type: FunctionType.httpServer,
+        type:
+            config.nextjs?.type === FunctionType.persistent
+                ? FunctionType.persistent
+                : FunctionType.httpServer,
         timeout: config.nextjs?.timeout,
         storageSize: config.nextjs?.storageSize,
         instanceSize: config.nextjs?.instanceSize,
@@ -387,7 +390,6 @@ async function deployFunction(
         maxConcurrentRequestsPerInstance: config.nextjs?.maxConcurrentRequestsPerInstance,
         maxConcurrentInstances: config.nextjs?.maxConcurrentInstances,
         cooldownTime: config.nextjs?.cooldownTime,
-        persistent: config.nextjs?.type === FunctionType.persistent,
     };
 
     const deployConfig: YamlProjectConfiguration = {

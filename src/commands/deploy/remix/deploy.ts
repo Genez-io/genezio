@@ -239,7 +239,10 @@ async function deployFunction(
         path: ".",
         name: "remix",
         entry: "server.mjs",
-        type: FunctionType.httpServer,
+        type:
+            config.remix?.type === FunctionType.persistent
+                ? FunctionType.persistent
+                : FunctionType.httpServer,
         timeout: config.remix?.timeout,
         storageSize: config.remix?.storageSize,
         instanceSize: config.remix?.instanceSize,
@@ -248,7 +251,6 @@ async function deployFunction(
         maxConcurrentRequestsPerInstance: config.remix?.maxConcurrentRequestsPerInstance,
         maxConcurrentInstances: config.remix?.maxConcurrentInstances,
         cooldownTime: config.remix?.cooldownTime,
-        persistent: config.remix?.type === FunctionType.persistent,
     };
 
     const deployConfig: YamlProjectConfiguration = {

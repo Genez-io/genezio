@@ -33,7 +33,7 @@ export function getFunctionHandlerProvider(
             const supportedLanguages = [Language.python, Language.js, Language.ts];
             if (!supportedLanguages.includes(language)) {
                 throw new UserError(
-                    `Unsupported language: ${language} for HTTP Server function. Supported languages are: python, js, ts.`,
+                    `Unsupported language: ${language}. Supported languages are: ${supportedLanguages.join(", ")}`,
                 );
             }
             return null;
