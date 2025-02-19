@@ -137,7 +137,7 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
     const port = getPort(exposedPorts);
 
     if (entrypoint) {
-        cmdEntryFile += entrypoint.join(" ");
+        cmdEntryFile += entrypoint.join(" ") + " ";
     } else {
         cmdEntryFile += "/bin/sh -c ";
     }
