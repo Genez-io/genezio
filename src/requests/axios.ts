@@ -46,7 +46,10 @@ axios.interceptors.response.use(
         if (response.data.error.code === GenezioErrorCode.NotFoundError) {
             throw new UserError("The project you are looking for does not exist.");
         }
-        if (response.data.error.code === GenezioErrorCode.Forbidden) {
+        if (
+            response.data.error.code === GenezioErrorCode.Forbidden &&
+            response.data.error.message === "Forbidden"
+        ) {
             throw new UserError(
                 "This action is forbidden. Check your permissions in the dashboard: https://app.genez.io.",
             );
