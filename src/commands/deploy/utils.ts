@@ -941,7 +941,7 @@ export async function evaluateResource(
 
         if (!envFile) {
             throw new UserError(
-                `Environment variable file ${envFile} is missing. Please provide the correct path with genezio deploy \`--env <envFile>\`.`,
+                `Environment variable file was not provided to be able to set $\{{ env.${resourceRaw.key} }}. Please provide the correct path with \`genezio deploy --env <envFile>\`.`,
             );
         }
         const resourceValue = (await readEnvironmentVariablesFile(envFile)).find(
@@ -979,28 +979,25 @@ export async function actionDetectedEnvFile(
     if (envVars.length === 0) {
         return undefined;
     }
-
+    let missingEnvVarsKeys: string[] = envVars.map((envVar) => envVar.name);
     const project = await getProjectInfoByNameIfExits(projectName);
-    if (!project) {
-        return undefined;
+    if (project) {
+        const projectEnv = project.projectEnvs.find((projectEnv) => projectEnv.name == stage);
+        if (projectEnv) {
+            missingEnvVarsKeys = await getUnsetEnvironmentVariables(
+                envVars.map((envVar) => envVar.name),
+                project.id,
+                projectEnv.id,
+            );
+        }
     }
-    const projectEnv = project.projectEnvs.find((projectEnv) => projectEnv.name == stage);
-    if (!projectEnv) {
-        return undefined;
-    }
-    const missingEnvVarsKeys = await getUnsetEnvironmentVariables(
-        envVars.map((envVar) => envVar.name),
-        project.id,
-        projectEnv.id,
-    );
-    if (missingEnvVarsKeys.length == 0) {
-        return undefined;
-    }
-    const missingEnvVars = envVars.filter((envVar) => missingEnvVarsKeys.includes(envVar.name));
 
-    const confirmSettingEnvVars = await promptToConfirmSettingEnvironmentVariables(
-        missingEnvVars.map((envVar) => envVar.name),
-    );
+    if (missingEnvVarsKeys.length === 0) {
+        return undefined;
+    }
+
+    const confirmSettingEnvVars =
+        await promptToConfirmSettingEnvironmentVariables(missingEnvVarsKeys);
 
     if (!confirmSettingEnvVars) {
         log.info(
@@ -1008,12 +1005,12 @@ export async function actionDetectedEnvFile(
         );
         return undefined;
     }
-
+    const envRelativePath = path.relative(process.cwd(), envFileFullPath);
     debugLogger.debug(
-        `Uploading environment variables ${JSON.stringify(envVars)} from ${envFileFullPath}.`,
+        `Detected environment variables file at ${envRelativePath}. It will be considered for deployment.`,
     );
 
-    return envFile;
+    return envRelativePath;
 }
 
 export async function createBackendEnvVarList(
@@ -1039,6 +1036,19 @@ export async function createBackendEnvVarList(
         envVars.push(...environmentVariablesLiterals);
     }
 
+    // Get ${{ env.<KEY> }} variables from [backend|nextjs|nuxt|remix|streamlit].environment
+    if (environment) {
+        const environmentVariablesFromConfigFile =
+            await evaluateEnvironmentVariablesFromConfiguration(
+                environment,
+                configuration,
+                stage,
+                ["environmentFileReference"],
+                optionsEnvFileFlag,
+            );
+        envVars.push(...environmentVariablesFromConfigFile);
+    }
+
     if (!optionsEnvFileFlag) {
         return envVars;
     }
@@ -1051,26 +1061,14 @@ export async function createBackendEnvVarList(
     }
 
     // Get environment variables from the .env file
-    envVars.push(...(await readEnvironmentVariablesFile(envFile)));
-    debugLogger.debug(
-        `Found the following variables in the env file: ${envVars.map((envVar) => envVar.name).join(", ")}`,
+    envVars.push(
+        ...(await readEnvironmentVariablesFile(envFile)).filter(
+            (envVar) => !envVars.find((v) => v.name === envVar.name),
+        ),
     );
-
-    // Get ${{ env.<KEY> }} variables from [backend|nextjs|nuxt|remix|streamlit].envirsonment
-    if (environment) {
-        const environmentVariablesFromConfigFile =
-            await evaluateEnvironmentVariablesFromConfiguration(
-                environment,
-                configuration,
-                stage,
-                ["environmentFileReference"],
-                envFile,
-            );
-        debugLogger.debug(
-            `Found the following variables in the \`genezio.yaml\` file: ${JSON.stringify(environmentVariablesFromConfigFile)}`,
-        );
-        envVars.push(...environmentVariablesFromConfigFile);
-    }
+    debugLogger.debug(
+        `The following environment variables will be set during deployment: ${envVars.map((envVar) => envVar.name).join(", ")}`,
+    );
 
     return envVars;
 }
@@ -1133,9 +1131,9 @@ function getEnvironmentConfiguration(
         {
             [ContainerComponentType.container]: configuration.container?.environment,
             [SSRFrameworkComponentType.next]: configuration.nextjs?.environment,
-            [SSRFrameworkComponentType.nuxt]: configuration.nitro?.environment,
-            [SSRFrameworkComponentType.nitro]: configuration.nuxt?.environment,
-            [SSRFrameworkComponentType.nestjs]: configuration.nuxt?.environment,
+            [SSRFrameworkComponentType.nuxt]: configuration.nuxt?.environment,
+            [SSRFrameworkComponentType.nitro]: configuration.nitro?.environment,
+            [SSRFrameworkComponentType.nestjs]: configuration.nestjs?.environment,
             [SSRFrameworkComponentType.remix]: configuration.remix?.environment,
             [SSRFrameworkComponentType.streamlit]: configuration.streamlit?.environment,
             backend: configuration.backend?.environment,
