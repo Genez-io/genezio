@@ -87,7 +87,14 @@ export async function expandEnvironmentVariables(
     }
 
     const resolveValue = (key: string) =>
-        evaluateResource(configuration, environment[key], stage, envFile, options);
+        evaluateResource(
+            configuration,
+            ["remoteResourceReference", "literalValue"],
+            environment[key],
+            stage,
+            envFile,
+            options,
+        );
 
     const entries = await Promise.all(
         Object.entries(environment).map(async ([key]) => [key, await resolveValue(key)]),
@@ -129,15 +136,18 @@ export async function promptToConfirmSettingEnvironmentVariables(envVars: string
     return true;
 }
 
-
-export async function warningMissingEnvironmentVariables(cwd: string, projectId: string, projectEnvId: string) {
+export async function warningMissingEnvironmentVariables(
+    cwd: string,
+    projectId: string,
+    projectEnvId: string,
+) {
     const envFileFullPath = path.join(cwd, ".env");
     if (!(await fileExists(envFileFullPath))) {
         return;
     }
     const envVars = await readEnvironmentVariablesFile(envFileFullPath);
     if (envVars.length === 0) {
-        return
+        return;
     }
 
     const missingEnvVars = await getUnsetEnvironmentVariables(

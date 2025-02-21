@@ -67,13 +67,14 @@ import { getLinkedFrontendsForProject } from "../../utils/linkDatabase.js";
 import { getCloudProvider } from "../../requests/getCloudProvider.js";
 import fs, { mkdirSync } from "fs";
 import {
-    uploadEnvVarsFromFile,
+    createBackendEnvVarList,
     uploadUserCode,
     evaluateResource,
     prepareServicesPreBackendDeployment,
     prepareServicesPostBackendDeployment,
     excludedFiles,
     actionDetectedEnvFile,
+    createBackendEnvVarListFromRemote,
 } from "./utils.js";
 import {
     expandEnvironmentVariables,
@@ -93,6 +94,7 @@ import {
 } from "../../models/projectOptions.js";
 import { detectPythonVersion } from "../../utils/detectPythonCommand.js";
 import { isCI } from "../../utils/process.js";
+import { setEnvironmentVariables } from "../../requests/setEnvironmentVariables.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -187,6 +189,23 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         });
 
         if (deployClassesResult) {
+            if (configuration.backend?.environment) {
+                const environmentVariablesFromRemote = await createBackendEnvVarListFromRemote(
+                    configuration.backend?.environment,
+                    configuration,
+                    options.stage || "prod",
+                );
+
+                debugLogger.debug(
+                    `Environment variables set from remote resources ${JSON.stringify(environmentVariablesFromRemote)}`,
+                );
+                setEnvironmentVariables(
+                    deployClassesResult?.projectId,
+                    deployClassesResult?.projectEnvId,
+                    environmentVariablesFromRemote,
+                );
+            }
+
             await warningMissingEnvironmentVariables(
                 backendCwd,
                 deployClassesResult?.projectId,
@@ -301,10 +320,11 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         for (const cron of configuration.services.crons) {
             const yamlFunctionName = await evaluateResource(
                 configuration,
+                ["remoteResourceReference", "literalValue"],
                 cron.function,
                 options.stage || "prod",
-                undefined,
-                undefined,
+                /* envFile */ undefined,
+                /* options */ undefined,
             );
             if (!deployClassesResult) {
                 throw new UserError(
@@ -546,7 +566,7 @@ export async function deployClasses(
         (r) => r.remote === "origin",
     )?.url;
 
-    const environmentVariables = await uploadEnvVarsFromFile(
+    const environmentVariables = await createBackendEnvVarList(
         options.env,
         options.stage,
         configuration,

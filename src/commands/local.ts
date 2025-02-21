@@ -1133,6 +1133,7 @@ async function startCronJobs(
         for (const cronService of yamlProjectConfiguration.services.crons) {
             const functionName = await evaluateResource(
                 yamlProjectConfiguration,
+                ["remoteResourceReference", "literalValue"],
                 cronService.function,
                 undefined,
                 undefined,

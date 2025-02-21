@@ -152,7 +152,7 @@ export async function prepareServicesPreBackendDeployment(
 export async function prepareServicesPostBackendDeployment(
     configuration: YamlProjectConfiguration,
     projectName: string,
-    environment?: string,
+    optionsStage?: string,
 ) {
     if (!configuration.services) {
         debugLogger.debug("No services found in the configuration file.");
@@ -161,7 +161,7 @@ export async function prepareServicesPostBackendDeployment(
 
     const settings = configuration.services?.authentication?.settings;
     if (settings) {
-        const stage = environment || "prod";
+        const stage = optionsStage || "prod";
         const projectEnv = await getProjectEnvFromProjectByName(projectName, stage);
         if (!projectEnv) {
             throw new UserError(
@@ -629,12 +629,14 @@ export async function enableAuthentication(
     if (authProviders.google) {
         const clientId = await evaluateResource(
             configuration,
+            ["environmentFileReference", "remoteResourceReference", "literalValue"],
             authProviders.google?.clientId,
             stage,
             envFile,
         );
         const clientSecret = await evaluateResource(
             configuration,
+            ["environmentFileReference", "remoteResourceReference", "literalValue"],
             authProviders.google.clientSecret,
             stage,
             envFile,
@@ -653,7 +655,13 @@ export async function enableAuthentication(
     }
 
     if (isYourOwnAuthDatabaseConfig(authDatabase)) {
-        const databaseUri = await evaluateResource(configuration, authDatabase.uri, stage, envFile);
+        const databaseUri = await evaluateResource(
+            configuration,
+            ["environmentFileReference", "remoteResourceReference", "literalValue"],
+            authDatabase.uri,
+            stage,
+            envFile,
+        );
 
         await enableAuthenticationHelper(
             {
@@ -843,7 +851,13 @@ export async function setAuthenticationEmailTemplates(
     stage: string,
     projectEnvId: string,
 ) {
-    const redirectUrl = await evaluateResource(configuration, redirectUrlRaw, stage, undefined);
+    const redirectUrl = await evaluateResource(
+        configuration,
+        ["environmentFileReference", "remoteResourceReference", "literalValue"],
+        redirectUrlRaw,
+        stage,
+        undefined,
+    );
 
     await setEmailTemplates(projectEnvId, {
         templates: [
@@ -861,11 +875,37 @@ export async function setAuthenticationEmailTemplates(
         : log.info(colors.green(`Password reset field set successfully.`));
 }
 
+/**
+ * Evaluates a resource by resolving its value based on the allowed resource types.
+ *
+ * @param configuration - The project configuration used for resolving remote references.
+ * @param allowedResourceTypes - Specifies which types of resource references are permitted:
+ *
+ * - `"remoteResourceReference"`: A reference to a structured configuration variable, such as a URL for a backend function.
+ *   - Example: `"${{ backend.functions.<function-name>.url }}"`
+ *   - Output: Resolves to the function's URL from the project configuration.
+ *
+ * - `"environmentFileReference"`: A reference to an environment variable stored in a `.env` file or `process.env`.
+ *   - Requires `envFile`.
+ *   - Example: `"${{ env.MY_ENV_VAR }}"`
+ *   - Output: Resolves the value from the specified `.env` file.
+ *
+ * - `"literalValue"`: A plain, raw value that does not require resolution.
+ *   - No additional parameters required.
+ *   - Example: `"my-value"`
+ *   - Output: `"my-value"`
+ *
+ */
 export async function evaluateResource(
     configuration: YamlProjectConfiguration,
-    resource: string | undefined,
-    stage: string | undefined,
-    envFile: string | undefined,
+    allowedResourceTypes: (
+        | "remoteResourceReference"
+        | "environmentFileReference"
+        | "literalValue"
+    )[],
+    resource: string,
+    stage?: string,
+    envFile?: string,
     options?: {
         isLocal?: boolean;
         port?: number;
@@ -874,13 +914,16 @@ export async function evaluateResource(
     if (!resource) {
         return "";
     }
-
     const resourceRaw = await parseConfigurationVariable(resource);
 
-    if ("path" in resourceRaw && "field" in resourceRaw) {
+    if (
+        allowedResourceTypes?.includes("remoteResourceReference") &&
+        "path" in resourceRaw &&
+        "field" in resourceRaw
+    ) {
         const resourceValue = await resolveConfigurationVariable(
             configuration,
-            stage ?? "prod",
+            stage || "prod",
             resourceRaw.path,
             resourceRaw.field,
             options,
@@ -889,7 +932,7 @@ export async function evaluateResource(
         return replaceExpression(resource, resourceValue);
     }
 
-    if ("key" in resourceRaw) {
+    if (allowedResourceTypes?.includes("environmentFileReference") && "key" in resourceRaw) {
         // search for the environment variable in process.env
         const resourceFromProcessValue = process.env[resourceRaw.key];
         if (resourceFromProcessValue) {
@@ -914,7 +957,11 @@ export async function evaluateResource(
         return replaceExpression(resource, resourceValue);
     }
 
-    return resourceRaw.value;
+    if (allowedResourceTypes.includes("literalValue")) {
+        return (resourceRaw as { value: string }).value;
+    }
+
+    return "";
 }
 
 export async function actionDetectedEnvFile(
@@ -969,14 +1016,31 @@ export async function actionDetectedEnvFile(
     return envFile;
 }
 
-export async function uploadEnvVarsFromFile(
+export async function createBackendEnvVarList(
     optionsEnvFileFlag: string | undefined,
     stage: string,
     configuration: YamlProjectConfiguration,
     componentType: SSRFrameworkComponentType | ContainerComponentType | "backend" = "backend",
 ): Promise<EnvironmentVariable[]> {
+    const envVars: EnvironmentVariable[] = [];
+
+    // Get literal values from [backend|nextjs|nuxt|remix|streamlit].environment
+    const environment = getEnvironmentConfiguration(configuration, componentType);
+    if (environment) {
+        const environmentVariablesLiterals = await evaluateEnvironmentVariablesFromConfiguration(
+            environment,
+            configuration,
+            stage,
+            ["literalValue"],
+        );
+        debugLogger.debug(
+            `Environment variables set from literal values: ${JSON.stringify(environmentVariablesLiterals)}`,
+        );
+        envVars.push(...environmentVariablesLiterals);
+    }
+
     if (!optionsEnvFileFlag) {
-        return [];
+        return envVars;
     }
     const envFile = path.join(process.cwd(), optionsEnvFileFlag);
 
@@ -986,18 +1050,20 @@ export async function uploadEnvVarsFromFile(
         );
     }
 
-    const envVars = await readEnvironmentVariablesFile(envFile);
+    // Get environment variables from the .env file
+    envVars.push(...(await readEnvironmentVariablesFile(envFile)));
     debugLogger.debug(
         `Found the following variables in the env file: ${envVars.map((envVar) => envVar.name).join(", ")}`,
     );
 
-    const environment = getEnvironmentConfiguration(configuration, componentType);
+    // Get ${{ env.<KEY> }} variables from [backend|nextjs|nuxt|remix|streamlit].envirsonment
     if (environment) {
         const environmentVariablesFromConfigFile =
             await evaluateEnvironmentVariablesFromConfiguration(
                 environment,
                 configuration,
                 stage,
+                ["environmentFileReference"],
                 envFile,
             );
         debugLogger.debug(
@@ -1013,7 +1079,12 @@ async function evaluateEnvironmentVariablesFromConfiguration(
     environment: Record<string, string>,
     configuration: YamlProjectConfiguration,
     stage: string,
-    envFile: string,
+    allowedResourceTypes: (
+        | "remoteResourceReference"
+        | "environmentFileReference"
+        | "literalValue"
+    )[],
+    envFile?: string,
 ): Promise<EnvironmentVariable[]> {
     const envVarKeys = Object.keys(environment);
     return (
@@ -1021,9 +1092,32 @@ async function evaluateEnvironmentVariablesFromConfiguration(
             envVarKeys.map(async (envVarKey) => {
                 const value = await evaluateResource(
                     configuration,
+                    allowedResourceTypes,
                     environment[envVarKey],
                     stage,
                     envFile,
+                );
+                return value ? { name: envVarKey, value } : undefined;
+            }),
+        )
+    ).filter(Boolean) as EnvironmentVariable[];
+}
+
+export async function createBackendEnvVarListFromRemote(
+    environment: Record<string, string>,
+    configuration: YamlProjectConfiguration,
+    stage: string,
+): Promise<EnvironmentVariable[]> {
+    const envVarKeys = Object.keys(environment);
+    return (
+        await Promise.all(
+            envVarKeys.map(async (envVarKey) => {
+                const value = await evaluateResource(
+                    configuration,
+                    ["remoteResourceReference"],
+                    environment[envVarKey],
+                    stage,
+                    /* envFile= */ undefined,
                 );
                 return value ? { name: envVarKey, value } : undefined;
             }),

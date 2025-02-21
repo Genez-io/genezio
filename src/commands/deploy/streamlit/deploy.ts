@@ -19,7 +19,7 @@ import {
     prepareServicesPostBackendDeployment,
     prepareServicesPreBackendDeployment,
     readOrAskConfig,
-    uploadEnvVarsFromFile,
+    createBackendEnvVarList,
     uploadUserCode,
 } from "../utils.js";
 import path from "path";
@@ -97,7 +97,7 @@ export async function streamlitDeploy(options: GenezioDeployOptions) {
     }
 
     const updatedGenezioConfig = await readOrAskConfig(options.config);
-    const environmentVariables = await uploadEnvVarsFromFile(
+    const environmentVariables = await createBackendEnvVarList(
         options.env,
         options.stage,
         updatedGenezioConfig,
