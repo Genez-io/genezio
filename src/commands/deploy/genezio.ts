@@ -255,7 +255,9 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
                             configuration,
                             options.stage,
                             /* envFile */ undefined,
-                            /* options */ undefined,
+                            {
+                                isFrontend: true,
+                            },
                         );
 
                         debugLogger.debug(
@@ -822,7 +824,9 @@ export async function deployFrontend(
             configuration,
             options.stage,
             /* envFile */ undefined,
-            /* options */ undefined,
+            {
+                isFrontend: true,
+            },
         );
 
         debugLogger.debug(

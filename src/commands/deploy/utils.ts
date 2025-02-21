@@ -909,6 +909,7 @@ export async function evaluateResource(
     options?: {
         isLocal?: boolean;
         port?: number;
+        isFrontend?: boolean;
     },
 ): Promise<string> {
     if (!resource) {
@@ -933,6 +934,13 @@ export async function evaluateResource(
     }
 
     if (allowedResourceTypes?.includes("environmentFileReference") && "key" in resourceRaw) {
+        if (options?.isFrontend) {
+            log.warn(
+                `Environment variable placeholders like $\{{env.ENV_VAR}} are not supported in \`frontend.environment\`. Please use the literal value or set it in a \`.env\` file.`,
+            );
+            return "";
+        }
+
         // search for the environment variable in process.env
         const resourceFromProcessValue = process.env[resourceRaw.key];
         if (resourceFromProcessValue) {
@@ -941,7 +949,7 @@ export async function evaluateResource(
 
         if (!envFile) {
             throw new UserError(
-                `Environment variable file was not provided to be able to set $\{{ env.${resourceRaw.key} }}. Please provide the correct path with \`genezio deploy --env <envFile>\`.`,
+                `Environment variable file was not provided or is not correct to be able to set $\{{ env.${resourceRaw.key} }}. Please provide the correct path with \`genezio deploy --env <envFile>\`.`,
             );
         }
         const resourceValue = (await readEnvironmentVariablesFile(envFile)).find(
@@ -1036,7 +1044,7 @@ export async function createBackendEnvVarList(
         envVars.push(...environmentVariablesLiterals);
     }
 
-    // Get ${{ env.<KEY> }} variables from [backend|nextjs|nuxt|remix|streamlit].environment
+    // Get ${{ env.<KEY> }} variables from [backend|nextjs|nuxt|remix|streamlit].environmentgit
     if (environment) {
         const environmentVariablesFromConfigFile =
             await evaluateEnvironmentVariablesFromConfiguration(

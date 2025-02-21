@@ -80,27 +80,33 @@ export async function expandEnvironmentVariables(
     options?: {
         isLocal?: boolean;
         port?: number;
+        isFrontend?: boolean;
     },
 ): Promise<Record<string, string>> {
     if (!environment) {
         return {};
     }
 
-    const resolveValue = (key: string) =>
-        evaluateResource(
+    const resolveValue = async (key: string): Promise<[string, string] | null> => {
+        const value = await evaluateResource(
             configuration,
-            ["remoteResourceReference", "literalValue"],
+            ["remoteResourceReference", "environmentFileReference", "literalValue"],
             environment[key],
             stage,
             envFile,
             options,
         );
+        return value !== "" ? [key, value] : null;
+    };
 
-    const entries = await Promise.all(
-        Object.entries(environment).map(async ([key]) => [key, await resolveValue(key)]),
+    const resolvedEntries = await Promise.all(
+        Object.keys(environment).map(async (key) => resolveValue(key)),
     );
 
-    return Object.fromEntries(entries);
+    // Ensure `null` values are removed before calling Object.fromEntries
+    return Object.fromEntries(
+        resolvedEntries.filter((entry): entry is [string, string] => entry !== null),
+    );
 }
 
 /**

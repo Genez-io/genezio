@@ -384,6 +384,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                 yamlProjectConfiguration,
                 options.stage || "prod",
                 options.port,
+                options.env,
             ),
         ),
     ]);
@@ -418,6 +419,7 @@ async function startFrontends(
                 {
                     isLocal: true,
                     port: port,
+                    isFrontend: true,
                 },
             );
 
@@ -1883,6 +1885,7 @@ async function startSsrFramework(
     projectConfiguration: YamlProjectConfiguration,
     stage: string,
     port?: number,
+    envFile?: string,
 ) {
     debugLogger.debug(`Starting SSR framework: ${SSRFrameworkName[framework]}`);
     debugLogger.debug(`SSR path: ${ssrConfig.path}`);
@@ -1896,7 +1899,7 @@ async function startSsrFramework(
         ssrConfig.environment,
         projectConfiguration,
         stage,
-        undefined,
+        envFile,
         {
             isLocal: true,
             port: port,
