@@ -949,7 +949,12 @@ export async function evaluateResource(
 
         if (!envFile) {
             throw new UserError(
-                `Environment variable file was not provided or is not correct to be able to set $\{{ env.${resourceRaw.key} }}. Please provide the correct path with \`genezio deploy --env <envFile>\`.`,
+                `Environment variable file was not provided to set $\{{ env.${resourceRaw.key} }}. Please provide the correct path with \`genezio deploy --env <envFile>\` or \`genezio local --env <envFile>\`.`,
+            );
+        }
+        if (!(await fileExists(envFile))) {
+            throw new UserError(
+                `Environment variable file ${envFile} was not found. Please provide the correct path with \`genezio deploy --env <envFile>\` or \`genezio local --env <envFile>\`.`,
             );
         }
         const resourceValue = (await readEnvironmentVariablesFile(envFile)).find(

@@ -1899,7 +1899,7 @@ async function startSsrFramework(
         ssrConfig.environment,
         projectConfiguration,
         stage,
-        envFile,
+        envFile || path.join(ssrConfig.path, ".env"),
         {
             isLocal: true,
             port: port,
