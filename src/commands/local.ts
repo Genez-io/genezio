@@ -89,6 +89,7 @@ import fsExtra from "fs-extra/esm";
 import { DeployCodeFunctionResponse } from "../models/deployCodeResponse.js";
 import {
     enableAuthentication,
+    EnvironmentResourceType,
     evaluateResource,
     getOrCreateDatabase,
     getOrCreateEmptyProject,
@@ -1135,7 +1136,10 @@ async function startCronJobs(
         for (const cronService of yamlProjectConfiguration.services.crons) {
             const functionName = await evaluateResource(
                 yamlProjectConfiguration,
-                ["remoteResourceReference", "literalValue"],
+                [
+                    EnvironmentResourceType.RemoteResourceReference,
+                    EnvironmentResourceType.LiteralValue,
+                ],
                 cronService.function,
                 undefined,
                 undefined,

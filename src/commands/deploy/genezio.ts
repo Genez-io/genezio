@@ -75,6 +75,7 @@ import {
     excludedFiles,
     actionDetectedEnvFile,
     createBackendEnvVarListFromRemote,
+    EnvironmentResourceType,
 } from "./utils.js";
 import {
     expandEnvironmentVariables,
@@ -322,7 +323,10 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         for (const cron of configuration.services.crons) {
             const yamlFunctionName = await evaluateResource(
                 configuration,
-                ["remoteResourceReference", "literalValue"],
+                [
+                    EnvironmentResourceType.RemoteResourceReference,
+                    EnvironmentResourceType.LiteralValue,
+                ],
                 cron.function,
                 options.stage || "prod",
                 /* envFile */ undefined,

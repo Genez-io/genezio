@@ -4,7 +4,7 @@ import colors from "colors";
 import { fileExists, readEnvironmentVariablesFile } from "./file.js";
 import { getEnvironmentVariables } from "../requests/getEnvironmentVariables.js";
 import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
-import { evaluateResource } from "../commands/deploy/utils.js";
+import { EnvironmentResourceType, evaluateResource } from "../commands/deploy/utils.js";
 import { DASHBOARD_URL } from "../constants.js";
 import { log } from "./logging.js";
 
@@ -90,7 +90,11 @@ export async function expandEnvironmentVariables(
     const resolveValue = async (key: string): Promise<[string, string] | null> => {
         const value = await evaluateResource(
             configuration,
-            ["remoteResourceReference", "environmentFileReference", "literalValue"],
+            [
+                EnvironmentResourceType.RemoteResourceReference,
+                EnvironmentResourceType.EnvironmentFileReference,
+                EnvironmentResourceType.LiteralValue,
+            ],
             environment[key],
             stage,
             envFile,
