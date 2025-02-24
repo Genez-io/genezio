@@ -79,7 +79,7 @@
         "esbuild-node-externals": "^1.15.0",
         "execa": "^9.4.0",
         "express": "^4.19.2",
-        "fs-extra": "^11.2.0",
+        "fs-extra": "^11.3.0",
         "glob": "^8.0.3",
         "hash-it": "^6.0.0",
         "http-proxy": "^1.18.1",
