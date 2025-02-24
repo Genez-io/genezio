@@ -76,7 +76,7 @@
         "dir-compare": "^5.0.0",
         "dotenv": "^16.4.5",
         "esbuild": "^0.18.20",
-        "esbuild-node-externals": "^1.15.0",
+        "esbuild-node-externals": "^1.18.0",
         "execa": "^9.4.0",
         "express": "^4.19.2",
         "fs-extra": "^11.2.0",
