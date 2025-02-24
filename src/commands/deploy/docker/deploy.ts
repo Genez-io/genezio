@@ -8,7 +8,7 @@ import {
     prepareServicesPostBackendDeployment,
     prepareServicesPreBackendDeployment,
     readOrAskConfig,
-    uploadEnvVarsFromFile,
+    createBackendEnvVarList,
 } from "../utils.js";
 import { GenezioDeployOptions } from "../../../models/commandOptions.js";
 import {
@@ -157,7 +157,7 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
         ),
     );
 
-    const environmentVariables = await uploadEnvVarsFromFile(
+    const environmentVariables = await createBackendEnvVarList(
         options.env,
         options.stage,
         config,

@@ -41,7 +41,7 @@ import {
     attemptToInstallDependencies,
     prepareServicesPostBackendDeployment,
     prepareServicesPreBackendDeployment,
-    uploadEnvVarsFromFile,
+    createBackendEnvVarList,
     uploadUserCode,
 } from "../utils.js";
 import { readOrAskConfig } from "../utils.js";
@@ -130,7 +130,7 @@ export async function nextJsDeploy(options: GenezioDeployOptions) {
 
     const cacheToken = randomUUID();
     const sharpInstallFolder = await installSharp(tempBuildComponentPath);
-    const environmentVariables = await uploadEnvVarsFromFile(
+    const environmentVariables = await createBackendEnvVarList(
         options.env,
         options.stage,
         genezioConfig,
