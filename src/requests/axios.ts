@@ -13,6 +13,7 @@ enum GenezioErrorCode {
     BadRequest = 6,
     StatusConflict = 7,
     UpdateRequired = 8,
+    Forbidden = 9,
 }
 
 axios.interceptors.response.use(
@@ -41,6 +42,17 @@ axios.interceptors.response.use(
         }
         if (response.data.error.code === GenezioErrorCode.Unauthorized) {
             throw new UserError(GENEZIO_NOT_AUTH_ERROR_MSG);
+        }
+        if (response.data.error.code === GenezioErrorCode.NotFoundError) {
+            throw new UserError("The project you are looking for does not exist.");
+        }
+        if (
+            response.data.error.code === GenezioErrorCode.Forbidden &&
+            response.data.error.message === "Forbidden"
+        ) {
+            throw new UserError(
+                "This action is forbidden. Check your permissions in the dashboard: https://app.genez.io.",
+            );
         }
 
         debugLogger.debug("Axios error received:", JSON.stringify(response.data.error));

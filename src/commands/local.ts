@@ -89,6 +89,7 @@ import fsExtra from "fs-extra/esm";
 import { DeployCodeFunctionResponse } from "../models/deployCodeResponse.js";
 import {
     enableAuthentication,
+    EnvironmentResourceType,
     evaluateResource,
     getOrCreateDatabase,
     getOrCreateEmptyProject,
@@ -384,6 +385,7 @@ export async function startLocalEnvironment(options: GenezioLocalOptions) {
                 yamlProjectConfiguration,
                 options.stage || "prod",
                 options.port,
+                options.env,
             ),
         ),
     ]);
@@ -418,6 +420,7 @@ async function startFrontends(
                 {
                     isLocal: true,
                     port: port,
+                    isFrontend: true,
                 },
             );
 
@@ -1133,6 +1136,10 @@ async function startCronJobs(
         for (const cronService of yamlProjectConfiguration.services.crons) {
             const functionName = await evaluateResource(
                 yamlProjectConfiguration,
+                [
+                    EnvironmentResourceType.RemoteResourceReference,
+                    EnvironmentResourceType.LiteralValue,
+                ],
                 cronService.function,
                 undefined,
                 undefined,
@@ -1882,12 +1889,13 @@ async function startSsrFramework(
     projectConfiguration: YamlProjectConfiguration,
     stage: string,
     port?: number,
+    envFile?: string,
 ) {
     debugLogger.debug(`Starting SSR framework: ${SSRFrameworkName[framework]}`);
     debugLogger.debug(`SSR path: ${ssrConfig.path}`);
 
     // Load .env file from the current working directory or specified cwd
-    const envPath = path.join(process.cwd(), ".env");
+    const envPath = path.join(process.cwd(), ssrConfig.path, ".env");
     const envConfig = dotenv.config({ path: envPath });
     const loadedEnvVars = envConfig.parsed || {};
 
@@ -1895,7 +1903,7 @@ async function startSsrFramework(
         ssrConfig.environment,
         projectConfiguration,
         stage,
-        undefined,
+        envFile || path.join(ssrConfig.path, ".env"),
         {
             isLocal: true,
             port: port,
@@ -1908,7 +1916,8 @@ async function startSsrFramework(
     );
 
     const portEnvKey = `GENEZIO_PORT_${framework.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`;
-    const existingPort = loadedEnvVars[portEnvKey] || process.env[portEnvKey];
+    const existingPort =
+        loadedEnvVars[portEnvKey] || process.env[portEnvKey] || newEnvObject[portEnvKey];
     if (framework.toLowerCase() === SSRFrameworkComponentType.nestjs && !existingPort) {
         throw new UserError(
             `You need to specify the port for Nest.js. You can do this by:

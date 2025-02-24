@@ -11,7 +11,7 @@ import {
     prepareServicesPostBackendDeployment,
     prepareServicesPreBackendDeployment,
     readOrAskConfig,
-    uploadEnvVarsFromFile,
+    createBackendEnvVarList,
     uploadUserCode,
 } from "../utils.js";
 import { addSSRComponentToConfig } from "../../analyze/utils.js";
@@ -81,7 +81,7 @@ export async function nestJsDeploy(options: GenezioDeployOptions) {
         throw new UserError("Failed to build the NestJS project. Check the logs above.");
     });
 
-    const environmentVariables = await uploadEnvVarsFromFile(
+    const environmentVariables = await createBackendEnvVarList(
         options.env,
         options.stage,
         genezioConfig,

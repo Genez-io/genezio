@@ -4,7 +4,7 @@ import colors from "colors";
 import { fileExists, readEnvironmentVariablesFile } from "./file.js";
 import { getEnvironmentVariables } from "../requests/getEnvironmentVariables.js";
 import { YamlProjectConfiguration } from "../projectConfiguration/yaml/v2.js";
-import { evaluateResource } from "../commands/deploy/utils.js";
+import { EnvironmentResourceType, evaluateResource } from "../commands/deploy/utils.js";
 import { DASHBOARD_URL } from "../constants.js";
 import { log } from "./logging.js";
 
@@ -80,20 +80,37 @@ export async function expandEnvironmentVariables(
     options?: {
         isLocal?: boolean;
         port?: number;
+        isFrontend?: boolean;
     },
 ): Promise<Record<string, string>> {
     if (!environment) {
         return {};
     }
 
-    const resolveValue = (key: string) =>
-        evaluateResource(configuration, environment[key], stage, envFile, options);
+    const resolveValue = async (key: string): Promise<[string, string] | null> => {
+        const value = await evaluateResource(
+            configuration,
+            [
+                EnvironmentResourceType.RemoteResourceReference,
+                EnvironmentResourceType.EnvironmentFileReference,
+                EnvironmentResourceType.LiteralValue,
+            ],
+            environment[key],
+            stage,
+            envFile,
+            options,
+        );
+        return value !== "" ? [key, value] : null;
+    };
 
-    const entries = await Promise.all(
-        Object.entries(environment).map(async ([key]) => [key, await resolveValue(key)]),
+    const resolvedEntries = await Promise.all(
+        Object.keys(environment).map(async (key) => resolveValue(key)),
     );
 
-    return Object.fromEntries(entries);
+    // Ensure `null` values are removed before calling Object.fromEntries
+    return Object.fromEntries(
+        resolvedEntries.filter((entry): entry is [string, string] => entry !== null),
+    );
 }
 
 /**
@@ -129,15 +146,18 @@ export async function promptToConfirmSettingEnvironmentVariables(envVars: string
     return true;
 }
 
-
-export async function warningMissingEnvironmentVariables(cwd: string, projectId: string, projectEnvId: string) {
+export async function warningMissingEnvironmentVariables(
+    cwd: string,
+    projectId: string,
+    projectEnvId: string,
+) {
     const envFileFullPath = path.join(cwd, ".env");
     if (!(await fileExists(envFileFullPath))) {
         return;
     }
     const envVars = await readEnvironmentVariablesFile(envFileFullPath);
     if (envVars.length === 0) {
-        return
+        return;
     }
 
     const missingEnvVars = await getUnsetEnvironmentVariables(
