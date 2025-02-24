@@ -1895,7 +1895,7 @@ async function startSsrFramework(
     debugLogger.debug(`SSR path: ${ssrConfig.path}`);
 
     // Load .env file from the current working directory or specified cwd
-    const envPath = path.join(process.cwd(), ".env");
+    const envPath = path.join(process.cwd(), ssrConfig.path, ".env");
     const envConfig = dotenv.config({ path: envPath });
     const loadedEnvVars = envConfig.parsed || {};
 
@@ -1916,7 +1916,8 @@ async function startSsrFramework(
     );
 
     const portEnvKey = `GENEZIO_PORT_${framework.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}`;
-    const existingPort = loadedEnvVars[portEnvKey] || process.env[portEnvKey];
+    const existingPort =
+        loadedEnvVars[portEnvKey] || process.env[portEnvKey] || newEnvObject[portEnvKey];
     if (framework.toLowerCase() === SSRFrameworkComponentType.nestjs && !existingPort) {
         throw new UserError(
             `You need to specify the port for Nest.js. You can do this by:
