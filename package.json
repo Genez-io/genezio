@@ -83,7 +83,7 @@
         "glob": "^8.0.3",
         "hash-it": "^6.0.0",
         "http-proxy": "^1.18.1",
-        "inquirer": "^12.3.0",
+        "inquirer": "^12.5.0",
         "isomorphic-git": "^1.29.0",
         "latest-version": "^9.0.0",
         "lodash": "^4.17.21",
