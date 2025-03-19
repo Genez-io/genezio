@@ -112,7 +112,8 @@ async function decideDeployType(options: GenezioDeployOptions): Promise<DeployTy
         return [DeployType.Docker];
     }
 
-    if (fs.existsSync(path.join(cwd, "genezio.yaml"))) {
+    const configFile = options.config || "genezio.yaml";
+    if (fs.existsSync(path.join(cwd, configFile))) {
         const configIOController = new YamlConfigurationIOController(options.config);
         const config = await configIOController.read();
 
