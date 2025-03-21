@@ -79,6 +79,14 @@ export interface ObfuscatedEnvironmentVariable {
     type: string;
 }
 
+export interface ExposedEnvironmentVariable {
+    id: string;
+    name: string;
+    value: string;
+    lastAccessedAt: string;
+    type: string;
+}
+
 export type TemplateCategory = "Backend" | "Frontend";
 
 export interface Template {

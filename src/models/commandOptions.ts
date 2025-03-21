@@ -91,6 +91,13 @@ export interface GenezioUnlinkOptions extends BaseOptions {
     all: boolean;
 }
 
+export interface GenezioEnvOptions extends BaseOptions {
+    projectName: string;
+    region: string;
+    stage?: string;
+    format?: string;
+}
+
 export interface GenezioCreateInteractiveOptions extends BaseOptions {
     path?: string;
 }
