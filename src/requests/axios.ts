@@ -29,7 +29,7 @@ axios.interceptors.response.use(
 
         if (response.status === 402) {
             throw new UserError(
-                "You've hit the maximum number of projects. To continue, please upgrade your subscription.",
+                "You need to upgrade your account to use this feature. Please visit the billing page in the dashboard: https://app.genez.io/billing",
             );
         }
         if (!response.data.error) {

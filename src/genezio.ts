@@ -35,6 +35,7 @@ import {
     GenezioUnlinkOptions,
     GenezioBundleFunctionOptions,
     GenezioAnalyzeOptions,
+    GenezioEnvOptions,
 } from "./models/commandOptions.js";
 import currentGenezioVersion, {
     checkNodeMinimumVersion,
@@ -55,6 +56,7 @@ import { pullCommand } from "./commands/pull.js";
 import { CloudProviderIdentifier } from "./models/cloudProviderIdentifier.js";
 import { isCI } from "./utils/process.js";
 import { analyzeCommand, DEFAULT_FORMAT } from "./commands/analyze/command.js";
+import { revealEnvironmentVariables } from "./commands/env.js";
 
 const program = new Command();
 
@@ -105,7 +107,7 @@ program
     });
 
 program.hook("preAction", async (thisCommand) => {
-    if (thisCommand.args[0] === "analyze") {
+    if (thisCommand.args[0] === "analyze" || thisCommand.args[0] === "getenv") {
         return;
     }
     log.info("Version: " + currentGenezioVersion);
@@ -794,6 +796,21 @@ program
         });
         log.info(colors.green(`Project pulled successfully!`));
 
+        exit(0);
+    });
+
+program
+    .command("getenv")
+    .option("--output <output>", "The output path of the environment variables.")
+    .option("--projectName <name>", "The project name to pull from.")
+    .option("--stage <stage>", "The stage of the project to pull from.", "prod")
+    .option("--format <format>", "The format of the output. Possible value: env, json", "env")
+    .summary("Retrieve specific environment variables from the project.")
+    .action(async (options: GenezioEnvOptions) => {
+        await revealEnvironmentVariables(options).catch((error) => {
+            logError(error);
+            exit(1);
+        });
         exit(0);
     });
 
