@@ -801,6 +801,7 @@ program
 
 program
     .command("getenv")
+    .option("--output <output>", "The output path of the environment variables.")
     .option("--projectName <name>", "The project name to pull from.")
     .option("--stage <stage>", "The stage of the project to pull from.", "prod")
     .option("--format <format>", "The format of the output. Possible value: env, json", "env")

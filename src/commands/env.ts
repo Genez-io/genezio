@@ -3,10 +3,16 @@ import { GenezioEnvOptions } from "../models/commandOptions.js";
 import { revealEnvironmentVariablesRequest } from "../requests/getEnvironmentVariables.js";
 import getProjectInfoByName from "../requests/getProjectInfoByName.js";
 import { log } from "../utils/logging.js";
+import { writeToFile } from "../utils/file.js";
 
 export async function revealEnvironmentVariables(options: GenezioEnvOptions) {
     const projectName = options.projectName;
+    const outputPath = options.output;
     const stage = options.stage || "prod";
+    if (!outputPath) {
+        throw new UserError("Please provide the output path.");
+    }
+
     if (!projectName) {
         throw new UserError("Please provide the project name.");
     }
@@ -22,13 +28,19 @@ export async function revealEnvironmentVariables(options: GenezioEnvOptions) {
 
     const envVarList = await revealEnvironmentVariablesRequest(project.id, environment.id);
 
-    if (options.format == "json") {
-        log.info(JSON.stringify(envVarList));
-        return;
+    let content = "";
+    if (options.format === "json") {
+        content = JSON.stringify(envVarList, null, 2);
+    } else {
+        content = envVarList.map((envVar) => `${envVar.name}=${envVar.value}`).join("\n");
     }
 
-    for (const envVar of envVarList) {
-        log.info(`${envVar.name}=${envVar.value}`);
+    try {
+        await writeToFile(".", outputPath, content, true);
+    } catch (error) {
+        log.error("Failed to write to file", error);
+        throw new UserError(`Failed to write to file ${outputPath} with error: ${error}.`);
     }
+
     return;
 }

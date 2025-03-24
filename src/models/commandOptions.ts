@@ -93,7 +93,7 @@ export interface GenezioUnlinkOptions extends BaseOptions {
 
 export interface GenezioEnvOptions extends BaseOptions {
     projectName: string;
-    region: string;
+    output: string;
     stage?: string;
     format?: string;
 }
