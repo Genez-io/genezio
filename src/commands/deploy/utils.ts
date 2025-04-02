@@ -489,6 +489,21 @@ export async function getOrCreateDatabase(
     projectEnvId: string,
     ask: boolean = false,
 ): Promise<GetDatabaseResponse | undefined> {
+    const linkedDatabase = await findLinkedDatabase(
+        createDatabaseReq.name,
+        projectId,
+        projectEnvId,
+    ).catch((error) => {
+        debugLogger.debug(`Error finding linked database ${createDatabaseReq.name}: ${error}`);
+        throw new UserError(`Failed to find the linked database ${createDatabaseReq.name}.`);
+    });
+
+    if (linkedDatabase) {
+        debugLogger.debug(`Database ${createDatabaseReq.name} is already linked to stage ${stage}`);
+        return linkedDatabase;
+    }
+
+    log.info(`Database ${createDatabaseReq.name} is not linked. Proceeding to link it...`);
     const database = await getDatabaseByName(createDatabaseReq.name);
     if (database) {
         debugLogger.debug(`Database ${createDatabaseReq.name} is already created.`);
@@ -499,22 +514,6 @@ export async function getOrCreateDatabase(
             log.warn(
                 `To change the region, you need to delete the database and create a new one at ${colors.cyan(`${DASHBOARD_URL}/databases`)}`,
             );
-        }
-
-        const linkedDatabase = await findLinkedDatabase(
-            createDatabaseReq.name,
-            projectId,
-            projectEnvId,
-        ).catch((error) => {
-            debugLogger.debug(`Error finding linked database ${createDatabaseReq.name}: ${error}`);
-            throw new UserError(`Failed to find linked database ${createDatabaseReq.name}.`);
-        });
-
-        if (linkedDatabase) {
-            debugLogger.debug(
-                `Database ${createDatabaseReq.name} is already linked to stage ${stage}`,
-            );
-            return linkedDatabase;
         }
 
         if (ask) {
