@@ -106,6 +106,11 @@ export async function scanClassesForDecorators(
                         type = getTriggerTypeFromString(classType);
                     }
 
+                    let persistentDecorator = false;
+                    if ((deployDecoratorFound.arguments["persistent"] as string) === "true") {
+                        persistentDecorator = true;
+                    }
+
                     timeout = deployDecoratorFound.arguments["timeout"] as number | undefined;
                     storageSize = deployDecoratorFound.arguments["storageSize"] as
                         | number
@@ -124,9 +129,7 @@ export async function scanClassesForDecorators(
                     cooldownTime = deployDecoratorFound.arguments["cooldownTime"] as
                         | number
                         | undefined;
-                    persistent = deployDecoratorFound.arguments["persistent"] as
-                        | boolean
-                        | undefined;
+                    persistent = persistentDecorator;
                 }
 
                 classes.push({
