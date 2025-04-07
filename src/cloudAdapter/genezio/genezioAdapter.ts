@@ -32,6 +32,7 @@ import { EnvironmentVariable } from "../../models/environmentVariables.js";
 
 // The maximum size of a bundle is 1.524e9 bytes approx 1.5GB.
 const BUNDLE_SIZE_LIMIT = 1.524e9;
+const PERSISTENT_BUNDLE_SIZE_LIMIT = 5.0e9; // 5GB
 
 async function handleBigElementSizeError(
     element: GenezioCloudInput,
@@ -140,7 +141,11 @@ export class GenezioCloudAdapter implements CloudAdapter {
         );
 
         const promisesDeploy = input.map(async (element) => {
-            await handleBigElementSizeError(element, projectConfiguration, BUNDLE_SIZE_LIMIT);
+            await handleBigElementSizeError(
+                element,
+                projectConfiguration,
+                element.persistent ? PERSISTENT_BUNDLE_SIZE_LIMIT : BUNDLE_SIZE_LIMIT,
+            );
 
             debugLogger.debug(
                 `Get the presigned URL for ${element.type}: ${element.name} ${element.archiveName}.`,

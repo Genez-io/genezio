@@ -32,7 +32,7 @@ export async function revealEnvironmentVariables(options: GenezioEnvOptions) {
     if (options.format === "json") {
         content = JSON.stringify(envVarList, null, 2);
     } else {
-        content = envVarList.map((envVar) => `${envVar.name}=${envVar.value}`).join("\n");
+        content = envVarList.map((envVar) => `${envVar.name}="${envVar.value}"`).join("\n");
     }
 
     try {
