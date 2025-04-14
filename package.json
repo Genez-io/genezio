@@ -63,7 +63,7 @@
         "aws-cron-parser": "^1.1.12",
         "axios": "^1.8.1",
         "body": "^5.1.0",
-        "body-parser": "^1.20.1",
+        "body-parser": "^2.2.0",
         "boxen": "^8.0.1",
         "chokidar": "^3.6.0",
         "cli-progress": "^3.12.0",
