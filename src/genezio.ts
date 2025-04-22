@@ -107,7 +107,11 @@ program
     });
 
 program.hook("preAction", async (thisCommand) => {
-    if (thisCommand.args[0] === "analyze" || thisCommand.args[0] === "getenv") {
+    if (
+        thisCommand.args[0] === "analyze" ||
+        thisCommand.args[0] === "getenv" ||
+        thisCommand.args[0] === "list"
+    ) {
         return;
     }
     log.info("Version: " + currentGenezioVersion);
@@ -651,6 +655,7 @@ program
     .command("list")
     .argument("[identifier]", "Name or ID of the project you want to display.")
     .option("-l, --long-listed", "List more details for each project", false)
+    .option("--format <format>", "Output format. Possible values: json, text", "text")
     .summary("List details about the deployed projects.")
     .description(
         "Display details of your projects. You can view them all at once or display a particular one by providing its name or ID.",
