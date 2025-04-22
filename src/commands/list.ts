@@ -19,29 +19,50 @@ export async function lsCommand(identifier: string, options: GenezioListOptions)
         await loginCommand("", false);
     }
 
-    await lsHandler(identifier, options.longListed);
+    await lsHandler(identifier, options.longListed, options.format);
 }
 
-async function lsHandler(identifier: string, l: boolean) {
-    // show prompt if no project id is selected
+async function lsHandler(identifier: string, l: boolean, format: string) {
+    const useSpinner = format === "text";
+
     const spinner = new Spinner("%s  ");
     spinner.setSpinnerString("|/-\\");
-    spinner.start();
+    if (useSpinner) {
+        spinner.start();
+    }
     let projectsJson = await listProjects();
-    spinner.stop();
-    log.info("");
-    if (projectsJson.length == 0) {
+
+    if (useSpinner) {
+        spinner.stop(true);
+    }
+
+    if (projectsJson.length == 0 && format == "text") {
         log.info("There are no currently deployed projects.");
         return;
+    } else if (projectsJson.length == 0 && format == "json") {
+        log.info("[]");
+        return;
     }
+
     if (identifier.trim().length !== 0) {
         projectsJson = projectsJson.filter(
             (project) => project.name === identifier || project.id === identifier,
         );
-        if (projectsJson.length == 0) {
+        if (projectsJson.length == 0 && format == "text") {
             log.info("There is no project with this identifier.");
             return;
+        } else if (projectsJson.length == 0 && format == "json") {
+            log.info("[]");
+            return;
         }
+    }
+    if (format === "json") {
+        if (projectsJson.length == 1) {
+            log.info(JSON.stringify(projectsJson[0], null, 0));
+            return;
+        }
+        log.info(JSON.stringify(projectsJson, null, 0));
+        return;
     }
     projectsJson.forEach(function (project, index: number) {
         const createdAt = new Date(project.createdAt * 1000).toISOString();

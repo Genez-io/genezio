@@ -56,6 +56,7 @@ export interface GenezioDeployOptions extends BaseOptions {
 
 export interface GenezioListOptions extends BaseOptions {
     longListed: boolean;
+    format: string;
 }
 
 export interface GenezioDeleteOptions extends BaseOptions {
