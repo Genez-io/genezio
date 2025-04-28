@@ -78,7 +78,7 @@
         "esbuild": "^0.18.20",
         "esbuild-node-externals": "^1.18.0",
         "execa": "^9.4.0",
-        "express": "^4.19.2",
+        "express": "^5.1.0",
         "fs-extra": "^11.3.0",
         "glob": "^8.0.3",
         "hash-it": "^6.0.0",
