@@ -25,6 +25,9 @@ export async function createDatabase(
         name: name,
         region: region,
         type: type,
+        clusterType: request.clusterType,
+        clusterName: request.clusterName,
+        clusterTier: request.clusterTier,
     });
 
     const databaseResponse = (await sendRequest(
