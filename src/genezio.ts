@@ -123,9 +123,8 @@ program.hook("postAction", async () => {
             debugLogger.error("Could not log outdated version", error);
             exit(0);
         });
+        process.stdin.unref();
     }
-
-    process.stdin.unref();
 });
 
 // program setup - used to display help and version
