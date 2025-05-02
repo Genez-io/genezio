@@ -143,7 +143,8 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
     }
 
     if (cmd) {
-        cmdEntryFile += cmd.join(" ");
+        // Always quote the command when using /bin/sh -c to ensure proper argument handling
+        cmdEntryFile += `'${cmd.join(" ")}'`;
     }
 
     projectConfiguration.functions.push(
