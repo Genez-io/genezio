@@ -123,7 +123,12 @@ program.hook("postAction", async () => {
             debugLogger.error("Could not log outdated version", error);
             exit(0);
         });
+    }
+
+    try {
         process.stdin.unref();
+    } catch (error) {
+        debugLogger.error("Could not unref stdin", error);
     }
 });
 
@@ -557,7 +562,7 @@ program
     .command("addClass")
     .argument("<classPath>", "Path of the class you want to add.")
     .argument("[<classType>]", "The type of the class you want to add. [http, jsonrpc, cron]")
-    .summary("Add a new genezio class to your project”")
+    .summary("Add a new genezio class to your project")
     .action(async (classPath: string, classType: string) => {
         await addClassCommand(classPath, classType).catch(async (error: Error) => {
             logError(error);
