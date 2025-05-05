@@ -429,6 +429,7 @@ function fillDefaultGenezioConfig(config: RawYamlProjectConfiguration) {
                 defaultConfig.backend.language.packageManager ??= PackageManagerType.npm;
                 break;
             case Language.python:
+            case Language.pythonAsgi:
                 defaultConfig.backend.language.packageManager ??= PackageManagerType.pip;
                 break;
         }

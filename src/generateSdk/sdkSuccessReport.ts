@@ -22,8 +22,8 @@ export function reportSuccessForSdk(
         case Language.dart:
         case Language.swift:
         case Language.python:
+        case Language.pythonAsgi:
             return reportSuccessForSdkOtherLanguages();
-            return;
         default:
             throw new UserError("Language not supported");
     }

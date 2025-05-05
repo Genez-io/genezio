@@ -247,6 +247,7 @@ export class ProjectConfiguration {
                 } as NodeOptions;
                 break;
             case Language.python:
+            case Language.pythonAsgi:
                 this.options = {
                     pythonRuntime: yamlConfiguration.backend.language.runtime,
                     architecture: yamlConfiguration.backend.language.architecture,

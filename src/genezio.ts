@@ -125,7 +125,11 @@ program.hook("postAction", async () => {
         });
     }
 
-    process.stdin.unref();
+    try {
+        process.stdin.unref?.();
+    } catch (error) {
+        debugLogger.error("Could not unref stdin", error);
+    }
 });
 
 // program setup - used to display help and version
@@ -558,7 +562,7 @@ program
     .command("addClass")
     .argument("<classPath>", "Path of the class you want to add.")
     .argument("[<classType>]", "The type of the class you want to add. [http, jsonrpc, cron]")
-    .summary("Add a new genezio class to your project”")
+    .summary("Add a new genezio class to your project")
     .action(async (classPath: string, classType: string) => {
         await addClassCommand(classPath, classType).catch(async (error: Error) => {
             logError(error);
