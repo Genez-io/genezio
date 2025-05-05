@@ -30,7 +30,12 @@ export function getFunctionHandlerProvider(
         }
         case FunctionType.httpServer:
         case FunctionType.persistent: {
-            const supportedLanguages = [Language.python, Language.js, Language.ts];
+            const supportedLanguages = [
+                Language.python,
+                Language.pythonAsgi,
+                Language.js,
+                Language.ts,
+            ];
             if (!supportedLanguages.includes(language)) {
                 throw new UserError(
                     `Unsupported language: ${language}. Supported languages are: ${supportedLanguages.join(", ")}`,

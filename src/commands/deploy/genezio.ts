@@ -631,9 +631,14 @@ export async function functionToCloudInput(
     outputDir?: string,
     runtime?: string,
 ): Promise<GenezioCloudInput> {
-    const supportedFunctionLanguages = ["js", "ts", "python"];
+    const supportedFunctionLanguages = [
+        Language.js,
+        Language.ts,
+        Language.python,
+        Language.pythonAsgi,
+    ];
 
-    if (!supportedFunctionLanguages.includes(functionElement.language)) {
+    if (!supportedFunctionLanguages.includes(functionElement.language as Language)) {
         throw new UserError(
             `The language ${functionElement.language} is not supported for functions. Supported languages are: ${supportedFunctionLanguages.join(", ")}`,
         );
@@ -653,7 +658,10 @@ export async function functionToCloudInput(
         `genezioDeploy.zip`,
     );
 
-    if (functionElement.language === "python") {
+    if (
+        functionElement.language === Language.python ||
+        functionElement.language === Language.pythonAsgi
+    ) {
         await fsExtra.copy(path.join(backendPath, functionElement.path), tmpFolderPath, {
             filter: (src) => {
                 const relativePath = path.relative(
@@ -684,7 +692,12 @@ export async function functionToCloudInput(
     let metadata: GenezioFunctionMetadata | undefined;
 
     // Handle Python projects dependencies
-    if (functionElement.language === "python") {
+    // asgilinux-3.13
+    // pythonlinux-3.13
+    if (
+        functionElement.language === Language.python ||
+        functionElement.language === Language.pythonAsgi
+    ) {
         metadata = {
             type: GenezioFunctionMetadataType.Python,
             app_name: functionElement.handler,
