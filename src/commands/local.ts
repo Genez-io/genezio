@@ -681,7 +681,10 @@ async function startProcesses(
             // delete all content in the tmp folder
             await fsExtra.emptyDir(tmpFolder);
 
-            if (functionInfo.language === Language.python) {
+            if (
+                functionInfo.language === Language.python ||
+                functionInfo.language === Language.pythonAsgi
+            ) {
                 await fsExtra.copy(backend.path, tmpFolder);
             } else {
                 await fsExtra.copy(path.join(backend.path, functionInfo.path), tmpFolder);
@@ -712,7 +715,8 @@ async function startProcesses(
             else if (
                 (functionInfo.type === FunctionType.httpServer ||
                     functionInfo.type === FunctionType.persistent) &&
-                functionInfo.language === Language.python
+                (functionInfo.language === Language.python ||
+                    functionInfo.language === Language.pythonAsgi)
             ) {
                 await writeToFile(
                     path.join(tmpFolder),

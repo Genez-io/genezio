@@ -5,6 +5,7 @@ export enum Language {
     ts = "ts",
     swift = "swift",
     python = "python",
+    pythonAsgi = "python-asgi",
     dart = "dart",
     kt = "kt",
     go = "go",

@@ -65,6 +65,7 @@ export async function writeSdk(input: WriteSdkInput): Promise<string | undefined
         case Language.dart:
         case Language.swift:
         case Language.python:
+        case Language.pythonAsgi:
             if (input.outputPath) {
                 return await basicFileWriter(input.sdkResponse, input.classUrls, input.outputPath);
             }
