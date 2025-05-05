@@ -126,7 +126,7 @@ program.hook("postAction", async () => {
     }
 
     try {
-        process.stdin.unref();
+        process.stdin.unref?.();
     } catch (error) {
         debugLogger.error("Could not unref stdin", error);
     }
