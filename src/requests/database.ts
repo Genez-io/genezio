@@ -1,6 +1,7 @@
 import {
     CreateDatabaseRequest,
     CreateDatabaseResponse,
+    GetConnectionUrlResponse,
     GetDatabaseConnectionUrl,
     GetDatabaseResponse,
     GetDatabasesResponse,
@@ -90,4 +91,20 @@ export async function findLinkedDatabase(
     )) as GetDatabasesResponse;
 
     return response.databases.find((database) => database.name === name);
+}
+
+export async function listDatabases(): Promise<GetDatabaseResponse[] | undefined> {
+    const response = (await sendRequest("GET", `databases`, "")) as GetDatabasesResponse;
+
+    return response.databases;
+}
+
+export async function getConnectionUrl(databaseId: string): Promise<string | undefined> {
+    const response = (await sendRequest(
+        "GET",
+        `databases/${databaseId}`,
+        "",
+    )) as GetConnectionUrlResponse;
+
+    return response.connectionUrl;
 }
