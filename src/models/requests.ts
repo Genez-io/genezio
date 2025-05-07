@@ -55,6 +55,10 @@ export interface GetDatabasesResponse {
         type: string;
     }[];
 }
+export interface GetConnectionUrlResponse {
+    status: string;
+    connectionUrl: string;
+}
 
 export interface LinkedDatabaseResponse {
     status: string;

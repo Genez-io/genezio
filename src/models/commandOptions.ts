@@ -99,6 +99,13 @@ export interface GenezioEnvOptions extends BaseOptions {
     format?: string;
 }
 
+export interface GenezioDatabaseOptions extends BaseOptions {
+    id?: string;
+    name?: string;
+    config?: string;
+    action?: string;
+}
+
 export interface GenezioCreateInteractiveOptions extends BaseOptions {
     path?: string;
 }
