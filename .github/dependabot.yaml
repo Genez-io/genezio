@@ -19,6 +19,7 @@ updates:
           - dependency-name: "esbuild"
             versions: [">= 0.18.0"]
           - dependency-name: "tree-sitter"
+          - dependency-name: "express"
     - package-ecosystem: "gitsubmodule"
       target-branch: "main"
       directory: "/"

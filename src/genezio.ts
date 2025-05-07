@@ -36,6 +36,7 @@ import {
     GenezioBundleFunctionOptions,
     GenezioAnalyzeOptions,
     GenezioEnvOptions,
+    GenezioDatabaseOptions,
 } from "./models/commandOptions.js";
 import currentGenezioVersion, {
     checkNodeMinimumVersion,
@@ -57,6 +58,11 @@ import { CloudProviderIdentifier } from "./models/cloudProviderIdentifier.js";
 import { isCI } from "./utils/process.js";
 import { analyzeCommand, DEFAULT_FORMAT } from "./commands/analyze/command.js";
 import { revealEnvironmentVariables } from "./commands/env.js";
+import {
+    createDatabaseCmd,
+    getDatabaseConnectionCmd,
+    listDatabasesCmd,
+} from "./commands/database.js";
 
 const program = new Command();
 
@@ -110,7 +116,8 @@ program.hook("preAction", async (thisCommand) => {
     if (
         thisCommand.args[0] === "analyze" ||
         thisCommand.args[0] === "getenv" ||
-        thisCommand.args[0] === "list"
+        thisCommand.args[0] === "list" ||
+        thisCommand.args[0] === "database"
     ) {
         return;
     }
@@ -820,6 +827,46 @@ program
             logError(error);
             exit(1);
         });
+        exit(0);
+    });
+
+program
+    .command("database")
+    .option(
+        "--action <action>",
+        "The action to perform on the database service - list, create, delete.",
+        "list",
+    )
+    .option("--name <name>", "The name of the database service.")
+    .option("--id <id>", "The name of the database service.")
+    .option("--config <config>", "The project name to pull from.", "./genezio.yaml")
+    .option("--stage <stage>", "The stage of the project to pull from.", "prod")
+    .summary("Manage the database service.")
+    .action(async (options: GenezioDatabaseOptions) => {
+        switch (options.action) {
+            case "list":
+                await listDatabasesCmd(options).catch((error) => {
+                    logError(error);
+                    exit(1);
+                });
+                break;
+
+            case "create":
+                await createDatabaseCmd(options).catch((error) => {
+                    logError(error);
+                    exit(1);
+                });
+                break;
+            case "get-connection":
+                await getDatabaseConnectionCmd(options).catch((error) => {
+                    logError(error);
+                    exit(1);
+                });
+                break;
+            default:
+                log.error(`Unknown action: ${options.action}`);
+                exit(1);
+        }
         exit(0);
     });
 
