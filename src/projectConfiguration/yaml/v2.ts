@@ -25,6 +25,7 @@ import yaml, { YAMLParseError } from "yaml";
 import { DeepRequired } from "../../utils/types.js";
 import { isUnique } from "../../utils/yaml.js";
 import path from "path";
+import { MongoClusterTier, MongoClusterType } from "../../models/requests.js";
 
 export type RawYamlProjectConfiguration = ReturnType<typeof parseGenezioConfig>;
 export type YAMLBackend = NonNullable<YamlProjectConfiguration["backend"]>;
@@ -188,6 +189,9 @@ function parseGenezioConfig(config: unknown) {
                 region: zod
                     .enum(mongoDatabaseRegions.map((r) => r.value) as [string, ...string[]])
                     .optional(),
+                clusterType: zod.nativeEnum(MongoClusterType).optional(),
+                clusterName: zod.string().optional(),
+                clusterTier: zod.nativeEnum(MongoClusterTier).optional(),
             }),
         );
 

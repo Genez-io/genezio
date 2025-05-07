@@ -42,6 +42,7 @@ import { DartBundler } from "../bundlers/dart/localDartBundler.js";
 import axios, { AxiosError, AxiosResponse } from "axios";
 import { findAvailablePort } from "../utils/findAvailablePort.js";
 import {
+    DatabaseType,
     entryFileFunctionMap,
     FunctionType,
     Language,
@@ -103,6 +104,7 @@ import { getFunctionEntryFilename } from "../utils/getFunctionEntryFilename.js";
 import { SSRFrameworkComponent } from "./deploy/command.js";
 import fs from "fs";
 import { detectPythonCommand } from "../utils/detectPythonCommand.js";
+import { CreateDatabaseRequest } from "../models/requests.js";
 
 type UnitProcess = {
     process: ChildProcess;
@@ -168,12 +170,22 @@ export async function prepareLocalBackendEnvironment(
                     if (!database.region) {
                         database.region = region;
                     }
+                    let createdDatabaseRequest: CreateDatabaseRequest = {
+                        name: database.name,
+                        region: database.region,
+                        type: database.type,
+                    };
+                    if (database.type === DatabaseType.mongo) {
+                        createdDatabaseRequest = {
+                            ...createdDatabaseRequest,
+                            clusterType: database.clusterType,
+                            clusterName: database.clusterName,
+                            clusterTier: database.clusterTier,
+                        };
+                    }
+
                     const remoteDatabase = await getOrCreateDatabase(
-                        {
-                            name: database.name,
-                            region: database.region,
-                            type: database.type,
-                        },
+                        createdDatabaseRequest,
                         options.stage || "prod",
                         projectDetails.projectId,
                         projectDetails.projectEnvId,

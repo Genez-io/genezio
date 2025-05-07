@@ -117,12 +117,22 @@ export async function prepareServicesPreBackendDeployment(
             if (!database.region) {
                 database.region = configuration.region;
             }
+            let createdDatabaseRequest: CreateDatabaseRequest = {
+                name: database.name,
+                region: database.region,
+                type: database.type,
+            };
+            if (database.type === DatabaseType.mongo) {
+                createdDatabaseRequest = {
+                    ...createdDatabaseRequest,
+                    clusterType: database.clusterType,
+                    clusterName: database.clusterName,
+                    clusterTier: database.clusterTier,
+                };
+            }
+
             await getOrCreateDatabase(
-                {
-                    name: database.name,
-                    region: database.region,
-                    type: database.type,
-                },
+                createdDatabaseRequest,
                 environment || "prod",
                 projectDetails.projectId,
                 projectDetails.projectEnvId,
@@ -701,12 +711,23 @@ export async function enableAuthentication(
         if (!configDatabase.region) {
             configDatabase.region = configuration.region;
         }
+
+        let createdDatabaseRequest: CreateDatabaseRequest = {
+            name: configDatabase.name,
+            region: configDatabase.region,
+            type: configDatabase.type,
+        };
+        if (configDatabase.type === DatabaseType.mongo) {
+            createdDatabaseRequest = {
+                ...createdDatabaseRequest,
+                clusterType: configDatabase.clusterType,
+                clusterName: configDatabase.clusterName,
+                clusterTier: configDatabase.clusterTier,
+            };
+        }
+
         const database: GetDatabaseResponse | undefined = await getOrCreateDatabase(
-            {
-                name: configDatabase.name,
-                region: configDatabase.region,
-                type: configDatabase.type,
-            },
+            createdDatabaseRequest,
             stage,
             projectId,
             projectEnvId,

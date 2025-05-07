@@ -5,10 +5,26 @@ import {
 } from "../projectConfiguration/yaml/models.js";
 import { ProjectDetailsEnvElement } from "../requests/models.js";
 
+export enum MongoClusterType {
+    SHARED = "sharedCluster",
+    DEDICATED = "dedicatedCluster",
+}
+
+export enum MongoClusterTier {
+    M10 = "M10",
+    M20 = "M20",
+    M30 = "M30",
+    M40 = "M40",
+    M50 = "M50",
+}
+
 export interface CreateDatabaseRequest {
     name: string;
     region: string;
     type: DatabaseType;
+    clusterType?: MongoClusterType;
+    clusterName?: string;
+    clusterTier?: MongoClusterTier;
 }
 
 export interface CreateDatabaseResponse {
