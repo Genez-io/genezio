@@ -48,7 +48,7 @@
         "@babel/parser": "^7.26.8",
         "@babel/plugin-proposal-decorators": "^7.25.9",
         "@babel/preset-env": "^7.26.0",
-        "@babel/preset-react": "^7.24.6",
+        "@babel/preset-react": "^7.27.1",
         "@babel/preset-typescript": "^7.27.1",
         "@babel/traverse": "^7.27.0",
         "@genezio/test-interface-component": "^2.4.3",
