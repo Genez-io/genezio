@@ -12,7 +12,6 @@
 
 <div align="center">
 <h2>Deploy on the fastest full-stack cloud</h2>
-<h3>Check out a <u><a href="https://awesome-purple-capybara.app.genez.io/">live demo deployed with genezio here</a></u> </h3>
 </div>
 
 <br>
@@ -54,8 +53,6 @@ For more details on how to use `genezio`, you can check out the official [docume
 -   [Commands Summary](#commands-summary)
 -   [Examples deployed with genezio](#examples-deployed-with-genezio)
 -   [Official documentation](#official-documentation)
-    -   [How does genezio work?](#how-does-`genezio`-work?)
-    -   [Detailed documentation](#detailed-documentation)
 -   [Getting support](#getting-support)
 -   [System requirements](#system-requirements)
 -   [Troubleshooting](#troubleshooting)
@@ -84,7 +81,7 @@ For more details on how to use `genezio`, you can check out the official [docume
 
 # Getting Started
 
-Check out our [Getting started](https://genezio.com/docs/getting-started) documentation page to find out how to start using Genezio.
+Check out our [Getting started](https://genezio.com/docs/getting-started/) documentation page to find out how to start using Genezio.
 
 For more details about the `genezio` CLI commands, run `genezio help` or `genezio [command] help`.
 
@@ -135,15 +132,15 @@ The genezio CLI tool supports the commands shown in the following table:
 
 | Command                                   | Description                                                                                                                                                                               |
 | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| genezio create                            | Create a new fullstack project from templates [Learn more](https://genezio.com/docs/cli-tool/cli-commands/genezio-create)                                                                 |
-| genezio local --port `<port>`             | Runs a local environment with your project for testing purposes. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/local)                                                       |
-| genezio deploy                            | Deploys your project to the genezio infrastructure. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/deploy)                                                                   |
-| genezio list `[<identifier>]`             | Displays details of your projects. You can view them all at once or display a particular one by providing its name or ID. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/ls) |
-| genezio delete `[<project-id>]`           | Deletes the project described by the provided ID. If no ID is provided, lists all the projects and IDs. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/delete)               |
-| genezio sdk                               | Generates an SDK corresponding to a deployed project. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/generatesdk)                                                            |
-| genezio account                           | Display information about the current account logged in. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/account)                                                             |
-| genezio login `<access-token>`            | Authenticates with genezio platform to deploy your code. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/login)                                                               |
-| genezio logout                            | Logout from genezio platform. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/logout)                                                                                         |
+| genezio create                            | Create a new fullstack project from templates [Learn more](https://genezio.com/docs/cli-tool/cli-commands/genezio-create/)                                                                 |
+| genezio local --port `<port>`             | Runs a local environment with your project for testing purposes. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/local/)                                                       |
+| genezio deploy                            | Deploys your project to the genezio infrastructure. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/deploy/)                                                                   |
+| genezio list `[<identifier>]`             | Displays details of your projects. You can view them all at once or display a particular one by providing its name or ID. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/ls/) |
+| genezio delete `[<project-id>]`           | Deletes the project described by the provided ID. If no ID is provided, lists all the projects and IDs. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/delete/)               |
+| genezio sdk                               | Generates an SDK corresponding to a deployed project. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/generatesdk/)                                                            |
+| genezio account                           | Display information about the current account logged in. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/account/)                                                             |
+| genezio login `<access-token>`            | Authenticates with genezio platform to deploy your code. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/login/)                                                               |
+| genezio logout                            | Logout from genezio platform. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/logout/)                                                                                         |
 | genezio help / genezio `<command>` --help | Displays help for the CLI tool.                                                                                                                                                           |
 
 # Examples deployed with genezio
@@ -162,11 +159,11 @@ Type safety is ensured by the generated SDK, even if the server and the client a
 
 To find more details on how to use `genezio`, check out the official [documentation](https://genezio.com/docs):
 
--   [Getting started](https://genezio.com/docs/getting-started)
--   [Project Structure](https://genezio.com/docs/project-structure)
--   [CLI commands](https://genezio.com/docs/cli-tool)
--   [Test Interface](https://genezio.com/docs/test-interface)
--   [Integrations](https://genezio.com/docs/integrations)
+-   [Getting started](https://genezio.com/docs/getting-started/)
+-   [Project Structure](https://genezio.com/docs/project-structure/)
+-   [CLI commands](https://genezio.com/docs/cli-tool/)
+-   [Test Interface](https://genezio.com/docs/test-interface/)
+-   [Integrations](https://genezio.com/docs/integrations/)
 
 If you cannot find what you are looking for in the docs, don't hesitate to drop us a [GitHub issue](https://github.com/Genez-io/genezio/issues) or [start a discussion on Discord](https://discord.gg/uc9H5YKjXv).
 
@@ -183,7 +180,7 @@ If you find yourself in a pickle using `genezio`, drop us a [GitHub issue](https
 
 # Troubleshooting
 
-For the most common issues that our users have dealt with, we created a [Troubleshooting](https://genezio.com/docs/troubleshooting) section in the documentation.
+For the most common issues that our users have dealt with, we created a [Troubleshooting](https://genezio.com/docs/troubleshooting/) section in the documentation.
 
 If you don't find the guidance there, drop us a [GitHub issue](https://github.com/Genez-io/genezio/issues). We are more than happy to help you!
 
