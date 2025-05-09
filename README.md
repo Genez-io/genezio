@@ -20,8 +20,6 @@
 <div align="center">
 
 [![unit-tests](https://github.com/Genez-io/genezio/actions/workflows/unit-test.yaml/badge.svg)](https://github.com/Genez-io/genezio/actions/workflows/unit-test.yaml)
-[![windows-integration-tests-prod](https://github.com/Genez-io/genezio-tests/actions/workflows/integration-prod-windows.yml/badge.svg)](https://github.com/Genez-io/genezio-tests/actions/workflows/integration-prod-windows.yml)
-[![linux-integration-tests-prod](https://github.com/Genez-io/genezio-tests/actions/workflows/integration-prod-linux.yml/badge.svg)](https://github.com/Genez-io/genezio-tests/actions/workflows/integration-prod-linux.yml)
 
 </div>
 
