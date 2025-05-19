@@ -144,7 +144,7 @@
         "@types/whatwg-mimetype": "~3.0.0",
         "@types/which": "^3.0.3",
         "@typescript-eslint/eslint-plugin": "^7.17.0",
-        "@typescript-eslint/parser": "^7.18.0",
+        "@typescript-eslint/parser": "^8.32.1",
         "envify": "^4.1.0",
         "eslint": "^8.55.0",
         "husky": "^9.1.6",
