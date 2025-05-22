@@ -95,7 +95,7 @@ import {
 } from "../../models/projectOptions.js";
 import { detectPythonVersion } from "../../utils/detectPythonCommand.js";
 import { isCI } from "../../utils/process.js";
-import { setEnvironmentVariables } from "../../requests/setEnvironmentVariables.js";
+import { deployRequest } from "../../requests/deployCode.js";
 
 export async function genezioDeploy(options: GenezioDeployOptions) {
     const configIOController = new YamlConfigurationIOController(options.config, {
@@ -190,23 +190,6 @@ export async function genezioDeploy(options: GenezioDeployOptions) {
         });
 
         if (deployClassesResult) {
-            if (configuration.backend?.environment) {
-                const environmentVariablesFromRemote = await createBackendEnvVarListFromRemote(
-                    configuration.backend?.environment,
-                    configuration,
-                    options.stage || "prod",
-                );
-
-                debugLogger.debug(
-                    `Environment variables set from remote resources ${JSON.stringify(environmentVariablesFromRemote)}`,
-                );
-                setEnvironmentVariables(
-                    deployClassesResult?.projectId,
-                    deployClassesResult?.projectEnvId,
-                    environmentVariablesFromRemote,
-                );
-            }
-
             await warningMissingEnvironmentVariables(
                 backendCwd,
                 deployClassesResult?.projectId,
@@ -572,11 +555,33 @@ export async function deployClasses(
         (r) => r.remote === "origin",
     )?.url;
 
+    debugLogger.debug(`Sending prepare request`);
+    const prepareResult = await deployRequest(
+        projectConfiguration,
+        cloudAdapterDeployInput,
+        options.stage,
+        stack,
+        projectGitRepositoryUrl,
+        undefined,
+        true,
+    );
+
     const environmentVariables = await createBackendEnvVarList(
         options.env,
         options.stage,
         configuration,
     );
+
+    if (prepareResult.projectId) {
+        if (configuration.backend?.environment) {
+            const environmentVariablesFromRemote = await createBackendEnvVarListFromRemote(
+                configuration.backend?.environment,
+                configuration,
+                options.stage || "prod",
+            );
+            environmentVariables.push(...environmentVariablesFromRemote);
+        }
+    }
 
     // TODO: Enable cloud adapter setting for every class
     const cloudAdapter = getCloudAdapter(cloudProvider);
