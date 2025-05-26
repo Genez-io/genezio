@@ -95,7 +95,7 @@
         "node-abort-controller": "^3.1.1",
         "node-cron": "^3.0.3",
         "open": "^10.1.1",
-        "openai": "^4.100.0",
+        "openai": "^4.103.0",
         "ora": "^8.1.1",
         "parse-gitignore": "^2.0.0",
         "semver": "^7.6.3",
