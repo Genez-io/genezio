@@ -168,10 +168,15 @@ function parseGenezioConfig(config: unknown) {
                     return true;
                 }, "The maximum number of concurrent instances should be greater than 0."),
             cooldownTime: zod.number().optional(),
+            healthcheckPath: zod.string().optional(),
         })
         .refine(
             ({ type, handler }) => !(type === FunctionType.aws && !handler),
             "The handler is mandatory for type aws functions.",
+        )
+        .refine(
+            ({ type, healthcheckPath }) => !(type !== FunctionType.persistent && healthcheckPath),
+            "The healthcheckPath field is only supported for persistent functions.",
         );
 
     const databaseSchema = zod
@@ -368,35 +373,41 @@ function parseGenezioConfig(config: unknown) {
     });
 
     // Define container schema
-    const containerSchema = zod.object({
-        path: zod.string(),
-        timeout: zod.number().optional(),
-        storageSize: zod.number().optional(),
-        instanceSize: zod.nativeEnum(InstanceSize).optional(),
-        vcpuCount: zod.number().optional(),
-        memoryMb: zod.number().optional(),
-        maxConcurrentRequestsPerInstance: zod
-            .number()
-            .optional()
-            .refine((value) => {
-                if (value && value < 1) {
-                    return false;
-                }
-                return true;
-            }, "The maximum number of concurrent requests per instance should be greater than 0."),
-        maxConcurrentInstances: zod
-            .number()
-            .optional()
-            .refine((value) => {
-                if (value && value < 1) {
-                    return false;
-                }
-                return true;
-            }, "The maximum number of concurrent instances should be greater than 0."),
-        cooldownTime: zod.number().optional(),
-        environment: environmentSchema.optional(),
-        type: zod.literal(FunctionType.persistent).optional(),
-    });
+    const containerSchema = zod
+        .object({
+            path: zod.string(),
+            timeout: zod.number().optional(),
+            storageSize: zod.number().optional(),
+            instanceSize: zod.nativeEnum(InstanceSize).optional(),
+            vcpuCount: zod.number().optional(),
+            memoryMb: zod.number().optional(),
+            maxConcurrentRequestsPerInstance: zod
+                .number()
+                .optional()
+                .refine((value) => {
+                    if (value && value < 1) {
+                        return false;
+                    }
+                    return true;
+                }, "The maximum number of concurrent requests per instance should be greater than 0."),
+            maxConcurrentInstances: zod
+                .number()
+                .optional()
+                .refine((value) => {
+                    if (value && value < 1) {
+                        return false;
+                    }
+                    return true;
+                }, "The maximum number of concurrent instances should be greater than 0."),
+            cooldownTime: zod.number().optional(),
+            environment: environmentSchema.optional(),
+            type: zod.literal(FunctionType.persistent).optional(),
+            healthcheckPath: zod.string().optional(),
+        })
+        .refine(
+            ({ type, healthcheckPath }) => !(type !== FunctionType.persistent && healthcheckPath),
+            "The healthcheckPath field is only supported for persistent containers.",
+        );
 
     const v2Schema = zod.object({
         name: zod.string().refine((value) => {
