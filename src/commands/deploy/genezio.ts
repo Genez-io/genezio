@@ -694,7 +694,9 @@ export async function functionToCloudInput(
         }
     }
 
-    let metadata: GenezioFunctionMetadata | undefined;
+    let metadata: GenezioFunctionMetadata | undefined = {
+        healthcheck_path: functionElement.healthcheckPath,
+    };
 
     // Handle Python projects dependencies
     // asgilinux-3.13
@@ -706,6 +708,7 @@ export async function functionToCloudInput(
         metadata = {
             type: GenezioFunctionMetadataType.Python,
             app_name: functionElement.handler,
+            healthcheck_path: functionElement.healthcheckPath,
         };
 
         const requirementsPath = path.join(backendPath, functionElement.path, "requirements.txt");

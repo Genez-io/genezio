@@ -155,6 +155,16 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
             /*language:*/ "container",
             /*entry*/ "",
             /*type:*/ FunctionType.aws,
+            /*timeout:*/ undefined,
+            /*storageSize:*/ undefined,
+            /*instanceSize:*/ undefined,
+            /*vcpuCount:*/ undefined,
+            /*memoryMb:*/ undefined,
+            /*maxConcurrentRequestsPerInstance:*/ undefined,
+            /*maxConcurrentInstances:*/ undefined,
+            /*cooldownTime:*/ undefined,
+            /*persistent:*/ undefined,
+            /*healthcheckPath:*/ config.container?.healthcheckPath,
         ),
     );
 
@@ -187,6 +197,7 @@ export async function dockerDeploy(options: GenezioDeployOptions) {
         cmd: cmdEntryFile,
         cwd: dockerWorkingDir,
         http_port: port,
+        healthcheck_path: config.container?.healthcheckPath,
     };
     const result = await cloudAdapter.deploy(
         [
