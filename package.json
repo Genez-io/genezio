@@ -126,7 +126,7 @@
         "@types/cli-progress": "^3.11.6",
         "@types/cli-spinner": "^0.2.3",
         "@types/cli-table": "^0.3.4",
-        "@types/cors": "^2.8.17",
+        "@types/cors": "^2.8.19",
         "@types/decompress": "^4.2.7",
         "@types/express": "^5.0.0",
         "@types/fs-extra": "^11.0.4",
