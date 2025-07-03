@@ -1,4 +1,4 @@
-<div align="center"> <a href="https://genezio.com/">
+<div align="center"> <a href="https://deployapps.dev/">
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://github.com/genez-io/graphics/raw/HEAD/svg/Logo_Genezio_White.svg">
@@ -12,7 +12,7 @@
 
 <div align="center">
 <h2>Deploy on the fastest full-stack cloud</h2>
-<h3>Check out a <u><a href="https://awesome-purple-capybara.app.genez.io/">live demo deployed with genezio here</a></u> </h3>
+<h3>Check out a <u><a href="https://awesome-purple-capybara.app.genez.io/">live demo deployed with DeployApps here</a></u> </h3>
 </div>
 
 <br>
@@ -41,14 +41,14 @@
 
 </div>
 
-# What is [Genezio](https://genezio.com)?
+# What is [DeployApps](https://deployapps.dev)?
 
-[Genezio](https://genezio.com/) is a developer platform for full-stack developers or teams who need to build, run and maintain web, mobile or enterprise apps with a typesafe backend that scales automatically.
+[DeployApps](https://deployapps.dev/) is a developer platform for full-stack developers or teams who need to build, run and maintain web, mobile or enterprise apps with a typesafe backend that scales automatically.
 
-For more details on how to use `genezio`, you can check out the official [documentation](https://genezio.com/docs).
+For more details on how to use `DeployApps`, you can check out the official [documentation](https://deployapps.dev/docs).
 
 <div align="center">
-<h3> :star: If you want to support the genezio community, give us a star on this repo :star: </h3>
+<h3> :star: If you want to support the DeployApps community, give us a star on this repo :star: </h3>
 </div>
 
 # Contents
@@ -59,9 +59,9 @@ For more details on how to use `genezio`, you can check out the official [docume
 -   [Create a new project](#create-a-new-project)
 -   [Test your project using the Test Interface](#test-your-project-using-the-test-interface)
 -   [Commands Summary](#commands-summary)
--   [Examples deployed with genezio](#examples-deployed-with-genezio)
+-   [Examples deployed with DeployApps](#examples-deployed-with-genezio)
 -   [Official documentation](#official-documentation)
-    -   [How does genezio work?](#how-does-`genezio`-work?)
+    -   [How does DeployApps work?](#how-does-`genezio`-work?)
     -   [Detailed documentation](#detailed-documentation)
 -   [Getting support](#getting-support)
 -   [System requirements](#system-requirements)
@@ -75,7 +75,7 @@ For more details on how to use `genezio`, you can check out the official [docume
 # Features
 
 -   🚀 **Function-as-a-service**: No need to worry about infrastructure, scaling, or maintenance.
--   📦 **Genezio Functions**: Deploy and run code on-demand without managing servers or infrastructure.
+-   📦 **DeployApps Functions**: Deploy and run code on-demand without managing servers or infrastructure.
 -   🚀 **Programming Languages**: Tested and production ready for Javascript/Typescript and Python.
 -   🌐 **Framework agnostic**: works with React, Vue, Angular, Flutter, Svelte, Next, Nuxt, Nest.
 -   🎯 **Seamless Bundling and Compiling**: automatically bundles and compiles your code, including dependencies, for efficient and error-free deployment.
@@ -91,13 +91,13 @@ For more details on how to use `genezio`, you can check out the official [docume
 
 # Getting Started
 
-Check out our [Getting started](https://genezio.com/docs/getting-started) documentation page to find out how to start using Genezio.
+Check out our [Getting started](https://deployapps.dev/docs/getting-started) documentation page to find out how to start using DeployApps.
 
-For more details about the `genezio` CLI commands, run `genezio help` or `genezio [command] help`.
+For more details about the `DeployApps` CLI commands, run `genezio help` or `genezio [command] help`.
 
 # Installation
 
-To install the `genezio` CLI tool, run the following command:
+To install the `DeployApps` CLI tool, run the following command:
 
 ```bash
 npm install -g genezio
@@ -105,7 +105,7 @@ npm install -g genezio
 
 # Create a new project
 
-Visit the [Genezio template page](https://app.genez.io/new-project) and create a new project. You can choose from a variety of templates or start from scratch.
+Visit the [DeployApps template page](https://app.genez.io/new-project) and create a new project. You can choose from a variety of templates or start from scratch.
 
 If you want to create a new project from scratch, you can run the following command:
 
@@ -138,42 +138,42 @@ Once you are happy with your project, you can deploy it in a production environm
 
 # Commands Summary
 
-The genezio CLI tool supports the commands shown in the following table:
+The DeployApps CLI tool supports the commands shown in the following table:
 
 | Command                                   | Description                                                                                                                                                                               |
 | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| genezio create                            | Create a new fullstack project from templates [Learn more](https://genezio.com/docs/cli-tool/cli-commands/genezio-create)                                                                 |
-| genezio local --port `<port>`             | Runs a local environment with your project for testing purposes. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/local)                                                       |
-| genezio deploy                            | Deploys your project to the genezio infrastructure. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/deploy)                                                                   |
-| genezio list `[<identifier>]`             | Displays details of your projects. You can view them all at once or display a particular one by providing its name or ID. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/ls) |
-| genezio delete `[<project-id>]`           | Deletes the project described by the provided ID. If no ID is provided, lists all the projects and IDs. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/delete)               |
-| genezio sdk                               | Generates an SDK corresponding to a deployed project. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/generatesdk)                                                            |
-| genezio account                           | Display information about the current account logged in. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/account)                                                             |
-| genezio login `<access-token>`            | Authenticates with genezio platform to deploy your code. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/login)                                                               |
-| genezio logout                            | Logout from genezio platform. [Learn more](https://genezio.com/docs/cli-tool/cli-commands/logout)                                                                                         |
+| genezio create                            | Create a new fullstack project from templates [Learn more](https://deployapps.dev/docs/cli-tool/cli-commands/genezio-create)                                                                 |
+| genezio local --port `<port>`             | Runs a local environment with your project for testing purposes. [Learn more](https://deployapps.dev/docs/cli-tool/cli-commands/local)                                                       |
+| genezio deploy                            | Deploys your project to the DeployApps infrastructure. [Learn more](https://deployapps.dev/docs/cli-tool/cli-commands/deploy)                                                                   |
+| genezio list `[<identifier>]`             | Displays details of your projects. You can view them all at once or display a particular one by providing its name or ID. [Learn more](https://deployapps.dev/docs/cli-tool/cli-commands/ls) |
+| genezio delete `[<project-id>]`           | Deletes the project described by the provided ID. If no ID is provided, lists all the projects and IDs. [Learn more](https://deployapps.dev/docs/cli-tool/cli-commands/delete)               |
+| genezio sdk                               | Generates an SDK corresponding to a deployed project. [Learn more](https://deployapps.dev/docs/cli-tool/cli-commands/generatesdk)                                                            |
+| genezio account                           | Display information about the current account logged in. [Learn more](https://deployapps.dev/docs/cli-tool/cli-commands/account)                                                             |
+| genezio login `<access-token>`            | Authenticates with DeployApps platform to deploy your code. [Learn more](https://deployapps.dev/docs/cli-tool/cli-commands/login)                                                               |
+| genezio logout                            | Logout from DeployApps platform. [Learn more](https://deployapps.dev/docs/cli-tool/cli-commands/logout)                                                                                         |
 | genezio help / genezio `<command>` --help | Displays help for the CLI tool.                                                                                                                                                           |
 
-# Examples deployed with genezio
+# Examples deployed with DeployApps
 
-You can find out more about `genezio` from our [examples repository](https://github.com/Genez-io/genezio-examples).
+You can find out more about `DeployApps` from our [examples repository](https://github.com/Genez-io/genezio-examples).
 
 # Official documentation
 
-## How does genezio work?
+## How does DeployApps work?
 
-`genezio` is using JSON RPC 2.0 to facilitate the communication between SDK and your class. Your functions are deployed in the Genezio infrastructure. The functions are not executed on a long lasting Virtual Machine. Instead, our system uses a serverless approach. Whenever a request is received, your code is loaded and executed. This is more cost and energy efficient. However, the developer needs to take into account the following - the values of the global variables are not persistent between runs.
+`DeployApps` is using JSON RPC 2.0 to facilitate the communication between SDK and your class. Your functions are deployed in the DeployApps infrastructure. The functions are not executed on a long lasting Virtual Machine. Instead, our system uses a serverless approach. Whenever a request is received, your code is loaded and executed. This is more cost and energy efficient. However, the developer needs to take into account the following - the values of the global variables are not persistent between runs.
 
 Type safety is ensured by the generated SDK, even if the server and the client are not written in the same language. The CLI tool analyzes the server code generates client side types equivalent to the server side types, as well as functions with equivalent signatures.
 
 ## Detailed documentation
 
-To find more details on how to use `genezio`, check out the official [documentation](https://genezio.com/docs):
+To find more details on how to use `DeployApps`, check out the official [documentation](https://deployapps.dev/docs):
 
--   [Getting started](https://genezio.com/docs/getting-started)
--   [Project Structure](https://genezio.com/docs/project-structure)
--   [CLI commands](https://genezio.com/docs/cli-tool)
--   [Test Interface](https://genezio.com/docs/test-interface)
--   [Integrations](https://genezio.com/docs/integrations)
+-   [Getting started](https://deployapps.dev/docs/getting-started)
+-   [Project Structure](https://deployapps.dev/docs/project-structure)
+-   [CLI commands](https://deployapps.dev/docs/cli-tool)
+-   [Test Interface](https://deployapps.dev/docs/test-interface)
+-   [Integrations](https://deployapps.dev/docs/integrations)
 
 If you cannot find what you are looking for in the docs, don't hesitate to drop us a [GitHub issue](https://github.com/Genez-io/genezio/issues) or [start a discussion on Discord](https://discord.gg/uc9H5YKjXv).
 
@@ -181,16 +181,16 @@ If you cannot find what you are looking for in the docs, don't hesitate to drop 
 
 We want you to get your project up and running in no-time.
 
-If you find yourself in a pickle using `genezio`, drop us a [GitHub issue](https://github.com/Genez-io/genezio/issues), [start a discussion with us on Discord](https://discord.gg/uc9H5YKjXv) or drop us an email at [contact@genezio.io](contact@genezio.io).
+If you find yourself in a pickle using `DeployApps`, drop us a [GitHub issue](https://github.com/Genez-io/genezio/issues), [start a discussion with us on Discord](https://discord.gg/uc9H5YKjXv) or drop us an email at [contact@genezio.io](contact@genezio.io).
 
 # System requirements
 
--   `genezio` can be installed and used on macOS, Linux-based distributions and Windows.
+-   `DeployApps` can be installed and used on macOS, Linux-based distributions and Windows.
 -   A version of `node` >= 18 should be installed on your machine.
 
 # Troubleshooting
 
-For the most common issues that our users have dealt with, we created a [Troubleshooting](https://genezio.com/docs/troubleshooting) section in the documentation.
+For the most common issues that our users have dealt with, we created a [Troubleshooting](https://deployapps.dev/docs/troubleshooting) section in the documentation.
 
 If you don't find the guidance there, drop us a [GitHub issue](https://github.com/Genez-io/genezio/issues). We are more than happy to help you!
 
@@ -198,26 +198,26 @@ If you don't find the guidance there, drop us a [GitHub issue](https://github.co
 
 Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) for more details.
 
-Show your support by giving us a star :star:, to help others discover `genezio` and become part of our community!
+Show your support by giving us a star :star:, to help others discover `DeployApps` and become part of our community!
 
 # Ecosystem
 
-There are a growing number of awesome projects deployed with `genezio` and we want to shout out about them.
+There are a growing number of awesome projects deployed with `DeployApps` and we want to shout out about them.
 
-If you deployed a project using `genezio` let us know on [Discord](https://discord.gg/uc9H5YKjXv).
+If you deployed a project using `DeployApps` let us know on [Discord](https://discord.gg/uc9H5YKjXv).
 
 # Tutorials
 
-Check out [tutorials for building and deploying](https://genezio.com/tags/tutorials/) various use cases with Genezio.
+Check out [tutorials for building and deploying](https://deployapps.dev/tags/tutorials/) various use cases with DeployApps.
 
 # Badge
 
-Brag to your friends that you are using `genezio` with this awesome badge -> [![deployed with: genezio](https://img.shields.io/badge/deployed_with-genezio-6742c1.svg?labelColor=62C353&style=flat)](https://github.com/genez-io/genezio)
+Brag to your friends that you are using `DeployApps` with this awesome badge -> [![deployed with: DeployApps](https://img.shields.io/badge/deployed_with-genezio-6742c1.svg?labelColor=62C353&style=flat)](https://github.com/genez-io/genezio)
 
 ```md
-[![deployed with: genezio](https://img.shields.io/badge/deployed_with-genezio-6742c1.svg?labelColor=62C353&style=flat)](https://github.com/genez-io/genezio)
+[![deployed with: DeployApps](https://img.shields.io/badge/deployed_with-genezio-6742c1.svg?labelColor=62C353&style=flat)](https://github.com/genez-io/genezio)
 ```
 
 # License
 
-`genezio` is licensed under `GNU General Public License v3.0`. For more information, please refer to [LICENSE](LICENSE).
+`DeployApps` is licensed under `GNU General Public License v3.0`. For more information, please refer to [LICENSE](LICENSE).
