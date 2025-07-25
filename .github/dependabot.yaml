@@ -20,6 +20,7 @@ updates:
             versions: [">= 0.18.0"]
           - dependency-name: "tree-sitter"
           - dependency-name: "express"
+          - dependency-name: "isomorphic-git"
     - package-ecosystem: "gitsubmodule"
       target-branch: "main"
       directory: "/"
