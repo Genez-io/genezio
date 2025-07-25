@@ -128,6 +128,7 @@ export class FunctionConfiguration {
     maxConcurrentInstances?: number;
     cooldownTime?: number;
     persistent?: boolean;
+    healthcheckPath?: string;
 
     constructor(
         name: string,
@@ -145,6 +146,7 @@ export class FunctionConfiguration {
         maxConcurrentInstances?: number,
         cooldownTime?: number,
         persistent?: boolean,
+        healthcheckPath?: string,
     ) {
         this.name = name;
         this.path = path;
@@ -161,6 +163,7 @@ export class FunctionConfiguration {
         this.maxConcurrentInstances = maxConcurrentInstances;
         this.cooldownTime = cooldownTime;
         this.persistent = persistent;
+        this.healthcheckPath = healthcheckPath;
     }
 }
 
@@ -333,6 +336,7 @@ export class ProjectConfiguration {
                     maxConcurrentRequestsPerInstance: f.maxConcurrentRequestsPerInstance,
                     maxConcurrentInstances: f.maxConcurrentInstances,
                     cooldownTime: f.cooldownTime,
+                    healthcheckPath: f.healthcheckPath,
                 };
             }) || [];
     }

@@ -20,6 +20,7 @@ export async function deployRequest(
     stack: string[] = [],
     sourceRepository?: string,
     environmentVariables?: EnvironmentVariable[],
+    prepareOnly: boolean = false,
 ): Promise<DeployCodeResponse> {
     // auth token
     printAdaptiveLog("Checking your credentials", "start");
@@ -73,9 +74,14 @@ export async function deployRequest(
 
     const controller = new AbortController();
     const messagePromise = printUninformativeLog(controller);
+    const method = prepareOnly ? "POST" : "PUT";
+    const url = prepareOnly
+        ? `${BACKEND_ENDPOINT}/core/deployment/prepare`
+        : `${BACKEND_ENDPOINT}/core/deployment`;
+
     const response: AxiosResponse<StatusOk<DeployCodeResponse>> = await axios({
-        method: "PUT",
-        url: `${BACKEND_ENDPOINT}/core/deployment`,
+        method: method,
+        url: url,
         data: json,
         headers: {
             Authorization: `Bearer ${authToken}`,
