@@ -122,7 +122,7 @@
         "@types/babel__core": "^7.20.5",
         "@types/babel__traverse": "^7.20.7",
         "@types/body": "^5.1.4",
-        "@types/body-parser": "^1.19.5",
+        "@types/body-parser": "^1.19.6",
         "@types/cli-progress": "^3.11.6",
         "@types/cli-spinner": "^0.2.3",
         "@types/cli-table": "^0.3.4",
