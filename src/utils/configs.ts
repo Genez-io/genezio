@@ -40,7 +40,6 @@ export const legacyRegions = [
 export const regions = [
     { name: "US East (N. Virginia)", value: "us-east-1" },
     { name: "Europe (Frankfurt)", value: "eu-central-1" },
-    { name: "Europe (London)", value: "eu-west-1" },
 ];
 
 export const neonDatabaseRegions = [
