@@ -93,7 +93,7 @@
         "mime-types": "^3.0.1",
         "mustache": "^4.2.0",
         "node-abort-controller": "^3.1.1",
-        "node-cron": "^3.0.3",
+        "node-cron": "^4.2.1",
         "open": "^10.1.2",
         "openai": "^4.103.0",
         "ora": "^8.1.1",
