@@ -160,7 +160,7 @@
         "@rollup/rollup-darwin-arm64": "4.40.2",
         "@rollup/rollup-darwin-x64": "4.41.0",
         "@rollup/rollup-linux-arm-gnueabihf": "4.45.1",
-        "@rollup/rollup-linux-arm64-gnu": "4.42.0",
+        "@rollup/rollup-linux-arm64-gnu": "4.46.2",
         "@rollup/rollup-linux-arm64-musl": "4.46.1",
         "@rollup/rollup-linux-riscv64-gnu": "4.41.1",
         "@rollup/rollup-linux-x64-gnu": "4.45.1",
