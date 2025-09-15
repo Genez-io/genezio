@@ -102,7 +102,7 @@
         "tslog": "^4.9.2",
         "typescript": "^5.9.2",
         "unique-names-generator": "^4.7.1",
-        "uuid": "^11.1.0",
+        "uuid": "^13.0.0",
         "whatwg-mimetype": "~3.0.0",
         "which": "^5.0.0",
         "yaml": "^2.8.0",
